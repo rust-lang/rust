@@ -228,6 +228,7 @@ mod mutex_atomic;
 mod needless_arbitrary_self_type;
 mod needless_bool;
 mod needless_borrowed_ref;
+mod needless_borrows_for_generic_args;
 mod needless_continue;
 mod needless_else;
 mod needless_for_each;
@@ -880,7 +881,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports)));
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
     store.register_late_pass(|_| Box::new(unnamed_address::UnnamedAddress));
-    store.register_late_pass(move |_| Box::new(dereference::Dereferencing::new(msrv())));
+    store.register_late_pass(|_| Box::<dereference::Dereferencing<'_>>::default());
     store.register_late_pass(|_| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|_| Box::new(future_not_send::FutureNotSend));
     let future_size_threshold = conf.future_size_threshold;
@@ -1104,6 +1105,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(implied_bounds_in_impls::ImpliedBoundsInImpls));
     store.register_late_pass(|_| Box::new(missing_asserts_for_indexing::MissingAssertsForIndexing));
     store.register_late_pass(|_| Box::new(unnecessary_map_on_constructor::UnnecessaryMapOnConstructor));
+    store.register_late_pass(move |_| {
+        Box::new(needless_borrows_for_generic_args::NeedlessBorrowsForGenericArgs::new(
+            msrv(),
+        ))
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

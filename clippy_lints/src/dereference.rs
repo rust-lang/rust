@@ -1,40 +1,24 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exactly_once, PossibleBorrowerMap};
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::ty::{implements_trait, peel_mid_ty_refs};
 use clippy_utils::{
     expr_use_ctxt, get_parent_expr, get_parent_node, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode,
 };
-
-use hir::def::DefKind;
-use hir::MatchSource;
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind,
-    Path, QPath, TyKind, UnOp,
+    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node,
+    Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
-use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, List, ParamEnv, ParamTy, ProjectionPredicate, Ty,
-    TyCtxt, TypeVisitableExt, TypeckResults,
-};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{Obligation, ObligationCause};
-use std::collections::VecDeque;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -182,24 +166,6 @@ pub struct Dereferencing<'tcx> {
     ///
     /// e.g. `m!(x) | Foo::Bar(ref x)`
     ref_locals: FxIndexMap<HirId, Option<RefPat>>,
-
-    /// Stack of (body owner, `PossibleBorrowerMap`) pairs. Used by
-    /// `needless_borrow_impl_arg_position` to determine when a borrowed expression can instead
-    /// be moved.
-    possible_borrowers: Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
-
-    // `IntoIterator` for arrays requires Rust 1.53.
-    msrv: Msrv,
-}
-
-impl<'tcx> Dereferencing<'tcx> {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self {
-            msrv,
-            ..Dereferencing::default()
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -354,52 +320,6 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                         ));
                     },
                     (Some(use_cx), RefOp::AddrOf(mutability)) => {
-                        let defined_ty = use_cx.node.defined_ty(cx);
-
-                        // Check needless_borrow for generic arguments.
-                        if !use_cx.is_ty_unified
-                            && let Some(DefinedTy::Mir(ty)) = defined_ty
-                            && let ty::Param(ty) = *ty.value.skip_binder().kind()
-                            && let Some((hir_id, fn_id, i)) = match use_cx.node {
-                                ExprUseNode::MethodArg(_, _, 0) => None,
-                                ExprUseNode::MethodArg(hir_id, None, i) => {
-                                    typeck.type_dependent_def_id(hir_id).map(|id| (hir_id, id, i))
-                                },
-                                ExprUseNode::FnArg(&Expr { kind: ExprKind::Path(ref p), hir_id, .. }, i)
-                                if !path_has_args(p) => match typeck.qpath_res(p, hir_id) {
-                                    Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, id) => {
-                                        Some((hir_id, id, i))
-                                    },
-                                    _ => None,
-                                },
-                                _ => None,
-                            } && let count = needless_borrow_generic_arg_count(
-                                cx,
-                                &mut self.possible_borrowers,
-                                fn_id,
-                                typeck.node_args(hir_id),
-                                i,
-                                ty,
-                                expr,
-                                &self.msrv,
-                            ) && count != 0
-                        {
-                            self.state = Some((
-                                State::DerefedBorrow(DerefedBorrow {
-                                    count: count - 1,
-                                    msg: "the borrowed expression implements the required traits",
-                                    stability: TyCoercionStability::None,
-                                    for_field_access: None,
-                                }),
-                                StateData {
-                                    span: expr.span,
-                                    hir_id: expr.hir_id,
-                                    adjusted_ty: use_cx.adjustments.last().map_or(expr_ty, |a| a.target),
-                                },
-                            ));
-                            return;
-                        }
-
                         // Find the number of times the borrow is auto-derefed.
                         let mut iter = use_cx.adjustments.iter();
                         let mut deref_count = 0usize;
@@ -418,7 +338,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             };
                         };
 
-                        let stability = defined_ty.map_or(TyCoercionStability::None, |ty| {
+                        let stability = use_cx.node.defined_ty(cx).map_or(TyCoercionStability::None, |ty| {
                             TyCoercionStability::for_defined_ty(cx, ty, use_cx.node.is_return())
                         });
                         let can_auto_borrow = match use_cx.node {
@@ -699,12 +619,6 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
-        if self.possible_borrowers.last().map_or(false, |&(local_def_id, _)| {
-            local_def_id == cx.tcx.hir().body_owner_def_id(body.id())
-        }) {
-            self.possible_borrowers.pop();
-        }
-
         if Some(body.id()) == self.current_body {
             for pat in self.ref_locals.drain(..).filter_map(|(_, x)| x) {
                 let replacements = pat.replacements;
@@ -728,8 +642,6 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
             self.current_body = None;
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn try_parse_ref_op<'tcx>(
@@ -783,13 +695,6 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
         // The result type for a deref method is always a reference
         // Not matching the previous pattern means the argument type is not a reference
         // This means that the type did change
-        _ => false,
-    }
-}
-
-fn path_has_args(p: &QPath<'_>) -> bool {
-    match *p {
-        QPath::Resolved(_, Path { segments: [.., s], .. }) | QPath::TypeRelative(_, s) => s.args.is_some(),
         _ => false,
     }
 }
@@ -978,272 +883,6 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
     let mut v = V(false);
     v.visit_ty(ty);
     v.0
-}
-
-/// Checks for the number of borrow expressions which can be removed from the given expression
-/// where the expression is used as an argument to a function expecting a generic type.
-///
-/// The following constraints will be checked:
-/// * The borrowed expression meets all the generic type's constraints.
-/// * The generic type appears only once in the functions signature.
-/// * The borrowed value will not be moved if it is used later in the function.
-#[expect(clippy::too_many_arguments)]
-fn needless_borrow_generic_arg_count<'tcx>(
-    cx: &LateContext<'tcx>,
-    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
-    fn_id: DefId,
-    callee_args: &'tcx List<GenericArg<'tcx>>,
-    arg_index: usize,
-    param_ty: ParamTy,
-    mut expr: &Expr<'tcx>,
-    msrv: &Msrv,
-) -> usize {
-    let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
-    let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
-
-    let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder();
-    let predicates = cx.tcx.param_env(fn_id).caller_bounds();
-    let projection_predicates = predicates
-        .iter()
-        .filter_map(|predicate| {
-            if let ClauseKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
-                Some(projection_predicate)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let mut trait_with_ref_mut_self_method = false;
-
-    // If no traits were found, or only the `Destruct`, `Sized`, or `Any` traits were found, return.
-    if predicates
-        .iter()
-        .filter_map(|predicate| {
-            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
-            {
-                Some(trait_predicate.trait_ref.def_id)
-            } else {
-                None
-            }
-        })
-        .inspect(|trait_def_id| {
-            trait_with_ref_mut_self_method |= has_ref_mut_self_method(cx, *trait_def_id);
-        })
-        .all(|trait_def_id| {
-            Some(trait_def_id) == destruct_trait_def_id
-                || Some(trait_def_id) == sized_trait_def_id
-                || cx.tcx.is_diagnostic_item(sym::Any, trait_def_id)
-        })
-    {
-        return 0;
-    }
-
-    // See:
-    // - https://github.com/rust-lang/rust-clippy/pull/9674#issuecomment-1289294201
-    // - https://github.com/rust-lang/rust-clippy/pull/9674#issuecomment-1292225232
-    if projection_predicates
-        .iter()
-        .any(|projection_predicate| is_mixed_projection_predicate(cx, fn_id, projection_predicate))
-    {
-        return 0;
-    }
-
-    // `args_with_referent_ty` can be constructed outside of `check_referent` because the same
-    // elements are modified each time `check_referent` is called.
-    let mut args_with_referent_ty = callee_args.to_vec();
-
-    let mut check_reference_and_referent = |reference, referent| {
-        let referent_ty = cx.typeck_results().expr_ty(referent);
-
-        if !is_copy(cx, referent_ty)
-            && (referent_ty.has_significant_drop(cx.tcx, cx.param_env)
-                || !referent_used_exactly_once(cx, possible_borrowers, reference))
-        {
-            return false;
-        }
-
-        // https://github.com/rust-lang/rust-clippy/pull/9136#pullrequestreview-1037379321
-        if trait_with_ref_mut_self_method && !matches!(referent_ty.kind(), ty::Ref(_, _, Mutability::Mut)) {
-            return false;
-        }
-
-        if !replace_types(
-            cx,
-            param_ty,
-            referent_ty,
-            fn_sig,
-            arg_index,
-            &projection_predicates,
-            &mut args_with_referent_ty,
-        ) {
-            return false;
-        }
-
-        predicates.iter().all(|predicate| {
-            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                && cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
-                && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
-                && let GenericArgKind::Type(ty) = args_with_referent_ty[param_ty.index as usize].unpack()
-                && ty.is_array()
-                && !msrv.meets(msrvs::ARRAY_INTO_ITERATOR)
-            {
-                return false;
-            }
-
-            let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, &args_with_referent_ty);
-            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
-            let infcx = cx.tcx.infer_ctxt().build();
-            infcx.predicate_must_hold_modulo_regions(&obligation)
-        })
-    };
-
-    let mut count = 0;
-    while let ExprKind::AddrOf(_, _, referent) = expr.kind {
-        if !check_reference_and_referent(expr, referent) {
-            break;
-        }
-        expr = referent;
-        count += 1;
-    }
-    count
-}
-
-fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
-    cx.tcx
-        .associated_items(trait_def_id)
-        .in_definition_order()
-        .any(|assoc_item| {
-            if assoc_item.fn_has_self_parameter {
-                let self_ty = cx
-                    .tcx
-                    .fn_sig(assoc_item.def_id)
-                    .instantiate_identity()
-                    .skip_binder()
-                    .inputs()[0];
-                matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Mut))
-            } else {
-                false
-            }
-        })
-}
-
-fn is_mixed_projection_predicate<'tcx>(
-    cx: &LateContext<'tcx>,
-    callee_def_id: DefId,
-    projection_predicate: &ProjectionPredicate<'tcx>,
-) -> bool {
-    let generics = cx.tcx.generics_of(callee_def_id);
-    // The predicate requires the projected type to equal a type parameter from the parent context.
-    if let Some(term_ty) = projection_predicate.term.ty()
-        && let ty::Param(term_param_ty) = term_ty.kind()
-        && (term_param_ty.index as usize) < generics.parent_count
-    {
-        // The inner-most self type is a type parameter from the current function.
-        let mut projection_ty = projection_predicate.projection_ty;
-        loop {
-            match projection_ty.self_ty().kind() {
-                ty::Alias(ty::Projection, inner_projection_ty) => {
-                    projection_ty = *inner_projection_ty;
-                }
-                ty::Param(param_ty) => {
-                    return (param_ty.index as usize) >= generics.parent_count;
-                }
-                _ => {
-                    return false;
-                }
-            }
-        }
-    } else {
-        false
-    }
-}
-
-fn referent_used_exactly_once<'tcx>(
-    cx: &LateContext<'tcx>,
-    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
-    reference: &Expr<'tcx>,
-) -> bool {
-    if let Some(mir) = enclosing_mir(cx.tcx, reference.hir_id)
-        && let Some(local) = expr_local(cx.tcx, reference)
-        && let [location] = *local_assignments(mir, local).as_slice()
-        && let Some(statement) = mir.basic_blocks[location.block].statements.get(location.statement_index)
-        && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
-        && !place.is_indirect_first_projection()
-    {
-        let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
-        if possible_borrowers
-            .last()
-            .map_or(true, |&(local_def_id, _)| local_def_id != body_owner_local_def_id)
-        {
-            possible_borrowers.push((body_owner_local_def_id, PossibleBorrowerMap::new(cx, mir)));
-        }
-        let possible_borrower = &mut possible_borrowers.last_mut().unwrap().1;
-        // If `only_borrowers` were used here, the `copyable_iterator::warn` test would fail. The reason is
-        // that `PossibleBorrowerVisitor::visit_terminator` considers `place.local` a possible borrower of
-        // itself. See the comment in that method for an explanation as to why.
-        possible_borrower.bounded_borrowers(&[local], &[local, place.local], place.local, location)
-            && used_exactly_once(mir, place.local).unwrap_or(false)
-    } else {
-        false
-    }
-}
-
-// Iteratively replaces `param_ty` with `new_ty` in `args`, and similarly for each resulting
-// projected type that is a type parameter. Returns `false` if replacing the types would have an
-// effect on the function signature beyond substituting `new_ty` for `param_ty`.
-// See: https://github.com/rust-lang/rust-clippy/pull/9136#discussion_r927212757
-fn replace_types<'tcx>(
-    cx: &LateContext<'tcx>,
-    param_ty: ParamTy,
-    new_ty: Ty<'tcx>,
-    fn_sig: FnSig<'tcx>,
-    arg_index: usize,
-    projection_predicates: &[ProjectionPredicate<'tcx>],
-    args: &mut [ty::GenericArg<'tcx>],
-) -> bool {
-    let mut replaced = BitSet::new_empty(args.len());
-
-    let mut deque = VecDeque::with_capacity(args.len());
-    deque.push_back((param_ty, new_ty));
-
-    while let Some((param_ty, new_ty)) = deque.pop_front() {
-        // If `replaced.is_empty()`, then `param_ty` and `new_ty` are those initially passed in.
-        if !fn_sig
-            .inputs_and_output
-            .iter()
-            .enumerate()
-            .all(|(i, ty)| (replaced.is_empty() && i == arg_index) || !ty.contains(param_ty.to_ty(cx.tcx)))
-        {
-            return false;
-        }
-
-        args[param_ty.index as usize] = ty::GenericArg::from(new_ty);
-
-        // The `replaced.insert(...)` check provides some protection against infinite loops.
-        if replaced.insert(param_ty.index) {
-            for projection_predicate in projection_predicates {
-                if projection_predicate.projection_ty.self_ty() == param_ty.to_ty(cx.tcx)
-                    && let Some(term_ty) = projection_predicate.term.ty()
-                    && let ty::Param(term_param_ty) = term_ty.kind()
-                {
-                    let projection = cx.tcx.mk_ty_from_kind(ty::Alias(
-                        ty::Projection,
-                        projection_predicate.projection_ty.with_self_ty(cx.tcx, new_ty),
-                    ));
-
-                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
-                        && args[term_param_ty.index as usize] != ty::GenericArg::from(projected_ty)
-                    {
-                        deque.push_back((*term_param_ty, projected_ty));
-                    }
-                }
-            }
-        }
-    }
-
-    true
 }
 
 fn ty_contains_field(ty: Ty<'_>, name: Symbol) -> bool {
