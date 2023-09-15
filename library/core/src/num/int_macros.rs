@@ -2477,18 +2477,18 @@ macro_rules! int_impl {
                 None
             } else {
                 let mut n = 0;
-                let mut r = self;
+                let mut r = 1;
 
                 // Optimization for 128 bit wide integers.
                 if Self::BITS == 128 {
                     let b = Self::ilog2(self) / (Self::ilog2(base) + 1);
                     n += b;
-                    r /= base.pow(b as u32);
+                    r *= base.pow(b);
                 }
 
-                while r >= base {
-                    r /= base;
+                while r <= self / base {
                     n += 1;
+                    r *= base;
                 }
                 Some(n)
             }
