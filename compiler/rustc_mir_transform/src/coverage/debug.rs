@@ -44,7 +44,7 @@
 //! points, which can be enabled via environment variable:
 //!
 //! ```shell
-//! RUSTC_LOG=rustc_mir_transform::transform::coverage=debug
+//! RUSTC_LOG=rustc_mir_transform::coverage=debug
 //! ```
 //!
 //! Other module paths with coverage-related debug logs may also be of interest, particularly for
@@ -52,7 +52,7 @@
 //! code generation pass). For example:
 //!
 //! ```shell
-//! RUSTC_LOG=rustc_mir_transform::transform::coverage,rustc_codegen_ssa::coverageinfo,rustc_codegen_llvm::coverageinfo=debug
+//! RUSTC_LOG=rustc_mir_transform::coverage,rustc_codegen_llvm::coverageinfo=debug
 //! ```
 //!
 //! Coverage Debug Options
