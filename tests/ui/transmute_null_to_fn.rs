@@ -25,6 +25,17 @@ fn transmute_const() {
     }
 }
 
+fn issue_11485() {
+    unsafe {
+        let _: fn() = std::mem::transmute(0 as *const u8 as *const ());
+        //~^ ERROR: transmuting a known null pointer into a function pointer
+        let _: fn() = std::mem::transmute(std::ptr::null::<()>() as *const u8);
+        //~^ ERROR: transmuting a known null pointer into a function pointer
+        let _: fn() = std::mem::transmute(ZPTR as *const u8);
+        //~^ ERROR: transmuting a known null pointer into a function pointer
+    }
+}
+
 fn main() {
     one_liners();
     transmute_const();
