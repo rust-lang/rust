@@ -62,7 +62,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
             let alloc = alloc_type_name(tcx, tp_ty);
-            ConstValue::Slice { data: alloc, start: 0, end: alloc.inner().len() }
+            ConstValue::Slice { data: alloc, meta: alloc.inner().size().bytes() }
         }
         sym::needs_drop => {
             ensure_monomorphic_enough(tcx, tp_ty)?;

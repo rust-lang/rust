@@ -89,7 +89,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
 
                 this.write_immediate(
-                    Immediate::new_slice(Scalar::from_maybe_pointer(alloc.ptr(), this), len, this),
+                    Immediate::new_slice(alloc.ptr(), len, this),
                     dest,
                 )?;
             }

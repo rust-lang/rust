@@ -457,6 +457,7 @@ TrivialLiftImpls! {
      (),
      bool,
      usize,
+     u64,
 }
 
 // For some things about which the type library does not know, or does not

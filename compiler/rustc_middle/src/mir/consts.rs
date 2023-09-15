@@ -41,12 +41,20 @@ pub enum ConstValue<'tcx> {
     /// Only for ZSTs.
     ZeroSized,
 
-    /// Used for `&[u8]` and `&str`.
+    /// Used for references to unsized types with slice tail.
     ///
-    /// This is worth an optimized representation since Rust has literals of these types.
-    /// Not having to indirect those through an `AllocId` (or two, if we used `Indirect`) has shown
-    /// measurable performance improvements on stress tests.
-    Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
+    /// This is worth an optimized representation since Rust has literals of type `&str` and
+    /// `&[u8]`. Not having to indirect those through an `AllocId` (or two, if we used `Indirect`)
+    /// has shown measurable performance improvements on stress tests. We then reuse this
+    /// optimization for slice-tail types more generally during valtree-to-constval conversion.
+    Slice {
+        /// The allocation storing the slice contents.
+        /// This always points to the beginning of the allocation.
+        data: ConstAllocation<'tcx>,
+        /// The metadata field of the reference.
+        /// This is a "target usize", so we use `u64` as in the interpreter.
+        meta: u64,
+    },
 
     /// A value not representable by the other variants; needs to be stored in-memory.
     ///
@@ -65,7 +73,7 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstValue<'_>, 32);
+static_assert_size!(ConstValue<'_>, 24);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
@@ -124,7 +132,7 @@ impl<'tcx> ConstValue<'tcx> {
             ConstValue::Scalar(_) | ConstValue::ZeroSized => {
                 bug!("`try_get_slice_bytes` on non-slice constant")
             }
-            &ConstValue::Slice { data, start, end } => (data, start, end),
+            &ConstValue::Slice { data, meta } => (data, 0, meta),
             &ConstValue::Indirect { alloc_id, offset } => {
                 // The reference itself is stored behind an indirection.
                 // Load the reference, and then load the actual slice contents.
@@ -151,18 +159,19 @@ impl<'tcx> ConstValue<'tcx> {
                     )
                     .ok()?;
                 let len = len.to_target_usize(&tcx).ok()?;
-                let len: usize = len.try_into().ok()?;
                 if len == 0 {
                     return Some(&[]);
                 }
                 // Non-empty slice, must have memory. We know this is a relative pointer.
                 let (inner_alloc_id, offset) = ptr.into_parts();
                 let data = tcx.global_alloc(inner_alloc_id?).unwrap_memory();
-                (data, offset.bytes_usize(), offset.bytes_usize() + len)
+                (data, offset.bytes(), offset.bytes() + len)
             }
         };
 
         // This is for diagnostics only, so we are okay to use `inspect_with_uninit_and_ptr_outside_interpreter`.
+        let start = start.try_into().unwrap();
+        let end = end.try_into().unwrap();
         Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
     }
 }
