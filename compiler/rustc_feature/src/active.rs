@@ -398,6 +398,9 @@ declare_features! (
     (active, const_trait_impl, "1.42.0", Some(67792), None),
     /// Allows the `?` operator in const contexts.
     (active, const_try, "1.56.0", Some(74935), None),
+    /// Allows function attribute `#[coverage(on/off)]`, to control coverage
+    /// instrumentation of that function.
+    (active, coverage_attribute, "CURRENT_RUSTC_VERSION", Some(84605), None),
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
@@ -509,9 +512,6 @@ declare_features! (
     (active, never_type_fallback, "1.41.0", Some(65992), None),
     /// Allows `#![no_core]`.
     (active, no_core, "1.3.0", Some(29639), None),
-    /// Allows function attribute `#[no_coverage]`, to bypass coverage
-    /// instrumentation of that function.
-    (active, no_coverage, "1.53.0", Some(84605), None),
     /// Allows the use of `no_sanitize` attribute.
     (active, no_sanitize, "1.42.0", Some(39699), None),
     /// Allows using the `non_exhaustive_omitted_patterns` lint.

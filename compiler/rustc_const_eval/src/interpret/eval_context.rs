@@ -749,10 +749,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.stack_mut().push(frame);
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
-        for ct in &body.required_consts {
-            let span = ct.span;
-            let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
-            self.eval_mir_constant(&ct, Some(span), None)?;
+        if M::POST_MONO_CHECKS {
+            for ct in &body.required_consts {
+                let span = ct.span;
+                let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
+                self.eval_mir_constant(&ct, Some(span), None)?;
+            }
         }
 
         // done

@@ -74,9 +74,6 @@ borrowck_higher_ranked_subtype_error =
 borrowck_lifetime_constraints_error =
     lifetime may not live long enough
 
-borrowck_move_borrowed =
-    cannot move out of `{$desc}` because it is borrowed
-
 borrowck_move_out_place_here =
     {$place} is moved here
 
@@ -249,12 +246,6 @@ borrowck_var_move_by_use_in_closure =
 
 borrowck_var_move_by_use_in_generator =
     move occurs due to use in generator
-
-borrowck_var_move_by_use_place_in_closure =
-    move occurs due to use of {$place} in closure
-
-borrowck_var_move_by_use_place_in_generator =
-    move occurs due to use of {$place} in generator
 
 borrowck_var_mutable_borrow_by_use_place_in_closure =
     mutable borrow occurs due to use of {$place} in closure

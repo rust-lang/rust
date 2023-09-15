@@ -173,9 +173,9 @@ Some of the more notable options in this example include:
 [`llvm-cov report`]: https://llvm.org/docs/CommandGuide/llvm-cov.html#llvm-cov-report
 [`llvm-cov show`]: https://llvm.org/docs/CommandGuide/llvm-cov.html#llvm-cov-show
 
-> **Note**: Coverage can also be disabled on an individual function by annotating the function with the [`no_coverage` attribute] (which requires the feature flag `#![feature(no_coverage)]`).
+> **Note**: Coverage can also be disabled on an individual function by annotating the function with the [`coverage(off)` attribute] (which requires the feature flag `#![feature(coverage)]`).
 
-[`no_coverage` attribute]: ../unstable-book/language-features/no-coverage.html
+[`coverage` attribute]: ../unstable-book/language-features/coverage.html
 
 ## Interpreting reports
 

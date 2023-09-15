@@ -149,7 +149,7 @@ pub use self::error::{
     UnsupportedOpInfo, ValidationErrorInfo, ValidationErrorKind,
 };
 
-pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};
+pub use self::value::{ConstAlloc, ConstValue, Scalar};
 
 pub use self::allocation::{
     alloc_range, AllocBytes, AllocError, AllocRange, AllocResult, Allocation, ConstAllocation,
@@ -389,7 +389,7 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating fn alloc ID");
                     let instance = ty::Instance::decode(decoder);
                     trace!("decoded fn alloc instance: {:?}", instance);
-                    let alloc_id = decoder.interner().create_fn_alloc(instance);
+                    let alloc_id = decoder.interner().reserve_and_set_fn_alloc(instance);
                     alloc_id
                 }
                 AllocDiscriminant::VTable => {
@@ -399,7 +399,8 @@ impl<'s> AllocDecodingSession<'s> {
                     let poly_trait_ref =
                         <Option<ty::PolyExistentialTraitRef<'_>> as Decodable<D>>::decode(decoder);
                     trace!("decoded vtable alloc instance: {ty:?}, {poly_trait_ref:?}");
-                    let alloc_id = decoder.interner().create_vtable_alloc(ty, poly_trait_ref);
+                    let alloc_id =
+                        decoder.interner().reserve_and_set_vtable_alloc(ty, poly_trait_ref);
                     alloc_id
                 }
                 AllocDiscriminant::Static => {
@@ -407,7 +408,7 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating extern static alloc ID");
                     let did = <DefId as Decodable<D>>::decode(decoder);
                     trace!("decoded static def-ID: {:?}", did);
-                    let alloc_id = decoder.interner().create_static_alloc(did);
+                    let alloc_id = decoder.interner().reserve_and_set_static_alloc(did);
                     alloc_id
                 }
             }
@@ -544,13 +545,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Generates an `AllocId` for a static or return a cached one in case this function has been
     /// called on the same static before.
-    pub fn create_static_alloc(self, static_id: DefId) -> AllocId {
+    pub fn reserve_and_set_static_alloc(self, static_id: DefId) -> AllocId {
         self.reserve_and_set_dedup(GlobalAlloc::Static(static_id))
     }
 
     /// Generates an `AllocId` for a function. Depending on the function type,
     /// this might get deduplicated or assigned a new ID each time.
-    pub fn create_fn_alloc(self, instance: Instance<'tcx>) -> AllocId {
+    pub fn reserve_and_set_fn_alloc(self, instance: Instance<'tcx>) -> AllocId {
         // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
         // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
         // duplicated across crates.
@@ -575,7 +576,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Generates an `AllocId` for a (symbolic, not-reified) vtable. Will get deduplicated.
-    pub fn create_vtable_alloc(
+    pub fn reserve_and_set_vtable_alloc(
         self,
         ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
@@ -588,7 +589,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Statics with identical content will still point to the same `Allocation`, i.e.,
     /// their data will be deduplicated through `Allocation` interning -- but they
     /// are different places in memory and as such need different IDs.
-    pub fn create_memory_alloc(self, mem: ConstAllocation<'tcx>) -> AllocId {
+    pub fn reserve_and_set_memory_alloc(self, mem: ConstAllocation<'tcx>) -> AllocId {
         let id = self.reserve_alloc_id();
         self.set_alloc_id_memory(id, mem);
         id

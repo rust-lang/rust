@@ -1863,7 +1863,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     // does nothing for `ConstKind::Param`.
                     let ct = ty::Const::from_anon_const(cx.tcx, anon_const.def_id);
                     let param_env = cx.tcx.param_env(anon_const.def_id);
-                    print_const(cx, ct.eval(cx.tcx, param_env))
+                    print_const(cx, ct.normalize(cx.tcx, param_env))
                 }
             };
 
@@ -2082,7 +2082,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Str => Primitive(PrimitiveType::Str),
         ty::Slice(ty) => Slice(Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None))),
         ty::Array(ty, mut n) => {
-            n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
+            n = n.normalize(cx.tcx, ty::ParamEnv::reveal_all());
             let n = print_const(cx, n);
             Array(Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)), n.into())
         }

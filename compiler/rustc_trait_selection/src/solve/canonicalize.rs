@@ -365,8 +365,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 // FIXME: we should fold this ty eventually
                 CanonicalVarKind::Const(ui, c.ty())
             }
-            ty::ConstKind::Infer(ty::InferConst::EffectVar(_)) => {
-                bug!("effect var has no universe")
+            ty::ConstKind::Infer(ty::InferConst::EffectVar(vid)) => {
+                assert_eq!(
+                    self.infcx.root_effect_var(vid),
+                    vid,
+                    "effect var should have been resolved"
+                );
+                let None = self.infcx.probe_effect_var(vid) else {
+                    bug!("effect var should have been resolved");
+                };
+                CanonicalVarKind::Effect
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(_)) => {
                 bug!("fresh var during canonicalization: {c:?}")

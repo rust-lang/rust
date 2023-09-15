@@ -172,7 +172,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     .expect("simd_shuffle idx not const");
 
                 let idx_bytes = match idx_const {
-                    ConstValue::ByRef { alloc, offset } => {
+                    ConstValue::Indirect { alloc_id, offset } => {
+                        let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
                         let size = Size::from_bytes(
                             4 * ret_lane_count, /* size_of([u32; ret_lane_count]) */
                         );

@@ -1335,6 +1335,10 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().const_unification_table().find(var)
     }
 
+    pub fn root_effect_var(&self, var: ty::EffectVid<'tcx>) -> ty::EffectVid<'tcx> {
+        self.inner.borrow_mut().effect_unification_table().find(var)
+    }
+
     /// Resolves an int var to a rigid int type, if it was constrained to one,
     /// or else the root int var in the unification table.
     pub fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {

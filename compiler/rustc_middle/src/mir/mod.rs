@@ -26,6 +26,7 @@ use rustc_target::abi::{FieldIdx, Size, VariantIdx};
 
 use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -36,6 +37,8 @@ use rustc_span::{Span, DUMMY_SP};
 use either::Either;
 
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{Index, IndexMut};
 use std::{iter, mem};
@@ -98,6 +101,36 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
     }
 }
 
+thread_local! {
+    static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
+        RefCell::new(FxHashMap::default())
+    };
+}
+
+/// Converts a MIR pass name into a snake case form to match the profiling naming style.
+fn to_profiler_name(type_name: &'static str) -> &'static str {
+    PASS_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
+        Entry::Occupied(e) => *e.get(),
+        Entry::Vacant(e) => {
+            let snake_case: String = type_name
+                .chars()
+                .flat_map(|c| {
+                    if c.is_ascii_uppercase() {
+                        vec!['_', c.to_ascii_lowercase()]
+                    } else if c == '-' {
+                        vec!['_']
+                    } else {
+                        vec![c]
+                    }
+                })
+                .collect();
+            let result = &*String::leak(format!("mir_pass{}", snake_case));
+            e.insert(result);
+            result
+        }
+    })
+}
+
 /// A streamlined trait that you can implement to create a pass; the
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
@@ -105,6 +138,10 @@ pub trait MirPass<'tcx> {
     fn name(&self) -> &'static str {
         let name = std::any::type_name::<Self>();
         if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
+    }
+
+    fn profiler_name(&self) -> &'static str {
+        to_profiler_name(self.name())
     }
 
     /// Returns `true` if this pass is enabled with the current combination of compiler flags.
@@ -2260,7 +2297,11 @@ pub struct Constant<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
 #[derive(Lift, TypeFoldable, TypeVisitable)]
 pub enum ConstantKind<'tcx> {
-    /// This constant came from the type system
+    /// This constant came from the type system.
+    ///
+    /// Any way of turning `ty::Const` into `ConstValue` should go through `valtree_to_const_val`;
+    /// this ensures that we consistently produce "clean" values without data in the padding or
+    /// anything like that.
     Ty(ty::Const<'tcx>),
 
     /// An unevaluated mir constant which is not part of the type system.
@@ -2300,18 +2341,6 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_value(self, tcx: TyCtxt<'tcx>) -> Option<interpret::ConstValue<'tcx>> {
-        match self {
-            ConstantKind::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(valtree) => Some(tcx.valtree_to_const_val((c.ty(), valtree))),
-                _ => None,
-            },
-            ConstantKind::Val(val, _) => Some(val),
-            ConstantKind::Unevaluated(..) => None,
-        }
-    }
-
-    #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
             ConstantKind::Ty(c) => match c.kind() {
@@ -2342,30 +2371,68 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+    pub fn eval(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Option<Span>,
+    ) -> Result<interpret::ConstValue<'tcx>, ErrorHandled> {
         match self {
-            Self::Ty(c) => {
-                if let Some(val) = c.try_eval_for_mir(tcx, param_env) {
-                    match val {
-                        Ok(val) => Self::Val(val, c.ty()),
-                        Err(guar) => Self::Ty(ty::Const::new_error(tcx, guar, self.ty())),
-                    }
-                } else {
-                    self
-                }
+            ConstantKind::Ty(c) => {
+                // We want to consistently have a "clean" value for type system constants (i.e., no
+                // data hidden in the padding), so we always go through a valtree here.
+                let val = c.eval(tcx, param_env, span)?;
+                Ok(tcx.valtree_to_const_val((self.ty(), val)))
             }
-            Self::Val(_, _) => self,
-            Self::Unevaluated(uneval, ty) => {
+            ConstantKind::Unevaluated(uneval, _) => {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
-                match tcx.const_eval_resolve(param_env, uneval, None) {
-                    Ok(val) => Self::Val(val, ty),
-                    Err(ErrorHandled::TooGeneric) => self,
-                    Err(ErrorHandled::Reported(guar)) => {
-                        Self::Ty(ty::Const::new_error(tcx, guar.into(), ty))
-                    }
-                }
+                tcx.const_eval_resolve(param_env, uneval, span)
             }
+            ConstantKind::Val(val, _) => Ok(val),
         }
+    }
+
+    /// Normalizes the constant to a value or an error if possible.
+    #[inline]
+    pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+        match self.eval(tcx, param_env, None) {
+            Ok(val) => Self::Val(val, self.ty()),
+            Err(ErrorHandled::Reported(guar)) => {
+                Self::Ty(ty::Const::new_error(tcx, guar.into(), self.ty()))
+            }
+            Err(ErrorHandled::TooGeneric) => self,
+        }
+    }
+
+    #[inline]
+    pub fn try_eval_scalar(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<Scalar> {
+        self.eval(tcx, param_env, None).ok()?.try_to_scalar()
+    }
+
+    #[inline]
+    pub fn try_eval_scalar_int(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<ScalarInt> {
+        self.try_eval_scalar(tcx, param_env)?.try_to_int().ok()
+    }
+
+    #[inline]
+    pub fn try_eval_bits(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        let int = self.try_eval_scalar_int(tcx, param_env)?;
+        assert_eq!(self.ty(), ty);
+        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+        int.to_bits(size).ok()
     }
 
     /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
@@ -2376,65 +2443,24 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_bits(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Option<u128> {
-        match self {
-            Self::Ty(ct) => ct.try_eval_bits(tcx, param_env, ty),
-            Self::Val(val, t) => {
-                assert_eq!(*t, ty);
-                let size =
-                    tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
-                val.try_to_bits(size)
-            }
-            Self::Unevaluated(uneval, ty) => {
-                match tcx.const_eval_resolve(param_env, *uneval, None) {
-                    Ok(val) => {
-                        let size = tcx
-                            .layout_of(param_env.with_reveal_all_normalized(tcx).and(*ty))
-                            .ok()?
-                            .size;
-                        val.try_to_bits(size)
-                    }
-                    Err(_) => None,
-                }
-            }
-        }
-    }
-
-    #[inline]
-    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
-        match self {
-            Self::Ty(ct) => ct.try_eval_bool(tcx, param_env),
-            Self::Val(val, _) => val.try_to_bool(),
-            Self::Unevaluated(uneval, _) => {
-                match tcx.const_eval_resolve(param_env, *uneval, None) {
-                    Ok(val) => val.try_to_bool(),
-                    Err(_) => None,
-                }
-            }
-        }
-    }
-
-    #[inline]
     pub fn try_eval_target_usize(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<u64> {
-        match self {
-            Self::Ty(ct) => ct.try_eval_target_usize(tcx, param_env),
-            Self::Val(val, _) => val.try_to_target_usize(tcx),
-            Self::Unevaluated(uneval, _) => {
-                match tcx.const_eval_resolve(param_env, *uneval, None) {
-                    Ok(val) => val.try_to_target_usize(tcx),
-                    Err(_) => None,
-                }
-            }
-        }
+        self.try_eval_scalar_int(tcx, param_env)?.try_to_target_usize(tcx).ok()
+    }
+
+    #[inline]
+    /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
+    pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u64 {
+        self.try_eval_target_usize(tcx, param_env)
+            .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
+    }
+
+    #[inline]
+    pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
+        self.try_eval_scalar_int(tcx, param_env)?.try_into().ok()
     }
 
     #[inline]
@@ -2576,13 +2602,13 @@ impl<'tcx> ConstantKind<'tcx> {
         }
     }
 
-    pub fn from_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    pub fn from_ty_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         match c.kind() {
             ty::ConstKind::Value(valtree) => {
+                // Make sure that if `c` is normalized, then the return value is normalized.
                 let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
                 Self::Val(const_val, c.ty())
             }
-            ty::ConstKind::Unevaluated(uv) => Self::Unevaluated(uv.expand(), c.ty()),
             _ => Self::Ty(c),
         }
     }
@@ -2609,6 +2635,11 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn new(def: DefId, args: GenericArgsRef<'tcx>) -> UnevaluatedConst<'tcx> {
         UnevaluatedConst { def, args, promoted: Default::default() }
+    }
+
+    #[inline]
+    pub fn from_instance(instance: ty::Instance<'tcx>) -> Self {
+        UnevaluatedConst::new(instance.def_id(), instance.args)
     }
 }
 
@@ -2856,35 +2887,21 @@ fn pretty_print_const_value<'tcx>(
         let u8_type = tcx.types.u8;
         match (ct, ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
-            (ConstValue::Slice { data, start, end }, ty::Ref(_, inner, _)) => {
-                match inner.kind() {
-                    ty::Slice(t) => {
-                        if *t == u8_type {
-                            // The `inspect` here is okay since we checked the bounds, and `u8` carries
-                            // no provenance (we have an active slice reference here). We don't use
-                            // this result to affect interpreter execution.
-                            let byte_str = data
-                                .inner()
-                                .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                            pretty_print_byte_str(fmt, byte_str)?;
-                            return Ok(());
-                        }
-                    }
-                    ty::Str => {
-                        // The `inspect` here is okay since we checked the bounds, and `str` carries
-                        // no provenance (we have an active `str` reference here). We don't use this
-                        // result to affect interpreter execution.
-                        let slice = data
-                            .inner()
-                            .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                        fmt.write_str(&format!("{:?}", String::from_utf8_lossy(slice)))?;
-                        return Ok(());
-                    }
-                    _ => {}
+            (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {
+                if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
+                    fmt.write_str(&format!("{:?}", String::from_utf8_lossy(data)))?;
+                    return Ok(());
                 }
             }
-            (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.try_to_bits(tcx.data_layout.pointer_size).unwrap();
+            (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Slice(t) if *t == u8_type) => {
+                if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
+                    pretty_print_byte_str(fmt, data)?;
+                    return Ok(());
+                }
+            }
+            (ConstValue::Indirect { alloc_id, offset }, ty::Array(t, n)) if *t == u8_type => {
+                let n = n.try_to_target_usize(tcx).unwrap();
+                let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
                 let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();

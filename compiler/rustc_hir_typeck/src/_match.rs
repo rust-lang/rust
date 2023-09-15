@@ -1,6 +1,6 @@
 use crate::coercion::{AsCoercionSite, CoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, Needs};
-use rustc_errors::{Applicability, Diagnostic, MultiSpan};
+use rustc_errors::Diagnostic;
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
@@ -225,24 +225,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let semi_span = expr.span.shrink_to_hi().with_hi(semi_span.hi());
-        let mut ret_span: MultiSpan = semi_span.into();
-        ret_span.push_span_label(
-            expr.span,
-            "this could be implicitly returned but it is a statement, not a tail expression",
-        );
-        ret_span.push_span_label(ret, "the `match` arms can conform to this return type");
-        ret_span.push_span_label(
-            semi_span,
-            "the `match` is a statement because of this semicolon, consider removing it",
-        );
-        diag.span_note(ret_span, "you might have meant to return the `match` expression");
-        diag.tool_only_span_suggestion(
-            semi_span,
-            "remove this semicolon",
-            "",
-            Applicability::MaybeIncorrect,
-        );
+        let semi = expr.span.shrink_to_hi().with_hi(semi_span.hi());
+        let sugg = crate::errors::RemoveSemiForCoerce { expr: expr.span, ret, semi };
+        diag.subdiagnostic(sugg);
     }
 
     /// When the previously checked expression (the scrutinee) diverges,

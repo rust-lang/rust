@@ -55,11 +55,12 @@
           _10 = const _;
           StorageLive(_11);
           _11 = const 1_usize;
-          _12 = Len((*_10));
+-         _12 = Len((*_10));
 -         _13 = Lt(_11, _12);
 -         assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, _11) -> [success: bb2, unwind unreachable];
-+         _13 = Lt(const 1_usize, _12);
-+         assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, const 1_usize) -> [success: bb2, unwind unreachable];
++         _12 = const 3_usize;
++         _13 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> [success: bb2, unwind unreachable];
       }
   
       bb2: {

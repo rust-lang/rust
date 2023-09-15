@@ -104,14 +104,23 @@ passes_collapse_debuginfo =
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
 
-passes_const_impl_const_trait =
-    const `impl`s must be for traits marked with `#[const_trait]`
-    .note = this trait must be annotated with `#[const_trait]`
-
 passes_continue_labeled_block =
     `continue` pointing to a labeled block
     .label = labeled blocks cannot be `continue`'d
     .block_label = labeled block the `continue` points to
+
+passes_coverage_fn_defn =
+    `#[coverage]` may only be applied to function definitions
+
+passes_coverage_ignored_function_prototype =
+    `#[coverage]` is ignored on function prototypes
+
+passes_coverage_not_coverable =
+    `#[coverage]` must be applied to coverable code
+    .label = not coverable code
+
+passes_coverage_propagate =
+    `#[coverage]` does not propagate into items and must be applied to the contained functions directly
 
 passes_dead_codes =
     { $multiple ->
@@ -502,19 +511,6 @@ passes_naked_functions_operands =
 
 passes_naked_tracked_caller =
     cannot use `#[track_caller]` with `#[naked]`
-
-passes_no_coverage_fn_defn =
-    `#[no_coverage]` may only be applied to function definitions
-
-passes_no_coverage_ignored_function_prototype =
-    `#[no_coverage]` is ignored on function prototypes
-
-passes_no_coverage_not_coverable =
-    `#[no_coverage]` must be applied to coverable code
-    .label = not coverable code
-
-passes_no_coverage_propagate =
-    `#[no_coverage]` does not propagate into items and must be applied to the contained functions directly
 
 passes_no_link =
     attribute should be applied to an `extern crate` item

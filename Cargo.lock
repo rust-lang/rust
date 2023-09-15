@@ -531,7 +531,7 @@ dependencies = [
  "tester",
  "tokio",
  "toml 0.7.5",
- "ui_test 0.18.1",
+ "ui_test 0.20.0",
  "walkdir",
 ]
 
@@ -662,6 +662,7 @@ dependencies = [
  "diff",
  "getopts",
  "glob",
+ "home",
  "lazycell",
  "libc",
  "miow",
@@ -1596,6 +1597,15 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "home"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5444c27eef6923071f7ebcc33e3444508466a76f7a2b93da00ed6e19f30c1ddb"
+dependencies = [
+ "windows-sys 0.48.0",
+]
 
 [[package]]
 name = "html-checker"
@@ -5596,9 +5606,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.18.1"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "640159421816683e558867ffc0e60ed3a3ed97ec6ccb22c03adb41bf87c5cfa4"
+checksum = "bfd8fb9b15c8332cf51bfc2dc4830063b2446a9c9d732421b56f2478024a3971"
 dependencies = [
  "annotate-snippets",
  "anyhow",

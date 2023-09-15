@@ -232,7 +232,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let symbol = this.read_pointer(symbol)?;
                 let symbol_name = this.read_c_str(symbol)?;
                 if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.os)? {
-                    let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
+                    let ptr = this.fn_ptr(FnVal::Other(dlsym));
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;

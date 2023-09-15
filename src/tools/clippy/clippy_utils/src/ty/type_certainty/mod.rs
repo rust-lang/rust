@@ -150,7 +150,7 @@ fn generic_args_certainty(cx: &LateContext<'_>, args: &GenericArgs<'_>) -> Certa
 }
 
 /// Tries to tell whether a `QPath` resolves to something certain, e.g., whether all of its path
-/// segments generic arguments are are instantiated.
+/// segments generic arguments are instantiated.
 ///
 /// `qpath` could refer to either a type or a value. The heuristic never needs the `DefId` of a
 /// value. So `DefId`s are retained only when `resolves_to_type` is true.

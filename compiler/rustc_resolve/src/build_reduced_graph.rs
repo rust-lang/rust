@@ -1239,7 +1239,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     use_span_with_attributes: span,
                     use_span: span,
                     root_span: span,
-                    span: span,
+                    span,
                     module_path: Vec::new(),
                     vis: Cell::new(Some(vis)),
                     used: Cell::new(true),

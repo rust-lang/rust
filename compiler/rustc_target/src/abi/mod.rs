@@ -144,4 +144,25 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
         offset
     }
+
+    /// Finds the one field that is not a 1-ZST.
+    /// Returns `None` if there are multiple non-1-ZST fields or only 1-ZST-fields.
+    pub fn non_1zst_field<C>(&self, cx: &C) -> Option<(usize, Self)>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let mut found = None;
+        for field_idx in 0..self.fields.count() {
+            let field = self.field(cx, field_idx);
+            if field.is_1zst() {
+                continue;
+            }
+            if found.is_some() {
+                // More than one non-1-ZST field.
+                return None;
+            }
+            found = Some((field_idx, field));
+        }
+        found
+    }
 }

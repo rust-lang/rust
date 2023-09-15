@@ -1,0 +1,32 @@
+error: non-canonical implementation of `partial_cmp` on an `Ord` type
+  --> $DIR/non_canonical_partial_ord_impl.rs:16:1
+   |
+LL | /  impl PartialOrd for A {
+LL | |      fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+   | | _____________________________________________________________-
+LL | ||         todo!();
+LL | ||     }
+   | ||_____- help: change this to: `{ Some(self.cmp(other)) }`
+LL | |  }
+   | |__^
+   |
+   = note: `-D clippy::non-canonical-partial-ord-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_canonical_partial_ord_impl)]`
+
+error: non-canonical implementation of `partial_cmp` on an `Ord` type
+  --> $DIR/non_canonical_partial_ord_impl.rs:50:1
+   |
+LL | / impl PartialOrd for C {
+LL | |     fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
+LL | |         todo!();
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: change this to
+   |
+LL |     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+   |                           ~~~~~                             ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 2 previous errors
+

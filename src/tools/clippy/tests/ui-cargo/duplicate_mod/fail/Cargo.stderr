@@ -9,6 +9,7 @@ error: file is loaded as a module multiple times: `src/b.rs`
   |
   = help: replace all but one `mod` item with `use` items
   = note: `-D clippy::duplicate-mod` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::duplicate_mod)]`
 
 error: file is loaded as a module multiple times: `src/c.rs`
   --> src/main.rs:9:1

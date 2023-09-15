@@ -335,7 +335,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.read_target_isize(hModule)?;
                 let name = this.read_c_str(this.read_pointer(lpProcName)?)?;
                 if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.os)? {
-                    let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
+                    let ptr = this.fn_ptr(FnVal::Other(dlsym));
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;

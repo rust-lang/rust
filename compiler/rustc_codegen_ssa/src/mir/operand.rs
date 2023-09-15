@@ -105,7 +105,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
                 let a = Scalar::from_pointer(
-                    Pointer::new(bx.tcx().create_memory_alloc(data), Size::from_bytes(start)),
+                    Pointer::new(
+                        bx.tcx().reserve_and_set_memory_alloc(data),
+                        Size::from_bytes(start),
+                    ),
                     &bx.tcx(),
                 );
                 let a_llval = bx.scalar_to_backend(
@@ -116,7 +119,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let b_llval = bx.const_usize((end - start) as u64);
                 OperandValue::Pair(a_llval, b_llval)
             }
-            ConstValue::ByRef { alloc, offset } => {
+            ConstValue::Indirect { alloc_id, offset } => {
+                let alloc = bx.tcx().global_alloc(alloc_id).unwrap_memory();
                 return Self::from_const_alloc(bx, layout, alloc, offset);
             }
         };
@@ -182,6 +186,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             _ if layout.is_zst() => OperandRef::zero_sized(layout),
             _ => {
                 // Neither a scalar nor scalar pair. Load from a place
+                // FIXME: should we cache `const_data_from_alloc` to avoid repeating this for the
+                // same `ConstAllocation`?
                 let init = bx.const_data_from_alloc(alloc);
                 let base_addr = bx.static_addr_of(init, alloc_align, None);
 

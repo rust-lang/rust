@@ -1642,8 +1642,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ValuePairs::Terms(infer::ExpectedFound { expected, found }) => {
                         match (expected.unpack(), found.unpack()) {
                             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
-                                let is_simple_err =
-                                    expected.is_simple_text() && found.is_simple_text();
+                                let is_simple_err = expected.is_simple_text(self.tcx)
+                                    && found.is_simple_text(self.tcx);
                                 OpaqueTypesVisitor::visit_expected_found(
                                     self.tcx, expected, found, span,
                                 )
@@ -1885,7 +1885,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         }
                         s
                     };
-                    if !(values.expected.is_simple_text() && values.found.is_simple_text())
+                    if !(values.expected.is_simple_text(self.tcx) && values.found.is_simple_text(self.tcx))
                         || (exp_found.is_some_and(|ef| {
                             // This happens when the type error is a subset of the expectation,
                             // like when you have two references but one is `usize` and the other

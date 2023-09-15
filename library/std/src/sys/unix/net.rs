@@ -102,7 +102,7 @@ impl Socket {
         }
     }
 
-    #[cfg(not(target_os = "vxworks"))]
+    #[cfg(not(any(target_os = "vxworks", target_os = "vita")))]
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
@@ -133,7 +133,7 @@ impl Socket {
         }
     }
 
-    #[cfg(target_os = "vxworks")]
+    #[cfg(any(target_os = "vxworks", target_os = "vita"))]
     pub fn new_pair(_fam: c_int, _ty: c_int) -> io::Result<(Socket, Socket)> {
         unimplemented!()
     }

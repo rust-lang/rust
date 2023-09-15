@@ -472,11 +472,15 @@ struct DocHeaders {
 
 fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> Option<DocHeaders> {
     /// We don't want the parser to choke on intra doc links. Since we don't
-    /// actually care about rendering them, just pretend that all broken links are
+    /// actually care about rendering them, just pretend that all broken links
     /// point to a fake address.
     #[expect(clippy::unnecessary_wraps)] // we're following a type signature
     fn fake_broken_link_callback<'a>(_: BrokenLink<'_>) -> Option<(CowStr<'a>, CowStr<'a>)> {
         Some(("fake".into(), "fake".into()))
+    }
+
+    if is_doc_hidden(attrs) {
+        return None;
     }
 
     let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);

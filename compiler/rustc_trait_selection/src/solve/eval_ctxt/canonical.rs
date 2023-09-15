@@ -382,6 +382,17 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerResolver<'_, 'tcx> {
                     }
                 }
             }
+            ty::ConstKind::Infer(ty::InferConst::EffectVar(vid)) => {
+                debug_assert_eq!(c.ty(), self.infcx.tcx.types.bool);
+                match self.infcx.probe_effect_var(vid) {
+                    Some(c) => c.as_const(self.infcx.tcx),
+                    None => ty::Const::new_infer(
+                        self.infcx.tcx,
+                        ty::InferConst::EffectVar(self.infcx.root_effect_var(vid)),
+                        self.infcx.tcx.types.bool,
+                    ),
+                }
+            }
             _ => {
                 if c.has_infer() {
                     c.super_fold_with(self)

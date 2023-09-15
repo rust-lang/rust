@@ -25,5 +25,13 @@
           StorageDead(_1);
           return;
       }
++ }
++ 
++ alloc7 (size: 8, align: 4) {
++     2a 00 00 00 63 00 00 00                         │ *...c...
++ }
++ 
++ alloc5 (size: 8, align: 4) {
++     2a 00 00 00 2b 00 00 00                         │ *...+...
   }
   

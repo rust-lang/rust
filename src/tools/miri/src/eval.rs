@@ -382,7 +382,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             .unwrap()
             .unwrap();
 
-            let main_ptr = ecx.create_fn_alloc_ptr(FnVal::Instance(entry_instance));
+            let main_ptr = ecx.fn_ptr(FnVal::Instance(entry_instance));
 
             // Inlining of `DEFAULT` from
             // https://github.com/rust-lang/rust/blob/master/compiler/rustc_session/src/config/sigpipe.rs.

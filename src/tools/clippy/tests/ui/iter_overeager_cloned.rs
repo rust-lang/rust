@@ -64,10 +64,8 @@ fn main() {
 
     let _ = vec.iter().cloned().for_each(|x| assert!(!x.is_empty()));
 
-    // Not implemented yet
     let _ = vec.iter().cloned().all(|x| x.len() == 1);
 
-    // Not implemented yet
     let _ = vec.iter().cloned().any(|x| x.len() == 1);
 
     // Should probably stay as it is.
