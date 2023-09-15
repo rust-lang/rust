@@ -169,7 +169,44 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
     };
 
     let sig = quote!(fn #adjoint_ident(#(#res_inputs,)*) #output);
-    let body = quote!({});
+    let inputs = inputs
+        .iter()
+        .map(|x| match x {
+            FnArg::Typed(ty) => {
+                let pat = &ty.pat;
+                quote!(#pat)
+            }
+            FnArg::Receiver(_) => quote!(self),
+        })
+        .collect::<Vec<_>>();
+    let add_inputs = add_inputs
+        .iter()
+        .map(|x| match x {
+            FnArg::Typed(ty) => {
+                let pat = &ty.pat;
+                quote!(#pat)
+            }
+            FnArg::Receiver(_) => quote!(self),
+        })
+        .collect::<Vec<_>>();
+
+    let call_ident = match item.block.is_some() {
+        false => {
+            let ident = format_ident!("primal_{}", ident);
+            if item.header.name.segments.first().unwrap().ident == "Self" {
+                quote!(Self::#ident)
+            } else {
+                quote!(#ident)
+            }
+        }
+        true => quote!(#ident),
+    };
+
+    let body = quote!({
+        std::hint::black_box((#call_ident(#(#inputs,)*), #(#add_inputs,)*));
+
+        std::hint::black_box(unsafe { std::mem::zeroed() })
+    });
     let header = generate_header(&item);
 
     quote!(
