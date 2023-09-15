@@ -74,6 +74,7 @@ mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
 mod path_buf_push_overwrite;
+mod path_ends_with_ext;
 mod range_zip_with_len;
 mod read_line_without_trim;
 mod readonly_write_lock;
@@ -120,6 +121,8 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 use if_chain::if_chain;
+pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_hir_analysis::hir_ty_to_ty;
@@ -3563,11 +3566,51 @@ declare_clippy_lint! {
     "calls to `.take()` or `.skip()` that are out of bounds"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for calls to `Path::ends_with` calls where the argument looks like a file extension.
+    ///
+    /// By default, Clippy has a short list of known filenames that start with a dot
+    /// but aren't necessarily file extensions (e.g. the `.git` folder), which are allowed by default.
+    /// The `allowed-dotfiles` configuration can be used to allow additional
+    /// file extensions that Clippy should not lint.
+    ///
+    /// ### Why is this bad?
+    /// This doesn't actually compare file extensions. Rather, `ends_with` compares the given argument
+    /// to the last **component** of the path and checks if it matches exactly.
+    ///
+    /// ### Known issues
+    /// File extensions are often at most three characters long, so this only lints in those cases
+    /// in an attempt to avoid false positives.
+    /// Any extension names longer than that are assumed to likely be real path components and are
+    /// therefore ignored.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::path::Path;
+    /// fn is_markdown(path: &Path) -> bool {
+    ///     path.ends_with(".md")
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::path::Path;
+    /// fn is_markdown(path: &Path) -> bool {
+    ///     path.extension().is_some_and(|ext| ext == "md")
+    /// }
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub PATH_ENDS_WITH_EXT,
+    suspicious,
+    "attempting to compare file extensions using `Path::ends_with`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
+    allowed_dotfiles: FxHashSet<String>,
 }
 
 impl Methods {
@@ -3577,12 +3620,14 @@ impl Methods {
         msrv: Msrv,
         allow_expect_in_tests: bool,
         allow_unwrap_in_tests: bool,
+        allowed_dotfiles: FxHashSet<String>,
     ) -> Self {
         Self {
             avoid_breaking_exported_api,
             msrv,
             allow_expect_in_tests,
             allow_unwrap_in_tests,
+            allowed_dotfiles,
         }
     }
 }
@@ -3703,6 +3748,7 @@ impl_lint_pass!(Methods => [
     FILTER_MAP_BOOL_THEN,
     READONLY_WRITE_LOCK,
     ITER_OUT_OF_BOUNDS,
+    PATH_ENDS_WITH_EXT,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3978,6 +4024,7 @@ impl Methods {
                     if let ExprKind::MethodCall(.., span) = expr.kind {
                         case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
                     }
+                    path_ends_with_ext::check(cx, recv, arg, expr, &self.msrv, &self.allowed_dotfiles);
                 },
                 ("expect", [_]) => {
                     match method_call(recv) {

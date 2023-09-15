@@ -561,6 +561,11 @@ define_Conf! {
     /// Which crates to allow absolute paths from
     (absolute_paths_allowed_crates: rustc_data_structures::fx::FxHashSet<String> =
         rustc_data_structures::fx::FxHashSet::default()),
+    /// Lint: PATH_ENDS_WITH_EXT.
+    ///
+    /// Additional dotfiles (files or directories starting with a dot) to allow
+    (allowed_dotfiles: rustc_data_structures::fx::FxHashSet<String> =
+        rustc_data_structures::fx::FxHashSet::default()),
     /// Lint: EXPLICIT_ITER_LOOP
     ///
     /// Whether to recommend using implicit into iter for reborrowed values.
