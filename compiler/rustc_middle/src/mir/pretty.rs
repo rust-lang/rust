@@ -1,13 +1,13 @@
 use std::collections::BTreeSet;
-use std::fmt::Display;
-use std::fmt::Write as _;
+use std::fmt::{self, Debug, Display, Write as _};
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
 use super::graphviz::write_mir_fn_graphviz;
 use super::spanview::write_mir_fn_spanview;
 use either::Either;
+use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
@@ -79,7 +79,7 @@ pub fn dump_mir<'tcx, F>(
     body: &Body<'tcx>,
     extra_data: F,
 ) where
-    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
+    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     if !dump_enabled(tcx, pass_name, body.source.def_id()) {
         return;
@@ -116,7 +116,7 @@ fn dump_matched_mir_node<'tcx, F>(
     body: &Body<'tcx>,
     mut extra_data: F,
 ) where
-    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
+    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     let _: io::Result<()> = try {
         let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body)?;
@@ -260,11 +260,14 @@ pub fn create_dump_file<'tcx>(
     )
 }
 
+///////////////////////////////////////////////////////////////////////////
+// Whole MIR bodies
+
 /// Write out a human-readable textual representation for the given MIR.
 pub fn write_mir_pretty<'tcx>(
     tcx: TyCtxt<'tcx>,
     single: Option<DefId>,
-    w: &mut dyn Write,
+    w: &mut dyn io::Write,
 ) -> io::Result<()> {
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
@@ -278,7 +281,7 @@ pub fn write_mir_pretty<'tcx>(
             writeln!(w)?;
         }
 
-        let render_body = |w: &mut dyn Write, body| -> io::Result<()> {
+        let render_body = |w: &mut dyn io::Write, body| -> io::Result<()> {
             write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
 
             for body in tcx.promoted_mir(def_id) {
@@ -309,10 +312,10 @@ pub fn write_mir_fn<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     extra_data: &mut F,
-    w: &mut dyn Write,
+    w: &mut dyn io::Write,
 ) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
+    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     write_mir_intro(tcx, body, w)?;
     for block in body.basic_blocks.indices() {
@@ -330,16 +333,267 @@ where
     Ok(())
 }
 
+/// Prints local variables in a scope tree.
+fn write_scope_tree(
+    tcx: TyCtxt<'_>,
+    body: &Body<'_>,
+    scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
+    w: &mut dyn io::Write,
+    parent: SourceScope,
+    depth: usize,
+) -> io::Result<()> {
+    let indent = depth * INDENT.len();
+
+    // Local variable debuginfo.
+    for var_debug_info in &body.var_debug_info {
+        if var_debug_info.source_info.scope != parent {
+            // Not declared in this scope.
+            continue;
+        }
+
+        let indented_debug_info = format!("{0:1$}debug {2:?};", INDENT, indent, var_debug_info);
+
+        if tcx.sess.opts.unstable_opts.mir_include_spans {
+            writeln!(
+                w,
+                "{0:1$} // in {2}",
+                indented_debug_info,
+                ALIGN,
+                comment(tcx, var_debug_info.source_info),
+            )?;
+        } else {
+            writeln!(w, "{indented_debug_info}")?;
+        }
+    }
+
+    // Local variable types.
+    for (local, local_decl) in body.local_decls.iter_enumerated() {
+        if (1..body.arg_count + 1).contains(&local.index()) {
+            // Skip over argument locals, they're printed in the signature.
+            continue;
+        }
+
+        if local_decl.source_info.scope != parent {
+            // Not declared in this scope.
+            continue;
+        }
+
+        let mut_str = local_decl.mutability.prefix_str();
+
+        let mut indented_decl = ty::print::with_no_trimmed_paths!(format!(
+            "{0:1$}let {2}{3:?}: {4}",
+            INDENT, indent, mut_str, local, local_decl.ty
+        ));
+        if let Some(user_ty) = &local_decl.user_ty {
+            for user_ty in user_ty.projections() {
+                write!(indented_decl, " as {user_ty:?}").unwrap();
+            }
+        }
+        indented_decl.push(';');
+
+        let local_name = if local == RETURN_PLACE { " return place" } else { "" };
+
+        if tcx.sess.opts.unstable_opts.mir_include_spans {
+            writeln!(
+                w,
+                "{0:1$} //{2} in {3}",
+                indented_decl,
+                ALIGN,
+                local_name,
+                comment(tcx, local_decl.source_info),
+            )?;
+        } else {
+            writeln!(w, "{indented_decl}",)?;
+        }
+    }
+
+    let Some(children) = scope_tree.get(&parent) else {
+        return Ok(());
+    };
+
+    for &child in children {
+        let child_data = &body.source_scopes[child];
+        assert_eq!(child_data.parent_scope, Some(parent));
+
+        let (special, span) = if let Some((callee, callsite_span)) = child_data.inlined {
+            (
+                format!(
+                    " (inlined {}{})",
+                    if callee.def.requires_caller_location(tcx) { "#[track_caller] " } else { "" },
+                    callee
+                ),
+                Some(callsite_span),
+            )
+        } else {
+            (String::new(), None)
+        };
+
+        let indented_header = format!("{0:1$}scope {2}{3} {{", "", indent, child.index(), special);
+
+        if tcx.sess.opts.unstable_opts.mir_include_spans {
+            if let Some(span) = span {
+                writeln!(
+                    w,
+                    "{0:1$} // at {2}",
+                    indented_header,
+                    ALIGN,
+                    tcx.sess.source_map().span_to_embeddable_string(span),
+                )?;
+            } else {
+                writeln!(w, "{indented_header}")?;
+            }
+        } else {
+            writeln!(w, "{indented_header}")?;
+        }
+
+        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1)?;
+        writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
+    }
+
+    Ok(())
+}
+
+impl Debug for VarDebugInfo<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(box VarDebugInfoFragment { ty, ref projection }) = self.composite {
+            pre_fmt_projection(&projection[..], fmt)?;
+            write!(fmt, "({}: {})", self.name, ty)?;
+            post_fmt_projection(&projection[..], fmt)?;
+        } else {
+            write!(fmt, "{}", self.name)?;
+        }
+
+        write!(fmt, " => {:?}", self.value)
+    }
+}
+
+/// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
+/// local variables (both user-defined bindings and compiler temporaries).
+pub fn write_mir_intro<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'_>,
+    w: &mut dyn io::Write,
+) -> io::Result<()> {
+    write_mir_sig(tcx, body, w)?;
+    writeln!(w, "{{")?;
+
+    // construct a scope tree and write it out
+    let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
+    for (index, scope_data) in body.source_scopes.iter().enumerate() {
+        if let Some(parent) = scope_data.parent_scope {
+            scope_tree.entry(parent).or_default().push(SourceScope::new(index));
+        } else {
+            // Only the argument scope has no parent, because it's the root.
+            assert_eq!(index, OUTERMOST_SOURCE_SCOPE.index());
+        }
+    }
+
+    write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
+
+    // Add an empty line before the first block is printed.
+    writeln!(w)?;
+
+    Ok(())
+}
+
+fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io::Result<()> {
+    use rustc_hir::def::DefKind;
+
+    trace!("write_mir_sig: {:?}", body.source.instance);
+    let def_id = body.source.def_id();
+    let kind = tcx.def_kind(def_id);
+    let is_function = match kind {
+        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
+        _ => tcx.is_closure(def_id),
+    };
+    match (kind, body.source.promoted) {
+        (_, Some(i)) => write!(w, "{i:?} in ")?,
+        (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
+        (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
+        (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
+        (_, _) if is_function => write!(w, "fn ")?,
+        (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
+        _ => bug!("Unexpected def kind {:?}", kind),
+    }
+
+    ty::print::with_forced_impl_filename_line! {
+        // see notes on #41697 elsewhere
+        write!(w, "{}", tcx.def_path_str(def_id))?
+    }
+
+    if body.source.promoted.is_none() && is_function {
+        write!(w, "(")?;
+
+        // fn argument types.
+        for (i, arg) in body.args_iter().enumerate() {
+            if i != 0 {
+                write!(w, ", ")?;
+            }
+            write!(w, "{:?}: {}", Place::from(arg), body.local_decls[arg].ty)?;
+        }
+
+        write!(w, ") -> {}", body.return_ty())?;
+    } else {
+        assert_eq!(body.arg_count, 0);
+        write!(w, ": {} =", body.return_ty())?;
+    }
+
+    if let Some(yield_ty) = body.yield_ty() {
+        writeln!(w)?;
+        writeln!(w, "yields {yield_ty}")?;
+    }
+
+    write!(w, " ")?;
+    // Next thing that gets printed is the opening {
+
+    Ok(())
+}
+
+fn write_user_type_annotations(
+    tcx: TyCtxt<'_>,
+    body: &Body<'_>,
+    w: &mut dyn io::Write,
+) -> io::Result<()> {
+    if !body.user_type_annotations.is_empty() {
+        writeln!(w, "| User Type Annotations")?;
+    }
+    for (index, annotation) in body.user_type_annotations.iter_enumerated() {
+        writeln!(
+            w,
+            "| {:?}: user_ty: {}, span: {}, inferred_ty: {}",
+            index.index(),
+            annotation.user_ty,
+            tcx.sess.source_map().span_to_embeddable_string(annotation.span),
+            with_no_trimmed_paths!(format!("{}", annotation.inferred_ty)),
+        )?;
+    }
+    if !body.user_type_annotations.is_empty() {
+        writeln!(w, "|")?;
+    }
+    Ok(())
+}
+
+pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
+    if let Some(i) = single {
+        vec![i]
+    } else {
+        tcx.mir_keys(()).iter().map(|def_id| def_id.to_def_id()).collect()
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Basic blocks and their parts (statements, terminators, ...)
+
 /// Write out a human-readable textual representation for the given basic block.
 pub fn write_basic_block<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     block: BasicBlock,
     body: &Body<'tcx>,
     extra_data: &mut F,
-    w: &mut dyn Write,
+    w: &mut dyn io::Write,
 ) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
+    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     let data = &body[block];
 
@@ -400,10 +654,497 @@ where
     writeln!(w, "{INDENT}}}")
 }
 
+impl Debug for Statement<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        use self::StatementKind::*;
+        match self.kind {
+            Assign(box (ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
+            FakeRead(box (ref cause, ref place)) => {
+                write!(fmt, "FakeRead({cause:?}, {place:?})")
+            }
+            Retag(ref kind, ref place) => write!(
+                fmt,
+                "Retag({}{:?})",
+                match kind {
+                    RetagKind::FnEntry => "[fn entry] ",
+                    RetagKind::TwoPhase => "[2phase] ",
+                    RetagKind::Raw => "[raw] ",
+                    RetagKind::Default => "",
+                },
+                place,
+            ),
+            StorageLive(ref place) => write!(fmt, "StorageLive({place:?})"),
+            StorageDead(ref place) => write!(fmt, "StorageDead({place:?})"),
+            SetDiscriminant { ref place, variant_index } => {
+                write!(fmt, "discriminant({place:?}) = {variant_index:?}")
+            }
+            Deinit(ref place) => write!(fmt, "Deinit({place:?})"),
+            PlaceMention(ref place) => {
+                write!(fmt, "PlaceMention({place:?})")
+            }
+            AscribeUserType(box (ref place, ref c_ty), ref variance) => {
+                write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
+            }
+            Coverage(box self::Coverage { ref kind, code_region: Some(ref rgn) }) => {
+                write!(fmt, "Coverage::{kind:?} for {rgn:?}")
+            }
+            Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
+            Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
+            ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
+            Nop => write!(fmt, "nop"),
+        }
+    }
+}
+
+impl<'tcx> Debug for TerminatorKind<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        self.fmt_head(fmt)?;
+        let successor_count = self.successors().count();
+        let labels = self.fmt_successor_labels();
+        assert_eq!(successor_count, labels.len());
+
+        // `Cleanup` is already included in successors
+        let show_unwind = !matches!(self.unwind(), None | Some(UnwindAction::Cleanup(_)));
+        let fmt_unwind = |fmt: &mut Formatter<'_>| -> fmt::Result {
+            write!(fmt, "unwind ")?;
+            match self.unwind() {
+                // Not needed or included in successors
+                None | Some(UnwindAction::Cleanup(_)) => unreachable!(),
+                Some(UnwindAction::Continue) => write!(fmt, "continue"),
+                Some(UnwindAction::Unreachable) => write!(fmt, "unreachable"),
+                Some(UnwindAction::Terminate(reason)) => {
+                    write!(fmt, "terminate({})", reason.as_short_str())
+                }
+            }
+        };
+
+        match (successor_count, show_unwind) {
+            (0, false) => Ok(()),
+            (0, true) => {
+                write!(fmt, " -> ")?;
+                fmt_unwind(fmt)
+            }
+            (1, false) => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
+            _ => {
+                write!(fmt, " -> [")?;
+                for (i, target) in self.successors().enumerate() {
+                    if i > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{}: {:?}", labels[i], target)?;
+                }
+                if show_unwind {
+                    write!(fmt, ", ")?;
+                    fmt_unwind(fmt)?;
+                }
+                write!(fmt, "]")
+            }
+        }
+    }
+}
+
+impl<'tcx> TerminatorKind<'tcx> {
+    /// Writes the "head" part of the terminator; that is, its name and the data it uses to pick the
+    /// successor basic block, if any. The only information not included is the list of possible
+    /// successors, which may be rendered differently between the text and the graphviz format.
+    pub fn fmt_head<W: fmt::Write>(&self, fmt: &mut W) -> fmt::Result {
+        use self::TerminatorKind::*;
+        match self {
+            Goto { .. } => write!(fmt, "goto"),
+            SwitchInt { discr, .. } => write!(fmt, "switchInt({discr:?})"),
+            Return => write!(fmt, "return"),
+            GeneratorDrop => write!(fmt, "generator_drop"),
+            UnwindResume => write!(fmt, "resume"),
+            UnwindTerminate(reason) => {
+                write!(fmt, "abort({})", reason.as_short_str())
+            }
+            Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
+            Unreachable => write!(fmt, "unreachable"),
+            Drop { place, .. } => write!(fmt, "drop({place:?})"),
+            Call { func, args, destination, .. } => {
+                write!(fmt, "{destination:?} = ")?;
+                write!(fmt, "{func:?}(")?;
+                for (index, arg) in args.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{arg:?}")?;
+                }
+                write!(fmt, ")")
+            }
+            Assert { cond, expected, msg, .. } => {
+                write!(fmt, "assert(")?;
+                if !expected {
+                    write!(fmt, "!")?;
+                }
+                write!(fmt, "{cond:?}, ")?;
+                msg.fmt_assert_args(fmt)?;
+                write!(fmt, ")")
+            }
+            FalseEdge { .. } => write!(fmt, "falseEdge"),
+            FalseUnwind { .. } => write!(fmt, "falseUnwind"),
+            InlineAsm { template, ref operands, options, .. } => {
+                write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
+                for op in operands {
+                    write!(fmt, ", ")?;
+                    let print_late = |&late| if late { "late" } else { "" };
+                    match op {
+                        InlineAsmOperand::In { reg, value } => {
+                            write!(fmt, "in({reg}) {value:?}")?;
+                        }
+                        InlineAsmOperand::Out { reg, late, place: Some(place) } => {
+                            write!(fmt, "{}out({}) {:?}", print_late(late), reg, place)?;
+                        }
+                        InlineAsmOperand::Out { reg, late, place: None } => {
+                            write!(fmt, "{}out({}) _", print_late(late), reg)?;
+                        }
+                        InlineAsmOperand::InOut {
+                            reg,
+                            late,
+                            in_value,
+                            out_place: Some(out_place),
+                        } => {
+                            write!(
+                                fmt,
+                                "in{}out({}) {:?} => {:?}",
+                                print_late(late),
+                                reg,
+                                in_value,
+                                out_place
+                            )?;
+                        }
+                        InlineAsmOperand::InOut { reg, late, in_value, out_place: None } => {
+                            write!(fmt, "in{}out({}) {:?} => _", print_late(late), reg, in_value)?;
+                        }
+                        InlineAsmOperand::Const { value } => {
+                            write!(fmt, "const {value:?}")?;
+                        }
+                        InlineAsmOperand::SymFn { value } => {
+                            write!(fmt, "sym_fn {value:?}")?;
+                        }
+                        InlineAsmOperand::SymStatic { def_id } => {
+                            write!(fmt, "sym_static {def_id:?}")?;
+                        }
+                    }
+                }
+                write!(fmt, ", options({options:?}))")
+            }
+        }
+    }
+
+    /// Returns the list of labels for the edges to the successor basic blocks.
+    pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
+        use self::TerminatorKind::*;
+        match *self {
+            Return | UnwindResume | UnwindTerminate(_) | Unreachable | GeneratorDrop => vec![],
+            Goto { .. } => vec!["".into()],
+            SwitchInt { ref targets, .. } => targets
+                .values
+                .iter()
+                .map(|&u| Cow::Owned(u.to_string()))
+                .chain(iter::once("otherwise".into()))
+                .collect(),
+            Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
+                vec!["return".into(), "unwind".into()]
+            }
+            Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
+            Call { target: None, unwind: UnwindAction::Cleanup(_), .. } => vec!["unwind".into()],
+            Call { target: None, unwind: _, .. } => vec![],
+            Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
+            Yield { drop: None, .. } => vec!["resume".into()],
+            Drop { unwind: UnwindAction::Cleanup(_), .. } => vec!["return".into(), "unwind".into()],
+            Drop { unwind: _, .. } => vec!["return".into()],
+            Assert { unwind: UnwindAction::Cleanup(_), .. } => {
+                vec!["success".into(), "unwind".into()]
+            }
+            Assert { unwind: _, .. } => vec!["success".into()],
+            FalseEdge { .. } => vec!["real".into(), "imaginary".into()],
+            FalseUnwind { unwind: UnwindAction::Cleanup(_), .. } => {
+                vec!["real".into(), "unwind".into()]
+            }
+            FalseUnwind { unwind: _, .. } => vec!["real".into()],
+            InlineAsm { destination: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
+                vec!["return".into(), "unwind".into()]
+            }
+            InlineAsm { destination: Some(_), unwind: _, .. } => {
+                vec!["return".into()]
+            }
+            InlineAsm { destination: None, unwind: UnwindAction::Cleanup(_), .. } => {
+                vec!["unwind".into()]
+            }
+            InlineAsm { destination: None, unwind: _, .. } => vec![],
+        }
+    }
+}
+
+impl<'tcx> Debug for Rvalue<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        use self::Rvalue::*;
+
+        match *self {
+            Use(ref place) => write!(fmt, "{place:?}"),
+            Repeat(ref a, b) => {
+                write!(fmt, "[{a:?}; ")?;
+                pretty_print_const(b, fmt, false)?;
+                write!(fmt, "]")
+            }
+            Len(ref a) => write!(fmt, "Len({a:?})"),
+            Cast(ref kind, ref place, ref ty) => {
+                with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
+            }
+            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
+            CheckedBinaryOp(ref op, box (ref a, ref b)) => {
+                write!(fmt, "Checked{op:?}({a:?}, {b:?})")
+            }
+            UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
+            Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
+            NullaryOp(ref op, ref t) => {
+                let t = with_no_trimmed_paths!(format!("{}", t));
+                match op {
+                    NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
+                    NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
+                    NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
+                }
+            }
+            ThreadLocalRef(did) => ty::tls::with(|tcx| {
+                let muta = tcx.static_mutability(did).unwrap().prefix_str();
+                write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
+            }),
+            Ref(region, borrow_kind, ref place) => {
+                let kind_str = match borrow_kind {
+                    BorrowKind::Shared => "",
+                    BorrowKind::Shallow => "shallow ",
+                    BorrowKind::Mut { .. } => "mut ",
+                };
+
+                // When printing regions, add trailing space if necessary.
+                let print_region = ty::tls::with(|tcx| {
+                    tcx.sess.verbose() || tcx.sess.opts.unstable_opts.identify_regions
+                });
+                let region = if print_region {
+                    let mut region = region.to_string();
+                    if !region.is_empty() {
+                        region.push(' ');
+                    }
+                    region
+                } else {
+                    // Do not even print 'static
+                    String::new()
+                };
+                write!(fmt, "&{region}{kind_str}{place:?}")
+            }
+
+            CopyForDeref(ref place) => write!(fmt, "deref_copy {place:#?}"),
+
+            AddressOf(mutability, ref place) => {
+                let kind_str = match mutability {
+                    Mutability::Mut => "mut",
+                    Mutability::Not => "const",
+                };
+
+                write!(fmt, "&raw {kind_str} {place:?}")
+            }
+
+            Aggregate(ref kind, ref places) => {
+                let fmt_tuple = |fmt: &mut Formatter<'_>, name: &str| {
+                    let mut tuple_fmt = fmt.debug_tuple(name);
+                    for place in places {
+                        tuple_fmt.field(place);
+                    }
+                    tuple_fmt.finish()
+                };
+
+                match **kind {
+                    AggregateKind::Array(_) => write!(fmt, "{places:?}"),
+
+                    AggregateKind::Tuple => {
+                        if places.is_empty() {
+                            write!(fmt, "()")
+                        } else {
+                            fmt_tuple(fmt, "")
+                        }
+                    }
+
+                    AggregateKind::Adt(adt_did, variant, args, _user_ty, _) => {
+                        ty::tls::with(|tcx| {
+                            let variant_def = &tcx.adt_def(adt_did).variant(variant);
+                            let args = tcx.lift(args).expect("could not lift for printing");
+                            let name = FmtPrinter::new(tcx, Namespace::ValueNS)
+                                .print_def_path(variant_def.def_id, args)?
+                                .into_buffer();
+
+                            match variant_def.ctor_kind() {
+                                Some(CtorKind::Const) => fmt.write_str(&name),
+                                Some(CtorKind::Fn) => fmt_tuple(fmt, &name),
+                                None => {
+                                    let mut struct_fmt = fmt.debug_struct(&name);
+                                    for (field, place) in iter::zip(&variant_def.fields, places) {
+                                        struct_fmt.field(field.name.as_str(), place);
+                                    }
+                                    struct_fmt.finish()
+                                }
+                            }
+                        })
+                    }
+
+                    AggregateKind::Closure(def_id, args) => ty::tls::with(|tcx| {
+                        let name = if tcx.sess.opts.unstable_opts.span_free_formats {
+                            let args = tcx.lift(args).unwrap();
+                            format!("[closure@{}]", tcx.def_path_str_with_args(def_id, args),)
+                        } else {
+                            let span = tcx.def_span(def_id);
+                            format!(
+                                "[closure@{}]",
+                                tcx.sess.source_map().span_to_diagnostic_string(span)
+                            )
+                        };
+                        let mut struct_fmt = fmt.debug_struct(&name);
+
+                        // FIXME(project-rfc-2229#48): This should be a list of capture names/places
+                        if let Some(def_id) = def_id.as_local()
+                            && let Some(upvars) = tcx.upvars_mentioned(def_id)
+                        {
+                            for (&var_id, place) in iter::zip(upvars.keys(), places) {
+                                let var_name = tcx.hir().name(var_id);
+                                struct_fmt.field(var_name.as_str(), place);
+                            }
+                        } else {
+                            for (index, place) in places.iter().enumerate() {
+                                struct_fmt.field(&format!("{index}"), place);
+                            }
+                        }
+
+                        struct_fmt.finish()
+                    }),
+
+                    AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
+                        let name = format!("[generator@{:?}]", tcx.def_span(def_id));
+                        let mut struct_fmt = fmt.debug_struct(&name);
+
+                        // FIXME(project-rfc-2229#48): This should be a list of capture names/places
+                        if let Some(def_id) = def_id.as_local()
+                            && let Some(upvars) = tcx.upvars_mentioned(def_id)
+                        {
+                            for (&var_id, place) in iter::zip(upvars.keys(), places) {
+                                let var_name = tcx.hir().name(var_id);
+                                struct_fmt.field(var_name.as_str(), place);
+                            }
+                        } else {
+                            for (index, place) in places.iter().enumerate() {
+                                struct_fmt.field(&format!("{index}"), place);
+                            }
+                        }
+
+                        struct_fmt.finish()
+                    }),
+                }
+            }
+
+            ShallowInitBox(ref place, ref ty) => {
+                with_no_trimmed_paths!(write!(fmt, "ShallowInitBox({place:?}, {ty})"))
+            }
+        }
+    }
+}
+
+impl<'tcx> Debug for Operand<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        use self::Operand::*;
+        match *self {
+            Constant(ref a) => write!(fmt, "{a:?}"),
+            Copy(ref place) => write!(fmt, "{place:?}"),
+            Move(ref place) => write!(fmt, "move {place:?}"),
+        }
+    }
+}
+
+impl Debug for Place<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        self.as_ref().fmt(fmt)
+    }
+}
+
+impl Debug for PlaceRef<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        pre_fmt_projection(self.projection, fmt)?;
+        write!(fmt, "{:?}", self.local)?;
+        post_fmt_projection(self.projection, fmt)
+    }
+}
+
+fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> fmt::Result {
+    for &elem in projection.iter().rev() {
+        match elem {
+            ProjectionElem::OpaqueCast(_)
+            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::Field(_, _) => {
+                write!(fmt, "(").unwrap();
+            }
+            ProjectionElem::Deref => {
+                write!(fmt, "(*").unwrap();
+            }
+            ProjectionElem::Index(_)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. } => {}
+        }
+    }
+
+    Ok(())
+}
+
+fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> fmt::Result {
+    for &elem in projection.iter() {
+        match elem {
+            ProjectionElem::OpaqueCast(ty) => {
+                write!(fmt, " as {ty})")?;
+            }
+            ProjectionElem::Downcast(Some(name), _index) => {
+                write!(fmt, " as {name})")?;
+            }
+            ProjectionElem::Downcast(None, index) => {
+                write!(fmt, " as variant#{index:?})")?;
+            }
+            ProjectionElem::Deref => {
+                write!(fmt, ")")?;
+            }
+            ProjectionElem::Field(field, ty) => {
+                with_no_trimmed_paths!(write!(fmt, ".{:?}: {})", field.index(), ty)?);
+            }
+            ProjectionElem::Index(ref index) => {
+                write!(fmt, "[{index:?}]")?;
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
+                write!(fmt, "[{offset:?} of {min_length:?}]")?;
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
+                write!(fmt, "[-{offset:?} of {min_length:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
+                write!(fmt, "[{from:?}:]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
+                write!(fmt, "[:-{to:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: true } => {
+                write!(fmt, "[{from:?}:-{to:?}]")?;
+            }
+            ProjectionElem::Subslice { from, to, from_end: false } => {
+                write!(fmt, "[{from:?}..{to:?}]")?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// After we print the main statement, we sometimes dump extra
 /// information. There's often a lot of little things "nuzzled up" in
 /// a statement.
-fn write_extra<'tcx, F>(tcx: TyCtxt<'tcx>, write: &mut dyn Write, mut visit_op: F) -> io::Result<()>
+fn write_extra<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    write: &mut dyn io::Write,
+    mut visit_op: F,
+) -> io::Result<()>
 where
     F: FnMut(&mut ExtraComments<'tcx>),
 {
@@ -534,161 +1275,15 @@ fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
     format!("scope {} at {}", scope.index(), location,)
 }
 
-/// Prints local variables in a scope tree.
-fn write_scope_tree(
-    tcx: TyCtxt<'_>,
-    body: &Body<'_>,
-    scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
-    w: &mut dyn Write,
-    parent: SourceScope,
-    depth: usize,
-) -> io::Result<()> {
-    let indent = depth * INDENT.len();
-
-    // Local variable debuginfo.
-    for var_debug_info in &body.var_debug_info {
-        if var_debug_info.source_info.scope != parent {
-            // Not declared in this scope.
-            continue;
-        }
-
-        let indented_debug_info = format!("{0:1$}debug {2:?};", INDENT, indent, var_debug_info);
-
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
-            writeln!(
-                w,
-                "{0:1$} // in {2}",
-                indented_debug_info,
-                ALIGN,
-                comment(tcx, var_debug_info.source_info),
-            )?;
-        } else {
-            writeln!(w, "{indented_debug_info}")?;
-        }
-    }
-
-    // Local variable types.
-    for (local, local_decl) in body.local_decls.iter_enumerated() {
-        if (1..body.arg_count + 1).contains(&local.index()) {
-            // Skip over argument locals, they're printed in the signature.
-            continue;
-        }
-
-        if local_decl.source_info.scope != parent {
-            // Not declared in this scope.
-            continue;
-        }
-
-        let mut_str = local_decl.mutability.prefix_str();
-
-        let mut indented_decl = ty::print::with_no_trimmed_paths!(format!(
-            "{0:1$}let {2}{3:?}: {4}",
-            INDENT, indent, mut_str, local, local_decl.ty
-        ));
-        if let Some(user_ty) = &local_decl.user_ty {
-            for user_ty in user_ty.projections() {
-                write!(indented_decl, " as {user_ty:?}").unwrap();
-            }
-        }
-        indented_decl.push(';');
-
-        let local_name = if local == RETURN_PLACE { " return place" } else { "" };
-
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
-            writeln!(
-                w,
-                "{0:1$} //{2} in {3}",
-                indented_decl,
-                ALIGN,
-                local_name,
-                comment(tcx, local_decl.source_info),
-            )?;
-        } else {
-            writeln!(w, "{indented_decl}",)?;
-        }
-    }
-
-    let Some(children) = scope_tree.get(&parent) else {
-        return Ok(());
-    };
-
-    for &child in children {
-        let child_data = &body.source_scopes[child];
-        assert_eq!(child_data.parent_scope, Some(parent));
-
-        let (special, span) = if let Some((callee, callsite_span)) = child_data.inlined {
-            (
-                format!(
-                    " (inlined {}{})",
-                    if callee.def.requires_caller_location(tcx) { "#[track_caller] " } else { "" },
-                    callee
-                ),
-                Some(callsite_span),
-            )
-        } else {
-            (String::new(), None)
-        };
-
-        let indented_header = format!("{0:1$}scope {2}{3} {{", "", indent, child.index(), special);
-
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
-            if let Some(span) = span {
-                writeln!(
-                    w,
-                    "{0:1$} // at {2}",
-                    indented_header,
-                    ALIGN,
-                    tcx.sess.source_map().span_to_embeddable_string(span),
-                )?;
-            } else {
-                writeln!(w, "{indented_header}")?;
-            }
-        } else {
-            writeln!(w, "{indented_header}")?;
-        }
-
-        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1)?;
-        writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
-    }
-
-    Ok(())
-}
-
-/// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
-/// local variables (both user-defined bindings and compiler temporaries).
-pub fn write_mir_intro<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'_>,
-    w: &mut dyn Write,
-) -> io::Result<()> {
-    write_mir_sig(tcx, body, w)?;
-    writeln!(w, "{{")?;
-
-    // construct a scope tree and write it out
-    let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
-    for (index, scope_data) in body.source_scopes.iter().enumerate() {
-        if let Some(parent) = scope_data.parent_scope {
-            scope_tree.entry(parent).or_default().push(SourceScope::new(index));
-        } else {
-            // Only the argument scope has no parent, because it's the root.
-            assert_eq!(index, OUTERMOST_SOURCE_SCOPE.index());
-        }
-    }
-
-    write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
-
-    // Add an empty line before the first block is printed.
-    writeln!(w)?;
-
-    Ok(())
-}
+///////////////////////////////////////////////////////////////////////////
+// Allocations
 
 /// Find all `AllocId`s mentioned (recursively) in the MIR body and print their corresponding
 /// allocations.
 pub fn write_allocations<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'_>,
-    w: &mut dyn Write,
+    w: &mut dyn io::Write,
 ) -> io::Result<()> {
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
@@ -737,7 +1332,7 @@ pub fn write_allocations<'tcx>(
     let mut todo: Vec<_> = seen.iter().copied().collect();
     while let Some(id) = todo.pop() {
         let mut write_allocation_track_relocs =
-            |w: &mut dyn Write, alloc: ConstAllocation<'tcx>| -> io::Result<()> {
+            |w: &mut dyn io::Write, alloc: ConstAllocation<'tcx>| -> io::Result<()> {
                 // `.rev()` because we are popping them from the back of the `todo` vector.
                 for id in alloc_ids_from_alloc(alloc).rev() {
                     if seen.insert(id) {
@@ -998,90 +1593,8 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     Ok(())
 }
 
-fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Result<()> {
-    use rustc_hir::def::DefKind;
-
-    trace!("write_mir_sig: {:?}", body.source.instance);
-    let def_id = body.source.def_id();
-    let kind = tcx.def_kind(def_id);
-    let is_function = match kind {
-        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-        _ => tcx.is_closure(def_id),
-    };
-    match (kind, body.source.promoted) {
-        (_, Some(i)) => write!(w, "{i:?} in ")?,
-        (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
-        (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
-        (_, _) if is_function => write!(w, "fn ")?,
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
-        _ => bug!("Unexpected def kind {:?}", kind),
-    }
-
-    ty::print::with_forced_impl_filename_line! {
-        // see notes on #41697 elsewhere
-        write!(w, "{}", tcx.def_path_str(def_id))?
-    }
-
-    if body.source.promoted.is_none() && is_function {
-        write!(w, "(")?;
-
-        // fn argument types.
-        for (i, arg) in body.args_iter().enumerate() {
-            if i != 0 {
-                write!(w, ", ")?;
-            }
-            write!(w, "{:?}: {}", Place::from(arg), body.local_decls[arg].ty)?;
-        }
-
-        write!(w, ") -> {}", body.return_ty())?;
-    } else {
-        assert_eq!(body.arg_count, 0);
-        write!(w, ": {} =", body.return_ty())?;
-    }
-
-    if let Some(yield_ty) = body.yield_ty() {
-        writeln!(w)?;
-        writeln!(w, "yields {yield_ty}")?;
-    }
-
-    write!(w, " ")?;
-    // Next thing that gets printed is the opening {
-
-    Ok(())
-}
-
-fn write_user_type_annotations(
-    tcx: TyCtxt<'_>,
-    body: &Body<'_>,
-    w: &mut dyn Write,
-) -> io::Result<()> {
-    if !body.user_type_annotations.is_empty() {
-        writeln!(w, "| User Type Annotations")?;
-    }
-    for (index, annotation) in body.user_type_annotations.iter_enumerated() {
-        writeln!(
-            w,
-            "| {:?}: user_ty: {}, span: {}, inferred_ty: {}",
-            index.index(),
-            annotation.user_ty,
-            tcx.sess.source_map().span_to_embeddable_string(annotation.span),
-            with_no_trimmed_paths!(format!("{}", annotation.inferred_ty)),
-        )?;
-    }
-    if !body.user_type_annotations.is_empty() {
-        writeln!(w, "|")?;
-    }
-    Ok(())
-}
-
-pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
-    if let Some(i) = single {
-        vec![i]
-    } else {
-        tcx.mir_keys(()).iter().map(|def_id| def_id.to_def_id()).collect()
-    }
-}
+///////////////////////////////////////////////////////////////////////////
+// Constants
 
 fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Result {
     write!(fmt, "b\"{}\"", byte_str.escape_ascii())
@@ -1243,6 +1756,9 @@ pub(crate) fn pretty_print_const_value<'tcx>(
         pretty_print_const_value_tcx(tcx, ct, ty, fmt)
     })
 }
+
+///////////////////////////////////////////////////////////////////////////
+// Miscellaneous
 
 /// Calc converted u64 decimal into hex and return it's length in chars
 ///

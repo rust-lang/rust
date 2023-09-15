@@ -3,7 +3,7 @@
 //! This is in a dedicated file so that changes to this file can be reviewed more carefully.
 //! The intention is that this file only contains datatype declarations, no code.
 
-use super::{BasicBlock, Constant, Local, SwitchTargets, UserTypeProjection};
+use super::{BasicBlock, Constant, Local, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
 use crate::traits::Reveal;
@@ -24,6 +24,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmRegOrRegClass;
+use smallvec::SmallVec;
 
 /// Represents the "flavors" of MIR.
 ///
@@ -826,6 +827,27 @@ impl TerminatorKind<'_> {
             TerminatorKind::InlineAsm { .. } => "InlineAsm",
         }
     }
+}
+
+#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+pub struct SwitchTargets {
+    /// Possible values. The locations to branch to in each case
+    /// are found in the corresponding indices from the `targets` vector.
+    pub(super) values: SmallVec<[u128; 1]>,
+
+    /// Possible branch sites. The last element of this vector is used
+    /// for the otherwise branch, so targets.len() == values.len() + 1
+    /// should hold.
+    //
+    // This invariant is quite non-obvious and also could be improved.
+    // One way to make this invariant is to have something like this instead:
+    //
+    // branches: Vec<(ConstInt, BasicBlock)>,
+    // otherwise: Option<BasicBlock> // exhaustive if None
+    //
+    // However we’ve decided to keep this as-is until we figure a case
+    // where some other approach seems to be strictly better than other.
+    pub(super) targets: SmallVec<[BasicBlock; 2]>,
 }
 
 /// Action to be taken when a stack unwind happens.
