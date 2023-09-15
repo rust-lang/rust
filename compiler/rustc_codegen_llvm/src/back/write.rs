@@ -671,9 +671,17 @@ pub(crate) unsafe fn enzyme_ad(
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef =
         CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
-    
+
     llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
-    llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
+    if std::env::var("ENZYME_PRINT_TA").is_ok() {
+      llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
+    }
+    if std::env::var("ENZYME_PRINT_AA").is_ok() {
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintActivity), 1);
+    }
+    if std::env::var("ENZYME_PRINT").is_ok() {
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
+    }
 
     let mut res: &Value = match item.attrs.mode {
         DiffMode::Forward => enzyme_rust_forward_diff(
@@ -742,7 +750,7 @@ pub(crate) unsafe fn differentiate(
         let res = enzyme_ad(llmod, llcx, item);
         assert!(res.is_ok());
     }
-    
+
     let mut f = LLVMGetFirstFunction(llmod);
     loop {
         if let Some(lf) = f {
