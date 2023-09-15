@@ -33,7 +33,7 @@ use super::FnCtxt;
 use crate::errors;
 use crate::type_error_struct;
 use hir::ExprKind;
-use rustc_errors::{Applicability, DelayDm, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
@@ -935,17 +935,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         if let ty::Adt(d, _) = self.expr_ty.kind()
             && d.has_dtor(fcx.tcx)
         {
-            fcx.tcx.struct_span_lint_hir(
+            let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+            let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+
+            fcx.tcx.emit_spanned_lint(
                 lint::builtin::CENUM_IMPL_DROP_CAST,
                 self.expr.hir_id,
                 self.span,
-                DelayDm(|| format!(
-                    "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
-                    self.expr_ty, self.cast_ty
-                )),
-                |lint| {
-                    lint
-                },
+                errors::CastEnumDrop {
+                    expr_ty,
+                    cast_ty,
+                }
             );
         }
     }

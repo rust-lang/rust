@@ -21,6 +21,8 @@ hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
     .help = compare with zero instead
     .label = unsupported cast
 
+hir_typeck_cast_enum_drop = cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`
+
 hir_typeck_cast_unknown_pointer = cannot cast {$to ->
     [true] to
     *[false] from

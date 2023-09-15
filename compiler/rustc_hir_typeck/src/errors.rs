@@ -574,6 +574,13 @@ pub struct CannotCastToBool<'tcx> {
     pub help: CannotCastToBoolHelp,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_cast_enum_drop)]
+pub struct CastEnumDrop<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_cast_unknown_pointer, code = "E0641")]
 pub struct CastUnknownPointer {
