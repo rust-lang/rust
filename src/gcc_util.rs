@@ -1,3 +1,4 @@
+use gccjit::Context;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_codegen_ssa::target_features::{
@@ -204,7 +205,11 @@ fn handle_native(name: &str) -> &str {
         return name;
     }
 
-    unimplemented!();
+    // Get the native arch.
+    let context = Context::default();
+    context.get_target_info().arch().unwrap()
+        .to_str()
+        .unwrap()
 }
 
 pub fn target_cpu(sess: &Session) -> &str {
