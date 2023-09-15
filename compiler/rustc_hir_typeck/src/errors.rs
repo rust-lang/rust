@@ -565,6 +565,44 @@ pub struct CannotCastToBool<'tcx> {
     pub help: CannotCastToBoolHelp,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_typeck_cast_unknown_pointer, code = "E0641")]
+pub struct CastUnknownPointer {
+    #[primary_span]
+    pub span: Span,
+    pub to: bool,
+    #[subdiagnostic]
+    pub sub: CastUnknownPointerSub,
+}
+
+pub enum CastUnknownPointerSub {
+    To(Span),
+    From(Span),
+}
+
+impl rustc_errors::AddToDiagnostic for CastUnknownPointerSub {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, f: F)
+    where
+        F: Fn(
+            &mut Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        match self {
+            CastUnknownPointerSub::To(span) => {
+                let msg = f(diag, crate::fluent_generated::hir_typeck_label_to.into());
+                diag.span_label(span, msg);
+                let msg = f(diag, crate::fluent_generated::hir_typeck_note.into());
+                diag.note(msg);
+            }
+            CastUnknownPointerSub::From(span) => {
+                let msg = f(diag, crate::fluent_generated::hir_typeck_label_from.into());
+                diag.span_label(span, msg);
+            }
+        }
+    }
+}
+
 #[derive(Subdiagnostic)]
 pub enum CannotCastToBoolHelp {
     #[suggestion(

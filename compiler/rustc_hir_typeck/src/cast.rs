@@ -33,9 +33,7 @@ use super::FnCtxt;
 use crate::errors;
 use crate::type_error_struct;
 use hir::ExprKind;
-use rustc_errors::{
-    struct_span_err, Applicability, DelayDm, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-};
+use rustc_errors::{Applicability, DelayDm, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
@@ -540,27 +538,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     CastError::UnknownExprPtrKind => false,
                     _ => bug!(),
                 };
-                let mut err = struct_span_err!(
-                    fcx.tcx.sess,
-                    if unknown_cast_to { self.cast_span } else { self.span },
-                    E0641,
-                    "cannot cast {} a pointer of an unknown kind",
-                    if unknown_cast_to { "to" } else { "from" }
-                );
-                if unknown_cast_to {
-                    err.span_label(self.cast_span, "needs more type information");
-                    err.note(
-                        "the type information given here is insufficient to check whether \
-                        the pointer cast is valid",
-                    );
+                let (span, sub) = if unknown_cast_to {
+                    (self.cast_span, errors::CastUnknownPointerSub::To(self.cast_span))
                 } else {
-                    err.span_label(
-                        self.span,
-                        "the type information given here is insufficient to check whether \
-                        the pointer cast is valid",
-                    );
-                }
-                err.emit();
+                    (self.cast_span, errors::CastUnknownPointerSub::From(self.span))
+                };
+                fcx.tcx.sess.emit_err(errors::CastUnknownPointer {
+                    span,
+                    to: unknown_cast_to,
+                    sub,
+                });
             }
             CastError::ForeignNonExhaustiveAdt => {
                 make_invalid_casting_error(
