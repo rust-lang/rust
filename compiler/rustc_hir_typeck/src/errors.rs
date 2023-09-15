@@ -6,7 +6,7 @@ use rustc_errors::{
     AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg, MultiSpan,
     SubdiagnosticMessage,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{
     edition::{Edition, LATEST_STABLE_EDITION},
@@ -267,6 +267,50 @@ pub struct LangStartIncorrectRetTy<'tcx> {
 
     pub expected_ty: Ty<'tcx>,
     pub found_ty: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_lossy_provenance_ptr2int)]
+#[help]
+pub struct LossyProvenancePtr2Int<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: LossyProvenancePtr2IntSuggestion<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum LossyProvenancePtr2IntSuggestion<'tcx> {
+    #[multipart_suggestion(hir_typeck_suggestion, applicability = "maybe-incorrect")]
+    NeedsParensCast {
+        #[suggestion_part(code = "(")]
+        expr_span: Span,
+        #[suggestion_part(code = ").addr() as {cast_ty}")]
+        cast_span: Span,
+        cast_ty: Ty<'tcx>,
+    },
+    #[multipart_suggestion(hir_typeck_suggestion, applicability = "maybe-incorrect")]
+    NeedsParens {
+        #[suggestion_part(code = "(")]
+        expr_span: Span,
+        #[suggestion_part(code = ").addr()")]
+        cast_span: Span,
+    },
+    #[suggestion(
+        hir_typeck_suggestion,
+        code = ".addr() as {cast_ty}",
+        applicability = "maybe-incorrect"
+    )]
+    NeedsCast {
+        #[primary_span]
+        cast_span: Span,
+        cast_ty: Ty<'tcx>,
+    },
+    #[suggestion(hir_typeck_suggestion, code = ".addr()", applicability = "maybe-incorrect")]
+    Other {
+        #[primary_span]
+        cast_span: Span,
+    },
 }
 
 #[derive(Subdiagnostic)]

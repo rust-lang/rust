@@ -30,6 +30,7 @@
 
 use super::FnCtxt;
 
+use crate::errors;
 use crate::type_error_struct;
 use hir::ExprKind;
 use rustc_errors::{
@@ -1007,50 +1008,35 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn lossy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_c: ty::cast::IntTy) {
-        fcx.tcx.struct_span_lint_hir(
+        let expr_prec = self.expr.precedence().order();
+        let needs_parens = expr_prec < rustc_ast::util::parser::PREC_POSTFIX;
+
+        let needs_cast = !matches!(t_c, ty::cast::IntTy::U(ty::UintTy::Usize));
+        let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);
+        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+        let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+        let expr_span = self.expr_span.shrink_to_lo();
+        let sugg = match (needs_parens, needs_cast) {
+            (true, true) => errors::LossyProvenancePtr2IntSuggestion::NeedsParensCast {
+                expr_span,
+                cast_span,
+                cast_ty,
+            },
+            (true, false) => {
+                errors::LossyProvenancePtr2IntSuggestion::NeedsParens { expr_span, cast_span }
+            }
+            (false, true) => {
+                errors::LossyProvenancePtr2IntSuggestion::NeedsCast { cast_span, cast_ty }
+            }
+            (false, false) => errors::LossyProvenancePtr2IntSuggestion::Other { cast_span },
+        };
+
+        let lint = errors::LossyProvenancePtr2Int { expr_ty, cast_ty, sugg };
+        fcx.tcx.emit_spanned_lint(
             lint::builtin::LOSSY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
-            DelayDm(|| format!(
-                    "under strict provenance it is considered bad style to cast pointer `{}` to integer `{}`",
-                    self.expr_ty, self.cast_ty
-                )),
-            |lint| {
-                let msg = "use `.addr()` to obtain the address of a pointer";
-
-                let expr_prec = self.expr.precedence().order();
-                let needs_parens = expr_prec < rustc_ast::util::parser::PREC_POSTFIX;
-
-                let scalar_cast = match t_c {
-                    ty::cast::IntTy::U(ty::UintTy::Usize) => String::new(),
-                    _ => format!(" as {}", self.cast_ty),
-                };
-
-                let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);
-
-                if needs_parens {
-                    let suggestions = vec![
-                        (self.expr_span.shrink_to_lo(), String::from("(")),
-                        (cast_span, format!(").addr(){scalar_cast}")),
-                    ];
-
-                    lint.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
-                } else {
-                    lint.span_suggestion(
-                        cast_span,
-                        msg,
-                        format!(".addr(){scalar_cast}"),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-
-                lint.help(
-                    "if you can't comply with strict provenance and need to expose the pointer \
-                    provenance you can use `.expose_addr()` instead"
-                );
-
-                lint
-            },
+            lint,
         );
     }
 
