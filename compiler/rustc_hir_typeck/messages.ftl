@@ -145,6 +145,12 @@ hir_typeck_suggest_boxing_when_appropriate = store this in the heap by calling `
 
 hir_typeck_suggest_ptr_null_mut = consider using `core::ptr::null_mut` instead
 
+hir_typeck_trivial_cast = trivial {$numeric ->
+    [true] numeric cast
+    *[false] cast
+    }: `{$expr_ty}` as `{$cast_ty}`
+    .help = cast can be replaced by coercion; this might require a temporary variable
+
 hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
 
 hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field

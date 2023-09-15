@@ -533,6 +533,15 @@ pub struct SuggestPtrNullMut {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_trivial_cast)]
+#[help]
+pub struct TrivialCast<'tcx> {
+    pub numeric: bool,
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_no_associated_item, code = "E0599")]
 pub struct NoAssociatedItem {

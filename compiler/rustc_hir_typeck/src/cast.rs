@@ -631,31 +631,18 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        let t_cast = self.cast_ty;
-        let t_expr = self.expr_ty;
-        let (adjective, lint) = if t_cast.is_numeric() && t_expr.is_numeric() {
-            ("numeric ", lint::builtin::TRIVIAL_NUMERIC_CASTS)
+        let (numeric, lint) = if self.cast_ty.is_numeric() && self.expr_ty.is_numeric() {
+            (true, lint::builtin::TRIVIAL_NUMERIC_CASTS)
         } else {
-            ("", lint::builtin::TRIVIAL_CASTS)
+            (false, lint::builtin::TRIVIAL_CASTS)
         };
-        fcx.tcx.struct_span_lint_hir(
+        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+        let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+        fcx.tcx.emit_spanned_lint(
             lint,
             self.expr.hir_id,
             self.span,
-            DelayDm(|| {
-                format!(
-                    "trivial {}cast: `{}` as `{}`",
-                    adjective,
-                    fcx.ty_to_string(t_expr),
-                    fcx.ty_to_string(t_cast)
-                )
-            }),
-            |lint| {
-                lint.help(
-                    "cast can be replaced by coercion; this might \
-                     require a temporary variable",
-                )
-            },
+            errors::TrivialCast { numeric, expr_ty, cast_ty },
         );
     }
 
