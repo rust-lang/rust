@@ -17,11 +17,11 @@ use crate::{ast, fuzz, AstNode, SourceFile, SyntaxError};
 
 #[test]
 fn parse_smoke_test() {
-    let code = r##"
+    let code = r#"
 fn main() {
     println!("Hello, world!")
 }
-    "##;
+    "#;
 
     let parse = SourceFile::parse(code);
     // eprintln!("{:#?}", parse.syntax_node());
