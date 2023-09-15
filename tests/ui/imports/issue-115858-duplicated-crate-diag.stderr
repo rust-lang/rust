@@ -1,0 +1,23 @@
+error[E0433]: failed to resolve: unresolved import
+  --> $DIR/issue-115858-duplicated-crate-diag.rs:12:32
+   |
+LL |                 let x = crate::linux::system::Y;
+   |                                ^^^^^ unresolved import
+   |
+help: a similar path exists
+   |
+LL |                 let x = crate::unix::linux::system::Y;
+   |                                ~~~~~~~~~~~
+help: consider importing this module
+   |
+LL +             use crate::unix::linux::system;
+   |
+help: if you import `system`, refer to it directly
+   |
+LL -                 let x = crate::linux::system::Y;
+LL +                 let x = system::Y;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.
