@@ -503,30 +503,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 bx.noundef_metadata(load);
             }
 
-            if layout.ty.is_floating_point() || layout.ty.is_integral() {
-            unsafe {
-            let rootrname = "enzyme rust tbaa";//rand().to_string();
-            let rootname = llvm::LLVMMDStringInContext(bx.llcx, rootrname.as_ptr() as *const c_char, rootrname.as_bytes().len() as c_uint); 
-            let tbaa_root = llvm::LLVMMDNodeInContext(bx.llcx, &rootname, 1);
-           
-            let zero = bx.const_i32(0);
-            let root2rname = "omnipotent char";
-            let root2name = llvm::LLVMMDStringInContext(bx.llcx, root2rname.as_ptr() as *const c_char, root2rname.as_bytes().len() as c_uint); 
-            let data2 = [root2name, tbaa_root, zero];
-            let tbaa_root2 = llvm::LLVMMDNodeInContext(bx.llcx, data2.as_ptr(), 3);
-            let tyrname = layout.ty.to_string() as String;
-            let tyname = llvm::LLVMMDStringInContext(bx.llcx, tyrname.as_ptr() as *const c_char, tyrname.as_bytes().len() as c_uint); 
-            let data = [tyname, tbaa_root2, zero];
-            let tbaa_type = llvm::LLVMMDNodeInContext(bx.llcx, data.as_ptr(), 3);
-            
-            let data3 = [tbaa_type, tbaa_type, bx.const_i32(0)];
-            // let data3 = [tbaa_type, tbaa_type, bx.const_i32(layout.size.bytes() as i32)];
-            let struct_tbaa_type = llvm::LLVMMDNodeInContext(bx.llcx, data3.as_ptr(), 3);
-
-            llvm::LLVMSetMetadata(load, llvm::MD_tbaa as c_uint, struct_tbaa_type);
-            }
-            }
-
             match scalar.primitive() {
                 abi::Int(..) => {
                     if !scalar.is_always_valid(bx) {
