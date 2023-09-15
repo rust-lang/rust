@@ -542,6 +542,29 @@ pub struct CandidateTraitNote {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_cannot_cast_to_bool, code = "E0054")]
+pub struct CannotCastToBool<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub expr_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub help: CannotCastToBoolHelp,
+}
+
+#[derive(Subdiagnostic)]
+pub enum CannotCastToBoolHelp {
+    #[suggestion(
+        hir_typeck_suggestion,
+        applicability = "machine-applicable",
+        code = " != 0",
+        style = "verbose"
+    )]
+    Numeric(#[primary_span] Span),
+    #[label(hir_typeck_label)]
+    Unsupported(#[primary_span] Span),
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_ctor_is_private, code = "E0603")]
 pub struct CtorIsPrivate {
     #[primary_span]

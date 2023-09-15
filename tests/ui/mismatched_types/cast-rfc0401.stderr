@@ -86,7 +86,12 @@ error[E0054]: cannot cast `i32` as `bool`
   --> $DIR/cast-rfc0401.rs:39:13
    |
 LL |     let _ = 3_i32 as bool;
-   |             ^^^^^^^^^^^^^ help: compare with zero instead: `3_i32 != 0`
+   |             ^^^^^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL |     let _ = 3_i32 != 0;
+   |                   ~~~~
 
 error[E0054]: cannot cast `E` as `bool`
   --> $DIR/cast-rfc0401.rs:40:13

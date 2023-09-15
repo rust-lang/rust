@@ -16,6 +16,11 @@ hir_typeck_candidate_trait_note = `{$trait_name}` defines an item `{$item_name}`
     *[other] , perhaps you need to restrict type parameter `{$action_or_ty}` with it
 }
 
+hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
+    .suggestion = compare with zero instead
+    .help = compare with zero instead
+    .label = unsupported cast
+
 hir_typeck_const_select_must_be_const = this argument must be a `const fn`
     .help = consult the documentation on `const_eval_select` for more information
 
