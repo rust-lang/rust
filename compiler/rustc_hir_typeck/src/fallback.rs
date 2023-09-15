@@ -24,7 +24,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
 
-        let fallback_occured = self.fallback_types() || self.fallback_effects();
+        let fallback_occured = self.fallback_types() | self.fallback_effects();
 
         if !fallback_occured {
             return;

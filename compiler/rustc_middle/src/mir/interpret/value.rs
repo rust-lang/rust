@@ -9,10 +9,13 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
+use crate::{
+    mir::interpret::alloc_range,
+    ty::{ParamEnv, ScalarInt, Ty, TyCtxt},
+};
 
 use super::{
-    AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+    AllocId, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
     ScalarSizeMismatch,
 };
 
@@ -30,22 +33,32 @@ pub struct ConstAlloc<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable, Lift)]
 pub enum ConstValue<'tcx> {
-    /// Used only for types with `layout::abi::Scalar` ABI.
+    /// Used for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
     Scalar(Scalar),
 
-    /// Only used for ZSTs.
+    /// Only for ZSTs.
     ZeroSized,
 
-    /// Used only for `&[u8]` and `&str`
+    /// Used for `&[u8]` and `&str`.
+    ///
+    /// This is worth an optimized representation since Rust has literals of these types.
+    /// Not having to indirect those through an `AllocId` (or two, if we used `Indirect`) has shown
+    /// measurable performance improvements on stress tests.
     Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
 
-    /// A value not represented/representable by `Scalar` or `Slice`
-    ByRef {
-        /// The backing memory of the value, may contain more memory than needed for just the value
-        /// in order to share `ConstAllocation`s between values
-        alloc: ConstAllocation<'tcx>,
+    /// A value not representable by the other variants; needs to be stored in-memory.
+    ///
+    /// Must *not* be used for scalars or ZST, but having `&str` or other slices in this variant is fine.
+    Indirect {
+        /// The backing memory of the value. May contain more memory than needed for just the value
+        /// if this points into some other larger ConstValue.
+        ///
+        /// We use an `AllocId` here instead of a `ConstAllocation<'tcx>` to make sure that when a
+        /// raw constant (which is basically just an `AllocId`) is turned into a `ConstValue` and
+        /// back, we can preserve the original `AllocId`.
+        alloc_id: AllocId,
         /// Offset into `alloc`
         offset: Size,
     },
@@ -58,7 +71,7 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
-            ConstValue::ByRef { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
+            ConstValue::Indirect { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -103,6 +116,54 @@ impl<'tcx> ConstValue<'tcx> {
 
     pub fn from_target_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         ConstValue::Scalar(Scalar::from_target_usize(i, cx))
+    }
+
+    /// Must only be called on constants of type `&str` or `&[u8]`!
+    pub fn try_get_slice_bytes_for_diagnostics(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
+        let (data, start, end) = match self {
+            ConstValue::Scalar(_) | ConstValue::ZeroSized => {
+                bug!("`try_get_slice_bytes` on non-slice constant")
+            }
+            &ConstValue::Slice { data, start, end } => (data, start, end),
+            &ConstValue::Indirect { alloc_id, offset } => {
+                // The reference itself is stored behind an indirection.
+                // Load the reference, and then load the actual slice contents.
+                let a = tcx.global_alloc(alloc_id).unwrap_memory().inner();
+                let ptr_size = tcx.data_layout.pointer_size;
+                if a.size() < offset + 2 * ptr_size {
+                    // (partially) dangling reference
+                    return None;
+                }
+                // Read the wide pointer components.
+                let ptr = a
+                    .read_scalar(
+                        &tcx,
+                        alloc_range(offset, ptr_size),
+                        /* read_provenance */ true,
+                    )
+                    .ok()?;
+                let ptr = ptr.to_pointer(&tcx).ok()?;
+                let len = a
+                    .read_scalar(
+                        &tcx,
+                        alloc_range(offset + ptr_size, ptr_size),
+                        /* read_provenance */ false,
+                    )
+                    .ok()?;
+                let len = len.to_target_usize(&tcx).ok()?;
+                let len: usize = len.try_into().ok()?;
+                if len == 0 {
+                    return Some(&[]);
+                }
+                // Non-empty slice, must have memory. We know this is a relative pointer.
+                let (inner_alloc_id, offset) = ptr.into_parts();
+                let data = tcx.global_alloc(inner_alloc_id?).unwrap_memory();
+                (data, offset.bytes_usize(), offset.bytes_usize() + len)
+            }
+        };
+
+        // This is for diagnostics only, so we are okay to use `inspect_with_uninit_and_ptr_outside_interpreter`.
+        Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
     }
 }
 
@@ -503,20 +564,5 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     pub fn to_f64(self) -> InterpResult<'tcx, Double> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
-    }
-}
-
-/// Gets the bytes of a constant slice value.
-pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
-    if let ConstValue::Slice { data, start, end } = val {
-        let len = end - start;
-        data.inner()
-            .get_bytes_strip_provenance(
-                cx,
-                AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
-            )
-            .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
-    } else {
-        bug!("expected const slice, but found another const value");
     }
 }

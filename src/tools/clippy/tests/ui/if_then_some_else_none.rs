@@ -117,3 +117,15 @@ fn f(b: bool, v: Option<()>) -> Option<()> {
         None
     }
 }
+
+fn issue11394(b: bool, v: Result<(), ()>) -> Result<(), ()> {
+    let x = if b {
+        #[allow(clippy::let_unit_value)]
+        let _ = v?;
+        Some(())
+    } else {
+        None
+    };
+
+    Ok(())
+}

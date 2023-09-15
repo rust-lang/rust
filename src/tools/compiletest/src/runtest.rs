@@ -12,7 +12,7 @@ use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
-use crate::read2::read2_abbreviated;
+use crate::read2::{read2_abbreviated, Truncated};
 use crate::util::{add_dylib_path, dylib_env_var, logv, PathBufExt};
 use crate::ColorConfig;
 use regex::{Captures, Regex};
@@ -701,6 +701,7 @@ impl<'test> TestCx<'test> {
             status: output.status,
             stdout: String::from_utf8(output.stdout).unwrap(),
             stderr: String::from_utf8(output.stderr).unwrap(),
+            truncated: Truncated::No,
             cmdline: format!("{cmd:?}"),
         };
         self.dump_output(&proc_res.stdout, &proc_res.stderr);
@@ -1275,6 +1276,7 @@ impl<'test> TestCx<'test> {
                 status,
                 stdout: String::from_utf8(stdout).unwrap(),
                 stderr: String::from_utf8(stderr).unwrap(),
+                truncated: Truncated::No,
                 cmdline,
             };
             if adb.kill().is_err() {
@@ -1475,6 +1477,15 @@ impl<'test> TestCx<'test> {
             "^core::num::([a-z_]+::)*NonZero.+$",
         ];
 
+        // In newer versions of lldb, persistent results (the `$N =` part at the start of
+        // expressions you have evaluated that let you re-use the result) aren't printed, but lots
+        // of rustc's debuginfo tests rely on these, so re-enable this.
+        // See <https://reviews.llvm.org/rG385496385476fc9735da5fa4acabc34654e8b30d>.
+        script_str.push_str("command unalias print\n");
+        script_str.push_str("command alias print expr --\n");
+        script_str.push_str("command unalias p\n");
+        script_str.push_str("command alias p expr --\n");
+
         script_str
             .push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[..]);
         script_str.push_str("type synthetic add -l lldb_lookup.synthetic_lookup -x '.*' ");
@@ -1557,7 +1568,13 @@ impl<'test> TestCx<'test> {
         };
 
         self.dump_output(&out, &err);
-        ProcRes { status, stdout: out, stderr: err, cmdline: format!("{:?}", cmd) }
+        ProcRes {
+            status,
+            stdout: out,
+            stderr: err,
+            truncated: Truncated::No,
+            cmdline: format!("{:?}", cmd),
+        }
     }
 
     fn cleanup_debug_info_options(&self, options: &Vec<String>) -> Vec<String> {
@@ -2218,7 +2235,7 @@ impl<'test> TestCx<'test> {
         dylib
     }
 
-    fn read2_abbreviated(&self, child: Child) -> Output {
+    fn read2_abbreviated(&self, child: Child) -> (Output, Truncated) {
         let mut filter_paths_from_len = Vec::new();
         let mut add_path = |path: &Path| {
             let path = path.display().to_string();
@@ -2265,12 +2282,13 @@ impl<'test> TestCx<'test> {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
 
-        let Output { status, stdout, stderr } = self.read2_abbreviated(child);
+        let (Output { status, stdout, stderr }, truncated) = self.read2_abbreviated(child);
 
         let result = ProcRes {
             status,
             stdout: String::from_utf8_lossy(&stdout).into_owned(),
             stderr: String::from_utf8_lossy(&stderr).into_owned(),
+            truncated,
             cmdline,
         };
 
@@ -2316,6 +2334,15 @@ impl<'test> TestCx<'test> {
         // fact.
         rustc.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
         rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
+
+        // Hide Cargo dependency sources from ui tests to make sure the error message doesn't
+        // change depending on whether $CARGO_HOME is remapped or not. If this is not present,
+        // when $CARGO_HOME is remapped the source won't be shown, and when it's not remapped the
+        // source will be shown, causing a blessing hell.
+        rustc.arg("-Z").arg(format!(
+            "ignore-directory-in-diagnostics-source-blocks={}",
+            home::cargo_home().expect("failed to find cargo home").to_str().unwrap()
+        ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
@@ -3601,12 +3628,14 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let output = self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
+        let (output, truncated) =
+            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
         if !output.status.success() {
             let res = ProcRes {
                 status: output.status,
                 stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                 stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+                truncated,
                 cmdline: format!("{:?}", cmd),
             };
             self.fatal_proc_rec("make failed", &res);
@@ -3768,6 +3797,15 @@ impl<'test> TestCx<'test> {
         let emit_metadata = self.should_emit_metadata(pm);
         let proc_res = self.compile_test(should_run, emit_metadata);
         self.check_if_test_should_compile(&proc_res, pm);
+        if matches!(proc_res.truncated, Truncated::Yes)
+            && !self.props.dont_check_compiler_stdout
+            && !self.props.dont_check_compiler_stderr
+        {
+            self.fatal_proc_rec(
+                &format!("compiler output got truncated, cannot compare with reference file"),
+                &proc_res,
+            );
+        }
 
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
@@ -4459,6 +4497,7 @@ pub struct ProcRes {
     status: ExitStatus,
     stdout: String,
     stderr: String,
+    truncated: Truncated,
     cmdline: String,
 }
 

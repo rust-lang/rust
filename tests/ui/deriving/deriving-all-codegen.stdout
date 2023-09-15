@@ -60,7 +60,7 @@ impl ::core::marker::StructuralEq for Empty { }
 impl ::core::cmp::Eq for Empty {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
@@ -135,7 +135,7 @@ impl ::core::marker::StructuralEq for Point { }
 impl ::core::cmp::Eq for Point {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
@@ -221,7 +221,7 @@ impl ::core::marker::StructuralEq for PackedPoint { }
 impl ::core::cmp::Eq for PackedPoint {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
@@ -334,7 +334,7 @@ impl ::core::marker::StructuralEq for Big { }
 impl ::core::cmp::Eq for Big {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
@@ -500,7 +500,7 @@ impl ::core::marker::StructuralEq for Unsized { }
 impl ::core::cmp::Eq for Unsized {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<[u32]>;
     }
@@ -615,7 +615,7 @@ impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
     Generic<T, U> where T::A: ::core::cmp::Eq {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<T::A>;
@@ -738,7 +738,7 @@ impl<T: ::core::cmp::Eq + ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
     T::A: ::core::cmp::Eq + ::core::marker::Copy {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<T::A>;
@@ -821,7 +821,7 @@ impl ::core::marker::StructuralEq for Enum0 { }
 impl ::core::cmp::Eq for Enum0 {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
@@ -892,7 +892,7 @@ impl ::core::marker::StructuralEq for Enum1 { }
 impl ::core::cmp::Eq for Enum1 {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
@@ -959,7 +959,7 @@ impl ::core::marker::StructuralEq for Fieldless1 { }
 impl ::core::cmp::Eq for Fieldless1 {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
@@ -1034,7 +1034,7 @@ impl ::core::marker::StructuralEq for Fieldless { }
 impl ::core::cmp::Eq for Fieldless {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
@@ -1142,7 +1142,7 @@ impl ::core::marker::StructuralEq for Mixed { }
 impl ::core::cmp::Eq for Mixed {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
@@ -1270,7 +1270,7 @@ impl ::core::marker::StructuralEq for Fielded { }
 impl ::core::cmp::Eq for Fielded {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<bool>;
@@ -1393,7 +1393,7 @@ impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
     EnumGeneric<T, U> {
     #[inline]
     #[doc(hidden)]
-    #[no_coverage]
+    #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<U>;

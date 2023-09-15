@@ -11,7 +11,7 @@
 //! modification. These are the ones containing the most important type-related
 //! information, such as `Ty`, `Predicate`, `Region`, and `Const`.
 //!
-//! There are three groups of traits involved in each traversal.
+//! There are three traits involved in each traversal.
 //! - `TypeFoldable`. This is implemented once for many types, including:
 //!   - Types of interest, for which the methods delegate to the folder.
 //!   - All other types, including generic containers like `Vec` and `Option`.
@@ -51,6 +51,12 @@ use crate::{visit::TypeVisitable, Interner};
 ///
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
+///
+/// This trait is a sub-trait of `TypeVisitable`. This is because many
+/// `TypeFolder` instances use the methods in `TypeVisitableExt` while folding,
+/// which means in practice almost every foldable type needs to also be
+/// visitable. (However, there are some types that are visitable without being
+/// foldable.)
 pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
     /// The entry point for folding. To fold a value `t` with a folder `f`
     /// call: `t.try_fold_with(f)`.
@@ -58,7 +64,7 @@ pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
     /// For most types, this just traverses the value, calling `try_fold_with`
     /// on each field/element.
     ///
-    /// For types of interest (such as `Ty`), the implementation of method
+    /// For types of interest (such as `Ty`), the implementation of this method
     /// calls a folder method specifically for that type (such as
     /// `F::try_fold_ty`). This is where control transfers from `TypeFoldable`
     /// to `TypeFolder`.
@@ -121,7 +127,7 @@ pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = !> {
     }
 
     // The default region folder is a no-op because `Region` is non-recursive
-    // and has no `super_visit_with` method to call. That also explains the
+    // and has no `super_fold_with` method to call. That also explains the
     // lack of `I::Region: TypeSuperFoldable<I>` bound on this method.
     fn fold_region(&mut self, r: I::Region) -> I::Region {
         r
@@ -170,7 +176,7 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
     }
 
     // The default region folder is a no-op because `Region` is non-recursive
-    // and has no `super_visit_with` method to call. That also explains the
+    // and has no `super_fold_with` method to call. That also explains the
     // lack of `I::Region: TypeSuperFoldable<I>` bound on this method.
     fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Self::Error> {
         Ok(r)

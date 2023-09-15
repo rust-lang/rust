@@ -198,11 +198,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             (Some(PatKind::Constant { value: lo }), None) => {
                 let hi = ty.numeric_max_val(self.tcx)?;
-                Some((*lo, mir::ConstantKind::from_const(hi, self.tcx)))
+                Some((*lo, mir::ConstantKind::from_ty_const(hi, self.tcx)))
             }
             (None, Some(PatKind::Constant { value: hi })) => {
                 let lo = ty.numeric_min_val(self.tcx)?;
-                Some((mir::ConstantKind::from_const(lo, self.tcx), *hi))
+                Some((mir::ConstantKind::from_ty_const(lo, self.tcx), *hi))
             }
             _ => None,
         }
@@ -626,6 +626,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args: args };
         // First try using a valtree in order to destructure the constant into a pattern.
+        // FIXME: replace "try to do a thing, then fall back to another thing"
+        // but something more principled, like a trait query checking whether this can be turned into a valtree.
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {

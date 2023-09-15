@@ -1,3 +1,4 @@
+//@stderr-per-bitwidth
 //@aux-build:proc_macros.rs
 //@no-rustfix
 #![allow(dead_code)]

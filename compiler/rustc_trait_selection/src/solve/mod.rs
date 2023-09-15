@@ -233,9 +233,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self, goals))]
     fn add_goals(&mut self, goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>) {
-        let current_len = self.nested_goals.goals.len();
-        self.nested_goals.goals.extend(goals);
-        debug!("added_goals={:?}", &self.nested_goals.goals[current_len..]);
+        for goal in goals {
+            self.add_goal(goal);
+        }
     }
 
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.

@@ -117,16 +117,6 @@ ast_passes_forbidden_default =
     `default` is only allowed on items in trait impls
     .label = `default` because of this
 
-ast_passes_forbidden_let =
-    `let` expressions are not supported here
-    .note = only supported directly in conditions of `if` and `while` expressions
-    .not_supported_or = `||` operators are not supported in let chain expressions
-    .not_supported_parentheses = `let`s wrapped in parentheses are not supported in a context with let chains
-
-ast_passes_forbidden_let_stable =
-    expected expression, found statement (`let`)
-    .note = variable declaration using `let` is a statement
-
 ast_passes_forbidden_lifetime_bound =
     lifetime bounds cannot be used in this context
 

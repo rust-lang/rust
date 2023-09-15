@@ -8,6 +8,7 @@ use super::{
 
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
+use ast::mut_visit::{noop_visit_expr, MutVisitor};
 use ast::{Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
@@ -27,6 +28,7 @@ use rustc_errors::{
     AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
     PResult, StashKey,
 };
+use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -122,8 +124,8 @@ impl<'a> Parser<'a> {
         self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
     }
 
-    fn parse_expr_catch_underscore(&mut self) -> PResult<'a, P<Expr>> {
-        match self.parse_expr() {
+    fn parse_expr_catch_underscore(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
+        match self.parse_expr_res(restrictions, None) {
             Ok(expr) => Ok(expr),
             Err(mut err) => match self.token.ident() {
                 Some((Ident { name: kw::Underscore, .. }, false))
@@ -141,7 +143,8 @@ impl<'a> Parser<'a> {
 
     /// Parses a sequence of expressions delimited by parentheses.
     fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<P<Expr>>> {
-        self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore()).map(|(r, _)| r)
+        self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore(Restrictions::empty()))
+            .map(|(r, _)| r)
     }
 
     /// Parses an expression, subject to the given restrictions.
@@ -1345,110 +1348,113 @@ impl<'a> Parser<'a> {
         // Outer attributes are already parsed and will be
         // added to the return value after the fact.
 
-        // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
-        let lo = self.token.span;
-        if let token::Literal(_) = self.token.kind {
-            // This match arm is a special-case of the `_` match arm below and
-            // could be removed without changing functionality, but it's faster
-            // to have it here, especially for programs with large constants.
-            self.parse_expr_lit()
-        } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
-            self.parse_expr_tuple_parens()
-        } else if self.check(&token::OpenDelim(Delimiter::Brace)) {
-            self.parse_expr_block(None, lo, BlockCheckMode::Default)
-        } else if self.check(&token::BinOp(token::Or)) || self.check(&token::OrOr) {
-            self.parse_expr_closure().map_err(|mut err| {
-                // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
-                // then suggest parens around the lhs.
-                if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
-                    err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
-                }
-                err
-            })
-        } else if self.check(&token::OpenDelim(Delimiter::Bracket)) {
-            self.parse_expr_array_or_repeat(Delimiter::Bracket)
-        } else if self.is_builtin() {
-            self.parse_expr_builtin()
-        } else if self.check_path() {
-            self.parse_expr_path_start()
-        } else if self.check_keyword(kw::Move)
-            || self.check_keyword(kw::Static)
-            || self.check_const_closure()
-        {
-            self.parse_expr_closure()
-        } else if self.eat_keyword(kw::If) {
-            self.parse_expr_if()
-        } else if self.check_keyword(kw::For) {
-            if self.choose_generics_over_qpath(1) {
-                self.parse_expr_closure()
-            } else {
-                assert!(self.eat_keyword(kw::For));
-                self.parse_expr_for(None, self.prev_token.span)
-            }
-        } else if self.eat_keyword(kw::While) {
-            self.parse_expr_while(None, self.prev_token.span)
-        } else if let Some(label) = self.eat_label() {
-            self.parse_expr_labeled(label, true)
-        } else if self.eat_keyword(kw::Loop) {
-            let sp = self.prev_token.span;
-            self.parse_expr_loop(None, self.prev_token.span).map_err(|mut err| {
-                err.span_label(sp, "while parsing this `loop` expression");
-                err
-            })
-        } else if self.eat_keyword(kw::Match) {
-            let match_sp = self.prev_token.span;
-            self.parse_expr_match().map_err(|mut err| {
-                err.span_label(match_sp, "while parsing this `match` expression");
-                err
-            })
-        } else if self.eat_keyword(kw::Unsafe) {
-            let sp = self.prev_token.span;
-            self.parse_expr_block(None, lo, BlockCheckMode::Unsafe(ast::UserProvided)).map_err(
-                |mut err| {
-                    err.span_label(sp, "while parsing this `unsafe` expression");
+        let restrictions = self.restrictions;
+        self.with_res(restrictions - Restrictions::ALLOW_LET, |this| {
+            // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
+            let lo = this.token.span;
+            if let token::Literal(_) = this.token.kind {
+                // This match arm is a special-case of the `_` match arm below and
+                // could be removed without changing functionality, but it's faster
+                // to have it here, especially for programs with large constants.
+                this.parse_expr_lit()
+            } else if this.check(&token::OpenDelim(Delimiter::Parenthesis)) {
+                this.parse_expr_tuple_parens(restrictions)
+            } else if this.check(&token::OpenDelim(Delimiter::Brace)) {
+                this.parse_expr_block(None, lo, BlockCheckMode::Default)
+            } else if this.check(&token::BinOp(token::Or)) || this.check(&token::OrOr) {
+                this.parse_expr_closure().map_err(|mut err| {
+                    // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
+                    // then suggest parens around the lhs.
+                    if let Some(sp) = this.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+                    }
                     err
-                },
-            )
-        } else if self.check_inline_const(0) {
-            self.parse_const_block(lo.to(self.token.span), false)
-        } else if self.may_recover() && self.is_do_catch_block() {
-            self.recover_do_catch()
-        } else if self.is_try_block() {
-            self.expect_keyword(kw::Try)?;
-            self.parse_try_block(lo)
-        } else if self.eat_keyword(kw::Return) {
-            self.parse_expr_return()
-        } else if self.eat_keyword(kw::Continue) {
-            self.parse_expr_continue(lo)
-        } else if self.eat_keyword(kw::Break) {
-            self.parse_expr_break()
-        } else if self.eat_keyword(kw::Yield) {
-            self.parse_expr_yield()
-        } else if self.is_do_yeet() {
-            self.parse_expr_yeet()
-        } else if self.eat_keyword(kw::Become) {
-            self.parse_expr_become()
-        } else if self.check_keyword(kw::Let) {
-            self.parse_expr_let()
-        } else if self.eat_keyword(kw::Underscore) {
-            Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore))
-        } else if self.token.uninterpolated_span().at_least_rust_2018() {
-            // `Span:.at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
-            if self.check_keyword(kw::Async) {
-                if self.is_async_block() {
-                    // Check for `async {` and `async move {`.
-                    self.parse_async_block()
+                })
+            } else if this.check(&token::OpenDelim(Delimiter::Bracket)) {
+                this.parse_expr_array_or_repeat(Delimiter::Bracket)
+            } else if this.is_builtin() {
+                this.parse_expr_builtin()
+            } else if this.check_path() {
+                this.parse_expr_path_start()
+            } else if this.check_keyword(kw::Move)
+                || this.check_keyword(kw::Static)
+                || this.check_const_closure()
+            {
+                this.parse_expr_closure()
+            } else if this.eat_keyword(kw::If) {
+                this.parse_expr_if()
+            } else if this.check_keyword(kw::For) {
+                if this.choose_generics_over_qpath(1) {
+                    this.parse_expr_closure()
                 } else {
-                    self.parse_expr_closure()
+                    assert!(this.eat_keyword(kw::For));
+                    this.parse_expr_for(None, this.prev_token.span)
                 }
-            } else if self.eat_keyword(kw::Await) {
-                self.recover_incorrect_await_syntax(lo, self.prev_token.span)
+            } else if this.eat_keyword(kw::While) {
+                this.parse_expr_while(None, this.prev_token.span)
+            } else if let Some(label) = this.eat_label() {
+                this.parse_expr_labeled(label, true)
+            } else if this.eat_keyword(kw::Loop) {
+                let sp = this.prev_token.span;
+                this.parse_expr_loop(None, this.prev_token.span).map_err(|mut err| {
+                    err.span_label(sp, "while parsing this `loop` expression");
+                    err
+                })
+            } else if this.eat_keyword(kw::Match) {
+                let match_sp = this.prev_token.span;
+                this.parse_expr_match().map_err(|mut err| {
+                    err.span_label(match_sp, "while parsing this `match` expression");
+                    err
+                })
+            } else if this.eat_keyword(kw::Unsafe) {
+                let sp = this.prev_token.span;
+                this.parse_expr_block(None, lo, BlockCheckMode::Unsafe(ast::UserProvided)).map_err(
+                    |mut err| {
+                        err.span_label(sp, "while parsing this `unsafe` expression");
+                        err
+                    },
+                )
+            } else if this.check_inline_const(0) {
+                this.parse_const_block(lo.to(this.token.span), false)
+            } else if this.may_recover() && this.is_do_catch_block() {
+                this.recover_do_catch()
+            } else if this.is_try_block() {
+                this.expect_keyword(kw::Try)?;
+                this.parse_try_block(lo)
+            } else if this.eat_keyword(kw::Return) {
+                this.parse_expr_return()
+            } else if this.eat_keyword(kw::Continue) {
+                this.parse_expr_continue(lo)
+            } else if this.eat_keyword(kw::Break) {
+                this.parse_expr_break()
+            } else if this.eat_keyword(kw::Yield) {
+                this.parse_expr_yield()
+            } else if this.is_do_yeet() {
+                this.parse_expr_yeet()
+            } else if this.eat_keyword(kw::Become) {
+                this.parse_expr_become()
+            } else if this.check_keyword(kw::Let) {
+                this.parse_expr_let(restrictions)
+            } else if this.eat_keyword(kw::Underscore) {
+                Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
+            } else if this.token.uninterpolated_span().at_least_rust_2018() {
+                // `Span:.at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
+                if this.check_keyword(kw::Async) {
+                    if this.is_async_block() {
+                        // Check for `async {` and `async move {`.
+                        this.parse_async_block()
+                    } else {
+                        this.parse_expr_closure()
+                    }
+                } else if this.eat_keyword(kw::Await) {
+                    this.recover_incorrect_await_syntax(lo, this.prev_token.span)
+                } else {
+                    this.parse_expr_lit()
+                }
             } else {
-                self.parse_expr_lit()
+                this.parse_expr_lit()
             }
-        } else {
-            self.parse_expr_lit()
-        }
+        })
     }
 
     fn parse_expr_lit(&mut self) -> PResult<'a, P<Expr>> {
@@ -1462,13 +1468,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr_tuple_parens(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_tuple_parens(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
         let (es, trailing_comma) = match self.parse_seq_to_end(
             &token::CloseDelim(Delimiter::Parenthesis),
             SeqSep::trailing_allowed(token::Comma),
-            |p| p.parse_expr_catch_underscore(),
+            |p| p.parse_expr_catch_underscore(restrictions.intersection(Restrictions::ALLOW_LET)),
         ) {
             Ok(x) => x,
             Err(err) => {
@@ -2231,7 +2237,8 @@ impl<'a> Parser<'a> {
         let decl_hi = self.prev_token.span;
         let mut body = match fn_decl.output {
             FnRetTy::Default(_) => {
-                let restrictions = self.restrictions - Restrictions::STMT_EXPR;
+                let restrictions =
+                    self.restrictions - Restrictions::STMT_EXPR - Restrictions::ALLOW_LET;
                 self.parse_expr_res(restrictions, None)?
             }
             _ => {
@@ -2436,10 +2443,12 @@ impl<'a> Parser<'a> {
 
     /// Parses the condition of a `if` or `while` expression.
     fn parse_expr_cond(&mut self) -> PResult<'a, P<Expr>> {
-        let cond =
+        let mut cond =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, None)?;
 
-        if let ExprKind::Let(..) = cond.kind {
+        CondChecker { parser: self, forbid_let_reason: None }.visit_expr(&mut cond);
+
+        if let ExprKind::Let(_, _, _, None) = cond.kind {
             // Remove the last feature gating of a `let` expression since it's stable.
             self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
         }
@@ -2448,18 +2457,15 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `let $pat = $expr` pseudo-expression.
-    fn parse_expr_let(&mut self) -> PResult<'a, P<Expr>> {
-        // This is a *approximate* heuristic that detects if `let` chains are
-        // being parsed in the right position. It's approximate because it
-        // doesn't deny all invalid `let` expressions, just completely wrong usages.
-        let not_in_chain = !matches!(
-            self.prev_token.kind,
-            TokenKind::AndAnd | TokenKind::Ident(kw::If, _) | TokenKind::Ident(kw::While, _)
-        );
-        if !self.restrictions.contains(Restrictions::ALLOW_LET) || not_in_chain {
-            self.sess.emit_err(errors::ExpectedExpressionFoundLet { span: self.token.span });
-        }
-
+    fn parse_expr_let(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
+        let is_recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
+            Some(self.sess.emit_err(errors::ExpectedExpressionFoundLet {
+                span: self.token.span,
+                reason: ForbiddenLetReason::OtherForbidden,
+            }))
+        } else {
+            None
+        };
         self.bump(); // Eat `let` token
         let lo = self.prev_token.span;
         let pat = self.parse_pat_allow_top_alt(
@@ -2479,8 +2485,7 @@ impl<'a> Parser<'a> {
         }
         let expr = self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), None.into())?;
         let span = lo.to(expr.span);
-        self.sess.gated_spans.gate(sym::let_chains, span);
-        Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span)))
+        Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, is_recovered)))
     }
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
@@ -2829,7 +2834,10 @@ impl<'a> Parser<'a> {
             )?;
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
-                let cond = this.parse_expr_res(Restrictions::ALLOW_LET, None)?;
+                let mut cond = this.parse_expr_res(Restrictions::ALLOW_LET, None)?;
+
+                CondChecker { parser: this, forbid_let_reason: None }.visit_expr(&mut cond);
+
                 let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
                 if has_let_expr {
                     if does_not_have_bin_op {
@@ -3412,5 +3420,132 @@ impl<'a> Parser<'a> {
             };
             Ok((res, trailing))
         })
+    }
+}
+
+/// Used to forbid `let` expressions in certain syntactic locations.
+#[derive(Clone, Copy, Subdiagnostic)]
+pub(crate) enum ForbiddenLetReason {
+    /// `let` is not valid and the source environment is not important
+    OtherForbidden,
+    /// A let chain with the `||` operator
+    #[note(parse_not_supported_or)]
+    NotSupportedOr(#[primary_span] Span),
+    /// A let chain with invalid parentheses
+    ///
+    /// For example, `let 1 = 1 && (expr && expr)` is allowed
+    /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
+    #[note(parse_not_supported_parentheses)]
+    NotSupportedParentheses(#[primary_span] Span),
+}
+
+/// Visitor to check for invalid/unstable use of `ExprKind::Let` that can't
+/// easily be caught in parsing. For example:
+///
+/// ```rust,ignore (example)
+/// // Only know that the let isn't allowed once the `||` token is reached
+/// if let Some(x) = y || true {}
+/// // Only know that the let isn't allowed once the second `=` token is reached.
+/// if let Some(x) = y && z = 1 {}
+/// ```
+struct CondChecker<'a> {
+    parser: &'a Parser<'a>,
+    forbid_let_reason: Option<ForbiddenLetReason>,
+}
+
+impl MutVisitor for CondChecker<'_> {
+    fn visit_expr(&mut self, e: &mut P<Expr>) {
+        use ForbiddenLetReason::*;
+
+        let span = e.span;
+        match e.kind {
+            ExprKind::Let(_, _, _, ref mut is_recovered @ None) => {
+                if let Some(reason) = self.forbid_let_reason {
+                    *is_recovered = Some(
+                        self.parser
+                            .sess
+                            .emit_err(errors::ExpectedExpressionFoundLet { span, reason }),
+                    );
+                } else {
+                    self.parser.sess.gated_spans.gate(sym::let_chains, span);
+                }
+            }
+            ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, _, _) => {
+                noop_visit_expr(e, self);
+            }
+            ExprKind::Binary(Spanned { node: BinOpKind::Or, span: or_span }, _, _)
+                if let None | Some(NotSupportedOr(_)) = self.forbid_let_reason =>
+            {
+                let forbid_let_reason = self.forbid_let_reason;
+                self.forbid_let_reason = Some(NotSupportedOr(or_span));
+                noop_visit_expr(e, self);
+                self.forbid_let_reason = forbid_let_reason;
+            }
+            ExprKind::Paren(ref inner)
+                if let None | Some(NotSupportedParentheses(_)) = self.forbid_let_reason =>
+            {
+                let forbid_let_reason = self.forbid_let_reason;
+                self.forbid_let_reason = Some(NotSupportedParentheses(inner.span));
+                noop_visit_expr(e, self);
+                self.forbid_let_reason = forbid_let_reason;
+            }
+            ExprKind::Unary(_, _)
+            | ExprKind::Await(_, _)
+            | ExprKind::Assign(_, _, _)
+            | ExprKind::AssignOp(_, _, _)
+            | ExprKind::Range(_, _, _)
+            | ExprKind::Try(_)
+            | ExprKind::AddrOf(_, _, _)
+            | ExprKind::Binary(_, _, _)
+            | ExprKind::Field(_, _)
+            | ExprKind::Index(_, _, _)
+            | ExprKind::Call(_, _)
+            | ExprKind::MethodCall(_)
+            | ExprKind::Tup(_)
+            | ExprKind::Paren(_) => {
+                let forbid_let_reason = self.forbid_let_reason;
+                self.forbid_let_reason = Some(OtherForbidden);
+                noop_visit_expr(e, self);
+                self.forbid_let_reason = forbid_let_reason;
+            }
+            ExprKind::Cast(ref mut op, _)
+            | ExprKind::Type(ref mut op, _) => {
+                let forbid_let_reason = self.forbid_let_reason;
+                self.forbid_let_reason = Some(OtherForbidden);
+                self.visit_expr(op);
+                self.forbid_let_reason = forbid_let_reason;
+            }
+            ExprKind::Let(_, _, _, Some(_))
+            | ExprKind::Array(_)
+            | ExprKind::ConstBlock(_)
+            | ExprKind::Lit(_)
+            | ExprKind::If(_, _, _)
+            | ExprKind::While(_, _, _)
+            | ExprKind::ForLoop(_, _, _, _)
+            | ExprKind::Loop(_, _, _)
+            | ExprKind::Match(_, _)
+            | ExprKind::Closure(_)
+            | ExprKind::Block(_, _)
+            | ExprKind::Async(_, _)
+            | ExprKind::TryBlock(_)
+            | ExprKind::Underscore
+            | ExprKind::Path(_, _)
+            | ExprKind::Break(_, _)
+            | ExprKind::Continue(_)
+            | ExprKind::Ret(_)
+            | ExprKind::InlineAsm(_)
+            | ExprKind::OffsetOf(_, _)
+            | ExprKind::MacCall(_)
+            | ExprKind::Struct(_)
+            | ExprKind::Repeat(_, _)
+            | ExprKind::Yield(_)
+            | ExprKind::Yeet(_)
+            | ExprKind::Become(_)
+            | ExprKind::IncludedBytes(_)
+            | ExprKind::FormatArgs(_)
+            | ExprKind::Err => {
+                // These would forbid any let expressions they contain already.
+            }
+        }
     }
 }

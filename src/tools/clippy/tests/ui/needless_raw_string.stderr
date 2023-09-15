@@ -2,16 +2,58 @@ error: unnecessary raw string literal
   --> $DIR/needless_raw_string.rs:6:5
    |
 LL |     r#"aaa"#;
-   |     ^^^^^^^^ help: try: `"aaa"`
+   |     ^^^^^^^^
    |
    = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`
+help: try
+   |
+LL -     r#"aaa"#;
+LL +     "aaa";
+   |
 
 error: unnecessary raw string literal
   --> $DIR/needless_raw_string.rs:9:5
    |
 LL |     br#"aaa"#;
-   |     ^^^^^^^^^ help: try: `b"aaa"`
+   |     ^^^^^^^^^
+   |
+help: try
+   |
+LL -     br#"aaa"#;
+LL +     b"aaa";
+   |
 
-error: aborting due to 2 previous errors
+error: unnecessary raw string literal
+  --> $DIR/needless_raw_string.rs:12:5
+   |
+LL |     cr#"aaa"#;
+   |     ^^^^^^^^^
+   |
+help: try
+   |
+LL -     cr#"aaa"#;
+LL +     c"aaa";
+   |
+
+error: unnecessary raw string literal
+  --> $DIR/needless_raw_string.rs:16:5
+   |
+LL | /     r#"
+LL | |         a
+LL | |         multiline
+LL | |         string
+LL | |     "#;
+   | |______^
+   |
+help: try
+   |
+LL ~     "
+LL |         a
+LL |         multiline
+LL |         string
+LL ~     ";
+   |
+
+error: aborting due to 4 previous errors
 

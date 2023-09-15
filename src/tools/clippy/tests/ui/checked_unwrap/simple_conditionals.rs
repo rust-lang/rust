@@ -128,6 +128,57 @@ fn main() {
     assert!(x.is_ok(), "{:?}", x.unwrap_err());
 }
 
+fn issue11371() {
+    let option = Some(());
+
+    if option.is_some() {
+        option.as_ref().unwrap();
+        //~^ ERROR: called `unwrap` on `option` after checking its variant with `is_some`
+    } else {
+        option.as_ref().unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+    }
+
+    let result = Ok::<(), ()>(());
+
+    if result.is_ok() {
+        result.as_ref().unwrap();
+        //~^ ERROR: called `unwrap` on `result` after checking its variant with `is_ok`
+    } else {
+        result.as_ref().unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+    }
+
+    let mut option = Some(());
+    if option.is_some() {
+        option.as_mut().unwrap();
+        //~^ ERROR: called `unwrap` on `option` after checking its variant with `is_some`
+    } else {
+        option.as_mut().unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+    }
+
+    let mut result = Ok::<(), ()>(());
+    if result.is_ok() {
+        result.as_mut().unwrap();
+        //~^ ERROR: called `unwrap` on `result` after checking its variant with `is_ok`
+    } else {
+        result.as_mut().unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
+    }
+
+    // This should not lint. Statics are, at the time of writing, not linted on anyway,
+    // but if at some point they are supported by this lint, it should correctly see that
+    // `X` is being mutated and not suggest `if let Some(..) = X {}`
+    static mut X: Option<i32> = Some(123);
+    unsafe {
+        if X.is_some() {
+            X = None;
+            X.unwrap();
+        }
+    }
+}
+
 fn check_expect() {
     let x = Some(());
     if x.is_some() {

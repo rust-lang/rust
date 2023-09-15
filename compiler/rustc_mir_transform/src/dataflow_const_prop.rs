@@ -3,17 +3,19 @@
 //! Currently, this pass only propagates scalar values.
 
 use rustc_const_eval::const_eval::CheckAlignment;
-use rustc_const_eval::interpret::{ConstValue, ImmTy, Immediate, InterpCx, Scalar};
+use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::visit::{MutVisitor, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ConstValue, InterpResult, Scalar};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
-    Map, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
+    Map, PlaceIndex, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
 };
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, Results, ResultsVisitor};
+use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, FieldIdx, VariantIdx};
 
@@ -58,13 +60,10 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
             .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
 
         // Collect results and patch the body afterwards.
-        let mut visitor = CollectAndPatch::new(tcx, &body.local_decls);
+        let mut visitor = Collector::new(tcx, &body.local_decls);
         debug_span!("collect").in_scope(|| results.visit_reachable_with(body, &mut visitor));
-        debug_span!("patch").in_scope(|| {
-            for (block, bbdata) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
-                visitor.visit_basic_block_data(block, bbdata);
-            }
-        })
+        let mut patch = visitor.patch;
+        debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
     }
 }
 
@@ -77,7 +76,7 @@ struct ConstAnalysis<'a, 'tcx> {
 }
 
 impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
-    type Value = FlatSet<ScalarInt>;
+    type Value = FlatSet<Scalar>;
 
     const NAME: &'static str = "ConstAnalysis";
 
@@ -111,6 +110,18 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         state: &mut State<Self::Value>,
     ) {
         match rvalue {
+            Rvalue::Use(operand) => {
+                state.flood(target.as_ref(), self.map());
+                if let Some(target) = self.map.find(target.as_ref()) {
+                    self.assign_operand(state, target, operand);
+                }
+            }
+            Rvalue::CopyForDeref(rhs) => {
+                state.flood(target.as_ref(), self.map());
+                if let Some(target) = self.map.find(target.as_ref()) {
+                    self.assign_operand(state, target, &Operand::Copy(*rhs));
+                }
+            }
             Rvalue::Aggregate(kind, operands) => {
                 // If we assign `target = Enum::Variant#0(operand)`,
                 // we must make sure that all `target as Variant#i` are `Top`.
@@ -138,8 +149,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                             variant_target_idx,
                             TrackElem::Field(FieldIdx::from_usize(field_index)),
                         ) {
-                            let result = self.handle_operand(operand, state);
-                            state.insert_idx(field, result, self.map());
+                            self.assign_operand(state, field, operand);
                         }
                     }
                 }
@@ -176,7 +186,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     if let Some(overflow_target) = overflow_target {
                         let overflow = match overflow {
                             FlatSet::Top => FlatSet::Top,
-                            FlatSet::Elem(overflow) => FlatSet::Elem(overflow.into()),
+                            FlatSet::Elem(overflow) => FlatSet::Elem(Scalar::from_bool(overflow)),
                             FlatSet::Bottom => FlatSet::Bottom,
                         };
                         // We have flooded `target` earlier.
@@ -196,9 +206,9 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     && let operand_ty = operand.ty(self.local_decls, self.tcx)
                     && let Some(operand_ty) = operand_ty.builtin_deref(true)
                     && let ty::Array(_, len) = operand_ty.ty.kind()
-                    && let Some(len) = ConstantKind::Ty(*len).eval(self.tcx, self.param_env).try_to_scalar_int()
+                    && let Some(len) = ConstantKind::Ty(*len).try_eval_scalar_int(self.tcx, self.param_env)
                 {
-                    state.insert_value_idx(target_len, FlatSet::Elem(len), self.map());
+                    state.insert_value_idx(target_len, FlatSet::Elem(len.into()), self.map());
                 }
             }
             _ => self.super_assign(target, rvalue, state),
@@ -215,8 +225,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 let place_ty = place.ty(self.local_decls, self.tcx);
                 if let ty::Array(_, len) = place_ty.ty.kind() {
                     ConstantKind::Ty(*len)
-                        .eval(self.tcx, self.param_env)
-                        .try_to_scalar_int()
+                        .try_eval_scalar(self.tcx, self.param_env)
                         .map_or(FlatSet::Top, FlatSet::Elem)
                 } else if let [ProjectionElem::Deref] = place.projection[..] {
                     state.get_len(place.local.into(), self.map())
@@ -257,9 +266,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 val
             }
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
-                FlatSet::Elem(value) => {
-                    self.ecx.unary_op(*op, &value).map_or(FlatSet::Top, |val| self.wrap_immty(val))
-                }
+                FlatSet::Elem(value) => self
+                    .ecx
+                    .unary_op(*op, &value)
+                    .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
                 FlatSet::Bottom => FlatSet::Bottom,
                 FlatSet::Top => FlatSet::Top,
             },
@@ -275,7 +285,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                         .bytes(),
                     _ => return ValueOrPlace::Value(FlatSet::Top),
                 };
-                ScalarInt::try_from_target_usize(val, self.tcx).map_or(FlatSet::Top, FlatSet::Elem)
+                FlatSet::Elem(Scalar::from_target_usize(val, &self.tcx))
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), self.map()),
             _ => return self.super_rvalue(rvalue, state),
@@ -290,8 +300,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
     ) -> Self::Value {
         constant
             .literal
-            .eval(self.tcx, self.param_env)
-            .try_to_scalar_int()
+            .try_eval_scalar(self.tcx, self.param_env)
             .map_or(FlatSet::Top, FlatSet::Elem)
     }
 
@@ -330,13 +339,98 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         }
     }
 
+    /// The caller must have flooded `place`.
+    fn assign_operand(
+        &self,
+        state: &mut State<FlatSet<Scalar>>,
+        place: PlaceIndex,
+        operand: &Operand<'tcx>,
+    ) {
+        match operand {
+            Operand::Copy(rhs) | Operand::Move(rhs) => {
+                if let Some(rhs) = self.map.find(rhs.as_ref()) {
+                    state.insert_place_idx(place, rhs, &self.map);
+                } else if rhs.projection.first() == Some(&PlaceElem::Deref)
+                    && let FlatSet::Elem(pointer) = state.get(rhs.local.into(), &self.map)
+                    && let rhs_ty = self.local_decls[rhs.local].ty
+                    && let Ok(rhs_layout) = self.tcx.layout_of(self.param_env.and(rhs_ty))
+                {
+                    let op = ImmTy::from_scalar(pointer, rhs_layout).into();
+                    self.assign_constant(state, place, op, &rhs.projection);
+                }
+            }
+            Operand::Constant(box constant) => {
+                if let Ok(constant) = self.ecx.eval_mir_constant(&constant.literal, None, None) {
+                    self.assign_constant(state, place, constant, &[]);
+                }
+            }
+        }
+    }
+
+    /// The caller must have flooded `place`.
+    ///
+    /// Perform: `place = operand.projection`.
+    #[instrument(level = "trace", skip(self, state))]
+    fn assign_constant(
+        &self,
+        state: &mut State<FlatSet<Scalar>>,
+        place: PlaceIndex,
+        mut operand: OpTy<'tcx>,
+        projection: &[PlaceElem<'tcx>],
+    ) -> Option<!> {
+        for &(mut proj_elem) in projection {
+            if let PlaceElem::Index(index) = proj_elem {
+                if let FlatSet::Elem(index) = state.get(index.into(), &self.map)
+                    && let Ok(offset) = index.to_target_usize(&self.tcx)
+                    && let Some(min_length) = offset.checked_add(1)
+                {
+                    proj_elem = PlaceElem::ConstantIndex { offset, min_length, from_end: false };
+                } else {
+                    return None;
+                }
+            }
+            operand = self.ecx.project(&operand, proj_elem).ok()?;
+        }
+
+        self.map.for_each_projection_value(
+            place,
+            operand,
+            &mut |elem, op| match elem {
+                TrackElem::Field(idx) => self.ecx.project_field(op, idx.as_usize()).ok(),
+                TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).ok(),
+                TrackElem::Discriminant => {
+                    let variant = self.ecx.read_discriminant(op).ok()?;
+                    let discr_value = self.ecx.discriminant_for_variant(op.layout, variant).ok()?;
+                    Some(discr_value.into())
+                }
+                TrackElem::DerefLen => {
+                    let op: OpTy<'_> = self.ecx.deref_pointer(op).ok()?.into();
+                    let len_usize = op.len(&self.ecx).ok()?;
+                    let layout =
+                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).unwrap();
+                    Some(ImmTy::from_uint(len_usize, layout).into())
+                }
+            },
+            &mut |place, op| {
+                if let Ok(imm) = self.ecx.read_immediate_raw(op)
+                    && let Some(imm) = imm.right()
+                {
+                    let elem = self.wrap_immediate(*imm);
+                    state.insert_value_idx(place, elem, &self.map);
+                }
+            },
+        );
+
+        None
+    }
+
     fn binary_op(
         &self,
-        state: &mut State<FlatSet<ScalarInt>>,
+        state: &mut State<FlatSet<Scalar>>,
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
-    ) -> (FlatSet<ScalarInt>, FlatSet<bool>) {
+    ) -> (FlatSet<Scalar>, FlatSet<bool>) {
         let left = self.eval_operand(left, state);
         let right = self.eval_operand(right, state);
 
@@ -345,9 +439,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             // Both sides are known, do the actual computation.
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
                 match self.ecx.overflowing_binary_op(op, &left, &right) {
-                    Ok((Scalar::Int(val), overflow, _)) => {
-                        (FlatSet::Elem(val), FlatSet::Elem(overflow))
-                    }
+                    Ok((val, overflow, _)) => (FlatSet::Elem(val), FlatSet::Elem(overflow)),
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
             }
@@ -359,9 +451,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
 
                 let arg_scalar = const_arg.to_scalar();
-                let Ok(arg_scalar) = arg_scalar.try_to_int() else {
-                    return (FlatSet::Top, FlatSet::Top);
-                };
                 let Ok(arg_value) = arg_scalar.to_bits(layout.size) else {
                     return (FlatSet::Top, FlatSet::Top);
                 };
@@ -387,7 +476,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     fn eval_operand(
         &self,
         op: &Operand<'tcx>,
-        state: &mut State<FlatSet<ScalarInt>>,
+        state: &mut State<FlatSet<Scalar>>,
     ) -> FlatSet<ImmTy<'tcx>> {
         let value = match self.handle_operand(op, state) {
             ValueOrPlace::Value(value) => value,
@@ -397,74 +486,83 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             FlatSet::Top => FlatSet::Top,
             FlatSet::Elem(scalar) => {
                 let ty = op.ty(self.local_decls, self.tcx);
-                self.tcx
-                    .layout_of(self.param_env.and(ty))
-                    .map(|layout| FlatSet::Elem(ImmTy::from_scalar(scalar.into(), layout)))
-                    .unwrap_or(FlatSet::Top)
+                self.tcx.layout_of(self.param_env.and(ty)).map_or(FlatSet::Top, |layout| {
+                    FlatSet::Elem(ImmTy::from_scalar(scalar.into(), layout))
+                })
             }
             FlatSet::Bottom => FlatSet::Bottom,
         }
     }
 
-    fn eval_discriminant(&self, enum_ty: Ty<'tcx>, variant_index: VariantIdx) -> Option<ScalarInt> {
+    fn eval_discriminant(&self, enum_ty: Ty<'tcx>, variant_index: VariantIdx) -> Option<Scalar> {
         if !enum_ty.is_enum() {
             return None;
         }
-        let discr = enum_ty.discriminant_for_variant(self.tcx, variant_index)?;
-        let discr_layout = self.tcx.layout_of(self.param_env.and(discr.ty)).ok()?;
-        let discr_value = ScalarInt::try_from_uint(discr.val, discr_layout.size)?;
-        Some(discr_value)
+        let enum_ty_layout = self.tcx.layout_of(self.param_env.and(enum_ty)).ok()?;
+        let discr_value = self.ecx.discriminant_for_variant(enum_ty_layout, variant_index).ok()?;
+        Some(discr_value.to_scalar())
     }
 
-    fn wrap_immediate(&self, imm: Immediate) -> FlatSet<ScalarInt> {
+    fn wrap_immediate(&self, imm: Immediate) -> FlatSet<Scalar> {
         match imm {
-            Immediate::Scalar(Scalar::Int(scalar)) => FlatSet::Elem(scalar),
+            Immediate::Scalar(scalar) => FlatSet::Elem(scalar),
+            Immediate::Uninit => FlatSet::Bottom,
             _ => FlatSet::Top,
         }
     }
-
-    fn wrap_immty(&self, val: ImmTy<'tcx>) -> FlatSet<ScalarInt> {
-        self.wrap_immediate(*val)
-    }
 }
 
-struct CollectAndPatch<'tcx, 'locals> {
+pub(crate) struct Patch<'tcx> {
     tcx: TyCtxt<'tcx>,
-    local_decls: &'locals LocalDecls<'tcx>,
 
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
     /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    before_effect: FxHashMap<(Location, Place<'tcx>), ScalarInt>,
+    pub(crate) before_effect: FxHashMap<(Location, Place<'tcx>), ConstantKind<'tcx>>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
-    assignments: FxHashMap<Location, ScalarInt>,
+    pub(crate) assignments: FxHashMap<Location, ConstantKind<'tcx>>,
 }
 
-impl<'tcx, 'locals> CollectAndPatch<'tcx, 'locals> {
-    fn new(tcx: TyCtxt<'tcx>, local_decls: &'locals LocalDecls<'tcx>) -> Self {
-        Self {
-            tcx,
-            local_decls,
-            before_effect: FxHashMap::default(),
-            assignments: FxHashMap::default(),
-        }
+impl<'tcx> Patch<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { tcx, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
     }
 
-    fn make_operand(&self, scalar: ScalarInt, ty: Ty<'tcx>) -> Operand<'tcx> {
-        Operand::Constant(Box::new(Constant {
-            span: DUMMY_SP,
-            user_ty: None,
-            literal: ConstantKind::Val(ConstValue::Scalar(scalar.into()), ty),
-        }))
+    fn make_operand(&self, literal: ConstantKind<'tcx>) -> Operand<'tcx> {
+        Operand::Constant(Box::new(Constant { span: DUMMY_SP, user_ty: None, literal }))
+    }
+}
+
+struct Collector<'tcx, 'locals> {
+    patch: Patch<'tcx>,
+    local_decls: &'locals LocalDecls<'tcx>,
+}
+
+impl<'tcx, 'locals> Collector<'tcx, 'locals> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, local_decls: &'locals LocalDecls<'tcx>) -> Self {
+        Self { patch: Patch::new(tcx), local_decls }
+    }
+
+    fn try_make_constant(
+        &self,
+        place: Place<'tcx>,
+        state: &State<FlatSet<Scalar>>,
+        map: &Map,
+    ) -> Option<ConstantKind<'tcx>> {
+        let FlatSet::Elem(Scalar::Int(value)) = state.get(place.as_ref(), &map) else {
+            return None;
+        };
+        let ty = place.ty(self.local_decls, self.patch.tcx).ty;
+        Some(ConstantKind::Val(ConstValue::Scalar(value.into()), ty))
     }
 }
 
 impl<'mir, 'tcx>
     ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>>
-    for CollectAndPatch<'tcx, '_>
+    for Collector<'tcx, '_>
 {
-    type FlowState = State<FlatSet<ScalarInt>>;
+    type FlowState = State<FlatSet<Scalar>>;
 
     fn visit_statement_before_primary_effect(
         &mut self,
@@ -494,14 +592,8 @@ impl<'mir, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign(box (place, _)) => {
-                match state.get(place.as_ref(), &results.analysis.0.map) {
-                    FlatSet::Top => (),
-                    FlatSet::Elem(value) => {
-                        self.assignments.insert(location, value);
-                    }
-                    FlatSet::Bottom => {
-                        // This assignment is either unreachable, or an uninitialized value is assigned.
-                    }
+                if let Some(value) = self.try_make_constant(place, state, &results.analysis.0.map) {
+                    self.patch.assignments.insert(location, value);
                 }
             }
             _ => (),
@@ -520,7 +612,7 @@ impl<'mir, 'tcx>
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
+impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -529,8 +621,7 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         if let Some(value) = self.assignments.get(&location) {
             match &mut statement.kind {
                 StatementKind::Assign(box (_, rvalue)) => {
-                    let ty = rvalue.ty(self.local_decls, self.tcx);
-                    *rvalue = Rvalue::Use(self.make_operand(*value, ty));
+                    *rvalue = Rvalue::Use(self.make_operand(*value));
                 }
                 _ => bug!("found assignment info for non-assign statement"),
             }
@@ -543,8 +634,7 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => {
                 if let Some(value) = self.before_effect.get(&(location, *place)) {
-                    let ty = place.ty(self.local_decls, self.tcx).ty;
-                    *operand = self.make_operand(*value, ty);
+                    *operand = self.make_operand(*value);
                 } else if !place.projection.is_empty() {
                     self.super_operand(operand, location)
                 }
@@ -558,11 +648,11 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         elem: PlaceElem<'tcx>,
         location: Location,
     ) -> Option<PlaceElem<'tcx>> {
-        if let PlaceElem::Index(local) = elem
-            && let Some(value) = self.before_effect.get(&(location, local.into()))
-            && let Ok(offset) = value.try_to_target_usize(self.tcx)
-            && let Some(min_length) = offset.checked_add(1)
-        {
+        if let PlaceElem::Index(local) = elem {
+            let offset = self.before_effect.get(&(location, local.into()))?;
+            let offset = offset.try_to_scalar()?;
+            let offset = offset.to_target_usize(&self.tcx).ok()?;
+            let min_length = offset.checked_add(1)?;
             Some(PlaceElem::ConstantIndex { offset, min_length, from_end: false })
         } else {
             None
@@ -571,28 +661,34 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
 }
 
 struct OperandCollector<'tcx, 'map, 'locals, 'a> {
-    state: &'a State<FlatSet<ScalarInt>>,
-    visitor: &'a mut CollectAndPatch<'tcx, 'locals>,
+    state: &'a State<FlatSet<Scalar>>,
+    visitor: &'a mut Collector<'tcx, 'locals>,
     map: &'map Map,
 }
 
 impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
+    fn visit_projection_elem(
+        &mut self,
+        _: PlaceRef<'tcx>,
+        elem: PlaceElem<'tcx>,
+        _: PlaceContext,
+        location: Location,
+    ) {
+        if let PlaceElem::Index(local) = elem
+            && let Some(value) = self.visitor.try_make_constant(local.into(), self.state, self.map)
+        {
+            self.visitor.patch.before_effect.insert((location, local.into()), value);
+        }
+    }
+
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         if let Some(place) = operand.place() {
-            if let FlatSet::Elem(value) = self.state.get(place.as_ref(), self.map) {
-                self.visitor.before_effect.insert((location, place), value);
+            if let Some(value) = self.visitor.try_make_constant(place, self.state, self.map) {
+                self.visitor.patch.before_effect.insert((location, place), value);
             } else if !place.projection.is_empty() {
                 // Try to propagate into `Index` projections.
                 self.super_operand(operand, location)
             }
-        }
-    }
-
-    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, location: Location) {
-        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy | NonMutatingUseContext::Move) = ctxt
-            && let FlatSet::Elem(value) = self.state.get(local.into(), self.map)
-        {
-            self.visitor.before_effect.insert((location, local.into()), value);
         }
     }
 }
@@ -604,8 +700,11 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
+    #[inline(always)]
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
-        unimplemented!()
+        // We do not check for alignment to avoid having to carry an `Align`
+        // in `ConstValue::ByRef`.
+        CheckAlignment::No
     }
 
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
@@ -618,6 +717,27 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         _check: CheckAlignment,
     ) -> interpret::InterpResult<'tcx, ()> {
         unimplemented!()
+    }
+
+    fn before_access_global(
+        _tcx: TyCtxt<'tcx>,
+        _machine: &Self,
+        _alloc_id: AllocId,
+        alloc: ConstAllocation<'tcx>,
+        _static_def_id: Option<DefId>,
+        is_write: bool,
+    ) -> InterpResult<'tcx> {
+        if is_write {
+            crate::const_prop::throw_machine_stop_str!("can't write to global");
+        }
+
+        // If the static allocation is mutable, then we can't const prop it as its content
+        // might be different at runtime.
+        if alloc.inner().mutability.is_mut() {
+            crate::const_prop::throw_machine_stop_str!("can't access mutable globals in ConstProp");
+        }
+
+        Ok(())
     }
 
     fn find_mir_or_eval_fn(
@@ -688,7 +808,8 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         _ecx: &'a InterpCx<'mir, 'tcx, Self>,
     ) -> &'a [rustc_const_eval::interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>]
     {
-        unimplemented!()
+        // Return an empty stack instead of panicking, as `cur_span` uses it to evaluate constants.
+        &[]
     }
 
     fn stack_mut<'a>(

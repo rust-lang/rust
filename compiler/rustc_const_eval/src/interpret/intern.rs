@@ -24,8 +24,8 @@ use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
 use rustc_ast::Mutability;
 
 use super::{
-    AllocId, Allocation, ConstAllocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy,
-    Projectable, ValueVisitor,
+    AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, Projectable,
+    ValueVisitor,
 };
 use crate::const_eval;
 use crate::errors::{DanglingPtrInFinal, UnsupportedUntypedPointer};
@@ -455,7 +455,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
 {
     /// A helper function that allocates memory for the layout given and gives you access to mutate
     /// it. Once your own mutation code is done, the backing `Allocation` is removed from the
-    /// current `Memory` and returned.
+    /// current `Memory` and interned as read-only into the global memory.
     pub fn intern_with_temp_alloc(
         &mut self,
         layout: TyAndLayout<'tcx>,
@@ -463,11 +463,15 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
             &mut InterpCx<'mir, 'tcx, M>,
             &PlaceTy<'tcx, M::Provenance>,
         ) -> InterpResult<'tcx, ()>,
-    ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
+    ) -> InterpResult<'tcx, AllocId> {
+        // `allocate` picks a fresh AllocId that we will associate with its data below.
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest.clone().into())?;
         let mut alloc = self.memory.alloc_map.remove(&dest.ptr().provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
-        Ok(self.tcx.mk_const_alloc(alloc))
+        let alloc = self.tcx.mk_const_alloc(alloc);
+        let alloc_id = dest.ptr().provenance.unwrap(); // this was just allocated, it must have provenance
+        self.tcx.set_alloc_id_memory(alloc_id, alloc);
+        Ok(alloc_id)
     }
 }

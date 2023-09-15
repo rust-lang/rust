@@ -330,10 +330,10 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     {
         let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
 
-        // If a function is marked `#[no_coverage]`, then skip generating a
+        // If a function is marked `#[coverage(off)]`, then skip generating a
         // dead code stub for it.
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
-            debug!("skipping unused fn marked #[no_coverage]: {:?}", non_codegenned_def_id);
+            debug!("skipping unused fn marked #[coverage(off)]: {:?}", non_codegenned_def_id);
             continue;
         }
 

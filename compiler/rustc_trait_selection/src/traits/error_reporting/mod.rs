@@ -2054,7 +2054,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     tcx: self.tcx,
                     ty_op: |ty| ty,
                     lt_op: |lt| lt,
-                    ct_op: |ct| ct.eval(self.tcx, ty::ParamEnv::empty()),
+                    ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
                 });
                 cand
             })

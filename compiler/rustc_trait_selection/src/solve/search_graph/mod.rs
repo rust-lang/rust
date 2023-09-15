@@ -1,6 +1,7 @@
 mod cache;
 
 use self::cache::ProvisionalEntry;
+use super::inspect;
 use super::inspect::ProofTreeBuilder;
 use super::SolverMode;
 use cache::ProvisionalCache;
@@ -185,6 +186,8 @@ impl<'tcx> SearchGraph<'tcx> {
             if let Some(last) = self.stack.raw.last_mut() {
                 last.encountered_overflow = true;
             }
+
+            inspect.goal_evaluation_kind(inspect::WipGoalEvaluationKind::Overflow);
             return Self::response_no_constraints(tcx, input, Certainty::OVERFLOW);
         };
 
@@ -200,6 +203,9 @@ impl<'tcx> SearchGraph<'tcx> {
                     available_depth,
                 )
             {
+                inspect.goal_evaluation_kind(inspect::WipGoalEvaluationKind::CacheHit(
+                    CacheHit::Global,
+                ));
                 self.on_cache_hit(reached_depth, encountered_overflow);
                 return result;
             }
@@ -234,7 +240,9 @@ impl<'tcx> SearchGraph<'tcx> {
             // Finally we can return either the provisional response for that goal if we have a
             // coinductive cycle or an ambiguous result if the cycle is inductive.
             Entry::Occupied(entry_index) => {
-                inspect.cache_hit(CacheHit::Provisional);
+                inspect.goal_evaluation_kind(inspect::WipGoalEvaluationKind::CacheHit(
+                    CacheHit::Provisional,
+                ));
 
                 let entry_index = *entry_index.get();
                 let stack_depth = cache.depth(entry_index);

@@ -237,7 +237,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
         canonical_input: CanonicalInput<'tcx>,
-        goal_evaluation: &mut ProofTreeBuilder<'tcx>,
+        canonical_goal_evaluation: &mut ProofTreeBuilder<'tcx>,
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
     ) -> R {
         let intercrate = match search_graph.solver_mode() {
@@ -260,7 +260,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             search_graph,
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: goal_evaluation.new_goal_evaluation_step(input),
+            inspect: canonical_goal_evaluation.new_goal_evaluation_step(input),
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
@@ -274,7 +274,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         let result = f(&mut ecx, input.goal);
 
-        goal_evaluation.goal_evaluation_step(ecx.inspect);
+        canonical_goal_evaluation.goal_evaluation_step(ecx.inspect);
 
         // When creating a query response we clone the opaque type constraints
         // instead of taking them. This would cause an ICE here, since we have
@@ -302,24 +302,25 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
         canonical_input: CanonicalInput<'tcx>,
-        mut goal_evaluation: &mut ProofTreeBuilder<'tcx>,
+        goal_evaluation: &mut ProofTreeBuilder<'tcx>,
     ) -> QueryResult<'tcx> {
-        goal_evaluation.canonicalized_goal(canonical_input);
+        let mut canonical_goal_evaluation =
+            goal_evaluation.new_canonical_goal_evaluation(canonical_input);
 
         // Deal with overflow, caching, and coinduction.
         //
         // The actual solver logic happens in `ecx.compute_goal`.
-        ensure_sufficient_stack(|| {
+        let result = ensure_sufficient_stack(|| {
             search_graph.with_new_goal(
                 tcx,
                 canonical_input,
-                goal_evaluation,
-                |search_graph, goal_evaluation| {
+                &mut canonical_goal_evaluation,
+                |search_graph, canonical_goal_evaluation| {
                     EvalCtxt::enter_canonical(
                         tcx,
                         search_graph,
                         canonical_input,
-                        goal_evaluation,
+                        canonical_goal_evaluation,
                         |ecx, goal| {
                             let result = ecx.compute_goal(goal);
                             ecx.inspect.query_result(result);
@@ -328,7 +329,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     )
                 },
             )
-        })
+        });
+
+        canonical_goal_evaluation.query_result(result);
+        goal_evaluation.canonical_goal_evaluation(canonical_goal_evaluation);
+        result
     }
 
     /// Recursively evaluates `goal`, returning whether any inference vars have
@@ -347,7 +352,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             canonical_goal,
             &mut goal_evaluation,
         );
-        goal_evaluation.query_result(canonical_response);
         let canonical_response = match canonical_response {
             Err(e) => {
                 self.inspect.goal_evaluation(goal_evaluation);
@@ -916,7 +920,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if candidate_key.def_id != key.def_id {
                 continue;
             }
-            values.extend(self.probe_candidate("opaque type storage").enter(|ecx| {
+            values.extend(self.probe_misc_candidate("opaque type storage").enter(|ecx| {
                 for (a, b) in std::iter::zip(candidate_key.args, key.args) {
                     ecx.eq(param_env, a, b)?;
                 }

@@ -1,5 +1,5 @@
 use super::EvalCtxt;
-use rustc_middle::traits::solve::{inspect, QueryResult};
+use rustc_middle::traits::solve::{inspect, CandidateSource, QueryResult};
 use std::marker::PhantomData;
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, 'tcx, F, T> {
@@ -10,7 +10,7 @@ pub(in crate::solve) struct ProbeCtxt<'me, 'a, 'tcx, F, T> {
 
 impl<'tcx, F, T> ProbeCtxt<'_, '_, 'tcx, F, T>
 where
-    F: FnOnce(&T) -> inspect::CandidateKind<'tcx>,
+    F: FnOnce(&T) -> inspect::ProbeKind<'tcx>,
 {
     pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> T) -> T {
         let ProbeCtxt { ecx: outer_ecx, probe_kind, _result } = self;
@@ -28,8 +28,8 @@ where
         };
         let r = nested_ecx.infcx.probe(|_| f(&mut nested_ecx));
         if !outer_ecx.inspect.is_noop() {
-            let cand_kind = probe_kind(&r);
-            nested_ecx.inspect.candidate_kind(cand_kind);
+            let probe_kind = probe_kind(&r);
+            nested_ecx.inspect.probe_kind(probe_kind);
             outer_ecx.inspect.goal_candidate(nested_ecx.inspect);
         }
         r
@@ -41,25 +41,45 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// as expensive as necessary to output the desired information.
     pub(in crate::solve) fn probe<F, T>(&mut self, probe_kind: F) -> ProbeCtxt<'_, 'a, 'tcx, F, T>
     where
-        F: FnOnce(&T) -> inspect::CandidateKind<'tcx>,
+        F: FnOnce(&T) -> inspect::ProbeKind<'tcx>,
     {
         ProbeCtxt { ecx: self, probe_kind, _result: PhantomData }
     }
 
-    pub(in crate::solve) fn probe_candidate(
+    pub(in crate::solve) fn probe_misc_candidate(
         &mut self,
         name: &'static str,
     ) -> ProbeCtxt<
         '_,
         'a,
         'tcx,
-        impl FnOnce(&QueryResult<'tcx>) -> inspect::CandidateKind<'tcx>,
+        impl FnOnce(&QueryResult<'tcx>) -> inspect::ProbeKind<'tcx>,
         QueryResult<'tcx>,
     > {
         ProbeCtxt {
             ecx: self,
-            probe_kind: move |result: &QueryResult<'tcx>| inspect::CandidateKind::Candidate {
-                name: name.to_string(),
+            probe_kind: move |result: &QueryResult<'tcx>| inspect::ProbeKind::MiscCandidate {
+                name,
+                result: *result,
+            },
+            _result: PhantomData,
+        }
+    }
+
+    pub(in crate::solve) fn probe_trait_candidate(
+        &mut self,
+        source: CandidateSource,
+    ) -> ProbeCtxt<
+        '_,
+        'a,
+        'tcx,
+        impl FnOnce(&QueryResult<'tcx>) -> inspect::ProbeKind<'tcx>,
+        QueryResult<'tcx>,
+    > {
+        ProbeCtxt {
+            ecx: self,
+            probe_kind: move |result: &QueryResult<'tcx>| inspect::ProbeKind::TraitCandidate {
+                source,
                 result: *result,
             },
             _result: PhantomData,

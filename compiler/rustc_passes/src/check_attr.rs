@@ -107,7 +107,7 @@ impl CheckAttrVisitor<'_> {
             match attr.name_or_empty() {
                 sym::do_not_recommend => self.check_do_not_recommend(attr.span, target),
                 sym::inline => self.check_inline(hir_id, attr, span, target),
-                sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
+                sym::coverage => self.check_coverage(hir_id, attr, span, target),
                 sym::non_exhaustive => self.check_non_exhaustive(hir_id, attr, span, target),
                 sym::marker => self.check_marker(hir_id, attr, span, target),
                 sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
@@ -327,16 +327,10 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// Checks if a `#[no_coverage]` is applied directly to a function
-    fn check_no_coverage(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) -> bool {
+    /// Checks if a `#[coverage]` is applied directly to a function
+    fn check_coverage(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
-            // no_coverage on function is fine
+            // #[coverage] on function is fine
             Target::Fn
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
@@ -347,7 +341,7 @@ impl CheckAttrVisitor<'_> {
                     UNUSED_ATTRIBUTES,
                     hir_id,
                     attr.span,
-                    errors::IgnoredNoCoverageFnProto,
+                    errors::IgnoredCoverageFnProto,
                 );
                 true
             }
@@ -357,7 +351,7 @@ impl CheckAttrVisitor<'_> {
                     UNUSED_ATTRIBUTES,
                     hir_id,
                     attr.span,
-                    errors::IgnoredNoCoveragePropagate,
+                    errors::IgnoredCoveragePropagate,
                 );
                 true
             }
@@ -367,13 +361,13 @@ impl CheckAttrVisitor<'_> {
                     UNUSED_ATTRIBUTES,
                     hir_id,
                     attr.span,
-                    errors::IgnoredNoCoverageFnDefn,
+                    errors::IgnoredCoverageFnDefn,
                 );
                 true
             }
 
             _ => {
-                self.tcx.sess.emit_err(errors::IgnoredNoCoverageNotCoverable {
+                self.tcx.sess.emit_err(errors::IgnoredCoverageNotCoverable {
                     attr_span: attr.span,
                     defn_span: span,
                 });

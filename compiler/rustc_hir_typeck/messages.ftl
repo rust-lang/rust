@@ -81,6 +81,12 @@ hir_typeck_option_result_asref = use `{$def_path}::as_ref` to convert `{$expecte
 hir_typeck_option_result_cloned = use `{$def_path}::cloned` to clone the value inside the `{$def_path}`
 hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value inside the `{$def_path}`
 
+hir_typeck_remove_semi_for_coerce = you might have meant to return the `match` expression
+hir_typeck_remove_semi_for_coerce_expr = this could be implicitly returned but it is a statement, not a tail expression
+hir_typeck_remove_semi_for_coerce_ret = the `match` arms can conform to this return type
+hir_typeck_remove_semi_for_coerce_semi = the `match` is a statement because of this semicolon, consider removing it
+hir_typeck_remove_semi_for_coerce_suggestion = remove this semicolon
+
 hir_typeck_return_stmt_outside_of_fn_body =
     {$statement_kind} statement outside of function body
     .encl_body_label = the {$statement_kind} is part of this body...

@@ -348,8 +348,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
     Q: super::QueryConfigRestored<'tcx>,
     Q::RestoredValue: Encodable<CacheEncoder<'a, 'tcx>>,
 {
-    let _timer =
-        qcx.profiler().verbose_generic_activity_with_arg("encode_query_results_for", query.name());
+    let _timer = qcx.profiler().generic_activity_with_arg("encode_query_results_for", query.name());
 
     assert!(query.query_state(qcx).all_inactive());
     let cache = query.query_cache(qcx);

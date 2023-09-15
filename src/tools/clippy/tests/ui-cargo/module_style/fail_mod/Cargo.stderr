@@ -6,6 +6,7 @@ error: `mod.rs` files are required, found `src/bad/inner.rs`
   |
   = help: move `src/bad/inner.rs` to `src/bad/inner/mod.rs`
   = note: `-D clippy::self-named-module-files` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::self_named_module_files)]`
 
 error: `mod.rs` files are required, found `src/bad/inner/stuff.rs`
  --> src/bad/inner/stuff.rs:1:1

@@ -532,7 +532,7 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     /// places that are non-overlapping or identical.
     ///
     /// The target place must have been flooded before calling this method.
-    fn insert_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
+    pub fn insert_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
         let StateData::Reachable(values) = &mut self.0 else { return };
 
         // If both places are tracked, we copy the value to the target.
@@ -926,6 +926,31 @@ impl Map {
         let values = &self.inner_values_buffer[range];
         for &v in values {
             f(v)
+        }
+    }
+
+    /// Invoke a function on each value in the given place and all descendants.
+    pub fn for_each_projection_value<O>(
+        &self,
+        root: PlaceIndex,
+        value: O,
+        project: &mut impl FnMut(TrackElem, &O) -> Option<O>,
+        f: &mut impl FnMut(PlaceIndex, &O),
+    ) {
+        // Fast path is there is nothing to do.
+        if self.inner_values[root].is_empty() {
+            return;
+        }
+
+        if self.places[root].value_index.is_some() {
+            f(root, &value)
+        }
+
+        for child in self.children(root) {
+            let elem = self.places[child].proj_elem.unwrap();
+            if let Some(value) = project(elem, &value) {
+                self.for_each_projection_value(child, value, project, f);
+            }
         }
     }
 }

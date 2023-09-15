@@ -114,7 +114,7 @@ impl EnumSizeOpt {
             tcx.data_layout.ptr_sized_integer().align(&tcx.data_layout).abi,
             Mutability::Not,
         );
-        let alloc = tcx.create_memory_alloc(tcx.mk_const_alloc(alloc));
+        let alloc = tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(alloc));
         Some((*adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
     }
     fn optim<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -139,7 +139,6 @@ impl EnumSizeOpt {
 
                     let (adt_def, num_variants, alloc_id) =
                         self.candidate(tcx, param_env, ty, &mut alloc_cache)?;
-                    let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
 
                     let tmp_ty = Ty::new_array(tcx, tcx.types.usize, num_variants as u64);
 
@@ -154,7 +153,7 @@ impl EnumSizeOpt {
                         span,
                         user_ty: None,
                         literal: ConstantKind::Val(
-                            interpret::ConstValue::ByRef { alloc, offset: Size::ZERO },
+                            interpret::ConstValue::Indirect { alloc_id, offset: Size::ZERO },
                             tmp_ty,
                         ),
                     };

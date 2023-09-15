@@ -1,17 +1,17 @@
-   LL|       |// Enables `no_coverage` on the entire crate
-   LL|       |#![feature(no_coverage)]
+   LL|       |// Enables `coverage(off)` on the entire crate
+   LL|       |#![feature(coverage_attribute)]
    LL|       |
-   LL|       |#[no_coverage]
+   LL|       |#[coverage(off)]
    LL|       |fn do_not_add_coverage_1() {
    LL|       |    println!("called but not covered");
    LL|       |}
    LL|       |
    LL|       |fn do_not_add_coverage_2() {
-   LL|       |    #![no_coverage]
+   LL|       |    #![coverage(off)]
    LL|       |    println!("called but not covered");
    LL|       |}
    LL|       |
-   LL|       |#[no_coverage]
+   LL|       |#[coverage(off)]
    LL|       |#[allow(dead_code)]
    LL|       |fn do_not_add_coverage_not_called() {
    LL|       |    println!("not called and not covered");
@@ -33,7 +33,7 @@
    LL|       |// FIXME: These test-cases illustrate confusing results of nested functions.
    LL|       |// See https://github.com/rust-lang/rust/issues/93319
    LL|       |mod nested_fns {
-   LL|       |    #[no_coverage]
+   LL|       |    #[coverage(off)]
    LL|       |    pub fn outer_not_covered(is_true: bool) {
    LL|      1|        fn inner(is_true: bool) {
    LL|      1|            if is_true {
@@ -50,7 +50,7 @@
    LL|      1|        println!("called and covered");
    LL|      1|        inner_not_covered(is_true);
    LL|      1|
-   LL|      1|        #[no_coverage]
+   LL|      1|        #[coverage(off)]
    LL|      1|        fn inner_not_covered(is_true: bool) {
    LL|      1|            if is_true {
    LL|      1|                println!("called but not covered");

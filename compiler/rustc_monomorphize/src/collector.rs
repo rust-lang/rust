@@ -459,7 +459,7 @@ fn collect_items_rec<'tcx>(
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
     if tcx.sess.diagnostic().err_count() > error_count
-        && starting_item.node.is_generic_fn()
+        && starting_item.node.is_generic_fn(tcx)
         && starting_item.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
@@ -749,39 +749,15 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         let literal = self.monomorphize(constant.literal);
-        let val = match literal {
-            mir::ConstantKind::Val(val, _) => val,
-            mir::ConstantKind::Ty(ct) => match ct.kind() {
-                ty::ConstKind::Value(val) => self.tcx.valtree_to_const_val((ct.ty(), val)),
-                ty::ConstKind::Unevaluated(ct) => {
-                    debug!(?ct);
-                    let param_env = ty::ParamEnv::reveal_all();
-                    match self.tcx.const_eval_resolve(param_env, ct.expand(), None) {
-                        // The `monomorphize` call should have evaluated that constant already.
-                        Ok(val) => val,
-                        Err(ErrorHandled::Reported(_)) => return,
-                        Err(ErrorHandled::TooGeneric) => span_bug!(
-                            self.body.source_info(location).span,
-                            "collection encountered polymorphic constant: {:?}",
-                            literal
-                        ),
-                    }
-                }
-                _ => return,
-            },
-            mir::ConstantKind::Unevaluated(uv, _) => {
-                let param_env = ty::ParamEnv::reveal_all();
-                match self.tcx.const_eval_resolve(param_env, uv, None) {
-                    // The `monomorphize` call should have evaluated that constant already.
-                    Ok(val) => val,
-                    Err(ErrorHandled::Reported(_)) => return,
-                    Err(ErrorHandled::TooGeneric) => span_bug!(
-                        self.body.source_info(location).span,
-                        "collection encountered polymorphic constant: {:?}",
-                        literal
-                    ),
-                }
-            }
+        let param_env = ty::ParamEnv::reveal_all();
+        let val = match literal.eval(self.tcx, param_env, None) {
+            Ok(v) => v,
+            Err(ErrorHandled::Reported(_)) => return,
+            Err(ErrorHandled::TooGeneric) => span_bug!(
+                self.body.source_info(location).span,
+                "collection encountered polymorphic constant: {:?}",
+                literal
+            ),
         };
         collect_const_value(self.tcx, val, self.output);
         MirVisitor::visit_ty(self, literal.ty(), TyContext::Location(location));
@@ -1315,6 +1291,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     // it, to validate whether or not the impl is legal to instantiate at all.
     let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
         GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Const { is_host_effect: true, .. } => tcx.consts.true_.into(),
         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
             unreachable!(
                 "`own_requires_monomorphization` check means that \
@@ -1470,8 +1447,9 @@ fn collect_const_value<'tcx>(
 ) {
     match value {
         ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_alloc(tcx, ptr.provenance, output),
-        ConstValue::Slice { data: alloc, start: _, end: _ } | ConstValue::ByRef { alloc, .. } => {
-            for &id in alloc.inner().provenance().ptrs().values() {
+        ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
+        ConstValue::Slice { data, start: _, end: _ } => {
+            for &id in data.inner().provenance().ptrs().values() {
                 collect_alloc(tcx, id, output);
             }
         }

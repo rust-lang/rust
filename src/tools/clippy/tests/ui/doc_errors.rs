@@ -101,6 +101,11 @@ impl Struct1 {
     fn block_comment_leading_asterisks() -> Result<(), ()> {
         unimplemented!();
     }
+
+    #[doc(hidden)]
+    fn doc_hidden() -> Result<(), ()> {
+        unimplemented!();
+    }
 }
 
 pub trait Trait1 {
@@ -111,6 +116,11 @@ pub trait Trait1 {
     /// # Errors
     /// A description of the errors goes here.
     fn trait_method_with_errors_header() -> Result<(), ()>;
+
+    #[doc(hidden)]
+    fn doc_hidden() -> Result<(), ()> {
+        unimplemented!();
+    }
 }
 
 impl Trait1 for Struct1 {
@@ -121,6 +131,11 @@ impl Trait1 for Struct1 {
     fn trait_method_with_errors_header() -> Result<(), ()> {
         unimplemented!();
     }
+}
+
+#[doc(hidden)]
+pub trait DocHidden {
+    fn f() -> Result<(), ()>;
 }
 
 fn main() -> Result<(), ()> {

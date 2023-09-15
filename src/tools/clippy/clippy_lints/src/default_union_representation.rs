@@ -69,6 +69,9 @@ impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
 }
 
 /// Returns true if the given item is a union with at least two non-ZST fields.
+/// (ZST fields having an arbitrary offset is completely inconsequential, and
+/// if there is only one field left after ignoring ZST fields then the offset
+/// of that field does not matter either.)
 fn is_union_with_two_non_zst_fields(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Union(data, _) = &item.kind {
         data.fields().iter().filter(|f| !is_zst(cx, f.ty)).count() >= 2

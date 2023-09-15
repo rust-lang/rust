@@ -91,7 +91,6 @@ macro_rules! static_files {
 
 static_files! {
     rustdoc_css => "static/css/rustdoc.css",
-    settings_css => "static/css/settings.css",
     noscript_css => "static/css/noscript.css",
     normalize_css => "static/css/normalize.css",
     main_js => "static/js/main.js",

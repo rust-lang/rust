@@ -65,3 +65,36 @@ assert-local-storage: { "rustdoc-theme": "light" }
 reload:
 wait-for: "#settings"
 assert: "#preferred-light-theme.setting-line.hidden"
+
+// Ensures that the custom theme feature is working as expected.
+go-to: "file://" + |DOC_PATH| + "/theme_css/index.html"
+set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
+reload:
+
+store-value: (background_light, "white")
+store-value: (background_dark, "#353535")
+store-value: (background_ayu, "#0f1419")
+store-value: (background_custom_theme, "red")
+
+click: "#settings-menu"
+wait-for: "#theme-ayu"
+click: "#theme-ayu"
+// should be the ayu theme so let's check the color.
+wait-for-css: ("body", { "background-color": |background_ayu| })
+assert-local-storage: { "rustdoc-theme": "ayu" }
+assert-text: (".custom-text", "custom text")
+click: "#theme-light"
+// should be the light theme so let's check the color.
+wait-for-css: ("body", { "background-color": |background_light| })
+assert-local-storage: { "rustdoc-theme": "light" }
+assert-text: (".custom-text", "custom text")
+click: "#theme-dark"
+// Should be the dark theme so let's check the color.
+wait-for-css: ("body", { "background-color": |background_dark| })
+assert-local-storage: { "rustdoc-theme": "dark" }
+assert-text: (".custom-text", "custom text")
+click: "#theme-custom-theme"
+// Should be the custom theme so let's check the color.
+wait-for-css: ("body", { "background-color": |background_custom_theme| })
+assert-local-storage: { "rustdoc-theme": "custom-theme" }
+assert-text: (".custom-text", "custom text")

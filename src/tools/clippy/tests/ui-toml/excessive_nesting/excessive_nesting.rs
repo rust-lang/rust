@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs
+//@aux-build:../../ui/auxiliary/proc_macros.rs
 #![rustfmt::skip]
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
@@ -156,7 +156,7 @@ fn main() {
     for i in {{{{xx}}}} {{{{{{{{}}}}}}}}
 
     while let Some(i) = {{{{{{Some(1)}}}}}} {{{{{{{}}}}}}}
-    
+
     while {{{{{{{{true}}}}}}}} {{{{{{{{{}}}}}}}}}
 
     let d = D { d: {{{{{{{{{{{{{{{{{{{{{{{3}}}}}}}}}}}}}}}}}}}}}}} };
