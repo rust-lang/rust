@@ -607,7 +607,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
                 None => format!("`{callee_ty}`"),
-            }
+            },
         });
         if callee_ty.references_error() {
             err.downgrade_to_delayed_bug();
@@ -882,15 +882,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
             None => {
                 // This can happen if `#![no_core]` is used and the `fn/fn_mut/fn_once`
                 // lang items are not defined (issue #86238).
-                let mut err = fcx.inh.tcx.sess.struct_span_err(
-                    self.call_expr.span,
-                    "failed to find an overloaded call trait for closure call",
-                );
-                err.help(
-                    "make sure the `fn`/`fn_mut`/`fn_once` lang items are defined \
-                     and have correctly defined `call`/`call_mut`/`call_once` methods",
-                );
-                err.emit();
+                fcx.inh.tcx.sess.emit_err(errors::MissingFnLangItems { span: self.call_expr.span });
             }
         }
     }

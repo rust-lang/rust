@@ -72,6 +72,9 @@ hir_typeck_lang_start_incorrect_ret_ty = the return type of the `start` lang ite
 hir_typeck_method_call_on_unknown_raw_pointee =
     cannot call a method on a raw pointer with an unknown pointee type
 
+hir_typeck_missing_fn_lang_items = failed to find an overloaded call trait for closure call
+    .help = make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have correctly defined `call`/`call_mut`/`call_once` methods
+
 hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
 hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
