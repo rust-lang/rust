@@ -130,6 +130,29 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_explicit_destructor, code = "E0040")]
+pub struct ExplicitDestructorCall {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: ExplicitDestructorCallSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub enum ExplicitDestructorCallSugg {
+    #[suggestion(hir_typeck_suggestion, code = "drop", applicability = "maybe-incorrect")]
+    Empty(#[primary_span] Span),
+    #[multipart_suggestion(hir_typeck_suggestion, style = "short")]
+    Snippet {
+        #[suggestion_part(code = "drop(")]
+        lo: Span,
+        #[suggestion_part(code = ")")]
+        hi: Span,
+    },
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_missing_parentheses_in_range, code = "E0689")]
 pub struct MissingParenthesesInRange {
     #[primary_span]

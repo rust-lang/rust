@@ -2,9 +2,10 @@ use super::method::probe::ProbeScope;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
+use crate::errors;
 use crate::type_error_struct;
 use rustc_ast::util::parser::PREC_POSTFIX;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, StashKey};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
@@ -44,23 +45,15 @@ pub fn check_legal_trait_for_method_call(
     trait_id: DefId,
 ) {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
-        let mut err = struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method");
-        err.span_label(span, "explicit destructor calls not allowed");
-
-        let (sp, suggestion) = receiver
-            .and_then(|s| tcx.sess.source_map().span_to_snippet(s).ok())
-            .filter(|snippet| !snippet.is_empty())
-            .map(|snippet| (expr_span, format!("drop({snippet})")))
-            .unwrap_or_else(|| (span, "drop".to_string()));
-
-        err.span_suggestion(
-            sp,
-            "consider using `drop` function",
-            suggestion,
-            Applicability::MaybeIncorrect,
-        );
-
-        err.emit();
+        let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
+            errors::ExplicitDestructorCallSugg::Snippet {
+                lo: expr_span.shrink_to_lo(),
+                hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
+            }
+        } else {
+            errors::ExplicitDestructorCallSugg::Empty(span)
+        };
+        tcx.sess.emit_err(errors::ExplicitDestructorCall { span, sugg });
     }
 }
 

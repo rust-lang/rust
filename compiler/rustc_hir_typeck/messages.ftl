@@ -33,6 +33,10 @@ hir_typeck_expected_default_return_type = expected `()` because of default retur
 
 hir_typeck_expected_return_type = expected `{$expected}` because of return type
 
+hir_typeck_explicit_destructor = explicit use of destructor method
+    .label = explicit destructor calls not allowed
+    .suggestion = consider using `drop` function
+
 hir_typeck_field_multiply_specified_in_initializer =
     field `{$ident}` specified more than once
     .label = used more than once
