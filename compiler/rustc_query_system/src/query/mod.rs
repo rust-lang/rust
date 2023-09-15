@@ -28,27 +28,27 @@ use thin_vec::ThinVec;
 ///
 /// This is mostly used in case of cycles for error reporting.
 #[derive(Clone, Debug)]
-pub struct QueryStackFrame<D: DepKind> {
+pub struct QueryStackFrame {
     pub description: String,
     span: Option<Span>,
     pub def_id: Option<DefId>,
     pub def_kind: Option<DefKind>,
     pub ty_adt_id: Option<DefId>,
-    pub dep_kind: D,
+    pub dep_kind: DepKind,
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
     #[cfg(parallel_compiler)]
     hash: Hash64,
 }
 
-impl<D: DepKind> QueryStackFrame<D> {
+impl QueryStackFrame {
     #[inline]
     pub fn new(
         description: String,
         span: Option<Span>,
         def_id: Option<DefId>,
         def_kind: Option<DefKind>,
-        dep_kind: D,
+        dep_kind: DepKind,
         ty_adt_id: Option<DefId>,
         _hash: impl FnOnce() -> Hash64,
     ) -> Self {
@@ -106,7 +106,7 @@ pub trait QueryContext: HasDepContext {
     /// Get the query information from the TLS context.
     fn current_query_job(self) -> Option<QueryJobId>;
 
-    fn try_collect_active_jobs(self) -> Option<QueryMap<Self::DepKind>>;
+    fn try_collect_active_jobs(self) -> Option<QueryMap>;
 
     /// Load side effects associated to the node in the previous session.
     fn load_side_effects(self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;

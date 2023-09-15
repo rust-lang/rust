@@ -1,6 +1,6 @@
 //! Query configuration and description traits.
 
-use crate::dep_graph::{DepNode, DepNodeParams, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, DepNodeParams, SerializedDepNodeIndex};
 use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
@@ -27,7 +27,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn format_value(self) -> fn(&Self::Value) -> String;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::DepKind>
+    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key>
     where
         Qcx: 'a;
 
@@ -57,7 +57,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn value_from_cycle_error(
         self,
         tcx: Qcx::DepContext,
-        cycle: &[QueryInfo<Qcx::DepKind>],
+        cycle: &[QueryInfo],
         guar: ErrorGuaranteed,
     ) -> Self::Value;
 
@@ -66,12 +66,12 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn depth_limit(self) -> bool;
     fn feedable(self) -> bool;
 
-    fn dep_kind(self) -> Qcx::DepKind;
+    fn dep_kind(self) -> DepKind;
     fn handle_cycle_error(self) -> HandleCycleError;
     fn hash_result(self) -> HashResult<Self::Value>;
 
     // Just here for convenience and checking that the key matches the kind, don't override this.
-    fn construct_dep_node(self, tcx: Qcx::DepContext, key: &Self::Key) -> DepNode<Qcx::DepKind> {
+    fn construct_dep_node(self, tcx: Qcx::DepContext, key: &Self::Key) -> DepNode {
         DepNode::construct(tcx, self.dep_kind(), key)
     }
 }
