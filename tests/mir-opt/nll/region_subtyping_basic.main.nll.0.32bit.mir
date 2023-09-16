@@ -22,7 +22,7 @@
 |
 fn main() -> () {
     let mut _0: ();
-    let mut _1: [usize; Const { ty: usize, kind: Leaf(0x00000003) }];
+    let mut _1: [usize; ValTree(Leaf(0x00000003): usize)];
     let _3: usize;
     let mut _4: usize;
     let mut _5: bool;
