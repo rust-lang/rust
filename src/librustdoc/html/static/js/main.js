@@ -204,9 +204,6 @@ function preLoadCss(cssUrl) {
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
         loadScript(getVar("static-root-path") + getVar("settings-js"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-light-css"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-dark-css"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-ayu-css"));
         // Pre-load all theme CSS files, so that switching feels seamless.
         //
         // When loading settings.html as a standalone page, the equivalent HTML is

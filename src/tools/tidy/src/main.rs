@@ -104,6 +104,7 @@ fn main() {
         check!(ui_tests, &tests_path);
         check!(mir_opt_tests, &tests_path, bless);
         check!(rustdoc_gui_tests, &tests_path);
+        check!(rustdoc_css_themes, &librustdoc_path);
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);

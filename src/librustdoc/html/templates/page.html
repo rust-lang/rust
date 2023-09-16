@@ -33,9 +33,6 @@
          data-channel="{{rust_channel}}" {#+ #}
          data-search-js="{{files.search_js}}" {#+ #}
          data-settings-js="{{files.settings_js}}" {#+ #}
-         data-theme-light-css="{{files.theme_light_css}}" {#+ #}
-         data-theme-dark-css="{{files.theme_dark_css}}" {#+ #}
-         data-theme-ayu-css="{{files.theme_ayu_css}}" {#+ #}
     > {# #}
     <script src="{{static_root_path|safe}}{{files.storage_js}}"></script> {# #}
     {% if page.css_class.contains("crate") %}
@@ -51,12 +48,6 @@
     <script defer src="{{static_root_path|safe}}{{files.scrape_examples_js}}"></script> {# #}
     {% endif %}
     <noscript> {# #}
-        <link rel="stylesheet" {#+ #}
-           media="(prefers-color-scheme:light)" {#+ #}
-           href="{{static_root_path|safe}}{{files.theme_light_css}}"> {# #}
-        <link rel="stylesheet" {#+ #}
-           media="(prefers-color-scheme:dark)" {#+ #}
-           href="{{static_root_path|safe}}{{files.theme_dark_css}}"> {# #}
         <link rel="stylesheet" {#+ #}
            href="{{static_root_path|safe}}{{files.noscript_css}}"> {# #}
     </noscript> {# #}

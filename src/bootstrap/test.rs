@@ -846,7 +846,7 @@ impl Step for RustdocTheme {
         let rustdoc = builder.bootstrap_out.join("rustdoc");
         let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
         cmd.arg(rustdoc.to_str().unwrap())
-            .arg(builder.src.join("src/librustdoc/html/static/css/themes").to_str().unwrap())
+            .arg(builder.src.join("src/librustdoc/html/static/css/rustdoc.css").to_str().unwrap())
             .env("RUSTC_STAGE", self.compiler.stage.to_string())
             .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
             .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))

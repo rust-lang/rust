@@ -100,7 +100,7 @@ Options:
                         check if given theme is valid
         --resource-suffix PATH
                         suffix to add to CSS and JavaScript files, e.g.,
-                        "light.css" will become "light-suffix.css"
+                        "search-index.js" will become "search-index-suffix.js"
         --edition EDITION
                         edition to use when compiling rust code (default:
                         2015)
