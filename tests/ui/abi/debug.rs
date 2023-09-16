@@ -4,7 +4,6 @@
 // normalize-stderr-test "(valid_range): 0\.\.=(4294967295|18446744073709551615)" -> "$1: $$FULL"
 // This pattern is prepared for when we account for alignment in the niche.
 // normalize-stderr-test "(valid_range): [1-9]\.\.=(429496729[0-9]|1844674407370955161[0-9])" -> "$1: $$NON_NULL"
-// normalize-stderr-test "Leaf\(0x0*20\)" -> "Leaf(0x0...20)"
 // Some attributes are only computed for release builds:
 // compile-flags: -O
 #![feature(rustc_attrs)]

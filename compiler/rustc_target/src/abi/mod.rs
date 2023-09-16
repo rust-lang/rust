@@ -3,6 +3,7 @@ pub use Primitive::*;
 
 use crate::json::{Json, ToJson};
 
+use std::fmt;
 use std::ops::Deref;
 
 use rustc_macros::HashStable_Generic;
@@ -24,10 +25,20 @@ impl ToJson for Endian {
 /// to that obtained from `layout_of(ty)`, as we need to produce
 /// layouts for which Rust types do not exist, such as enum variants
 /// or synthetic fields of enums (i.e., discriminants) and fat pointers.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
     pub layout: Layout<'a>,
+}
+
+impl<'a, Ty: fmt::Display> fmt::Debug for TyAndLayout<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Print the type in a readable way, not its debug representation.
+        f.debug_struct("TyAndLayout")
+            .field("ty", &format_args!("{}", self.ty))
+            .field("layout", &self.layout)
+            .finish()
+    }
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {

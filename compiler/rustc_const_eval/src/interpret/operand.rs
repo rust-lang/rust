@@ -136,7 +136,11 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
 
 impl<Prov: Provenance> std::fmt::Debug for ImmTy<'_, Prov> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ImmTy").field("imm", &self.imm).field("ty", &self.layout.ty).finish()
+        // Printing `layout` results in too much noise; just print a nice version of the type.
+        f.debug_struct("ImmTy")
+            .field("imm", &self.imm)
+            .field("ty", &format_args!("{}", self.layout.ty))
+            .finish()
     }
 }
 
@@ -305,7 +309,11 @@ pub struct OpTy<'tcx, Prov: Provenance = AllocId> {
 
 impl<Prov: Provenance> std::fmt::Debug for OpTy<'_, Prov> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("OpTy").field("op", &self.op).field("ty", &self.layout.ty).finish()
+        // Printing `layout` results in too much noise; just print a nice version of the type.
+        f.debug_struct("OpTy")
+            .field("op", &self.op)
+            .field("ty", &format_args!("{}", self.layout.ty))
+            .finish()
     }
 }
 
