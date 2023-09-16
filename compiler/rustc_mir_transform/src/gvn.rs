@@ -276,6 +276,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
     }
 
+    fn insert_scalar(&mut self, scalar: Scalar, ty: Ty<'tcx>) -> VnIndex {
+        self.insert(Value::Constant(Const::from_scalar(self.tcx, scalar, ty)))
+    }
+
     #[instrument(level = "trace", skip(self), ret)]
     fn eval_to_const(&mut self, value: VnIndex) -> Option<OpTy<'tcx>> {
         use Value::*;
@@ -483,12 +487,33 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
             }
             ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
-            ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty),
+            ProjectionElem::Field(f, ty) => {
+                if let Value::Aggregate(_, _, fields) = self.get(value) {
+                    return Some(fields[f.as_usize()]);
+                } else if let Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant)) = self.get(value)
+                    && let Value::Aggregate(_, written_variant, fields) = self.get(*outer_value)
+                    && written_variant == read_variant
+                {
+                    return Some(fields[f.as_usize()]);
+                }
+                ProjectionElem::Field(f, ty)
+            }
             ProjectionElem::Index(idx) => {
                 let idx = self.locals[idx]?;
                 ProjectionElem::Index(idx)
             }
             ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                match self.get(value) {
+                    Value::Aggregate(ty, _, operands) if ty.is_array() => {
+                        let offset = if from_end {
+                            operands.len() - offset as usize
+                        } else {
+                            offset as usize
+                        };
+                        return operands.get(offset).copied();
+                    }
+                    _ => {}
+                };
                 ProjectionElem::ConstantIndex { offset, min_length, from_end }
             }
             ProjectionElem::Subslice { from, to, from_end } => {
@@ -679,6 +704,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             Rvalue::Discriminant(ref mut place) => {
                 let place = self.simplify_place_value(place, location)?;
+                if let Some(discr) = self.simplify_discriminant(place) {
+                    return Some(discr);
+                }
                 Value::Discriminant(place)
             }
 
@@ -687,6 +715,17 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         };
         debug!(?value);
         Some(self.insert(value))
+    }
+
+    fn simplify_discriminant(&mut self, place: VnIndex) -> Option<VnIndex> {
+        if let Value::Aggregate(enum_ty, variant, _) = *self.get(place)
+            && enum_ty.is_enum()
+        {
+            let discr = self.ecx.discriminant_for_variant(enum_ty, variant).ok()?;
+            return Some(self.insert_scalar(discr.to_scalar(), discr.layout.ty));
+        }
+
+        None
     }
 }
 
