@@ -44,7 +44,7 @@
 //! points, which can be enabled via environment variable:
 //!
 //! ```shell
-//! RUSTC_LOG=rustc_mir_transform::transform::coverage=debug
+//! RUSTC_LOG=rustc_mir_transform::coverage=debug
 //! ```
 //!
 //! Other module paths with coverage-related debug logs may also be of interest, particularly for
@@ -52,7 +52,7 @@
 //! code generation pass). For example:
 //!
 //! ```shell
-//! RUSTC_LOG=rustc_mir_transform::transform::coverage,rustc_codegen_ssa::coverageinfo,rustc_codegen_llvm::coverageinfo=debug
+//! RUSTC_LOG=rustc_mir_transform::coverage,rustc_codegen_llvm::coverageinfo=debug
 //! ```
 //!
 //! Coverage Debug Options
@@ -108,24 +108,23 @@
 //!         recursively, generating labels with nested operations, enclosed in parentheses
 //!         (for example: `bcb2 + (bcb0 - bcb1)`).
 
-use super::counters::{BcbCounter, CoverageCounters};
-use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
-use super::spans::CoverageSpan;
+use std::iter;
+use std::ops::Deref;
+use std::sync::OnceLock;
 
 use itertools::Itertools;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::create_dump_file;
 use rustc_middle::mir::generic_graphviz::GraphvizWriter;
 use rustc_middle::mir::spanview::{self, SpanViewable};
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use std::iter;
-use std::ops::Deref;
-use std::sync::OnceLock;
+use super::counters::{BcbCounter, CoverageCounters};
+use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
+use super::spans::CoverageSpan;
 
 pub const NESTED_INDENT: &str = "    ";
 
@@ -259,36 +258,42 @@ impl Default for ExpressionFormat {
 /// `DebugCounters` supports a recursive rendering of `Expression` counters, so they can be
 /// presented as nested expressions such as `(bcb3 - (bcb0 + bcb1))`.
 pub(super) struct DebugCounters {
-    some_counters: Option<FxHashMap<Operand, DebugCounter>>,
+    state: Option<DebugCountersState>,
+}
+
+#[derive(Default)]
+struct DebugCountersState {
+    counters: FxHashMap<Operand, DebugCounter>,
 }
 
 impl DebugCounters {
     pub fn new() -> Self {
-        Self { some_counters: None }
+        Self { state: None }
     }
 
     pub fn enable(&mut self) {
         debug_assert!(!self.is_enabled());
-        self.some_counters.replace(FxHashMap::default());
+        self.state = Some(DebugCountersState::default());
     }
 
     pub fn is_enabled(&self) -> bool {
-        self.some_counters.is_some()
+        self.state.is_some()
     }
 
     pub fn add_counter(&mut self, counter_kind: &BcbCounter, some_block_label: Option<String>) {
-        if let Some(counters) = &mut self.some_counters {
-            let id = counter_kind.as_operand();
-            counters
-                .try_insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
-                .expect("attempt to add the same counter_kind to DebugCounters more than once");
-        }
+        let Some(state) = &mut self.state else { return };
+
+        let id = counter_kind.as_operand();
+        state
+            .counters
+            .try_insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
+            .expect("attempt to add the same counter_kind to DebugCounters more than once");
     }
 
     pub fn some_block_label(&self, operand: Operand) -> Option<&String> {
-        self.some_counters.as_ref().and_then(|counters| {
-            counters.get(&operand).and_then(|debug_counter| debug_counter.some_block_label.as_ref())
-        })
+        let Some(state) = &self.state else { return None };
+
+        state.counters.get(&operand)?.some_block_label.as_ref()
     }
 
     pub fn format_counter(&self, counter_kind: &BcbCounter) -> String {
@@ -308,7 +313,7 @@ impl DebugCounters {
             if counter_format.operation {
                 return format!(
                     "{}{} {} {}",
-                    if counter_format.id || self.some_counters.is_none() {
+                    if counter_format.id || !self.is_enabled() {
                         format!("#{} = ", id.index())
                     } else {
                         String::new()
@@ -324,10 +329,9 @@ impl DebugCounters {
         }
 
         let id = counter_kind.as_operand();
-        if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
-            let counters = self.some_counters.as_ref().unwrap();
+        if let Some(state) = &self.state && (counter_format.block || !counter_format.id) {
             if let Some(DebugCounter { some_block_label: Some(block_label), .. }) =
-                counters.get(&id)
+                state.counters.get(&id)
             {
                 return if counter_format.id {
                     format!("{}#{:?}", block_label, id)
@@ -343,8 +347,10 @@ impl DebugCounters {
         if matches!(operand, Operand::Zero) {
             return String::from("0");
         }
-        if let Some(counters) = &self.some_counters {
-            if let Some(DebugCounter { counter_kind, some_block_label }) = counters.get(&operand) {
+        if let Some(state) = &self.state {
+            if let Some(DebugCounter { counter_kind, some_block_label }) =
+                state.counters.get(&operand)
+            {
                 if let BcbCounter::Expression { .. } = counter_kind {
                     if let Some(label) = some_block_label && debug_options().counter_format.block {
                         return format!(
@@ -378,30 +384,29 @@ impl DebugCounter {
 /// If enabled, this data structure captures additional debugging information used when generating
 /// a Graphviz (.dot file) representation of the `CoverageGraph`, for debugging purposes.
 pub(super) struct GraphvizData {
-    some_bcb_to_coverage_spans_with_counters:
-        Option<FxHashMap<BasicCoverageBlock, Vec<(CoverageSpan, BcbCounter)>>>,
-    some_bcb_to_dependency_counters: Option<FxHashMap<BasicCoverageBlock, Vec<BcbCounter>>>,
-    some_edge_to_counter: Option<FxHashMap<(BasicCoverageBlock, BasicBlock), BcbCounter>>,
+    state: Option<GraphvizDataState>,
+}
+
+#[derive(Default)]
+struct GraphvizDataState {
+    bcb_to_coverage_spans_with_counters:
+        FxHashMap<BasicCoverageBlock, Vec<(CoverageSpan, BcbCounter)>>,
+    bcb_to_dependency_counters: FxHashMap<BasicCoverageBlock, Vec<BcbCounter>>,
+    edge_to_counter: FxHashMap<(BasicCoverageBlock, BasicBlock), BcbCounter>,
 }
 
 impl GraphvizData {
     pub fn new() -> Self {
-        Self {
-            some_bcb_to_coverage_spans_with_counters: None,
-            some_bcb_to_dependency_counters: None,
-            some_edge_to_counter: None,
-        }
+        Self { state: None }
     }
 
     pub fn enable(&mut self) {
         debug_assert!(!self.is_enabled());
-        self.some_bcb_to_coverage_spans_with_counters = Some(FxHashMap::default());
-        self.some_bcb_to_dependency_counters = Some(FxHashMap::default());
-        self.some_edge_to_counter = Some(FxHashMap::default());
+        self.state = Some(GraphvizDataState::default());
     }
 
     pub fn is_enabled(&self) -> bool {
-        self.some_bcb_to_coverage_spans_with_counters.is_some()
+        self.state.is_some()
     }
 
     pub fn add_bcb_coverage_span_with_counter(
@@ -410,27 +415,22 @@ impl GraphvizData {
         coverage_span: &CoverageSpan,
         counter_kind: &BcbCounter,
     ) {
-        if let Some(bcb_to_coverage_spans_with_counters) =
-            self.some_bcb_to_coverage_spans_with_counters.as_mut()
-        {
-            bcb_to_coverage_spans_with_counters
-                .entry(bcb)
-                .or_insert_with(Vec::new)
-                .push((coverage_span.clone(), counter_kind.clone()));
-        }
+        let Some(state) = &mut self.state else { return };
+
+        state
+            .bcb_to_coverage_spans_with_counters
+            .entry(bcb)
+            .or_insert_with(Vec::new)
+            .push((coverage_span.clone(), counter_kind.clone()));
     }
 
     pub fn get_bcb_coverage_spans_with_counters(
         &self,
         bcb: BasicCoverageBlock,
     ) -> Option<&[(CoverageSpan, BcbCounter)]> {
-        if let Some(bcb_to_coverage_spans_with_counters) =
-            self.some_bcb_to_coverage_spans_with_counters.as_ref()
-        {
-            bcb_to_coverage_spans_with_counters.get(&bcb).map(Deref::deref)
-        } else {
-            None
-        }
+        let Some(state) = &self.state else { return None };
+
+        state.bcb_to_coverage_spans_with_counters.get(&bcb).map(Deref::deref)
     }
 
     pub fn add_bcb_dependency_counter(
@@ -438,20 +438,19 @@ impl GraphvizData {
         bcb: BasicCoverageBlock,
         counter_kind: &BcbCounter,
     ) {
-        if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_mut() {
-            bcb_to_dependency_counters
-                .entry(bcb)
-                .or_insert_with(Vec::new)
-                .push(counter_kind.clone());
-        }
+        let Some(state) = &mut self.state else { return };
+
+        state
+            .bcb_to_dependency_counters
+            .entry(bcb)
+            .or_insert_with(Vec::new)
+            .push(counter_kind.clone());
     }
 
     pub fn get_bcb_dependency_counters(&self, bcb: BasicCoverageBlock) -> Option<&[BcbCounter]> {
-        if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_ref() {
-            bcb_to_dependency_counters.get(&bcb).map(Deref::deref)
-        } else {
-            None
-        }
+        let Some(state) = &self.state else { return None };
+
+        state.bcb_to_dependency_counters.get(&bcb).map(Deref::deref)
     }
 
     pub fn set_edge_counter(
@@ -460,11 +459,12 @@ impl GraphvizData {
         to_bb: BasicBlock,
         counter_kind: &BcbCounter,
     ) {
-        if let Some(edge_to_counter) = self.some_edge_to_counter.as_mut() {
-            edge_to_counter
-                .try_insert((from_bcb, to_bb), counter_kind.clone())
-                .expect("invalid attempt to insert more than one edge counter for the same edge");
-        }
+        let Some(state) = &mut self.state else { return };
+
+        state
+            .edge_to_counter
+            .try_insert((from_bcb, to_bb), counter_kind.clone())
+            .expect("invalid attempt to insert more than one edge counter for the same edge");
     }
 
     pub fn get_edge_counter(
@@ -472,11 +472,9 @@ impl GraphvizData {
         from_bcb: BasicCoverageBlock,
         to_bb: BasicBlock,
     ) -> Option<&BcbCounter> {
-        if let Some(edge_to_counter) = self.some_edge_to_counter.as_ref() {
-            edge_to_counter.get(&(from_bcb, to_bb))
-        } else {
-            None
-        }
+        let Some(state) = &self.state else { return None };
+
+        state.edge_to_counter.get(&(from_bcb, to_bb))
     }
 }
 
@@ -485,41 +483,42 @@ impl GraphvizData {
 /// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
 /// and/or a `CoverageGraph` graphviz output).
 pub(super) struct UsedExpressions {
-    some_used_expression_operands: Option<FxHashMap<Operand, Vec<ExpressionId>>>,
-    some_unused_expressions:
-        Option<Vec<(BcbCounter, Option<BasicCoverageBlock>, BasicCoverageBlock)>>,
+    state: Option<UsedExpressionsState>,
+}
+
+#[derive(Default)]
+struct UsedExpressionsState {
+    used_expression_operands: FxHashSet<Operand>,
+    unused_expressions: Vec<(BcbCounter, Option<BasicCoverageBlock>, BasicCoverageBlock)>,
 }
 
 impl UsedExpressions {
     pub fn new() -> Self {
-        Self { some_used_expression_operands: None, some_unused_expressions: None }
+        Self { state: None }
     }
 
     pub fn enable(&mut self) {
         debug_assert!(!self.is_enabled());
-        self.some_used_expression_operands = Some(FxHashMap::default());
-        self.some_unused_expressions = Some(Vec::new());
+        self.state = Some(UsedExpressionsState::default())
     }
 
     pub fn is_enabled(&self) -> bool {
-        self.some_used_expression_operands.is_some()
+        self.state.is_some()
     }
 
     pub fn add_expression_operands(&mut self, expression: &BcbCounter) {
-        if let Some(used_expression_operands) = self.some_used_expression_operands.as_mut() {
-            if let BcbCounter::Expression { id, lhs, rhs, .. } = *expression {
-                used_expression_operands.entry(lhs).or_insert_with(Vec::new).push(id);
-                used_expression_operands.entry(rhs).or_insert_with(Vec::new).push(id);
-            }
+        let Some(state) = &mut self.state else { return };
+
+        if let BcbCounter::Expression { lhs, rhs, .. } = *expression {
+            state.used_expression_operands.insert(lhs);
+            state.used_expression_operands.insert(rhs);
         }
     }
 
     pub fn expression_is_used(&self, expression: &BcbCounter) -> bool {
-        if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
-            used_expression_operands.contains_key(&expression.as_operand())
-        } else {
-            false
-        }
+        let Some(state) = &self.state else { return false };
+
+        state.used_expression_operands.contains(&expression.as_operand())
     }
 
     pub fn add_unused_expression_if_not_found(
@@ -528,14 +527,10 @@ impl UsedExpressions {
         edge_from_bcb: Option<BasicCoverageBlock>,
         target_bcb: BasicCoverageBlock,
     ) {
-        if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
-            if !used_expression_operands.contains_key(&expression.as_operand()) {
-                self.some_unused_expressions.as_mut().unwrap().push((
-                    expression.clone(),
-                    edge_from_bcb,
-                    target_bcb,
-                ));
-            }
+        let Some(state) = &mut self.state else { return };
+
+        if !state.used_expression_operands.contains(&expression.as_operand()) {
+            state.unused_expressions.push((expression.clone(), edge_from_bcb, target_bcb));
         }
     }
 
@@ -544,11 +539,9 @@ impl UsedExpressions {
     pub fn get_unused_expressions(
         &self,
     ) -> Vec<(BcbCounter, Option<BasicCoverageBlock>, BasicCoverageBlock)> {
-        if let Some(unused_expressions) = self.some_unused_expressions.as_ref() {
-            unused_expressions.clone()
-        } else {
-            Vec::new()
-        }
+        let Some(state) = &self.state else { return Vec::new() };
+
+        state.unused_expressions.clone()
     }
 
     /// If enabled, validate that every BCB or edge counter not directly associated with a coverage
@@ -562,51 +555,53 @@ impl UsedExpressions {
             BcbCounter,
         )],
     ) {
-        if self.is_enabled() {
-            let mut not_validated = bcb_counters_without_direct_coverage_spans
-                .iter()
-                .map(|(_, _, counter_kind)| counter_kind)
-                .collect::<Vec<_>>();
-            let mut validating_count = 0;
-            while not_validated.len() != validating_count {
-                let to_validate = not_validated.split_off(0);
-                validating_count = to_validate.len();
-                for counter_kind in to_validate {
-                    if self.expression_is_used(counter_kind) {
-                        self.add_expression_operands(counter_kind);
-                    } else {
-                        not_validated.push(counter_kind);
-                    }
+        if !self.is_enabled() {
+            return;
+        }
+
+        let mut not_validated = bcb_counters_without_direct_coverage_spans
+            .iter()
+            .map(|(_, _, counter_kind)| counter_kind)
+            .collect::<Vec<_>>();
+        let mut validating_count = 0;
+        while not_validated.len() != validating_count {
+            let to_validate = not_validated.split_off(0);
+            validating_count = to_validate.len();
+            for counter_kind in to_validate {
+                if self.expression_is_used(counter_kind) {
+                    self.add_expression_operands(counter_kind);
+                } else {
+                    not_validated.push(counter_kind);
                 }
             }
         }
     }
 
     pub fn alert_on_unused_expressions(&self, debug_counters: &DebugCounters) {
-        if let Some(unused_expressions) = self.some_unused_expressions.as_ref() {
-            for (counter_kind, edge_from_bcb, target_bcb) in unused_expressions {
-                let unused_counter_message = if let Some(from_bcb) = edge_from_bcb.as_ref() {
-                    format!(
-                        "non-coverage edge counter found without a dependent expression, in \
-                        {:?}->{:?}; counter={}",
-                        from_bcb,
-                        target_bcb,
-                        debug_counters.format_counter(&counter_kind),
-                    )
-                } else {
-                    format!(
-                        "non-coverage counter found without a dependent expression, in {:?}; \
-                        counter={}",
-                        target_bcb,
-                        debug_counters.format_counter(&counter_kind),
-                    )
-                };
+        let Some(state) = &self.state else { return };
 
-                if debug_options().allow_unused_expressions {
-                    debug!("WARNING: {}", unused_counter_message);
-                } else {
-                    bug!("{}", unused_counter_message);
-                }
+        for (counter_kind, edge_from_bcb, target_bcb) in &state.unused_expressions {
+            let unused_counter_message = if let Some(from_bcb) = edge_from_bcb.as_ref() {
+                format!(
+                    "non-coverage edge counter found without a dependent expression, in \
+                        {:?}->{:?}; counter={}",
+                    from_bcb,
+                    target_bcb,
+                    debug_counters.format_counter(&counter_kind),
+                )
+            } else {
+                format!(
+                    "non-coverage counter found without a dependent expression, in {:?}; \
+                        counter={}",
+                    target_bcb,
+                    debug_counters.format_counter(&counter_kind),
+                )
+            };
+
+            if debug_options().allow_unused_expressions {
+                debug!("WARNING: {}", unused_counter_message);
+            } else {
+                bug!("{}", unused_counter_message);
             }
         }
     }
