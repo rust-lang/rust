@@ -499,11 +499,17 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 ProjectionElem::Field(f, ty)
             }
             ProjectionElem::Index(idx) => {
+                if let Value::Repeat(inner, _) = self.get(value) {
+                    return Some(*inner);
+                }
                 let idx = self.locals[idx]?;
                 ProjectionElem::Index(idx)
             }
             ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
                 match self.get(value) {
+                    Value::Repeat(inner, _) => {
+                        return Some(*inner);
+                    }
                     Value::Aggregate(ty, _, operands) if ty.is_array() => {
                         let offset = if from_end {
                             operands.len() - offset as usize
