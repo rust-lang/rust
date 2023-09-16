@@ -58,7 +58,6 @@ build/
 \#*
 \#*\#
 .#*
-rustc-ice-*.txt
 
 ## Tags
 tags
