@@ -1110,8 +1110,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Shortens the vector, keeping the first `len` elements and dropping
     /// the rest.
     ///
-    /// If `len` is greater than the vector's current length, this has no
-    /// effect.
+    /// If `len` is greater or equal to the vector's current length, this has
+    /// no effect.
     ///
     /// The [`drain`] method can emulate `truncate`, but causes the excess
     /// elements to be returned instead of dropped.
