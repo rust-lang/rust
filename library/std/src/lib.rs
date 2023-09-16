@@ -152,6 +152,31 @@
 //! contains further primitive shared memory types, including [`atomic`] and
 //! [`mpsc`], which contains the channel types for message passing.
 //!
+//! # Use before and after `main()`
+//!
+//! Many parts of the standard library are expected to work before and after `main()`;
+//! but this is not guaranteed or ensured by tests. It is recommended that you write your own tests
+//! and run them on each platform you wish to support.
+//! This means that use of `std` before/after main, especially of features that interact with the
+//! OS or global state, is exempted from stability and portability guarantees and instead only
+//! provided on a best-effort basis. Nevertheless bug reports are appreciated.
+//!
+//! On the other hand `core` and `alloc` are most likely to work in such environments with
+//! the caveat that any hookable behavior such as panics, oom handling or allocators will also
+//! depend on the compatibility of the hooks.
+//!
+//! Some features may also behave differently outside main, e.g. stdio could become unbuffered,
+//! some panics might turn into aborts, backtraces might not get symbolicated or similar.
+//!
+//! Non-exhaustive list of known limitations:
+//!
+//! - after-main use of thread-locals, which also affects additional features:
+//!   - [`thread::current()`]
+//!   - [`thread::scope()`]
+//!   - [`sync::mpsc`]
+//! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
+//!
+//!
 //! [I/O]: io
 //! [`MIN`]: i32::MIN
 //! [`MAX`]: i32::MAX
@@ -187,7 +212,6 @@
 //! [rust-discord]: https://discord.gg/rust-lang
 //! [array]: prim@array
 //! [slice]: prim@slice
-
 // To run std tests without x.py without ending up with two copies of std, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
 // rustc itself never sets the feature, so this line has no effect there.

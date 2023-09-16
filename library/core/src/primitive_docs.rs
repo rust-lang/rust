@@ -612,7 +612,7 @@ mod prim_pointer {}
 /// statically generated up to size 32.
 ///
 /// Arrays of sizes from 1 to 12 (inclusive) implement [`From<Tuple>`], where `Tuple`
-/// is a homogenous [prim@tuple] of appropriate length.
+/// is a homogeneous [prim@tuple] of appropriate length.
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
@@ -676,7 +676,7 @@ mod prim_pointer {}
 /// move_away(roa);
 /// ```
 ///
-/// Arrays can be created from homogenous tuples of appropriate length:
+/// Arrays can be created from homogeneous tuples of appropriate length:
 ///
 /// ```
 /// let tuple: (u32, u32, u32) = (1, 2, 3);
@@ -1065,7 +1065,7 @@ mod prim_str {}
 /// assert_eq!(y, 5);
 /// ```
 ///
-/// Homogenous tuples can be created from arrays of appropriate length:
+/// Homogeneous tuples can be created from arrays of appropriate length:
 ///
 /// ```
 /// let array: [u32; 3] = [1, 2, 3];
