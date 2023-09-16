@@ -66,6 +66,8 @@ struct ConstToPat<'tcx> {
 }
 
 /// This error type signals that we encountered a non-struct-eq situation.
+/// We will fall back to calling `PartialEq::eq` on such patterns,
+/// and exhaustiveness checking will consider them as matching nothing.
 #[derive(Debug)]
 struct FallbackToOpaqueConst;
 
@@ -411,6 +413,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
                             tcx.sess.emit_err(err);
                         }
+                        tcx.sess.delay_span_bug(span, "`saw_const_match_error` set but no error?");
                         // We errored, so the pattern we generate is irrelevant.
                         PatKind::Wild
                     }
