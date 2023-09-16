@@ -281,9 +281,9 @@ pub macro PartialEq($item:item) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
 pub trait Eq: PartialEq<Self> {
-    // this method is used solely by #[deriving] to assert
-    // that every component of a type implements #[deriving]
-    // itself, the current deriving infrastructure means doing this
+    // this method is used solely by #[derive(Eq)] to assert
+    // that every component of a type implements `Eq`
+    // itself. The current deriving infrastructure means doing this
     // assertion without using a method on this trait is nearly
     // impossible.
     //
