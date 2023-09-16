@@ -1051,7 +1051,7 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
+#[rustc_const_stable(feature = "const_transmute_copy", since = "CURRENT_RUSTC_VERSION")]
 pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
     assert!(
         size_of::<Src>() >= size_of::<Dst>(),
