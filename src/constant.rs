@@ -2,7 +2,8 @@
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::interpret::{read_target_uint, AllocId, ConstValue, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{read_target_uint, AllocId, GlobalAlloc, Scalar};
+use rustc_middle::mir::ConstValue;
 
 use cranelift_module::*;
 
