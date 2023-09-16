@@ -118,16 +118,11 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
         state.visit_basic_block_data(bb, data);
     }
-    let any_replacement = state.any_replacement;
 
     // For each local that is reused (`y` above), we remove its storage statements do avoid any
     // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
     // statements.
     StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
-
-    if any_replacement {
-        crate::simplify::remove_unused_definitions(body);
-    }
 }
 
 newtype_index! {
@@ -190,7 +185,6 @@ struct VnState<'body, 'tcx> {
     ssa: &'body SsaLocals,
     dominators: &'body Dominators<BasicBlock>,
     reused_locals: BitSet<Local>,
-    any_replacement: bool,
 }
 
 impl<'body, 'tcx> VnState<'body, 'tcx> {
@@ -212,7 +206,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ssa,
             dominators,
             reused_locals: BitSet::new_empty(local_decls.len()),
-            any_replacement: false,
         }
     }
 
@@ -324,14 +317,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         {
             *place = local.into();
             self.reused_locals.insert(local);
-            self.any_replacement = true;
         } else if place_ref.local != place.local
             || place_ref.projection.len() < place.projection.len()
         {
             // By the invariant on `place_ref`.
             *place = place_ref.project_deeper(&[], self.tcx);
             self.reused_locals.insert(place_ref.local);
-            self.any_replacement = true;
         }
 
         Some(value)
@@ -349,7 +340,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let value = self.simplify_place_value(place, location)?;
                 if let Some(const_) = self.try_as_constant(value) {
                     *operand = Operand::Constant(Box::new(const_));
-                    self.any_replacement = true;
                 }
                 Some(value)
             }
@@ -502,13 +492,11 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         {
             if let Some(const_) = self.try_as_constant(value) {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-                self.any_replacement = true;
             } else if let Some(local) = self.try_as_local(value, location)
                 && *rvalue != Rvalue::Use(Operand::Move(local.into()))
             {
                 *rvalue = Rvalue::Use(Operand::Copy(local.into()));
                 self.reused_locals.insert(local);
-                self.any_replacement = true;
             }
         }
     }

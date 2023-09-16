@@ -75,8 +75,8 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
--         StorageLive(_4);
--         _4 = _1;
+          StorageLive(_4);
+          _4 = _1;
 -         _5 = CheckedAdd(_4, const 0_u64);
 -         assert(!move (_5.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, const 0_u64) -> [success: bb1, unwind continue];
 +         _5 = CheckedAdd(_1, const 0_u64);
@@ -85,7 +85,7 @@
   
       bb1: {
           _3 = move (_5.0: u64);
--         StorageDead(_4);
+          StorageDead(_4);
           _2 = opaque::<u64>(move _3) -> [return: bb2, unwind continue];
       }
   
@@ -94,8 +94,8 @@
           StorageDead(_2);
           StorageLive(_6);
           StorageLive(_7);
--         StorageLive(_8);
--         _8 = _1;
+          StorageLive(_8);
+          _8 = _1;
 -         _9 = CheckedSub(_8, const 0_u64);
 -         assert(!move (_9.1: bool), "attempt to compute `{} - {}`, which would overflow", move _8, const 0_u64) -> [success: bb3, unwind continue];
 +         _9 = CheckedSub(_1, const 0_u64);
@@ -104,7 +104,7 @@
   
       bb3: {
           _7 = move (_9.0: u64);
--         StorageDead(_8);
+          StorageDead(_8);
           _6 = opaque::<u64>(move _7) -> [return: bb4, unwind continue];
       }
   
@@ -113,8 +113,8 @@
           StorageDead(_6);
           StorageLive(_10);
           StorageLive(_11);
--         StorageLive(_12);
--         _12 = _1;
+          StorageLive(_12);
+          _12 = _1;
 -         _13 = CheckedMul(_12, const 0_u64);
 -         assert(!move (_13.1: bool), "attempt to compute `{} * {}`, which would overflow", move _12, const 0_u64) -> [success: bb5, unwind continue];
 +         _13 = CheckedMul(_1, const 0_u64);
@@ -123,7 +123,7 @@
   
       bb5: {
           _11 = move (_13.0: u64);
--         StorageDead(_12);
+          StorageDead(_12);
           _10 = opaque::<u64>(move _11) -> [return: bb6, unwind continue];
       }
   
@@ -132,8 +132,8 @@
           StorageDead(_10);
           StorageLive(_14);
           StorageLive(_15);
--         StorageLive(_16);
--         _16 = _1;
+          StorageLive(_16);
+          _16 = _1;
 -         _17 = CheckedMul(_16, const 1_u64);
 -         assert(!move (_17.1: bool), "attempt to compute `{} * {}`, which would overflow", move _16, const 1_u64) -> [success: bb7, unwind continue];
 +         _17 = CheckedMul(_1, const 1_u64);
@@ -142,7 +142,7 @@
   
       bb7: {
           _15 = move (_17.0: u64);
--         StorageDead(_16);
+          StorageDead(_16);
           _14 = opaque::<u64>(move _15) -> [return: bb8, unwind continue];
       }
   
@@ -151,8 +151,8 @@
           StorageDead(_14);
           StorageLive(_18);
           StorageLive(_19);
--         StorageLive(_20);
--         _20 = _1;
+          StorageLive(_20);
+          _20 = _1;
           _21 = Eq(const 0_u64, const 0_u64);
 -         assert(!move _21, "attempt to divide `{}` by zero", _20) -> [success: bb9, unwind continue];
 +         assert(!_21, "attempt to divide `{}` by zero", _1) -> [success: bb9, unwind continue];
@@ -160,8 +160,8 @@
   
       bb9: {
 -         _19 = Div(move _20, const 0_u64);
--         StorageDead(_20);
 +         _19 = Div(_1, const 0_u64);
+          StorageDead(_20);
           _18 = opaque::<u64>(move _19) -> [return: bb10, unwind continue];
       }
   
@@ -170,8 +170,8 @@
           StorageDead(_18);
           StorageLive(_22);
           StorageLive(_23);
--         StorageLive(_24);
--         _24 = _1;
+          StorageLive(_24);
+          _24 = _1;
           _25 = Eq(const 1_u64, const 0_u64);
 -         assert(!move _25, "attempt to divide `{}` by zero", _24) -> [success: bb11, unwind continue];
 +         assert(!_25, "attempt to divide `{}` by zero", _1) -> [success: bb11, unwind continue];
@@ -179,8 +179,8 @@
   
       bb11: {
 -         _23 = Div(move _24, const 1_u64);
--         StorageDead(_24);
 +         _23 = Div(_1, const 1_u64);
+          StorageDead(_24);
           _22 = opaque::<u64>(move _23) -> [return: bb12, unwind continue];
       }
   
@@ -189,8 +189,8 @@
           StorageDead(_22);
           StorageLive(_26);
           StorageLive(_27);
--         StorageLive(_28);
--         _28 = _1;
+          StorageLive(_28);
+          _28 = _1;
 -         _29 = Eq(_28, const 0_u64);
 -         assert(!move _29, "attempt to divide `{}` by zero", const 0_u64) -> [success: bb13, unwind continue];
 +         _29 = Eq(_1, const 0_u64);
@@ -199,8 +199,8 @@
   
       bb13: {
 -         _27 = Div(const 0_u64, move _28);
--         StorageDead(_28);
 +         _27 = Div(const 0_u64, _1);
+          StorageDead(_28);
           _26 = opaque::<u64>(move _27) -> [return: bb14, unwind continue];
       }
   
@@ -209,17 +209,18 @@
           StorageDead(_26);
           StorageLive(_30);
           StorageLive(_31);
--         StorageLive(_32);
--         _32 = _1;
+          StorageLive(_32);
+          _32 = _1;
 -         _33 = Eq(_32, const 0_u64);
 -         assert(!move _33, "attempt to divide `{}` by zero", const 1_u64) -> [success: bb15, unwind continue];
++         _33 = _29;
 +         assert(!_29, "attempt to divide `{}` by zero", const 1_u64) -> [success: bb15, unwind continue];
       }
   
       bb15: {
 -         _31 = Div(const 1_u64, move _32);
--         StorageDead(_32);
 +         _31 = Div(const 1_u64, _1);
+          StorageDead(_32);
           _30 = opaque::<u64>(move _31) -> [return: bb16, unwind continue];
       }
   
@@ -228,17 +229,18 @@
           StorageDead(_30);
           StorageLive(_34);
           StorageLive(_35);
--         StorageLive(_36);
--         _36 = _1;
+          StorageLive(_36);
+          _36 = _1;
 -         _37 = Eq(const 0_u64, const 0_u64);
 -         assert(!move _37, "attempt to calculate the remainder of `{}` with a divisor of zero", _36) -> [success: bb17, unwind continue];
++         _37 = _21;
 +         assert(!_21, "attempt to calculate the remainder of `{}` with a divisor of zero", _1) -> [success: bb17, unwind continue];
       }
   
       bb17: {
 -         _35 = Rem(move _36, const 0_u64);
--         StorageDead(_36);
 +         _35 = Rem(_1, const 0_u64);
+          StorageDead(_36);
           _34 = opaque::<u64>(move _35) -> [return: bb18, unwind continue];
       }
   
@@ -247,17 +249,18 @@
           StorageDead(_34);
           StorageLive(_38);
           StorageLive(_39);
--         StorageLive(_40);
--         _40 = _1;
+          StorageLive(_40);
+          _40 = _1;
 -         _41 = Eq(const 1_u64, const 0_u64);
 -         assert(!move _41, "attempt to calculate the remainder of `{}` with a divisor of zero", _40) -> [success: bb19, unwind continue];
++         _41 = _25;
 +         assert(!_25, "attempt to calculate the remainder of `{}` with a divisor of zero", _1) -> [success: bb19, unwind continue];
       }
   
       bb19: {
 -         _39 = Rem(move _40, const 1_u64);
--         StorageDead(_40);
 +         _39 = Rem(_1, const 1_u64);
+          StorageDead(_40);
           _38 = opaque::<u64>(move _39) -> [return: bb20, unwind continue];
       }
   
@@ -266,17 +269,18 @@
           StorageDead(_38);
           StorageLive(_42);
           StorageLive(_43);
--         StorageLive(_44);
--         _44 = _1;
+          StorageLive(_44);
+          _44 = _1;
 -         _45 = Eq(_44, const 0_u64);
 -         assert(!move _45, "attempt to calculate the remainder of `{}` with a divisor of zero", const 0_u64) -> [success: bb21, unwind continue];
++         _45 = _29;
 +         assert(!_29, "attempt to calculate the remainder of `{}` with a divisor of zero", const 0_u64) -> [success: bb21, unwind continue];
       }
   
       bb21: {
 -         _43 = Rem(const 0_u64, move _44);
--         StorageDead(_44);
 +         _43 = Rem(const 0_u64, _1);
+          StorageDead(_44);
           _42 = opaque::<u64>(move _43) -> [return: bb22, unwind continue];
       }
   
@@ -285,17 +289,18 @@
           StorageDead(_42);
           StorageLive(_46);
           StorageLive(_47);
--         StorageLive(_48);
--         _48 = _1;
+          StorageLive(_48);
+          _48 = _1;
 -         _49 = Eq(_48, const 0_u64);
 -         assert(!move _49, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_u64) -> [success: bb23, unwind continue];
++         _49 = _29;
 +         assert(!_29, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_u64) -> [success: bb23, unwind continue];
       }
   
       bb23: {
 -         _47 = Rem(const 1_u64, move _48);
--         StorageDead(_48);
 +         _47 = Rem(const 1_u64, _1);
+          StorageDead(_48);
           _46 = opaque::<u64>(move _47) -> [return: bb24, unwind continue];
       }
   
@@ -304,11 +309,11 @@
           StorageDead(_46);
           StorageLive(_50);
           StorageLive(_51);
--         StorageLive(_52);
--         _52 = _1;
+          StorageLive(_52);
+          _52 = _1;
 -         _51 = BitAnd(move _52, const 0_u64);
--         StorageDead(_52);
 +         _51 = BitAnd(_1, const 0_u64);
+          StorageDead(_52);
           _50 = opaque::<u64>(move _51) -> [return: bb25, unwind continue];
       }
   
@@ -317,11 +322,11 @@
           StorageDead(_50);
           StorageLive(_53);
           StorageLive(_54);
--         StorageLive(_55);
--         _55 = _1;
+          StorageLive(_55);
+          _55 = _1;
 -         _54 = BitOr(move _55, const 0_u64);
--         StorageDead(_55);
 +         _54 = BitOr(_1, const 0_u64);
+          StorageDead(_55);
           _53 = opaque::<u64>(move _54) -> [return: bb26, unwind continue];
       }
   
@@ -330,11 +335,11 @@
           StorageDead(_53);
           StorageLive(_56);
           StorageLive(_57);
--         StorageLive(_58);
--         _58 = _1;
+          StorageLive(_58);
+          _58 = _1;
 -         _57 = BitXor(move _58, const 0_u64);
--         StorageDead(_58);
 +         _57 = BitXor(_1, const 0_u64);
+          StorageDead(_58);
           _56 = opaque::<u64>(move _57) -> [return: bb27, unwind continue];
       }
   
@@ -343,8 +348,8 @@
           StorageDead(_56);
           StorageLive(_59);
           StorageLive(_60);
--         StorageLive(_61);
--         _61 = _1;
+          StorageLive(_61);
+          _61 = _1;
           _62 = const 0_i32 as u32 (IntToInt);
 -         _63 = Lt(move _62, const 64_u32);
 -         assert(move _63, "attempt to shift right by `{}`, which would overflow", const 0_i32) -> [success: bb28, unwind continue];
@@ -354,8 +359,8 @@
   
       bb28: {
 -         _60 = Shr(move _61, const 0_i32);
--         StorageDead(_61);
 +         _60 = Shr(_1, const 0_i32);
+          StorageDead(_61);
           _59 = opaque::<u64>(move _60) -> [return: bb29, unwind continue];
       }
   
@@ -364,18 +369,20 @@
           StorageDead(_59);
           StorageLive(_64);
           StorageLive(_65);
--         StorageLive(_66);
--         _66 = _1;
+          StorageLive(_66);
+          _66 = _1;
 -         _67 = const 0_i32 as u32 (IntToInt);
 -         _68 = Lt(move _67, const 64_u32);
 -         assert(move _68, "attempt to shift left by `{}`, which would overflow", const 0_i32) -> [success: bb30, unwind continue];
++         _67 = _62;
++         _68 = _63;
 +         assert(_63, "attempt to shift left by `{}`, which would overflow", const 0_i32) -> [success: bb30, unwind continue];
       }
   
       bb30: {
 -         _65 = Shl(move _66, const 0_i32);
--         StorageDead(_66);
 +         _65 = Shl(_1, const 0_i32);
+          StorageDead(_66);
           _64 = opaque::<u64>(move _65) -> [return: bb31, unwind continue];
       }
   
