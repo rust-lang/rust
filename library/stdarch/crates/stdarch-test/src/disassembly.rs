@@ -82,7 +82,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         // Target features need to be enabled for LLVM objdump on Macos ARM64
         vec!["--mattr=+v8.6a,+crypto,+tme"]
     } else if cfg!(target_arch = "riscv64") {
-        vec!["--mattr=+zk,+zks"]
+        vec!["--mattr=+zk,+zks,+zbc,+zbb"]
     } else {
         vec![]
     };

@@ -47,8 +47,7 @@ extern "unadjusted" {
 ///
 /// This function is safe to use if the `zbb` target feature is present.
 #[target_feature(enable = "zbb")]
-// See #1464
-// #[cfg_attr(test, assert_instr(orc.b))]
+#[cfg_attr(test, assert_instr(orc.b))]
 #[inline]
 pub unsafe fn orc_b(rs: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
@@ -76,8 +75,7 @@ pub unsafe fn orc_b(rs: usize) -> usize {
 ///
 /// This function is safe to use if the `zbc` target feature is present.
 #[target_feature(enable = "zbc")]
-// See #1464
-// #[cfg_attr(test, assert_instr(clmul))]
+#[cfg_attr(test, assert_instr(clmul))]
 #[inline]
 pub unsafe fn clmul(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
@@ -105,8 +103,7 @@ pub unsafe fn clmul(rs1: usize, rs2: usize) -> usize {
 ///
 /// This function is safe to use if the `zbc` target feature is present.
 #[target_feature(enable = "zbc")]
-// See #1464
-// #[cfg_attr(test, assert_instr(clmulh))]
+#[cfg_attr(test, assert_instr(clmulh))]
 #[inline]
 pub unsafe fn clmulh(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
@@ -134,8 +131,7 @@ pub unsafe fn clmulh(rs1: usize, rs2: usize) -> usize {
 ///
 /// This function is safe to use if the `zbc` target feature is present.
 #[target_feature(enable = "zbc")]
-// See #1464
-// #[cfg_attr(test, assert_instr(clmulr))]
+#[cfg_attr(test, assert_instr(clmulr))]
 #[inline]
 pub unsafe fn clmulr(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
