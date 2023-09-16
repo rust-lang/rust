@@ -453,6 +453,8 @@ lint_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking th
     .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
     .label = expression has type `{$orig_ty}`
 
+lint_ptr_null_checks_fn_ret = returned pointer of `{$fn_name}` call is never null, so checking it for null will always return false
+
 lint_ptr_null_checks_ref = references are not nullable, so checking them for null will always return false
     .label = expression has type `{$orig_ty}`
 

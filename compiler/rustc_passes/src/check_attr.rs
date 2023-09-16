@@ -139,6 +139,9 @@ impl CheckAttrVisitor<'_> {
                     self.check_rustc_std_internal_symbol(&attr, span, target)
                 }
                 sym::naked => self.check_naked(hir_id, attr, span, target),
+                sym::rustc_never_returns_null_ptr => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
                 sym::rustc_legacy_const_generics => {
                     self.check_rustc_legacy_const_generics(hir_id, &attr, span, target, item)
                 }

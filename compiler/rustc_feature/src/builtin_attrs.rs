@@ -700,6 +700,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
     ),
     rustc_attr!(
+        rustc_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
+        "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
+    ),
+    rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, @only_local: true,
         "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
     ),
