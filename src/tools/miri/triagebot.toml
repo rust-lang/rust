@@ -11,4 +11,4 @@ allow-unauthenticated = [
 [shortcut]
 
 [no-merges]
-exclude_labels = ["rollup", "subtree-sync"]
+exclude_titles = ["Rollup of", "sync from rustc"]
