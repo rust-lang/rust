@@ -19,7 +19,6 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
-use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, CrateType, Lto};
 
 use std::ffi::{CStr, CString};
@@ -584,7 +583,6 @@ fn thin_lto(
                     copy_jobs.push(work_product);
                     info!(" - {}: re-used", module_name);
                     assert!(cgcx.incr_comp_session_dir.is_some());
-                    cgcx.cgu_reuse_tracker.set_actual_reuse(module_name, CguReuse::PostLto);
                     continue;
                 }
             }

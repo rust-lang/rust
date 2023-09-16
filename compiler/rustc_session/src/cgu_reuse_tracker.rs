@@ -75,13 +75,7 @@ impl CguReuseTracker {
             debug!("set_actual_reuse({cgu_name:?}, {kind:?})");
 
             let prev_reuse = data.lock().unwrap().actual_reuse.insert(cgu_name.to_string(), kind);
-
-            if let Some(prev_reuse) = prev_reuse {
-                // The only time it is legal to overwrite reuse state is when
-                // we discover during ThinLTO that we can actually reuse the
-                // post-LTO version of a CGU.
-                assert_eq!(prev_reuse, CguReuse::PreLto);
-            }
+            assert!(prev_reuse.is_none());
         }
     }
 
