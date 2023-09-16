@@ -123,7 +123,7 @@ fn get_pat_binding<'tcx>(
                 if matches!(bind_annot.0, rustc_ast::ByRef::Yes) {
                     let _ = byref_ident.insert(ident);
                 }
-                // the second call of `replce()` returns a `Some(span)`, meaning a multi-binding pattern
+                // the second call of `replace()` returns a `Some(span)`, meaning a multi-binding pattern
                 if span.replace(pat.span).is_some() {
                     multiple_bindings = true;
                     return false;
