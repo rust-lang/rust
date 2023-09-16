@@ -130,14 +130,9 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
 #[rustc_diagnostic_item = "str_from_utf8_mut"]
 pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
-    // This should use `?` again, once it's `const`
-    match run_utf8_validation(v) {
-        Ok(_) => {
-            // SAFETY: validation succeeded.
-            Ok(unsafe { from_utf8_unchecked_mut(v) })
-        }
-        Err(err) => Err(err),
-    }
+    run_utf8_validation(v)?;
+
+    Ok(unsafe { from_utf8_unchecked_mut(v) })
 }
 
 /// Converts a slice of bytes to a string slice without checking
