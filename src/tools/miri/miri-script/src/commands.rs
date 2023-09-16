@@ -339,9 +339,9 @@ impl Command {
             "Confirmed that the push round-trips back to Miri properly. Please create a rustc PR:"
         );
         println!(
-            // Open PR with `subtree-sync` label to satisfy the `no-merges` triagebot check
+            // Open PR with `subtree update` title to silence the `no-merges` triagebot check
             // See https://github.com/rust-lang/rust/pull/114157
-            "    https://github.com/rust-lang/rust/compare/{github_user}:{branch}?quick_pull=1&labels=subtree-sync"
+            "    https://github.com/rust-lang/rust/compare/{github_user}:{branch}?quick_pull=1&title=Miri+subtree+update"
         );
 
         drop(josh);
