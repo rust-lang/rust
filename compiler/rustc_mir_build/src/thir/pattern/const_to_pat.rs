@@ -16,8 +16,8 @@ use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    FloatPattern, IndirectStructuralMatch, InvalidPattern, NontrivialStructuralMatch,
-    PointerPattern, TypeNotStructural, UnionPattern, UnsizedPattern,
+    FloatPattern, IndirectStructuralMatch, InvalidPattern, NonPartialEqMatch,
+    NontrivialStructuralMatch, PointerPattern, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
@@ -233,6 +233,16 @@ impl<'tcx> ConstToPat<'tcx> {
                             self.id,
                             self.span,
                             PointerPattern,
+                        );
+                    }
+                    _ if !self.type_may_have_partial_eq_impl(cv.ty()) => {
+                        // Value is structural-match but the type doesn't even implement `PartialEq`...
+                        self.saw_const_match_lint.set(true);
+                        self.tcx().emit_spanned_lint(
+                            lint::builtin::MATCH_WITHOUT_PARTIAL_EQ,
+                            self.id,
+                            self.span,
+                            NonPartialEqMatch { non_peq_ty: cv.ty() },
                         );
                     }
                     _ => {}

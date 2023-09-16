@@ -2311,6 +2311,57 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `match_without_partial_eq` lint detects constants that are used in patterns,
+    /// whose type does not implement `PartialEq`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(match_without_partial_eq)]
+    ///
+    /// trait EnumSetType {
+    ///    type Repr;
+    /// }
+    ///
+    /// enum Enum8 { }
+    /// impl EnumSetType for Enum8 {
+    ///     type Repr = u8;
+    /// }
+    ///
+    /// #[derive(PartialEq, Eq)]
+    /// struct EnumSet<T: EnumSetType> {
+    ///     __enumset_underlying: T::Repr,
+    /// }
+    ///
+    /// const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };
+    ///
+    /// fn main() {
+    ///     match CONST_SET {
+    ///         CONST_SET => { /* ok */ }
+    ///         _ => panic!("match fell through?"),
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust accepted constants in patterns, even if those constants' types
+    /// did not have `PartialEq` implemented. The compiler falls back to comparing the value
+    /// field-by-field. In the future we'd like to ensure that pattern matching always
+    /// follows `PartialEq` semantics, so that trait bound will become a requirement for
+    /// matching on constants.
+    pub MATCH_WITHOUT_PARTIAL_EQ,
+    Warn,
+    "constant in pattern does not implement `PartialEq`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #X <https://github.com/rust-lang/rust/issues/X>",
+    };
+}
+
+declare_lint! {
     /// The `ambiguous_associated_items` lint detects ambiguity between
     /// [associated items] and [enum variants].
     ///
@@ -3389,6 +3440,7 @@ declare_lint_pass! {
         LOSSY_PROVENANCE_CASTS,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         MACRO_USE_EXTERN_CRATE,
+        MATCH_WITHOUT_PARTIAL_EQ,
         META_VARIABLE_MISUSE,
         MISSING_ABI,
         MISSING_FRAGMENT_SPECIFIER,
