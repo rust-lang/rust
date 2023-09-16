@@ -200,6 +200,11 @@ pub enum ConstantKind<'tcx> {
     Ty(ty::Const<'tcx>),
 
     /// An unevaluated mir constant which is not part of the type system.
+    ///
+    /// Note that `Ty(ty::ConstKind::Unevaluated)` and this variant are *not* identical! `Ty` will
+    /// always flow through a valtree, so all data not captured in the valtree is lost. This variant
+    /// directly uses the evaluated result of the given constant, including e.g. data stored in
+    /// padding.
     Unevaluated(UnevaluatedConst<'tcx>, Ty<'tcx>),
 
     /// This constant cannot go back into the type system, as it represents
