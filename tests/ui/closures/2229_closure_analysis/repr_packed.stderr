@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/repr_packed.rs:13:17
+  --> $DIR/repr_packed.rs:14:17
    |
 LL |     let mut c = #[rustc_capture_analysis]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     let c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error: First Pass analysis includes:
-  --> $DIR/repr_packed.rs:16:5
+  --> $DIR/repr_packed.rs:17:5
    |
 LL | /     || {
 LL | |
@@ -37,19 +37,19 @@ LL | |         println!("({}, {})", z1, z2);
 LL | |     };
    | |_____^
    |
-note: Capturing foo[(0, 0)] -> ImmBorrow
-  --> $DIR/repr_packed.rs:19:24
+note: Capturing foo[] -> ImmBorrow
+  --> $DIR/repr_packed.rs:20:24
    |
 LL |         let z1: &u8 = &foo.x;
    |                        ^^^^^
-note: Capturing foo[(1, 0)] -> MutBorrow
+note: Capturing foo[] -> MutBorrow
   --> $DIR/repr_packed.rs:22:32
    |
 LL |         let z2: &mut u8 = &mut foo.y;
    |                                ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/repr_packed.rs:16:5
+  --> $DIR/repr_packed.rs:17:5
    |
 LL | /     || {
 LL | |
@@ -60,12 +60,7 @@ LL | |         println!("({}, {})", z1, z2);
 LL | |     };
    | |_____^
    |
-note: Min Capture foo[(0, 0)] -> ImmBorrow
-  --> $DIR/repr_packed.rs:19:24
-   |
-LL |         let z1: &u8 = &foo.x;
-   |                        ^^^^^
-note: Min Capture foo[(1, 0)] -> MutBorrow
+note: Min Capture foo[] -> MutBorrow
   --> $DIR/repr_packed.rs:22:32
    |
 LL |         let z2: &mut u8 = &mut foo.y;
