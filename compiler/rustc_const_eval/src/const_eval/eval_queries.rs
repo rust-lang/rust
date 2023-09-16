@@ -4,9 +4,9 @@ use crate::errors::ConstEvalError;
 use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::pretty::write_allocation_bytes;
+use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -18,9 +18,8 @@ use super::{CanAccessStatics, CompileTimeEvalContext, CompileTimeInterpreter};
 use crate::errors;
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId, Immediate,
-    InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
-    StackPopCleanup,
+    intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate, InternKind, InterpCx,
+    InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup,
 };
 
 // Returns a pointer to where the result lives

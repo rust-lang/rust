@@ -12,8 +12,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
-    alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, ConstAllocation, ConstValue,
-    GlobalAlloc, Pointer, Provenance,
+    alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, ConstAllocation, GlobalAlloc,
+    Pointer, Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;

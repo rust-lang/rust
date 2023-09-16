@@ -13,9 +13,8 @@ use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer, Projectable,
-    Provenance, Scalar,
+    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, Frame, InterpCx, InterpResult,
+    MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer, Projectable, Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -702,7 +701,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(crate) fn const_val_to_op(
         &self,
-        val_val: ConstValue<'tcx>,
+        val_val: mir::ConstValue<'tcx>,
         ty: Ty<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
@@ -715,15 +714,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
         let op = match val_val {
-            ConstValue::Indirect { alloc_id, offset } => {
+            mir::ConstValue::Indirect { alloc_id, offset } => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
                 let ptr = self.global_base_pointer(Pointer::new(alloc_id, offset))?;
                 Operand::Indirect(MemPlace::from_ptr(ptr.into()))
             }
-            ConstValue::Scalar(x) => Operand::Immediate(adjust_scalar(x)?.into()),
-            ConstValue::ZeroSized => Operand::Immediate(Immediate::Uninit),
-            ConstValue::Slice { data, start, end } => {
+            mir::ConstValue::Scalar(x) => Operand::Immediate(adjust_scalar(x)?.into()),
+            mir::ConstValue::ZeroSized => Operand::Immediate(Immediate::Uninit),
+            mir::ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
                 let ptr = Pointer::new(

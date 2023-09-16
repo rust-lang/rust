@@ -21,7 +21,7 @@ use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{
-    ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+    EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
@@ -1091,7 +1091,7 @@ rustc_queries! {
     }
 
     /// Converts a type level constant value into `ConstValue`
-    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> ConstValue<'tcx> {
+    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> mir::ConstValue<'tcx> {
         desc { "converting type-level constant value to mir constant value"}
     }
 
@@ -1104,14 +1104,14 @@ rustc_queries! {
     /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
     /// and its field values. This should only be used for pretty printing.
     query try_destructure_mir_constant_for_diagnostics(
-        key: (ConstValue<'tcx>, Ty<'tcx>)
+        key: (mir::ConstValue<'tcx>, Ty<'tcx>)
     ) -> Option<mir::DestructuredConstant<'tcx>> {
         desc { "destructuring MIR constant"}
         no_hash
         eval_always
     }
 
-    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
+    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> mir::ConstValue<'tcx> {
         desc { "getting a &core::panic::Location referring to a span" }
     }
 

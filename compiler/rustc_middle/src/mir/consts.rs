@@ -4,13 +4,168 @@ use rustc_hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir};
 use rustc_span::Span;
-use rustc_target::abi::Size;
+use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::mir::interpret::{ConstValue, ErrorHandled, GlobalAlloc, Scalar};
-use crate::mir::{interpret, pretty_print_const_value, Promoted};
+use crate::mir::interpret::{
+    alloc_range, AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar,
+};
+use crate::mir::{pretty_print_const_value, Promoted};
 use crate::ty::{self, print::pretty_print_const, List, Ty, TyCtxt};
 use crate::ty::{GenericArgs, GenericArgsRef};
 use crate::ty::{ScalarInt, UserTypeAnnotationIndex};
+
+///////////////////////////////////////////////////////////////////////////
+/// Evaluated Constants
+
+/// Represents the result of const evaluation via the `eval_to_allocation` query.
+/// Not to be confused with `ConstAllocation`, which directly refers to the underlying data!
+/// Here we indirect via an `AllocId`.
+#[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
+pub struct ConstAlloc<'tcx> {
+    /// The value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
+    /// (so you can use `AllocMap::unwrap_memory`).
+    pub alloc_id: AllocId,
+    pub ty: Ty<'tcx>,
+}
+
+/// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
+/// array length computations, enum discriminants and the pattern matching logic.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
+#[derive(HashStable, Lift)]
+pub enum ConstValue<'tcx> {
+    /// Used for types with `layout::abi::Scalar` ABI.
+    ///
+    /// Not using the enum `Value` to encode that this must not be `Uninit`.
+    Scalar(Scalar),
+
+    /// Only for ZSTs.
+    ZeroSized,
+
+    /// Used for `&[u8]` and `&str`.
+    ///
+    /// This is worth an optimized representation since Rust has literals of these types.
+    /// Not having to indirect those through an `AllocId` (or two, if we used `Indirect`) has shown
+    /// measurable performance improvements on stress tests.
+    Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
+
+    /// A value not representable by the other variants; needs to be stored in-memory.
+    ///
+    /// Must *not* be used for scalars or ZST, but having `&str` or other slices in this variant is fine.
+    Indirect {
+        /// The backing memory of the value. May contain more memory than needed for just the value
+        /// if this points into some other larger ConstValue.
+        ///
+        /// We use an `AllocId` here instead of a `ConstAllocation<'tcx>` to make sure that when a
+        /// raw constant (which is basically just an `AllocId`) is turned into a `ConstValue` and
+        /// back, we can preserve the original `AllocId`.
+        alloc_id: AllocId,
+        /// Offset into `alloc`
+        offset: Size,
+    },
+}
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(ConstValue<'_>, 32);
+
+impl<'tcx> ConstValue<'tcx> {
+    #[inline]
+    pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
+        match *self {
+            ConstValue::Indirect { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
+            ConstValue::Scalar(val) => Some(val),
+        }
+    }
+
+    pub fn try_to_scalar_int(&self) -> Option<ScalarInt> {
+        self.try_to_scalar()?.try_to_int().ok()
+    }
+
+    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
+        self.try_to_scalar_int()?.to_bits(size).ok()
+    }
+
+    pub fn try_to_bool(&self) -> Option<bool> {
+        self.try_to_scalar_int()?.try_into().ok()
+    }
+
+    pub fn try_to_target_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_scalar_int()?.try_to_target_usize(tcx).ok()
+    }
+
+    pub fn try_to_bits_for_ty(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+        self.try_to_bits(size)
+    }
+
+    pub fn from_bool(b: bool) -> Self {
+        ConstValue::Scalar(Scalar::from_bool(b))
+    }
+
+    pub fn from_u64(i: u64) -> Self {
+        ConstValue::Scalar(Scalar::from_u64(i))
+    }
+
+    pub fn from_u128(i: u128) -> Self {
+        ConstValue::Scalar(Scalar::from_u128(i))
+    }
+
+    pub fn from_target_usize(i: u64, cx: &impl HasDataLayout) -> Self {
+        ConstValue::Scalar(Scalar::from_target_usize(i, cx))
+    }
+
+    /// Must only be called on constants of type `&str` or `&[u8]`!
+    pub fn try_get_slice_bytes_for_diagnostics(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
+        let (data, start, end) = match self {
+            ConstValue::Scalar(_) | ConstValue::ZeroSized => {
+                bug!("`try_get_slice_bytes` on non-slice constant")
+            }
+            &ConstValue::Slice { data, start, end } => (data, start, end),
+            &ConstValue::Indirect { alloc_id, offset } => {
+                // The reference itself is stored behind an indirection.
+                // Load the reference, and then load the actual slice contents.
+                let a = tcx.global_alloc(alloc_id).unwrap_memory().inner();
+                let ptr_size = tcx.data_layout.pointer_size;
+                if a.size() < offset + 2 * ptr_size {
+                    // (partially) dangling reference
+                    return None;
+                }
+                // Read the wide pointer components.
+                let ptr = a
+                    .read_scalar(
+                        &tcx,
+                        alloc_range(offset, ptr_size),
+                        /* read_provenance */ true,
+                    )
+                    .ok()?;
+                let ptr = ptr.to_pointer(&tcx).ok()?;
+                let len = a
+                    .read_scalar(
+                        &tcx,
+                        alloc_range(offset + ptr_size, ptr_size),
+                        /* read_provenance */ false,
+                    )
+                    .ok()?;
+                let len = len.to_target_usize(&tcx).ok()?;
+                let len: usize = len.try_into().ok()?;
+                if len == 0 {
+                    return Some(&[]);
+                }
+                // Non-empty slice, must have memory. We know this is a relative pointer.
+                let (inner_alloc_id, offset) = ptr.into_parts();
+                let data = tcx.global_alloc(inner_alloc_id?).unwrap_memory();
+                (data, offset.bytes_usize(), offset.bytes_usize() + len)
+            }
+        };
+
+        // This is for diagnostics only, so we are okay to use `inspect_with_uninit_and_ptr_outside_interpreter`.
+        Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////
 /// Constants
@@ -49,7 +204,7 @@ pub enum ConstantKind<'tcx> {
 
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
-    Val(interpret::ConstValue<'tcx>, Ty<'tcx>),
+    Val(ConstValue<'tcx>, Ty<'tcx>),
 }
 
 impl<'tcx> Constant<'tcx> {
@@ -116,7 +271,7 @@ impl<'tcx> ConstantKind<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         span: Option<Span>,
-    ) -> Result<interpret::ConstValue<'tcx>, ErrorHandled> {
+    ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         match self {
             ConstantKind::Ty(c) => {
                 // We want to consistently have a "clean" value for type system constants (i.e., no

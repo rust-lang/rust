@@ -3,9 +3,7 @@
 use crate::build::{parse_float_into_constval, Builder};
 use rustc_ast as ast;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{
-    Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
-};
+use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{

@@ -5,10 +5,8 @@
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{
-        Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar,
-    },
-    BinOp, NonDivergingIntrinsic,
+    interpret::{Allocation, ConstAllocation, GlobalId, InterpResult, PointerArithmetic, Scalar},
+    BinOp, ConstValue, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
