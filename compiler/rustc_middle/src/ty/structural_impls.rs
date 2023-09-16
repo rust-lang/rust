@@ -18,6 +18,7 @@ use std::ops::ControlFlow;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Region};
 
 impl fmt::Debug for ty::TraitDef {
@@ -343,14 +344,27 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::Const<'tcx> {
         this: OptWithInfcx<'_, TyCtxt<'tcx>, InfCtx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
-        // This reflects what `Const` looked liked before `Interned` was
-        // introduced. We print it like this to avoid having to update expected
-        // output in a lot of tests.
+        // If this is a value, we spend some effort to make it look nice.
+        if let ConstKind::Value(_) = this.data.kind() {
+            return ty::tls::with(move |tcx| {
+                // Somehow trying to lift the valtree results in lifetime errors, so we lift the
+                // entire constant.
+                let lifted = tcx.lift(*this.data).unwrap();
+                let ConstKind::Value(valtree) = lifted.kind() else {
+                    bug!("we checked that this is a valtree")
+                };
+                let cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                let cx =
+                    cx.pretty_print_const_valtree(valtree, lifted.ty(), /*print_ty*/ true)?;
+                f.write_str(&cx.into_buffer())
+            });
+        }
+        // Fall back to something verbose.
         write!(
             f,
-            "Const {{ ty: {:?}, kind: {:?} }}",
-            &this.map(|data| data.ty()),
-            &this.map(|data| data.kind())
+            "{kind:?}: {ty:?}",
+            ty = &this.map(|data| data.ty()),
+            kind = &this.map(|data| data.kind())
         )
     }
 }
