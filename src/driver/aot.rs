@@ -8,6 +8,7 @@ use std::thread::JoinHandle;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
+use rustc_codegen_ssa::base::determine_cgu_reuse;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -488,33 +489,4 @@ pub(crate) fn run_aot(
         crate_info: CrateInfo::new(tcx, target_cpu),
         concurrency_limiter,
     })
-}
-
-// Adapted from https://github.com/rust-lang/rust/blob/303d8aff6092709edd4dbd35b1c88e9aa40bf6d8/src/librustc_codegen_ssa/base.rs#L922-L953
-fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
-    if !tcx.dep_graph.is_fully_enabled() {
-        return CguReuse::No;
-    }
-
-    let work_product_id = &cgu.work_product_id();
-    if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
-        // We don't have anything cached for this CGU. This can happen
-        // if the CGU did not exist in the previous session.
-        return CguReuse::No;
-    }
-
-    // Try to mark the CGU as green. If it we can do so, it means that nothing
-    // affecting the LLVM module has changed and we can re-use a cached version.
-    // If we compile with any kind of LTO, this means we can re-use the bitcode
-    // of the Pre-LTO stage (possibly also the Post-LTO version but we'll only
-    // know that later). If we are not doing LTO, there is only one optimized
-    // version of each module, so we re-use that.
-    let dep_node = cgu.codegen_dep_node(tcx);
-    assert!(
-        !tcx.dep_graph.dep_node_exists(&dep_node),
-        "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
-        cgu.name()
-    );
-
-    if tcx.try_mark_green(&dep_node) { CguReuse::PostLto } else { CguReuse::No }
 }
