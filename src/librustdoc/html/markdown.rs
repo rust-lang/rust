@@ -26,6 +26,7 @@
 //! ```
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
@@ -37,8 +38,9 @@ use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
-use std::str;
+use std::str::{self, CharIndices};
 
 use crate::clean::RenderedLink;
 use crate::doctest;
@@ -243,11 +245,21 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 let parse_result =
                     LangString::parse_without_check(lang, self.check_error_codes, false);
                 if !parse_result.rust {
+                    let added_classes = parse_result.added_classes;
+                    let lang_string = if let Some(lang) = parse_result.unknown.first() {
+                        format!("language-{}", lang)
+                    } else {
+                        String::new()
+                    };
+                    let whitespace = if added_classes.is_empty() { "" } else { " " };
                     return Some(Event::Html(
                         format!(
                             "<div class=\"example-wrap\">\
-                                 <pre class=\"language-{lang}\"><code>{text}</code></pre>\
+                                 <pre class=\"{lang_string}{whitespace}{added_classes}\">\
+                                     <code>{text}</code>\
+                                 </pre>\
                              </div>",
+                            added_classes = added_classes.join(" "),
                             text = Escape(&original_text),
                         )
                         .into(),
@@ -258,6 +270,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             CodeBlockKind::Indented => Default::default(),
         };
 
+        let added_classes = parse_result.added_classes;
         let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.intersperse("\n".into()).collect::<String>();
 
@@ -315,6 +328,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             &mut s,
             tooltip,
             playground_button.as_deref(),
+            &added_classes,
         );
         Some(Event::Html(s.into_inner().into()))
     }
@@ -712,6 +726,17 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
     enable_per_target_ignores: bool,
     extra_info: Option<&ExtraInfo<'_>>,
 ) {
+    find_codes(doc, tests, error_codes, enable_per_target_ignores, extra_info, false)
+}
+
+pub(crate) fn find_codes<T: doctest::Tester>(
+    doc: &str,
+    tests: &mut T,
+    error_codes: ErrorCodes,
+    enable_per_target_ignores: bool,
+    extra_info: Option<&ExtraInfo<'_>>,
+    include_non_rust: bool,
+) {
     let mut parser = Parser::new(doc).into_offset_iter();
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -734,7 +759,7 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
                     }
                     CodeBlockKind::Indented => Default::default(),
                 };
-                if !block_info.rust {
+                if !include_non_rust && !block_info.rust {
                     continue;
                 }
 
@@ -784,7 +809,23 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: String, help: &'static str) {
+    fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagnosticMessage>) {
+        if let Some(def_id) = self.def_id.as_local() {
+            self.tcx.struct_span_lint_hir(
+                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.sp,
+                msg,
+                |l| l,
+            );
+        }
+    }
+
+    fn error_invalid_codeblock_attr_with_help(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+        help: impl Into<SubdiagnosticMessage>,
+    ) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -808,6 +849,8 @@ pub(crate) struct LangString {
     pub(crate) compile_fail: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
+    pub(crate) added_classes: Vec<String>,
+    pub(crate) unknown: Vec<String>,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -815,6 +858,276 @@ pub(crate) enum Ignore {
     All,
     None,
     Some(Vec<String>),
+}
+
+/// This is the parser for fenced codeblocks attributes. It implements the following eBNF:
+///
+/// ```eBNF
+/// lang-string = *(token-list / delimited-attribute-list / comment)
+///
+/// bareword = CHAR *(CHAR)
+/// quoted-string = QUOTE *(NONQUOTE) QUOTE
+/// token = bareword / quoted-string
+/// sep = COMMA/WS *(COMMA/WS)
+/// attribute = (DOT token)/(token EQUAL token)
+/// attribute-list = [sep] attribute *(sep attribute) [sep]
+/// delimited-attribute-list = OPEN-CURLY-BRACKET attribute-list CLOSE-CURLY-BRACKET
+/// token-list = [sep] token *(sep token) [sep]
+/// comment = OPEN_PAREN *(all characters) CLOSE_PAREN
+///
+/// OPEN_PAREN = "("
+/// CLOSE_PARENT = ")"
+/// OPEN-CURLY-BRACKET = "{"
+/// CLOSE-CURLY-BRACKET = "}"
+/// CHAR = ALPHA / DIGIT / "_" / "-" / ":"
+/// QUOTE = %x22
+/// NONQUOTE = %x09 / %x20 / %x21 / %x23-7E ; TAB / SPACE / all printable characters except `"`
+/// COMMA = ","
+/// DOT = "."
+/// EQUAL = "="
+///
+/// ALPHA = %x41-5A / %x61-7A ; A-Z / a-z
+/// DIGIT = %x30-39
+/// WS = %x09 / " "
+/// ```
+pub(crate) struct TagIterator<'a, 'tcx> {
+    inner: Peekable<CharIndices<'a>>,
+    data: &'a str,
+    is_in_attribute_block: bool,
+    extra: Option<&'a ExtraInfo<'tcx>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum LangStringToken<'a> {
+    LangToken(&'a str),
+    ClassAttribute(&'a str),
+    KeyValueAttribute(&'a str, &'a str),
+}
+
+fn is_bareword_char(c: char) -> bool {
+    c == '_' || c == '-' || c == ':' || c.is_ascii_alphabetic() || c.is_ascii_digit()
+}
+fn is_separator(c: char) -> bool {
+    c == ' ' || c == ',' || c == '\t'
+}
+
+struct Indices {
+    start: usize,
+    end: usize,
+}
+
+impl<'a, 'tcx> TagIterator<'a, 'tcx> {
+    pub(crate) fn new(data: &'a str, extra: Option<&'a ExtraInfo<'tcx>>) -> Self {
+        Self { inner: data.char_indices().peekable(), data, is_in_attribute_block: false, extra }
+    }
+
+    fn emit_error(&self, err: impl Into<DiagnosticMessage>) {
+        if let Some(extra) = self.extra {
+            extra.error_invalid_codeblock_attr(err);
+        }
+    }
+
+    fn skip_separators(&mut self) -> Option<usize> {
+        while let Some((pos, c)) = self.inner.peek() {
+            if !is_separator(*c) {
+                return Some(*pos);
+            }
+            self.inner.next();
+        }
+        None
+    }
+
+    fn parse_string(&mut self, start: usize) -> Option<Indices> {
+        while let Some((pos, c)) = self.inner.next() {
+            if c == '"' {
+                return Some(Indices { start: start + 1, end: pos });
+            }
+        }
+        self.emit_error("unclosed quote string `\"`");
+        None
+    }
+
+    fn parse_class(&mut self, start: usize) -> Option<LangStringToken<'a>> {
+        while let Some((pos, c)) = self.inner.peek().copied() {
+            if is_bareword_char(c) {
+                self.inner.next();
+            } else {
+                let class = &self.data[start + 1..pos];
+                if class.is_empty() {
+                    self.emit_error(format!("unexpected `{c}` character after `.`"));
+                    return None;
+                } else if self.check_after_token() {
+                    return Some(LangStringToken::ClassAttribute(class));
+                } else {
+                    return None;
+                }
+            }
+        }
+        let class = &self.data[start + 1..];
+        if class.is_empty() {
+            self.emit_error("missing character after `.`");
+            None
+        } else if self.check_after_token() {
+            Some(LangStringToken::ClassAttribute(class))
+        } else {
+            None
+        }
+    }
+
+    fn parse_token(&mut self, start: usize) -> Option<Indices> {
+        while let Some((pos, c)) = self.inner.peek() {
+            if !is_bareword_char(*c) {
+                return Some(Indices { start, end: *pos });
+            }
+            self.inner.next();
+        }
+        self.emit_error("unexpected end");
+        None
+    }
+
+    fn parse_key_value(&mut self, c: char, start: usize) -> Option<LangStringToken<'a>> {
+        let key_indices =
+            if c == '"' { self.parse_string(start)? } else { self.parse_token(start)? };
+        if key_indices.start == key_indices.end {
+            self.emit_error("unexpected empty string as key");
+            return None;
+        }
+
+        if let Some((_, c)) = self.inner.next() {
+            if c != '=' {
+                self.emit_error(format!("expected `=`, found `{}`", c));
+                return None;
+            }
+        } else {
+            self.emit_error("unexpected end");
+            return None;
+        }
+        let value_indices = match self.inner.next() {
+            Some((pos, '"')) => self.parse_string(pos)?,
+            Some((pos, c)) if is_bareword_char(c) => self.parse_token(pos)?,
+            Some((_, c)) => {
+                self.emit_error(format!("unexpected `{c}` character after `=`"));
+                return None;
+            }
+            None => {
+                self.emit_error("expected value after `=`");
+                return None;
+            }
+        };
+        if value_indices.start == value_indices.end {
+            self.emit_error("unexpected empty string as value");
+            None
+        } else if self.check_after_token() {
+            Some(LangStringToken::KeyValueAttribute(
+                &self.data[key_indices.start..key_indices.end],
+                &self.data[value_indices.start..value_indices.end],
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// Returns `false` if an error was emitted.
+    fn check_after_token(&mut self) -> bool {
+        if let Some((_, c)) = self.inner.peek().copied() {
+            if c == '}' || is_separator(c) || c == '(' {
+                true
+            } else {
+                self.emit_error(format!("unexpected `{c}` character"));
+                false
+            }
+        } else {
+            // The error will be caught on the next iteration.
+            true
+        }
+    }
+
+    fn parse_in_attribute_block(&mut self) -> Option<LangStringToken<'a>> {
+        while let Some((pos, c)) = self.inner.next() {
+            if c == '}' {
+                self.is_in_attribute_block = false;
+                return self.next();
+            } else if c == '.' {
+                return self.parse_class(pos);
+            } else if c == '"' || is_bareword_char(c) {
+                return self.parse_key_value(c, pos);
+            } else {
+                self.emit_error(format!("unexpected character `{c}`"));
+                return None;
+            }
+        }
+        self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
+        None
+    }
+
+    /// Returns `false` if an error was emitted.
+    fn skip_paren_block(&mut self) -> bool {
+        while let Some((_, c)) = self.inner.next() {
+            if c == ')' {
+                return true;
+            }
+        }
+        self.emit_error("unclosed comment: missing `)` at the end");
+        false
+    }
+
+    fn parse_outside_attribute_block(&mut self, start: usize) -> Option<LangStringToken<'a>> {
+        while let Some((pos, c)) = self.inner.next() {
+            if c == '"' {
+                if pos != start {
+                    self.emit_error("expected ` `, `{` or `,` found `\"`");
+                    return None;
+                }
+                let indices = self.parse_string(pos)?;
+                if let Some((_, c)) = self.inner.peek().copied() && c != '{' && !is_separator(c) && c != '(' {
+                    self.emit_error(format!("expected ` `, `{{` or `,` after `\"`, found `{c}`"));
+                    return None;
+                }
+                return Some(LangStringToken::LangToken(&self.data[indices.start..indices.end]));
+            } else if c == '{' {
+                self.is_in_attribute_block = true;
+                return self.next();
+            } else if is_bareword_char(c) {
+                continue;
+            } else if is_separator(c) {
+                if pos != start {
+                    return Some(LangStringToken::LangToken(&self.data[start..pos]));
+                }
+                return self.next();
+            } else if c == '(' {
+                if !self.skip_paren_block() {
+                    return None;
+                }
+                if pos != start {
+                    return Some(LangStringToken::LangToken(&self.data[start..pos]));
+                }
+                return self.next();
+            } else {
+                self.emit_error(format!("unexpected character `{c}`"));
+                return None;
+            }
+        }
+        let token = &self.data[start..];
+        if token.is_empty() { None } else { Some(LangStringToken::LangToken(&self.data[start..])) }
+    }
+}
+
+impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
+    type Item = LangStringToken<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(start) = self.skip_separators() else {
+            if self.is_in_attribute_block {
+                self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
+            }
+            return None;
+        };
+        if self.is_in_attribute_block {
+            self.parse_in_attribute_block()
+        } else {
+            self.parse_outside_attribute_block(start)
+        }
+    }
 }
 
 impl Default for LangString {
@@ -829,6 +1142,8 @@ impl Default for LangString {
             compile_fail: false,
             error_codes: Vec::new(),
             edition: None,
+            added_classes: Vec::new(),
+            unknown: Vec::new(),
         }
     }
 }
@@ -838,33 +1153,8 @@ impl LangString {
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
-    ) -> LangString {
+    ) -> Self {
         Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
-    }
-
-    fn tokens(string: &str) -> impl Iterator<Item = &str> {
-        // Pandoc, which Rust once used for generating documentation,
-        // expects lang strings to be surrounded by `{}` and for each token
-        // to be proceeded by a `.`. Since some of these lang strings are still
-        // loose in the wild, we strip a pair of surrounding `{}` from the lang
-        // string and a leading `.` from each token.
-
-        let string = string.trim();
-
-        let first = string.chars().next();
-        let last = string.chars().last();
-
-        let string = if first == Some('{') && last == Some('}') {
-            &string[1..string.len() - 1]
-        } else {
-            string
-        };
-
-        string
-            .split(|c| c == ',' || c == ' ' || c == '\t')
-            .map(str::trim)
-            .map(|token| token.strip_prefix('.').unwrap_or(token))
-            .filter(|token| !token.is_empty())
     }
 
     fn parse(
@@ -872,52 +1162,58 @@ impl LangString {
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
         extra: Option<&ExtraInfo<'_>>,
-    ) -> LangString {
+    ) -> Self {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
+        let mut seen_custom_tag = false;
         let mut data = LangString::default();
         let mut ignores = vec![];
 
         data.original = string.to_owned();
 
-        for token in Self::tokens(string) {
+        for token in TagIterator::new(string, extra) {
             match token {
-                "should_panic" => {
+                LangStringToken::LangToken("should_panic") => {
                     data.should_panic = true;
                     seen_rust_tags = !seen_other_tags;
                 }
-                "no_run" => {
+                LangStringToken::LangToken("no_run") => {
                     data.no_run = true;
                     seen_rust_tags = !seen_other_tags;
                 }
-                "ignore" => {
+                LangStringToken::LangToken("ignore") => {
                     data.ignore = Ignore::All;
                     seen_rust_tags = !seen_other_tags;
                 }
-                x if x.starts_with("ignore-") => {
+                LangStringToken::LangToken(x) if x.starts_with("ignore-") => {
                     if enable_per_target_ignores {
                         ignores.push(x.trim_start_matches("ignore-").to_owned());
                         seen_rust_tags = !seen_other_tags;
                     }
                 }
-                "rust" => {
+                LangStringToken::LangToken("rust") => {
                     data.rust = true;
                     seen_rust_tags = true;
                 }
-                "test_harness" => {
+                LangStringToken::LangToken("custom") => {
+                    seen_custom_tag = true;
+                }
+                LangStringToken::LangToken("test_harness") => {
                     data.test_harness = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                 }
-                "compile_fail" => {
+                LangStringToken::LangToken("compile_fail") => {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
                 }
-                x if x.starts_with("edition") => {
+                LangStringToken::LangToken(x) if x.starts_with("edition") => {
                     data.edition = x[7..].parse::<Edition>().ok();
                 }
-                x if allow_error_code_check && x.starts_with('E') && x.len() == 5 => {
+                LangStringToken::LangToken(x)
+                    if allow_error_code_check && x.starts_with('E') && x.len() == 5 =>
+                {
                     if x[1..].parse::<u32>().is_ok() {
                         data.error_codes.push(x.to_owned());
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
@@ -925,7 +1221,7 @@ impl LangString {
                         seen_other_tags = true;
                     }
                 }
-                x if extra.is_some() => {
+                LangStringToken::LangToken(x) if extra.is_some() => {
                     let s = x.to_lowercase();
                     if let Some((flag, help)) = if s == "compile-fail"
                         || s == "compile_fail"
@@ -958,15 +1254,30 @@ impl LangString {
                         None
                     } {
                         if let Some(extra) = extra {
-                            extra.error_invalid_codeblock_attr(
+                            extra.error_invalid_codeblock_attr_with_help(
                                 format!("unknown attribute `{x}`. Did you mean `{flag}`?"),
                                 help,
                             );
                         }
                     }
                     seen_other_tags = true;
+                    data.unknown.push(x.to_owned());
                 }
-                _ => seen_other_tags = true,
+                LangStringToken::LangToken(x) => {
+                    seen_other_tags = true;
+                    data.unknown.push(x.to_owned());
+                }
+                LangStringToken::KeyValueAttribute(key, value) => {
+                    if key == "class" {
+                        data.added_classes.push(value.to_owned());
+                    } else if let Some(extra) = extra {
+                        extra
+                            .error_invalid_codeblock_attr(format!("unsupported attribute `{key}`"));
+                    }
+                }
+                LangStringToken::ClassAttribute(class) => {
+                    data.added_classes.push(class.to_owned());
+                }
             }
         }
 
@@ -975,7 +1286,7 @@ impl LangString {
             data.ignore = Ignore::Some(ignores);
         }
 
-        data.rust &= !seen_other_tags || seen_rust_tags;
+        data.rust &= !seen_custom_tag && (!seen_other_tags || seen_rust_tags);
 
         data
     }
