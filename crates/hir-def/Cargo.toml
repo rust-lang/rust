@@ -12,7 +12,6 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-anymap = "1.0.0-beta.2"
 arrayvec = "0.7.2"
 bitflags = "2.1.0"
 cov-mark = "2.0.0-pre.1"
@@ -34,6 +33,7 @@ triomphe.workspace = true
 rustc-dependencies.workspace = true
 
 # local deps
+anymap.workspace = true
 stdx.workspace = true
 intern.workspace = true
 base-db.workspace = true
@@ -44,6 +44,7 @@ mbe.workspace = true
 cfg.workspace = true
 tt.workspace = true
 limit.workspace = true
+
 
 [dev-dependencies]
 expect-test = "1.4.0"
