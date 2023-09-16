@@ -1044,7 +1044,7 @@ pub(crate) mod builtin {
     /// expression of type `&'static str` which represents all of the literals
     /// concatenated left-to-right.
     ///
-    /// Integer and floating point literals are stringified in order to be
+    /// Integer and floating point literals are [stringified](core::stringify) in order to be
     /// concatenated.
     ///
     /// # Examples
