@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, Local, MatchSource, Node, PatKind, QPath, TyKind};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
+use rustc_middle::lint::{in_external_macro, is_from_async_await};
 use rustc_middle::ty;
 
 use super::LET_UNIT_VALUE;
@@ -16,6 +16,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
     if let Some(init) = local.init
         && !local.pat.span.from_expansion()
         && !in_external_macro(cx.sess(), local.span)
+        && !is_from_async_await(local.span)
         && cx.typeck_results().pat_ty(local.pat).is_unit()
     {
         if (local.ty.map_or(false, |ty| !matches!(ty.kind, TyKind::Infer))
