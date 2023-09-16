@@ -2,13 +2,13 @@ use super::FILTER_MAP_BOOL_THEN;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::paths::BOOL_THEN;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::is_copy;
+use clippy_utils::ty::{is_copy, peel_mid_ty_refs_is_mutable};
 use clippy_utils::{is_from_proc_macro, is_trait_method, match_def_path, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder};
+use rustc_middle::ty::Binder;
 use rustc_span::{sym, Span};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &Expr<'_>, call_span: Span) {
@@ -36,7 +36,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
         && let Some(def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
         && match_def_path(cx, def_id, &BOOL_THEN)
         && !is_from_proc_macro(cx, expr)
-        && let ref_bool = matches!(cx.typeck_results().expr_ty(recv).kind(), ty::Ref(..))
+        // Peel all refs (e.g. `&&&&mut &&&bool` -> `bool`) and get its count so we can suggest the exact
+        // amount of derefs to get to the bool in the filter.
+        // `peel_mid_ty_refs` alone doesn't handle mutable reference, so we use `_is_mutable`
+        // instead which counts them too and just ignore the resulting mutability
+        && let (_, needed_derefs, _) = peel_mid_ty_refs_is_mutable(cx.typeck_results().expr_ty(recv))
         && let Some(param_snippet) = snippet_opt(cx, param.span)
         && let Some(filter) = snippet_opt(cx, recv.span)
         && let Some(map) = snippet_opt(cx, then_body.span)
@@ -47,7 +51,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
             call_span,
             "usage of `bool::then` in `filter_map`",
             "use `filter` then `map` instead",
-            format!("filter(|&{param_snippet}| {}{filter}).map(|{param_snippet}| {map})", if ref_bool { "*" } else { "" }),
+            format!(
+                "filter(|&{param_snippet}| {derefs}{filter}).map(|{param_snippet}| {map})",
+                derefs="*".repeat(needed_derefs)
+            ),
             Applicability::MachineApplicable,
         );
     }
