@@ -711,7 +711,9 @@ impl<'a> TraitDef<'a> {
                             .collect();
 
                         // Require the current trait.
-                        bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
+                        if !self.skip_path_as_bound {
+                            bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
+                        }
 
                         // Add a `Copy` bound if required.
                         if is_packed && self.needs_copy_as_bound_if_packed {
@@ -722,15 +724,17 @@ impl<'a> TraitDef<'a> {
                             ));
                         }
 
-                        let predicate = ast::WhereBoundPredicate {
-                            span: self.span,
-                            bound_generic_params: field_ty_param.bound_generic_params,
-                            bounded_ty: field_ty_param.ty,
-                            bounds,
-                        };
+                        if !bounds.is_empty() {
+                            let predicate = ast::WhereBoundPredicate {
+                                span: self.span,
+                                bound_generic_params: field_ty_param.bound_generic_params,
+                                bounded_ty: field_ty_param.ty,
+                                bounds,
+                            };
 
-                        let predicate = ast::WherePredicate::BoundPredicate(predicate);
-                        where_clause.predicates.push(predicate);
+                            let predicate = ast::WherePredicate::BoundPredicate(predicate);
+                            where_clause.predicates.push(predicate);
+                        }
                     }
                 }
             }
