@@ -737,7 +737,8 @@
           StorageDead(_125);
           StorageDead(_126);
           StorageDead(_124);
-          StorageLive(_128);
+-         StorageLive(_128);
++         nop;
           _128 = &_3;
           StorageLive(_129);
 -         StorageLive(_130);
@@ -778,7 +779,8 @@
       bb32: {
           StorageDead(_134);
           StorageDead(_133);
-          StorageLive(_137);
+-         StorageLive(_137);
++         nop;
           _137 = &mut _3;
           StorageLive(_138);
           StorageLive(_139);
@@ -813,7 +815,8 @@
           StorageDead(_143);
           StorageDead(_142);
           StorageLive(_146);
-          StorageLive(_147);
+-         StorageLive(_147);
++         nop;
           _147 = &raw const _3;
           StorageLive(_148);
           StorageLive(_149);
@@ -847,7 +850,8 @@
       bb36: {
           StorageDead(_153);
           StorageDead(_152);
-          StorageLive(_156);
+-         StorageLive(_156);
++         nop;
           _156 = &raw mut _3;
           StorageLive(_157);
           StorageLive(_158);
@@ -882,10 +886,13 @@
           StorageDead(_162);
           StorageDead(_161);
           _146 = const ();
-          StorageDead(_156);
-          StorageDead(_147);
+-         StorageDead(_156);
+-         StorageDead(_147);
++         nop;
++         nop;
           StorageDead(_146);
-          StorageLive(_165);
+-         StorageLive(_165);
++         nop;
           _165 = &_3;
           StorageLive(_166);
 -         StorageLive(_167);
@@ -927,9 +934,12 @@
           StorageDead(_171);
           StorageDead(_170);
           _0 = const ();
-          StorageDead(_165);
-          StorageDead(_137);
-          StorageDead(_128);
+-         StorageDead(_165);
+-         StorageDead(_137);
+-         StorageDead(_128);
++         nop;
++         nop;
++         nop;
           return;
       }
   }

@@ -2,6 +2,7 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(box_patterns)]
+#![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
 #![feature(is_sorted)]
 #![feature(let_chains)]

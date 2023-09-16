@@ -192,6 +192,13 @@ fn references(mut x: impl Sized) {
     opaque(&raw const x); // should not reuse a
     opaque(&raw mut x);
     opaque(&raw mut x); // should not reuse a
+
+    let r = &mut x;
+    let s = S(r).0; // Obfuscate `r`.
+    opaque(&*s); // This is `&*r`.
+    opaque(&mut *s); // This is `&*r`.
+    opaque(&raw const *s); // This is `&*r`.
+    opaque(&raw mut *s); // This is `&*r`.
 }
 
 fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {

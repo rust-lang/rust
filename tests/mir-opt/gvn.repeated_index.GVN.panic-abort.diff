@@ -40,7 +40,8 @@
       }
   
       bb1: {
-          _6 = _3[_7];
+-         _6 = _3[_7];
++         _6 = _3[0 of 1];
           _5 = opaque::<T>(move _6) -> [return: bb2, unwind unreachable];
       }
   
@@ -61,7 +62,8 @@
       }
   
       bb3: {
-          _11 = _3[_12];
+-         _11 = _3[_12];
++         _11 = _3[_2];
           _10 = opaque::<T>(move _11) -> [return: bb4, unwind unreachable];
       }
   

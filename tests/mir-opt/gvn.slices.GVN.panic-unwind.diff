@@ -125,7 +125,8 @@
           StorageLive(_12);
           StorageLive(_13);
           StorageLive(_14);
-          _14 = &(*_4);
+-         _14 = &(*_4);
++         _14 = &(*_1);
           _13 = core::str::<impl str>::as_ptr(move _14) -> [return: bb4, unwind continue];
       }
   
@@ -135,9 +136,11 @@
           _8 = (move _9, move _12);
           StorageDead(_12);
           StorageDead(_9);
-          StorageLive(_15);
+-         StorageLive(_15);
++         nop;
           _15 = (_8.0: &*const u8);
-          StorageLive(_16);
+-         StorageLive(_16);
++         nop;
           _16 = (_8.1: &*const u8);
           StorageLive(_17);
           StorageLive(_18);
@@ -153,8 +156,10 @@
           StorageDead(_18);
           _7 = const ();
           StorageDead(_17);
-          StorageDead(_16);
-          StorageDead(_15);
+-         StorageDead(_16);
+-         StorageDead(_15);
++         nop;
++         nop;
           StorageDead(_13);
           StorageDead(_10);
           StorageDead(_8);
@@ -184,11 +189,13 @@
 -         _23 = move _21;
 +         _23 = const core::panicking::AssertKind::Eq;
           StorageLive(_24);
-          StorageLive(_25);
+-         StorageLive(_25);
++         nop;
           _25 = &(*_15);
           _24 = &(*_25);
           StorageLive(_26);
-          StorageLive(_27);
+-         StorageLive(_27);
++         nop;
           _27 = &(*_16);
           _26 = &(*_27);
           StorageLive(_28);
@@ -225,9 +232,11 @@
           _34 = (move _35, move _38);
           StorageDead(_38);
           StorageDead(_35);
-          StorageLive(_41);
+-         StorageLive(_41);
++         nop;
           _41 = (_34.0: &*const u8);
-          StorageLive(_42);
+-         StorageLive(_42);
++         nop;
           _42 = (_34.1: &*const u8);
           StorageLive(_43);
           StorageLive(_44);
@@ -243,8 +252,10 @@
           StorageDead(_44);
           _33 = const ();
           StorageDead(_43);
-          StorageDead(_42);
-          StorageDead(_41);
+-         StorageDead(_42);
+-         StorageDead(_41);
++         nop;
++         nop;
           StorageDead(_39);
           StorageDead(_36);
           StorageDead(_34);
@@ -270,11 +281,13 @@
 -         _49 = move _47;
 +         _49 = const core::panicking::AssertKind::Eq;
           StorageLive(_50);
-          StorageLive(_51);
+-         StorageLive(_51);
++         nop;
           _51 = &(*_41);
           _50 = &(*_51);
           StorageLive(_52);
-          StorageLive(_53);
+-         StorageLive(_53);
++         nop;
           _53 = &(*_42);
           _52 = &(*_53);
           StorageLive(_54);

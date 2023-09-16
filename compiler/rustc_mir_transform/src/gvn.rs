@@ -66,6 +66,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, Size, VariantIdx, FIRST_VARIANT};
+use std::borrow::Cow;
 
 use crate::dataflow_const_prop::DummyMachine;
 use crate::ssa::{AssignedValue, SsaLocals};
@@ -461,6 +462,87 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         Some(op)
     }
 
+    fn project(
+        &mut self,
+        place: PlaceRef<'tcx>,
+        value: VnIndex,
+        proj: PlaceElem<'tcx>,
+    ) -> Option<VnIndex> {
+        let proj = match proj {
+            ProjectionElem::Deref => {
+                let ty = place.ty(self.local_decls, self.tcx).ty;
+                if let Some(Mutability::Not) = ty.ref_mutability()
+                    && let Some(pointee_ty) = ty.builtin_deref(true)
+                    && pointee_ty.ty.is_freeze(self.tcx, self.param_env)
+                {
+                    // An immutable borrow `_x` always points to the same value for the
+                    // lifetime of the borrow, so we can merge all instances of `*_x`.
+                    ProjectionElem::Deref
+                } else {
+                    return None;
+                }
+            }
+            ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
+            ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty),
+            ProjectionElem::Index(idx) => {
+                let idx = self.locals[idx]?;
+                ProjectionElem::Index(idx)
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                ProjectionElem::Subslice { from, to, from_end }
+            }
+            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
+            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
+        };
+
+        Some(self.insert(Value::Projection(value, proj)))
+    }
+
+    /// Simplify the projection chain if we know better.
+    #[instrument(level = "trace", skip(self))]
+    fn simplify_place_projection(&mut self, place: &mut Place<'tcx>, location: Location) {
+        // If the projection is indirect, we treat the local as a value, so can replace it with
+        // another local.
+        if place.is_indirect()
+            && let Some(base) = self.locals[place.local]
+            && let Some(new_local) = self.try_as_local(base, location)
+        {
+            place.local = new_local;
+            self.reused_locals.insert(new_local);
+        }
+
+        let mut projection = Cow::Borrowed(&place.projection[..]);
+
+        for i in 0..projection.len() {
+            let elem = projection[i];
+            if let ProjectionElem::Index(idx) = elem
+                && let Some(idx) = self.locals[idx]
+            {
+                if let Some(offset) = self.evaluated[idx].as_ref()
+                    && let Ok(offset) = self.ecx.read_target_usize(offset)
+                {
+                    projection.to_mut()[i] = ProjectionElem::ConstantIndex {
+                        offset,
+                        min_length: offset + 1,
+                        from_end: false,
+                    };
+                } else if let Some(new_idx) = self.try_as_local(idx, location) {
+                    projection.to_mut()[i] = ProjectionElem::Index(new_idx);
+                    self.reused_locals.insert(new_idx);
+                }
+            }
+        }
+
+        if projection.is_owned() {
+            place.projection = self.tcx.mk_place_elems(&projection);
+        }
+
+        trace!(?place);
+    }
+
     /// Represent the *value* which would be read from `place`, and point `place` to a preexisting
     /// place with the same value (if that already exists).
     #[instrument(level = "trace", skip(self), ret)]
@@ -469,6 +551,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         place: &mut Place<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
+        self.simplify_place_projection(place, location);
+
         // Invariant: `place` and `place_ref` point to the same value, even if they point to
         // different memory locations.
         let mut place_ref = place.as_ref();
@@ -483,53 +567,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 place_ref = PlaceRef { local, projection: &place.projection[index..] };
             }
 
-            let proj = match proj {
-                ProjectionElem::Deref => {
-                    let ty = Place::ty_from(
-                        place.local,
-                        &place.projection[..index],
-                        self.local_decls,
-                        self.tcx,
-                    )
-                    .ty;
-                    if let Some(Mutability::Not) = ty.ref_mutability()
-                        && let Some(pointee_ty) = ty.builtin_deref(true)
-                        && pointee_ty.ty.is_freeze(self.tcx, self.param_env)
-                    {
-                        // An immutable borrow `_x` always points to the same value for the
-                        // lifetime of the borrow, so we can merge all instances of `*_x`.
-                        ProjectionElem::Deref
-                    } else {
-                        return None;
-                    }
-                }
-                ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty),
-                ProjectionElem::Index(idx) => {
-                    let idx = self.locals[idx]?;
-                    ProjectionElem::Index(idx)
-                }
-                ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end }
-                }
-                ProjectionElem::Subslice { from, to, from_end } => {
-                    ProjectionElem::Subslice { from, to, from_end }
-                }
-                ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
-                ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
-                ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
-            };
-            value = self.insert(Value::Projection(value, proj));
+            let base = PlaceRef { local: place.local, projection: &place.projection[..index] };
+            value = self.project(base, value, proj)?;
         }
 
-        if let Some(local) = self.try_as_local(value, location)
-            && local != place.local
-        // in case we had no projection to begin with.
-        {
-            *place = local.into();
-            self.reused_locals.insert(local);
-        } else if place_ref.local != place.local
-            || place_ref.projection.len() < place.projection.len()
-        {
+        if let Some(new_local) = self.try_as_local(value, location) {
+            place_ref = PlaceRef { local: new_local, projection: &[] };
+        }
+
+        if place_ref.local != place.local || place_ref.projection.len() < place.projection.len() {
             // By the invariant on `place_ref`.
             *place = place_ref.project_deeper(&[], self.tcx);
             self.reused_locals.insert(place_ref.local);
@@ -545,7 +591,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         location: Location,
     ) -> Option<VnIndex> {
         match *operand {
-            Operand::Constant(ref constant) => Some(self.insert(Value::Constant(constant.const_))),
+            Operand::Constant(ref mut constant) => {
+                let const_ = constant.const_.normalize(self.tcx, self.param_env);
+                Some(self.insert(Value::Constant(const_)))
+            }
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
                 if let Some(const_) = self.try_as_constant(value) {
@@ -595,11 +644,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let ty = rvalue.ty(self.local_decls, self.tcx);
                 Value::Aggregate(ty, variant_index, fields?)
             }
-            Rvalue::Ref(_, borrow_kind, place) => {
-                return self.new_pointer(place, AddressKind::Ref(borrow_kind));
+            Rvalue::Ref(_, borrow_kind, ref mut place) => {
+                self.simplify_place_projection(place, location);
+                return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
-            Rvalue::AddressOf(mutbl, place) => {
-                return self.new_pointer(place, AddressKind::Address(mutbl));
+            Rvalue::AddressOf(mutbl, ref mut place) => {
+                self.simplify_place_projection(place, location);
+                return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
 
             // Operations.
@@ -755,6 +806,10 @@ impl<'tcx> VnState<'_, 'tcx> {
 impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, location: Location) {
+        self.simplify_place_projection(place, location);
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
