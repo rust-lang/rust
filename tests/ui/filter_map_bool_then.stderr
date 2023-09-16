@@ -55,5 +55,11 @@ error: usage of `bool::then` in `filter_map`
 LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| **b).map(|(i, b)| i)`
 
-error: aborting due to 9 previous errors
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:80:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| ****b).map(|(i, b)| i)`
+
+error: aborting due to 10 previous errors
 

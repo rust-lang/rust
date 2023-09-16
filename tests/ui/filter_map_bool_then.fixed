@@ -67,4 +67,15 @@ fn issue11503() {
     // Should also suggest derefs when going through a mutable reference
     let bools: &[&mut bool] = &[&mut true];
     let _: Vec<usize> = bools.iter().enumerate().filter(|&(i, b)| **b).map(|(i, b)| i).collect();
+
+    // Should also suggest derefs when going through a custom deref
+    struct DerefToBool;
+    impl std::ops::Deref for DerefToBool {
+        type Target = bool;
+        fn deref(&self) -> &Self::Target {
+            &true
+        }
+    }
+    let bools: &[&&DerefToBool] = &[&&DerefToBool];
+    let _: Vec<usize> = bools.iter().enumerate().filter(|&(i, b)| ****b).map(|(i, b)| i).collect();
 }
