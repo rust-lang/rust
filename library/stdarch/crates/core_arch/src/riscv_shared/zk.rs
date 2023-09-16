@@ -62,8 +62,7 @@ extern "unadjusted" {
 ///
 /// This function is safe to use if the `zbkx` target feature is present.
 #[target_feature(enable = "zbkx")]
-// See #1464
-// #[cfg_attr(test, assert_instr(xperm8))]
+#[cfg_attr(test, assert_instr(xperm8))]
 #[inline]
 pub unsafe fn xperm8(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
@@ -94,8 +93,7 @@ pub unsafe fn xperm8(rs1: usize, rs2: usize) -> usize {
 ///
 /// This function is safe to use if the `zbkx` target feature is present.
 #[target_feature(enable = "zbkx")]
-// See #1464
-// #[cfg_attr(test, assert_instr(xperm4))]
+#[cfg_attr(test, assert_instr(xperm4))]
 #[inline]
 pub unsafe fn xperm4(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
@@ -129,8 +127,7 @@ pub unsafe fn xperm4(rs1: usize, rs2: usize) -> usize {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-// See #1464
-// #[cfg_attr(test, assert_instr(sha256sig0))]
+#[cfg_attr(test, assert_instr(sha256sig0))]
 #[inline]
 pub unsafe fn sha256sig0(rs1: u32) -> u32 {
     _sha256sig0(rs1 as i32) as u32
@@ -156,8 +153,7 @@ pub unsafe fn sha256sig0(rs1: u32) -> u32 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-// See #1464
-// #[cfg_attr(test, assert_instr(sha256sig1))]
+#[cfg_attr(test, assert_instr(sha256sig1))]
 #[inline]
 pub unsafe fn sha256sig1(rs1: u32) -> u32 {
     _sha256sig1(rs1 as i32) as u32
@@ -183,8 +179,7 @@ pub unsafe fn sha256sig1(rs1: u32) -> u32 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-// See #1464
-// #[cfg_attr(test, assert_instr(sha256sum0))]
+#[cfg_attr(test, assert_instr(sha256sum0))]
 #[inline]
 pub unsafe fn sha256sum0(rs1: u32) -> u32 {
     _sha256sum0(rs1 as i32) as u32
@@ -210,8 +205,7 @@ pub unsafe fn sha256sum0(rs1: u32) -> u32 {
 ///
 /// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
-// See #1464
-// #[cfg_attr(test, assert_instr(sha256sum1))]
+#[cfg_attr(test, assert_instr(sha256sum1))]
 #[inline]
 pub unsafe fn sha256sum1(rs1: u32) -> u32 {
     _sha256sum1(rs1 as i32) as u32
@@ -288,8 +282,7 @@ pub unsafe fn sha256sum1(rs1: u32) -> u32 {
 /// ```
 #[target_feature(enable = "zksed")]
 #[rustc_legacy_const_generics(2)]
-// See #1464
-// #[cfg_attr(test, assert_instr(sm4ed, BS = 0))]
+#[cfg_attr(test, assert_instr(sm4ed, BS = 0))]
 #[inline]
 pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
@@ -368,8 +361,7 @@ pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// ```
 #[target_feature(enable = "zksed")]
 #[rustc_legacy_const_generics(2)]
-// See #1464
-// #[cfg_attr(test, assert_instr(sm4ks, BS = 0))]
+#[cfg_attr(test, assert_instr(sm4ks, BS = 0))]
 #[inline]
 pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
@@ -409,8 +401,7 @@ pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// compression function `CF` uses the intermediate value `TT2` to calculate
 /// the variable `E` in one iteration for subsequent processes.
 #[target_feature(enable = "zksh")]
-// See #1464
-// #[cfg_attr(test, assert_instr(sm3p0))]
+#[cfg_attr(test, assert_instr(sm3p0))]
 #[inline]
 pub unsafe fn sm3p0(rs1: u32) -> u32 {
     _sm3p0(rs1 as i32) as u32
@@ -454,8 +445,7 @@ pub unsafe fn sm3p0(rs1: u32) -> u32 {
 /// ENDFOR
 /// ```
 #[target_feature(enable = "zksh")]
-// See #1464
-// #[cfg_attr(test, assert_instr(sm3p1))]
+#[cfg_attr(test, assert_instr(sm3p1))]
 #[inline]
 pub unsafe fn sm3p1(rs1: u32) -> u32 {
     _sm3p1(rs1 as i32) as u32
