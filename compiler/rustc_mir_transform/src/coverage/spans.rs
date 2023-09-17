@@ -793,7 +793,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
-pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
+fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -840,7 +840,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
 
 /// If the MIR `Terminator` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
-pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
+fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
     match terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from
@@ -887,7 +887,7 @@ pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Sp
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
 #[inline]
-pub(super) fn function_source_span(span: Span, body_span: Span) -> Span {
+fn function_source_span(span: Span, body_span: Span) -> Span {
     let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
     if body_span.contains(original_span) { original_span } else { body_span }
 }

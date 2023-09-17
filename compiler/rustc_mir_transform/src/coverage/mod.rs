@@ -16,6 +16,7 @@ use crate::MirPass;
 
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::sync::Lrc;
+use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -196,6 +197,15 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             );
         }
 
+        let bcb_has_coverage_spans = {
+            let mut bcbs_with_coverage_spans =
+                BitSet::new_empty(self.basic_coverage_blocks.num_nodes());
+            for covspan in &coverage_spans {
+                bcbs_with_coverage_spans.insert(covspan.bcb);
+            }
+            move |bcb| bcbs_with_coverage_spans.contains(bcb)
+        };
+
         ////////////////////////////////////////////////////
         // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
         // every `CoverageSpan` has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
@@ -206,7 +216,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // direct association with any `BasicCoverageBlock`, are accumulated inside `coverage_counters`.
         let result = self
             .coverage_counters
-            .make_bcb_counters(&mut self.basic_coverage_blocks, &coverage_spans);
+            .make_bcb_counters(&mut self.basic_coverage_blocks, bcb_has_coverage_spans);
 
         if let Ok(()) = result {
             // If debugging, add any intermediate expressions (which are not associated with any

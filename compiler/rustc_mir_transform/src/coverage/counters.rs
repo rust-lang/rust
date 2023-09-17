@@ -2,11 +2,9 @@ use super::Error;
 
 use super::debug;
 use super::graph;
-use super::spans;
 
 use debug::{DebugCounters, NESTED_INDENT};
 use graph::{BasicCoverageBlock, BcbBranch, CoverageGraph, TraverseCoverageGraphWithLoops};
-use spans::CoverageSpan;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::WithNumNodes;
@@ -108,9 +106,9 @@ impl CoverageCounters {
     pub fn make_bcb_counters(
         &mut self,
         basic_coverage_blocks: &CoverageGraph,
-        coverage_spans: &[CoverageSpan],
+        bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
     ) -> Result<(), Error> {
-        MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(coverage_spans)
+        MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(bcb_has_coverage_spans)
     }
 
     fn make_counter<F>(&mut self, debug_block_label_fn: F) -> BcbCounter
@@ -270,14 +268,11 @@ impl<'a> MakeBcbCounters<'a> {
     /// Returns any non-code-span expressions created to represent intermediate values (such as to
     /// add two counters so the result can be subtracted from another counter), or an Error with
     /// message for subsequent debugging.
-    fn make_bcb_counters(&mut self, coverage_spans: &[CoverageSpan]) -> Result<(), Error> {
+    fn make_bcb_counters(
+        &mut self,
+        bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
+    ) -> Result<(), Error> {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
-        let num_bcbs = self.basic_coverage_blocks.num_nodes();
-
-        let mut bcbs_with_coverage = BitSet::new_empty(num_bcbs);
-        for covspan in coverage_spans {
-            bcbs_with_coverage.insert(covspan.bcb);
-        }
 
         // Walk the `CoverageGraph`. For each `BasicCoverageBlock` node with an associated
         // `CoverageSpan`, add a counter. If the `BasicCoverageBlock` branches, add a counter or
@@ -291,7 +286,7 @@ impl<'a> MakeBcbCounters<'a> {
         // the current BCB is in one or more nested loops or not.
         let mut traversal = TraverseCoverageGraphWithLoops::new(&self.basic_coverage_blocks);
         while let Some(bcb) = traversal.next(self.basic_coverage_blocks) {
-            if bcbs_with_coverage.contains(bcb) {
+            if bcb_has_coverage_spans(bcb) {
                 debug!("{:?} has at least one `CoverageSpan`. Get or make its counter", bcb);
                 let branching_counter_operand = self.get_or_make_counter_operand(bcb)?;
 
