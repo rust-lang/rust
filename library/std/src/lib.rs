@@ -375,7 +375,6 @@
 #![feature(get_many_mut)]
 #![feature(lazy_cell)]
 #![feature(log_syntax)]
-#![feature(saturating_int_impl)]
 #![feature(stdsimd)]
 #![feature(test)]
 #![feature(trace_macros)]
