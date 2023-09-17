@@ -1138,19 +1138,19 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
-    // For each field, figure out if it's known to be a ZST and align(1), with "known"
-    // respecting #[non_exhaustive] attributes.
+    // For each field, figure out if it's known to have "trivial" layout (i.e., is a 1-ZST), with
+    // "known" respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
-        let zst = layout.is_ok_and(|layout| layout.is_zst());
-        let align = layout.ok().map(|layout| layout.align.abi.bytes());
-        if !zst {
-            return (span, zst, align, None);
+        let trivial = layout.is_ok_and(|layout| layout.is_1zst());
+        if !trivial {
+            return (span, trivial, None);
         }
+        // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive`.
 
         fn check_non_exhaustive<'tcx>(
             tcx: TyCtxt<'tcx>,
@@ -1184,41 +1184,25 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             }
         }
 
-        (span, zst, align, check_non_exhaustive(tcx, ty).break_value())
+        (span, trivial, check_non_exhaustive(tcx, ty).break_value())
     });
 
-    let non_zst_fields = field_infos
+    let non_trivial_fields = field_infos
         .clone()
-        .filter_map(|(span, zst, _align, _non_exhaustive)| if !zst { Some(span) } else { None });
-    let non_zst_count = non_zst_fields.clone().count();
-    if non_zst_count >= 2 {
-        bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, tcx.def_span(adt.did()));
+        .filter_map(|(span, trivial, _non_exhaustive)| if !trivial { Some(span) } else { None });
+    let non_trivial_count = non_trivial_fields.clone().count();
+    if non_trivial_count >= 2 {
+        bad_non_zero_sized_fields(
+            tcx,
+            adt,
+            non_trivial_count,
+            non_trivial_fields,
+            tcx.def_span(adt.did()),
+        );
+        return;
     }
-    let incompatible_zst_fields =
-        field_infos.clone().filter(|(_, _, _, opt)| opt.is_some()).count();
-    let incompat = incompatible_zst_fields + non_zst_count >= 2 && non_zst_count < 2;
-    for (span, zst, align, non_exhaustive) in field_infos {
-        if zst && align != Some(1) {
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0691,
-                "zero-sized field in transparent {} has alignment larger than 1",
-                adt.descr(),
-            );
-
-            if let Some(align_bytes) = align {
-                err.span_label(
-                    span,
-                    format!("has alignment of {align_bytes}, which is larger than 1"),
-                );
-            } else {
-                err.span_label(span, "may have alignment larger than 1");
-            }
-
-            err.emit();
-        }
-        if incompat && let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive {
+    for (span, _trivial, non_exhaustive) in field_infos {
+        if let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive {
             tcx.struct_span_lint_hir(
                 REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
                 tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),

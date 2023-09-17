@@ -304,13 +304,13 @@ hir_analysis_transparent_enum_variant = transparent enum needs exactly one varia
     .many_label = too many variants in `{$path}`
     .multi_label = variant here
 
-hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
-    .label = needs at most one non-zero-sized field, but has {$field_count}
-    .labels = this field is non-zero-sized
+hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .labels = this field has non-zero size or requires alignment
 
-hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
-    .label = needs at most one non-zero-sized field, but has {$field_count}
-    .labels = this field is non-zero-sized
+hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .labels = this field has non-zero size or requires alignment
 
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented
