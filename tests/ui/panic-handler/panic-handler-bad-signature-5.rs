@@ -6,7 +6,7 @@
 use core::panic::PanicInfo;
 
 #[panic_handler]
-fn panic(info: &'static PanicInfo) -> !
+fn panic(info: &PanicInfo<'static>) -> !
 //~^ #[panic_handler]` function has wrong type [E0308]
 {
     loop {}

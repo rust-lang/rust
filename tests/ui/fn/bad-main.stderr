@@ -4,8 +4,8 @@ error[E0580]: `main` function has wrong type
 LL | fn main(x: isize) { }
    | ^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: expected fn pointer `fn()`
-              found fn pointer `fn(isize)`
+   = note: expected signature `fn()`
+              found signature `fn(isize)`
 
 error: aborting due to previous error
 

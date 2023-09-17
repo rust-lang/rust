@@ -1,8 +1,18 @@
-error: argument should be `&PanicInfo`
-  --> $DIR/panic-handler-bad-signature-2.rs:10:11
+error[E0308]: `#[panic_handler]` function has wrong type
+  --> $DIR/panic-handler-bad-signature-2.rs:9:1
    |
-LL |     info: &'static PanicInfo,
-   |           ^^^^^^^^^^^^^^^^^^
+LL | fn panic(info: &'static PanicInfo) -> !
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected signature `fn(&PanicInfo<'_>) -> _`
+              found signature `fn(&'static PanicInfo<'_>) -> _`
+note: the anonymous lifetime as defined here...
+  --> $DIR/panic-handler-bad-signature-2.rs:9:1
+   |
+LL | fn panic(info: &'static PanicInfo) -> !
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...does not necessarily outlive the static lifetime
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

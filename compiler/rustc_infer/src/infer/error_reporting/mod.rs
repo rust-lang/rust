@@ -2927,6 +2927,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             | IfExpression { .. }
             | LetElse
             | StartFunctionType
+            | LangFunctionType(_)
             | IntrinsicType
             | MethodReceiver => Error0308,
 
@@ -2971,6 +2972,9 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             LetElse => ObligationCauseFailureCode::NoDiverge { span, subdiags },
             MainFunctionType => ObligationCauseFailureCode::FnMainCorrectType { span },
             StartFunctionType => ObligationCauseFailureCode::FnStartCorrectType { span, subdiags },
+            &LangFunctionType(lang_item_name) => {
+                ObligationCauseFailureCode::FnLangCorrectType { span, subdiags, lang_item_name }
+            }
             IntrinsicType => ObligationCauseFailureCode::IntrinsicCorrectType { span, subdiags },
             MethodReceiver => ObligationCauseFailureCode::MethodCorrectType { span, subdiags },
 
@@ -3006,6 +3010,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             IfExpressionWithNoElse => "`if` missing an `else` returns `()`",
             MainFunctionType => "`main` function has the correct type",
             StartFunctionType => "`#[start]` function has the correct type",
+            LangFunctionType(_) => "lang item function has the correct type",
             IntrinsicType => "intrinsic has the correct type",
             MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",
@@ -3028,6 +3033,7 @@ impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
             IfExpressionWithNoElse => "no_else",
             MainFunctionType => "fn_main_correct_type",
             StartFunctionType => "fn_start_correct_type",
+            LangFunctionType(_) => "fn_lang_correct_type",
             IntrinsicType => "intrinsic_correct_type",
             MethodReceiver => "method_correct_type",
             _ => "other",
