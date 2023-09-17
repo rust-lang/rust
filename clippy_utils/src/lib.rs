@@ -2029,6 +2029,10 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if an expression represents the identity function
 /// Only examines closures and `std::convert::identity`
+///
+/// Closure bindings with type annotations and `std::convert::identity` with generic args
+/// are not considered identity functions because they can guide type inference,
+/// and removing it may lead to compile errors.
 pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Checks if a function's body represents the identity function. Looks for bodies of the form:
     /// * `|x| x`
@@ -2070,8 +2074,18 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
     }
 
     match expr.kind {
-        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir().body(body)),
-        _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
+        ExprKind::Closure(&Closure { body, fn_decl, .. })
+            if fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer)) =>
+        {
+            is_body_identity_function(cx, cx.tcx.hir().body(body))
+        },
+        ExprKind::Path(QPath::Resolved(_, path))
+            if path.segments.iter().all(|seg| seg.infer_args)
+                && let Some(did) = path.res.opt_def_id() =>
+        {
+            match_def_path(cx, did, &paths::CONVERT_IDENTITY)
+        },
+        _ => false,
     }
 }
 
