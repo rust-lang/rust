@@ -163,5 +163,29 @@ LL |         string
 LL ~     ";
    |
 
-error: aborting due to 13 previous errors
+error: unnecessary hashes around raw string literal
+  --> $DIR/needless_raw_string_hashes.rs:25:5
+   |
+LL |     r###"rust"###;
+   |     ^^^^^^^^^^^^^
+   |
+help: remove all the hashes around the literal
+   |
+LL -     r###"rust"###;
+LL +     r"rust";
+   |
+
+error: unnecessary hashes around raw string literal
+  --> $DIR/needless_raw_string_hashes.rs:26:5
+   |
+LL |     r#"hello world"#;
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: remove all the hashes around the literal
+   |
+LL -     r#"hello world"#;
+LL +     r"hello world";
+   |
+
+error: aborting due to 15 previous errors
 
