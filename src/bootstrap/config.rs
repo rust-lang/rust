@@ -322,31 +322,21 @@ pub struct RustfmtMetadata {
     pub version: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum RustfmtState {
     SystemToolchain(PathBuf),
     Downloaded(PathBuf),
     Unavailable,
+    #[default]
     LazyEvaluated,
 }
 
-impl Default for RustfmtState {
-    fn default() -> Self {
-        RustfmtState::LazyEvaluated
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum LlvmLibunwind {
+    #[default]
     No,
     InTree,
     System,
-}
-
-impl Default for LlvmLibunwind {
-    fn default() -> Self {
-        Self::No
-    }
 }
 
 impl FromStr for LlvmLibunwind {
@@ -362,17 +352,12 @@ impl FromStr for LlvmLibunwind {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SplitDebuginfo {
     Packed,
     Unpacked,
+    #[default]
     Off,
-}
-
-impl Default for SplitDebuginfo {
-    fn default() -> Self {
-        SplitDebuginfo::Off
-    }
 }
 
 impl std::str::FromStr for SplitDebuginfo {
@@ -1529,7 +1514,7 @@ impl Config {
             let asserts = llvm_assertions.unwrap_or(false);
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
-                    assert!(s == "if-available", "unknown option `{s}` for download-ci-llvm");
+                    assert_eq!(s, "if-available", "unknown option `{s}` for download-ci-llvm");
                     crate::llvm::is_ci_llvm_available(&config, asserts)
                 }
                 Some(StringOrBool::Bool(b)) => b,

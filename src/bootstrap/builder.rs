@@ -525,7 +525,7 @@ impl<'a> ShouldRun<'a> {
                 .iter()
                 .map(|p| {
                     // assert only if `p` isn't submodule
-                    if !submodules_paths.iter().find(|sm_p| p.contains(*sm_p)).is_some() {
+                    if submodules_paths.iter().find(|sm_p| p.contains(*sm_p)).is_none() {
                         assert!(
                             self.builder.src.join(p).exists(),
                             "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
