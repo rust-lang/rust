@@ -55,6 +55,13 @@ impl IntoDiagnosticArg for ReturnLikeStatementKind {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_rustcall_incorrect_args)]
+pub struct RustCallIncorrectArgs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_yield_expr_outside_of_generator, code = "E0627")]
 pub struct YieldExprOutsideOfGenerator {
     #[primary_span]
@@ -72,6 +79,14 @@ pub struct StructExprNonExhaustive {
 #[derive(Diagnostic)]
 #[diag(hir_typeck_method_call_on_unknown_raw_pointee, code = "E0699")]
 pub struct MethodCallOnUnknownRawPointee {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_missing_fn_lang_items)]
+#[help]
+pub struct MissingFnLangItems {
     #[primary_span]
     pub span: Span,
 }
@@ -126,6 +141,29 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
         #[primary_span]
         span: Span,
         expected: Ty<'tcx>,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_explicit_destructor, code = "E0040")]
+pub struct ExplicitDestructorCall {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: ExplicitDestructorCallSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub enum ExplicitDestructorCallSugg {
+    #[suggestion(hir_typeck_suggestion, code = "drop", applicability = "maybe-incorrect")]
+    Empty(#[primary_span] Span),
+    #[multipart_suggestion(hir_typeck_suggestion, style = "short")]
+    Snippet {
+        #[suggestion_part(code = "drop(")]
+        lo: Span,
+        #[suggestion_part(code = ")")]
+        hi: Span,
     },
 }
 
@@ -250,6 +288,14 @@ impl HelpUseLatestEdition {
             Self::Standalone { edition }
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_invalid_callee, code = "E0618")]
+pub struct InvalidCallee {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
 }
 
 #[derive(Subdiagnostic)]
