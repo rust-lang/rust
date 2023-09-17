@@ -10,7 +10,7 @@ use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::mir::{
     self,
-    interpret::{AllocId, ConstAllocation},
+    interpret::{AllocId, ConstAllocation, ConstValue},
 };
 use crate::traits;
 use crate::ty::GenericArgsRef;
@@ -149,6 +149,12 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Const<'tcx> {
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstAllocation<'tcx> {
     fn encode(&self, e: &mut E) {
         self.inner().encode(e)
+    }
+}
+
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstValue<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.kind().encode(e)
     }
 }
 
@@ -357,6 +363,12 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [ty::ValTre
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ConstAllocation<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         decoder.interner().mk_const_alloc(Decodable::decode(decoder))
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ConstValue<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.interner().intern_const_value(Decodable::decode(decoder))
     }
 }
 

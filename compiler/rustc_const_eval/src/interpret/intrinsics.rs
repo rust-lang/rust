@@ -64,24 +64,24 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
             let alloc = alloc_type_name(tcx, tp_ty);
-            ConstValue::Slice { data: alloc, start: 0, end: alloc.inner().len() }
+            ConstValue::from_slice(tcx, alloc, 0, alloc.inner().len())
         }
         sym::needs_drop => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env))
+            ConstValue::from_bool(tcx, tp_ty.needs_drop(tcx, param_env))
         }
         sym::pref_align_of => {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(*e)))?;
-            ConstValue::from_target_usize(layout.align.pref.bytes(), &tcx)
+            ConstValue::from_target_usize(tcx, layout.align.pref.bytes())
         }
         sym::type_id => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128())
+            ConstValue::from_u128(tcx, tcx.type_id_hash(tp_ty).as_u128())
         }
         sym::variant_count => match tp_ty.kind() {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            ty::Adt(adt, _) => ConstValue::from_target_usize(adt.variants().len() as u64, &tcx),
+            ty::Adt(adt, _) => ConstValue::from_target_usize(tcx, adt.variants().len() as u64),
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
                 throw_inval!(TooGeneric)
             }
@@ -106,7 +106,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::GeneratorWitnessMIR(_, _)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
+            | ty::Error(_) => ConstValue::from_target_usize(tcx, 0u64),
         },
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })

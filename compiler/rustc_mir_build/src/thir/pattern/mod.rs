@@ -18,7 +18,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
-    ConstValue, ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
+    ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
 };
 use rustc_middle::mir::{self, ConstantKind, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Mutability};
@@ -854,10 +854,13 @@ pub(crate) fn compare_const_vals<'tcx>(
     match ty.kind() {
         ty::Float(_) | ty::Int(_) => {} // require special handling, see below
         _ => match (a, b) {
-            (
-                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(a)), _a_ty),
-                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(b)), _b_ty),
-            ) => return Some(a.cmp(&b)),
+            (mir::ConstantKind::Val(a, _a_ty), mir::ConstantKind::Val(b, _b_ty)) => {
+                if let Some(Scalar::Int(a)) = a.try_to_scalar()
+                    && let Some(Scalar::Int(b)) = b.try_to_scalar()
+                {
+                    return Some(a.cmp(&b))
+                }
+            }
             (mir::ConstantKind::Ty(a), mir::ConstantKind::Ty(b)) => {
                 return Some(a.kind().cmp(&b.kind()));
             }

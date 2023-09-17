@@ -143,7 +143,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     #[inline(always)]
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         // We do not check for alignment to avoid having to carry an `Align`
-        // in `ConstValue::Indirect`.
+        // in `ConstValueKind::Indirect`.
         CheckAlignment::No
     }
 
@@ -552,7 +552,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     .ok()?;
 
                 Some(ConstantKind::Val(
-                    ConstValue::Indirect { alloc_id, offset: Size::ZERO },
+                    ConstValue::from_memory(self.tcx, alloc_id, Size::ZERO),
                     value.layout.ty,
                 ))
             }

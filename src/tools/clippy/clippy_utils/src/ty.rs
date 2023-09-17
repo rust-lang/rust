@@ -829,7 +829,7 @@ impl core::ops::Add<u32> for EnumValue {
 /// Attempts to read the given constant as though it were an enum value.
 #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
-    if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
+    if let Some(Scalar::Int(value)) = tcx.const_eval_poly(id).ok().and_then(ConstValue::try_to_scalar) {
         match tcx.type_of(id).instantiate_identity().kind() {
             ty::Int(_) => Some(EnumValue::Signed(match value.size().bytes() {
                 1 => i128::from(value.assert_bits(Size::from_bytes(1)) as u8 as i8),

@@ -961,11 +961,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 fn parse_float_into_constval<'tcx>(
+    tcx: TyCtxt<'tcx>,
     num: Symbol,
     float_ty: ty::FloatTy,
     neg: bool,
 ) -> Option<ConstValue<'tcx>> {
-    parse_float_into_scalar(num, float_ty, neg).map(ConstValue::Scalar)
+    let scalar = parse_float_into_scalar(num, float_ty, neg)?;
+    Some(ConstValue::from_scalar(tcx, scalar))
 }
 
 pub(crate) fn parse_float_into_scalar(

@@ -3,7 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::interpret::{
-    AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
+    AllocRange, ConstAllocation, ConstValue, ConstValueKind, ErrorHandled, GlobalAlloc, Scalar,
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -1967,7 +1967,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::ZeroSized, ty),
+            literal: ConstantKind::zero_sized(tcx, ty),
         }))
     }
 
@@ -1998,7 +1998,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::Scalar(val), ty),
+            literal: ConstantKind::Val(ConstValue::from_scalar(tcx, val), ty),
         }))
     }
 
@@ -2479,20 +2479,20 @@ impl<'tcx> ConstantKind<'tcx> {
                 bug!("could not compute layout for {:?}: {:?}", param_env_ty.value, e)
             })
             .size;
-        let cv = ConstValue::Scalar(Scalar::from_uint(bits, size));
+        let cv = ConstValue::from_scalar(tcx, Scalar::from_uint(bits, size));
 
         Self::Val(cv, param_env_ty.value)
     }
 
     #[inline]
     pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> Self {
-        let cv = ConstValue::from_bool(v);
+        let cv = ConstValue::from_bool(tcx, v);
         Self::Val(cv, tcx.types.bool)
     }
 
     #[inline]
-    pub fn zero_sized(ty: Ty<'tcx>) -> Self {
-        let cv = ConstValue::ZeroSized;
+    pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
+        let cv = ConstValue::zero_sized(tcx);
         Self::Val(cv, ty)
     }
 
@@ -2502,8 +2502,8 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn from_scalar(_tcx: TyCtxt<'tcx>, s: Scalar, ty: Ty<'tcx>) -> Self {
-        let val = ConstValue::Scalar(s);
+    pub fn from_scalar(tcx: TyCtxt<'tcx>, s: Scalar, ty: Ty<'tcx>) -> Self {
+        let val = ConstValue::from_scalar(tcx, s);
         Self::Val(val, ty)
     }
 
@@ -2885,7 +2885,7 @@ fn pretty_print_const_value<'tcx>(
         }
 
         let u8_type = tcx.types.u8;
-        match (ct, ty.kind()) {
+        match (*ct.kind(), ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
             (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {
                 if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
@@ -2899,7 +2899,7 @@ fn pretty_print_const_value<'tcx>(
                     return Ok(());
                 }
             }
-            (ConstValue::Indirect { alloc_id, offset }, ty::Array(t, n)) if *t == u8_type => {
+            (ConstValueKind::Indirect { alloc_id, offset }, ty::Array(t, n)) if *t == u8_type => {
                 let n = n.try_to_target_usize(tcx).unwrap();
                 let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
@@ -2978,7 +2978,7 @@ fn pretty_print_const_value<'tcx>(
                     return Ok(());
                 }
             }
-            (ConstValue::Scalar(scalar), _) => {
+            (ConstValueKind::Scalar(scalar), _) => {
                 let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                 cx.print_alloc_ids = true;
                 let ty = tcx.lift(ty).unwrap();
@@ -2986,7 +2986,7 @@ fn pretty_print_const_value<'tcx>(
                 fmt.write_str(&cx.into_buffer())?;
                 return Ok(());
             }
-            (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
+            (ConstValueKind::ZeroSized, ty::FnDef(d, s)) => {
                 let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                 cx.print_alloc_ids = true;
                 let cx = cx.print_value_path(*d, s)?;
@@ -3084,6 +3084,6 @@ mod size_asserts {
     static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(Terminator<'_>, 104);
     static_assert_size!(TerminatorKind<'_>, 88);
-    static_assert_size!(VarDebugInfo<'_>, 88);
+    static_assert_size!(VarDebugInfo<'_>, 80);
     // tidy-alphabetical-end
 }

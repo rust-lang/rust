@@ -12,7 +12,7 @@ use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
-use crate::mir::interpret::{self, Allocation, ConstAllocation};
+use crate::mir::interpret::{self, Allocation, ConstAllocation, ConstValue, ConstValueKind};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::plumbing::QuerySystem;
 use crate::query::LocalCrate;
@@ -156,6 +156,7 @@ pub struct CtxtInterners<'tcx> {
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
+    const_value: InternedSet<'tcx, ConstValueKind<'tcx>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -181,6 +182,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             external_constraints: Default::default(),
             predefined_opaques_in_body: Default::default(),
             fields: Default::default(),
+            const_value: Default::default(),
         }
     }
 
@@ -1497,6 +1499,7 @@ direct_interners! {
     region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
+    const_value: pub(crate) intern_const_value(ConstValueKind<'tcx>): ConstValue -> ConstValue<'tcx>,
     layout: pub mk_layout(LayoutS): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):

@@ -111,23 +111,24 @@ pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
 ) -> ConstValue<'tcx> {
+    let tcx = *ecx.tcx;
     // Handle ZST consistently and early.
     if op.layout.is_zst() {
-        return ConstValue::ZeroSized;
+        return ConstValue::zero_sized(tcx);
     }
 
-    // All scalar types should be stored as `ConstValue::Scalar`. This is needed to make
-    // `ConstValue::try_to_scalar` efficient; we want that to work for *all* constants of scalar
+    // All scalar types should be stored as `ConstValueKind::Scalar`. This is needed to make
+    // `ConstValueKind::try_to_scalar` efficient; we want that to work for *all* constants of scalar
     // type (it's used throughout the compiler and having it work just on literals is not enough)
     // and we want it to be fast (i.e., don't go to an `Allocation` and reconstruct the `Scalar`
     // from its byte-serialized form).
     let force_as_immediate = match op.layout.abi {
         Abi::Scalar(abi::Scalar::Initialized { .. }) => true,
-        // We don't *force* `ConstValue::Slice` for `ScalarPair`. This has the advantage that if the
+        // We don't *force* `ConstValueKind::Slice` for `ScalarPair`. This has the advantage that if the
         // input `op` is a place, then turning it into a `ConstValue` and back into a `OpTy` will
         // not have to generate any duplicate allocations (we preserve the original `AllocId` in
-        // `ConstValue::Indirect`). It means accessing the contents of a slice can be slow (since
-        // they can be stored as `ConstValue::Indirect`), but that's not relevant since we barely
+        // `ConstValueKind::Indirect`). It means accessing the contents of a slice can be slow (since
+        // they can be stored as `ConstValueKind::Indirect`), but that's not relevant since we barely
         // ever have to do this. (`try_get_slice_bytes_for_diagnostics` exists to provide this
         // functionality.)
         _ => false,
@@ -145,26 +146,26 @@ pub(super) fn op_to_const<'tcx>(
             // We know `offset` is relative to the allocation, so we can use `into_parts`.
             let (alloc_id, offset) = mplace.ptr().into_parts();
             let alloc_id = alloc_id.expect("cannot have `fake` place fot non-ZST type");
-            ConstValue::Indirect { alloc_id, offset }
+            ConstValue::from_memory(tcx, alloc_id, offset)
         }
         // see comment on `let force_as_immediate` above
         Right(imm) => match *imm {
-            Immediate::Scalar(x) => ConstValue::Scalar(x),
+            Immediate::Scalar(x) => ConstValue::from_scalar(tcx, x),
             Immediate::ScalarPair(a, b) => {
                 debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
                 // FIXME: assert that this has an appropriate type.
                 // Currently we actually get here for non-[u8] slices during valtree construction!
                 let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to actually allocated memory";
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                // We use `ConstValue::Slice` so that we don't have to generate an allocation for
-                // `ConstValue::Indirect` here.
+                // We use `ConstValueKind::Slice` so that we don't have to generate an allocation for
+                // `ConstValueKind::Indirect` here.
                 let (alloc_id, offset) = a.to_pointer(ecx).expect(msg).into_parts();
                 let alloc_id = alloc_id.expect(msg);
                 let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
                 let start = offset.bytes_usize();
                 let len = b.to_target_usize(ecx).expect(msg);
                 let len: usize = len.try_into().unwrap();
-                ConstValue::Slice { data, start, end: start + len }
+                ConstValue::from_slice(tcx, data, start, start + len)
             }
             Immediate::Uninit => bug!("`Uninit` is not a valid value for {}", op.layout.ty),
         },

@@ -64,14 +64,14 @@ pub fn as_constant_inner<'tcx>(
         ExprKind::NonHirLiteral { lit, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
 
-            let literal = ConstantKind::Val(ConstValue::Scalar(Scalar::Int(lit)), ty);
+            let literal = ConstantKind::from_scalar(tcx, Scalar::Int(lit), ty);
 
             Constant { span, user_ty, literal }
         }
         ExprKind::ZstLiteral { ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
 
-            let literal = ConstantKind::Val(ConstValue::ZeroSized, ty);
+            let literal = ConstantKind::zero_sized(tcx, ty);
 
             Constant { span, user_ty, literal }
         }
@@ -96,7 +96,7 @@ pub fn as_constant_inner<'tcx>(
             Constant { user_ty: None, span, literal }
         }
         ExprKind::StaticRef { alloc_id, ty, .. } => {
-            let const_val = ConstValue::Scalar(Scalar::from_pointer(alloc_id.into(), &tcx));
+            let const_val = ConstValue::from_pointer(tcx, alloc_id.into());
             let literal = ConstantKind::Val(const_val, ty);
 
             Constant { span, user_ty: None, literal }
@@ -125,7 +125,7 @@ fn lit_to_mir_constant<'tcx>(
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = width.truncate(n);
         trace!("trunc result: {}", result);
-        Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
+        Ok(ConstValue::from_scalar(tcx, Scalar::from_uint(result, width)))
     };
 
     let value = match (lit, &ty.kind()) {
@@ -133,40 +133,41 @@ fn lit_to_mir_constant<'tcx>(
             let s = s.as_str();
             let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes());
             let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, start: 0, end: s.len() }
+            ConstValue::from_slice(tcx, allocation, 0, s.len())
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
             let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
             let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, start: 0, end: data.len() }
+            ConstValue::from_slice(tcx, allocation, 0, data.len())
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
             let id = tcx.allocate_bytes(data);
-            ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
+            ConstValue::from_pointer(tcx, id.into())
         }
         (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().c_str()) =>
         {
             let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
             let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, start: 0, end: data.len() }
+            ConstValue::from_slice(tcx, allocation, 0, data.len())
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
-            ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
+            ConstValue::from_scalar(tcx, Scalar::from_uint(*n, Size::from_bytes(1)))
         }
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
             trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?
         }
-        (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float_into_constval(*n, *fty, neg)
-            .ok_or_else(|| {
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
+            parse_float_into_constval(tcx, *n, *fty, neg).ok_or_else(|| {
                 LitToConstError::Reported(tcx.sess.delay_span_bug(
                     DUMMY_SP,
                     format!("couldn't parse float literal: {:?}", lit_input.lit),
                 ))
-            })?,
-        (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
-        (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
+            })?
+        }
+        (ast::LitKind::Bool(b), ty::Bool) => ConstValue::from_bool(tcx, *b),
+        (ast::LitKind::Char(c), ty::Char) => ConstValue::from_scalar(tcx, Scalar::from_char(*c)),
         (ast::LitKind::Err, _) => {
             return Err(LitToConstError::Reported(
                 tcx.sess.delay_span_bug(DUMMY_SP, "encountered LitKind::Err during mir build"),

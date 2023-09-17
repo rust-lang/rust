@@ -877,5 +877,5 @@ fn trait_method<'tcx>(
 
     let method_ty = Ty::new_fn_def(tcx, item.def_id, args);
 
-    ConstantKind::zero_sized(method_ty)
+    ConstantKind::zero_sized(tcx, method_ty)
 }

@@ -13,7 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
     alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, ConstAllocation, ConstValue,
-    GlobalAlloc, Pointer, Provenance,
+    ConstValueKind, GlobalAlloc, Pointer, Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -456,11 +456,11 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             }
 
             // FIXME: this is a poor version of `pretty_print_const_value`.
-            let fmt_val = |val: &ConstValue<'tcx>| match val {
-                ConstValue::ZeroSized => "<ZST>".to_string(),
-                ConstValue::Scalar(s) => format!("Scalar({s:?})"),
-                ConstValue::Slice { .. } => "Slice(..)".to_string(),
-                ConstValue::Indirect { .. } => "ByRef(..)".to_string(),
+            let fmt_val = |val: &ConstValue<'tcx>| match val.kind() {
+                ConstValueKind::ZeroSized => "<ZST>".to_string(),
+                ConstValueKind::Scalar(s) => format!("Scalar({s:?})"),
+                ConstValueKind::Slice { .. } => "Slice(..)".to_string(),
+                ConstValueKind::Indirect { .. } => "ByRef(..)".to_string(),
             };
 
             let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
@@ -699,20 +699,22 @@ pub fn write_allocations<'tcx>(
     }
 
     fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
-        match val {
-            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
+        match val.kind() {
+            ConstValueKind::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
                 Either::Left(std::iter::once(ptr.provenance))
             }
-            ConstValue::Scalar(interpret::Scalar::Int { .. }) => Either::Right(std::iter::empty()),
-            ConstValue::ZeroSized => Either::Right(std::iter::empty()),
-            ConstValue::Slice { .. } => {
+            ConstValueKind::Scalar(interpret::Scalar::Int { .. }) => {
+                Either::Right(std::iter::empty())
+            }
+            ConstValueKind::ZeroSized => Either::Right(std::iter::empty()),
+            ConstValueKind::Slice { .. } => {
                 // `u8`/`str` slices, shouldn't contain pointers that we want to print.
                 Either::Right(std::iter::empty())
             }
-            ConstValue::Indirect { alloc_id, .. } => {
+            ConstValueKind::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
                 // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
-                Either::Left(std::iter::once(alloc_id))
+                Either::Left(std::iter::once(*alloc_id))
             }
         }
     }

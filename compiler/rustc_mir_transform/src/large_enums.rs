@@ -153,7 +153,7 @@ impl EnumSizeOpt {
                         span,
                         user_ty: None,
                         literal: ConstantKind::Val(
-                            interpret::ConstValue::Indirect { alloc_id, offset: Size::ZERO },
+                            interpret::ConstValue::from_memory(tcx, alloc_id, Size::ZERO),
                             tmp_ty,
                         ),
                     };

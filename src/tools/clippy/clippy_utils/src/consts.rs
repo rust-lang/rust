@@ -656,9 +656,10 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 }
 
 pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'tcx>) -> Option<Constant<'tcx>> {
-    use rustc_middle::mir::interpret::ConstValue;
-    match result {
-        mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(int)), _) => match result.ty().kind() {
+    use rustc_middle::mir::interpret::ConstValueKind;
+    let mir::ConstantKind::Val(cv, ty) = result else { return None };
+    match *cv.kind() {
+        ConstValueKind::Scalar(Scalar::Int(int)) => match ty.kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
             ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
@@ -671,13 +672,13 @@ pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'t
             ty::RawPtr(_) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
             _ => None,
         },
-        mir::ConstantKind::Val(cv, _) if matches!(result.ty().kind(), ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Str)) => {
+        _ if matches!(ty.kind(), ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Str)) => {
             let data = cv.try_get_slice_bytes_for_diagnostics(lcx.tcx)?;
             String::from_utf8(data.to_owned()).ok().map(Constant::Str)
         }
-        mir::ConstantKind::Val(ConstValue::Indirect { alloc_id, offset: _ }, _) => {
+        ConstValueKind::Indirect { alloc_id, offset: _ } => {
             let alloc = lcx.tcx.global_alloc(alloc_id).unwrap_memory();
-            match result.ty().kind() {
+            match ty.kind() {
                 ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
                 ty::Array(sub_type, len) => match sub_type.kind() {
                     ty::Float(FloatTy::F32) => match len.try_to_target_usize(lcx.tcx) {

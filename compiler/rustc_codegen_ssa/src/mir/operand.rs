@@ -7,7 +7,7 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{alloc_range, ConstValue, Pointer, Scalar};
+use rustc_middle::mir::interpret::{alloc_range, ConstValue, ConstValueKind, Pointer, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{self, Abi, Align, Size};
@@ -91,16 +91,16 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     ) -> Self {
         let layout = bx.layout_of(ty);
 
-        let val = match val {
-            ConstValue::Scalar(x) => {
+        let val = match *val.kind() {
+            ConstValueKind::Scalar(x) => {
                 let Abi::Scalar(scalar) = layout.abi else {
                     bug!("from_const: invalid ByVal layout: {:#?}", layout);
                 };
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
                 OperandValue::Immediate(llval)
             }
-            ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
-            ConstValue::Slice { data, start, end } => {
+            ConstValueKind::ZeroSized => return OperandRef::zero_sized(layout),
+            ConstValueKind::Slice { data, start, end } => {
                 let Abi::ScalarPair(a_scalar, _) = layout.abi else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
@@ -119,7 +119,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let b_llval = bx.const_usize((end - start) as u64);
                 OperandValue::Pair(a_llval, b_llval)
             }
-            ConstValue::Indirect { alloc_id, offset } => {
+            ConstValueKind::Indirect { alloc_id, offset } => {
                 let alloc = bx.tcx().global_alloc(alloc_id).unwrap_memory();
                 return Self::from_const_alloc(bx, layout, alloc, offset);
             }

@@ -769,7 +769,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         let unit = Rvalue::Use(Operand::Constant(Box::new(Constant {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ConstantKind::zero_sized(self.tcx.types.unit),
+                            literal: ConstantKind::zero_sized(self.tcx, self.tcx.types.unit),
                         })));
                         mem::replace(rhs, unit)
                     },

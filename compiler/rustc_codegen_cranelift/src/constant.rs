@@ -3,7 +3,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
+    read_target_uint, AllocId, ConstValue, ConstValueKind, ErrorHandled, GlobalAlloc, Scalar,
 };
 
 use cranelift_module::*;
@@ -115,9 +115,9 @@ pub(crate) fn codegen_const_value<'tcx>(
         return CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout);
     }
 
-    match const_val {
-        ConstValue::ZeroSized => unreachable!(), // we already handled ZST above
-        ConstValue::Scalar(x) => match x {
+    match *const_val.kind() {
+        ConstValueKind::ZeroSized => unreachable!(), // we already handled ZST above
+        ConstValueKind::Scalar(x) => match x {
             Scalar::Int(int) => {
                 if fx.clif_type(layout.ty).is_some() {
                     return CValue::const_val(fx, layout, int);
@@ -200,12 +200,12 @@ pub(crate) fn codegen_const_value<'tcx>(
                 CValue::by_val(val, layout)
             }
         },
-        ConstValue::Indirect { alloc_id, offset } => CValue::by_ref(
+        ConstValueKind::Indirect { alloc_id, offset } => CValue::by_ref(
             pointer_for_allocation(fx, alloc_id)
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
             layout,
         ),
-        ConstValue::Slice { data, start, end } => {
+        ConstValueKind::Slice { data, start, end } => {
             let alloc_id = fx.tcx.reserve_and_set_memory_alloc(data);
             let ptr = pointer_for_allocation(fx, alloc_id)
                 .offset_i64(fx, i64::try_from(start).unwrap())

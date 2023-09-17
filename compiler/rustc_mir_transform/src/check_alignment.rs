@@ -4,7 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::mir::{
-    interpret::{ConstValue, Scalar},
+    interpret::Scalar,
     visit::{PlaceContext, Visitor},
 };
 use rustc_middle::ty::{Ty, TyCtxt, TypeAndMut};
@@ -184,8 +184,9 @@ fn insert_alignment_check<'tcx>(
     let one = Operand::Constant(Box::new(Constant {
         span: source_info.span,
         user_ty: None,
-        literal: ConstantKind::Val(
-            ConstValue::Scalar(Scalar::from_target_usize(1, &tcx)),
+        literal: ConstantKind::from_scalar(
+            tcx,
+            Scalar::from_target_usize(1, &tcx),
             tcx.types.usize,
         ),
     }));
@@ -216,8 +217,9 @@ fn insert_alignment_check<'tcx>(
     let zero = Operand::Constant(Box::new(Constant {
         span: source_info.span,
         user_ty: None,
-        literal: ConstantKind::Val(
-            ConstValue::Scalar(Scalar::from_target_usize(0, &tcx)),
+        literal: ConstantKind::from_scalar(
+            tcx,
+            Scalar::from_target_usize(0, &tcx),
             tcx.types.usize,
         ),
     }));

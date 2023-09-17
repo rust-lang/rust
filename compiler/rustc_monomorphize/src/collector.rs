@@ -170,7 +170,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::interpret::{AllocId, ConstValue};
+use rustc_middle::mir::interpret::{AllocId, ConstValue, ConstValueKind};
 use rustc_middle::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
@@ -1445,10 +1445,12 @@ fn collect_const_value<'tcx>(
     value: ConstValue<'tcx>,
     output: &mut MonoItems<'tcx>,
 ) {
-    match value {
-        ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_alloc(tcx, ptr.provenance, output),
-        ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
-        ConstValue::Slice { data, start: _, end: _ } => {
+    match *value.kind() {
+        ConstValueKind::Scalar(Scalar::Ptr(ptr, _size)) => {
+            collect_alloc(tcx, ptr.provenance, output)
+        }
+        ConstValueKind::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
+        ConstValueKind::Slice { data, start: _, end: _ } => {
             for &id in data.inner().provenance().ptrs().values() {
                 collect_alloc(tcx, id, output);
             }

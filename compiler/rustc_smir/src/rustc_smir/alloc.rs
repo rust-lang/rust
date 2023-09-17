@@ -1,4 +1,4 @@
-use rustc_middle::mir::interpret::{alloc_range, AllocRange, ConstValue, Pointer};
+use rustc_middle::mir::interpret::{alloc_range, AllocRange, ConstValue, ConstValueKind, Pointer};
 
 use crate::{
     rustc_smir::{Stable, Tables},
@@ -25,8 +25,8 @@ pub fn new_allocation<'tcx>(
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
 ) -> Allocation {
-    match const_value {
-        ConstValue::Scalar(scalar) => {
+    match *const_value.kind() {
+        ConstValueKind::Scalar(scalar) => {
             let size = scalar.size();
             let align = tables
                 .tcx
@@ -39,12 +39,12 @@ pub fn new_allocation<'tcx>(
                 .unwrap();
             allocation.stable(tables)
         }
-        ConstValue::ZeroSized => {
+        ConstValueKind::ZeroSized => {
             let align =
                 tables.tcx.layout_of(rustc_middle::ty::ParamEnv::empty().and(ty)).unwrap().align;
             new_empty_allocation(align.abi)
         }
-        ConstValue::Slice { data, start, end } => {
+        ConstValueKind::Slice { data, start, end } => {
             let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
             let ptr = Pointer::new(alloc_id, rustc_target::abi::Size::from_bytes(start));
             let scalar_ptr = rustc_middle::mir::interpret::Scalar::from_pointer(ptr, &tables.tcx);
@@ -72,7 +72,7 @@ pub fn new_allocation<'tcx>(
                 .unwrap();
             allocation.stable(tables)
         }
-        ConstValue::Indirect { alloc_id, offset } => {
+        ConstValueKind::Indirect { alloc_id, offset } => {
             let alloc = tables.tcx.global_alloc(alloc_id).unwrap_memory();
             let ty_size = tables
                 .tcx

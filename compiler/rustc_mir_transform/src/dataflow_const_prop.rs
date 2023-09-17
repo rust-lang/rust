@@ -6,7 +6,7 @@ use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ConstValue, InterpResult, Scalar};
+use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -554,7 +554,7 @@ impl<'tcx, 'locals> Collector<'tcx, 'locals> {
             return None;
         };
         let ty = place.ty(self.local_decls, self.patch.tcx).ty;
-        Some(ConstantKind::Val(ConstValue::Scalar(value.into()), ty))
+        Some(ConstantKind::from_scalar(self.patch.tcx, value.into(), ty))
     }
 }
 
@@ -703,7 +703,7 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     #[inline(always)]
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         // We do not check for alignment to avoid having to carry an `Align`
-        // in `ConstValue::ByRef`.
+        // in `ConstValueKind::ByRef`.
         CheckAlignment::No
     }
 

@@ -1,4 +1,4 @@
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_middle::{mir::*, thir::*, ty};
@@ -282,7 +282,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         parse_by_kind!(self, expr_id, expr, "static",
             ExprKind::StaticRef { alloc_id, ty, .. } => {
                 let const_val =
-                    ConstValue::Scalar(Scalar::from_pointer((*alloc_id).into(), &self.tcx));
+                    ConstValue::from_pointer(self.tcx, (*alloc_id).into());
                 let literal = ConstantKind::Val(const_val, *ty);
 
                 Ok(Operand::Constant(Box::new(Constant {

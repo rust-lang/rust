@@ -219,10 +219,10 @@ pub fn valtree_to_const_value<'tcx>(
     match ty.kind() {
         ty::FnDef(..) => {
             assert!(valtree.unwrap_branch().is_empty());
-            ConstValue::ZeroSized
+            ConstValue::zero_sized(tcx)
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => match valtree {
-            ty::ValTree::Leaf(scalar_int) => ConstValue::Scalar(Scalar::Int(scalar_int)),
+            ty::ValTree::Leaf(scalar_int) => ConstValue::from_scalar(tcx, Scalar::Int(scalar_int)),
             ty::ValTree::Branch(_) => bug!(
                 "ValTrees for Bool, Int, Uint, Float or Char should have the form ValTree::Leaf"
             ),
@@ -237,7 +237,7 @@ pub fn valtree_to_const_value<'tcx>(
             let layout = tcx.layout_of(param_env_ty).unwrap();
             if layout.is_zst() {
                 // Fast path to avoid some allocations.
-                return ConstValue::ZeroSized;
+                return ConstValue::zero_sized(tcx);
             }
             if layout.abi.is_scalar()
                 && (matches!(ty.kind(), ty::Tuple(_))

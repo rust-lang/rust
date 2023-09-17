@@ -624,6 +624,13 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for interpret::ConstValue<'a> {
+    type Lifted = interpret::ConstValue<'tcx>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(*self.kind()).map(|kind| interpret::ConstValue::new(tcx, kind))
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
 

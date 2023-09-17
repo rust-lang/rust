@@ -16,7 +16,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
@@ -280,10 +279,10 @@ pub(crate) fn print_evaluated_const(
 ) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = tcx.type_of(def_id).instantiate_identity();
-        match (val, ty.kind()) {
+        match (val.try_to_scalar().is_some(), ty.kind()) {
             (_, &ty::Ref(..)) => None,
-            (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
-            (ConstValue::Scalar(_), _) => {
+            (true, &ty::Adt(_, _)) => None,
+            (true, _) => {
                 let const_ = mir::ConstantKind::from_value(val, ty);
                 Some(print_const_with_custom_print_scalar(tcx, const_, underscores_and_type))
             }
@@ -325,31 +324,36 @@ fn print_const_with_custom_print_scalar<'tcx>(
 ) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
-    match (ct, ct.ty().kind()) {
-        (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Uint(ui)) => {
-            if underscores_and_type {
-                format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
-            } else {
-                int.to_string()
+    if let mir::ConstantKind::Val(ct, ty) = ct
+        && let Some(int) = ct.try_to_scalar()
+    {
+        match ty.kind() {
+            ty::Uint(ui) => {
+                return if underscores_and_type {
+                    format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
+                } else {
+                    int.to_string()
+                }
             }
-        }
-        (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
-            let ty = ct.ty();
-            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
-            let data = int.assert_bits(size);
-            let sign_extended_data = size.sign_extend(data) as i128;
-            if underscores_and_type {
-                format!(
-                    "{}{}",
-                    format_integer_with_underscore_sep(&sign_extended_data.to_string()),
-                    i.name_str()
-                )
-            } else {
-                sign_extended_data.to_string()
+            ty::Int(i) => {
+                let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
+                let data = int.assert_bits(size);
+                let sign_extended_data = size.sign_extend(data) as i128;
+                return if underscores_and_type {
+                    format!(
+                        "{}{}",
+                        format_integer_with_underscore_sep(&sign_extended_data.to_string()),
+                        i.name_str()
+                    )
+                } else {
+                    sign_extended_data.to_string()
+                }
             }
+            _ => {}
         }
-        _ => ct.to_string(),
     }
+
+    ct.to_string()
 }
 
 pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {

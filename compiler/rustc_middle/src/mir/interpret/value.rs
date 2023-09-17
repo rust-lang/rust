@@ -6,6 +6,7 @@ use rustc_apfloat::{
     ieee::{Double, Single},
     Float,
 };
+use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
@@ -28,11 +29,15 @@ pub struct ConstAlloc<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(HashStable)]
+pub struct ConstValue<'tcx>(pub(crate) Interned<'tcx, ConstValueKind<'tcx>>);
+
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable, Lift)]
-pub enum ConstValue<'tcx> {
+pub enum ConstValueKind<'tcx> {
     /// Used for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
@@ -65,35 +70,47 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstValue<'_>, 32);
+static_assert_size!(ConstValue<'_>, 8);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
-    pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
-        match *self {
-            ConstValue::Indirect { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
-            ConstValue::Scalar(val) => Some(val),
+    pub fn new(tcx: TyCtxt<'tcx>, kind: ConstValueKind<'tcx>) -> ConstValue<'tcx> {
+        tcx.intern_const_value(kind)
+    }
+
+    #[inline]
+    pub fn kind(self) -> &'tcx ConstValueKind<'tcx> {
+        self.0.0
+    }
+
+    #[inline]
+    pub fn try_to_scalar(self) -> Option<Scalar<AllocId>> {
+        match self.kind() {
+            ConstValueKind::Indirect { .. }
+            | ConstValueKind::Slice { .. }
+            | ConstValueKind::ZeroSized => None,
+            ConstValueKind::Scalar(val) => Some(*val),
         }
     }
 
-    pub fn try_to_scalar_int(&self) -> Option<ScalarInt> {
+    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
         self.try_to_scalar()?.try_to_int().ok()
     }
 
-    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
+    pub fn try_to_bits(self, size: Size) -> Option<u128> {
         self.try_to_scalar_int()?.to_bits(size).ok()
     }
 
-    pub fn try_to_bool(&self) -> Option<bool> {
+    pub fn try_to_bool(self) -> Option<bool> {
         self.try_to_scalar_int()?.try_into().ok()
     }
 
-    pub fn try_to_target_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+    pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
         self.try_to_scalar_int()?.try_to_target_usize(tcx).ok()
     }
 
     pub fn try_to_bits_for_ty(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         ty: Ty<'tcx>,
@@ -102,30 +119,65 @@ impl<'tcx> ConstValue<'tcx> {
         self.try_to_bits(size)
     }
 
-    pub fn from_bool(b: bool) -> Self {
-        ConstValue::Scalar(Scalar::from_bool(b))
+    #[inline]
+    pub fn zero_sized(tcx: TyCtxt<'tcx>) -> Self {
+        Self::new(tcx, ConstValueKind::ZeroSized)
     }
 
-    pub fn from_u64(i: u64) -> Self {
-        ConstValue::Scalar(Scalar::from_u64(i))
+    #[inline]
+    pub fn from_scalar(tcx: TyCtxt<'tcx>, scalar: Scalar) -> Self {
+        Self::new(tcx, ConstValueKind::Scalar(scalar))
     }
 
-    pub fn from_u128(i: u128) -> Self {
-        ConstValue::Scalar(Scalar::from_u128(i))
+    #[inline]
+    pub fn from_bool(tcx: TyCtxt<'tcx>, b: bool) -> Self {
+        Self::from_scalar(tcx, Scalar::from_bool(b))
     }
 
-    pub fn from_target_usize(i: u64, cx: &impl HasDataLayout) -> Self {
-        ConstValue::Scalar(Scalar::from_target_usize(i, cx))
+    #[inline]
+    pub fn from_u64(tcx: TyCtxt<'tcx>, i: u64) -> Self {
+        Self::from_scalar(tcx, Scalar::from_u64(i))
+    }
+
+    #[inline]
+    pub fn from_u128(tcx: TyCtxt<'tcx>, i: u128) -> Self {
+        Self::from_scalar(tcx, Scalar::from_u128(i))
+    }
+
+    #[inline]
+    pub fn from_target_usize(tcx: TyCtxt<'tcx>, i: u64) -> Self {
+        Self::from_scalar(tcx, Scalar::from_target_usize(i, &tcx))
+    }
+
+    #[inline]
+    pub fn from_pointer(tcx: TyCtxt<'tcx>, pointer: Pointer) -> Self {
+        Self::from_scalar(tcx, Scalar::from_pointer(pointer, &tcx))
+    }
+
+    #[inline]
+    pub fn from_slice(
+        tcx: TyCtxt<'tcx>,
+        data: ConstAllocation<'tcx>,
+        start: usize,
+        end: usize,
+    ) -> Self {
+        Self::new(tcx, ConstValueKind::Slice { data, start, end })
+    }
+
+    #[inline]
+    pub fn from_memory(tcx: TyCtxt<'tcx>, alloc_id: AllocId, offset: Size) -> Self {
+        debug_assert!(matches!(tcx.global_alloc(alloc_id), super::GlobalAlloc::Memory(_)));
+        Self::new(tcx, ConstValueKind::Indirect { alloc_id, offset })
     }
 
     /// Must only be called on constants of type `&str` or `&[u8]`!
-    pub fn try_get_slice_bytes_for_diagnostics(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
-        let (data, start, end) = match self {
-            ConstValue::Scalar(_) | ConstValue::ZeroSized => {
+    pub fn try_get_slice_bytes_for_diagnostics(self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
+        let (data, start, end) = match self.kind() {
+            ConstValueKind::Scalar(_) | ConstValueKind::ZeroSized => {
                 bug!("`try_get_slice_bytes` on non-slice constant")
             }
-            &ConstValue::Slice { data, start, end } => (data, start, end),
-            &ConstValue::Indirect { alloc_id, offset } => {
+            &ConstValueKind::Slice { data, start, end } => (data, start, end),
+            &ConstValueKind::Indirect { alloc_id, offset } => {
                 // The reference itself is stored behind an indirection.
                 // Load the reference, and then load the actual slice contents.
                 let a = tcx.global_alloc(alloc_id).unwrap_memory().inner();

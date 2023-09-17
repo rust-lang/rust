@@ -488,7 +488,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Constant(Box::new(Constant {
                     span: expr_span,
                     user_ty: None,
-                    literal: ConstantKind::zero_sized(this.tcx.types.unit),
+                    literal: ConstantKind::zero_sized(this.tcx, this.tcx.types.unit),
                 }))))
             }
 

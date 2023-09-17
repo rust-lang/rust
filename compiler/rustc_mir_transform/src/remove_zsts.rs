@@ -1,7 +1,6 @@
 //! Removes operations on ZST places, and convert ZST operands to constants.
 
 use crate::MirPass;
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -68,7 +67,7 @@ impl<'tcx> Replacer<'_, 'tcx> {
         Constant {
             span: rustc_span::DUMMY_SP,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::ZeroSized, ty),
+            literal: ConstantKind::zero_sized(self.tcx, ty),
         }
     }
 }
