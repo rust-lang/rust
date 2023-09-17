@@ -1178,18 +1178,20 @@ fn f() {
     fn regression_15623() {
         check_diagnostics(
             r#"
+//- minicore: fn
+
 struct Foo;
 
 impl Foo {
     fn needs_mut(&mut self) {}
 }
 
-fn main() {
-    let mut foo = Foo;
-    || {
+fn foo(mut foo: Foo) {
+    let mut call_me = || {
         let 0 = 1 else { return };
         foo.needs_mut();
     };
+    call_me();
 }
 "#,
         );
