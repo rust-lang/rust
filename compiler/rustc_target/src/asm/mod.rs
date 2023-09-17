@@ -178,6 +178,7 @@ mod powerpc;
 mod riscv;
 mod s390x;
 mod spirv;
+mod v810;
 mod wasm;
 mod x86;
 
@@ -196,6 +197,7 @@ pub use powerpc::{PowerPCInlineAsmReg, PowerPCInlineAsmRegClass};
 pub use riscv::{RiscVInlineAsmReg, RiscVInlineAsmRegClass};
 pub use s390x::{S390xInlineAsmReg, S390xInlineAsmRegClass};
 pub use spirv::{SpirVInlineAsmReg, SpirVInlineAsmRegClass};
+pub use v810::{V810InlineAsmReg, V810InlineAsmRegClass};
 pub use wasm::{WasmInlineAsmReg, WasmInlineAsmRegClass};
 pub use x86::{X86InlineAsmReg, X86InlineAsmRegClass};
 
@@ -216,6 +218,7 @@ pub enum InlineAsmArch {
     PowerPC64,
     S390x,
     SpirV,
+    V810,
     Wasm32,
     Wasm64,
     Bpf,
@@ -247,6 +250,7 @@ impl FromStr for InlineAsmArch {
             "spirv" => Ok(Self::SpirV),
             "wasm32" => Ok(Self::Wasm32),
             "wasm64" => Ok(Self::Wasm64),
+            "v810" => Ok(Self::V810),
             "bpf" => Ok(Self::Bpf),
             "avr" => Ok(Self::Avr),
             "msp430" => Ok(Self::Msp430),
@@ -271,6 +275,7 @@ pub enum InlineAsmReg {
     Mips(MipsInlineAsmReg),
     S390x(S390xInlineAsmReg),
     SpirV(SpirVInlineAsmReg),
+    V810(V810InlineAsmReg),
     Wasm(WasmInlineAsmReg),
     Bpf(BpfInlineAsmReg),
     Avr(AvrInlineAsmReg),
@@ -293,6 +298,7 @@ impl InlineAsmReg {
             Self::LoongArch(r) => r.name(),
             Self::Mips(r) => r.name(),
             Self::S390x(r) => r.name(),
+            Self::V810(r) => r.name(),
             Self::Bpf(r) => r.name(),
             Self::Avr(r) => r.name(),
             Self::Msp430(r) => r.name(),
@@ -313,6 +319,7 @@ impl InlineAsmReg {
             Self::LoongArch(r) => InlineAsmRegClass::LoongArch(r.reg_class()),
             Self::Mips(r) => InlineAsmRegClass::Mips(r.reg_class()),
             Self::S390x(r) => InlineAsmRegClass::S390x(r.reg_class()),
+            Self::V810(r) => InlineAsmRegClass::V810(r.reg_class()),
             Self::Bpf(r) => InlineAsmRegClass::Bpf(r.reg_class()),
             Self::Avr(r) => InlineAsmRegClass::Avr(r.reg_class()),
             Self::Msp430(r) => InlineAsmRegClass::Msp430(r.reg_class()),
@@ -344,6 +351,7 @@ impl InlineAsmReg {
             }
             InlineAsmArch::S390x => Self::S390x(S390xInlineAsmReg::parse(name)?),
             InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmReg::parse(name)?),
+            InlineAsmArch::V810 => Self::V810(V810InlineAsmReg::parse(name)?),
             InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
                 Self::Wasm(WasmInlineAsmReg::parse(name)?)
             }
@@ -375,6 +383,7 @@ impl InlineAsmReg {
             }
             Self::Mips(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::S390x(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::V810(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Bpf(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Avr(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Msp430(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
@@ -402,6 +411,7 @@ impl InlineAsmReg {
             Self::LoongArch(r) => r.emit(out, arch, modifier),
             Self::Mips(r) => r.emit(out, arch, modifier),
             Self::S390x(r) => r.emit(out, arch, modifier),
+            Self::V810(r) => r.emit(out, arch, modifier),
             Self::Bpf(r) => r.emit(out, arch, modifier),
             Self::Avr(r) => r.emit(out, arch, modifier),
             Self::Msp430(r) => r.emit(out, arch, modifier),
@@ -422,6 +432,7 @@ impl InlineAsmReg {
             Self::LoongArch(_) => cb(self),
             Self::Mips(_) => cb(self),
             Self::S390x(_) => cb(self),
+            Self::V810(r) => r.overlapping_regs(|r| cb(Self::V810(r))),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
             Self::Avr(r) => r.overlapping_regs(|r| cb(Self::Avr(r))),
             Self::Msp430(_) => cb(self),
@@ -446,6 +457,7 @@ pub enum InlineAsmRegClass {
     Mips(MipsInlineAsmRegClass),
     S390x(S390xInlineAsmRegClass),
     SpirV(SpirVInlineAsmRegClass),
+    V810(V810InlineAsmRegClass),
     Wasm(WasmInlineAsmRegClass),
     Bpf(BpfInlineAsmRegClass),
     Avr(AvrInlineAsmRegClass),
@@ -470,6 +482,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.name(),
             Self::S390x(r) => r.name(),
             Self::SpirV(r) => r.name(),
+            Self::V810(r) => r.name(),
             Self::Wasm(r) => r.name(),
             Self::Bpf(r) => r.name(),
             Self::Avr(r) => r.name(),
@@ -496,6 +509,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Mips),
             Self::S390x(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::S390x),
             Self::SpirV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::SpirV),
+            Self::V810(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::V810),
             Self::Wasm(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Wasm),
             Self::Bpf(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Bpf),
             Self::Avr(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Avr),
@@ -529,6 +543,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.suggest_modifier(arch, ty),
             Self::S390x(r) => r.suggest_modifier(arch, ty),
             Self::SpirV(r) => r.suggest_modifier(arch, ty),
+            Self::V810(r) => r.suggest_modifier(arch, ty),
             Self::Wasm(r) => r.suggest_modifier(arch, ty),
             Self::Bpf(r) => r.suggest_modifier(arch, ty),
             Self::Avr(r) => r.suggest_modifier(arch, ty),
@@ -558,6 +573,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.default_modifier(arch),
             Self::S390x(r) => r.default_modifier(arch),
             Self::SpirV(r) => r.default_modifier(arch),
+            Self::V810(r) => r.default_modifier(arch),
             Self::Wasm(r) => r.default_modifier(arch),
             Self::Bpf(r) => r.default_modifier(arch),
             Self::Avr(r) => r.default_modifier(arch),
@@ -586,6 +602,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.supported_types(arch),
             Self::S390x(r) => r.supported_types(arch),
             Self::SpirV(r) => r.supported_types(arch),
+            Self::V810(r) => r.supported_types(arch),
             Self::Wasm(r) => r.supported_types(arch),
             Self::Bpf(r) => r.supported_types(arch),
             Self::Avr(r) => r.supported_types(arch),
@@ -617,6 +634,7 @@ impl InlineAsmRegClass {
             }
             InlineAsmArch::S390x => Self::S390x(S390xInlineAsmRegClass::parse(name)?),
             InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::V810 => Self::V810(V810InlineAsmRegClass::parse(name)?),
             InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
                 Self::Wasm(WasmInlineAsmRegClass::parse(name)?)
             }
@@ -643,6 +661,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.valid_modifiers(arch),
             Self::S390x(r) => r.valid_modifiers(arch),
             Self::SpirV(r) => r.valid_modifiers(arch),
+            Self::V810(r) => r.valid_modifiers(arch),
             Self::Wasm(r) => r.valid_modifiers(arch),
             Self::Bpf(r) => r.valid_modifiers(arch),
             Self::Avr(r) => r.valid_modifiers(arch),
@@ -818,6 +837,11 @@ pub fn allocatable_registers(
         InlineAsmArch::SpirV => {
             let mut map = spirv::regclass_map();
             spirv::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
+            map
+        }
+        InlineAsmArch::V810 => {
+            let mut map = v810::regclass_map();
+            v810::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
