@@ -255,3 +255,17 @@ fn ellipsis_pattern() {
         }
     }
 }
+
+#[test]
+fn regression_15623() {
+    size_and_align_expr! {
+        let a = 2;
+        let b = 3;
+        let c = 5;
+        move || {
+            let 0 = a else { return b; };
+            let y = c;
+            y
+        }
+    }
+}
