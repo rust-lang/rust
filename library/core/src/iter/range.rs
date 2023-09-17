@@ -1,6 +1,7 @@
 use crate::ascii::Char as AsciiChar;
 use crate::convert::TryFrom;
 use crate::mem;
+use crate::net::{Ipv4Addr, Ipv6Addr};
 use crate::num::NonZeroUsize;
 use crate::ops::{self, Try};
 
@@ -15,7 +16,7 @@ macro_rules! unsafe_impl_trusted_step {
         unsafe impl TrustedStep for $type {}
     )*};
 }
-unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
+unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize Ipv4Addr Ipv6Addr];
 
 /// Objects that have a notion of *successor* and *predecessor* operations.
 ///
@@ -524,6 +525,70 @@ impl Step for AsciiChar {
 
         // SAFETY: Caller asserts that result is a valid ASCII character.
         unsafe { AsciiChar::from_u8_unchecked(end) }
+    }
+}
+
+#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+impl Step for Ipv4Addr {
+    #[inline]
+    fn steps_between(&start: &Ipv4Addr, &end: &Ipv4Addr) -> Option<usize> {
+        u32::steps_between(&start.to_bits(), &end.to_bits())
+    }
+
+    #[inline]
+    fn forward_checked(start: Ipv4Addr, count: usize) -> Option<Ipv4Addr> {
+        u32::forward_checked(start.to_bits(), count).map(Ipv4Addr::from_bits)
+    }
+
+    #[inline]
+    fn backward_checked(start: Ipv4Addr, count: usize) -> Option<Ipv4Addr> {
+        u32::backward_checked(start.to_bits(), count).map(Ipv4Addr::from_bits)
+    }
+
+    #[inline]
+    unsafe fn forward_unchecked(start: Ipv4Addr, count: usize) -> Ipv4Addr {
+        // SAFETY: Since u32 and Ipv4Addr are losslessly convertible,
+        //   this is as safe as the u32 version.
+        Ipv4Addr::from_bits(unsafe { u32::forward_unchecked(start.to_bits(), count) })
+    }
+
+    #[inline]
+    unsafe fn backward_unchecked(start: Ipv4Addr, count: usize) -> Ipv4Addr {
+        // SAFETY: Since u32 and Ipv4Addr are losslessly convertible,
+        //   this is as safe as the u32 version.
+        Ipv4Addr::from_bits(unsafe { u32::backward_unchecked(start.to_bits(), count) })
+    }
+}
+
+#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+impl Step for Ipv6Addr {
+    #[inline]
+    fn steps_between(&start: &Ipv6Addr, &end: &Ipv6Addr) -> Option<usize> {
+        u128::steps_between(&start.to_bits(), &end.to_bits())
+    }
+
+    #[inline]
+    fn forward_checked(start: Ipv6Addr, count: usize) -> Option<Ipv6Addr> {
+        u128::forward_checked(start.to_bits(), count).map(Ipv6Addr::from_bits)
+    }
+
+    #[inline]
+    fn backward_checked(start: Ipv6Addr, count: usize) -> Option<Ipv6Addr> {
+        u128::backward_checked(start.to_bits(), count).map(Ipv6Addr::from_bits)
+    }
+
+    #[inline]
+    unsafe fn forward_unchecked(start: Ipv6Addr, count: usize) -> Ipv6Addr {
+        // SAFETY: Since u128 and Ipv6Addr are losslessly convertible,
+        //   this is as safe as the u128 version.
+        Ipv6Addr::from_bits(unsafe { u128::forward_unchecked(start.to_bits(), count) })
+    }
+
+    #[inline]
+    unsafe fn backward_unchecked(start: Ipv6Addr, count: usize) -> Ipv6Addr {
+        // SAFETY: Since u128 and Ipv6Addr are losslessly convertible,
+        //   this is as safe as the u128 version.
+        Ipv6Addr::from_bits(unsafe { u128::backward_unchecked(start.to_bits(), count) })
     }
 }
 
