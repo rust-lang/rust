@@ -155,8 +155,9 @@ impl<'tcx> ConstToPat<'tcx> {
         };
 
         if !self.saw_const_match_error.get() {
-            // If we were able to successfully convert the const to some pat,
-            // double-check that all types in the const implement `Structural`.
+            // If we were able to successfully convert the const to some pat (possibly with some
+            // lints, but no errors), double-check that all types in the const implement
+            // `Structural` and `PartialEq`.
 
             let structural =
                 traits::search_for_structural_match_violation(self.span, self.tcx(), cv.ty());
@@ -192,8 +193,10 @@ impl<'tcx> ConstToPat<'tcx> {
                     } else {
                         let err = InvalidPattern { span: self.span, non_sm_ty };
                         self.tcx().sess.emit_err(err);
-                        return Box::new(Pat { span: self.span, ty: cv.ty(), kind: PatKind::Wild });
                     }
+                    // All branches above emitted an error. Don't print any more lints.
+                    // The pattern we return is irrelevant since we errored.
+                    return Box::new(Pat { span: self.span, ty: cv.ty(), kind: PatKind::Wild });
                 } else if !self.saw_const_match_lint.get() {
                     if let Some(mir_structural_match_violation) = mir_structural_match_violation {
                         match non_sm_ty.kind() {
@@ -235,18 +238,19 @@ impl<'tcx> ConstToPat<'tcx> {
                             PointerPattern,
                         );
                     }
-                    _ if !self.type_may_have_partial_eq_impl(cv.ty()) => {
-                        // Value is structural-match but the type doesn't even implement `PartialEq`...
-                        self.saw_const_match_lint.set(true);
-                        self.tcx().emit_spanned_lint(
-                            lint::builtin::MATCH_WITHOUT_PARTIAL_EQ,
-                            self.id,
-                            self.span,
-                            NonPartialEqMatch { non_peq_ty: cv.ty() },
-                        );
-                    }
                     _ => {}
                 }
+            }
+
+            // Always check for `PartialEq`, even if we emitted other lints. (But not if there were
+            // any errors.) This ensures it shows up in cargo's future-compat reports as well.
+            if !self.type_may_have_partial_eq_impl(cv.ty()) {
+                self.tcx().emit_spanned_lint(
+                    lint::builtin::MATCH_WITHOUT_PARTIAL_EQ,
+                    self.id,
+                    self.span,
+                    NonPartialEqMatch { non_peq_ty: cv.ty() },
+                );
             }
         }
 
