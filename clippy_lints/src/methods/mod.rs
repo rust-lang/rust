@@ -3617,14 +3617,14 @@ declare_clippy_lint! {
     /// ```rust
     /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
-    /// owned_string.as_str().as_bytes()
+    /// owned_string.as_str().as_bytes();
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
-    /// owned_string.as_bytes()
+    /// owned_string.as_bytes();
     /// ```
     #[clippy::version = "1.74.0"]
     pub REDUNDANT_AS_STR,
