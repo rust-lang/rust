@@ -403,6 +403,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::RANGE_ZIP_WITH_LEN_INFO,
     crate::methods::READONLY_WRITE_LOCK_INFO,
     crate::methods::READ_LINE_WITHOUT_TRIM_INFO,
+    crate::methods::REDUNDANT_AS_STR_INFO,
     crate::methods::REPEAT_ONCE_INFO,
     crate::methods::RESULT_MAP_OR_INTO_OPTION_INFO,
     crate::methods::SEARCH_IS_SOME_INFO,
