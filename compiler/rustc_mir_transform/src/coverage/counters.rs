@@ -91,7 +91,7 @@ impl CoverageCounters {
     }
 
     /// Makes [`BcbCounter`] `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
-    /// indirectly associated with `CoverageSpans`, and accumulates additional `Expression`s
+    /// indirectly associated with coverage spans, and accumulates additional `Expression`s
     /// representing intermediate values.
     pub fn make_bcb_counters(
         &mut self,
@@ -206,7 +206,7 @@ impl CoverageCounters {
 }
 
 /// Traverse the `CoverageGraph` and add either a `Counter` or `Expression` to every BCB, to be
-/// injected with `CoverageSpan`s. `Expressions` have no runtime overhead, so if a viable expression
+/// injected with coverage spans. `Expressions` have no runtime overhead, so if a viable expression
 /// (adding or subtracting two other counters or expressions) can compute the same result as an
 /// embedded counter, an `Expression` should be used.
 struct MakeBcbCounters<'a> {
@@ -239,7 +239,7 @@ impl<'a> MakeBcbCounters<'a> {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
 
         // Walk the `CoverageGraph`. For each `BasicCoverageBlock` node with an associated
-        // `CoverageSpan`, add a counter. If the `BasicCoverageBlock` branches, add a counter or
+        // coverage span, add a counter. If the `BasicCoverageBlock` branches, add a counter or
         // expression to each branch `BasicCoverageBlock` (if the branch BCB has only one incoming
         // edge) or edge from the branching BCB to the branch BCB (if the branch BCB has multiple
         // incoming edges).
@@ -251,7 +251,7 @@ impl<'a> MakeBcbCounters<'a> {
         let mut traversal = TraverseCoverageGraphWithLoops::new(&self.basic_coverage_blocks);
         while let Some(bcb) = traversal.next(self.basic_coverage_blocks) {
             if bcb_has_coverage_spans(bcb) {
-                debug!("{:?} has at least one `CoverageSpan`. Get or make its counter", bcb);
+                debug!("{:?} has at least one coverage span. Get or make its counter", bcb);
                 let branching_counter_operand = self.get_or_make_counter_operand(bcb)?;
 
                 if self.bcb_needs_branch_counters(bcb) {
@@ -259,7 +259,7 @@ impl<'a> MakeBcbCounters<'a> {
                 }
             } else {
                 debug!(
-                    "{:?} does not have any `CoverageSpan`s. A counter will only be added if \
+                    "{:?} does not have any coverage spans. A counter will only be added if \
                     and when a covered BCB has an expression dependency.",
                     bcb,
                 );

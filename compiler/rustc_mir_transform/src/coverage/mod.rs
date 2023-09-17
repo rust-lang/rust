@@ -154,7 +154,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let body_span = self.body_span;
 
         ////////////////////////////////////////////////////
-        // Compute `CoverageSpan`s from the `CoverageGraph`.
+        // Compute coverage spans from the `CoverageGraph`.
         let coverage_spans = CoverageSpans::generate_coverage_spans(
             &self.mir_body,
             fn_sig_span,
@@ -164,9 +164,9 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         ////////////////////////////////////////////////////
         // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
-        // every `CoverageSpan` has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
+        // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
         // and all `Expression` dependencies (operands) are also generated, for any other
-        // `BasicCoverageBlock`s not already associated with a `CoverageSpan`.
+        // `BasicCoverageBlock`s not already associated with a coverage span.
         //
         // Intermediate expressions (used to compute other `Expression` values), which have no
         // direct association with any `BasicCoverageBlock`, are accumulated inside `coverage_counters`.
@@ -177,20 +177,20 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         if let Ok(()) = result {
             ////////////////////////////////////////////////////
-            // Remove the counter or edge counter from of each `CoverageSpan`s associated
+            // Remove the counter or edge counter from of each coverage cpan's associated
             // `BasicCoverageBlock`, and inject a `Coverage` statement into the MIR.
             //
-            // `Coverage` statements injected from `CoverageSpan`s will include the code regions
+            // `Coverage` statements injected from coverage spans will include the code regions
             // (source code start and end positions) to be counted by the associated counter.
             //
-            // These `CoverageSpan`-associated counters are removed from their associated
+            // These coverage-span-associated counters are removed from their associated
             // `BasicCoverageBlock`s so that the only remaining counters in the `CoverageGraph`
             // are indirect counters (to be injected next, without associated code regions).
             self.inject_coverage_span_counters(&coverage_spans);
 
             ////////////////////////////////////////////////////
             // For any remaining `BasicCoverageBlock` counters (that were not associated with
-            // any `CoverageSpan`), inject `Coverage` statements (_without_ code region `Span`s)
+            // any coverage span), inject `Coverage` statements (_without_ code region spans)
             // to ensure `BasicCoverageBlock` counters that other `Expression`s may depend on
             // are in fact counted, even though they don't directly contribute to counting
             // their own independent code region's coverage.
@@ -215,9 +215,9 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
     }
 
-    /// Inject a counter for each `CoverageSpan`. There can be multiple `CoverageSpan`s for a given
-    /// BCB, but only one actual counter needs to be incremented per BCB. `bb_counters` maps each
-    /// `bcb` to its `Counter`, when injected. Subsequent `CoverageSpan`s for a BCB that already has
+    /// Inject a counter for each coverage span. There can be multiple coverage spans for a given
+    /// BCB, but only one actual counter needs to be incremented per BCB. `bcb_counters` maps each
+    /// `bcb` to its `Counter`, when injected. Subsequent coverage spans for a BCB that already has
     /// a `Counter` will inject an `Expression` instead, and compute its value by adding `ZERO` to
     /// the BCB `Counter` value.
     fn inject_coverage_span_counters(&mut self, coverage_spans: &CoverageSpans) {
@@ -248,12 +248,12 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
     }
 
-    /// `inject_coverage_span_counters()` looped through the `CoverageSpan`s and injected the
-    /// counter from the `CoverageSpan`s `BasicCoverageBlock`, removing it from the BCB in the
+    /// `inject_coverage_span_counters()` looped through the coverage spans and injected the
+    /// counter from the coverage span's `BasicCoverageBlock`, removing it from the BCB in the
     /// process (via `take_counter()`).
     ///
     /// Any other counter associated with a `BasicCoverageBlock`, or its incoming edge, but not
-    /// associated with a `CoverageSpan`, should only exist if the counter is an `Expression`
+    /// associated with a coverage span, should only exist if the counter is an `Expression`
     /// dependency (one of the expression operands). Collect them, and inject the additional
     /// counters into the MIR, without a reportable coverage span.
     fn inject_indirect_counters(&mut self) {
