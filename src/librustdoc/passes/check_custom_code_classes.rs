@@ -9,7 +9,9 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{find_codes, ErrorCodes, LangString};
 
-use rustc_session::parse::feature_err;
+use rustc_errors::StashKey;
+use rustc_feature::GateIssue;
+use rustc_session::parse::add_feature_diagnostics_for_issue;
 use rustc_span::symbol::sym;
 
 pub(crate) const CHECK_CUSTOM_CODE_CLASSES: Pass = Pass {
@@ -55,23 +57,32 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
     let mut tests = TestsWithCustomClasses { custom_classes_found: vec![] };
 
     let dox = item.attrs.doc_value();
-    find_codes(&dox, &mut tests, ErrorCodes::No, false, None, true);
+    find_codes(&dox, &mut tests, ErrorCodes::No, false, None, true, true);
 
     if !tests.custom_classes_found.is_empty() && !cx.tcx.features().custom_code_classes_in_docs {
-        feature_err(
-            &cx.tcx.sess.parse_sess,
+        let span = item.attr_span(cx.tcx);
+        let sess = &cx.tcx.sess.parse_sess;
+        let mut err = sess
+            .span_diagnostic
+            .struct_span_warn(span, "custom classes in code blocks will change behaviour");
+        add_feature_diagnostics_for_issue(
+            &mut err,
+            sess,
             sym::custom_code_classes_in_docs,
-            item.attr_span(cx.tcx),
-            "custom classes in code blocks are unstable",
-        )
-        .note(
+            GateIssue::Language,
+            false,
+        );
+
+        err.note(
             // This will list the wrong items to make them more easily searchable.
             // To ensure the most correct hits, it adds back the 'class:' that was stripped.
             format!(
                 "found these custom classes: class={}",
                 tests.custom_classes_found.join(",class=")
             ),
-        )
-        .emit();
+        );
+
+        // A later feature_err call can steal and cancel this warning.
+        err.stash(span, StashKey::EarlySyntaxWarning);
     }
 }
