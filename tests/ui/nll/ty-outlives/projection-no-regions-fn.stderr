@@ -1,6 +1,9 @@
 error[E0309]: the associated type `<T as Iterator>::Item` may not live long enough
   --> $DIR/projection-no-regions-fn.rs:13:5
    |
+LL | fn no_region<'a, T>(mut x: T) -> Box<dyn Anything + 'a>
+   |              -- the associated type `<T as Iterator>::Item` must be valid for the lifetime `'a` as defined here...
+...
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^ ...so that the type `<T as Iterator>::Item` will meet its required lifetime bounds
    |
@@ -12,6 +15,9 @@ LL |     T: Iterator, <T as Iterator>::Item: 'a
 error[E0309]: the associated type `<T as Iterator>::Item` may not live long enough
   --> $DIR/projection-no-regions-fn.rs:28:5
    |
+LL | fn wrong_region<'a, 'b, T>(mut x: T) -> Box<dyn Anything + 'a>
+   |                 -- the associated type `<T as Iterator>::Item` must be valid for the lifetime `'a` as defined here...
+...
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^ ...so that the type `<T as Iterator>::Item` will meet its required lifetime bounds
    |

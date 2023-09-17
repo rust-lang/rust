@@ -24,6 +24,9 @@ LL | fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:32:9
    |
+LL | fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
+   |              -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
 LL |         require(&x, &y)
    |         ^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
@@ -84,6 +87,9 @@ LL | |     T: 'b,
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:65:9
    |
+LL | fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
+   |                 -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
 LL |         require(&x, &y)
    |         ^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |

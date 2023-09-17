@@ -2,7 +2,10 @@ error[E0310]: the parameter type `A` may not live long enough
   --> $DIR/normalization-infer.rs:11:12
    |
 LL |     let _: <(_,) as Tr>::Ty = a;
-   |            ^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |            ^^^^^^^^^^^^^^^^
+   |            |
+   |            the parameter type `A` must be valid for the static lifetime...
+   |            ...so that the type `A` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
@@ -13,7 +16,10 @@ error[E0310]: the parameter type `B` may not live long enough
   --> $DIR/normalization-infer.rs:12:5
    |
 LL |     Some::<<(_,) as Tr>::Ty>(b);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `B` will meet its required lifetime bounds
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `B` must be valid for the static lifetime...
+   |     ...so that the type `B` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
@@ -24,7 +30,10 @@ error[E0310]: the parameter type `C` may not live long enough
   --> $DIR/normalization-infer.rs:13:11
    |
 LL |     || -> <(_,) as Tr>::Ty { c };
-   |           ^^^^^^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
+   |           ^^^^^^^^^^^^^^^^
+   |           |
+   |           the parameter type `C` must be valid for the static lifetime...
+   |           ...so that the type `C` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
@@ -35,7 +44,10 @@ error[E0310]: the parameter type `D` may not live long enough
   --> $DIR/normalization-infer.rs:14:6
    |
 LL |     |d: <(_,) as Tr>::Ty| -> D { d };
-   |      ^ ...so that the type `D` will meet its required lifetime bounds
+   |      ^
+   |      |
+   |      the parameter type `D` must be valid for the static lifetime...
+   |      ...so that the type `D` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
@@ -46,7 +58,10 @@ error[E0310]: the parameter type `A` may not live long enough
   --> $DIR/normalization-infer.rs:28:12
    |
 LL |     let _: Alias<_, _> = (a, 0u8);
-   |            ^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |            ^^^^^^^^^^^
+   |            |
+   |            the parameter type `A` must be valid for the static lifetime...
+   |            ...so that the type `A` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
@@ -57,7 +72,10 @@ error[E0310]: the parameter type `B` may not live long enough
   --> $DIR/normalization-infer.rs:29:5
    |
 LL |     Some::<Alias<_, _>>((b, 0u8));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `B` will meet its required lifetime bounds
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `B` must be valid for the static lifetime...
+   |     ...so that the type `B` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
@@ -68,7 +86,10 @@ error[E0310]: the parameter type `C` may not live long enough
   --> $DIR/normalization-infer.rs:30:11
    |
 LL |     || -> Alias<_, _> { (c, 0u8) };
-   |           ^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
+   |           ^^^^^^^^^^^
+   |           |
+   |           the parameter type `C` must be valid for the static lifetime...
+   |           ...so that the type `C` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |

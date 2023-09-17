@@ -59,8 +59,8 @@ use crate::traits::{
 };
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_errors::{error_code, Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -2341,40 +2341,29 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             },
         };
 
-        let mut err = match sub.kind() {
-            ty::ReEarlyBound(_) | ty::ReFree(_) if sub.has_name() => struct_span_err!(
-                self.tcx.sess,
-                span,
-                E0309,
-                "{} may not live long enough",
-                labeled_user_string
-            ),
-            ty::ReStatic => struct_span_err!(
-                self.tcx.sess,
-                span,
-                E0310,
-                "{} may not live long enough",
-                labeled_user_string
-            ),
-            _ => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0311,
-                    "{} may not live long enough",
-                    labeled_user_string
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    &format!("{labeled_user_string} must be valid for "),
-                    sub,
-                    "...",
-                    None,
-                );
-                err
+        let mut err = self.tcx.sess.struct_span_err_with_code(
+            span,
+            format!("{labeled_user_string} may not live long enough"),
+            match sub.kind() {
+                ty::ReEarlyBound(_) | ty::ReFree(_) if sub.has_name() => error_code!(E0309),
+                ty::ReStatic => error_code!(E0310),
+                _ => error_code!(E0311),
+            },
+        );
+
+        '_explain: {
+            let (description, span) = match sub.kind() {
+                ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
+                    msg_span_from_named_region(self.tcx, sub, Some(span))
+                }
+                _ => (format!("lifetime `{sub}`"), Some(span)),
+            };
+            let prefix = format!("{labeled_user_string} must be valid for ");
+            label_msg_span(&mut err, &prefix, description, span, "...");
+            if let Some(origin) = origin {
+                self.note_region_origin(&mut err, &origin);
             }
-        };
+        }
 
         'suggestion: {
             let msg = "consider adding an explicit lifetime bound";
@@ -2450,9 +2439,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             );
         }
 
-        if let Some(origin) = origin {
-            self.note_region_origin(&mut err, &origin);
-        }
         err
     }
 

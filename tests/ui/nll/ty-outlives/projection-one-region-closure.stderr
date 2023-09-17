@@ -27,6 +27,9 @@ LL | |     T: Anything<'b>,
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:45:39
    |
+LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+   |                          -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
@@ -77,6 +80,9 @@ LL | |     'a: 'a,
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:56:39
    |
+LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+   |                           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
