@@ -47,7 +47,17 @@ unsafe fn ref_to_mut() {
     let deferred = (std::ptr::from_ref(num) as *const i32 as *const i32).cast_mut() as *mut i32;
     let _num = &mut *deferred;
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let deferred_rebind = deferred;
+    let _num = &mut *deferred_rebind;
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *(num as *const _ as usize as *mut i32);
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+
+    static NUM: &'static i32 = &2;
+    let num = NUM as *const i32 as *mut i32;
+    let num = num;
+    let num = num;
+    let _num = &mut *num;
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
 
     unsafe fn generic_ref_cast_mut<T>(this: &T) -> &mut T {
@@ -93,6 +103,9 @@ unsafe fn assign_to_ref() {
 
     let value = num as *const i32 as *mut i32;
     *value = 1;
+    //~^ ERROR assigning to `&T` is undefined behavior
+    let value_rebind = value;
+    *value_rebind = 1;
     //~^ ERROR assigning to `&T` is undefined behavior
     *(num as *const i32).cast::<i32>().cast_mut() = 2;
     //~^ ERROR assigning to `&T` is undefined behavior

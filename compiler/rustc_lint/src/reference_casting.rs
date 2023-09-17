@@ -1,8 +1,7 @@
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, QPath, StmtKind, UnOp};
+use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_middle::ty::{self, TypeAndMut};
-use rustc_span::{sym, Span};
+use rustc_span::sym;
 
 use crate::{lints::InvalidReferenceCastingDiag, LateContext, LateLintPass, LintContext};
 
@@ -34,38 +33,18 @@ declare_lint! {
     "casts of `&T` to `&mut T` without interior mutability"
 }
 
-#[derive(Default)]
-pub struct InvalidReferenceCasting {
-    casted: FxHashMap<HirId, Span>,
-}
-
-impl_lint_pass!(InvalidReferenceCasting => [INVALID_REFERENCE_CASTING]);
+declare_lint_pass!(InvalidReferenceCasting => [INVALID_REFERENCE_CASTING]);
 
 impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
-    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx rustc_hir::Stmt<'tcx>) {
-        let StmtKind::Local(local) = stmt.kind else {
-            return;
-        };
-        let Local { init: Some(init), els: None, .. } = local else {
-            return;
-        };
-
-        if is_cast_from_const_to_mut(cx, init) {
-            self.casted.insert(local.pat.hir_id, init.span);
-        }
-    }
-
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         let Some((is_assignment, e)) = is_operation_we_care_about(cx, expr) else {
             return;
         };
 
-        let orig_cast = if is_cast_from_const_to_mut(cx, e) {
-            None
-        } else if let ExprKind::Path(QPath::Resolved(_, path)) = e.kind
-            && let Res::Local(hir_id) = &path.res
-            && let Some(orig_cast) = self.casted.get(hir_id) {
-            Some(*orig_cast)
+        let init = cx.expr_or_init(e);
+
+        let orig_cast = if is_cast_from_const_to_mut(cx, init) {
+            if init.span != e.span { Some(init.span) } else { None }
         } else {
             return;
         };
