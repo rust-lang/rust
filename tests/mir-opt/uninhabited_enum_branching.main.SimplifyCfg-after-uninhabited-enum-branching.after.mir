@@ -58,15 +58,3 @@ fn main() -> () {
         return;
     }
 }
-
-alloc7 (size: 1, align: 1) {
-    45                                              │ E
-}
-
-alloc6 (size: 1, align: 1) {
-    44                                              │ D
-}
-
-alloc5 (size: 1, align: 1) {
-    43                                              │ C
-}

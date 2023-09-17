@@ -775,6 +775,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Operand::Immediate(Immediate::ScalarPair(adjust_scalar(a)?, adjust_scalar(b)?))
             }
             ConstValueKind::ZeroSized => Operand::Immediate(Immediate::Uninit),
+            ConstValueKind::Slice { data, start, end } => {
+                // We rely on mutability being set correctly in `data` to prevent writes
+                // where none should happen.
+                let ptr = Pointer::new(
+                    self.tcx.reserve_and_set_memory_alloc(data),
+                    Size::from_bytes(start), // offset: `start`
+                );
+                Operand::Immediate(Immediate::new_slice(
+                    Scalar::from_pointer(self.global_base_pointer(ptr)?, &*self.tcx),
+                    u64::try_from(end.checked_sub(start).unwrap()).unwrap(), // len: `end - start`
+                    self,
+                ))
+            }
         };
         Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }

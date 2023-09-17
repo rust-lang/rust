@@ -459,6 +459,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstValueKind::ZeroSized => "<ZST>".to_string(),
                 ConstValueKind::Scalar(s) => format!("Scalar({s:?})"),
                 ConstValueKind::ScalarPair(a, b) => format!("ScalarPair({a:?}, {b:?})"),
+                ConstValueKind::Slice { .. } => "Slice(..)".to_string(),
                 ConstValueKind::Indirect { .. } => "ByRef(..)".to_string(),
             };
 
@@ -712,6 +713,10 @@ pub fn write_allocations<'tcx>(
             }
             ConstValueKind::ScalarPair(a, b) => {
                 alloc_ids_from_scalar(a).into_iter().chain(alloc_ids_from_scalar(b).into_iter())
+            }
+            ConstValueKind::Slice { .. } => {
+                // `u8`/`str` slices, shouldn't contain pointers that we want to print.
+                None.into_iter().chain(None.into_iter())
             }
             ConstValueKind::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.

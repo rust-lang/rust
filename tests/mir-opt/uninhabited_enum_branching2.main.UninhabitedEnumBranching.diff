@@ -113,35 +113,3 @@
       }
   }
   
-  alloc8 (size: 1, align: 1) {
-      44                                              │ D
-  }
-  
-  alloc7 (size: 1, align: 1) {
-      43                                              │ C
-  }
-  
-  alloc6 (size: 8, align: 1) {
-      42 28 45 6d 70 74 79 29                         │ B(Empty)
-  }
-  
-  alloc5 (size: 8, align: 1) {
-      41 28 45 6d 70 74 79 29                         │ A(Empty)
-  }
-  
-  alloc4 (size: 1, align: 1) {
-      44                                              │ D
-  }
-  
-  alloc3 (size: 1, align: 1) {
-      43                                              │ C
-  }
-  
-  alloc2 (size: 8, align: 1) {
-      42 28 45 6d 70 74 79 29                         │ B(Empty)
-  }
-  
-  alloc1 (size: 8, align: 1) {
-      41 28 45 6d 70 74 79 29                         │ A(Empty)
-  }
-  

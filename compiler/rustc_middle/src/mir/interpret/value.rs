@@ -13,7 +13,8 @@ use rustc_target::abi::{HasDataLayout, Size};
 use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
-    alloc_range, AllocId, InterpResult, Pointer, PointerArithmetic, Provenance, ScalarSizeMismatch,
+    AllocId, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+    ScalarSizeMismatch,
 };
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
@@ -27,13 +28,13 @@ pub struct ConstAlloc<'tcx> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(HashStable)]
-pub struct ConstValue<'tcx>(pub(crate) Interned<'tcx, ConstValueKind>);
+pub struct ConstValue<'tcx>(pub(crate) Interned<'tcx, ConstValueKind<'tcx>>);
 
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
-pub enum ConstValueKind {
+#[derive(HashStable, Lift)]
+pub enum ConstValueKind<'tcx> {
     /// Used for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
@@ -47,9 +48,16 @@ pub enum ConstValueKind {
     /// Only for ZSTs.
     ZeroSized,
 
+    /// Used for `&[u8]` and `&str`.
+    ///
+    /// This is worth an optimized representation since Rust has literals of these types.
+    /// Not having to indirect those through an `AllocId` (or two, if we used `Indirect`) has shown
+    /// measurable performance improvements on stress tests.
+    Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
+
     /// A value not representable by the other variants; needs to be stored in-memory.
     ///
-    /// Must *not* be used for scalars or ZST, but having `&str` or other slices in this variant is fine.
+    /// Must *not* be used for scalars, scalar pairs or ZST.
     Indirect {
         /// The backing memory of the value. May contain more memory than needed for just the value
         /// if this points into some other larger ConstValue.
@@ -68,12 +76,12 @@ static_assert_size!(ConstValue<'_>, 8);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
-    pub fn new(tcx: TyCtxt<'tcx>, kind: ConstValueKind) -> ConstValue<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, kind: ConstValueKind<'tcx>) -> ConstValue<'tcx> {
         tcx.intern_const_value(kind)
     }
 
     #[inline]
-    pub fn kind(self) -> &'tcx ConstValueKind {
+    pub fn kind(self) -> &'tcx ConstValueKind<'tcx> {
         self.0.0
     }
 
@@ -82,6 +90,7 @@ impl<'tcx> ConstValue<'tcx> {
         match self.kind() {
             ConstValueKind::Indirect { .. }
             | ConstValueKind::ScalarPair(..)
+            | ConstValueKind::Slice { .. }
             | ConstValueKind::ZeroSized => None,
             ConstValueKind::Scalar(val) => Some(*val),
         }
@@ -163,6 +172,16 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
+    pub fn from_raw_slice(
+        tcx: TyCtxt<'tcx>,
+        data: ConstAllocation<'tcx>,
+        start: usize,
+        end: usize,
+    ) -> Self {
+        Self::new(tcx, ConstValueKind::Slice { data, start, end })
+    }
+
+    #[inline]
     pub fn from_memory(tcx: TyCtxt<'tcx>, alloc_id: AllocId, offset: Size) -> Self {
         debug_assert!(matches!(tcx.global_alloc(alloc_id), super::GlobalAlloc::Memory(_)));
         Self::new(tcx, ConstValueKind::Indirect { alloc_id, offset })
@@ -178,41 +197,7 @@ impl<'tcx> ConstValue<'tcx> {
                 let length = length.try_to_target_usize(tcx).unwrap() as usize;
                 (alloc, start, start + length)
             }
-            &ConstValueKind::Indirect { alloc_id, offset } => {
-                // The reference itself is stored behind an indirection.
-                // Load the reference, and then load the actual slice contents.
-                let a = tcx.global_alloc(alloc_id).unwrap_memory().inner();
-                let ptr_size = tcx.data_layout.pointer_size;
-                if a.size() < offset + 2 * ptr_size {
-                    // (partially) dangling reference
-                    return None;
-                }
-                // Read the wide pointer components.
-                let ptr = a
-                    .read_scalar(
-                        &tcx,
-                        alloc_range(offset, ptr_size),
-                        /* read_provenance */ true,
-                    )
-                    .ok()?;
-                let ptr = ptr.to_pointer(&tcx).ok()?;
-                let len = a
-                    .read_scalar(
-                        &tcx,
-                        alloc_range(offset + ptr_size, ptr_size),
-                        /* read_provenance */ false,
-                    )
-                    .ok()?;
-                let len = len.to_target_usize(&tcx).ok()?;
-                let len: usize = len.try_into().ok()?;
-                if len == 0 {
-                    return Some(&[]);
-                }
-                // Non-empty slice, must have memory. We know this is a relative pointer.
-                let (inner_alloc_id, offset) = ptr.into_parts();
-                let data = tcx.global_alloc(inner_alloc_id?).unwrap_memory();
-                (data, offset.bytes_usize(), offset.bytes_usize() + len)
-            }
+            &ConstValueKind::Slice { data, start, end } => (data, start, end),
             _ => {
                 bug!("`try_get_slice_bytes` on non-slice constant")
             }

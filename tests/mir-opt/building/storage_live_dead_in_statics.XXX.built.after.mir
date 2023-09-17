@@ -198,7 +198,3 @@ static XXX: &Foo = {
         return;
     }
 }
-
-alloc1 (size: 2, align: 1) {
-    68 69                                           │ hi
-}

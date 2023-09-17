@@ -1461,5 +1461,10 @@ fn collect_const_value<'tcx>(
         }
         ConstValueKind::ZeroSized => {}
         ConstValueKind::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
+        ConstValueKind::Slice { data, start: _, end: _ } => {
+            for &id in data.inner().provenance().ptrs().values() {
+                collect_alloc(tcx, id, output);
+            }
+        }
     }
 }

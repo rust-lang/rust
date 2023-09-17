@@ -156,7 +156,7 @@ pub struct CtxtInterners<'tcx> {
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
-    const_value: InternedSet<'tcx, ConstValueKind>,
+    const_value: InternedSet<'tcx, ConstValueKind<'tcx>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -1499,7 +1499,7 @@ direct_interners! {
     region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
-    const_value: pub(crate) intern_const_value(ConstValueKind): ConstValue -> ConstValue<'tcx>,
+    const_value: pub(crate) intern_const_value(ConstValueKind<'tcx>): ConstValue -> ConstValue<'tcx>,
     layout: pub mk_layout(LayoutS): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
