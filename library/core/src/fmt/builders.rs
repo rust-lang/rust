@@ -40,6 +40,14 @@ impl fmt::Write for PadAdapter<'_, '_> {
 
         Ok(())
     }
+
+    fn write_char(&mut self, c: char) -> fmt::Result {
+        if self.state.on_newline {
+            self.buf.write_str("    ")?;
+        }
+        self.state.on_newline = c == '\n';
+        self.buf.write_char(c)
+    }
 }
 
 /// A struct to help with [`fmt::Debug`](Debug) implementations.
