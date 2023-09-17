@@ -22,8 +22,8 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::dataflow_const_prop::Patch;
 use crate::MirPass;
 use rustc_const_eval::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, ConstValue, FnArg, Frame, ImmTy,
-    Immediate, InterpCx, InterpResult, MemoryKind, OpTy, PlaceTy, Pointer, Scalar, StackPopCleanup,
+    self, compile_time_machine, AllocId, ConstAllocation, FnArg, Frame, ImmTy, Immediate, InterpCx,
+    InterpResult, MemoryKind, OpTy, PlaceTy, Pointer, Scalar, StackPopCleanup,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -544,17 +544,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 Some(ConstantKind::from_scalar(self.tcx, scalar, value.layout.ty))
             }
             Immediate::ScalarPair(l, r) if l.try_to_int().is_ok() && r.try_to_int().is_ok() => {
-                let alloc_id = self
-                    .ecx
-                    .intern_with_temp_alloc(value.layout, |ecx, dest| {
-                        ecx.write_immediate(*imm, dest)
-                    })
-                    .ok()?;
-
-                Some(ConstantKind::Val(
-                    ConstValue::from_memory(self.tcx, alloc_id, Size::ZERO),
-                    value.layout.ty,
-                ))
+                Some(ConstantKind::from_scalar_pair(self.tcx, l, r, value.layout.ty))
             }
             // Scalars or scalar pairs that contain undef values are assumed to not have
             // successfully evaluated and are thus not propagated.

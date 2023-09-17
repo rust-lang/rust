@@ -70,7 +70,7 @@ use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 
 use std::any::Any;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -156,7 +156,7 @@ pub struct CtxtInterners<'tcx> {
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
-    const_value: InternedSet<'tcx, ConstValueKind<'tcx>>,
+    const_value: InternedSet<'tcx, ConstValueKind>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -645,7 +645,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
-    pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
+    pub fn allocate_bytes<'a>(self, bytes: impl Into<Cow<'a, [u8]>>) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
         let alloc = self.mk_const_alloc(alloc);
@@ -1499,7 +1499,7 @@ direct_interners! {
     region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
-    const_value: pub(crate) intern_const_value(ConstValueKind<'tcx>): ConstValue -> ConstValue<'tcx>,
+    const_value: pub(crate) intern_const_value(ConstValueKind): ConstValue -> ConstValue<'tcx>,
     layout: pub mk_layout(LayoutS): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):

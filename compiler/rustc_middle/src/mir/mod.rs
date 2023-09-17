@@ -2507,6 +2507,12 @@ impl<'tcx> ConstantKind<'tcx> {
         Self::Val(val, ty)
     }
 
+    #[inline]
+    pub fn from_scalar_pair(tcx: TyCtxt<'tcx>, a: Scalar, b: Scalar, ty: Ty<'tcx>) -> Self {
+        let val = ConstValue::from_pair(tcx, a, b);
+        Self::Val(val, ty)
+    }
+
     /// Literals are converted to `ConstantKindVal`, const generic parameters are eagerly
     /// converted to a constant, everything else becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug", ret)]

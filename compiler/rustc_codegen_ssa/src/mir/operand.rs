@@ -7,7 +7,7 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{alloc_range, ConstValue, ConstValueKind, Pointer, Scalar};
+use rustc_middle::mir::interpret::{alloc_range, ConstValue, ConstValueKind};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{self, Abi, Align, Size};
@@ -100,23 +100,20 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 OperandValue::Immediate(llval)
             }
             ConstValueKind::ZeroSized => return OperandRef::zero_sized(layout),
-            ConstValueKind::Slice { data, start, end } => {
-                let Abi::ScalarPair(a_scalar, _) = layout.abi else {
-                    bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
+            ConstValueKind::ScalarPair(a, b) => {
+                let Abi::ScalarPair(a_scalar, b_scalar) = layout.abi else {
+                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
                 };
-                let a = Scalar::from_pointer(
-                    Pointer::new(
-                        bx.tcx().reserve_and_set_memory_alloc(data),
-                        Size::from_bytes(start),
-                    ),
-                    &bx.tcx(),
-                );
                 let a_llval = bx.scalar_to_backend(
                     a,
                     a_scalar,
                     bx.scalar_pair_element_backend_type(layout, 0, true),
                 );
-                let b_llval = bx.const_usize((end - start) as u64);
+                let b_llval = bx.scalar_to_backend(
+                    b,
+                    b_scalar,
+                    bx.scalar_pair_element_backend_type(layout, 1, true),
+                );
                 OperandValue::Pair(a_llval, b_llval)
             }
             ConstValueKind::Indirect { alloc_id, offset } => {

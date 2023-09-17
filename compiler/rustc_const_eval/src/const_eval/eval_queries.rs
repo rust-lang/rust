@@ -151,22 +151,7 @@ pub(super) fn op_to_const<'tcx>(
         // see comment on `let force_as_immediate` above
         Right(imm) => match *imm {
             Immediate::Scalar(x) => ConstValue::from_scalar(tcx, x),
-            Immediate::ScalarPair(a, b) => {
-                debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
-                // FIXME: assert that this has an appropriate type.
-                // Currently we actually get here for non-[u8] slices during valtree construction!
-                let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to actually allocated memory";
-                // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                // We use `ConstValueKind::Slice` so that we don't have to generate an allocation for
-                // `ConstValueKind::Indirect` here.
-                let (alloc_id, offset) = a.to_pointer(ecx).expect(msg).into_parts();
-                let alloc_id = alloc_id.expect(msg);
-                let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
-                let start = offset.bytes_usize();
-                let len = b.to_target_usize(ecx).expect(msg);
-                let len: usize = len.try_into().unwrap();
-                ConstValue::from_slice(tcx, data, start, start + len)
-            }
+            Immediate::ScalarPair(a, b) => ConstValue::from_pair(tcx, a, b),
             Immediate::Uninit => bug!("`Uninit` is not a valid value for {}", op.layout.ty),
         },
     }

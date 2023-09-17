@@ -1,4 +1,4 @@
-use rustc_middle::mir::interpret::{alloc_range, AllocRange, ConstValue, ConstValueKind, Pointer};
+use rustc_middle::mir::interpret::{alloc_range, AllocRange, ConstValue, ConstValueKind};
 
 use crate::{
     rustc_smir::{Stable, Tables},
@@ -44,30 +44,19 @@ pub fn new_allocation<'tcx>(
                 tables.tcx.layout_of(rustc_middle::ty::ParamEnv::empty().and(ty)).unwrap().align;
             new_empty_allocation(align.abi)
         }
-        ConstValueKind::Slice { data, start, end } => {
-            let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
-            let ptr = Pointer::new(alloc_id, rustc_target::abi::Size::from_bytes(start));
-            let scalar_ptr = rustc_middle::mir::interpret::Scalar::from_pointer(ptr, &tables.tcx);
-            let scalar_len = rustc_middle::mir::interpret::Scalar::from_target_usize(
-                (end - start) as u64,
-                &tables.tcx,
-            );
+        ConstValueKind::ScalarPair(a, b) => {
             let layout =
                 tables.tcx.layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty)).unwrap();
             let mut allocation =
                 rustc_middle::mir::interpret::Allocation::uninit(layout.size, layout.align.abi);
             allocation
-                .write_scalar(
-                    &tables.tcx,
-                    alloc_range(rustc_target::abi::Size::ZERO, tables.tcx.data_layout.pointer_size),
-                    scalar_ptr,
-                )
+                .write_scalar(&tables.tcx, alloc_range(rustc_target::abi::Size::ZERO, a.size()), a)
                 .unwrap();
             allocation
                 .write_scalar(
                     &tables.tcx,
-                    alloc_range(tables.tcx.data_layout.pointer_size, scalar_len.size()),
-                    scalar_len,
+                    alloc_range(tables.tcx.data_layout.pointer_size, b.size()),
+                    b,
                 )
                 .unwrap();
             allocation.stable(tables)

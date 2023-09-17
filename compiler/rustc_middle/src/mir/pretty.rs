@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 
 use super::graphviz::write_mir_fn_graphviz;
 use super::spanview::write_mir_fn_spanview;
-use either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
@@ -459,7 +458,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let fmt_val = |val: &ConstValue<'tcx>| match val.kind() {
                 ConstValueKind::ZeroSized => "<ZST>".to_string(),
                 ConstValueKind::Scalar(s) => format!("Scalar({s:?})"),
-                ConstValueKind::Slice { .. } => "Slice(..)".to_string(),
+                ConstValueKind::ScalarPair(a, b) => format!("ScalarPair({a:?}, {b:?})"),
                 ConstValueKind::Indirect { .. } => "ByRef(..)".to_string(),
             };
 
@@ -698,23 +697,26 @@ pub fn write_allocations<'tcx>(
         alloc.inner().provenance().ptrs().values().map(|id| *id)
     }
 
-    fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
-        match val.kind() {
-            ConstValueKind::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
-                Either::Left(std::iter::once(ptr.provenance))
+    fn alloc_ids_from_scalar(val: interpret::Scalar) -> Option<AllocId> {
+        match val {
+            interpret::Scalar::Ptr(ptr, _) => Some(ptr.provenance),
+            interpret::Scalar::Int(..) => None,
+        }
+    }
+
+    fn alloc_ids_from_const_val<'tcx>(val: ConstValue<'tcx>) -> impl Iterator<Item = AllocId> {
+        match *val.kind() {
+            ConstValueKind::ZeroSized => None.into_iter().chain(None.into_iter()),
+            ConstValueKind::Scalar(scalar) => {
+                alloc_ids_from_scalar(scalar).into_iter().chain(None.into_iter())
             }
-            ConstValueKind::Scalar(interpret::Scalar::Int { .. }) => {
-                Either::Right(std::iter::empty())
-            }
-            ConstValueKind::ZeroSized => Either::Right(std::iter::empty()),
-            ConstValueKind::Slice { .. } => {
-                // `u8`/`str` slices, shouldn't contain pointers that we want to print.
-                Either::Right(std::iter::empty())
+            ConstValueKind::ScalarPair(a, b) => {
+                alloc_ids_from_scalar(a).into_iter().chain(alloc_ids_from_scalar(b).into_iter())
             }
             ConstValueKind::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
                 // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
-                Either::Left(std::iter::once(*alloc_id))
+                Some(alloc_id).into_iter().chain(None.into_iter())
             }
         }
     }

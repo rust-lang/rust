@@ -17,7 +17,7 @@
               let _6: [Empty; 1];
               scope 5 {
 -                 debug _enum_without_variants => _6;
-+                 debug _enum_without_variants => const [ZeroSized: Empty];
++                 debug _enum_without_variants => const [ConstValue(ZeroSized): Empty];
                   let _9: main::Str<"���">;
                   scope 7 {
 -                     debug _non_utf8_str => _9;

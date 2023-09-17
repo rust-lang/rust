@@ -24,9 +24,5 @@
           StorageDead(_1);
           return;
       }
-+ }
-+ 
-+ alloc3 (size: 8, align: 4) {
-+     02 00 00 00 00 __ __ __                         │ .....░░░
   }
   

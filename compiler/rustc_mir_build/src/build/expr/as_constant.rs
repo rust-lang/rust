@@ -3,9 +3,7 @@
 use crate::build::{parse_float_into_constval, Builder};
 use rustc_ast as ast;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{
-    Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
-};
+use rustc_middle::mir::interpret::{ConstValue, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
@@ -130,27 +128,24 @@ fn lit_to_mir_constant<'tcx>(
 
     let value = match (lit, &ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
-            let s = s.as_str();
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes());
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::from_slice(tcx, allocation, 0, s.len())
+            let s = s.as_str().as_bytes();
+            let allocation = tcx.allocate_bytes(s);
+            ConstValue::from_slice(tcx, allocation.into(), s.len())
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::from_slice(tcx, allocation, 0, data.len())
+            let allocation = tcx.allocate_bytes(data as &[u8]);
+            ConstValue::from_slice(tcx, allocation.into(), data.len())
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
-            let id = tcx.allocate_bytes(data);
+            let id = tcx.allocate_bytes(&**data);
             ConstValue::from_pointer(tcx, id.into())
         }
         (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().c_str()) =>
         {
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::from_slice(tcx, allocation, 0, data.len())
+            let allocation = tcx.allocate_bytes(data as &[u8]);
+            ConstValue::from_slice(tcx, allocation.into(), data.len())
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::from_scalar(tcx, Scalar::from_uint(*n, Size::from_bytes(1)))

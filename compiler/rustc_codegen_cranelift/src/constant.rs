@@ -103,6 +103,91 @@ pub(crate) fn codegen_constant_operand<'tcx>(
     codegen_const_value(fx, const_val, ty)
 }
 
+pub(crate) fn codegen_const_scalar<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    scalar: Scalar,
+    layout: TyAndLayout<'tcx>,
+) -> CValue<'tcx> {
+    match scalar {
+        Scalar::Int(int) => {
+            if fx.clif_type(layout.ty).is_some() {
+                return CValue::const_val(fx, layout, int);
+            } else {
+                let raw_val = int.to_bits(int.size()).unwrap();
+                let val = match int.size().bytes() {
+                    1 => fx.bcx.ins().iconst(types::I8, raw_val as i64),
+                    2 => fx.bcx.ins().iconst(types::I16, raw_val as i64),
+                    4 => fx.bcx.ins().iconst(types::I32, raw_val as i64),
+                    8 => fx.bcx.ins().iconst(types::I64, raw_val as i64),
+                    16 => {
+                        let lsb = fx.bcx.ins().iconst(types::I64, raw_val as u64 as i64);
+                        let msb = fx.bcx.ins().iconst(types::I64, (raw_val >> 64) as u64 as i64);
+                        fx.bcx.ins().iconcat(lsb, msb)
+                    }
+                    _ => unreachable!(),
+                };
+
+                // FIXME avoid this extra copy to the stack and directly write to the final
+                // destination
+                let place = CPlace::new_stack_slot(fx, layout);
+                place.to_ptr().store(fx, val, MemFlags::trusted());
+                place.to_cvalue(fx)
+            }
+        }
+        Scalar::Ptr(ptr, _size) => {
+            let (alloc_id, offset) = ptr.into_parts(); // we know the `offset` is relative
+            let base_addr = match fx.tcx.global_alloc(alloc_id) {
+                GlobalAlloc::Memory(alloc) => {
+                    let data_id = data_id_for_alloc_id(
+                        &mut fx.constants_cx,
+                        fx.module,
+                        alloc_id,
+                        alloc.inner().mutability,
+                    );
+                    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                    if fx.clif_comments.enabled() {
+                        fx.add_comment(local_data_id, format!("{:?}", alloc_id));
+                    }
+                    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+                }
+                GlobalAlloc::Function(instance) => {
+                    let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
+                    let local_func_id = fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
+                    fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
+                }
+                GlobalAlloc::VTable(ty, trait_ref) => {
+                    let alloc_id = fx.tcx.vtable_allocation((ty, trait_ref));
+                    let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
+                    // FIXME: factor this common code with the `Memory` arm into a function?
+                    let data_id = data_id_for_alloc_id(
+                        &mut fx.constants_cx,
+                        fx.module,
+                        alloc_id,
+                        alloc.inner().mutability,
+                    );
+                    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+                }
+                GlobalAlloc::Static(def_id) => {
+                    assert!(fx.tcx.is_static(def_id));
+                    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
+                    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                    if fx.clif_comments.enabled() {
+                        fx.add_comment(local_data_id, format!("{:?}", def_id));
+                    }
+                    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+                }
+            };
+            let val = if offset.bytes() != 0 {
+                fx.bcx.ins().iadd_imm(base_addr, i64::try_from(offset.bytes()).unwrap())
+            } else {
+                base_addr
+            };
+            CValue::by_val(val, layout)
+        }
+    }
+}
+
 pub(crate) fn codegen_const_value<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     const_val: ConstValue<'tcx>,
@@ -117,105 +202,13 @@ pub(crate) fn codegen_const_value<'tcx>(
 
     match *const_val.kind() {
         ConstValueKind::ZeroSized => unreachable!(), // we already handled ZST above
-        ConstValueKind::Scalar(x) => match x {
-            Scalar::Int(int) => {
-                if fx.clif_type(layout.ty).is_some() {
-                    return CValue::const_val(fx, layout, int);
-                } else {
-                    let raw_val = int.to_bits(int.size()).unwrap();
-                    let val = match int.size().bytes() {
-                        1 => fx.bcx.ins().iconst(types::I8, raw_val as i64),
-                        2 => fx.bcx.ins().iconst(types::I16, raw_val as i64),
-                        4 => fx.bcx.ins().iconst(types::I32, raw_val as i64),
-                        8 => fx.bcx.ins().iconst(types::I64, raw_val as i64),
-                        16 => {
-                            let lsb = fx.bcx.ins().iconst(types::I64, raw_val as u64 as i64);
-                            let msb =
-                                fx.bcx.ins().iconst(types::I64, (raw_val >> 64) as u64 as i64);
-                            fx.bcx.ins().iconcat(lsb, msb)
-                        }
-                        _ => unreachable!(),
-                    };
-
-                    // FIXME avoid this extra copy to the stack and directly write to the final
-                    // destination
-                    let place = CPlace::new_stack_slot(fx, layout);
-                    place.to_ptr().store(fx, val, MemFlags::trusted());
-                    place.to_cvalue(fx)
-                }
-            }
-            Scalar::Ptr(ptr, _size) => {
-                let (alloc_id, offset) = ptr.into_parts(); // we know the `offset` is relative
-                let base_addr = match fx.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::Memory(alloc) => {
-                        let data_id = data_id_for_alloc_id(
-                            &mut fx.constants_cx,
-                            fx.module,
-                            alloc_id,
-                            alloc.inner().mutability,
-                        );
-                        let local_data_id =
-                            fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-                        if fx.clif_comments.enabled() {
-                            fx.add_comment(local_data_id, format!("{:?}", alloc_id));
-                        }
-                        fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
-                    }
-                    GlobalAlloc::Function(instance) => {
-                        let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
-                        let local_func_id =
-                            fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
-                        fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
-                    }
-                    GlobalAlloc::VTable(ty, trait_ref) => {
-                        let alloc_id = fx.tcx.vtable_allocation((ty, trait_ref));
-                        let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
-                        // FIXME: factor this common code with the `Memory` arm into a function?
-                        let data_id = data_id_for_alloc_id(
-                            &mut fx.constants_cx,
-                            fx.module,
-                            alloc_id,
-                            alloc.inner().mutability,
-                        );
-                        let local_data_id =
-                            fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-                        fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
-                    }
-                    GlobalAlloc::Static(def_id) => {
-                        assert!(fx.tcx.is_static(def_id));
-                        let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
-                        let local_data_id =
-                            fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-                        if fx.clif_comments.enabled() {
-                            fx.add_comment(local_data_id, format!("{:?}", def_id));
-                        }
-                        fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
-                    }
-                };
-                let val = if offset.bytes() != 0 {
-                    fx.bcx.ins().iadd_imm(base_addr, i64::try_from(offset.bytes()).unwrap())
-                } else {
-                    base_addr
-                };
-                CValue::by_val(val, layout)
-            }
-        },
+        ConstValueKind::Scalar(x) => codegen_const_scalar(fx, x, layout),
         ConstValueKind::Indirect { alloc_id, offset } => CValue::by_ref(
             pointer_for_allocation(fx, alloc_id)
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
             layout,
         ),
-        ConstValueKind::Slice { data, start, end } => {
-            let alloc_id = fx.tcx.reserve_and_set_memory_alloc(data);
-            let ptr = pointer_for_allocation(fx, alloc_id)
-                .offset_i64(fx, i64::try_from(start).unwrap())
-                .get_addr(fx);
-            let len = fx
-                .bcx
-                .ins()
-                .iconst(fx.pointer_type, i64::try_from(end.checked_sub(start).unwrap()).unwrap());
-            CValue::by_val_pair(ptr, len, layout)
-        }
+        ConstValueKind::ScalarPair(..) => todo!(),
     }
 }
 

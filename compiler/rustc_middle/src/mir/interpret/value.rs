@@ -10,14 +10,10 @@ use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::{
-    mir::interpret::alloc_range,
-    ty::{ParamEnv, ScalarInt, Ty, TyCtxt},
-};
+use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
-    AllocId, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
-    ScalarSizeMismatch,
+    alloc_range, AllocId, InterpResult, Pointer, PointerArithmetic, Provenance, ScalarSizeMismatch,
 };
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
@@ -31,27 +27,25 @@ pub struct ConstAlloc<'tcx> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(HashStable)]
-pub struct ConstValue<'tcx>(pub(crate) Interned<'tcx, ConstValueKind<'tcx>>);
+pub struct ConstValue<'tcx>(pub(crate) Interned<'tcx, ConstValueKind>);
 
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable, Lift)]
-pub enum ConstValueKind<'tcx> {
+#[derive(HashStable)]
+pub enum ConstValueKind {
     /// Used for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
     Scalar(Scalar),
 
+    /// Used for types with `layout::abi::ScalarPair` ABI.
+    ///
+    /// Not using the enum `Value` to encode that this must not be `Uninit`.
+    ScalarPair(Scalar, Scalar),
+
     /// Only for ZSTs.
     ZeroSized,
-
-    /// Used for `&[u8]` and `&str`.
-    ///
-    /// This is worth an optimized representation since Rust has literals of these types.
-    /// Not having to indirect those through an `AllocId` (or two, if we used `Indirect`) has shown
-    /// measurable performance improvements on stress tests.
-    Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
 
     /// A value not representable by the other variants; needs to be stored in-memory.
     ///
@@ -74,12 +68,12 @@ static_assert_size!(ConstValue<'_>, 8);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
-    pub fn new(tcx: TyCtxt<'tcx>, kind: ConstValueKind<'tcx>) -> ConstValue<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, kind: ConstValueKind) -> ConstValue<'tcx> {
         tcx.intern_const_value(kind)
     }
 
     #[inline]
-    pub fn kind(self) -> &'tcx ConstValueKind<'tcx> {
+    pub fn kind(self) -> &'tcx ConstValueKind {
         self.0.0
     }
 
@@ -87,7 +81,7 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn try_to_scalar(self) -> Option<Scalar<AllocId>> {
         match self.kind() {
             ConstValueKind::Indirect { .. }
-            | ConstValueKind::Slice { .. }
+            | ConstValueKind::ScalarPair(..)
             | ConstValueKind::ZeroSized => None,
             ConstValueKind::Scalar(val) => Some(*val),
         }
@@ -155,13 +149,17 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
-    pub fn from_slice(
-        tcx: TyCtxt<'tcx>,
-        data: ConstAllocation<'tcx>,
-        start: usize,
-        end: usize,
-    ) -> Self {
-        Self::new(tcx, ConstValueKind::Slice { data, start, end })
+    pub fn from_pair(tcx: TyCtxt<'tcx>, a: Scalar, b: Scalar) -> Self {
+        Self::new(tcx, ConstValueKind::ScalarPair(a, b))
+    }
+
+    #[inline]
+    pub fn from_slice(tcx: TyCtxt<'tcx>, pointer: Pointer, length: usize) -> Self {
+        Self::from_pair(
+            tcx,
+            Scalar::from_pointer(pointer, &tcx),
+            Scalar::from_target_usize(length as u64, &tcx),
+        )
     }
 
     #[inline]
@@ -173,10 +171,13 @@ impl<'tcx> ConstValue<'tcx> {
     /// Must only be called on constants of type `&str` or `&[u8]`!
     pub fn try_get_slice_bytes_for_diagnostics(self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
         let (data, start, end) = match self.kind() {
-            ConstValueKind::Scalar(_) | ConstValueKind::ZeroSized => {
-                bug!("`try_get_slice_bytes` on non-slice constant")
+            &ConstValueKind::ScalarPair(Scalar::Ptr(pointer, _), Scalar::Int(length)) => {
+                let (alloc_id, start) = pointer.into_parts();
+                let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
+                let start = start.bytes_usize();
+                let length = length.try_to_target_usize(tcx).unwrap() as usize;
+                (alloc, start, start + length)
             }
-            &ConstValueKind::Slice { data, start, end } => (data, start, end),
             &ConstValueKind::Indirect { alloc_id, offset } => {
                 // The reference itself is stored behind an indirection.
                 // Load the reference, and then load the actual slice contents.
@@ -211,6 +212,9 @@ impl<'tcx> ConstValue<'tcx> {
                 let (inner_alloc_id, offset) = ptr.into_parts();
                 let data = tcx.global_alloc(inner_alloc_id?).unwrap_memory();
                 (data, offset.bytes_usize(), offset.bytes_usize() + len)
+            }
+            _ => {
+                bug!("`try_get_slice_bytes` on non-slice constant")
             }
         };
 

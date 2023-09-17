@@ -69,3 +69,9 @@ fn num_to_digit(_1: char) -> u32 {
         return;
     }
 }
+
+alloc4 (size: 43, align: 1) {
+    0x00 │ 63 61 6c 6c 65 64 20 60 4f 70 74 69 6f 6e 3a 3a │ called `Option::
+    0x10 │ 75 6e 77 72 61 70 28 29 60 20 6f 6e 20 61 20 60 │ unwrap()` on a `
+    0x20 │ 4e 6f 6e 65 60 20 76 61 6c 75 65                │ None` value
+}

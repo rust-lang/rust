@@ -140,7 +140,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_9);
         StorageLive(_12);
         _12 = _7;
-        _13 = std::slice::Iter::<'_, T> { ptr: move _11, end_or_len: move _12, _marker: const ZeroSized: PhantomData<&T> };
+        _13 = std::slice::Iter::<'_, T> { ptr: move _11, end_or_len: move _12, _marker: const ConstValue(ZeroSized): PhantomData<&T> };
         StorageDead(_12);
         StorageDead(_11);
         StorageDead(_7);

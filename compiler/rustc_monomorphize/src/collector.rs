@@ -1440,21 +1440,26 @@ fn collect_used_items<'tcx>(
 }
 
 #[instrument(skip(tcx, output), level = "debug")]
+fn collect_scalar<'tcx>(tcx: TyCtxt<'tcx>, value: Scalar, output: &mut MonoItems<'tcx>) {
+    match value {
+        Scalar::Ptr(ptr, _size) => collect_alloc(tcx, ptr.provenance, output),
+        Scalar::Int(_) => {}
+    }
+}
+
+#[instrument(skip(tcx, output), level = "debug")]
 fn collect_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     value: ConstValue<'tcx>,
     output: &mut MonoItems<'tcx>,
 ) {
     match *value.kind() {
-        ConstValueKind::Scalar(Scalar::Ptr(ptr, _size)) => {
-            collect_alloc(tcx, ptr.provenance, output)
+        ConstValueKind::Scalar(s) => collect_scalar(tcx, s, output),
+        ConstValueKind::ScalarPair(a, b) => {
+            collect_scalar(tcx, a, output);
+            collect_scalar(tcx, b, output);
         }
+        ConstValueKind::ZeroSized => {}
         ConstValueKind::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
-        ConstValueKind::Slice { data, start: _, end: _ } => {
-            for &id in data.inner().provenance().ptrs().values() {
-                collect_alloc(tcx, id, output);
-            }
-        }
-        _ => {}
     }
 }
