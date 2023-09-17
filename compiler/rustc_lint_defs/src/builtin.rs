@@ -3405,8 +3405,8 @@ declare_lint_pass! {
         UNFULFILLED_LINT_EXPECTATIONS,
         UNINHABITED_STATIC,
         UNKNOWN_CRATE_TYPES,
-        UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
         UNKNOWN_LINTS,
+        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
         UNREACHABLE_CODE,
@@ -4420,7 +4420,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unknown_diagnostic_attributes` lint detects unrecognized diagnostic attributes.
+    /// The `unknown_or_malformed_diagnostic_attributes` lint detects unrecognized or otherwise malformed
+    /// diagnostic attributes.
     ///
     /// ### Example
     ///
@@ -4432,15 +4433,17 @@ declare_lint! {
     ///
     /// {{produces}}
     ///
+    ///
     /// ### Explanation
     ///
     /// It is usually a mistake to specify a diagnostic attribute that does not exist. Check
     /// the spelling, and check the diagnostic attribute listing for the correct name. Also
     /// consider if you are using an old version of the compiler, and the attribute
     /// is only available in a newer version.
-    pub UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+    pub UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
     Warn,
-    "unrecognized diagnostic attribute"
+    "unrecognized or malformed diagnostic attribute",
+    @feature_gate = sym::diagnostic_namespace;
 }
 
 declare_lint! {

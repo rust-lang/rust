@@ -153,6 +153,9 @@ passes_deprecated_annotation_has_no_effect =
 passes_deprecated_attribute =
     deprecated attribute must be paired with either stable or unstable attribute
 
+passes_diagnostic_diagnostic_on_unimplemented_only_for_traits =
+    `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
+
 passes_diagnostic_item_first_defined =
     the diagnostic item is first defined here
 
