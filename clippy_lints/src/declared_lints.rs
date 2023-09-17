@@ -480,6 +480,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::needless_bool::NEEDLESS_BOOL_INFO,
     crate::needless_bool::NEEDLESS_BOOL_ASSIGN_INFO,
     crate::needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE_INFO,
+    crate::needless_borrows_for_generic_args::NEEDLESS_BORROWS_FOR_GENERIC_ARGS_INFO,
     crate::needless_continue::NEEDLESS_CONTINUE_INFO,
     crate::needless_else::NEEDLESS_ELSE_INFO,
     crate::needless_for_each::NEEDLESS_FOR_EACH_INFO,
