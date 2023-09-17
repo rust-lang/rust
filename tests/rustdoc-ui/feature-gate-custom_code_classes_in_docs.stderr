@@ -1,5 +1,5 @@
-error[E0658]: custom classes in code blocks are unstable
-  --> $DIR/feature-gate-custom_code_classes_in_docs.rs:1:1
+warning: custom classes in code blocks will change behaviour
+  --> $DIR/feature-gate-custom_code_classes_in_docs.rs:3:1
    |
 LL | / /// ```{class=language-c}
 LL | | /// int main(void) { return 0; }
@@ -10,6 +10,5 @@ LL | | /// ```
    = help: add `#![feature(custom_code_classes_in_docs)]` to the crate attributes to enable
    = note: found these custom classes: class=language-c
 
-error: aborting due to previous error
+warning: 1 warning emitted
 
-For more information about this error, try `rustc --explain E0658`.
