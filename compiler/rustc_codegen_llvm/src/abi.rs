@@ -211,7 +211,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
-        } else if let PassMode::Cast(cast, _) = &self.mode {
+        } else if let PassMode::Cast { cast, pad_i32: _ } = &self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
@@ -274,12 +274,12 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
-            PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                 OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
             }
             PassMode::Direct(_)
-            | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ }
-            | PassMode::Cast(..) => {
+            | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ }
+            | PassMode::Cast { .. } => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             }
@@ -332,7 +332,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let llreturn_ty = match &self.ret.mode {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
-            PassMode::Cast(cast, _) => cast.llvm_type(cx),
+            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
             PassMode::Indirect { .. } => {
                 llargument_tys.push(cx.type_ptr());
                 cx.type_void()
@@ -351,6 +351,11 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     // guarnateeing that we generate ABI-compatible LLVM IR. Things get tricky for
                     // aggregates...
                     if matches!(arg.layout.abi, abi::Abi::Aggregate { .. }) {
+                        assert!(
+                            arg.layout.is_sized(),
+                            "`PassMode::Direct` for unsized type: {}",
+                            arg.layout.ty
+                        );
                         // This really shouldn't happen, since `immediate_llvm_type` will use
                         // `layout.fields` to turn this Rust type into an LLVM type. This means all
                         // sorts of Rust type details leak into the ABI. However wasm sadly *does*
@@ -378,8 +383,10 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
-                    assert!(arg.layout.is_unsized());
+                PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack } => {
+                    // `Indirect` with metadata is only for unsized types, and doesn't work with
+                    // on-stack passing.
+                    assert!(arg.layout.is_unsized() && !on_stack);
                     // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
                     // Any two ABI-compatible unsized types have the same metadata type and
                     // moreover the same metadata value leads to the same dynamic size and
@@ -390,7 +397,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Cast(cast, pad_i32) => {
+                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
+                    assert!(arg.layout.is_sized());
+                    cx.type_ptr()
+                }
+                PassMode::Cast { cast, pad_i32 } => {
+                    // `Cast` means "transmute to `CastType`"; that only makes sense for sized types.
+                    assert!(arg.layout.is_sized());
                     // add padding
                     if *pad_i32 {
                         llargument_tys.push(Reg::i32().llvm_type(cx));
@@ -399,7 +412,6 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     // We assume here that ABI-compatible Rust types have the same cast type.
                     cast.llvm_type(cx)
                 }
-                PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => cx.type_ptr(),
             };
             llargument_tys.push(llarg_ty);
         }
@@ -442,13 +454,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Direct(attrs) => {
                 attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
             }
-            PassMode::Indirect { attrs, extra_attrs: _, on_stack } => {
+            PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(attrs);
                 let sret = llvm::CreateStructRetAttr(cx.llcx, self.ret.layout.llvm_type(cx));
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
             }
-            PassMode::Cast(cast, _) => {
+            PassMode::Cast { cast, pad_i32: _ } => {
                 cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
             }
             _ => {}
@@ -456,25 +468,25 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         for arg in self.args.iter() {
             match &arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Indirect { attrs, extra_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
                     let i = apply(attrs);
                     let byval = llvm::CreateByValAttr(cx.llcx, arg.layout.llvm_type(cx));
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byval]);
                 }
                 PassMode::Direct(attrs)
-                | PassMode::Indirect { attrs, extra_attrs: None, on_stack: false } => {
+                | PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
                     apply(attrs);
                 }
-                PassMode::Indirect { attrs, extra_attrs: Some(extra_attrs), on_stack } => {
+                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                     assert!(!on_stack);
                     apply(attrs);
-                    apply(extra_attrs);
+                    apply(meta_attrs);
                 }
                 PassMode::Pair(a, b) => {
                     apply(a);
                     apply(b);
                 }
-                PassMode::Cast(cast, pad_i32) => {
+                PassMode::Cast { cast, pad_i32 } => {
                     if *pad_i32 {
                         apply(&ArgAttributes::new());
                     }
@@ -504,13 +516,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Direct(attrs) => {
                 attrs.apply_attrs_to_callsite(llvm::AttributePlace::ReturnValue, bx.cx, callsite);
             }
-            PassMode::Indirect { attrs, extra_attrs: _, on_stack } => {
+            PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(bx.cx, attrs);
                 let sret = llvm::CreateStructRetAttr(bx.cx.llcx, self.ret.layout.llvm_type(bx));
                 attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
-            PassMode::Cast(cast, _) => {
+            PassMode::Cast { cast, pad_i32: _ } => {
                 cast.attrs.apply_attrs_to_callsite(
                     llvm::AttributePlace::ReturnValue,
                     &bx.cx,
@@ -532,7 +544,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         for arg in self.args.iter() {
             match &arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Indirect { attrs, extra_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
                     let i = apply(bx.cx, attrs);
                     let byval = llvm::CreateByValAttr(bx.cx.llcx, arg.layout.llvm_type(bx));
                     attributes::apply_to_callsite(
@@ -542,18 +554,18 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     );
                 }
                 PassMode::Direct(attrs)
-                | PassMode::Indirect { attrs, extra_attrs: None, on_stack: false } => {
+                | PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
                     apply(bx.cx, attrs);
                 }
-                PassMode::Indirect { attrs, extra_attrs: Some(extra_attrs), on_stack: _ } => {
+                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack: _ } => {
                     apply(bx.cx, attrs);
-                    apply(bx.cx, extra_attrs);
+                    apply(bx.cx, meta_attrs);
                 }
                 PassMode::Pair(a, b) => {
                     apply(bx.cx, a);
                     apply(bx.cx, b);
                 }
-                PassMode::Cast(cast, pad_i32) => {
+                PassMode::Cast { cast, pad_i32 } => {
                     if *pad_i32 {
                         apply(bx.cx, &ArgAttributes::new());
                     }

@@ -2,9 +2,9 @@ use super::method::probe::ProbeScope;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
-use crate::type_error_struct;
+use crate::errors;
 use rustc_ast::util::parser::PREC_POSTFIX;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, StashKey};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
@@ -44,23 +44,15 @@ pub fn check_legal_trait_for_method_call(
     trait_id: DefId,
 ) {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
-        let mut err = struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method");
-        err.span_label(span, "explicit destructor calls not allowed");
-
-        let (sp, suggestion) = receiver
-            .and_then(|s| tcx.sess.source_map().span_to_snippet(s).ok())
-            .filter(|snippet| !snippet.is_empty())
-            .map(|snippet| (expr_span, format!("drop({snippet})")))
-            .unwrap_or_else(|| (span, "drop".to_string()));
-
-        err.span_suggestion(
-            sp,
-            "consider using `drop` function",
-            suggestion,
-            Applicability::MaybeIncorrect,
-        );
-
-        err.emit();
+        let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
+            errors::ExplicitDestructorCallSugg::Snippet {
+                lo: expr_span.shrink_to_lo(),
+                hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
+            }
+        } else {
+            errors::ExplicitDestructorCallSugg::Empty(span)
+        };
+        tcx.sess.emit_err(errors::ExplicitDestructorCall { span, sugg });
     }
 }
 
@@ -387,6 +379,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
+                // Untranslatable diagnostics are okay for rustc internals
+                #[allow(rustc::untranslatable_diagnostic)]
+                #[allow(rustc::diagnostic_outside_of_impl)]
                 if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, args);
@@ -478,10 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 self.require_type_is_sized(ty, sp, traits::RustCall);
             } else {
-                self.tcx.sess.span_err(
-                        sp,
-                        "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
-                    );
+                self.tcx.sess.emit_err(errors::RustCallIncorrectArgs { span: sp });
             }
         }
 
@@ -610,17 +602,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
-        let mut err = type_error_struct!(
-            self.tcx.sess,
-            callee_expr.span,
-            callee_ty,
-            E0618,
-            "expected function, found {}",
-            match &unit_variant {
+        let mut err = self.tcx.sess.create_err(errors::InvalidCallee {
+            span: callee_expr.span,
+            ty: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
                 None => format!("`{callee_ty}`"),
-            }
-        );
+            },
+        });
+        if callee_ty.references_error() {
+            err.downgrade_to_delayed_bug();
+        }
 
         self.identify_bad_closure_def_and_call(
             &mut err,
@@ -891,15 +882,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
             None => {
                 // This can happen if `#![no_core]` is used and the `fn/fn_mut/fn_once`
                 // lang items are not defined (issue #86238).
-                let mut err = fcx.inh.tcx.sess.struct_span_err(
-                    self.call_expr.span,
-                    "failed to find an overloaded call trait for closure call",
-                );
-                err.help(
-                    "make sure the `fn`/`fn_mut`/`fn_once` lang items are defined \
-                     and have correctly defined `call`/`call_mut`/`call_once` methods",
-                );
-                err.emit();
+                fcx.inh.tcx.sess.emit_err(errors::MissingFnLangItems { span: self.call_expr.span });
             }
         }
     }

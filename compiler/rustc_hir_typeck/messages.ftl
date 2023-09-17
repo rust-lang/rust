@@ -33,6 +33,10 @@ hir_typeck_expected_default_return_type = expected `()` because of default retur
 
 hir_typeck_expected_return_type = expected `{$expected}` because of return type
 
+hir_typeck_explicit_destructor = explicit use of destructor method
+    .label = explicit destructor calls not allowed
+    .suggestion = consider using `drop` function
+
 hir_typeck_field_multiply_specified_in_initializer =
     field `{$ident}` specified more than once
     .label = used more than once
@@ -52,8 +56,10 @@ hir_typeck_functional_record_update_on_non_struct =
 
 hir_typeck_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
 hir_typeck_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
-hir_typeck_lang_start_expected_sig_note = the `start` lang item should have the signature `fn(fn() -> T, isize, *const *const u8, u8) -> isize`
 
+hir_typeck_invalid_callee = expected function, found {$ty}
+
+hir_typeck_lang_start_expected_sig_note = the `start` lang item should have the signature `fn(fn() -> T, isize, *const *const u8, u8) -> isize`
 hir_typeck_lang_start_incorrect_number_params = incorrect number of parameters for the `start` lang item
 hir_typeck_lang_start_incorrect_number_params_note_expected_count = the `start` lang item should have four parameters, but found {$found_param_count}
 
@@ -65,6 +71,9 @@ hir_typeck_lang_start_incorrect_ret_ty = the return type of the `start` lang ite
 
 hir_typeck_method_call_on_unknown_raw_pointee =
     cannot call a method on a raw pointer with an unknown pointee type
+
+hir_typeck_missing_fn_lang_items = failed to find an overloaded call trait for closure call
+    .help = make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have correctly defined `call`/`call_mut`/`call_once` methods
 
 hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
@@ -91,6 +100,9 @@ hir_typeck_return_stmt_outside_of_fn_body =
     {$statement_kind} statement outside of function body
     .encl_body_label = the {$statement_kind} is part of this body...
     .encl_fn_label = ...not the enclosing function body
+
+hir_typeck_rustcall_incorrect_args =
+    functions with the "rust-call" ABI must take a single non-self tuple argument
 
 hir_typeck_struct_expr_non_exhaustive =
     cannot create non-exhaustive {$what} using struct expression
