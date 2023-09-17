@@ -9,7 +9,7 @@ mod tests;
 
 use self::counters::{BcbCounter, CoverageCounters};
 use self::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
-use self::spans::{CoverageSpan, CoverageSpans};
+use self::spans::CoverageSpans;
 
 use crate::MirPass;
 
@@ -170,9 +170,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         //
         // Intermediate expressions (used to compute other `Expression` values), which have no
         // direct association with any `BasicCoverageBlock`, are accumulated inside `coverage_counters`.
+        let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
         let result = self
             .coverage_counters
-            .make_bcb_counters(&mut self.basic_coverage_blocks, &coverage_spans);
+            .make_bcb_counters(&mut self.basic_coverage_blocks, bcb_has_coverage_spans);
 
         if let Ok(()) = result {
             ////////////////////////////////////////////////////
@@ -185,7 +186,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             // These `CoverageSpan`-associated counters are removed from their associated
             // `BasicCoverageBlock`s so that the only remaining counters in the `CoverageGraph`
             // are indirect counters (to be injected next, without associated code regions).
-            self.inject_coverage_span_counters(coverage_spans);
+            self.inject_coverage_span_counters(&coverage_spans);
 
             ////////////////////////////////////////////////////
             // For any remaining `BasicCoverageBlock` counters (that were not associated with
@@ -219,16 +220,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     /// `bcb` to its `Counter`, when injected. Subsequent `CoverageSpan`s for a BCB that already has
     /// a `Counter` will inject an `Expression` instead, and compute its value by adding `ZERO` to
     /// the BCB `Counter` value.
-    fn inject_coverage_span_counters(&mut self, coverage_spans: Vec<CoverageSpan>) {
+    fn inject_coverage_span_counters(&mut self, coverage_spans: &CoverageSpans) {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
         let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
 
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
-        for covspan in coverage_spans {
-            let bcb = covspan.bcb;
-            let span = covspan.span;
+        for (bcb, span) in coverage_spans.bcb_span_pairs() {
             let counter_kind = if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
                 self.coverage_counters.make_identity_counter(counter_operand)
             } else if let Some(counter_kind) = self.coverage_counters.take_bcb_counter(bcb) {
