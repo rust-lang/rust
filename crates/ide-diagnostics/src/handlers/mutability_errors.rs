@@ -1173,4 +1173,25 @@ fn f() {
 "#,
         );
     }
+
+    #[test]
+    fn regression_15623() {
+        check_diagnostics(
+            r#"
+struct Foo;
+
+impl Foo {
+    fn needs_mut(&mut self) {}
+}
+
+fn main() {
+    let mut foo = Foo;
+    || {
+        let 0 = 1 else { return };
+        foo.needs_mut();
+    };
+}
+"#,
+        );
+    }
 }
