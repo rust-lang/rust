@@ -469,13 +469,13 @@ impl InferenceContext<'_> {
                         Statement::Let { pat, type_ref: _, initializer, else_branch } => {
                             if let Some(else_branch) = else_branch {
                                 self.consume_expr(*else_branch);
-                                if let Some(initializer) = initializer {
-                                    self.consume_expr(*initializer);
-                                }
-                                return;
                             }
                             if let Some(initializer) = initializer {
-                                self.walk_expr(*initializer);
+                                if else_branch.is_some() {
+                                    self.consume_expr(*initializer);
+                                } else {
+                                    self.walk_expr(*initializer);
+                                }
                                 if let Some(place) = self.place_of_expr(*initializer) {
                                     self.consume_with_pat(place, *pat);
                                 }
