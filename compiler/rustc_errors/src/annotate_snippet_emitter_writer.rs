@@ -169,6 +169,7 @@ impl AnnotateSnippetEmitterWriter {
                         .map(|line| {
                             // Ensure the source file is present before we try
                             // to load a string from it.
+                            // FIXME(#115869): support -Z ignore-directory-in-diagnostics-source-blocks
                             source_map.ensure_source_file_source_present(&file);
                             (
                                 format!("{}", source_map.filename_for_diagnostics(&file.name)),
