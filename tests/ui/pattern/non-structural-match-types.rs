@@ -5,10 +5,10 @@
 #![feature(inline_const_pat)]
 
 fn main() {
-    match loop {} {
+    match loop {} { //~ ERROR: non-exhaustive patterns: `_` not covered
         const { || {} } => {}, //~ ERROR cannot be used in patterns
     }
-    match loop {} {
+    match loop {} { //~ ERROR: non-exhaustive patterns: `_` not covered
         const { async {} } => {}, //~ ERROR cannot be used in patterns
     }
 }

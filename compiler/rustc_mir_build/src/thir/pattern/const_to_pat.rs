@@ -180,23 +180,26 @@ impl<'tcx> ConstToPat<'tcx> {
 
             if let Some(non_sm_ty) = structural {
                 if !self.type_has_partial_eq_impl(cv.ty()) {
-                    if let ty::Adt(def, ..) = non_sm_ty.kind() {
+                    let e = if let ty::Adt(def, ..) = non_sm_ty.kind() {
                         if def.is_union() {
                             let err = UnionPattern { span: self.span };
-                            self.tcx().sess.emit_err(err);
+                            self.tcx().sess.emit_err(err)
                         } else {
                             // fatal avoids ICE from resolution of nonexistent method (rare case).
                             self.tcx()
                                 .sess
-                                .emit_fatal(TypeNotStructural { span: self.span, non_sm_ty });
+                                .emit_fatal(TypeNotStructural { span: self.span, non_sm_ty })
                         }
                     } else {
                         let err = InvalidPattern { span: self.span, non_sm_ty };
-                        self.tcx().sess.emit_err(err);
-                    }
+                        self.tcx().sess.emit_err(err)
+                    };
                     // All branches above emitted an error. Don't print any more lints.
-                    // The pattern we return is irrelevant since we errored.
-                    return Box::new(Pat { span: self.span, ty: cv.ty(), kind: PatKind::Wild });
+                    // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                    let kind = PatKind::Constant {
+                        value: mir::Const::Ty(ty::Const::new_error(self.tcx(), e, cv.ty())),
+                    };
+                    return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
                 } else if !self.saw_const_match_lint.get() {
                     if let Some(mir_structural_match_violation) = mir_structural_match_violation {
                         match non_sm_ty.kind() {
@@ -346,17 +349,17 @@ impl<'tcx> ConstToPat<'tcx> {
             }
             ty::FnDef(..) => {
                 self.saw_const_match_error.set(true);
-                tcx.sess.emit_err(InvalidPattern { span, non_sm_ty: ty });
-                // We errored, so the pattern we generate is irrelevant.
-                PatKind::Wild
+                let e = tcx.sess.emit_err(InvalidPattern { span, non_sm_ty: ty });
+                // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)) }
             }
             ty::Adt(adt_def, _) if !self.type_marked_structural(ty) => {
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty,);
                 self.saw_const_match_error.set(true);
                 let err = TypeNotStructural { span, non_sm_ty: ty };
-                tcx.sess.emit_err(err);
-                // We errored, so the pattern we generate is irrelevant.
-                PatKind::Wild
+                let e = tcx.sess.emit_err(err);
+                // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)) }
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
@@ -427,14 +430,20 @@ impl<'tcx> ConstToPat<'tcx> {
                         }
                         return Err(FallbackToOpaqueConst);
                     } else {
-                        if !self.saw_const_match_error.get() {
+                        if self.saw_const_match_error.get() {
+                            // We already errored. Signal that in the pattern, so that follow up errors can be silenced.
+                            PatKind::Constant {
+                                value: mir::Const::Ty(ty::Const::new_misc_error(tcx, ty)),
+                            }
+                        } else {
                             self.saw_const_match_error.set(true);
                             let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
-                            tcx.sess.emit_err(err);
+                            let e = tcx.sess.emit_err(err);
+                            // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                            PatKind::Constant {
+                                value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)),
+                            }
                         }
-                        tcx.sess.delay_span_bug(span, "`saw_const_match_error` set but no error?");
-                        // We errored, so the pattern we generate is irrelevant.
-                        PatKind::Wild
                     }
                 }
                 // All other references are converted into deref patterns and then recursively
@@ -443,11 +452,11 @@ impl<'tcx> ConstToPat<'tcx> {
                 _ => {
                     if !pointee_ty.is_sized(tcx, param_env) && !pointee_ty.is_slice() {
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
-                        tcx.sess.emit_err(err);
-
-                        // FIXME: introduce PatKind::Error to silence follow up diagnostics due to unreachable patterns.
-                        // We errored, so the pattern we generate is irrelevant.
-                        PatKind::Wild
+                        let e = tcx.sess.emit_err(err);
+                        // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                        PatKind::Constant {
+                            value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)),
+                        }
                     } else {
                         let old = self.behind_reference.replace(true);
                         // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
@@ -476,9 +485,9 @@ impl<'tcx> ConstToPat<'tcx> {
             _ => {
                 self.saw_const_match_error.set(true);
                 let err = InvalidPattern { span, non_sm_ty: ty };
-                tcx.sess.emit_err(err);
-                // We errored, so the pattern we generate is irrelevant.
-                PatKind::Wild
+                let e = tcx.sess.emit_err(err);
+                // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)) }
             }
         };
 
