@@ -472,6 +472,8 @@ declare_features! (
     (active, impl_trait_in_fn_trait_return, "1.64.0", Some(99697), None),
     /// Allows referencing `Self` and projections in impl-trait.
     (active, impl_trait_projections, "1.67.0", Some(103532), None),
+    /// Does something.
+    (active, improved_impl_trait_captures, "CURRENT_RUSTC_VERSION", Some(1), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
     /// Allows associated types in inherent impls.

@@ -843,6 +843,7 @@ symbols! {
         import_name_type,
         import_shadowing,
         imported_main,
+        improved_impl_trait_captures,
         in_band_lifetimes,
         include,
         include_bytes,
