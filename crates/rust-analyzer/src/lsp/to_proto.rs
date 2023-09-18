@@ -8,11 +8,12 @@ use std::{
 use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionItem,
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
-    Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
-    InlayHintLabel, InlayHintLabelPart, InlayKind, Markup, NavigationTarget, ReferenceCategory,
-    RenameError, Runnable, Severity, SignatureHelp, SnippetEdit, SourceChange, StructureNodeKind,
-    SymbolKind, TextEdit, TextRange, TextSize,
+    Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel,
+    InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayKind, Markup,
+    NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
+    SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
+use ide_db::rust_doc::format_docs;
 use itertools::Itertools;
 use serde_json::to_value;
 use vfs::AbsPath;
@@ -22,9 +23,12 @@ use crate::{
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
+    lsp::{
+        semantic_tokens::{self, standard_fallback_type},
+        utils::invalid_params_error,
+        LspError,
+    },
     lsp_ext::{self, SnippetTextEdit},
-    lsp_utils::invalid_params_error,
-    semantic_tokens::{self, standard_fallback_type},
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
@@ -102,7 +106,7 @@ pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSe
 }
 
 pub(crate) fn documentation(documentation: Documentation) -> lsp_types::Documentation {
-    let value = crate::markdown::format_docs(documentation.as_str());
+    let value = format_docs(&documentation);
     let markup_content = lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value };
     lsp_types::Documentation::MarkupContent(markup_content)
 }
@@ -413,7 +417,7 @@ pub(crate) fn signature_help(
     let documentation = call_info.doc.filter(|_| config.docs).map(|doc| {
         lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
             kind: lsp_types::MarkupKind::Markdown,
-            value: crate::markdown::format_docs(&doc),
+            value: format_docs(&doc),
         })
     });
 
@@ -434,10 +438,25 @@ pub(crate) fn signature_help(
 
 pub(crate) fn inlay_hint(
     snap: &GlobalStateSnapshot,
+    fields_to_resolve: &InlayFieldsToResolve,
     line_index: &LineIndex,
+    file_id: FileId,
     inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    let (label, tooltip) = inlay_hint_label(snap, inlay_hint.label)?;
+    let needs_resolve = inlay_hint.needs_resolve;
+    let (label, tooltip, mut something_to_resolve) =
+        inlay_hint_label(snap, fields_to_resolve, needs_resolve, inlay_hint.label)?;
+    let text_edits = if needs_resolve && fields_to_resolve.resolve_text_edits {
+        something_to_resolve |= inlay_hint.text_edit.is_some();
+        None
+    } else {
+        inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it))
+    };
+    let data = if needs_resolve && something_to_resolve {
+        Some(to_value(lsp_ext::InlayHintResolveData { file_id: file_id.0 }).unwrap())
+    } else {
+        None
+    };
 
     Ok(lsp_types::InlayHint {
         position: match inlay_hint.position {
@@ -451,8 +470,8 @@ pub(crate) fn inlay_hint(
             InlayKind::Type | InlayKind::Chaining => Some(lsp_types::InlayHintKind::TYPE),
             _ => None,
         },
-        text_edits: inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it)),
-        data: None,
+        text_edits,
+        data,
         tooltip,
         label,
     })
@@ -460,13 +479,18 @@ pub(crate) fn inlay_hint(
 
 fn inlay_hint_label(
     snap: &GlobalStateSnapshot,
+    fields_to_resolve: &InlayFieldsToResolve,
+    needs_resolve: bool,
     mut label: InlayHintLabel,
-) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>)> {
-    let res = match &*label.parts {
+) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>, bool)> {
+    let mut something_to_resolve = false;
+    let (label, tooltip) = match &*label.parts {
         [InlayHintLabelPart { linked_location: None, .. }] => {
             let InlayHintLabelPart { text, tooltip, .. } = label.parts.pop().unwrap();
-            (
-                lsp_types::InlayHintLabel::String(text),
+            let hint_tooltip = if needs_resolve && fields_to_resolve.resolve_hint_tooltip {
+                something_to_resolve |= tooltip.is_some();
+                None
+            } else {
                 match tooltip {
                     Some(ide::InlayTooltip::String(s)) => {
                         Some(lsp_types::InlayHintTooltip::String(s))
@@ -478,41 +502,52 @@ fn inlay_hint_label(
                         }))
                     }
                     None => None,
-                },
-            )
+                }
+            };
+            (lsp_types::InlayHintLabel::String(text), hint_tooltip)
         }
         _ => {
             let parts = label
                 .parts
                 .into_iter()
                 .map(|part| {
-                    part.linked_location.map(|range| location(snap, range)).transpose().map(
-                        |location| lsp_types::InlayHintLabelPart {
-                            value: part.text,
-                            tooltip: match part.tooltip {
-                                Some(ide::InlayTooltip::String(s)) => {
-                                    Some(lsp_types::InlayHintLabelPartTooltip::String(s))
-                                }
-                                Some(ide::InlayTooltip::Markdown(s)) => {
-                                    Some(lsp_types::InlayHintLabelPartTooltip::MarkupContent(
-                                        lsp_types::MarkupContent {
-                                            kind: lsp_types::MarkupKind::Markdown,
-                                            value: s,
-                                        },
-                                    ))
-                                }
-                                None => None,
-                            },
-                            location,
-                            command: None,
-                        },
-                    )
+                    let tooltip = if needs_resolve && fields_to_resolve.resolve_label_tooltip {
+                        something_to_resolve |= part.tooltip.is_some();
+                        None
+                    } else {
+                        match part.tooltip {
+                            Some(ide::InlayTooltip::String(s)) => {
+                                Some(lsp_types::InlayHintLabelPartTooltip::String(s))
+                            }
+                            Some(ide::InlayTooltip::Markdown(s)) => {
+                                Some(lsp_types::InlayHintLabelPartTooltip::MarkupContent(
+                                    lsp_types::MarkupContent {
+                                        kind: lsp_types::MarkupKind::Markdown,
+                                        value: s,
+                                    },
+                                ))
+                            }
+                            None => None,
+                        }
+                    };
+                    let location = if needs_resolve && fields_to_resolve.resolve_label_location {
+                        something_to_resolve |= part.linked_location.is_some();
+                        None
+                    } else {
+                        part.linked_location.map(|range| location(snap, range)).transpose()?
+                    };
+                    Ok(lsp_types::InlayHintLabelPart {
+                        value: part.text,
+                        tooltip,
+                        location,
+                        command: None,
+                    })
                 })
                 .collect::<Cancellable<_>>()?;
             (lsp_types::InlayHintLabel::LabelParts(parts), None)
         }
     };
-    Ok(res)
+    Ok((label, tooltip, something_to_resolve))
 }
 
 static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
@@ -1323,17 +1358,18 @@ pub(crate) fn code_lens(
                 })
             }
         }
-        AnnotationKind::HasImpls { pos: file_range, data } => {
+        AnnotationKind::HasImpls { pos, data } => {
             if !client_commands_config.show_reference {
                 return Ok(());
             }
-            let line_index = snap.file_line_index(file_range.file_id)?;
+            let line_index = snap.file_line_index(pos.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
-            let url = url(snap, file_range.file_id);
+            let url = url(snap, pos.file_id);
+            let pos = position(&line_index, pos.offset);
 
             let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
 
-            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, annotation_range.start);
+            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, pos);
 
             let goto_params = lsp_types::request::GotoImplementationParams {
                 text_document_position_params: doc_pos,
@@ -1356,7 +1392,7 @@ pub(crate) fn code_lens(
                 command::show_references(
                     implementation_title(locations.len()),
                     &url,
-                    annotation_range.start,
+                    pos,
                     locations,
                 )
             });
@@ -1376,28 +1412,24 @@ pub(crate) fn code_lens(
                 })(),
             })
         }
-        AnnotationKind::HasReferences { pos: file_range, data } => {
+        AnnotationKind::HasReferences { pos, data } => {
             if !client_commands_config.show_reference {
                 return Ok(());
             }
-            let line_index = snap.file_line_index(file_range.file_id)?;
+            let line_index = snap.file_line_index(pos.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
-            let url = url(snap, file_range.file_id);
+            let url = url(snap, pos.file_id);
+            let pos = position(&line_index, pos.offset);
 
             let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
 
-            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, annotation_range.start);
+            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, pos);
 
             let command = data.map(|ranges| {
                 let locations: Vec<lsp_types::Location> =
                     ranges.into_iter().filter_map(|range| location(snap, range).ok()).collect();
 
-                command::show_references(
-                    reference_title(locations.len()),
-                    &url,
-                    annotation_range.start,
-                    locations,
-                )
+                command::show_references(reference_title(locations.len()), &url, pos, locations)
             });
 
             acc.push(lsp_types::CodeLens {
@@ -1425,8 +1457,8 @@ pub(crate) mod command {
 
     use crate::{
         global_state::GlobalStateSnapshot,
+        lsp::to_proto::{location, location_link},
         lsp_ext,
-        to_proto::{location, location_link},
     };
 
     pub(crate) fn show_references(
@@ -1528,11 +1560,11 @@ pub(crate) fn markup_content(
         ide::HoverDocFormat::Markdown => lsp_types::MarkupKind::Markdown,
         ide::HoverDocFormat::PlainText => lsp_types::MarkupKind::PlainText,
     };
-    let value = crate::markdown::format_docs(markup.as_str());
+    let value = format_docs(&Documentation::new(markup.into()));
     lsp_types::MarkupContent { kind, value }
 }
 
-pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
+pub(crate) fn rename_error(err: RenameError) -> LspError {
     // This is wrong, but we don't have a better alternative I suppose?
     // https://github.com/microsoft/language-server-protocol/issues/1341
     invalid_params_error(err.to_string())

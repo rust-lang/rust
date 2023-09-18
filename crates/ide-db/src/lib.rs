@@ -22,6 +22,7 @@ pub mod symbol_index;
 pub mod traits;
 pub mod ty_filter;
 pub mod use_trivial_constructor;
+pub mod documentation;
 
 pub mod imports {
     pub mod import_assets;

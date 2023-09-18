@@ -91,9 +91,9 @@ pub use crate::{
         MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
     },
     inlay_hints::{
-        AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints, InlayHint,
-        InlayHintLabel, InlayHintLabelPart, InlayHintPosition, InlayHintsConfig, InlayKind,
-        InlayTooltip, LifetimeElisionHints,
+        AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
+        InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition,
+        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -111,7 +111,7 @@ pub use crate::{
         HighlightConfig, HlRange,
     },
 };
-pub use hir::{Documentation, Semantics};
+pub use hir::Semantics;
 pub use ide_assists::{
     Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy, SingleResolve,
 };
@@ -124,6 +124,7 @@ pub use ide_db::{
         Cancelled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange,
         SourceRoot, SourceRootId,
     },
+    documentation::Documentation,
     label::Label,
     line_index::{LineCol, LineIndex},
     search::{ReferenceCategory, SearchScope},

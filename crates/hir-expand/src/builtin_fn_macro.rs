@@ -1,13 +1,9 @@
 //! Builtin macro
 
-use std::mem;
-
-use ::tt::Ident;
 use base_db::{AnchoredPath, Edition, FileId};
 use cfg::CfgExpr;
 use either::Either;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree, TokenMap};
-use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, AstToken},
     SmolStr,
@@ -97,11 +93,11 @@ register_builtin! {
     (unreachable, Unreachable) => unreachable_expand,
     (log_syntax, LogSyntax) => log_syntax_expand,
     (trace_macros, TraceMacros) => trace_macros_expand,
-
-    EAGER:
     (format_args, FormatArgs) => format_args_expand,
     (const_format_args, ConstFormatArgs) => format_args_expand,
     (format_args_nl, FormatArgsNl) => format_args_nl_expand,
+
+    EAGER:
     (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
     (concat_idents, ConcatIdents) => concat_idents_expand,
@@ -247,151 +243,15 @@ fn format_args_expand_general(
     _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
-    end_string: &str,
+    // FIXME: Make use of this so that mir interpretation works properly
+    _end_string: &str,
 ) -> ExpandResult<tt::Subtree> {
-    let args = parse_exprs_with_sep(tt, ',');
-
-    let expand_error =
-        ExpandResult::new(tt::Subtree::empty(), mbe::ExpandError::NoMatchingRule.into());
-
-    let mut key_args = FxHashMap::default();
-    let mut args = args.into_iter().filter_map(|mut arg| {
-        // Remove `key =`.
-        if matches!(arg.token_trees.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=')
-        {
-            // but not with `==`
-            if !matches!(arg.token_trees.get(2), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=')
-            {
-                let key = arg.token_trees.drain(..2).next().unwrap();
-                key_args.insert(key.to_string(), arg);
-                return None;
-            }
-        }
-        Some(arg)
-    }).collect::<Vec<_>>().into_iter();
-    // ^^^^^^^ we need this collect, to enforce the side effect of the filter_map closure (building the `key_args`)
-    let Some(format_subtree) = args.next() else {
-        return expand_error;
-    };
-    let format_string = (|| {
-        let token_tree = format_subtree.token_trees.get(0)?;
-        match token_tree {
-            tt::TokenTree::Leaf(l) => match l {
-                tt::Leaf::Literal(l) => {
-                    if let Some(mut text) = l.text.strip_prefix('r') {
-                        let mut raw_sharps = String::new();
-                        while let Some(t) = text.strip_prefix('#') {
-                            text = t;
-                            raw_sharps.push('#');
-                        }
-                        text =
-                            text.strip_suffix(&raw_sharps)?.strip_prefix('"')?.strip_suffix('"')?;
-                        Some((text, l.span, Some(raw_sharps)))
-                    } else {
-                        let text = l.text.strip_prefix('"')?.strip_suffix('"')?;
-                        let span = l.span;
-                        Some((text, span, None))
-                    }
-                }
-                _ => None,
-            },
-            tt::TokenTree::Subtree(_) => None,
-        }
-    })();
-    let Some((format_string, _format_string_span, raw_sharps)) = format_string else {
-        return expand_error;
-    };
-    let mut format_iter = format_string.chars().peekable();
-    let mut parts = vec![];
-    let mut last_part = String::new();
-    let mut arg_tts = vec![];
-    let mut err = None;
-    while let Some(c) = format_iter.next() {
-        // Parsing the format string. See https://doc.rust-lang.org/std/fmt/index.html#syntax for the grammar and more info
-        match c {
-            '{' => {
-                if format_iter.peek() == Some(&'{') {
-                    format_iter.next();
-                    last_part.push('{');
-                    continue;
-                }
-                let mut argument = String::new();
-                while ![Some(&'}'), Some(&':')].contains(&format_iter.peek()) {
-                    argument.push(match format_iter.next() {
-                        Some(c) => c,
-                        None => return expand_error,
-                    });
-                }
-                let format_spec = match format_iter.next().unwrap() {
-                    '}' => "".to_owned(),
-                    ':' => {
-                        let mut s = String::new();
-                        while let Some(c) = format_iter.next() {
-                            if c == '}' {
-                                break;
-                            }
-                            s.push(c);
-                        }
-                        s
-                    }
-                    _ => unreachable!(),
-                };
-                parts.push(mem::take(&mut last_part));
-                let arg_tree = if argument.is_empty() {
-                    match args.next() {
-                        Some(it) => it,
-                        None => {
-                            err = Some(mbe::ExpandError::NoMatchingRule.into());
-                            tt::Subtree::empty()
-                        }
-                    }
-                } else if let Some(tree) = key_args.get(&argument) {
-                    tree.clone()
-                } else {
-                    // FIXME: we should pick the related substring of the `_format_string_span` as the span. You
-                    // can use `.char_indices()` instead of `.char()` for `format_iter` to find the substring interval.
-                    let ident = Ident::new(argument, tt::TokenId::unspecified());
-                    quote!(#ident)
-                };
-                let formatter = match &*format_spec {
-                    "?" => quote!(::core::fmt::Debug::fmt),
-                    "" => quote!(::core::fmt::Display::fmt),
-                    _ => {
-                        // FIXME: implement the rest and return expand error here
-                        quote!(::core::fmt::Display::fmt)
-                    }
-                };
-                arg_tts.push(quote! { ::core::fmt::ArgumentV1::new(&(#arg_tree), #formatter), });
-            }
-            '}' => {
-                if format_iter.peek() == Some(&'}') {
-                    format_iter.next();
-                    last_part.push('}');
-                } else {
-                    return expand_error;
-                }
-            }
-            _ => last_part.push(c),
-        }
-    }
-    last_part += end_string;
-    if !last_part.is_empty() {
-        parts.push(last_part);
-    }
-    let part_tts = parts.into_iter().map(|it| {
-        let text = if let Some(raw) = &raw_sharps {
-            format!("r{raw}\"{}\"{raw}", it).into()
-        } else {
-            format!("\"{}\"", it).into()
-        };
-        let l = tt::Literal { span: tt::TokenId::unspecified(), text };
-        quote!(#l ,)
+    let pound = quote! {@PUNCT '#'};
+    let mut tt = tt.clone();
+    tt.delimiter.kind = tt::DelimiterKind::Parenthesis;
+    return ExpandResult::ok(quote! {
+        builtin #pound format_args #tt
     });
-    let arg_tts = arg_tts.into_iter().flat_map(|arg| arg.token_trees);
-    let expanded = quote! {
-        ::core::fmt::Arguments::new_v1(&[##part_tts], &[##arg_tts])
-    };
-    ExpandResult { value: expanded, err }
 }
 
 fn asm_expand(
@@ -415,10 +275,12 @@ fn asm_expand(
         }
     }
 
-    let expanded = quote! {{
-        ##literals
-        loop {}
-    }};
+    let pound = quote! {@PUNCT '#'};
+    let expanded = quote! {
+        builtin #pound asm (
+            {##literals}
+        )
+    };
     ExpandResult::ok(expanded)
 }
 
@@ -692,7 +554,7 @@ pub(crate) fn include_arg_to_tt(
     arg_id: MacroCallId,
 ) -> Result<(triomphe::Arc<(::tt::Subtree<::tt::TokenId>, TokenMap)>, FileId), ExpandError> {
     let loc = db.lookup_intern_macro_call(arg_id);
-    let Some(EagerCallInfo { arg,arg_id, .. }) = loc.eager.as_deref() else {
+    let Some(EagerCallInfo { arg, arg_id, .. }) = loc.eager.as_deref() else {
         panic!("include_arg_to_tt called on non include macro call: {:?}", &loc.eager);
     };
     let path = parse_string(&arg.0)?;

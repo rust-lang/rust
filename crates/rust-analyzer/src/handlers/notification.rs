@@ -13,8 +13,12 @@ use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
-    config::Config, from_proto, global_state::GlobalState, lsp_ext::RunFlycheckParams,
-    lsp_utils::apply_document_changes, mem_docs::DocumentData, reload,
+    config::Config,
+    global_state::GlobalState,
+    lsp::{from_proto, utils::apply_document_changes},
+    lsp_ext::RunFlycheckParams,
+    mem_docs::DocumentData,
+    reload,
 };
 
 pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {
@@ -84,15 +88,16 @@ pub(crate) fn handle_did_change_text_document(
             }
         };
 
-        let vfs = &mut state.vfs.write().0;
-        let file_id = vfs.file_id(&path).unwrap();
         let text = apply_document_changes(
             state.config.position_encoding(),
-            || std::str::from_utf8(vfs.file_contents(file_id)).unwrap().into(),
+            || {
+                let vfs = &state.vfs.read().0;
+                let file_id = vfs.file_id(&path).unwrap();
+                std::str::from_utf8(vfs.file_contents(file_id)).unwrap().into()
+            },
             params.content_changes,
         );
-
-        vfs.set_file_contents(path, Some(text.into_bytes()));
+        state.vfs.write().0.set_file_contents(path, Some(text.into_bytes()));
     }
     Ok(())
 }
@@ -106,6 +111,10 @@ pub(crate) fn handle_did_close_text_document(
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         if state.mem_docs.remove(&path).is_err() {
             tracing::error!("orphan DidCloseTextDocument: {}", path);
+        }
+
+        if let Some(file_id) = state.vfs.read().0.file_id(&path) {
+            state.diagnostics.clear_native_for(file_id);
         }
 
         state.semantic_tokens_cache.lock().remove(&params.text_document.uri);

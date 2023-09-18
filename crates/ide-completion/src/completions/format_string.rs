@@ -51,9 +51,7 @@ mod tests {
     fn works_when_wrapped() {
         check(
             r#"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
+//- minicore: fmt
 macro_rules! print {
     ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
 }
@@ -70,9 +68,7 @@ fn main() {
     fn no_completion_without_brace() {
         check(
             r#"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
+//- minicore: fmt
 fn main() {
     let foobar = 1;
     format_args!("f$0");
@@ -87,18 +83,13 @@ fn main() {
         check_edit(
             "foobar",
             r#"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
+//- minicore: fmt
 fn main() {
     let foobar = 1;
     format_args!("{f$0");
 }
 "#,
             r#"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
 fn main() {
     let foobar = 1;
     format_args!("{foobar");
@@ -108,18 +99,13 @@ fn main() {
         check_edit(
             "foobar",
             r#"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
+//- minicore: fmt
 fn main() {
     let foobar = 1;
     format_args!("{$0");
 }
 "#,
             r#"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
 fn main() {
     let foobar = 1;
     format_args!("{foobar");

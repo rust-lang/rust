@@ -76,7 +76,7 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Di
         "variable does not need to be mutable",
         ast,
     )
-    .experimental() // Not supporting `#[allow(unused_mut)]` leads to false positive.
+    .experimental() // Not supporting `#[allow(unused_mut)]` in proc macros leads to false positive.
     .with_fixes(fixes)
 }
 
@@ -1169,6 +1169,29 @@ fn main2() {
 fn f() {
     loop {}
     for _ in 0..2 {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_15623() {
+        check_diagnostics(
+            r#"
+//- minicore: fn
+
+struct Foo;
+
+impl Foo {
+    fn needs_mut(&mut self) {}
+}
+
+fn foo(mut foo: Foo) {
+    let mut call_me = || {
+        let 0 = 1 else { return };
+        foo.needs_mut();
+    };
+    call_me();
 }
 "#,
         );

@@ -1,3 +1,5 @@
+use crate::grammar::types::type_;
+
 use super::*;
 
 // test expr_literals
@@ -73,6 +75,9 @@ pub(super) fn atom_expr(
     if let Some(m) = literal(p) {
         return Some((m, BlockLike::NotBlock));
     }
+    if p.at_contextual_kw(T![builtin]) && p.nth_at(1, T![#]) {
+        return Some((builtin_expr(p)?, BlockLike::NotBlock));
+    }
     if paths::is_path_start(p) {
         return Some(path_expr(p, r));
     }
@@ -93,7 +98,6 @@ pub(super) fn atom_expr(
             m.complete(p, UNDERSCORE_EXPR)
         }
         T![loop] => loop_expr(p, None),
-        T![box] => box_expr(p, None),
         T![while] => while_expr(p, None),
         T![try] => try_block_expr(p, None),
         T![match] => match_expr(p),
@@ -210,6 +214,72 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
     }
     p.expect(T![')']);
     m.complete(p, if saw_expr && !saw_comma { PAREN_EXPR } else { TUPLE_EXPR })
+}
+
+// test builtin_expr
+// fn foo() {
+//     builtin#asm(0);
+//     builtin#format_args("", 0, 1, a = 2 + 3, a + b);
+//     builtin#offset_of(Foo, bar.baz.0);
+// }
+fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = p.start();
+    p.bump_remap(T![builtin]);
+    p.bump(T![#]);
+    if p.at_contextual_kw(T![offset_of]) {
+        p.bump_remap(T![offset_of]);
+        p.expect(T!['(']);
+        type_(p);
+        p.expect(T![,]);
+        while !p.at(EOF) && !p.at(T![')']) {
+            if p.at(IDENT) || p.at(INT_NUMBER) {
+                name_ref_or_index(p);
+            // } else if p.at(FLOAT_NUMBER) {
+            // FIXME: needs float hack
+            } else {
+                p.err_and_bump("expected field name or number");
+            }
+            if !p.at(T![')']) {
+                p.expect(T![.]);
+            }
+        }
+        p.expect(T![')']);
+        Some(m.complete(p, OFFSET_OF_EXPR))
+    } else if p.at_contextual_kw(T![format_args]) {
+        p.bump_remap(T![format_args]);
+        p.expect(T!['(']);
+        expr(p);
+        if p.eat(T![,]) {
+            while !p.at(EOF) && !p.at(T![')']) {
+                let m = p.start();
+                if p.at(IDENT) && p.nth_at(1, T![=]) {
+                    name(p);
+                    p.bump(T![=]);
+                }
+                if expr(p).is_none() {
+                    m.abandon(p);
+                    break;
+                }
+                m.complete(p, FORMAT_ARGS_ARG);
+
+                if !p.at(T![')']) {
+                    p.expect(T![,]);
+                }
+            }
+        }
+        p.expect(T![')']);
+        Some(m.complete(p, FORMAT_ARGS_EXPR))
+    } else if p.at_contextual_kw(T![asm]) {
+        p.bump_remap(T![asm]);
+        p.expect(T!['(']);
+        // FIXME: We just put expression here so highlighting kind of keeps working
+        expr(p);
+        p.expect(T![')']);
+        Some(m.complete(p, ASM_EXPR))
+    } else {
+        m.abandon(p);
+        None
+    }
 }
 
 // test array_expr
@@ -661,20 +731,4 @@ fn try_block_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
         p.error("expected a block");
     }
     m.complete(p, BLOCK_EXPR)
-}
-
-// test box_expr
-// fn foo() {
-//     let x = box 1i32;
-//     let y = (box 1i32, box 2i32);
-//     let z = Foo(box 1i32, box 2i32);
-// }
-fn box_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
-    assert!(p.at(T![box]));
-    let m = m.unwrap_or_else(|| p.start());
-    p.bump(T![box]);
-    if p.at_ts(EXPR_FIRST) {
-        expr(p);
-    }
-    m.complete(p, BOX_EXPR)
 }
