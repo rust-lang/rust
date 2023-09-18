@@ -517,7 +517,21 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Int(i) => write!(f, "{i:?}"),
             Uint(u) => write!(f, "{u:?}"),
             Float(float) => write!(f, "{float:?}"),
-            Adt(d, s) => f.debug_tuple_field2_finish("Adt", d, &this.wrap(s)),
+            Adt(d, s) => {
+                write!(f, "{d:?}")?;
+                let mut s = s.clone().into_iter();
+                let first = s.next();
+                match first {
+                    Some(first) => write!(f, "<{:?}", first)?,
+                    None => return Ok(()),
+                };
+
+                for arg in s {
+                    write!(f, ", {:?}", arg)?;
+                }
+
+                write!(f, ">")
+            }
             Foreign(d) => f.debug_tuple_field1_finish("Foreign", d),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
