@@ -19,7 +19,8 @@ use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, QueryResult, Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, IsNormalizesToHack, QueryResult,
+    Response,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
@@ -57,6 +58,12 @@ enum SolverMode {
     /// i.e. return `Err(NoSolution)` for goals for which a solution exists.
     /// This means that we must not make any guesses or arbitrary choices.
     Coherence,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum GoalEvaluationKind {
+    Root,
+    Nested { is_normalizes_to_hack: IsNormalizesToHack },
 }
 
 trait CanonicalResponseExt {
@@ -228,6 +235,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn add_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+        self.inspect.add_goal(goal);
         self.nested_goals.goals.push(goal);
     }
 
