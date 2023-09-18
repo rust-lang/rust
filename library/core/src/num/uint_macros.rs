@@ -1979,6 +1979,41 @@ macro_rules! uint_impl {
             acc * base
         }
 
+        /// Returns the square root of the number, rounded down.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
+        /// ```
+        #[stable(feature = "isqrt", since = "1.73.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.73.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn isqrt(self) -> Self {
+            if self < 2 {
+                return self;
+            }
+
+            let mut x: Self = self;
+            let mut c: Self = 0;
+            let mut d: Self = 1 << (self.ilog2() & !1);
+
+            while (d != 0) {
+                if x >= c + d {
+                    x -= c + d;
+                    c = (c >> 1) + d;
+                } else {
+                    c >>= 1;
+                }
+                d >>= 2;
+            }
+
+            return c;
+        }
+
         /// Performs Euclidean division.
         ///
         /// Since, for the positive integers, all common

@@ -898,6 +898,45 @@ macro_rules! int_impl {
             acc.checked_mul(base)
         }
 
+        /// Returns the square root of the number, rounded down.
+        ///
+        /// Returns `None` if `self` is negative.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_isqrt(), Some(3));")]
+        /// ```
+        #[stable(feature = "isqrt", since = "1.73.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.73.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn checked_isqrt(self) -> Option<Self> {
+            if self < 0 {
+                return None;
+            } else if self < 2 {
+                return Some(self);
+            }
+
+            let mut x: Self = self;
+            let mut c: Self = 0;
+            let mut d: Self = 1 << (self.ilog2() & !1);
+
+            while (d != 0) {
+                if x >= c + d {
+                    x -= c + d;
+                    c = (c >> 1) + d;
+                } else {
+                    c >>= 1;
+                }
+                d >>= 2;
+            }
+
+            return Some(c);
+        }
+
         /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric
         /// bounds instead of overflowing.
         ///
@@ -2059,6 +2098,47 @@ macro_rules! int_impl {
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
             acc * base
+        }
+
+        /// Returns the square root of the number, rounded down.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `self` is negative.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
+        /// ```
+        #[stable(feature = "isqrt", since = "1.73.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.73.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn isqrt(self) -> Self {
+            if self < 0 {
+                panic!("argument of integer square root must be non-negative")
+            } else if self < 2 {
+                return self;
+            }
+
+            let mut x: Self = self;
+            let mut c: Self = 0;
+            let mut d: Self = 1 << (self.ilog2() & !1);
+
+            while (d != 0) {
+                if x >= c + d {
+                    x -= c + d;
+                    c = (c >> 1) + d;
+                } else {
+                    c >>= 1;
+                }
+                d >>= 2;
+            }
+
+            return c;
         }
 
         /// Calculates the quotient of Euclidean division of `self` by `rhs`.
