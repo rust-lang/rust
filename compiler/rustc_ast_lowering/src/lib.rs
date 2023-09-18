@@ -66,6 +66,7 @@ use rustc_middle::{
     span_bug,
     ty::{ResolverAstLowering, TyCtxt},
 };
+use rustc_session::lint::Level;
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
@@ -1554,6 +1555,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     fn_kind.expect("expected RPITs to be lowered with a FnKind"),
                     FnDeclKind::Impl | FnDeclKind::Trait
                 ) || self.tcx.features().improved_impl_trait_captures
+                    || (!self.tcx.sess.opts.lint_cap.is_some_and(|cap| cap == Level::Allow)
+                        && self.tcx.crate_name(LOCAL_CRATE).as_str() != "cargo")
                 {
                     // return-position impl trait in trait was decided to capture all
                     // in-scope lifetimes, which we collect for all opaques during resolution.

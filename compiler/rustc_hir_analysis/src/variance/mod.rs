@@ -5,7 +5,8 @@
 
 use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_lint_defs::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
@@ -159,7 +160,10 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         }
     }
 
-    if tcx.features().improved_impl_trait_captures {
+    if tcx.features().improved_impl_trait_captures
+        || (!tcx.sess.opts.lint_cap.is_some_and(|cap| cap == Level::Allow)
+            && tcx.crate_name(LOCAL_CRATE).as_str() != "cargo")
+    {
         let id_args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
         let opaque = Ty::new_opaque(tcx, item_def_id.to_def_id(), id_args);
         let outlives_regions: Vec<_> = tcx
