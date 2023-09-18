@@ -1581,8 +1581,8 @@ pub enum BodyOwnerKind {
     /// Closures
     Closure,
 
-    /// Constants and associated constants.
-    Const,
+    /// Constants and associated constants, also including inline constants.
+    Const { inline: bool },
 
     /// Initializer of a `static` item.
     Static(Mutability),
@@ -1592,7 +1592,7 @@ impl BodyOwnerKind {
     pub fn is_fn_or_closure(self) -> bool {
         match self {
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => true,
-            BodyOwnerKind::Const | BodyOwnerKind::Static(_) => false,
+            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(_) => false,
         }
     }
 }
@@ -1615,7 +1615,7 @@ pub enum ConstContext {
     ///
     /// For the most part, other contexts are treated just like a regular `const`, so they are
     /// lumped into the same category.
-    Const,
+    Const { inline: bool },
 }
 
 impl ConstContext {
@@ -1624,7 +1624,7 @@ impl ConstContext {
     /// E.g. `const` or `static mut`.
     pub fn keyword_name(self) -> &'static str {
         match self {
-            Self::Const => "const",
+            Self::Const { .. } => "const",
             Self::Static(Mutability::Not) => "static",
             Self::Static(Mutability::Mut) => "static mut",
             Self::ConstFn => "const fn",
@@ -1637,7 +1637,7 @@ impl ConstContext {
 impl fmt::Display for ConstContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Self::Const => write!(f, "constant"),
+            Self::Const { .. } => write!(f, "constant"),
             Self::Static(_) => write!(f, "static"),
             Self::ConstFn => write!(f, "constant function"),
         }

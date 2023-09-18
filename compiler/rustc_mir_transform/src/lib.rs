@@ -343,7 +343,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     let body = match tcx.hir().body_const_context(def) {
         // consts and statics do not have `optimized_mir`, so we can steal the body instead of
         // cloning it.
-        Some(hir::ConstContext::Const | hir::ConstContext::Static(_)) => body.steal(),
+        Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => body.steal(),
         Some(hir::ConstContext::ConstFn) => body.borrow().clone(),
         None => bug!("`mir_for_ctfe` called on non-const {def:?}"),
     };
