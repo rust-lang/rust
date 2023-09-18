@@ -7,13 +7,13 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::DumpSolverProofTree;
 
 use super::eval_ctxt::UseGlobalCache;
-use super::GenerateProofTree;
+use super::{GenerateProofTree, GoalEvaluationKind};
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct WipGoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    pub kind: WipGoalEvaluationKind,
     pub evaluation: Option<WipCanonicalGoalEvaluation<'tcx>>,
-    pub is_normalizes_to_hack: IsNormalizesToHack,
     pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
@@ -21,8 +21,13 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
     pub fn finalize(self) -> inspect::GoalEvaluation<'tcx> {
         inspect::GoalEvaluation {
             uncanonicalized_goal: self.uncanonicalized_goal,
+            kind: match self.kind {
+                WipGoalEvaluationKind::Root => inspect::GoalEvaluationKind::Root,
+                WipGoalEvaluationKind::Nested { is_normalizes_to_hack } => {
+                    inspect::GoalEvaluationKind::Nested { is_normalizes_to_hack }
+                }
+            },
             evaluation: self.evaluation.unwrap().finalize(),
-            is_normalizes_to_hack: self.is_normalizes_to_hack,
             returned_goals: self.returned_goals,
         }
     }
@@ -30,6 +35,12 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum WipGoalEvaluationKind {
+    Root,
+    Nested { is_normalizes_to_hack: IsNormalizesToHack },
+}
+
+#[derive(Eq, PartialEq, Debug)]
+pub enum WipCanonicalGoalEvaluationKind {
     Overflow,
     CacheHit(CacheHit),
 }
@@ -37,7 +48,7 @@ pub enum WipGoalEvaluationKind {
 #[derive(Eq, PartialEq, Debug)]
 pub struct WipCanonicalGoalEvaluation<'tcx> {
     pub goal: CanonicalInput<'tcx>,
-    pub kind: Option<WipGoalEvaluationKind>,
+    pub kind: Option<WipCanonicalGoalEvaluationKind>,
     pub revisions: Vec<WipGoalEvaluationStep<'tcx>>,
     pub result: Option<QueryResult<'tcx>>,
 }
@@ -45,11 +56,13 @@ pub struct WipCanonicalGoalEvaluation<'tcx> {
 impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
     pub fn finalize(self) -> inspect::CanonicalGoalEvaluation<'tcx> {
         let kind = match self.kind {
-            Some(WipGoalEvaluationKind::Overflow) => inspect::GoalEvaluationKind::Overflow,
-            Some(WipGoalEvaluationKind::CacheHit(hit)) => {
-                inspect::GoalEvaluationKind::CacheHit(hit)
+            Some(WipCanonicalGoalEvaluationKind::Overflow) => {
+                inspect::CanonicalGoalEvaluationKind::Overflow
             }
-            None => inspect::GoalEvaluationKind::Uncached {
+            Some(WipCanonicalGoalEvaluationKind::CacheHit(hit)) => {
+                inspect::CanonicalGoalEvaluationKind::CacheHit(hit)
+            }
+            None => inspect::CanonicalGoalEvaluationKind::Uncached {
                 revisions: self
                     .revisions
                     .into_iter()
@@ -87,7 +100,7 @@ impl<'tcx> WipAddedGoalsEvaluation<'tcx> {
 pub struct WipGoalEvaluationStep<'tcx> {
     pub instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
 
-    pub evaluation: WipGoalCandidate<'tcx>,
+    pub evaluation: WipProbe<'tcx>,
 }
 
 impl<'tcx> WipGoalEvaluationStep<'tcx> {
@@ -102,22 +115,33 @@ impl<'tcx> WipGoalEvaluationStep<'tcx> {
 }
 
 #[derive(Eq, PartialEq, Debug)]
-pub struct WipGoalCandidate<'tcx> {
-    pub added_goals_evaluations: Vec<WipAddedGoalsEvaluation<'tcx>>,
-    pub candidates: Vec<WipGoalCandidate<'tcx>>,
+pub struct WipProbe<'tcx> {
+    pub steps: Vec<WipProbeStep<'tcx>>,
     pub kind: Option<ProbeKind<'tcx>>,
 }
 
-impl<'tcx> WipGoalCandidate<'tcx> {
-    pub fn finalize(self) -> inspect::GoalCandidate<'tcx> {
-        inspect::GoalCandidate {
-            added_goals_evaluations: self
-                .added_goals_evaluations
-                .into_iter()
-                .map(WipAddedGoalsEvaluation::finalize)
-                .collect(),
-            candidates: self.candidates.into_iter().map(WipGoalCandidate::finalize).collect(),
+impl<'tcx> WipProbe<'tcx> {
+    pub fn finalize(self) -> inspect::Probe<'tcx> {
+        inspect::Probe {
+            steps: self.steps.into_iter().map(WipProbeStep::finalize).collect(),
             kind: self.kind.unwrap(),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug)]
+pub enum WipProbeStep<'tcx> {
+    AddGoal(Goal<'tcx, ty::Predicate<'tcx>>),
+    EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
+    NestedProbe(WipProbe<'tcx>),
+}
+
+impl<'tcx> WipProbeStep<'tcx> {
+    pub fn finalize(self) -> inspect::ProbeStep<'tcx> {
+        match self {
+            WipProbeStep::AddGoal(goal) => inspect::ProbeStep::AddGoal(goal),
+            WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
+            WipProbeStep::NestedProbe(probe) => inspect::ProbeStep::NestedProbe(probe.finalize()),
         }
     }
 }
@@ -129,7 +153,7 @@ pub enum DebugSolver<'tcx> {
     CanonicalGoalEvaluation(WipCanonicalGoalEvaluation<'tcx>),
     AddedGoalsEvaluation(WipAddedGoalsEvaluation<'tcx>),
     GoalEvaluationStep(WipGoalEvaluationStep<'tcx>),
-    GoalCandidate(WipGoalCandidate<'tcx>),
+    Probe(WipProbe<'tcx>),
 }
 
 impl<'tcx> From<WipGoalEvaluation<'tcx>> for DebugSolver<'tcx> {
@@ -156,9 +180,9 @@ impl<'tcx> From<WipGoalEvaluationStep<'tcx>> for DebugSolver<'tcx> {
     }
 }
 
-impl<'tcx> From<WipGoalCandidate<'tcx>> for DebugSolver<'tcx> {
-    fn from(g: WipGoalCandidate<'tcx>) -> DebugSolver<'tcx> {
-        DebugSolver::GoalCandidate(g)
+impl<'tcx> From<WipProbe<'tcx>> for DebugSolver<'tcx> {
+    fn from(p: WipProbe<'tcx>) -> DebugSolver<'tcx> {
+        DebugSolver::Probe(p)
     }
 }
 
@@ -249,15 +273,20 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         self.state.is_none()
     }
 
-    pub fn new_goal_evaluation(
+    pub(super) fn new_goal_evaluation(
         &mut self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-        is_normalizes_to_hack: IsNormalizesToHack,
+        kind: GoalEvaluationKind,
     ) -> ProofTreeBuilder<'tcx> {
         self.nested(|| WipGoalEvaluation {
             uncanonicalized_goal: goal,
+            kind: match kind {
+                GoalEvaluationKind::Root => WipGoalEvaluationKind::Root,
+                GoalEvaluationKind::Nested { is_normalizes_to_hack } => {
+                    WipGoalEvaluationKind::Nested { is_normalizes_to_hack }
+                }
+            },
             evaluation: None,
-            is_normalizes_to_hack,
             returned_goals: vec![],
         })
     }
@@ -286,7 +315,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn goal_evaluation_kind(&mut self, kind: WipGoalEvaluationKind) {
+    pub fn goal_evaluation_kind(&mut self, kind: WipCanonicalGoalEvaluationKind) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
@@ -329,11 +358,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     ) -> ProofTreeBuilder<'tcx> {
         self.nested(|| WipGoalEvaluationStep {
             instantiated_goal,
-            evaluation: WipGoalCandidate {
-                added_goals_evaluations: vec![],
-                candidates: vec![],
-                kind: None,
-            },
+            evaluation: WipProbe { steps: vec![], kind: None },
         })
     }
     pub fn goal_evaluation_step(&mut self, goal_evaluation_step: ProofTreeBuilder<'tcx>) {
@@ -350,18 +375,14 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn new_goal_candidate(&mut self) -> ProofTreeBuilder<'tcx> {
-        self.nested(|| WipGoalCandidate {
-            added_goals_evaluations: vec![],
-            candidates: vec![],
-            kind: None,
-        })
+    pub fn new_probe(&mut self) -> ProofTreeBuilder<'tcx> {
+        self.nested(|| WipProbe { steps: vec![], kind: None })
     }
 
     pub fn probe_kind(&mut self, probe_kind: ProbeKind<'tcx>) {
         if let Some(this) = self.as_mut() {
             match this {
-                DebugSolver::GoalCandidate(this) => {
+                DebugSolver::Probe(this) => {
                     assert_eq!(this.kind.replace(probe_kind), None)
                 }
                 _ => unreachable!(),
@@ -369,17 +390,32 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn goal_candidate(&mut self, candidate: ProofTreeBuilder<'tcx>) {
+    pub fn add_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
         if let Some(this) = self.as_mut() {
-            match (this, candidate.state.unwrap().tree) {
+            match this {
+                DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
+                    evaluation: WipProbe { steps, .. },
+                    ..
+                })
+                | DebugSolver::Probe(WipProbe { steps, .. }) => {
+                    steps.push(WipProbeStep::AddGoal(goal))
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    pub fn finish_probe(&mut self, probe: ProofTreeBuilder<'tcx>) {
+        if let Some(this) = self.as_mut() {
+            match (this, probe.state.unwrap().tree) {
                 (
-                    DebugSolver::GoalCandidate(WipGoalCandidate { candidates, .. })
+                    DebugSolver::Probe(WipProbe { steps, .. })
                     | DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
-                        evaluation: WipGoalCandidate { candidates, .. },
+                        evaluation: WipProbe { steps, .. },
                         ..
                     }),
-                    DebugSolver::GoalCandidate(candidate),
-                ) => candidates.push(candidate),
+                    DebugSolver::Probe(probe),
+                ) => steps.push(WipProbeStep::NestedProbe(probe)),
                 _ => unreachable!(),
             }
         }
@@ -416,14 +452,12 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
             match (this, added_goals_evaluation.state.unwrap().tree) {
                 (
                     DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
-                        evaluation: WipGoalCandidate { added_goals_evaluations, .. },
+                        evaluation: WipProbe { steps, .. },
                         ..
                     })
-                    | DebugSolver::GoalCandidate(WipGoalCandidate {
-                        added_goals_evaluations, ..
-                    }),
+                    | DebugSolver::Probe(WipProbe { steps, .. }),
                     DebugSolver::AddedGoalsEvaluation(added_goals_evaluation),
-                ) => added_goals_evaluations.push(added_goals_evaluation),
+                ) => steps.push(WipProbeStep::EvaluateGoals(added_goals_evaluation)),
                 _ => unreachable!(),
             }
         }

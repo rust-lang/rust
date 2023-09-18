@@ -312,6 +312,14 @@ def default_build_triple(verbose):
         # non-standard string (e.g. gnuwin32 tools returns `windows32`). In
         # these cases, fall back to using sys.platform.
         return 'x86_64-pc-windows-msvc'
+    elif kernel == 'AIX':
+        # `uname -m` returns the machine ID rather than machine hardware on AIX,
+        # so we are unable to use cputype to form triple. AIX 7.2 and
+        # above supports 32-bit and 64-bit mode simultaneously and `uname -p`
+        # returns `powerpc`, however we only supports `powerpc64-ibm-aix` in
+        # rust on AIX. For above reasons, kerneltype_mapper and cputype_mapper
+        # are not used to infer AIX's triple.
+        return 'powerpc64-ibm-aix'
     else:
         err = "unknown OS type: {}".format(kernel)
         sys.exit(err)

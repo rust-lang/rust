@@ -458,7 +458,6 @@ changelog-seen = 2
 # Sets the number of codegen units to build the standard library with,
 # regardless of what the codegen-unit setting for the rest of the compiler is.
 # NOTE: building with anything other than 1 is known to occasionally have bugs.
-# See https://github.com/rust-lang/rust/issues/83600.
 #codegen-units-std = codegen-units
 
 # Whether or not debug assertions are enabled for the compiler and standard library.
