@@ -447,6 +447,7 @@ impl VariantData {
         }
     }
 
+    // FIXME: Linear lookup
     pub fn field(&self, name: &Name) -> Option<LocalFieldId> {
         self.fields().iter().find_map(|(id, data)| if &data.name == name { Some(id) } else { None })
     }

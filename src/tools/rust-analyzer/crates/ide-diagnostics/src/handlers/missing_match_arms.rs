@@ -319,6 +319,7 @@ fn main() {
     match Either::A {
         Either::A => (),
         Either::B() => (),
+              // ^^ error: this pattern has 0 fields, but the corresponding tuple struct has 1 field
     }
 }
 "#,
@@ -334,9 +335,11 @@ enum A { B(isize, isize), C }
 fn main() {
     match A::B(1, 2) {
         A::B(_, _, _) => (),
+                // ^^ error: this pattern has 3 fields, but the corresponding tuple struct has 2 fields
     }
     match A::B(1, 2) {
         A::C(_) => (),
+         // ^^^ error: this pattern has 1 field, but the corresponding tuple struct has 0 fields
     }
 }
 "#,
@@ -846,6 +849,7 @@ fn main() {
 struct Foo { }
 fn main(f: Foo) {
     match f { Foo { bar } => () }
+                 // ^^^ error: no such field
 }
 "#,
         );

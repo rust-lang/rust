@@ -42,30 +42,27 @@ pub struct BorrowckResult {
 fn all_mir_bodies(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
-) -> Box<dyn Iterator<Item = Result<Arc<MirBody>, MirLowerError>> + '_> {
+    mut cb: impl FnMut(Arc<MirBody>),
+) -> Result<(), MirLowerError> {
     fn for_closure(
         db: &dyn HirDatabase,
         c: ClosureId,
-    ) -> Box<dyn Iterator<Item = Result<Arc<MirBody>, MirLowerError>> + '_> {
+        cb: &mut impl FnMut(Arc<MirBody>),
+    ) -> Result<(), MirLowerError> {
         match db.mir_body_for_closure(c) {
             Ok(body) => {
-                let closures = body.closures.clone();
-                Box::new(
-                    iter::once(Ok(body))
-                        .chain(closures.into_iter().flat_map(|it| for_closure(db, it))),
-                )
+                cb(body.clone());
+                body.closures.iter().map(|&it| for_closure(db, it, cb)).collect()
             }
-            Err(e) => Box::new(iter::once(Err(e))),
+            Err(e) => Err(e),
         }
     }
     match db.mir_body(def) {
         Ok(body) => {
-            let closures = body.closures.clone();
-            Box::new(
-                iter::once(Ok(body)).chain(closures.into_iter().flat_map(|it| for_closure(db, it))),
-            )
+            cb(body.clone());
+            body.closures.iter().map(|&it| for_closure(db, it, &mut cb)).collect()
         }
-        Err(e) => Box::new(iter::once(Err(e))),
+        Err(e) => Err(e),
     }
 }
 
@@ -74,17 +71,15 @@ pub fn borrowck_query(
     def: DefWithBodyId,
 ) -> Result<Arc<[BorrowckResult]>, MirLowerError> {
     let _p = profile::span("borrowck_query");
-    let r = all_mir_bodies(db, def)
-        .map(|body| {
-            let body = body?;
-            Ok(BorrowckResult {
-                mutability_of_locals: mutability_of_locals(db, &body),
-                moved_out_of_ref: moved_out_of_ref(db, &body),
-                mir_body: body,
-            })
-        })
-        .collect::<Result<Vec<_>, MirLowerError>>()?;
-    Ok(r.into())
+    let mut res = vec![];
+    all_mir_bodies(db, def, |body| {
+        res.push(BorrowckResult {
+            mutability_of_locals: mutability_of_locals(db, &body),
+            moved_out_of_ref: moved_out_of_ref(db, &body),
+            mir_body: body,
+        });
+    })?;
+    Ok(res.into())
 }
 
 fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> {
@@ -93,7 +88,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
         Operand::Copy(p) | Operand::Move(p) => {
             let mut ty: Ty = body.locals[p.local].ty.clone();
             let mut is_dereference_of_ref = false;
-            for proj in &*p.projection {
+            for proj in p.projection.lookup(&body.projection_store) {
                 if *proj == ProjectionElem::Deref && ty.as_reference().is_some() {
                     is_dereference_of_ref = true;
                 }
@@ -125,6 +120,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
         Operand::Constant(_) | Operand::Static(_) => (),
     };
     for (_, block) in body.basic_blocks.iter() {
+        db.unwind_if_cancelled();
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(_, r) => match r {
@@ -183,6 +179,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
             None => (),
         }
     }
+    result.shrink_to_fit();
     result
 }
 
@@ -199,7 +196,7 @@ enum ProjectionCase {
 fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> ProjectionCase {
     let mut is_part_of = false;
     let mut ty = body.locals[lvalue.local].ty.clone();
-    for proj in lvalue.projection.iter() {
+    for proj in lvalue.projection.lookup(&body.projection_store).iter() {
         match proj {
             ProjectionElem::Deref if ty.as_adt().is_none() => return ProjectionCase::Indirect, // It's indirect in case of reference and raw
             ProjectionElem::Deref // It's direct in case of `Box<T>`
@@ -258,7 +255,7 @@ fn ever_initialized_map(
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(p, _) => {
-                    if p.projection.len() == 0 && p.local == l {
+                    if p.projection.lookup(&body.projection_store).len() == 0 && p.local == l {
                         is_ever_initialized = true;
                     }
                 }
@@ -277,21 +274,37 @@ fn ever_initialized_map(
             );
             return;
         };
-        let targets = match &terminator.kind {
-            TerminatorKind::Goto { target } => vec![*target],
-            TerminatorKind::SwitchInt { targets, .. } => targets.all_targets().to_vec(),
+        let mut process = |target, is_ever_initialized| {
+            if !result[target].contains_idx(l) || !result[target][l] && is_ever_initialized {
+                result[target].insert(l, is_ever_initialized);
+                dfs(db, body, target, l, result);
+            }
+        };
+        match &terminator.kind {
+            TerminatorKind::Goto { target } => process(*target, is_ever_initialized),
+            TerminatorKind::SwitchInt { targets, .. } => {
+                targets.all_targets().iter().for_each(|&it| process(it, is_ever_initialized));
+            }
             TerminatorKind::UnwindResume
             | TerminatorKind::Abort
             | TerminatorKind::Return
-            | TerminatorKind::Unreachable => vec![],
+            | TerminatorKind::Unreachable => (),
             TerminatorKind::Call { target, cleanup, destination, .. } => {
-                if destination.projection.len() == 0 && destination.local == l {
+                if destination.projection.lookup(&body.projection_store).len() == 0
+                    && destination.local == l
+                {
                     is_ever_initialized = true;
                 }
-                target.into_iter().chain(cleanup.into_iter()).copied().collect()
+                target
+                    .into_iter()
+                    .chain(cleanup.into_iter())
+                    .for_each(|&it| process(it, is_ever_initialized));
             }
             TerminatorKind::Drop { target, unwind, place: _ } => {
-                Some(target).into_iter().chain(unwind.into_iter()).copied().collect()
+                iter::once(target)
+                    .into_iter()
+                    .chain(unwind.into_iter())
+                    .for_each(|&it| process(it, is_ever_initialized));
             }
             TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
@@ -300,13 +313,7 @@ fn ever_initialized_map(
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
                 never!("We don't emit these MIR terminators yet");
-                vec![]
-            }
-        };
-        for target in targets {
-            if !result[target].contains_idx(l) || !result[target][l] && is_ever_initialized {
-                result[target].insert(l, is_ever_initialized);
-                dfs(db, body, target, l, result);
+                ()
             }
         }
     }
@@ -315,6 +322,7 @@ fn ever_initialized_map(
         dfs(db, body, body.start_block, l, &mut result);
     }
     for l in body.locals.iter().map(|it| it.0) {
+        db.unwind_if_cancelled();
         if !result[body.start_block].contains_idx(l) {
             result[body.start_block].insert(l, false);
             dfs(db, body, body.start_block, l, &mut result);
@@ -384,7 +392,7 @@ fn mutability_of_locals(
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Yield { .. } => (),
             TerminatorKind::Call { destination, .. } => {
-                if destination.projection.len() == 0 {
+                if destination.projection.lookup(&body.projection_store).len() == 0 {
                     if ever_init_map.get(destination.local).copied().unwrap_or_default() {
                         push_mut_span(destination.local, MirSpan::Unknown);
                     } else {

@@ -113,10 +113,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
                 Some(parent) => match (expr, parent) {
                     (ast::Expr::CastExpr(_), ast::Expr::CastExpr(_)) => false,
                     (
-                        ast::Expr::BoxExpr(_)
-                        | ast::Expr::PrefixExpr(_)
-                        | ast::Expr::RefExpr(_)
-                        | ast::Expr::MacroExpr(_),
+                        ast::Expr::PrefixExpr(_) | ast::Expr::RefExpr(_) | ast::Expr::MacroExpr(_),
                         ast::Expr::AwaitExpr(_)
                         | ast::Expr::CallExpr(_)
                         | ast::Expr::CastExpr(_)

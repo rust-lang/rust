@@ -29,7 +29,7 @@ use lsp_types::{
     PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
     TextDocumentPositionParams, WorkDoneProgressParams,
 };
-use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
+use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
 use test_utils::skip_slow_tests;
 
@@ -861,6 +861,7 @@ edition = "2021"
 bar = {path = "../bar"}
 
 //- /foo/src/main.rs
+#![allow(internal_features)]
 #![feature(rustc_attrs, decl_macro)]
 use bar::Bar;
 
@@ -938,7 +939,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("foo/src/main.rs"),
-            Position::new(11, 9),
+            Position::new(12, 9),
         ),
         work_done_progress_params: Default::default(),
     });

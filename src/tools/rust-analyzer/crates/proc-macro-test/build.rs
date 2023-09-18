@@ -71,6 +71,10 @@ fn main() {
         .arg("--target-dir")
         .arg(&target_dir);
 
+    if let Ok(target) = std::env::var("TARGET") {
+        cmd.args(["--target", &target]);
+    }
+
     println!("Running {cmd:?}");
 
     let output = cmd.output().unwrap();

@@ -94,10 +94,9 @@ pub(crate) fn annotations(
                         enum_
                             .variants(db)
                             .into_iter()
-                            .map(|variant| {
+                            .filter_map(|variant| {
                                 variant.source(db).and_then(|node| name_range(db, node, file_id))
                             })
-                            .flatten()
                             .for_each(|range| {
                                 let (annotation_range, target_position) = mk_ranges(range);
                                 annotations.push(Annotation {

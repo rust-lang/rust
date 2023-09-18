@@ -6574,3 +6574,23 @@ fn test() {
         "#]],
     );
 }
+
+#[test]
+fn format_args_arg() {
+    check(
+        r#"
+//- minicore: fmt
+fn test() {
+    let foo = 0;
+    format_args!("{}", foo$0);
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            let foo: i32 // size = 4, align = 4
+            ```
+        "#]],
+    );
+}

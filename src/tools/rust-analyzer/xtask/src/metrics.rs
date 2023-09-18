@@ -29,46 +29,38 @@ impl flags::Metrics {
 
         let _env = sh.push_env("RA_METRICS", "1");
 
-        let filename = match self.measurement_type {
-            Some(ms) => match ms {
-                MeasurementType::Build => {
-                    metrics.measure_build(sh)?;
-                    "build.json"
-                }
-                MeasurementType::AnalyzeSelf => {
-                    metrics.measure_analysis_stats_self(sh)?;
-                    "self.json"
-                }
-                MeasurementType::AnalyzeRipgrep => {
-                    metrics.measure_analysis_stats(sh, "ripgrep")?;
-                    "ripgrep.json"
-                }
-                MeasurementType::AnalyzeWebRender => {
-                    {
-                        // https://github.com/rust-lang/rust-analyzer/issues/9997
-                        let _d = sh.push_dir("target/rustc-perf/collector/benchmarks/webrender");
-                        cmd!(sh, "cargo update -p url --precise 1.6.1").run()?;
+        let name = match &self.measurement_type {
+            Some(ms) => {
+                let name = ms.as_ref();
+                match ms {
+                    MeasurementType::Build => {
+                        metrics.measure_build(sh)?;
                     }
-                    metrics.measure_analysis_stats(sh, "webrender")?;
-                    "webrender.json"
-                }
-                MeasurementType::AnalyzeDiesel => {
-                    metrics.measure_analysis_stats(sh, "diesel/diesel")?;
-                    "diesel.json"
-                }
-            },
+                    MeasurementType::AnalyzeSelf => {
+                        metrics.measure_analysis_stats_self(sh)?;
+                    }
+                    MeasurementType::AnalyzeRipgrep
+                    | MeasurementType::AnalyzeWebRender
+                    | MeasurementType::AnalyzeDiesel
+                    | MeasurementType::AnalyzeHyper => {
+                        metrics.measure_analysis_stats(sh, name)?;
+                    }
+                };
+                name
+            }
             None => {
                 metrics.measure_build(sh)?;
                 metrics.measure_analysis_stats_self(sh)?;
-                metrics.measure_analysis_stats(sh, "ripgrep")?;
-                metrics.measure_analysis_stats(sh, "webrender")?;
-                metrics.measure_analysis_stats(sh, "diesel/diesel")?;
-                "all.json"
+                metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeRipgrep.as_ref())?;
+                metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeWebRender.as_ref())?;
+                metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeDiesel.as_ref())?;
+                metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeHyper.as_ref())?;
+                "all"
             }
         };
 
         let mut file =
-            fs::File::options().write(true).create(true).open(format!("target/{}", filename))?;
+            fs::File::options().write(true).create(true).open(format!("target/{}.json", name))?;
         writeln!(file, "{}", metrics.json())?;
         eprintln!("{metrics:#?}");
         Ok(())
@@ -93,7 +85,7 @@ impl Metrics {
         self.measure_analysis_stats_path(
             sh,
             bench,
-            &format!("./target/rustc-perf/collector/benchmarks/{bench}"),
+            &format!("./target/rustc-perf/collector/compile-benchmarks/{bench}"),
         )
     }
     fn measure_analysis_stats_path(
@@ -102,6 +94,7 @@ impl Metrics {
         name: &str,
         path: &str,
     ) -> anyhow::Result<()> {
+        assert!(Path::new(path).exists(), "unable to find bench in {path}");
         eprintln!("\nMeasuring analysis-stats/{name}");
         let output = cmd!(sh, "./target/release/rust-analyzer -q analysis-stats {path}").read()?;
         for (metric, value, unit) in parse_metrics(&output) {
@@ -145,7 +138,7 @@ impl Metrics {
         let host = Host::new(sh)?;
         let timestamp = SystemTime::now();
         let revision = cmd!(sh, "git rev-parse HEAD").read()?;
-        let perf_revision = "c52ee623e231e7690a93be88d943016968c1036b".into();
+        let perf_revision = "a584462e145a0c04760fd9391daefb4f6bd13a99".into();
         Ok(Metrics { host, timestamp, revision, perf_revision, metrics: BTreeMap::new() })
     }
 
