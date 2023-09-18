@@ -18,6 +18,7 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -80,6 +81,7 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -149,6 +151,7 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -159,7 +162,7 @@
                 "CARGO_MANIFEST_DIR": "$ROOT$hello-world",
                 "CARGO_PKG_VERSION": "0.1.0",
                 "CARGO_PKG_AUTHORS": "",
-                "CARGO_CRATE_NAME": "hello_world",
+                "CARGO_CRATE_NAME": "an_example",
                 "CARGO_PKG_LICENSE_FILE": "",
                 "CARGO_PKG_HOMEPAGE": "",
                 "CARGO_PKG_DESCRIPTION": "",
@@ -218,6 +221,7 @@
         cfg_options: CfgOptions(
             [
                 "debug_assertions",
+                "rust_analyzer",
             ],
         ),
         potential_cfg_options: None,
@@ -228,7 +232,7 @@
                 "CARGO_MANIFEST_DIR": "$ROOT$hello-world",
                 "CARGO_PKG_VERSION": "0.1.0",
                 "CARGO_PKG_AUTHORS": "",
-                "CARGO_CRATE_NAME": "hello_world",
+                "CARGO_CRATE_NAME": "it",
                 "CARGO_PKG_LICENSE_FILE": "",
                 "CARGO_PKG_HOMEPAGE": "",
                 "CARGO_PKG_DESCRIPTION": "",

@@ -12,8 +12,8 @@ use crate::{
     from_json,
     global_state::GlobalStateSnapshot,
     line_index::{LineIndex, PositionEncoding},
+    lsp::utils::invalid_params_error,
     lsp_ext,
-    lsp_utils::invalid_params_error,
 };
 
 pub(crate) fn abs_path(url: &lsp_types::Url) -> anyhow::Result<AbsPathBuf> {
@@ -72,7 +72,7 @@ pub(crate) fn file_position(
 
 pub(crate) fn file_range(
     snap: &GlobalStateSnapshot,
-    text_document_identifier: lsp_types::TextDocumentIdentifier,
+    text_document_identifier: &lsp_types::TextDocumentIdentifier,
     range: lsp_types::Range,
 ) -> anyhow::Result<FileRange> {
     file_range_uri(snap, &text_document_identifier.uri, range)

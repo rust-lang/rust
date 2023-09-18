@@ -162,16 +162,16 @@ unsafe impl Allocator for Global {}
 
 #[lang = "owned_box"]
 #[fundamental]
-pub struct Box<T: ?Sized, A: Allocator = Global>;
+pub struct Box<T: ?Sized, A: Allocator = Global>(T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
 fn send() ->  Box<dyn Future<Output = ()> + Send + 'static>{
-    box async move {}
+    Box(async move {})
 }
 
 fn not_send() -> Box<dyn Future<Output = ()> + 'static> {
-    box async move {}
+    Box(async move {})
 }
     "#,
     );
@@ -3057,7 +3057,7 @@ impl<T: ?Sized> core::ops::Deref for Box<T> {
 
 fn foo() {
     let s = None;
-    let f: Box<dyn FnOnce(&Option<i32>)> = box (|ps| {});
+    let f: Box<dyn FnOnce(&Option<i32>)> = Box { inner: &mut (|ps| {}) };
     f(&s);
 }"#,
         expect![[r#"
@@ -3068,19 +3068,19 @@ fn foo() {
             186..197 '*self.inner': T
             187..191 'self': &Box<T>
             187..197 'self.inner': *mut T
-            218..308 '{     ...&s); }': ()
+            218..324 '{     ...&s); }': ()
             228..229 's': Option<i32>
             232..236 'None': Option<i32>
             246..247 'f': Box<dyn FnOnce(&Option<i32>)>
-            281..294 'box (|ps| {})': Box<impl Fn(&Option<i32>)>
-            286..293 '|ps| {}': impl Fn(&Option<i32>)
-            287..289 'ps': &Option<i32>
-            291..293 '{}': ()
-            300..301 'f': Box<dyn FnOnce(&Option<i32>)>
-            300..305 'f(&s)': ()
-            302..304 '&s': &Option<i32>
-            303..304 's': Option<i32>
-            281..294: expected Box<dyn FnOnce(&Option<i32>)>, got Box<impl Fn(&Option<i32>)>
+            281..310 'Box { ... {}) }': Box<dyn FnOnce(&Option<i32>)>
+            294..308 '&mut (|ps| {})': &mut impl Fn(&Option<i32>)
+            300..307 '|ps| {}': impl Fn(&Option<i32>)
+            301..303 'ps': &Option<i32>
+            305..307 '{}': ()
+            316..317 'f': Box<dyn FnOnce(&Option<i32>)>
+            316..321 'f(&s)': ()
+            318..320 '&s': &Option<i32>
+            319..320 's': Option<i32>
         "#]],
     );
 }

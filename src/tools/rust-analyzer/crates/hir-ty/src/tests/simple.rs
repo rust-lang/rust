@@ -3,55 +3,6 @@ use expect_test::expect;
 use super::{check, check_infer, check_no_mismatches, check_types};
 
 #[test]
-fn infer_box() {
-    check_types(
-        r#"
-//- /main.rs crate:main deps:std
-fn test() {
-    let x = box 1;
-    let t = (x, box x, box &1, box [1]);
-    t;
-} //^ (Box<i32>, Box<Box<i32>>, Box<&i32>, Box<[i32; 1]>)
-
-//- /std.rs crate:std
-#[prelude_import] use prelude::*;
-mod prelude {}
-
-mod boxed {
-    #[lang = "owned_box"]
-    pub struct Box<T: ?Sized> {
-        inner: *mut T,
-    }
-}
-"#,
-    );
-}
-
-#[test]
-fn infer_box_with_allocator() {
-    check_types(
-        r#"
-//- /main.rs crate:main deps:std
-fn test() {
-    let x = box 1;
-    let t = (x, box x, box &1, box [1]);
-    t;
-} //^ (Box<i32, {unknown}>, Box<Box<i32, {unknown}>, {unknown}>, Box<&i32, {unknown}>, Box<[i32; 1], {unknown}>)
-
-//- /std.rs crate:std
-#[prelude_import] use prelude::*;
-mod boxed {
-    #[lang = "owned_box"]
-    pub struct Box<T: ?Sized, A: Allocator> {
-        inner: *mut T,
-        allocator: A,
-    }
-}
-"#,
-    );
-}
-
-#[test]
 fn infer_adt_self() {
     check_types(
         r#"
@@ -2763,8 +2714,8 @@ impl<T> [T] {
 }
 
 fn test() {
-    let vec = <[_]>::into_vec(box [1i32]);
-    let v: Vec<Box<dyn B>> = <[_]> :: into_vec(box [box Astruct]);
+    let vec = <[_]>::into_vec(#[rustc_box] Box::new([1i32]));
+    let v: Vec<Box<dyn B>> = <[_]> :: into_vec(#[rustc_box] Box::new([#[rustc_box] Box::new(Astruct)]));
 }
 
 trait B{}
@@ -2774,20 +2725,20 @@ impl B for Astruct {}
         expect![[r#"
             604..608 'self': Box<[T], A>
             637..669 '{     ...     }': Vec<T, A>
-            683..796 '{     ...t]); }': ()
+            683..853 '{     ...])); }': ()
             693..696 'vec': Vec<i32, Global>
             699..714 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
-            699..726 '<[_]>:...1i32])': Vec<i32, Global>
-            715..725 'box [1i32]': Box<[i32; 1], Global>
-            719..725 '[1i32]': [i32; 1]
-            720..724 '1i32': i32
-            736..737 'v': Vec<Box<dyn B, Global>, Global>
-            757..774 '<[_]> ...to_vec': fn into_vec<Box<dyn B, Global>, Global>(Box<[Box<dyn B, Global>], Global>) -> Vec<Box<dyn B, Global>, Global>
-            757..793 '<[_]> ...ruct])': Vec<Box<dyn B, Global>, Global>
-            775..792 'box [b...truct]': Box<[Box<dyn B, Global>; 1], Global>
-            779..792 '[box Astruct]': [Box<dyn B, Global>; 1]
-            780..791 'box Astruct': Box<Astruct, Global>
-            784..791 'Astruct': Astruct
+            699..745 '<[_]>:...i32]))': Vec<i32, Global>
+            715..744 '#[rust...1i32])': Box<[i32; 1], Global>
+            737..743 '[1i32]': [i32; 1]
+            738..742 '1i32': i32
+            755..756 'v': Vec<Box<dyn B, Global>, Global>
+            776..793 '<[_]> ...to_vec': fn into_vec<Box<dyn B, Global>, Global>(Box<[Box<dyn B, Global>], Global>) -> Vec<Box<dyn B, Global>, Global>
+            776..850 '<[_]> ...ct)]))': Vec<Box<dyn B, Global>, Global>
+            794..849 '#[rust...uct)])': Box<[Box<dyn B, Global>; 1], Global>
+            816..848 '[#[rus...ruct)]': [Box<dyn B, Global>; 1]
+            817..847 '#[rust...truct)': Box<Astruct, Global>
+            839..846 'Astruct': Astruct
         "#]],
     )
 }
@@ -3645,6 +3596,33 @@ pub struct CStr;
 fn main() {
     c"ello";
   //^^^^^^^ &CStr
+}
+"#,
+    );
+}
+
+#[test]
+fn offset_of() {
+    check_types(
+        r#"
+fn main() {
+    builtin#offset_of((,), 0);
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^ usize
+}
+"#,
+    );
+}
+
+#[test]
+fn builtin_format_args() {
+    check(
+        r#"
+//- minicore: fmt
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: Arguments<'_>
 }
 "#,
     );

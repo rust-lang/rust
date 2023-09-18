@@ -114,6 +114,7 @@ pub enum MeasurementType {
     AnalyzeRipgrep,
     AnalyzeWebRender,
     AnalyzeDiesel,
+    AnalyzeHyper,
 }
 
 impl FromStr for MeasurementType {
@@ -122,10 +123,23 @@ impl FromStr for MeasurementType {
         match s {
             "build" => Ok(Self::Build),
             "self" => Ok(Self::AnalyzeSelf),
-            "ripgrep" => Ok(Self::AnalyzeRipgrep),
-            "webrender" => Ok(Self::AnalyzeWebRender),
-            "diesel" => Ok(Self::AnalyzeDiesel),
+            "ripgrep-13.0.0" => Ok(Self::AnalyzeRipgrep),
+            "webrender-2022" => Ok(Self::AnalyzeWebRender),
+            "diesel-1.4.8" => Ok(Self::AnalyzeDiesel),
+            "hyper-0.14.18" => Ok(Self::AnalyzeHyper),
             _ => Err("Invalid option".to_string()),
+        }
+    }
+}
+impl AsRef<str> for MeasurementType {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Build => "build",
+            Self::AnalyzeSelf => "self",
+            Self::AnalyzeRipgrep => "ripgrep-13.0.0",
+            Self::AnalyzeWebRender => "webrender-2022",
+            Self::AnalyzeDiesel => "diesel-1.4.8",
+            Self::AnalyzeHyper => "hyper-0.14.18",
         }
     }
 }

@@ -369,6 +369,7 @@ pub fn diagnostics(
             AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d, config.proc_macros_enabled, config.proc_attr_macros_enabled),
             AnyDiagnostic::UnusedMut(d) => handlers::mutability_errors::unused_mut(&ctx, &d),
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
+            AnyDiagnostic::MismatchedTupleStructPatArgCount(d) => handlers::mismatched_arg_count::mismatched_tuple_struct_pat_arg_count(&ctx, &d),
         };
         res.push(d)
     }
@@ -432,7 +433,8 @@ fn handle_lint_attributes(
     diagnostics_of_range: &mut FxHashMap<InFile<SyntaxNode>, &mut Diagnostic>,
 ) {
     let file_id = sema.hir_file_for(root);
-    for ev in root.preorder() {
+    let mut preorder = root.preorder();
+    while let Some(ev) = preorder.next() {
         match ev {
             syntax::WalkEvent::Enter(node) => {
                 for attr in node.children().filter_map(ast::Attr::cast) {
@@ -515,7 +517,7 @@ fn parse_lint_attribute(
     let Some((tag, args_tt)) = attr.as_simple_call() else {
         return;
     };
-    let serevity = match tag.as_str() {
+    let severity = match tag.as_str() {
         "allow" => Severity::Allow,
         "warn" => Severity::Warning,
         "forbid" | "deny" => Severity::Error,
@@ -523,12 +525,12 @@ fn parse_lint_attribute(
     };
     for lint in parse_tt_as_comma_sep_paths(args_tt).into_iter().flatten() {
         if let Some(lint) = lint.as_single_name_ref() {
-            job(rustc_stack.entry(lint.to_string()).or_default(), serevity);
+            job(rustc_stack.entry(lint.to_string()).or_default(), severity);
         }
         if let Some(tool) = lint.qualifier().and_then(|x| x.as_single_name_ref()) {
             if let Some(name_ref) = &lint.segment().and_then(|x| x.name_ref()) {
                 if tool.to_string() == "clippy" {
-                    job(clippy_stack.entry(name_ref.to_string()).or_default(), serevity);
+                    job(clippy_stack.entry(name_ref.to_string()).or_default(), severity);
                 }
             }
         }

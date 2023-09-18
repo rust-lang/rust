@@ -57,10 +57,12 @@ pub(super) fn hints(
                     }
                 }
             }
+            let label = label_of_ty(famous_defs, config, &ty)?;
             acc.push(InlayHint {
+                needs_resolve: label.needs_resolve(),
                 range: expr.syntax().text_range(),
                 kind: InlayKind::Chaining,
-                label: label_of_ty(famous_defs, config, &ty)?,
+                label,
                 text_edit: None,
                 position: InlayHintPosition::After,
                 pad_left: true,
@@ -128,6 +130,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 147..154,
@@ -152,6 +155,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                 ]
             "#]],
@@ -221,6 +225,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 143..179,
@@ -245,6 +250,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                 ]
             "#]],
@@ -298,6 +304,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 143..179,
@@ -322,6 +329,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                 ]
             "#]],
@@ -389,6 +397,7 @@ fn main() {
                             "<i32, bool>>",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 246..265,
@@ -426,6 +435,7 @@ fn main() {
                             "<i32, bool>>",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                 ]
             "#]],
@@ -474,7 +484,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9289..9297,
+                                        range: 10739..10747,
                                     },
                                 ),
                                 tooltip: "",
@@ -487,7 +497,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9321..9325,
+                                        range: 10771..10775,
                                     },
                                 ),
                                 tooltip: "",
@@ -495,6 +505,7 @@ fn main() {
                             " = ()>",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 174..224,
@@ -511,7 +522,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9289..9297,
+                                        range: 10739..10747,
                                     },
                                 ),
                                 tooltip: "",
@@ -524,7 +535,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9321..9325,
+                                        range: 10771..10775,
                                     },
                                 ),
                                 tooltip: "",
@@ -532,6 +543,7 @@ fn main() {
                             " = ()>",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 174..206,
@@ -548,7 +560,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9289..9297,
+                                        range: 10739..10747,
                                     },
                                 ),
                                 tooltip: "",
@@ -561,7 +573,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9321..9325,
+                                        range: 10771..10775,
                                     },
                                 ),
                                 tooltip: "",
@@ -569,6 +581,7 @@ fn main() {
                             " = ()>",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 174..189,
@@ -593,6 +606,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                 ]
             "#]],
@@ -655,6 +669,7 @@ fn main() {
                                 ],
                             },
                         ),
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 145..185,
@@ -679,6 +694,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 145..168,
@@ -703,6 +719,7 @@ fn main() {
                             "",
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                     InlayHint {
                         range: 222..228,
@@ -725,6 +742,7 @@ fn main() {
                             },
                         ],
                         text_edit: None,
+                        needs_resolve: true,
                     },
                 ]
             "#]],

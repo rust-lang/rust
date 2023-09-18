@@ -178,13 +178,30 @@ impl InferenceContext<'_> {
         remaining_index: usize,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Substitution)> {
-        assert!(remaining_index < path.segments().len());
         // there may be more intermediate segments between the resolved one and
         // the end. Only the last segment needs to be resolved to a value; from
         // the segments before that, we need to get either a type or a trait ref.
 
-        let resolved_segment = path.segments().get(remaining_index - 1).unwrap();
-        let remaining_segments = path.segments().skip(remaining_index);
+        let _d;
+        let (resolved_segment, remaining_segments) = match path {
+            Path::Normal { .. } => {
+                assert!(remaining_index < path.segments().len());
+                (
+                    path.segments().get(remaining_index - 1).unwrap(),
+                    path.segments().skip(remaining_index),
+                )
+            }
+            Path::LangItem(..) => (
+                PathSegment {
+                    name: {
+                        _d = hir_expand::name::known::Unknown;
+                        &_d
+                    },
+                    args_and_bindings: None,
+                },
+                path.segments(),
+            ),
+        };
         let is_before_last = remaining_segments.len() == 1;
 
         match (def, is_before_last) {

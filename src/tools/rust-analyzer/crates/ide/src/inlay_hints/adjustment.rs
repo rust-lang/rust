@@ -137,21 +137,23 @@ pub(super) fn hints(
             }
             _ => continue,
         };
+        let label = InlayHintLabel::simple(
+            if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
+            Some(InlayTooltip::Markdown(format!(
+                "`{}` → `{}` ({coercion} coercion)",
+                source.display(sema.db),
+                target.display(sema.db),
+            ))),
+            None,
+        );
         acc.push(InlayHint {
+            needs_resolve: label.needs_resolve(),
             range: expr.syntax().text_range(),
             pad_left: false,
             pad_right: false,
             position: if postfix { InlayHintPosition::After } else { InlayHintPosition::Before },
             kind: InlayKind::Adjustment,
-            label: InlayHintLabel::simple(
-                if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
-                Some(InlayTooltip::Markdown(format!(
-                    "`{}` → `{}` ({coercion} coercion)",
-                    source.display(sema.db),
-                    target.display(sema.db),
-                ))),
-                None,
-            ),
+            label,
             text_edit: None,
         });
     }

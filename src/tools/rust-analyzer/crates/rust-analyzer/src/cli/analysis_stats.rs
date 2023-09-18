@@ -15,7 +15,10 @@ use hir_def::{
     hir::{ExprId, PatId},
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
-use ide::{Analysis, AnnotationConfig, DiagnosticsConfig, InlayHintsConfig, LineCol, RootDatabase};
+use ide::{
+    Analysis, AnnotationConfig, DiagnosticsConfig, InlayFieldsToResolve, InlayHintsConfig, LineCol,
+    RootDatabase,
+};
 use ide_db::{
     base_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
@@ -317,9 +320,13 @@ impl flags::AnalysisStats {
 
     fn run_mir_lowering(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
         let mut sw = self.stop_watch();
-        let all = bodies.len() as u64;
+        let mut all = 0;
         let mut fail = 0;
         for &body in bodies {
+            if matches!(body, DefWithBody::Variant(_)) {
+                continue;
+            }
+            all += 1;
             let Err(e) = db.mir_body(body.into()) else {
                 continue;
             };
@@ -782,6 +789,7 @@ impl flags::AnalysisStats {
                     closure_style: hir::ClosureStyle::ImplFn,
                     max_length: Some(25),
                     closing_brace_hints_min_lines: Some(20),
+                    fields_to_resolve: InlayFieldsToResolve::empty(),
                 },
                 file_id,
                 None,
