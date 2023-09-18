@@ -291,6 +291,17 @@ macro_rules! int_module {
             }
 
             #[test]
+            fn test_isqrt() {
+                assert_eq!($T::MIN.checked_isqrt(), None);
+                assert_eq!((-1 as $T).checked_isqrt(), None);
+                assert_eq!((0 as $T).isqrt(), 0 as $T);
+                assert_eq!((1 as $T).isqrt(), 1 as $T);
+                assert_eq!((2 as $T).isqrt(), 1 as $T);
+                assert_eq!((99 as $T).isqrt(), 9 as $T);
+                assert_eq!((100 as $T).isqrt(), 10 as $T);
+            }
+
+            #[test]
             fn test_div_floor() {
                 let a: $T = 8;
                 let b = 3;

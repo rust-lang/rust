@@ -207,6 +207,16 @@ macro_rules! uint_module {
             }
 
             #[test]
+            fn test_isqrt() {
+                assert_eq!((0 as $T).isqrt(), 0 as $T);
+                assert_eq!((1 as $T).isqrt(), 1 as $T);
+                assert_eq!((2 as $T).isqrt(), 1 as $T);
+                assert_eq!((99 as $T).isqrt(), 9 as $T);
+                assert_eq!((100 as $T).isqrt(), 10 as $T);
+                assert_eq!($T::MAX.isqrt(), (1 << ($T::BITS / 2)) - 1);
+            }
+
+            #[test]
             fn test_div_floor() {
                 assert_eq!((8 as $T).div_floor(3), 2);
             }
