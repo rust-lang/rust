@@ -78,6 +78,7 @@ mod path_ends_with_ext;
 mod range_zip_with_len;
 mod read_line_without_trim;
 mod readonly_write_lock;
+mod redundant_as_str;
 mod repeat_once;
 mod search_is_some;
 mod seek_from_current;
@@ -3605,6 +3606,32 @@ declare_clippy_lint! {
     "attempting to compare file extensions using `Path::ends_with`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `as_str()` on a `String`` chained with a method available on the `String` itself.
+    ///
+    /// ### Why is this bad?
+    /// The `as_str()` conversion is pointless and can be removed for simplicity and cleanliness.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # #![allow(unused)]
+    /// let owned_string = "This is a string".to_owned();
+    /// owned_string.as_str().as_bytes();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # #![allow(unused)]
+    /// let owned_string = "This is a string".to_owned();
+    /// owned_string.as_bytes();
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub REDUNDANT_AS_STR,
+    complexity,
+    "`as_str` used to call a method on `str` that is also available on `String`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3749,6 +3776,7 @@ impl_lint_pass!(Methods => [
     READONLY_WRITE_LOCK,
     ITER_OUT_OF_BOUNDS,
     PATH_ENDS_WITH_EXT,
+    REDUNDANT_AS_STR,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3975,6 +4003,7 @@ impl Methods {
                 ("as_deref" | "as_deref_mut", []) => {
                     needless_option_as_deref::check(cx, expr, recv, name);
                 },
+                ("as_bytes" | "is_empty", []) => if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) { redundant_as_str::check(cx, expr, recv, as_str_span, span); },
                 ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
                 ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
                 ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
