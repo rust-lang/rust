@@ -26,7 +26,7 @@ pub fn print_free_disk_space() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn print_binary_sizes(env: &dyn Environment) -> anyhow::Result<()> {
+pub fn print_binary_sizes(env: &Environment) -> anyhow::Result<()> {
     use std::fmt::Write;
 
     let root = env.build_artifacts().join("stage2");
@@ -48,7 +48,7 @@ pub fn print_binary_sizes(env: &dyn Environment) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn clear_llvm_files(env: &dyn Environment) -> anyhow::Result<()> {
+pub fn clear_llvm_files(env: &Environment) -> anyhow::Result<()> {
     // Bootstrap currently doesn't support rebuilding LLVM when PGO options
     // change (or any other llvm-related options); so just clear out the relevant
     // directories ourselves.
