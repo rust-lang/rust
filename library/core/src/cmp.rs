@@ -1286,7 +1286,7 @@ pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_minmax", issue = "none")]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
 pub fn minmax<T>(v1: T, v2: T) -> [T; 2]
 where
     T: Ord,
@@ -1314,7 +1314,7 @@ where
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_minmax", issue = "none")]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
 pub fn minmax_by<T, F>(v1: T, v2: T, compare: F) -> [T; 2]
 where
     F: FnOnce(&T, &T) -> Ordering,
@@ -1342,7 +1342,7 @@ where
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_minmax", issue = "none")]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
 pub fn minmax_by_key<T, F, K>(v1: T, v2: T, mut f: F) -> [T; 2]
 where
     F: FnMut(&T) -> K,
