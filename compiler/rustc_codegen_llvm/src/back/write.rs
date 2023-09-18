@@ -26,7 +26,7 @@ use llvm::{
     LLVMVoidTypeInContext, LLVMGlobalGetValueType, LLVMGetStringAttributeAtIndex,
     LLVMIsStringAttribute, LLVMRemoveStringAttributeAtIndex, LLVMRemoveEnumAttributeAtIndex, AttributeKind,
     LLVMGetFirstFunction, LLVMGetNextFunction, LLVMGetEnumAttributeAtIndex, LLVMIsEnumAttribute,
-    LLVMCreateStringAttribute, LLVMRustAddFunctionAttributes, LLVMCreateEnumAttribute
+    LLVMCreateStringAttribute, LLVMRustAddFunctionAttributes, LLVMCreateEnumAttribute, LLVMDumpModule
 };
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
@@ -746,6 +746,10 @@ pub(crate) unsafe fn differentiate(
 
     llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
 
+    if std::env::var("ENZYME_PRINT_MOD").is_ok() {
+        unsafe {LLVMDumpModule(llmod);}
+
+    }
     for item in diff_items {
         let res = enzyme_ad(llmod, llcx, item);
         assert!(res.is_ok());
