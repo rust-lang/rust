@@ -669,7 +669,7 @@ fn ty_known_to_outlive<'tcx>(
 
 /// Given a known `param_env` and a set of well formed types, can we prove that
 /// `region_a` outlives `region_b`
-fn region_known_to_outlive<'tcx>(
+pub fn region_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,

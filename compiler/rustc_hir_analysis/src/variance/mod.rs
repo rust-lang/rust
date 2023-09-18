@@ -11,6 +11,8 @@ use rustc_middle::ty::{self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use std::ops::ControlFlow;
 
+use crate::check::wfcheck::region_known_to_outlive;
+
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.
 mod terms;
@@ -82,13 +84,13 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
     // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;
     // ```
     // we may not use `'c` in the hidden type.
-    struct OpaqueTypeLifetimeCollector<'tcx> {
+    struct OpaqueTypeLifetimeCollector<'tcx, 'a> {
         tcx: TyCtxt<'tcx>,
         root_def_id: DefId,
-        variances: Vec<ty::Variance>,
+        variances: &'a mut Vec<ty::Variance>,
     }
 
-    impl<'tcx> OpaqueTypeLifetimeCollector<'tcx> {
+    impl<'tcx> OpaqueTypeLifetimeCollector<'tcx, '_> {
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_opaque(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) -> ControlFlow<!> {
             if def_id != self.root_def_id && self.tcx.is_descendant_of(def_id, self.root_def_id) {
@@ -105,7 +107,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         }
     }
 
-    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeLifetimeCollector<'tcx> {
+    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeLifetimeCollector<'tcx, '_> {
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::RegionKind::ReEarlyBound(ebr) = r.kind() {
@@ -157,8 +159,50 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         }
     }
 
-    let mut collector =
-        OpaqueTypeLifetimeCollector { tcx, root_def_id: item_def_id.to_def_id(), variances };
+    if tcx.features().improved_impl_trait_captures {
+        let id_args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
+        let opaque = Ty::new_opaque(tcx, item_def_id.to_def_id(), id_args);
+        let outlives_regions: Vec<_> = tcx
+            .item_bounds(item_def_id)
+            .instantiate_identity_iter()
+            .filter_map(|clause| {
+                if let Some(outlives) = clause.as_type_outlives_clause()
+                    && let Some(outlives) = outlives.no_bound_vars()
+                    && outlives.0 == opaque
+                {
+                    Some(outlives.1)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let param_env = tcx.param_env(item_def_id);
+        if !outlives_regions.is_empty() {
+            for (variance, arg) in std::iter::zip(&mut variances, id_args) {
+                if let Some(captured_region) = arg.as_region()
+                    && *variance == ty::Variance::Invariant
+                    && !outlives_regions.iter().any(|&outlives_region| {
+                        region_known_to_outlive(
+                            tcx,
+                            item_def_id,
+                            param_env,
+                            &Default::default(),
+                            captured_region,
+                            outlives_region
+                        )
+                    })
+                {
+                    *variance = ty::Variance::Bivariant;
+                }
+            }
+        }
+    }
+
+    let mut collector = OpaqueTypeLifetimeCollector {
+        tcx,
+        root_def_id: item_def_id.to_def_id(),
+        variances: &mut variances,
+    };
     let id_args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
     for (pred, _) in tcx.explicit_item_bounds(item_def_id).iter_instantiated_copied(tcx, id_args) {
         debug!(?pred);
@@ -194,5 +238,5 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
             }
         }
     }
-    tcx.arena.alloc_from_iter(collector.variances.into_iter())
+    tcx.arena.alloc_from_iter(variances.into_iter())
 }
