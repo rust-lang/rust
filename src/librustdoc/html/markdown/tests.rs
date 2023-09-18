@@ -49,7 +49,7 @@ fn test_unique_id() {
 fn test_lang_string_parse() {
     fn t(lg: LangString) {
         let s = &lg.original;
-        assert_eq!(LangString::parse(s, ErrorCodes::Yes, true, None), lg)
+        assert_eq!(LangString::parse(s, ErrorCodes::Yes, true, None, true), lg)
     }
 
     t(Default::default());
@@ -290,6 +290,7 @@ fn test_header() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            custom_code_classes_in_docs: true,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -329,6 +330,7 @@ fn test_header_ids_multiple_blocks() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            custom_code_classes_in_docs: true,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -433,7 +435,7 @@ fn test_find_testable_code_line() {
             }
         }
         let mut lines = Vec::<usize>::new();
-        find_testable_code(input, &mut lines, ErrorCodes::No, false, None);
+        find_testable_code(input, &mut lines, ErrorCodes::No, false, None, true);
         assert_eq!(lines, expect);
     }
 
@@ -458,6 +460,7 @@ fn test_ascii_with_prepending_hashtag() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            custom_code_classes_in_docs: true,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
