@@ -814,6 +814,14 @@ macro_rules! uint_impl {
 
                 // Optimization for 128 bit wide integers.
                 if Self::BITS == 128 {
+                    // The following is a correct lower bound for ⌊log(base,self)⌋ because
+                    //
+                    // log(base,self) = log(2,self) / log(2,base)
+                    //                ≥ ⌊log(2,self)⌋ / (⌊log(2,base)⌋ + 1)
+                    //
+                    // hence
+                    //
+                    // ⌊log(base,self)⌋ ≥ ⌊ ⌊log(2,self)⌋ / (⌊log(2,base)⌋ + 1) ⌋ .
                     n = self.ilog2() / (base.ilog2() + 1);
                     r = base.pow(n);
                 }
