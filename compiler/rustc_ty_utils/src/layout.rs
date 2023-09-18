@@ -36,6 +36,9 @@ fn layout_of<'tcx>(
     let (param_env, ty) = query.into_parts();
     debug!(?ty);
 
+    // Optimization: We convert to RevealAll and convert opaque types in the where bounds
+    // to their hidden types. This reduces overall uncached invocations of `layout_of` and
+    // is thus a small performance improvement.
     let param_env = param_env.with_reveal_all_normalized(tcx);
     let unnormalized_ty = ty;
 

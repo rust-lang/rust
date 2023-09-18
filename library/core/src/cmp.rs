@@ -1289,6 +1289,91 @@ pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
 
+/// Compares and sorts two values, returning minimum and maximum.
+///
+/// Returns `[v1, v2]` if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_minmax)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::minmax(1, 2), [1, 2]);
+/// assert_eq!(cmp::minmax(2, 2), [2, 2]);
+///
+/// // You can destructure the result using array patterns
+/// let [min, max] = cmp::minmax(42, 17);
+/// assert_eq!(min, 17);
+/// assert_eq!(max, 42);
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
+pub fn minmax<T>(v1: T, v2: T) -> [T; 2]
+where
+    T: Ord,
+{
+    if v1 <= v2 { [v1, v2] } else { [v2, v1] }
+}
+
+/// Returns minimum and maximum values with respect to the specified comparison function.
+///
+/// Returns `[v1, v2]` if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_minmax)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::minmax_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), [1, -2]);
+/// assert_eq!(cmp::minmax_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), [-2, 2]);
+///
+/// // You can destructure the result using array patterns
+/// let [min, max] = cmp::minmax_by(-42, 17, |x: &i32, y: &i32| x.abs().cmp(&y.abs()));
+/// assert_eq!(min, 17);
+/// assert_eq!(max, -42);
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
+pub fn minmax_by<T, F>(v1: T, v2: T, compare: F) -> [T; 2]
+where
+    F: FnOnce(&T, &T) -> Ordering,
+{
+    if compare(&v1, &v2).is_le() { [v1, v2] } else { [v2, v1] }
+}
+
+/// Returns minimum and maximum values with respect to the specified key function.
+///
+/// Returns `[v1, v2]` if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_minmax)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::minmax_by_key(-2, 1, |x: &i32| x.abs()), [1, -2]);
+/// assert_eq!(cmp::minmax_by_key(-2, 2, |x: &i32| x.abs()), [-2, 2]);
+///
+/// // You can destructure the result using array patterns
+/// let [min, max] = cmp::minmax_by_key(-42, 17, |x: &i32| x.abs());
+/// assert_eq!(min, 17);
+/// assert_eq!(max, -42);
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
+pub fn minmax_by_key<T, F, K>(v1: T, v2: T, mut f: F) -> [T; 2]
+where
+    F: FnMut(&T) -> K,
+    K: Ord,
+{
+    minmax_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+}
+
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 mod impls {
     use crate::cmp::Ordering::{self, Equal, Greater, Less};
