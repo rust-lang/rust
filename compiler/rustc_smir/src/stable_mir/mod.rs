@@ -96,6 +96,14 @@ impl CrateItem {
     pub fn span(&self) -> Span {
         with(|cx| cx.span_of_an_item(self.0))
     }
+
+    pub fn name(&self) -> String {
+        with(|cx| cx.name_of_def_id(self.0))
+    }
+
+    pub fn kind(&self) -> DefKind {
+        with(|cx| cx.def_kind(self.0))
+    }
 }
 
 /// Return the function where execution starts if the current
@@ -165,6 +173,8 @@ pub trait Context {
     fn name_of_def_id(&self, def_id: DefId) -> String;
 
     fn print_span(&self, span: Span) -> String;
+
+    fn def_kind(&mut self, def_id: DefId) -> DefKind;
     /// `Span` of an item
     fn span_of_an_item(&mut self, def_id: DefId) -> Span;
 

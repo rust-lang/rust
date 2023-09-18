@@ -13,6 +13,7 @@ use crate::stable_mir::ty::{
     FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy,
 };
 use crate::stable_mir::{self, CompilerError, Context};
+use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -48,6 +49,9 @@ impl<'tcx> Context for Tables<'tcx> {
         self.tcx.sess.source_map().span_to_diagnostic_string(self[span])
     }
 
+    fn def_kind(&mut self, def_id: stable_mir::DefId) -> stable_mir::DefKind {
+        self.tcx.def_kind(self[def_id]).stable(self)
+    }
 
     fn span_of_an_item(&mut self, def_id: stable_mir::DefId) -> Span {
         self.tcx.def_span(self[def_id]).stable(self)
@@ -1517,5 +1521,14 @@ impl<'tcx> Stable<'tcx> for rustc_span::Span {
 impl<T> From<ErrorGuaranteed> for CompilerError<T> {
     fn from(_error: ErrorGuaranteed) -> Self {
         CompilerError::CompilationFailed
+    }
+}
+
+impl<'tcx> Stable<'tcx> for DefKind {
+    type T = stable_mir::DefKind;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        // FIXME: add a real implementation of stable DefKind
+        opaque(self)
     }
 }
