@@ -578,4 +578,4 @@ pub fn check(path: &Path, bad: &mut bool) {
         let _unused = skip_line_length;
         let _unused = skip_file_length;
     })
-    }
+}
