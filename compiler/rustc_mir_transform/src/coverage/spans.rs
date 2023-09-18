@@ -333,7 +333,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
         initial_spans.push(CoverageSpan::for_fn_sig(self.fn_sig_span));
 
-        initial_spans.sort_unstable_by(|a, b| {
+        initial_spans.sort_by(|a, b| {
             if a.span.lo() == b.span.lo() {
                 if a.span.hi() == b.span.hi() {
                     if a.is_in_same_bcb(b) {
@@ -357,6 +357,9 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                 a.span.lo().partial_cmp(&b.span.lo())
             }
             .unwrap()
+            // If two spans are otherwise identical, put closure spans first,
+            // as this seems to be what the refinement step expects.
+            .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
         });
 
         initial_spans
