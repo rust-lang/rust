@@ -18,6 +18,7 @@ pub struct Environment {
     /// List of test paths that should be skipped when testing the optimized artifacts.
     skipped_tests: Vec<String>,
     /// Directory containing a pre-built rustc-perf checkout.
+    #[builder(default)]
     prebuilt_rustc_perf: Option<Utf8PathBuf>,
     use_bolt: bool,
     shared_llvm: bool,
