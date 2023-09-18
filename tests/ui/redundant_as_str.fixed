@@ -3,4 +3,7 @@
 fn main() {
     let _redundant = "Hello, world!".to_owned().as_bytes();
     let _redundant = "Hello, world!".to_owned().is_empty();
+
+    let _ok = "Hello, world!".to_owned().as_bytes();
+    let _ok = "Hello, world!".to_owned().is_empty();
 }
