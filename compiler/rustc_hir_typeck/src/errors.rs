@@ -6,7 +6,7 @@ use rustc_errors::{
     AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg, MultiSpan,
     SubdiagnosticMessage,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{
     edition::{Edition, LATEST_STABLE_EDITION},
@@ -269,6 +269,69 @@ pub struct LangStartIncorrectRetTy<'tcx> {
     pub found_ty: Ty<'tcx>,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_lossy_provenance_int2ptr)]
+#[help]
+pub struct LossyProvenanceInt2Ptr<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: LossyProvenanceInt2PtrSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(hir_typeck_suggestion, applicability = "has-placeholders")]
+pub struct LossyProvenanceInt2PtrSuggestion {
+    #[suggestion_part(code = "(...).with_addr(")]
+    pub lo: Span,
+    #[suggestion_part(code = ")")]
+    pub hi: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_lossy_provenance_ptr2int)]
+#[help]
+pub struct LossyProvenancePtr2Int<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: LossyProvenancePtr2IntSuggestion<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum LossyProvenancePtr2IntSuggestion<'tcx> {
+    #[multipart_suggestion(hir_typeck_suggestion, applicability = "maybe-incorrect")]
+    NeedsParensCast {
+        #[suggestion_part(code = "(")]
+        expr_span: Span,
+        #[suggestion_part(code = ").addr() as {cast_ty}")]
+        cast_span: Span,
+        cast_ty: Ty<'tcx>,
+    },
+    #[multipart_suggestion(hir_typeck_suggestion, applicability = "maybe-incorrect")]
+    NeedsParens {
+        #[suggestion_part(code = "(")]
+        expr_span: Span,
+        #[suggestion_part(code = ").addr()")]
+        cast_span: Span,
+    },
+    #[suggestion(
+        hir_typeck_suggestion,
+        code = ".addr() as {cast_ty}",
+        applicability = "maybe-incorrect"
+    )]
+    NeedsCast {
+        #[primary_span]
+        cast_span: Span,
+        cast_ty: Ty<'tcx>,
+    },
+    #[suggestion(hir_typeck_suggestion, code = ".addr()", applicability = "maybe-incorrect")]
+    Other {
+        #[primary_span]
+        cast_span: Span,
+    },
+}
+
 #[derive(Subdiagnostic)]
 pub enum HelpUseLatestEdition {
     #[help(hir_typeck_help_set_edition_cargo)]
@@ -296,6 +359,20 @@ pub struct InvalidCallee {
     #[primary_span]
     pub span: Span,
     pub ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_int_to_fat, code = "E0606")]
+pub struct IntToWide<'tcx> {
+    #[primary_span]
+    #[label(hir_typeck_int_to_fat_label)]
+    pub span: Span,
+    pub metadata: &'tcx str,
+    pub expr_ty: String,
+    pub cast_ty: Ty<'tcx>,
+    #[label(hir_typeck_int_to_fat_label_nightly)]
+    pub expr_if_nightly: Option<Span>,
+    pub known_wide: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -396,6 +473,20 @@ pub struct UnionPatDotDot {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    hir_typeck_use_is_empty,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub struct UseIsEmpty {
+    #[suggestion_part(code = "!")]
+    pub lo: Span,
+    #[suggestion_part(code = ".is_empty()")]
+    pub hi: Span,
+    pub expr_ty: String,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_arg_mismatch_indeterminate)]
 pub struct ArgMismatchIndeterminate {
@@ -442,6 +533,15 @@ pub struct SuggestPtrNullMut {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_trivial_cast)]
+#[help]
+pub struct TrivialCast<'tcx> {
+    pub numeric: bool,
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_no_associated_item, code = "E0599")]
 pub struct NoAssociatedItem {
@@ -465,11 +565,87 @@ pub struct CandidateTraitNote {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_cannot_cast_to_bool, code = "E0054")]
+pub struct CannotCastToBool<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub expr_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub help: CannotCastToBoolHelp,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_cast_enum_drop)]
+pub struct CastEnumDrop<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_cast_unknown_pointer, code = "E0641")]
+pub struct CastUnknownPointer {
+    #[primary_span]
+    pub span: Span,
+    pub to: bool,
+    #[subdiagnostic]
+    pub sub: CastUnknownPointerSub,
+}
+
+pub enum CastUnknownPointerSub {
+    To(Span),
+    From(Span),
+}
+
+impl rustc_errors::AddToDiagnostic for CastUnknownPointerSub {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, f: F)
+    where
+        F: Fn(
+            &mut Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        match self {
+            CastUnknownPointerSub::To(span) => {
+                let msg = f(diag, crate::fluent_generated::hir_typeck_label_to.into());
+                diag.span_label(span, msg);
+                let msg = f(diag, crate::fluent_generated::hir_typeck_note.into());
+                diag.note(msg);
+            }
+            CastUnknownPointerSub::From(span) => {
+                let msg = f(diag, crate::fluent_generated::hir_typeck_label_from.into());
+                diag.span_label(span, msg);
+            }
+        }
+    }
+}
+
+#[derive(Subdiagnostic)]
+pub enum CannotCastToBoolHelp {
+    #[suggestion(
+        hir_typeck_suggestion,
+        applicability = "machine-applicable",
+        code = " != 0",
+        style = "verbose"
+    )]
+    Numeric(#[primary_span] Span),
+    #[label(hir_typeck_label)]
+    Unsupported(#[primary_span] Span),
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_ctor_is_private, code = "E0603")]
 pub struct CtorIsPrivate {
     #[primary_span]
     pub span: Span,
     pub def: String,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_deref_is_empty)]
+pub struct DerefImplsIsEmpty {
+    #[primary_span]
+    pub span: Span,
+    pub deref_ty: String,
 }
 
 #[derive(Subdiagnostic)]
