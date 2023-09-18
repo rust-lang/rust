@@ -1465,6 +1465,7 @@ symbols! {
         simd_shl,
         simd_shr,
         simd_shuffle,
+        simd_shuffle_generic,
         simd_sub,
         simd_trunc,
         simd_xor,
