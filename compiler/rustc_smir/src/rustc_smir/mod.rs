@@ -7,12 +7,11 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::rustc_internal::opaque;
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{
     FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy,
 };
-use crate::stable_mir::{self, CompilerError, Context};
+use crate::stable_mir::{self, opaque, CompilerError, Context};
 use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_middle::mir;

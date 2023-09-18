@@ -1,7 +1,7 @@
-use crate::rustc_internal::Opaque;
 use crate::stable_mir::ty::{
     AdtDef, ClosureDef, Const, GeneratorDef, GenericArgs, Movability, Region,
 };
+use crate::stable_mir::Opaque;
 use crate::stable_mir::{self, ty::Ty, Span};
 
 #[derive(Clone, Debug)]

@@ -1,9 +1,8 @@
 use super::{
     mir::Safety,
     mir::{Body, Mutability},
-    with, AllocId, DefId,
+    with, AllocId, DefId, Opaque,
 };
-use crate::rustc_internal::Opaque;
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Copy, Clone)]

@@ -3,7 +3,6 @@
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
 //! until stable MIR is complete.
 
-use std::fmt::Debug;
 use std::ops::{ControlFlow, Index};
 
 use crate::rustc_internal;
@@ -134,26 +133,6 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
         Tables { tcx, def_ids: vec![], alloc_ids: vec![], spans: vec![], types: vec![] },
         f,
     );
-}
-
-/// A type that provides internal information but that can still be used for debug purpose.
-#[derive(Clone)]
-pub struct Opaque(String);
-
-impl std::fmt::Display for Opaque {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::fmt::Debug for Opaque {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-pub(crate) fn opaque<T: Debug>(value: &T) -> Opaque {
-    Opaque(format!("{value:?}"))
 }
 
 pub struct StableMir<B = (), C = ()>

@@ -1,10 +1,11 @@
 use std::ops::ControlFlow;
 
-use crate::rustc_internal::Opaque;
-
-use super::ty::{
-    Allocation, Binder, Const, ConstDef, ConstantKind, ExistentialPredicate, FnSig, GenericArgKind,
-    GenericArgs, Promoted, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
+use super::{
+    ty::{
+        Allocation, Binder, Const, ConstDef, ConstantKind, ExistentialPredicate, FnSig,
+        GenericArgKind, GenericArgs, Promoted, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
+    },
+    Opaque,
 };
 
 pub trait Folder: Sized {

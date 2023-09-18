@@ -15,8 +15,6 @@ use std::cell::Cell;
 use std::fmt;
 use std::fmt::Debug;
 
-use crate::rustc_internal::Opaque;
-
 use self::ty::{
     GenericPredicates, Generics, ImplDef, ImplTrait, Span, TraitDecl, TraitDef, Ty, TyKind,
 };
@@ -209,4 +207,24 @@ pub(crate) fn with<R>(f: impl FnOnce(&mut dyn Context) -> R) -> R {
         assert!(!ptr.is_null());
         f(unsafe { *(ptr as *mut &mut dyn Context) })
     })
+}
+
+/// A type that provides internal information but that can still be used for debug purpose.
+#[derive(Clone)]
+pub struct Opaque(String);
+
+impl std::fmt::Display for Opaque {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::fmt::Debug for Opaque {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+pub(crate) fn opaque<T: Debug>(value: &T) -> Opaque {
+    Opaque(format!("{value:?}"))
 }
