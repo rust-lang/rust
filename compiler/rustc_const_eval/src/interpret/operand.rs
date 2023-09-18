@@ -8,15 +8,14 @@ use either::{Either, Left, Right};
 use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, Ty, ValTree};
+use rustc_middle::ty::{ConstInt, Ty};
 use rustc_middle::{mir, ty};
-use rustc_span::Span;
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer,
-    Projectable, Provenance, Scalar,
+    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer, Projectable,
+    Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -699,54 +698,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         trace!("{:?}: {:?}", mir_op, op);
         Ok(op)
-    }
-
-    fn eval_ty_constant(
-        &self,
-        val: ty::Const<'tcx>,
-        span: Option<Span>,
-    ) -> InterpResult<'tcx, ValTree<'tcx>> {
-        Ok(match val.kind() {
-            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
-                throw_inval!(TooGeneric)
-            }
-            // FIXME(generic_const_exprs): `ConstKind::Expr` should be able to be evaluated
-            ty::ConstKind::Expr(_) => throw_inval!(TooGeneric),
-            ty::ConstKind::Error(reported) => {
-                throw_inval!(AlreadyReported(reported.into()))
-            }
-            ty::ConstKind::Unevaluated(uv) => {
-                let instance = self.resolve(uv.def, uv.args)?;
-                let cid = GlobalId { instance, promoted: None };
-                self.ctfe_query(span, |tcx| tcx.eval_to_valtree(self.param_env.and(cid)))?
-                    .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
-            }
-            ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
-                span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {val:?}")
-            }
-            ty::ConstKind::Value(valtree) => valtree,
-        })
-    }
-
-    pub fn eval_mir_constant(
-        &self,
-        val: &mir::ConstantKind<'tcx>,
-        span: Option<Span>,
-        layout: Option<TyAndLayout<'tcx>>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        match *val {
-            mir::ConstantKind::Ty(ct) => {
-                let ty = ct.ty();
-                let valtree = self.eval_ty_constant(ct, span)?;
-                let const_val = self.tcx.valtree_to_const_val((ty, valtree));
-                self.const_val_to_op(const_val, ty, layout)
-            }
-            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
-            mir::ConstantKind::Unevaluated(uv, _) => {
-                let instance = self.resolve(uv.def, uv.args)?;
-                Ok(self.eval_global(GlobalId { instance, promoted: uv.promoted }, span)?.into())
-            }
-        }
     }
 
     pub(crate) fn const_val_to_op(

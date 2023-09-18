@@ -300,7 +300,7 @@ impl<'tcx> Const<'tcx> {
             | ConstKind::Infer(_)
             | ConstKind::Bound(_, _)
             | ConstKind::Placeholder(_)
-            | ConstKind::Expr(_) => Err(ErrorHandled::TooGeneric),
+            | ConstKind::Expr(_) => Err(ErrorHandled::TooGeneric(span.unwrap_or(DUMMY_SP))),
         }
     }
 
@@ -309,8 +309,8 @@ impl<'tcx> Const<'tcx> {
     pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
         match self.eval(tcx, param_env, None) {
             Ok(val) => Self::new_value(tcx, val, self.ty()),
-            Err(ErrorHandled::Reported(r)) => Self::new_error(tcx, r.into(), self.ty()),
-            Err(ErrorHandled::TooGeneric) => self,
+            Err(ErrorHandled::Reported(r, _span)) => Self::new_error(tcx, r.into(), self.ty()),
+            Err(ErrorHandled::TooGeneric(_span)) => self,
         }
     }
 

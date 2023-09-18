@@ -1600,9 +1600,12 @@ impl<'tcx> InferCtxt<'tcx> {
             if let Some(ct) = tcx.thir_abstract_const(unevaluated.def)? {
                 let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, args));
                 if let Err(e) = ct.error_reported() {
-                    return Err(ErrorHandled::Reported(e.into()));
+                    return Err(ErrorHandled::Reported(
+                        e.into(),
+                        span.unwrap_or(rustc_span::DUMMY_SP),
+                    ));
                 } else if ct.has_non_region_infer() || ct.has_non_region_param() {
-                    return Err(ErrorHandled::TooGeneric);
+                    return Err(ErrorHandled::TooGeneric(span.unwrap_or(rustc_span::DUMMY_SP)));
                 } else {
                     args = replace_param_and_infer_args_with_placeholder(tcx, args);
                 }

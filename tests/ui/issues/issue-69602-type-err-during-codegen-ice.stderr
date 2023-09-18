@@ -13,7 +13,7 @@ LL |     type MyA: TraitA;
 LL | impl TraitB for B {
    | ^^^^^^^^^^^^^^^^^ missing `MyA` in implementation
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/issue-69602-type-err-during-codegen-ice.rs:21:17
    |
 LL |     let _ = [0; B::VALUE];

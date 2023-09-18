@@ -24,7 +24,7 @@ error[E0080]: evaluation of `main::{constant#3}` failed
 LL |     const { &ARR[idx4()] };
    |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/indexing_slicing_index.rs:48:5
    |
 LL |     const { &ARR[idx4()] };

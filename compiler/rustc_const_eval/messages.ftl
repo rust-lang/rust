@@ -83,9 +83,6 @@ const_eval_dyn_call_vtable_mismatch =
 const_eval_dyn_star_call_vtable_mismatch =
     `dyn*` call on a pointer whose vtable does not match its type
 
-const_eval_erroneous_constant =
-    erroneous constant used
-
 const_eval_error = {$error_kind ->
     [static] could not evaluate static initializer
     [const] evaluation of constant value failed

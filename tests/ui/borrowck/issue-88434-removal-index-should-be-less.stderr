@@ -16,7 +16,7 @@ LL | const _CONST: &[u8] = &f(&[], |_| {});
    |                        ^^^^^^^^^^^^^^
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/issue-88434-removal-index-should-be-less.rs:3:23
    |
 LL | const _CONST: &[u8] = &f(&[], |_| {});

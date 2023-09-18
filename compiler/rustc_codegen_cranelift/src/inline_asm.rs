@@ -242,8 +242,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 }
             }
             InlineAsmOperand::Const { ref value } => {
-                let (const_value, ty) = crate::constant::eval_mir_constant(fx, value)
-                    .unwrap_or_else(|| span_bug!(span, "asm const cannot be resolved"));
+                let (const_value, ty) = crate::constant::eval_mir_constant(fx, value);
                 let value = rustc_codegen_ssa::common::asm_const_to_str(
                     fx.tcx,
                     span,

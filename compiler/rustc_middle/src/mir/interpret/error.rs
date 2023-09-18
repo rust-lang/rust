@@ -1,8 +1,9 @@
 use super::{AllocId, AllocRange, ConstAlloc, Pointer, Scalar};
 
+use crate::error;
 use crate::mir::interpret::ConstValue;
 use crate::query::TyCtxtAt;
-use crate::ty::{layout, tls, Ty, ValTree};
+use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{
@@ -11,7 +12,7 @@ use rustc_errors::{
 };
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
-use rustc_span::def_id::DefId;
+use rustc_span::{def_id::DefId, Span, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
 
 use std::borrow::Cow;
@@ -21,16 +22,51 @@ use std::{any::Any, backtrace::Backtrace, fmt};
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
-    Reported(ReportedErrorInfo),
+    Reported(ReportedErrorInfo, Span),
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the args didn't fully monomorphize it.
-    TooGeneric,
+    TooGeneric(Span),
 }
 
 impl From<ErrorGuaranteed> for ErrorHandled {
     #[inline]
     fn from(error: ErrorGuaranteed) -> ErrorHandled {
-        ErrorHandled::Reported(error.into())
+        ErrorHandled::Reported(error.into(), DUMMY_SP)
+    }
+}
+
+impl ErrorHandled {
+    pub fn with_span(self, span: Span) -> Self {
+        match self {
+            ErrorHandled::Reported(err, _span) => ErrorHandled::Reported(err, span),
+            ErrorHandled::TooGeneric(_span) => ErrorHandled::TooGeneric(span),
+        }
+    }
+
+    pub fn emit_err(&self, tcx: TyCtxt<'_>) -> ErrorGuaranteed {
+        match self {
+            &ErrorHandled::Reported(err, span) => {
+                if !err.is_tainted_by_errors && !span.is_dummy() {
+                    tcx.sess.emit_err(error::ErroneousConstant { span });
+                }
+                err.error
+            }
+            &ErrorHandled::TooGeneric(span) => tcx.sess.delay_span_bug(
+                span,
+                "encountered TooGeneric error when monomorphic data was expected",
+            ),
+        }
+    }
+
+    pub fn emit_note(&self, tcx: TyCtxt<'_>) {
+        match self {
+            &ErrorHandled::Reported(err, span) => {
+                if !err.is_tainted_by_errors && !span.is_dummy() {
+                    tcx.sess.emit_note(error::ErroneousConstant { span });
+                }
+            }
+            &ErrorHandled::TooGeneric(_) => {}
+        }
     }
 }
 
@@ -44,12 +80,6 @@ impl ReportedErrorInfo {
     #[inline]
     pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
         ReportedErrorInfo { is_tainted_by_errors: true, error }
-    }
-
-    /// Returns true if evaluation failed because MIR was tainted by errors.
-    #[inline]
-    pub fn is_tainted_by_errors(self) -> bool {
-        self.is_tainted_by_errors
     }
 }
 
@@ -159,6 +189,16 @@ fn print_backtrace(backtrace: &Backtrace) {
 impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
     fn from(err: ErrorGuaranteed) -> Self {
         InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err.into())).into()
+    }
+}
+
+impl From<ErrorHandled> for InterpErrorInfo<'_> {
+    fn from(err: ErrorHandled) -> Self {
+        InterpError::InvalidProgram(match err {
+            ErrorHandled::Reported(r, _span) => InvalidProgramInfo::AlreadyReported(r),
+            ErrorHandled::TooGeneric(_span) => InvalidProgramInfo::TooGeneric,
+        })
+        .into()
     }
 }
 

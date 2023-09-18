@@ -579,23 +579,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if let Some(dbg_var) = dbg_var {
                         let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
-                        if let Ok(operand) = self.eval_mir_constant_to_operand(bx, &c) {
-                            self.set_debug_loc(bx, var.source_info);
-                            let base = Self::spill_operand_to_stack(
-                                operand,
-                                Some(var.name.to_string()),
-                                bx,
-                            );
+                        let operand = self.eval_mir_constant_to_operand(bx, &c);
+                        self.set_debug_loc(bx, var.source_info);
+                        let base =
+                            Self::spill_operand_to_stack(operand, Some(var.name.to_string()), bx);
 
-                            bx.dbg_var_addr(
-                                dbg_var,
-                                dbg_loc,
-                                base.llval,
-                                Size::ZERO,
-                                &[],
-                                fragment,
-                            );
-                        }
+                        bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, Size::ZERO, &[], fragment);
                     }
                 }
             }

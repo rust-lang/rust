@@ -144,5 +144,12 @@ pub struct UnsupportedFnAbi {
     pub abi: &'static str,
 }
 
+#[derive(Diagnostic)]
+#[diag(middle_erroneous_constant)]
+pub struct ErroneousConstant {
+    #[primary_span]
+    pub span: Span,
+}
+
 /// Used by `rustc_const_eval`
 pub use crate::fluent_generated::middle_adjust_for_foreign_abi_error;

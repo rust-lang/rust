@@ -239,13 +239,6 @@ pub struct LongRunningWarn {
     pub item_span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(const_eval_erroneous_constant)]
-pub(crate) struct ErroneousConstUsed {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(Subdiagnostic)]
 #[note(const_eval_non_const_impl)]
 pub(crate) struct NonConstImplNote {

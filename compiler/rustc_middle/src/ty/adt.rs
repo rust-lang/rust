@@ -478,8 +478,8 @@ impl<'tcx> AdtDef<'tcx> {
             }
             Err(err) => {
                 let msg = match err {
-                    ErrorHandled::Reported(_) => "enum discriminant evaluation failed",
-                    ErrorHandled::TooGeneric => "enum discriminant depends on generics",
+                    ErrorHandled::Reported(..) => "enum discriminant evaluation failed",
+                    ErrorHandled::TooGeneric(..) => "enum discriminant depends on generics",
                 };
                 tcx.sess.delay_span_bug(tcx.def_span(expr_did), msg);
                 None

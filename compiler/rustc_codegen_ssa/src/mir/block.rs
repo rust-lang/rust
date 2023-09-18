@@ -1088,9 +1088,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
-                    let const_value = self
-                        .eval_mir_constant(value)
-                        .unwrap_or_else(|_| span_bug!(span, "asm const cannot be resolved"));
+                    let const_value = self.eval_mir_constant(value);
                     let string = common::asm_const_to_str(
                         bx.tcx(),
                         span,

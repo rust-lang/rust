@@ -3,7 +3,6 @@ use crate::traits::*;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::UnwindTerminateReason;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
@@ -212,23 +211,14 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut start_bx);
 
-    // Evaluate all required consts; codegen later assumes that CTFE will never fail.
-    let mut all_consts_ok = true;
-    for const_ in &mir.required_consts {
-        if let Err(err) = fx.eval_mir_constant(const_) {
-            all_consts_ok = false;
-            match err {
-                // errored or at least linted
-                ErrorHandled::Reported(_) => {}
-                ErrorHandled::TooGeneric => {
-                    span_bug!(const_.span, "codegen encountered polymorphic constant: {:?}", err)
-                }
-            }
-        }
-    }
-    if !all_consts_ok {
-        // We leave the IR in some half-built state here, and rely on this code not even being
-        // submitted to LLVM once an error was raised.
+    // Rust post-monomorphization checks; we later rely on them.
+    if let Err(err) =
+        mir.post_mono_checks(cx.tcx(), ty::ParamEnv::reveal_all(), |c| Ok(fx.monomorphize(c)))
+    {
+        err.emit_err(cx.tcx());
+        // This IR shouldn't ever be emitted, but let's try to guard against any of this code
+        // ever running.
+        start_bx.abort();
         return;
     }
 
