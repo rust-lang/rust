@@ -809,6 +809,16 @@ pub struct MissingLangItem {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_lang_item_fn_with_target_feature)]
+pub struct LangItemWithTargetFeature {
+    #[primary_span]
+    pub attr_span: Span,
+    pub name: Symbol,
+    #[label]
+    pub sig_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_lang_item_on_incorrect_target, code = "E0718")]
 pub struct LangItemOnIncorrectTarget {
     #[primary_span]
