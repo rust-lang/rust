@@ -4,8 +4,8 @@ fn main() {
 	let string = "Hello, world!".to_owned();
 
 	// These methods are redundant and the `as_str` can be removed.
-    let _redundant = string.as_str().as_bytes();
-    let _redundant = string.as_str().is_empty();
+    let _redundant = string.as_bytes();
+    let _redundant = string.is_empty();
 
     // These methods don't use `as_str` when they are redundant.
     let _no_as_str = string.as_bytes();
