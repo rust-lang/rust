@@ -147,7 +147,7 @@ pub fn expand_deriving_rustc_encodable(
 }
 
 fn encodable_substructure(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
     krate: Symbol,

@@ -400,7 +400,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
     pub fn project_downcast<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        bx: &mut Bx,
+        bx: &Bx,
         variant_index: VariantIdx,
     ) -> Self {
         let mut downcast = *self;
@@ -410,7 +410,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
     pub fn project_type<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        bx: &mut Bx,
+        bx: &Bx,
         ty: Ty<'tcx>,
     ) -> Self {
         let mut downcast = *self;

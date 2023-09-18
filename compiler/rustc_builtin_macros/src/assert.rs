@@ -111,7 +111,7 @@ fn expr_if_not(
     cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, cond)), then, els)
 }
 
-fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {
+fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {
     let mut parser = cx.new_parser_from_tts(stream);
 
     if parser.token == token::Eof {

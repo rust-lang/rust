@@ -567,10 +567,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         });
     }
 
-    fn compute_drop_data(
-        typeck: &mut TypeChecker<'_, 'tcx>,
-        dropped_ty: Ty<'tcx>,
-    ) -> DropData<'tcx> {
+    fn compute_drop_data(typeck: &TypeChecker<'_, 'tcx>, dropped_ty: Ty<'tcx>) -> DropData<'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         match typeck

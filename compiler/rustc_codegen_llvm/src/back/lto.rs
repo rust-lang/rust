@@ -602,7 +602,7 @@ fn thin_lto(
 pub(crate) fn run_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
-    module: &mut ModuleCodegen<ModuleLlvm>,
+    module: &ModuleCodegen<ModuleLlvm>,
     thin: bool,
 ) -> Result<(), FatalError> {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_lto_optimize", &*module.name);

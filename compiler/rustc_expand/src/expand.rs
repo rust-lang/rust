@@ -937,7 +937,7 @@ pub fn parse_ast_fragment<'a>(
 }
 
 pub fn ensure_complete_parse<'a>(
-    parser: &mut Parser<'a>,
+    parser: &Parser<'a>,
     macro_path: &ast::Path,
     kind_name: &str,
     span: Span,

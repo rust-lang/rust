@@ -12,7 +12,7 @@ use ut::UnifyKey;
 use std::ops::Range;
 
 fn vars_since_snapshot<'tcx, T>(
-    table: &mut UnificationTable<'_, 'tcx, T>,
+    table: &UnificationTable<'_, 'tcx, T>,
     snapshot_var_len: usize,
 ) -> Range<T>
 where

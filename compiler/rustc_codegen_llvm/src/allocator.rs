@@ -14,7 +14,7 @@ use crate::ModuleLlvm;
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
-    module_llvm: &mut ModuleLlvm,
+    module_llvm: &ModuleLlvm,
     module_name: &str,
     kind: AllocatorKind,
     alloc_error_handler_kind: AllocatorKind,

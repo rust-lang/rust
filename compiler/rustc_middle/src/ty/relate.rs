@@ -861,7 +861,7 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Error handling
 
-pub fn expected_found<'tcx, R, T>(relation: &mut R, a: T, b: T) -> ExpectedFound<T>
+pub fn expected_found<'tcx, R, T>(relation: &R, a: T, b: T) -> ExpectedFound<T>
 where
     R: TypeRelation<'tcx>,
 {

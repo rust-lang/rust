@@ -552,7 +552,7 @@ impl<'a> TraitDef<'a> {
     /// therefore does not get bound by the derived trait.
     fn create_derived_impl(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         type_ident: Ident,
         generics: &Generics,
         field_tys: Vec<P<ast::Ty>>,
@@ -910,7 +910,7 @@ impl<'a> MethodDef<'a> {
 
     fn get_ret_ty(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         generics: &Generics,
         type_ident: Ident,
@@ -931,7 +931,7 @@ impl<'a> MethodDef<'a> {
     //   `&self`.
     fn extract_arg_details(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
@@ -967,7 +967,7 @@ impl<'a> MethodDef<'a> {
 
     fn create_method(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
@@ -1406,7 +1406,7 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn summarise_struct(&self, cx: &mut ExtCtxt<'_>, struct_def: &VariantData) -> StaticFields {
+    fn summarise_struct(&self, cx: &ExtCtxt<'_>, struct_def: &VariantData) -> StaticFields {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields() {
@@ -1433,7 +1433,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_struct_patterns(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         struct_path: ast::Path,
         struct_def: &'a VariantData,
         prefixes: &[String],
@@ -1526,7 +1526,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_struct_pattern_fields(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         struct_def: &'a VariantData,
         prefixes: &[String],
     ) -> Vec<FieldInfo> {
@@ -1543,7 +1543,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_struct_field_access_fields(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &ExtCtxt<'_>,
         selflike_args: &[P<Expr>],
         struct_def: &'a VariantData,
         is_packed: bool,

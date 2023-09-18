@@ -51,7 +51,7 @@ pub fn expand_deriving_eq(
 }
 
 fn cs_total_eq_assert(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
