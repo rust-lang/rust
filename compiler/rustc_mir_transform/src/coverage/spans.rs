@@ -12,7 +12,6 @@ use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
 use std::cell::OnceCell;
-use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone)]
 pub(super) enum CoverageStatement {
@@ -333,30 +332,21 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
         initial_spans.push(CoverageSpan::for_fn_sig(self.fn_sig_span));
 
-        initial_spans.sort_unstable_by(|a, b| {
-            if a.span.lo() == b.span.lo() {
-                if a.span.hi() == b.span.hi() {
-                    if a.is_in_same_bcb(b) {
-                        Some(Ordering::Equal)
-                    } else {
-                        // Sort equal spans by dominator relationship (so dominators always come
-                        // before the dominated equal spans). When later comparing two spans in
-                        // order, the first will either dominate the second, or they will have no
-                        // dominator relationship.
-                        self.basic_coverage_blocks.rank_partial_cmp(a.bcb, b.bcb)
-                    }
-                } else {
-                    // Sort hi() in reverse order so shorter spans are attempted after longer spans.
-                    // This guarantees that, if a `prev` span overlaps, and is not equal to, a
-                    // `curr` span, the prev span either extends further left of the curr span, or
-                    // they start at the same position and the prev span extends further right of
-                    // the end of the curr span.
-                    b.span.hi().partial_cmp(&a.span.hi())
-                }
-            } else {
-                a.span.lo().partial_cmp(&b.span.lo())
-            }
-            .unwrap()
+        initial_spans.sort_by(|a, b| {
+            // First sort by span start.
+            Ord::cmp(&a.span.lo(), &b.span.lo())
+                // If span starts are the same, sort by span end in reverse order.
+                // This ensures that if spans A and B are adjacent in the list,
+                // and they overlap but are not equal, then either:
+                // - Span A extends further left, or
+                // - Both have the same start and span A extends further right
+                .then_with(|| Ord::cmp(&a.span.hi(), &b.span.hi()).reverse())
+                // If both spans are equal, sort the BCBs in dominator order,
+                // so that dominating BCBs come before other BCBs they dominate.
+                .then_with(|| self.basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb))
+                // If two spans are otherwise identical, put closure spans first,
+                // as this seems to be what the refinement step expects.
+                .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
         });
 
         initial_spans
