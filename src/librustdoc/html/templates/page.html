@@ -88,13 +88,21 @@
     {% endif %}
     <nav class="sidebar"> {# #}
         {% if page.css_class != "src" %}
-        <a class="logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {# #}
-            {% if !layout.logo.is_empty() %}
-                <img src="{{layout.logo}}" alt="logo"> {# #}
-            {% else %}
-                <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {# #}
-            {% endif %}
-        </a> {# #}
+        <div class="sidebar-crate">
+            <a class="logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {# #}
+                {% if !layout.logo.is_empty() %}
+                    <img src="{{layout.logo}}" alt="logo"> {# #}
+                {% else %}
+                    <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo"> {# #}
+                {% endif %}
+            </a> {# #}
+            <h2> {# #}
+                <a href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html">{{layout.krate}}</a> {# #}
+                {% if !layout.krate_version.is_empty() %}
+                    <span class="version">{{+ layout.krate_version}}</span>
+                {% endif %}
+            </h2>
+        </div>
         {% endif %}
         {{ sidebar|safe }}
     </nav> {# #}

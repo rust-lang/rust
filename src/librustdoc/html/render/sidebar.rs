@@ -19,7 +19,6 @@ pub(super) struct Sidebar<'a> {
     pub(super) title_prefix: &'static str,
     pub(super) title: &'a str,
     pub(super) is_crate: bool,
-    pub(super) version: &'a str,
     pub(super) blocks: Vec<LinkBlock<'a>>,
     pub(super) path: String,
 }
@@ -99,12 +98,12 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
         || it.is_primitive()
         || it.is_union()
         || it.is_enum()
-        || it.is_mod()
+        // crate title is displayed as part of logo lockup
+        || (it.is_mod() && !it.is_crate())
         || it.is_type_alias()
     {
         (
             match *it.kind {
-                clean::ModuleItem(..) if it.is_crate() => "Crate ",
                 clean::ModuleItem(..) => "Module ",
                 _ => "",
             },
@@ -113,14 +112,12 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
     } else {
         ("", "")
     };
-    let version =
-        if it.is_crate() { cx.cache().crate_version.as_deref().unwrap_or_default() } else { "" };
     let path: String = if !it.is_mod() {
         cx.current.iter().map(|s| s.as_str()).intersperse("::").collect()
     } else {
         "".into()
     };
-    let sidebar = Sidebar { title_prefix, title, is_crate: it.is_crate(), version, blocks, path };
+    let sidebar = Sidebar { title_prefix, title, is_crate: it.is_crate(), blocks, path };
     sidebar.render_into(buffer).unwrap();
 }
 

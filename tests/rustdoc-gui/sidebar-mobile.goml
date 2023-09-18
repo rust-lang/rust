@@ -50,7 +50,7 @@ assert-position: ("#method\.must_use", {"y": 46})
 // Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
 click: ".sidebar-menu-toggle"
 scroll-to: ".block.keyword li:nth-child(1)"
-compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 543.19})
+compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 544})
 
 // Now checking the background color of the sidebar.
 show-text: true

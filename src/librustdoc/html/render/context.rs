@@ -534,6 +534,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             external_html,
             default_settings,
             krate: krate.name(tcx).to_string(),
+            krate_version: cache.crate_version.as_deref().unwrap_or_default().to_string(),
             css_file_extension: extension_css,
             scrape_examples_extension: !call_locations.is_empty(),
         };
@@ -669,10 +670,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         let blocks = sidebar_module_like(all.item_sections());
         let bar = Sidebar {
-            title_prefix: "Crate ",
-            title: crate_name.as_str(),
+            title_prefix: "",
+            title: "",
             is_crate: false,
-            version: "",
             blocks: vec![blocks],
             path: String::new(),
         };
