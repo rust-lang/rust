@@ -34,7 +34,7 @@ use std::ops::Index;
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct Canonical<'tcx, V> {
     pub value: V,
     pub max_universe: ty::UniverseIndex,
@@ -72,7 +72,7 @@ impl<'tcx> ty::TypeFoldable<TyCtxt<'tcx>> for CanonicalVarInfos<'tcx> {
 /// variables. You will need to supply it later to instantiate the
 /// canonicalized query response.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct CanonicalVarValues<'tcx> {
     pub var_values: ty::GenericArgsRef<'tcx>,
 }
@@ -311,7 +311,7 @@ pub enum CanonicalTyVarKind {
 /// After we execute a query with a canonicalized key, we get back a
 /// `Canonical<QueryResponse<..>>`. You can use
 /// `instantiate_query_result` to access the data in this result.
-#[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
@@ -326,7 +326,7 @@ pub struct QueryResponse<'tcx, R> {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
     pub member_constraints: Vec<MemberConstraint<'tcx>>,
@@ -432,7 +432,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
 pub type QueryOutlivesConstraint<'tcx> =
     (ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>, ConstraintCategory<'tcx>);
 
-TrivialTypeTraversalAndLiftImpls! {
+TrivialTypeTraversalImpls! {
     crate::infer::canonical::Certainty,
     crate::infer::canonical::CanonicalTyVarKind,
 }

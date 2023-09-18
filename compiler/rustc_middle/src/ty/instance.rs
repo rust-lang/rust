@@ -18,6 +18,9 @@ use std::fmt;
 /// Monomorphization happens on-the-fly and no monomorphized MIR is ever created. Instead, this type
 /// simply couples a potentially generic `InstanceDef` with some args, and codegen and const eval
 /// will do all required substitution as they run.
+///
+/// Note: the `Lift` impl is currently not used by rustc, but is used by
+/// rustc_codegen_cranelift when the `jit` feature is enabled.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, Lift, TypeFoldable, TypeVisitable)]
 pub struct Instance<'tcx> {

@@ -67,7 +67,7 @@ impl Into<ErrorGuaranteed> for ReportedErrorInfo {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! { ErrorHandled }
+TrivialTypeTraversalImpls! { ErrorHandled }
 
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
