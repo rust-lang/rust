@@ -87,7 +87,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.lto=thin
 
 ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
-    ./build/$HOSTS/stage0-tools-bin/opt-dist python3 ../x.py dist \
+    ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
     build-manifest bootstrap
