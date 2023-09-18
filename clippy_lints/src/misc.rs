@@ -1,21 +1,20 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
-use clippy_utils::source::{snippet, snippet_opt, snippet_with_context};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    any_parent_is_automatically_derived, fulfill_or_allowed, get_parent_expr, in_constant, is_integer_literal,
-    is_lint_allowed, is_no_std_crate, iter_input_pats, last_path_segment, SpanlessEq,
+    any_parent_is_automatically_derived, fulfill_or_allowed, get_parent_expr, is_lint_allowed, iter_input_pats,
+    last_path_segment, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BinOpKind, BindingAnnotation, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, QPath, Stmt, StmtKind, Ty,
-    TyKind,
+    BinOpKind, BindingAnnotation, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 
@@ -55,6 +54,7 @@ declare_clippy_lint! {
     style,
     "an entire binding declared as `ref`, in a function argument or a `let` statement"
 }
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for the use of bindings with a single leading
@@ -102,51 +102,13 @@ declare_clippy_lint! {
     "using a short circuit boolean condition as a statement"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Catch casts from `0` to some pointer type
-    ///
-    /// ### Why is this bad?
-    /// This generally means `null` and is better expressed as
-    /// {`std`, `core`}`::ptr::`{`null`, `null_mut`}.
-    ///
-    /// ### Example
-    /// ```rust
-    /// let a = 0 as *const u32;
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust
-    /// let a = std::ptr::null::<u32>();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ZERO_PTR,
-    style,
-    "using `0 as *{const, mut} T`"
-}
-
-pub struct LintPass {
-    std_or_core: &'static str,
-}
-impl Default for LintPass {
-    fn default() -> Self {
-        Self { std_or_core: "std" }
-    }
-}
-impl_lint_pass!(LintPass => [
+declare_lint_pass!(LintPass => [
     TOPLEVEL_REF_ARG,
     USED_UNDERSCORE_BINDING,
     SHORT_CIRCUIT_STATEMENT,
-    ZERO_PTR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for LintPass {
-    fn check_crate(&mut self, cx: &LateContext<'_>) {
-        if is_no_std_crate(cx) {
-            self.std_or_core = "core";
-        }
-    }
-
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -252,10 +214,6 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Cast(e, ty) = expr.kind {
-            self.check_cast(cx, expr.span, e, ty);
-            return;
-        }
         if in_external_macro(cx.sess(), expr.span)
             || expr.span.desugaring_kind().is_some()
             || any_parent_is_automatically_derived(cx.tcx, expr.hir_id)
@@ -319,30 +277,4 @@ fn is_used(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ExprKind::Assign(_, rhs, _) | ExprKind::AssignOp(_, _, rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
         _ => is_used(cx, parent),
     })
-}
-
-impl LintPass {
-    fn check_cast(&self, cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &Ty<'_>) {
-        if_chain! {
-            if let TyKind::Ptr(ref mut_ty) = ty.kind;
-            if is_integer_literal(e, 0);
-            if !in_constant(cx, e.hir_id);
-            then {
-                let (msg, sugg_fn) = match mut_ty.mutbl {
-                    Mutability::Mut => ("`0 as *mut _` detected", "ptr::null_mut"),
-                    Mutability::Not => ("`0 as *const _` detected", "ptr::null"),
-                };
-
-                let (sugg, appl) = if let TyKind::Infer = mut_ty.ty.kind {
-                    (format!("{}::{sugg_fn}()", self.std_or_core), Applicability::MachineApplicable)
-                } else if let Some(mut_ty_snip) = snippet_opt(cx, mut_ty.ty.span) {
-                    (format!("{}::{sugg_fn}::<{mut_ty_snip}>()", self.std_or_core), Applicability::MachineApplicable)
-                } else {
-                    // `MaybeIncorrect` as type inference may not work with the suggested code
-                    (format!("{}::{sugg_fn}()", self.std_or_core), Applicability::MaybeIncorrect)
-                };
-                span_lint_and_sugg(cx, ZERO_PTR, span, msg, "try", sugg, appl);
-            }
-        }
-    }
 }
