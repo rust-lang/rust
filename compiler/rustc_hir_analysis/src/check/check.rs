@@ -1201,25 +1201,35 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         );
         return;
     }
-    for (span, _trivial, non_exhaustive) in field_infos {
-        if let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive {
-            tcx.struct_span_lint_hir(
-                REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
-                tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
-                span,
-                "zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types",
-                |lint| {
-                    let note = if non_exhaustive {
-                        "is marked with `#[non_exhaustive]`"
-                    } else {
-                        "contains private fields"
-                    };
-                    let field_ty = tcx.def_path_str_with_args(def_id, args);
-                    lint
-                        .note(format!("this {descr} contains `{field_ty}`, which {note}, \
-                            and makes it not a breaking change to become non-zero-sized in the future."))
-                },
-            )
+    let mut prev_non_exhaustive_1zst = false;
+    for (span, _trivial, non_exhaustive_1zst) in field_infos {
+        if let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive_1zst {
+            // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
+            // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
+            if non_trivial_count > 0 || prev_non_exhaustive_1zst {
+                tcx.struct_span_lint_hir(
+                    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+                    tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
+                    span,
+                    "zero-sized fields in `repr(transparent)` cannot \
+                    contain external non-exhaustive types",
+                    |lint| {
+                        let note = if non_exhaustive {
+                            "is marked with `#[non_exhaustive]`"
+                        } else {
+                            "contains private fields"
+                        };
+                        let field_ty = tcx.def_path_str_with_args(def_id, args);
+                        lint.note(format!(
+                            "this {descr} contains `{field_ty}`, which {note}, \
+                                and makes it not a breaking change to become \
+                                non-zero-sized in the future."
+                        ))
+                    },
+                )
+            } else {
+                prev_non_exhaustive_1zst = true;
+            }
         }
     }
 }
