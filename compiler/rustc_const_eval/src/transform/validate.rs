@@ -1,4 +1,14 @@
 //! Validates the MIR to ensure that invariants are upheld.
+//!
+//! The checks are split in two visitors: CfgChecker and TypeChecker.
+//!
+//! CfgChecker is meant to verify MIR syntax: control flow of cleanup blocks, allowed/disallowed
+//! statements and terminators...
+//!
+//! TypeChecker is meant to verify MIR types. It is used by the inliner to verify that type
+//! instanciation do not mess things up (for instance #112332 and earlier instances).
+//!
+//! If a check depends on types, it should go in TypeChecker, otherwise it can go in CfgChecker.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
