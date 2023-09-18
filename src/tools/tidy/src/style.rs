@@ -19,8 +19,8 @@
 
 use crate::walk::{filter_dirs, walk};
 use regex::{Regex, RegexSet};
-use std::{ffi::OsStr, path::Path};
 use std::collections::HashMap;
+use std::{ffi::OsStr, path::Path};
 
 /// Error code markdown is restricted to 80 columns because they can be
 /// displayed on the console with --example.
@@ -66,40 +66,42 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ normalize-stderr-test",
 ];
 
-fn generate_problems<'a>(consts: &'a[u32], letter_digit: &'a HashMap<char, char>) -> impl Iterator<Item = u32> + 'a {
+fn generate_problems<'a>(
+    consts: &'a [u32],
+    letter_digit: &'a HashMap<char, char>,
+) -> impl Iterator<Item = u32> + 'a {
     consts.into_iter().flat_map(move |const_value| {
         let mut problem = format!("{:X}", const_value);
         for (key, value) in letter_digit {
             problem = problem.replace(&value.to_string(), &key.to_string());
         }
-        let indexes: Vec<usize> = problem.chars().enumerate().filter_map(|(index, c)| {
-            if letter_digit.contains_key(&c) {
-                Some(index)
-            }
-            else {
-                None
-            }
-        }).collect();
+        let indexes: Vec<usize> = problem
+            .chars()
+            .enumerate()
+            .filter_map(|(index, c)| if letter_digit.contains_key(&c) { Some(index) } else { None })
+            .collect();
         (0..1 << indexes.len()).map(move |i| {
-            let result = problem.chars().enumerate().map(|(index, c)| {
-                if let Some(pos) = indexes.iter().position(|&x| x == index) {
-                    if (i >> pos) & 1 == 1 {
-                        letter_digit[&c]
+            let result = problem
+                .chars()
+                .enumerate()
+                .map(|(index, c)| {
+                    if let Some(pos) = indexes.iter().position(|&x| x == index) {
+                        if (i >> pos) & 1 == 1 { letter_digit[&c] } else { c }
                     } else {
                         c
                     }
-                } else {
-                    c
-                }
-            }).collect::<String>();
+                })
+                .collect::<String>();
             u32::from_str_radix(&result, 0x10).unwrap()
         })
     })
 }
 
+// Intentionally written in decimal rather than hex
 const ROOT_PROBLEMATIC_CONSTS: &[u32] = &[
-        184594741, 2880289470, 2881141438, 2965027518, 2976579765, 3203381950, 3405691582, 3405697037,
-        3735927486, 3735932941, 4027431614, 4276992702, 195934910, 252707358, 762133, 179681982, 173390526,
+    184594741, 2880289470, 2881141438, 2965027518, 2976579765, 3203381950, 3405691582, 3405697037,
+    3735927486, 3735932941, 4027431614, 4276992702, 195934910, 252707358, 762133, 179681982,
+    173390526,
 ];
 
 const INTERNAL_COMPILER_DOCS_LINE: &str = "#### This error code is internal to the compiler and will not be emitted with normal Rust code.";
@@ -298,7 +300,11 @@ pub fn check(path: &Path, bad: &mut bool) {
         // We only check CSS files in rustdoc.
         path.extension().map_or(false, |e| e == "css") && !is_in(path, "src", "librustdoc")
     }
-    let problematic_consts = generate_problems(ROOT_PROBLEMATIC_CONSTS, &[('A', '4'), ('B', '8'), ('E', '3')].iter().cloned().collect()).collect::<Vec<u32>>();
+    let problematic_consts = generate_problems(
+        ROOT_PROBLEMATIC_CONSTS,
+        &[('A', '4'), ('B', '8'), ('E', '3')].iter().cloned().collect(),
+    )
+    .collect::<Vec<u32>>();
     let problematic_consts_strings: Vec<String> = (problematic_consts.iter().map(u32::to_string))
         .chain(problematic_consts.iter().map(|v| format!("{:x}", v)))
         .chain(problematic_consts.iter().map(|v| format!("{:X}", v)))
@@ -590,4 +596,4 @@ pub fn check(path: &Path, bad: &mut bool) {
         let _unused = skip_line_length;
         let _unused = skip_file_length;
     })
-        }
+    }
