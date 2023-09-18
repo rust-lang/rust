@@ -1,24 +1,23 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_context};
+use clippy_utils::sugg::Sugg;
+use clippy_utils::{
+    any_parent_is_automatically_derived, fulfill_or_allowed, get_parent_expr, in_constant, is_integer_literal,
+    is_lint_allowed, is_no_std_crate, iter_input_pats, last_path_segment, SpanlessEq,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    self as hir, def, BinOpKind, BindingAnnotation, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, Stmt,
-    StmtKind, TyKind,
+    BinOpKind, BindingAnnotation, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, QPath, Stmt, StmtKind, Ty,
+    TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::hygiene::DesugaringKind;
-use rustc_span::source_map::{ExpnKind, Span};
-
-use clippy_utils::sugg::Sugg;
-use clippy_utils::{
-    get_parent_expr, in_constant, is_integer_literal, is_lint_allowed, is_no_std_crate, iter_input_pats,
-    last_path_segment, SpanlessEq,
-};
+use rustc_span::source_map::Span;
 
 use crate::ref_patterns::REF_PATTERNS;
 
@@ -257,46 +256,56 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             self.check_cast(cx, expr.span, e, ty);
             return;
         }
-        if in_attributes_expansion(expr) || expr.span.is_desugaring(DesugaringKind::Await) {
-            // Don't lint things expanded by #[derive(...)], etc or `await` desugaring
+        if in_external_macro(cx.sess(), expr.span)
+            || expr.span.desugaring_kind().is_some()
+            || any_parent_is_automatically_derived(cx.tcx, expr.hir_id)
+        {
             return;
         }
-        let sym;
-        let binding = match expr.kind {
-            ExprKind::Path(ref qpath) if !matches!(qpath, hir::QPath::LangItem(..)) => {
-                let binding = last_path_segment(qpath).ident.as_str();
-                if binding.starts_with('_') &&
-                    !binding.starts_with("__") &&
-                    binding != "_result" && // FIXME: #944
-                    is_used(cx, expr) &&
-                    // don't lint if the declaration is in a macro
-                    non_macro_local(cx, cx.qpath_res(qpath, expr.hir_id))
+        let (definition_hir_id, ident) = match expr.kind {
+            ExprKind::Path(ref qpath) => {
+                if let QPath::Resolved(None, path) = qpath
+                    && let Res::Local(id) = path.res
+                    && is_used(cx, expr)
                 {
-                    Some(binding)
+                    (id, last_path_segment(qpath).ident)
                 } else {
-                    None
+                    return;
                 }
             },
-            ExprKind::Field(_, ident) => {
-                sym = ident.name;
-                let name = sym.as_str();
-                if name.starts_with('_') && !name.starts_with("__") {
-                    Some(name)
+            ExprKind::Field(recv, ident) => {
+                if let Some(adt_def) = cx.typeck_results().expr_ty_adjusted(recv).ty_adt_def()
+                    && let Some(field) = adt_def.all_fields().find(|field| field.name == ident.name)
+                    && let Some(local_did) = field.did.as_local()
+                    && let Some(hir_id) = cx.tcx.opt_local_def_id_to_hir_id(local_did)
+                    && !cx.tcx.type_of(field.did).skip_binder().is_phantom_data()
+                {
+                    (hir_id, ident)
                 } else {
-                    None
+                    return;
                 }
             },
-            _ => None,
+            _ => return,
         };
-        if let Some(binding) = binding {
-            span_lint(
+
+        let name = ident.name.as_str();
+        if name.starts_with('_')
+            && !name.starts_with("__")
+            && let definition_span = cx.tcx.hir().span(definition_hir_id)
+            && !definition_span.from_expansion()
+            && !fulfill_or_allowed(cx, USED_UNDERSCORE_BINDING, [expr.hir_id, definition_hir_id])
+        {
+            span_lint_and_then(
                 cx,
                 USED_UNDERSCORE_BINDING,
                 expr.span,
                 &format!(
-                    "used binding `{binding}` which is prefixed with an underscore. A leading \
+                    "used binding `{name}` which is prefixed with an underscore. A leading \
                      underscore signals that a binding will not be used"
                 ),
+                |diag| {
+                    diag.span_note(definition_span, format!("`{name}` is defined here"));
+                }
             );
         }
     }
@@ -312,29 +321,8 @@ fn is_used(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     })
 }
 
-/// Tests whether an expression is in a macro expansion (e.g., something
-/// generated by `#[derive(...)]` or the like).
-fn in_attributes_expansion(expr: &Expr<'_>) -> bool {
-    use rustc_span::hygiene::MacroKind;
-    if expr.span.from_expansion() {
-        let data = expr.span.ctxt().outer_expn_data();
-        matches!(data.kind, ExpnKind::Macro(MacroKind::Attr | MacroKind::Derive, _))
-    } else {
-        false
-    }
-}
-
-/// Tests whether `res` is a variable defined outside a macro.
-fn non_macro_local(cx: &LateContext<'_>, res: def::Res) -> bool {
-    if let def::Res::Local(id) = res {
-        !cx.tcx.hir().span(id).from_expansion()
-    } else {
-        false
-    }
-}
-
 impl LintPass {
-    fn check_cast(&self, cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) {
+    fn check_cast(&self, cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &Ty<'_>) {
         if_chain! {
             if let TyKind::Ptr(ref mut_ty) = ty.kind;
             if is_integer_literal(e, 0);
