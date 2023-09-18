@@ -35,13 +35,16 @@ cargo +enzyme test --examples
 ```
 
 ## Enzyme Config
-To help with debugging, Enzyme can be configured using three environment variables.
+To help with debugging, Enzyme can be configured using four environment variables.
 ```bash
 export ENZYME_PRINT_TA=1
 export ENZYME_PRINT_AA=1
 export ENZYME_PRINT=1
+export ENZYME_PRINT_MOD=1
 ```
-These will print TypeAnalysis, ActivityAnalysis and the primal + generated function respectively.
+The first three will print TypeAnalysis, ActivityAnalysis and the llvm-ir on a function basis, respectively.
+The last variable can be used to print the whole module directly before Enzyme starts
+differentiating functions. 
 
 We want to make sure that we have EnzymeStrictAliasing=0 all the time to make sure
 that Enzyme handles enums correctly. Other flags might be enabled for debug purpose.
