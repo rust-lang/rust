@@ -21,7 +21,7 @@ use vfs::{AbsPathBuf, Vfs};
 use crate::{
     cli::flags,
     line_index::{LineEndings, LineIndex, PositionEncoding},
-    to_proto,
+    lsp::to_proto,
     version::version,
 };
 

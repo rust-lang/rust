@@ -81,13 +81,16 @@ impl MirLowerCtx<'_> {
         mode: MatchingMode,
     ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
         let cnt = self.infer.pat_adjustments.get(&pattern).map(|x| x.len()).unwrap_or_default();
-        cond_place.projection = cond_place
-            .projection
-            .iter()
-            .cloned()
-            .chain((0..cnt).map(|_| ProjectionElem::Deref))
-            .collect::<Vec<_>>()
-            .into();
+        cond_place.projection = self.result.projection_store.intern(
+            cond_place
+                .projection
+                .lookup(&self.result.projection_store)
+                .iter()
+                .cloned()
+                .chain((0..cnt).map(|_| ProjectionElem::Deref))
+                .collect::<Vec<_>>()
+                .into(),
+        );
         Ok(match &self.body.pats[pattern] {
             Pat::Missing => return Err(MirLowerError::IncompletePattern),
             Pat::Wild => (current, current_else),
@@ -262,20 +265,23 @@ impl MirLowerCtx<'_> {
                     }
                 }
                 for (i, &pat) in prefix.iter().enumerate() {
-                    let next_place = (&mut cond_place).project(ProjectionElem::ConstantIndex {
-                        offset: i as u64,
-                        from_end: false,
-                    });
+                    let next_place = (&mut cond_place).project(
+                        ProjectionElem::ConstantIndex { offset: i as u64, from_end: false },
+                        &mut self.result.projection_store,
+                    );
                     (current, current_else) =
                         self.pattern_match_inner(current, current_else, next_place, pat, mode)?;
                 }
                 if let Some(slice) = slice {
                     if mode == MatchingMode::Bind {
                         if let Pat::Bind { id, subpat: _ } = self.body[*slice] {
-                            let next_place = (&mut cond_place).project(ProjectionElem::Subslice {
-                                from: prefix.len() as u64,
-                                to: suffix.len() as u64,
-                            });
+                            let next_place = (&mut cond_place).project(
+                                ProjectionElem::Subslice {
+                                    from: prefix.len() as u64,
+                                    to: suffix.len() as u64,
+                                },
+                                &mut self.result.projection_store,
+                            );
                             (current, current_else) = self.pattern_match_binding(
                                 id,
                                 next_place,
@@ -287,10 +293,10 @@ impl MirLowerCtx<'_> {
                     }
                 }
                 for (i, &pat) in suffix.iter().enumerate() {
-                    let next_place = (&mut cond_place).project(ProjectionElem::ConstantIndex {
-                        offset: i as u64,
-                        from_end: true,
-                    });
+                    let next_place = (&mut cond_place).project(
+                        ProjectionElem::ConstantIndex { offset: i as u64, from_end: true },
+                        &mut self.result.projection_store,
+                    );
                     (current, current_else) =
                         self.pattern_match_inner(current, current_else, next_place, pat, mode)?;
                 }
@@ -412,13 +418,11 @@ impl MirLowerCtx<'_> {
                     mode,
                 )?
             }
-            Pat::Ref { pat, mutability: _ } => self.pattern_match_inner(
-                current,
-                current_else,
-                cond_place.project(ProjectionElem::Deref),
-                *pat,
-                mode,
-            )?,
+            Pat::Ref { pat, mutability: _ } => {
+                let cond_place =
+                    cond_place.project(ProjectionElem::Deref, &mut self.result.projection_store);
+                self.pattern_match_inner(current, current_else, cond_place, *pat, mode)?
+            }
             Pat::Box { .. } => not_supported!("box pattern"),
             Pat::ConstBlock(_) => not_supported!("const block pattern"),
         })
@@ -594,7 +598,7 @@ impl MirLowerCtx<'_> {
         mode: MatchingMode,
     ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
         for (proj, arg) in args {
-            let cond_place = cond_place.project(proj);
+            let cond_place = cond_place.project(proj, &mut self.result.projection_store);
             (current, current_else) =
                 self.pattern_match_inner(current, current_else, cond_place, arg, mode)?;
         }

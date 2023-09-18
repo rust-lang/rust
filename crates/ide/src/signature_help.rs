@@ -4,12 +4,11 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{
-    AssocItem, GenericParam, HasAttrs, HirDisplay, ModuleDef, PathResolution, Semantics, Trait,
-};
+use hir::{AssocItem, GenericParam, HirDisplay, ModuleDef, PathResolution, Semantics, Trait};
 use ide_db::{
     active_parameter::{callable_for_node, generic_def_for_node},
     base_db::FilePosition,
+    documentation::{Documentation, HasDocs},
     FxIndexMap,
 };
 use stdx::format_to;
@@ -28,7 +27,7 @@ use crate::RootDatabase;
 /// edited.
 #[derive(Debug)]
 pub struct SignatureHelp {
-    pub doc: Option<String>,
+    pub doc: Option<Documentation>,
     pub signature: String,
     pub active_parameter: Option<usize>,
     parameters: Vec<TextRange>,
@@ -179,7 +178,7 @@ fn signature_help_for_call(
     let mut fn_params = None;
     match callable.kind() {
         hir::CallableKind::Function(func) => {
-            res.doc = func.docs(db).map(|it| it.into());
+            res.doc = func.docs(db);
             format_to!(res.signature, "fn {}", func.name(db).display(db));
             fn_params = Some(match callable.receiver_param(db) {
                 Some(_self) => func.params_without_self(db),
@@ -187,11 +186,11 @@ fn signature_help_for_call(
             });
         }
         hir::CallableKind::TupleStruct(strukt) => {
-            res.doc = strukt.docs(db).map(|it| it.into());
+            res.doc = strukt.docs(db);
             format_to!(res.signature, "struct {}", strukt.name(db).display(db));
         }
         hir::CallableKind::TupleEnumVariant(variant) => {
-            res.doc = variant.docs(db).map(|it| it.into());
+            res.doc = variant.docs(db);
             format_to!(
                 res.signature,
                 "enum {}::{}",
@@ -265,38 +264,38 @@ fn signature_help_for_generics(
     let db = sema.db;
     match generics_def {
         hir::GenericDef::Function(it) => {
-            res.doc = it.docs(db).map(|it| it.into());
+            res.doc = it.docs(db);
             format_to!(res.signature, "fn {}", it.name(db).display(db));
         }
         hir::GenericDef::Adt(hir::Adt::Enum(it)) => {
-            res.doc = it.docs(db).map(|it| it.into());
+            res.doc = it.docs(db);
             format_to!(res.signature, "enum {}", it.name(db).display(db));
         }
         hir::GenericDef::Adt(hir::Adt::Struct(it)) => {
-            res.doc = it.docs(db).map(|it| it.into());
+            res.doc = it.docs(db);
             format_to!(res.signature, "struct {}", it.name(db).display(db));
         }
         hir::GenericDef::Adt(hir::Adt::Union(it)) => {
-            res.doc = it.docs(db).map(|it| it.into());
+            res.doc = it.docs(db);
             format_to!(res.signature, "union {}", it.name(db).display(db));
         }
         hir::GenericDef::Trait(it) => {
-            res.doc = it.docs(db).map(|it| it.into());
+            res.doc = it.docs(db);
             format_to!(res.signature, "trait {}", it.name(db).display(db));
         }
         hir::GenericDef::TraitAlias(it) => {
-            res.doc = it.docs(db).map(|it| it.into());
+            res.doc = it.docs(db);
             format_to!(res.signature, "trait {}", it.name(db).display(db));
         }
         hir::GenericDef::TypeAlias(it) => {
-            res.doc = it.docs(db).map(|it| it.into());
+            res.doc = it.docs(db);
             format_to!(res.signature, "type {}", it.name(db).display(db));
         }
         hir::GenericDef::Variant(it) => {
             // In paths, generics of an enum can be specified *after* one of its variants.
             // eg. `None::<u8>`
             // We'll use the signature of the enum, but include the docs of the variant.
-            res.doc = it.docs(db).map(|it| it.into());
+            res.doc = it.docs(db);
             let enum_ = it.parent_enum(db);
             format_to!(res.signature, "enum {}", enum_.name(db).display(db));
             generics_def = enum_.into();

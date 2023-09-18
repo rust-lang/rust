@@ -1,10 +1,10 @@
 //! Tools to work with format string literals for the `format_args!` family of macros.
-use crate::syntax_helpers::node_ext::macro_call_for_string_token;
 use syntax::{
     ast::{self, IsString},
-    TextRange, TextSize,
+    AstNode, AstToken, TextRange, TextSize,
 };
 
+// FIXME: This can probably be re-implemented via the HIR?
 pub fn is_format_string(string: &ast::String) -> bool {
     // Check if `string` is a format string argument of a macro invocation.
     // `string` is a string literal, mapped down into the innermost macro expansion.
@@ -15,19 +15,9 @@ pub fn is_format_string(string: &ast::String) -> bool {
     // This setup lets us correctly highlight the components of `concat!("{}", "bla")` format
     // strings. It still fails for `concat!("{", "}")`, but that is rare.
     (|| {
-        let name = macro_call_for_string_token(string)?.path()?.segment()?.name_ref()?;
-
-        if !matches!(
-            name.text().as_str(),
-            "format_args" | "format_args_nl" | "const_format_args" | "panic_2015" | "panic_2021"
-        ) {
-            return None;
-        }
-
-        // NB: we match against `panic_2015`/`panic_2021` here because they have a special-cased arm for
-        // `"{}"`, which otherwise wouldn't get highlighted.
-
-        Some(())
+        let lit = string.syntax().parent().and_then(ast::Literal::cast)?;
+        let fa = lit.syntax().parent().and_then(ast::FormatArgsExpr::cast)?;
+        (fa.template()? == ast::Expr::Literal(lit)).then_some(|| ())
     })()
     .is_some()
 }

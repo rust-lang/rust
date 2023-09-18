@@ -15,7 +15,8 @@ use crate::{
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, Interner, Scalar, Substitution, Ty, TyBuilder, TyExt, TyKind,
+    static_lifetime, InferenceDiagnostic, Interner, Scalar, Substitution, Ty, TyBuilder, TyExt,
+    TyKind,
 };
 
 /// Used to generalize patterns and assignee expressions.
@@ -74,29 +75,68 @@ impl InferenceContext<'_> {
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
+        if let Some(var) = &var_data {
+            let cmp = if ellipsis.is_some() { usize::gt } else { usize::ne };
+
+            if cmp(&subs.len(), &var.fields().len()) {
+                self.push_diagnostic(InferenceDiagnostic::MismatchedTupleStructPatArgCount {
+                    pat: id.into(),
+                    expected: var.fields().len(),
+                    found: subs.len(),
+                });
+            }
+        }
+
         self.unify(&ty, expected);
 
         let substs =
             ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(Interner));
 
-        let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
-        let (pre, post) = match ellipsis {
-            Some(idx) => subs.split_at(idx),
-            None => (subs, &[][..]),
-        };
-        let post_idx_offset = field_tys.iter().count().saturating_sub(post.len());
+        match def {
+            _ if subs.len() == 0 => {}
+            Some(def) => {
+                let field_types = self.db.field_types(def);
+                let variant_data = def.variant_data(self.db.upcast());
+                let visibilities = self.db.field_visibilities(def);
 
-        let pre_iter = pre.iter().enumerate();
-        let post_iter = (post_idx_offset..).zip(post.iter());
-        for (i, &subpat) in pre_iter.chain(post_iter) {
-            let expected_ty = var_data
-                .as_ref()
-                .and_then(|d| d.field(&Name::new_tuple_field(i)))
-                .map_or(self.err_ty(), |field| {
-                    field_tys[field].clone().substitute(Interner, &substs)
-                });
-            let expected_ty = self.normalize_associated_types_in(expected_ty);
-            T::infer(self, subpat, &expected_ty, default_bm);
+                let (pre, post) = match ellipsis {
+                    Some(idx) => subs.split_at(idx),
+                    None => (subs, &[][..]),
+                };
+                let post_idx_offset = field_types.iter().count().saturating_sub(post.len());
+
+                let pre_iter = pre.iter().enumerate();
+                let post_iter = (post_idx_offset..).zip(post.iter());
+
+                for (i, &subpat) in pre_iter.chain(post_iter) {
+                    let field_def = {
+                        match variant_data.field(&Name::new_tuple_field(i)) {
+                            Some(local_id) => {
+                                if !visibilities[local_id]
+                                    .is_visible_from(self.db.upcast(), self.resolver.module())
+                                {
+                                    // FIXME(DIAGNOSE): private tuple field
+                                }
+                                Some(local_id)
+                            }
+                            None => None,
+                        }
+                    };
+
+                    let expected_ty = field_def.map_or(self.err_ty(), |f| {
+                        field_types[f].clone().substitute(Interner, &substs)
+                    });
+                    let expected_ty = self.normalize_associated_types_in(expected_ty);
+
+                    T::infer(self, subpat, &expected_ty, default_bm);
+                }
+            }
+            None => {
+                let err_ty = self.err_ty();
+                for &inner in subs {
+                    T::infer(self, inner, &err_ty, default_bm);
+                }
+            }
         }
 
         ty
@@ -109,7 +149,7 @@ impl InferenceContext<'_> {
         expected: &Ty,
         default_bm: T::BindingMode,
         id: T,
-        subs: impl Iterator<Item = (Name, T)>,
+        subs: impl Iterator<Item = (Name, T)> + ExactSizeIterator,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path, false);
         if let Some(variant) = def {
@@ -121,17 +161,51 @@ impl InferenceContext<'_> {
         let substs =
             ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(Interner));
 
-        let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
-        let var_data = def.map(|it| it.variant_data(self.db.upcast()));
+        match def {
+            _ if subs.len() == 0 => {}
+            Some(def) => {
+                let field_types = self.db.field_types(def);
+                let variant_data = def.variant_data(self.db.upcast());
+                let visibilities = self.db.field_visibilities(def);
 
-        for (name, inner) in subs {
-            let expected_ty = var_data
-                .as_ref()
-                .and_then(|it| it.field(&name))
-                .map_or(self.err_ty(), |f| field_tys[f].clone().substitute(Interner, &substs));
-            let expected_ty = self.normalize_associated_types_in(expected_ty);
+                for (name, inner) in subs {
+                    let field_def = {
+                        match variant_data.field(&name) {
+                            Some(local_id) => {
+                                if !visibilities[local_id]
+                                    .is_visible_from(self.db.upcast(), self.resolver.module())
+                                {
+                                    self.push_diagnostic(InferenceDiagnostic::NoSuchField {
+                                        field: inner.into(),
+                                        private: true,
+                                    });
+                                }
+                                Some(local_id)
+                            }
+                            None => {
+                                self.push_diagnostic(InferenceDiagnostic::NoSuchField {
+                                    field: inner.into(),
+                                    private: false,
+                                });
+                                None
+                            }
+                        }
+                    };
 
-            T::infer(self, inner, &expected_ty, default_bm);
+                    let expected_ty = field_def.map_or(self.err_ty(), |f| {
+                        field_types[f].clone().substitute(Interner, &substs)
+                    });
+                    let expected_ty = self.normalize_associated_types_in(expected_ty);
+
+                    T::infer(self, inner, &expected_ty, default_bm);
+                }
+            }
+            None => {
+                let err_ty = self.err_ty();
+                for (_, inner) in subs {
+                    T::infer(self, inner, &err_ty, default_bm);
+                }
+            }
         }
 
         ty
