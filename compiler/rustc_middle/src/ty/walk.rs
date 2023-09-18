@@ -88,7 +88,7 @@ impl<'tcx> GenericArg<'tcx> {
     pub fn walk_shallow(
         self,
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
-    ) -> impl Iterator<Item = GenericArg<'tcx>> {
+    ) -> impl Iterator<Item = GenericArg<'tcx>> + 'tcx {
         let mut stack = SmallVec::new();
         push_inner(&mut stack, self);
         stack.retain(|a| visited.insert(*a));

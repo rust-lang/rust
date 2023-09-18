@@ -34,7 +34,7 @@ impl<T> pm::bridge::server::MessagePipe<T> for CrossbeamMessagePipe<T> {
     }
 }
 
-fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy {
+fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy + 'static {
     pm::bridge::server::MaybeCrossThread::<CrossbeamMessagePipe<_>>::new(
         ecx.sess.opts.unstable_opts.proc_macro_execution_strategy
             == ProcMacroExecutionStrategy::CrossThread,

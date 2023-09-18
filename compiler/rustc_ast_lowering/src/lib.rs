@@ -747,7 +747,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
+    fn expect_full_res_from_use(
+        &mut self,
+        id: NodeId,
+    ) -> impl Iterator<Item = Res<NodeId>> + 'static {
         self.resolver.get_import_res(id).present_items()
     }
 

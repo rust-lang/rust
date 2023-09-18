@@ -845,7 +845,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         arg: ty::GenericArg<'tcx>,
-    ) -> Option<impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>> {
+    ) -> Option<impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>> + 'tcx> {
         crate::traits::wf::unnormalized_obligations(self.infcx, param_env, arg)
             .map(|obligations| obligations.into_iter().map(|obligation| obligation.into()))
     }

@@ -6,20 +6,12 @@ use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 use humansize::BINARY;
 
-const LLVM_PGO_CRATES: &[&str] = &[
-    "syn-1.0.89",
-    "cargo-0.60.0",
-    "serde-1.0.136",
-    "ripgrep-13.0.0",
-    "regex-1.5.5",
-    "clap-3.1.6",
-    "hyper-0.14.18",
-];
+const LLVM_PGO_CRATES: &[&str] =
+    &["syn-1.0.89", "serde-1.0.136", "ripgrep-13.0.0", "regex-1.5.5", "clap-3.1.6"];
 
 const RUSTC_PGO_CRATES: &[&str] = &[
     "externs",
     "ctfe-stress-5",
-    "cargo-0.60.0",
     "token-stream-stress",
     "match-stress",
     "tuple-stress",
