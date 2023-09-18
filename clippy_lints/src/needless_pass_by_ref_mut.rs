@@ -1,13 +1,13 @@
 use super::needless_pass_by_value::requires_exact_signature;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
+use clippy_utils::visitors::for_each_expr_with_closures;
 use clippy_utils::{get_parent_node, inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_fn, walk_qpath, FnKind, Visitor};
+use rustc_hir::intravisit::{walk_qpath, FnKind, Visitor};
 use rustc_hir::{
-    Body, BodyId, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node,
-    PatKind, QPath,
+    Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node, PatKind, QPath,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -21,6 +21,8 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
+
+use core::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -189,17 +191,19 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
 
                 // We retrieve all the closures declared in the async function because they will
                 // not be found by `euv::Delegate`.
-                let mut closures_retriever = ClosuresRetriever {
-                    cx,
-                    closures: FxHashSet::default(),
-                };
-                walk_fn(&mut closures_retriever, kind, decl, body.id(), fn_def_id);
-                check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures_retriever.closures);
+                let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
+                for_each_expr_with_closures(cx, body, |expr| {
+                    if let ExprKind::Closure(closure) = expr.kind {
+                        closures.insert(closure.def_id);
+                    }
+                    ControlFlow::<()>::Continue(())
+                });
+                check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
 
                 while !ctx.async_closures.is_empty() {
-                    let closures = ctx.async_closures.clone();
+                    let async_closures = ctx.async_closures.clone();
                     ctx.async_closures.clear();
-                    check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
+                    check_closures(&mut ctx, cx, &infcx, &mut checked_closures, async_closures);
                 }
             }
             ctx
@@ -264,6 +268,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
 struct MutablyUsedVariablesCtxt<'tcx> {
     mutably_used_vars: HirIdSet,
     prev_bind: Option<HirId>,
+    /// In async functions, the inner AST is composed of multiple layers until we reach the code
+    /// defined by the user. Because of that, some variables are marked as mutably borrowed even
+    /// though they're not. This field lists the `HirId` that should not be considered as mutable
+    /// use of a variable.
     prev_move_to_closure: HirIdSet,
     aliases: HirIdMap<HirId>,
     async_closures: FxHashSet<LocalDefId>,
@@ -457,32 +465,5 @@ impl<'tcx> Visitor<'tcx> for FnNeedsMutVisitor<'_, 'tcx> {
             // argument entirely
             used_fn_def_ids.insert(def_id);
         }
-    }
-}
-
-struct ClosuresRetriever<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    closures: FxHashSet<LocalDefId>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for ClosuresRetriever<'a, 'tcx> {
-    type NestedFilter = OnlyBodies;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
-    }
-
-    fn visit_fn(
-        &mut self,
-        kind: FnKind<'tcx>,
-        decl: &'tcx FnDecl<'tcx>,
-        body_id: BodyId,
-        _span: Span,
-        fn_def_id: LocalDefId,
-    ) {
-        if matches!(kind, FnKind::Closure) {
-            self.closures.insert(fn_def_id);
-        }
-        walk_fn(self, kind, decl, body_id, fn_def_id);
     }
 }
