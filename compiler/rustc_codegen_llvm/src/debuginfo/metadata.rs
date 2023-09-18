@@ -335,12 +335,20 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
 
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
+    let (size, align) = match fn_ty.kind() {
+        ty::FnDef(..) => (0, 1),
+        ty::FnPtr(..) => (
+            cx.tcx.data_layout.pointer_size.bits(),
+            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
+        ),
+        _ => unreachable!(),
+    };
     let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
             fn_di_node,
-            cx.tcx.data_layout.pointer_size.bits(),
-            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
+            size,
+            align,
             0, // Ignore DWARF address space.
             name.as_ptr().cast(),
             name.len(),
