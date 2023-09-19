@@ -121,9 +121,10 @@
           StorageLive(_15);
           StorageLive(_16);
           _16 = _1;
-          _17 = Eq(const 0_u64, const 0_u64);
+-         _17 = Eq(const 0_u64, const 0_u64);
 -         assert(!move _17, "attempt to divide `{}` by zero", _16) -> [success: bb5, unwind continue];
-+         assert(!_17, "attempt to divide `{}` by zero", _1) -> [success: bb5, unwind continue];
++         _17 = const true;
++         assert(!const true, "attempt to divide `{}` by zero", _1) -> [success: bb5, unwind continue];
       }
   
       bb5: {
@@ -140,9 +141,10 @@
           StorageLive(_19);
           StorageLive(_20);
           _20 = _1;
-          _21 = Eq(const 1_u64, const 0_u64);
+-         _21 = Eq(const 1_u64, const 0_u64);
 -         assert(!move _21, "attempt to divide `{}` by zero", _20) -> [success: bb7, unwind continue];
-+         assert(!_21, "attempt to divide `{}` by zero", _1) -> [success: bb7, unwind continue];
++         _21 = const false;
++         assert(!const false, "attempt to divide `{}` by zero", _1) -> [success: bb7, unwind continue];
       }
   
       bb7: {
@@ -201,8 +203,8 @@
           _32 = _1;
 -         _33 = Eq(const 0_u64, const 0_u64);
 -         assert(!move _33, "attempt to calculate the remainder of `{}` with a divisor of zero", _32) -> [success: bb13, unwind continue];
-+         _33 = _17;
-+         assert(!_17, "attempt to calculate the remainder of `{}` with a divisor of zero", _1) -> [success: bb13, unwind continue];
++         _33 = const true;
++         assert(!const true, "attempt to calculate the remainder of `{}` with a divisor of zero", _1) -> [success: bb13, unwind continue];
       }
   
       bb13: {
@@ -221,8 +223,8 @@
           _36 = _1;
 -         _37 = Eq(const 1_u64, const 0_u64);
 -         assert(!move _37, "attempt to calculate the remainder of `{}` with a divisor of zero", _36) -> [success: bb15, unwind continue];
-+         _37 = _21;
-+         assert(!_21, "attempt to calculate the remainder of `{}` with a divisor of zero", _1) -> [success: bb15, unwind continue];
++         _37 = const false;
++         assert(!const false, "attempt to calculate the remainder of `{}` with a divisor of zero", _1) -> [success: bb15, unwind continue];
       }
   
       bb15: {

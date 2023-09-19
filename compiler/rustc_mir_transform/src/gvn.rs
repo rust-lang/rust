@@ -53,18 +53,24 @@
 //! _c = *_b // replaced by _c = _a
 //! ```
 
+use rustc_const_eval::interpret::{ImmTy, InterpCx, MemPlaceMeta, OpTy, Projectable, Scalar};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_macros::newtype_index;
+use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
+use rustc_span::DUMMY_SP;
+use rustc_target::abi::{self, Abi, Size, VariantIdx, FIRST_VARIANT};
 
+use crate::dataflow_const_prop::DummyMachine;
 use crate::ssa::{AssignedValue, SsaLocals};
 use crate::MirPass;
+use either::Either;
 
 pub struct GVN;
 
@@ -129,6 +135,12 @@ newtype_index! {
     struct VnIndex {}
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+enum AddressKind {
+    Ref(BorrowKind),
+    Address(Mutability),
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum Value<'tcx> {
     // Root values.
@@ -145,6 +157,7 @@ enum Value<'tcx> {
     /// The address of a place.
     Address {
         place: Place<'tcx>,
+        kind: AddressKind,
         /// Give each borrow and pointer a different provenance, so we don't merge them.
         provenance: usize,
     },
@@ -172,6 +185,7 @@ enum Value<'tcx> {
 
 struct VnState<'body, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    ecx: InterpCx<'tcx, 'tcx, DummyMachine>,
     param_env: ty::ParamEnv<'tcx>,
     local_decls: &'body LocalDecls<'tcx>,
     /// Value stored in each local.
@@ -179,6 +193,8 @@ struct VnState<'body, 'tcx> {
     /// First local to be assigned that value.
     rev_locals: FxHashMap<VnIndex, Vec<Local>>,
     values: FxIndexSet<Value<'tcx>>,
+    /// Values evaluated as constants if possible.
+    evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
     /// Counter to generate different values.
     /// This is an option to stop creating opaques during replacement.
     next_opaque: Option<usize>,
@@ -197,11 +213,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     ) -> Self {
         VnState {
             tcx,
+            ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
             param_env,
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
             rev_locals: FxHashMap::default(),
             values: FxIndexSet::default(),
+            evaluated: IndexVec::new(),
             next_opaque: Some(0),
             ssa,
             dominators,
@@ -211,8 +229,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert(&mut self, value: Value<'tcx>) -> VnIndex {
-        let (index, _) = self.values.insert_full(value);
-        VnIndex::from_usize(index)
+        let (index, new) = self.values.insert_full(value);
+        let index = VnIndex::from_usize(index);
+        if new {
+            let evaluated = self.eval_to_const(index);
+            let _index = self.evaluated.push(evaluated);
+            debug_assert_eq!(index, _index);
+        }
+        index
     }
 
     /// Create a new `Value` for which we have no information at all, except that it is distinct
@@ -227,9 +251,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     /// Create a new `Value::Address` distinct from all the others.
     #[instrument(level = "trace", skip(self), ret)]
-    fn new_pointer(&mut self, place: Place<'tcx>) -> Option<VnIndex> {
+    fn new_pointer(&mut self, place: Place<'tcx>, kind: AddressKind) -> Option<VnIndex> {
         let next_opaque = self.next_opaque.as_mut()?;
-        let value = Value::Address { place, provenance: *next_opaque };
+        let value = Value::Address { place, kind, provenance: *next_opaque };
         *next_opaque += 1;
         Some(self.insert(value))
     }
@@ -249,6 +273,176 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if is_sized {
             self.rev_locals.entry(value).or_default().push(local);
         }
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn eval_to_const(&mut self, value: VnIndex) -> Option<OpTy<'tcx>> {
+        use Value::*;
+        let op = match *self.get(value) {
+            Opaque(_) => return None,
+            // Do not bother evaluating repeat expressions. This would uselessly consume memory.
+            Repeat(..) => return None,
+
+            Constant(ref constant) => self.ecx.eval_mir_constant(constant, None, None).ok()?,
+            Aggregate(ty, variant, ref fields) => {
+                let fields = fields
+                    .iter()
+                    .map(|&f| self.evaluated[f].as_ref())
+                    .collect::<Option<Vec<_>>>()?;
+                let variant = if ty.is_enum() { Some(variant) } else { None };
+                let ty = self.ecx.layout_of(ty).ok()?;
+                let alloc_id = self
+                    .ecx
+                    .intern_with_temp_alloc(ty, |ecx, dest| {
+                        let variant_dest = if let Some(variant) = variant {
+                            ecx.project_downcast(dest, variant)?
+                        } else {
+                            dest.clone()
+                        };
+                        for (field_index, op) in fields.into_iter().enumerate() {
+                            let field_dest = ecx.project_field(&variant_dest, field_index)?;
+                            ecx.copy_op(op, &field_dest, /*allow_transmute*/ false)?;
+                        }
+                        ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), dest)
+                    })
+                    .ok()?;
+                let mplace =
+                    self.ecx.raw_const_to_mplace(ConstAlloc { alloc_id, ty: ty.ty }).ok()?;
+                mplace.into()
+            }
+
+            Projection(base, elem) => {
+                let value = self.evaluated[base].as_ref()?;
+                let elem = match elem {
+                    ProjectionElem::Deref => ProjectionElem::Deref,
+                    ProjectionElem::Downcast(name, read_variant) => {
+                        ProjectionElem::Downcast(name, read_variant)
+                    }
+                    ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty),
+                    ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                        ProjectionElem::ConstantIndex { offset, min_length, from_end }
+                    }
+                    ProjectionElem::Subslice { from, to, from_end } => {
+                        ProjectionElem::Subslice { from, to, from_end }
+                    }
+                    ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
+                    ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
+                    // This should have been replaced by a `ConstantIndex` earlier.
+                    ProjectionElem::Index(_) => return None,
+                };
+                self.ecx.project(value, elem).ok()?
+            }
+            Address { place, kind, provenance: _ } => {
+                if !place.is_indirect_first_projection() {
+                    return None;
+                }
+                let local = self.locals[place.local]?;
+                let pointer = self.evaluated[local].as_ref()?;
+                let mut mplace = self.ecx.deref_pointer(pointer).ok()?;
+                for proj in place.projection.iter().skip(1) {
+                    // We have no call stack to associate a local with a value, so we cannot interpret indexing.
+                    if matches!(proj, ProjectionElem::Index(_)) {
+                        return None;
+                    }
+                    mplace = self.ecx.project(&mplace, proj).ok()?;
+                }
+                let pointer = mplace.to_ref(&self.ecx);
+                let ty = match kind {
+                    AddressKind::Ref(bk) => Ty::new_ref(
+                        self.tcx,
+                        self.tcx.lifetimes.re_erased,
+                        ty::TypeAndMut { ty: mplace.layout.ty, mutbl: bk.to_mutbl_lossy() },
+                    ),
+                    AddressKind::Address(mutbl) => {
+                        Ty::new_ptr(self.tcx, TypeAndMut { ty: mplace.layout.ty, mutbl })
+                    }
+                };
+                let layout = self.ecx.layout_of(ty).ok()?;
+                ImmTy::from_immediate(pointer, layout).into()
+            }
+
+            Discriminant(base) => {
+                let base = self.evaluated[base].as_ref()?;
+                let variant = self.ecx.read_discriminant(base).ok()?;
+                let discr_value =
+                    self.ecx.discriminant_for_variant(base.layout.ty, variant).ok()?;
+                discr_value.into()
+            }
+            Len(slice) => {
+                let slice = self.evaluated[slice].as_ref()?;
+                let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
+                let len = slice.len(&self.ecx).ok()?;
+                let imm = ImmTy::try_from_uint(len, usize_layout)?;
+                imm.into()
+            }
+            NullaryOp(null_op, ty) => {
+                let layout = self.ecx.layout_of(ty).ok()?;
+                if let NullOp::SizeOf | NullOp::AlignOf = null_op && layout.is_unsized() {
+                    return None;
+                }
+                let val = match null_op {
+                    NullOp::SizeOf => layout.size.bytes(),
+                    NullOp::AlignOf => layout.align.abi.bytes(),
+                    NullOp::OffsetOf(fields) => layout
+                        .offset_of_subfield(&self.ecx, fields.iter().map(|f| f.index()))
+                        .bytes(),
+                };
+                let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
+                let imm = ImmTy::try_from_uint(val, usize_layout)?;
+                imm.into()
+            }
+            UnaryOp(un_op, operand) => {
+                let operand = self.evaluated[operand].as_ref()?;
+                let operand = self.ecx.read_immediate(operand).ok()?;
+                let (val, _) = self.ecx.overflowing_unary_op(un_op, &operand).ok()?;
+                val.into()
+            }
+            BinaryOp(bin_op, lhs, rhs) => {
+                let lhs = self.evaluated[lhs].as_ref()?;
+                let lhs = self.ecx.read_immediate(lhs).ok()?;
+                let rhs = self.evaluated[rhs].as_ref()?;
+                let rhs = self.ecx.read_immediate(rhs).ok()?;
+                let (val, _) = self.ecx.overflowing_binary_op(bin_op, &lhs, &rhs).ok()?;
+                val.into()
+            }
+            CheckedBinaryOp(bin_op, lhs, rhs) => {
+                let lhs = self.evaluated[lhs].as_ref()?;
+                let lhs = self.ecx.read_immediate(lhs).ok()?;
+                let rhs = self.evaluated[rhs].as_ref()?;
+                let rhs = self.ecx.read_immediate(rhs).ok()?;
+                let (val, overflowed) = self.ecx.overflowing_binary_op(bin_op, &lhs, &rhs).ok()?;
+                let tuple = Ty::new_tup_from_iter(
+                    self.tcx,
+                    [val.layout.ty, self.tcx.types.bool].into_iter(),
+                );
+                let tuple = self.ecx.layout_of(tuple).ok()?;
+                ImmTy::from_scalar_pair(val.to_scalar(), Scalar::from_bool(overflowed), tuple)
+                    .into()
+            }
+            Cast { kind, value, from: _, to } => match kind {
+                CastKind::IntToInt | CastKind::IntToFloat => {
+                    let value = self.evaluated[value].as_ref()?;
+                    let value = self.ecx.read_immediate(value).ok()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let res = self.ecx.int_to_int_or_float(&value, to).ok()?;
+                    res.into()
+                }
+                CastKind::FloatToFloat | CastKind::FloatToInt => {
+                    let value = self.evaluated[value].as_ref()?;
+                    let value = self.ecx.read_immediate(value).ok()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let res = self.ecx.float_to_float_or_int(&value, to).ok()?;
+                    res.into()
+                }
+                CastKind::Transmute => {
+                    let value = self.evaluated[value].as_ref()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    value.offset(Size::ZERO, to, &self.ecx).ok()?
+                }
+                _ => return None,
+            },
+        };
+        Some(op)
     }
 
     /// Represent the *value* which would be read from `place`, and point `place` to a preexisting
@@ -385,7 +579,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let ty = rvalue.ty(self.local_decls, self.tcx);
                 Value::Aggregate(ty, variant_index, fields?)
             }
-            Rvalue::Ref(.., place) | Rvalue::AddressOf(_, place) => return self.new_pointer(place),
+            Rvalue::Ref(_, borrow_kind, place) => {
+                return self.new_pointer(place, AddressKind::Ref(borrow_kind));
+            }
+            Rvalue::AddressOf(mutbl, place) => {
+                return self.new_pointer(place, AddressKind::Address(mutbl));
+            }
 
             // Operations.
             Rvalue::Len(ref mut place) => {
@@ -424,43 +623,106 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 }
 
+fn op_to_prop_const<'tcx>(
+    ecx: &mut InterpCx<'_, 'tcx, DummyMachine>,
+    op: &OpTy<'tcx>,
+) -> Option<ConstValue<'tcx>> {
+    // Do not attempt to propagate unsized locals.
+    if op.layout.is_unsized() {
+        return None;
+    }
+
+    // This constant is a ZST, just return an empty value.
+    if op.layout.is_zst() {
+        return Some(ConstValue::ZeroSized);
+    }
+
+    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
+    if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+        return None;
+    }
+
+    // If this constant has scalar ABI, return it as a `ConstValue::Scalar`.
+    if let Abi::Scalar(abi::Scalar::Initialized { .. }) = op.layout.abi
+        && let Ok(scalar) = ecx.read_scalar(op)
+    {
+        return Some(ConstValue::Scalar(scalar));
+    }
+
+    // If this constant is a projection of another, we can return it directly.
+    if let Either::Left(mplace) = op.as_mplace_or_imm()
+        && let MemPlaceMeta::None = mplace.meta()
+    {
+        let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
+        let (alloc_id, offset) = pointer.into_parts();
+        return if matches!(ecx.tcx.global_alloc(alloc_id), GlobalAlloc::Memory(_)) {
+            Some(ConstValue::Indirect { alloc_id, offset })
+        } else {
+            None
+        }
+    }
+
+    // Everything failed: create a new allocation to hold the data.
+    let alloc_id =
+        ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest, false)).ok()?;
+    Some(ConstValue::Indirect { alloc_id, offset: Size::ZERO })
+}
+
 impl<'tcx> VnState<'_, 'tcx> {
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
+        // This was already constant in MIR, do not change it.
         if let Value::Constant(const_) = *self.get(index) {
             // Some constants may contain pointers. We need to preserve the provenance of these
             // pointers, but not all constants guarantee this:
             // - valtrees purposefully do not;
             // - ConstValue::Slice does not either.
-            match const_ {
+            let const_ok = match const_ {
                 Const::Ty(c) => match c.kind() {
                     ty::ConstKind::Value(valtree) => match valtree {
                         // This is just an integer, keep it.
-                        ty::ValTree::Leaf(_) => {}
-                        ty::ValTree::Branch(_) => return None,
+                        ty::ValTree::Leaf(_) => true,
+                        ty::ValTree::Branch(_) => false,
                     },
                     ty::ConstKind::Param(..)
                     | ty::ConstKind::Unevaluated(..)
-                    | ty::ConstKind::Expr(..) => {}
+                    | ty::ConstKind::Expr(..) => true,
                     // Should not appear in runtime MIR.
                     ty::ConstKind::Infer(..)
                     | ty::ConstKind::Bound(..)
                     | ty::ConstKind::Placeholder(..)
                     | ty::ConstKind::Error(..) => bug!(),
                 },
-                Const::Unevaluated(..) => {}
+                Const::Unevaluated(..) => true,
                 // If the same slice appears twice in the MIR, we cannot guarantee that we will
                 // give the same `AllocId` to the data.
-                Const::Val(ConstValue::Slice { .. }, _) => return None,
+                Const::Val(ConstValue::Slice { .. }, _) => false,
                 Const::Val(
                     ConstValue::ZeroSized | ConstValue::Scalar(_) | ConstValue::Indirect { .. },
                     _,
-                ) => {}
+                ) => true,
+            };
+            if const_ok {
+                return Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ });
             }
-            Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ })
-        } else {
-            None
         }
+
+        let op = self.evaluated[index].as_ref()?;
+        if op.layout.is_unsized() {
+            // Do not attempt to propagate unsized locals.
+            return None;
+        }
+
+        let value = op_to_prop_const(&mut self.ecx, op)?;
+
+        // Check that we do not leak a pointer.
+        // Those pointers may lose part of their identity in codegen.
+        if value.has_provenance(self.tcx, op.layout.size) {
+            return None;
+        }
+
+        let const_ = Const::Val(value, op.layout.ty);
+        Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ })
     }
 
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
