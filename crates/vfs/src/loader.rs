@@ -48,7 +48,16 @@ pub enum Message {
     /// Indicate a gradual progress.
     ///
     /// This is supposed to be the number of loaded files.
-    Progress { n_total: usize, n_done: usize, config_version: u32 },
+    Progress {
+        /// The total files to be loaded.
+        n_total: usize,
+        /// The files that have been loaded successfully.
+        n_done: usize,
+        /// The file being loaded, if any.
+        file: Option<AbsPathBuf>,
+        /// The [`Config`] version.
+        config_version: u32,
+    },
     /// The handle loaded the following files' content.
     Loaded { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
     /// The handle loaded the following files' content.
@@ -204,10 +213,11 @@ impl fmt::Debug for Message {
             Message::Changed { files } => {
                 f.debug_struct("Changed").field("n_files", &files.len()).finish()
             }
-            Message::Progress { n_total, n_done, config_version } => f
+            Message::Progress { n_total, n_done, file, config_version } => f
                 .debug_struct("Progress")
                 .field("n_total", n_total)
                 .field("n_done", n_done)
+                .field("file", file)
                 .field("config_version", config_version)
                 .finish(),
         }
