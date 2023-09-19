@@ -868,7 +868,7 @@ impl<'tcx> ExtraInfo<'tcx> {
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub(crate) struct LangString {
-    original: String,
+    pub(crate) original: String,
     pub(crate) should_panic: bool,
     pub(crate) no_run: bool,
     pub(crate) ignore: Ignore,
@@ -893,11 +893,13 @@ pub(crate) enum Ignore {
 /// ```eBNF
 /// lang-string = *(token-list / delimited-attribute-list / comment)
 ///
-/// bareword = CHAR *(CHAR)
+/// bareword = LEADINGCHAR *(CHAR)
+/// bareword-without-leading-char = CHAR *(CHAR)
 /// quoted-string = QUOTE *(NONQUOTE) QUOTE
 /// token = bareword / quoted-string
+/// token-without-leading-char = bareword-without-leading-char / quoted-string
 /// sep = COMMA/WS *(COMMA/WS)
-/// attribute = (DOT token)/(token EQUAL token)
+/// attribute = (DOT token)/(token EQUAL token-without-leading-char)
 /// attribute-list = [sep] attribute *(sep attribute) [sep]
 /// delimited-attribute-list = OPEN-CURLY-BRACKET attribute-list CLOSE-CURLY-BRACKET
 /// token-list = [sep] token *(sep token) [sep]
@@ -907,8 +909,15 @@ pub(crate) enum Ignore {
 /// CLOSE_PARENT = ")"
 /// OPEN-CURLY-BRACKET = "{"
 /// CLOSE-CURLY-BRACKET = "}"
-/// CHAR = ALPHA / DIGIT / "_" / "-" / ":"
-/// QUOTE = %x22
+/// LEADINGCHAR = ALPHA | DIGIT | "_" | "-" | ":"
+/// ; All ASCII punctuation except comma, quote, equals, backslash, grave (backquote) and braces.
+/// ; Comma is used to separate language tokens, so it can't be used in one.
+/// ; Quote is used to allow otherwise-disallowed characters in language tokens.
+/// ; Equals is used to make key=value pairs in attribute blocks.
+/// ; Backslash and grave are special Markdown characters.
+/// ; Braces are used to start an attribute block.
+/// CHAR = ALPHA | DIGIT | "_" | "-" | ":" | "." | "!" | "#" | "$" | "%" | "&" | "*" | "+" | "/" |
+///        ";" | "<" | ">" | "?" | "@" | "^" | "|" | "~"
 /// NONQUOTE = %x09 / %x20 / %x21 / %x23-7E ; TAB / SPACE / all printable characters except `"`
 /// COMMA = ","
 /// DOT = "."
@@ -932,8 +941,11 @@ pub(crate) enum LangStringToken<'a> {
     KeyValueAttribute(&'a str, &'a str),
 }
 
-fn is_bareword_char(c: char) -> bool {
+fn is_leading_char(c: char) -> bool {
     c == '_' || c == '-' || c == ':' || c.is_ascii_alphabetic() || c.is_ascii_digit()
+}
+fn is_bareword_char(c: char) -> bool {
+    is_leading_char(c) || ".!#$%&*+/;<>?@^|~".contains(c)
 }
 fn is_separator(c: char) -> bool {
     c == ' ' || c == ',' || c == '\t'
@@ -1077,7 +1089,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                 return self.next();
             } else if c == '.' {
                 return self.parse_class(pos);
-            } else if c == '"' || is_bareword_char(c) {
+            } else if c == '"' || is_leading_char(c) {
                 return self.parse_key_value(c, pos);
             } else {
                 self.emit_error(format!("unexpected character `{c}`"));
@@ -1107,7 +1119,11 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                     return None;
                 }
                 let indices = self.parse_string(pos)?;
-                if let Some((_, c)) = self.inner.peek().copied() && c != '{' && !is_separator(c) && c != '(' {
+                if let Some((_, c)) = self.inner.peek().copied() &&
+                    c != '{' &&
+                    !is_separator(c) &&
+                    c != '('
+                {
                     self.emit_error(format!("expected ` `, `{{` or `,` after `\"`, found `{c}`"));
                     return None;
                 }
@@ -1115,8 +1131,6 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
             } else if c == '{' {
                 self.is_in_attribute_block = true;
                 return self.next();
-            } else if is_bareword_char(c) {
-                continue;
             } else if is_separator(c) {
                 if pos != start {
                     return Some(LangStringToken::LangToken(&self.data[start..pos]));
@@ -1130,6 +1144,10 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                     return Some(LangStringToken::LangToken(&self.data[start..pos]));
                 }
                 return self.next();
+            } else if pos == start && is_leading_char(c) {
+                continue;
+            } else if pos != start && is_bareword_char(c) {
+                continue;
             } else {
                 self.emit_error(format!("unexpected character `{c}`"));
                 return None;
@@ -1156,6 +1174,29 @@ impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
             self.parse_outside_attribute_block(start)
         }
     }
+}
+
+fn tokens(string: &str) -> impl Iterator<Item = LangStringToken<'_>> {
+    // Pandoc, which Rust once used for generating documentation,
+    // expects lang strings to be surrounded by `{}` and for each token
+    // to be proceeded by a `.`. Since some of these lang strings are still
+    // loose in the wild, we strip a pair of surrounding `{}` from the lang
+    // string and a leading `.` from each token.
+
+    let string = string.trim();
+
+    let first = string.chars().next();
+    let last = string.chars().last();
+
+    let string =
+        if first == Some('{') && last == Some('}') { &string[1..string.len() - 1] } else { string };
+
+    string
+        .split(|c| c == ',' || c == ' ' || c == '\t')
+        .map(str::trim)
+        .map(|token| token.strip_prefix('.').unwrap_or(token))
+        .filter(|token| !token.is_empty())
+        .map(|token| LangStringToken::LangToken(token))
 }
 
 impl Default for LangString {
@@ -1208,122 +1249,130 @@ impl LangString {
 
         data.original = string.to_owned();
 
-        for token in TagIterator::new(string, extra) {
-            match token {
-                LangStringToken::LangToken("should_panic") => {
-                    data.should_panic = true;
-                    seen_rust_tags = !seen_other_tags;
-                }
-                LangStringToken::LangToken("no_run") => {
-                    data.no_run = true;
-                    seen_rust_tags = !seen_other_tags;
-                }
-                LangStringToken::LangToken("ignore") => {
-                    data.ignore = Ignore::All;
-                    seen_rust_tags = !seen_other_tags;
-                }
-                LangStringToken::LangToken(x) if x.starts_with("ignore-") => {
-                    if enable_per_target_ignores {
-                        ignores.push(x.trim_start_matches("ignore-").to_owned());
+        let mut call = |tokens: &mut dyn Iterator<Item = LangStringToken<'_>>| {
+            for token in tokens {
+                match token {
+                    LangStringToken::LangToken("should_panic") => {
+                        data.should_panic = true;
                         seen_rust_tags = !seen_other_tags;
                     }
-                }
-                LangStringToken::LangToken("rust") => {
-                    data.rust = true;
-                    seen_rust_tags = true;
-                }
-                LangStringToken::LangToken("custom") => {
-                    if custom_code_classes_in_docs {
-                        seen_custom_tag = true;
-                    } else {
-                        seen_other_tags = true;
+                    LangStringToken::LangToken("no_run") => {
+                        data.no_run = true;
+                        seen_rust_tags = !seen_other_tags;
                     }
-                }
-                LangStringToken::LangToken("test_harness") => {
-                    data.test_harness = true;
-                    seen_rust_tags = !seen_other_tags || seen_rust_tags;
-                }
-                LangStringToken::LangToken("compile_fail") => {
-                    data.compile_fail = true;
-                    seen_rust_tags = !seen_other_tags || seen_rust_tags;
-                    data.no_run = true;
-                }
-                LangStringToken::LangToken(x) if x.starts_with("edition") => {
-                    data.edition = x[7..].parse::<Edition>().ok();
-                }
-                LangStringToken::LangToken(x)
-                    if allow_error_code_check && x.starts_with('E') && x.len() == 5 =>
-                {
-                    if x[1..].parse::<u32>().is_ok() {
-                        data.error_codes.push(x.to_owned());
+                    LangStringToken::LangToken("ignore") => {
+                        data.ignore = Ignore::All;
+                        seen_rust_tags = !seen_other_tags;
+                    }
+                    LangStringToken::LangToken(x) if x.starts_with("ignore-") => {
+                        if enable_per_target_ignores {
+                            ignores.push(x.trim_start_matches("ignore-").to_owned());
+                            seen_rust_tags = !seen_other_tags;
+                        }
+                    }
+                    LangStringToken::LangToken("rust") => {
+                        data.rust = true;
+                        seen_rust_tags = true;
+                    }
+                    LangStringToken::LangToken("custom") => {
+                        if custom_code_classes_in_docs {
+                            seen_custom_tag = true;
+                        } else {
+                            seen_other_tags = true;
+                        }
+                    }
+                    LangStringToken::LangToken("test_harness") => {
+                        data.test_harness = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
-                    } else {
-                        seen_other_tags = true;
                     }
-                }
-                LangStringToken::LangToken(x) if extra.is_some() => {
-                    let s = x.to_lowercase();
-                    if let Some((flag, help)) = if s == "compile-fail"
-                        || s == "compile_fail"
-                        || s == "compilefail"
+                    LangStringToken::LangToken("compile_fail") => {
+                        data.compile_fail = true;
+                        seen_rust_tags = !seen_other_tags || seen_rust_tags;
+                        data.no_run = true;
+                    }
+                    LangStringToken::LangToken(x) if x.starts_with("edition") => {
+                        data.edition = x[7..].parse::<Edition>().ok();
+                    }
+                    LangStringToken::LangToken(x)
+                        if allow_error_code_check && x.starts_with('E') && x.len() == 5 =>
                     {
-                        Some((
-                            "compile_fail",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or won't fail if it compiles successfully",
-                        ))
-                    } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
-                        Some((
-                            "should_panic",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or won't fail if it doesn't panic when running",
-                        ))
-                    } else if s == "no-run" || s == "no_run" || s == "norun" {
-                        Some((
-                            "no_run",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or will be run (which you might not want)",
-                        ))
-                    } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
-                        Some((
-                            "test_harness",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or the code will be wrapped inside a main function",
-                        ))
-                    } else {
-                        None
-                    } {
-                        if let Some(extra) = extra {
-                            extra.error_invalid_codeblock_attr_with_help(
-                                format!("unknown attribute `{x}`. Did you mean `{flag}`?"),
-                                help,
-                            );
+                        if x[1..].parse::<u32>().is_ok() {
+                            data.error_codes.push(x.to_owned());
+                            seen_rust_tags = !seen_other_tags || seen_rust_tags;
+                        } else {
+                            seen_other_tags = true;
                         }
                     }
-                    seen_other_tags = true;
-                    data.unknown.push(x.to_owned());
-                }
-                LangStringToken::LangToken(x) => {
-                    seen_other_tags = true;
-                    data.unknown.push(x.to_owned());
-                }
-                LangStringToken::KeyValueAttribute(key, value) => {
-                    if custom_code_classes_in_docs {
-                        if key == "class" {
-                            data.added_classes.push(value.to_owned());
-                        } else if let Some(extra) = extra {
-                            extra.error_invalid_codeblock_attr(format!(
-                                "unsupported attribute `{key}`"
-                            ));
+                    LangStringToken::LangToken(x) if extra.is_some() => {
+                        let s = x.to_lowercase();
+                        if let Some((flag, help)) = if s == "compile-fail"
+                            || s == "compile_fail"
+                            || s == "compilefail"
+                        {
+                            Some((
+                                "compile_fail",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or won't fail if it compiles successfully",
+                            ))
+                        } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
+                            Some((
+                                "should_panic",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or won't fail if it doesn't panic when running",
+                            ))
+                        } else if s == "no-run" || s == "no_run" || s == "norun" {
+                            Some((
+                                "no_run",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or will be run (which you might not want)",
+                            ))
+                        } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
+                            Some((
+                                "test_harness",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or the code will be wrapped inside a main function",
+                            ))
+                        } else {
+                            None
+                        } {
+                            if let Some(extra) = extra {
+                                extra.error_invalid_codeblock_attr_with_help(
+                                    format!("unknown attribute `{x}`. Did you mean `{flag}`?"),
+                                    help,
+                                );
+                            }
                         }
-                    } else {
                         seen_other_tags = true;
+                        data.unknown.push(x.to_owned());
                     }
-                }
-                LangStringToken::ClassAttribute(class) => {
-                    data.added_classes.push(class.to_owned());
+                    LangStringToken::LangToken(x) => {
+                        seen_other_tags = true;
+                        data.unknown.push(x.to_owned());
+                    }
+                    LangStringToken::KeyValueAttribute(key, value) => {
+                        if custom_code_classes_in_docs {
+                            if key == "class" {
+                                data.added_classes.push(value.to_owned());
+                            } else if let Some(extra) = extra {
+                                extra.error_invalid_codeblock_attr(format!(
+                                    "unsupported attribute `{key}`"
+                                ));
+                            }
+                        } else {
+                            seen_other_tags = true;
+                        }
+                    }
+                    LangStringToken::ClassAttribute(class) => {
+                        data.added_classes.push(class.to_owned());
+                    }
                 }
             }
+        };
+
+        if custom_code_classes_in_docs {
+            call(&mut TagIterator::new(string, extra).into_iter())
+        } else {
+            call(&mut tokens(string))
         }
 
         // ignore-foo overrides ignore
