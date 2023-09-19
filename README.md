@@ -78,7 +78,7 @@ See [the rustc-dev-guide for more info][sysllvm].
 In the case of the Nix Package Manager being used, the following shell can be used to install deependencies for users:
 
 ```nix
-# Rust Contributor Shell
+# Rust User Shell
 let
   # Unstable Channel | Rolling Release
   pkgs = import (fetchTarball("channel:nixpkgs-unstable")) { };
