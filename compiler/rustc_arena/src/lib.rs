@@ -250,25 +250,20 @@ impl<T> TypedArena<T> {
         available_bytes >= additional_bytes
     }
 
-    /// Ensures there's enough space in the current chunk to fit `len` objects.
-    #[inline]
-    fn ensure_capacity(&self, additional: usize) {
-        if !self.can_allocate(additional) {
-            self.grow(additional);
-            debug_assert!(self.can_allocate(additional));
-        }
-    }
-
     #[inline]
     unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
         assert!(mem::size_of::<T>() != 0);
         assert!(len != 0);
 
-        self.ensure_capacity(len);
+        // Ensure the current chunk can fit `len` objects.
+        if !self.can_allocate(len) {
+            self.grow(len);
+            debug_assert!(self.can_allocate(len));
+        }
 
         let start_ptr = self.ptr.get();
-        // SAFETY: `self.ensure_capacity` makes sure that there is enough space
-        // for `len` elements.
+        // SAFETY: `can_allocate`/`grow` ensures that there is enough space for
+        // `len` elements.
         unsafe { self.ptr.set(start_ptr.add(len)) };
         start_ptr
     }
