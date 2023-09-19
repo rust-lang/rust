@@ -172,8 +172,8 @@ impl<T, const N: usize> IterExt<T> for std::array::IntoIter<T, N> {
             return &mut [];
         }
         // Move the content to the arena by copying and then forgetting it.
+        let start_ptr = arena.alloc_raw_slice(len);
         unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
             self.as_slice().as_ptr().copy_to_nonoverlapping(start_ptr, len);
             mem::forget(self);
             slice::from_raw_parts_mut(start_ptr, len)
@@ -189,8 +189,8 @@ impl<T> IterExt<T> for Vec<T> {
             return &mut [];
         }
         // Move the content to the arena by copying and then forgetting it.
+        let start_ptr = arena.alloc_raw_slice(len);
         unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             self.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
@@ -206,8 +206,8 @@ impl<A: smallvec::Array> IterExt<A::Item> for SmallVec<A> {
             return &mut [];
         }
         // Move the content to the arena by copying and then forgetting it.
+        let start_ptr = arena.alloc_raw_slice(len);
         unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             self.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
@@ -251,7 +251,7 @@ impl<T> TypedArena<T> {
     }
 
     #[inline]
-    unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
+    fn alloc_raw_slice(&self, len: usize) -> *mut T {
         assert!(mem::size_of::<T>() != 0);
         assert!(len != 0);
 
