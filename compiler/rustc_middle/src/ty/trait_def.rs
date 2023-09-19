@@ -269,5 +269,5 @@ pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -
 
     debug!(?impls);
 
-    tcx.arena.alloc_slice(&impls)
+    tcx.arena.alloc_from_iter(impls)
 }

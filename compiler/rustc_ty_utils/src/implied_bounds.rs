@@ -37,7 +37,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                 liberated_sig.inputs_and_output,
                 fn_sig_spans(tcx, def_id),
             ));
-            tcx.arena.alloc_slice(&assumed_wf_types)
+            tcx.arena.alloc_from_iter(assumed_wf_types)
         }
         DefKind::Impl { .. } => {
             // Trait arguments and the self type for trait impls or only the self type for

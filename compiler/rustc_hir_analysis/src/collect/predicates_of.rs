@@ -469,7 +469,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
         } else {
             ty::GenericPredicates {
                 parent: predicates_and_bounds.parent,
-                predicates: tcx.arena.alloc_slice(&predicates),
+                predicates: tcx.arena.alloc_from_iter(predicates),
             }
         }
     } else {

@@ -2282,7 +2282,7 @@ pub fn provide(providers: &mut Providers) {
 
             // Bring everything into deterministic order.
             traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
-            tcx.arena.alloc_slice(&traits)
+            tcx.arena.alloc_from_iter(traits)
         },
         trait_impls_in_crate: |tcx, LocalCrate| {
             let mut trait_impls = Vec::new();
@@ -2296,7 +2296,7 @@ pub fn provide(providers: &mut Providers) {
 
             // Bring everything into deterministic order.
             trait_impls.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
-            tcx.arena.alloc_slice(&trait_impls)
+            tcx.arena.alloc_from_iter(trait_impls)
         },
 
         ..*providers

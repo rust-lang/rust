@@ -136,8 +136,8 @@ pub(super) fn explicit_item_bounds(
             };
             let args = GenericArgs::identity_for_item(tcx, def_id);
             let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-            tcx.arena.alloc_slice(
-                &opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
+            tcx.arena.alloc_from_iter(
+                opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
                     .to_vec()
                     .fold_with(&mut AssocTyToOpaque { tcx, fn_def_id: fn_def_id.to_def_id() }),
             )

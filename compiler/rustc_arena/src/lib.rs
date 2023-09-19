@@ -37,13 +37,6 @@ use std::ptr::{self, NonNull};
 use std::slice;
 use std::{cmp, intrinsics};
 
-/// This calls the passed function while ensuring it won't be inlined into the caller.
-#[inline(never)]
-#[cold]
-fn outline<F: FnOnce() -> R, R>(f: F) -> R {
-    f()
-}
-
 /// An arena that can hold objects of only one type.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
@@ -144,36 +137,54 @@ impl<T> Default for TypedArena<T> {
     }
 }
 
-trait IterExt<T> {
-    fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T];
+/// Implemented for various collection types.
+trait IterExt<A, T> {
+    /// Allocate a slice from an iterator.
+    fn alloc_from_iter(self, arena: &A) -> &mut [T];
 }
 
-impl<I, T> IterExt<T> for I
+/// Implemented for each arena.
+trait AllocRawSlice<T> {
+    /// Allocate memory for a non-empty slice without initializing it.
+    ///
+    /// SAFETY: if `T` impls `Drop`, the callsite must immediately initialize
+    /// the memory in a way that cannot cause a panic. Otherwise, a panic
+    /// during initialization could cause `TypedArena` to drop uninitialized
+    /// memory.
+    unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T;
+}
+
+impl<A, I, T> IterExt<A, T> for I
 where
+    A: AllocRawSlice<T>,
     I: IntoIterator<Item = T>,
 {
     // This default collects into a `SmallVec` and then allocates by copying
     // from it. The specializations below for types like `Vec` are more
     // efficient, copying directly without the intermediate collecting step.
-    // This default could be made more efficient, like
-    // `DroplessArena::alloc_from_iter`, but it's not hot enough to bother.
+    // This default could be made more efficient, but it's not hot enough to
+    // bother.
     #[inline]
-    default fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
+    default fn alloc_from_iter(self, arena: &A) -> &mut [T] {
         let vec: SmallVec<[_; 8]> = self.into_iter().collect();
         vec.alloc_from_iter(arena)
     }
 }
 
-impl<T> IterExt<T> for Vec<T> {
+impl<A, T> IterExt<A, T> for Vec<T>
+where
+    A: AllocRawSlice<T>,
+{
     #[inline]
-    fn alloc_from_iter(mut self, arena: &TypedArena<T>) -> &mut [T] {
+    fn alloc_from_iter(mut self, arena: &A) -> &mut [T] {
         let len = self.len();
         if len == 0 {
             return &mut [];
         }
         // Move the content to the arena by copying and then forgetting it.
-        let start_ptr = arena.alloc_raw_slice(len);
         unsafe {
+            // SAFETY: copy_to_nonoverlapping cannot panic.
+            let start_ptr = arena.alloc_raw_slice(len);
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             self.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
@@ -181,16 +192,20 @@ impl<T> IterExt<T> for Vec<T> {
     }
 }
 
-impl<A: smallvec::Array> IterExt<A::Item> for SmallVec<A> {
+impl<A, SA: smallvec::Array> IterExt<A, SA::Item> for SmallVec<SA>
+where
+    A: AllocRawSlice<SA::Item>,
+{
     #[inline]
-    fn alloc_from_iter(mut self, arena: &TypedArena<A::Item>) -> &mut [A::Item] {
+    fn alloc_from_iter(mut self, arena: &A) -> &mut [SA::Item] {
         let len = self.len();
         if len == 0 {
             return &mut [];
         }
         // Move the content to the arena by copying and then forgetting it.
-        let start_ptr = arena.alloc_raw_slice(len);
         unsafe {
+            // SAFETY: copy_to_nonoverlapping cannot panic.
+            let start_ptr = arena.alloc_raw_slice(len);
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             self.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
@@ -231,24 +246,6 @@ impl<T> TypedArena<T> {
         let available_bytes = self.end.get().addr() - self.ptr.get().addr();
         let additional_bytes = additional.checked_mul(mem::size_of::<T>()).unwrap();
         available_bytes >= additional_bytes
-    }
-
-    #[inline]
-    fn alloc_raw_slice(&self, len: usize) -> *mut T {
-        assert!(mem::size_of::<T>() != 0);
-        assert!(len != 0);
-
-        // Ensure the current chunk can fit `len` objects.
-        if !self.can_allocate(len) {
-            self.grow(len);
-            debug_assert!(self.can_allocate(len));
-        }
-
-        let start_ptr = self.ptr.get();
-        // SAFETY: `can_allocate`/`grow` ensures that there is enough space for
-        // `len` elements.
-        unsafe { self.ptr.set(start_ptr.add(len)) };
-        start_ptr
     }
 
     #[inline]
@@ -320,6 +317,26 @@ impl<T> TypedArena<T> {
         }
         // Reset the chunk.
         self.ptr.set(last_chunk.start());
+    }
+}
+
+impl<T> AllocRawSlice<T> for TypedArena<T> {
+    #[inline]
+    unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
+        assert!(mem::size_of::<T>() != 0);
+        assert!(len != 0);
+
+        // Ensure the current chunk can fit `len` objects.
+        if !self.can_allocate(len) {
+            self.grow(len);
+            debug_assert!(self.can_allocate(len));
+        }
+
+        let start_ptr = self.ptr.get();
+        // SAFETY: `can_allocate`/`grow` ensures that there is enough space for
+        // `len` elements.
+        unsafe { self.ptr.set(start_ptr.add(len)) };
+        start_ptr
     }
 }
 
@@ -498,88 +515,28 @@ impl DroplessArena {
     where
         T: Copy,
     {
-        assert!(!mem::needs_drop::<T>());
-        assert!(mem::size_of::<T>() != 0);
-        assert!(!slice.is_empty());
-
-        let mem = self.alloc_raw(Layout::for_value::<[T]>(slice)) as *mut T;
-
         unsafe {
+            // SAFETY: copy_from_nonoverlapping cannot panic.
+            let mem = self.alloc_raw_slice(slice.len()) as *mut T;
             mem.copy_from_nonoverlapping(slice.as_ptr(), slice.len());
             slice::from_raw_parts_mut(mem, slice.len())
         }
     }
 
-    /// # Safety
-    ///
-    /// The caller must ensure that `mem` is valid for writes up to
-    /// `size_of::<T>() * len`.
-    #[inline]
-    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
-        &self,
-        mut iter: I,
-        len: usize,
-        mem: *mut T,
-    ) -> &mut [T] {
-        let mut i = 0;
-        // Use a manual loop since LLVM manages to optimize it better for
-        // slice iterators
-        loop {
-            // SAFETY: The caller must ensure that `mem` is valid for writes up to
-            // `size_of::<T>() * len`.
-            unsafe {
-                match iter.next() {
-                    Some(value) if i < len => mem.add(i).write(value),
-                    Some(_) | None => {
-                        // We only return as many items as the iterator gave us, even
-                        // though it was supposed to give us `len`
-                        return slice::from_raw_parts_mut(mem, i);
-                    }
-                }
-            }
-            i += 1;
-        }
-    }
-
     #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        let iter = iter.into_iter();
-        assert!(mem::size_of::<T>() != 0);
+        iter.alloc_from_iter(self)
+    }
+}
+
+impl<T> AllocRawSlice<T> for DroplessArena {
+    #[inline]
+    unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
         assert!(!mem::needs_drop::<T>());
+        assert!(mem::size_of::<T>() != 0);
+        assert!(len != 0);
 
-        let size_hint = iter.size_hint();
-
-        match size_hint {
-            (min, Some(max)) if min == max => {
-                // We know the exact number of elements the iterator will produce here
-                let len = min;
-
-                if len == 0 {
-                    return &mut [];
-                }
-
-                let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
-                unsafe { self.write_from_iter(iter, len, mem) }
-            }
-            (_, _) => {
-                outline(move || -> &mut [T] {
-                    let mut vec: SmallVec<[_; 8]> = iter.collect();
-                    if vec.is_empty() {
-                        return &mut [];
-                    }
-                    // Move the content to the arena by copying it and then forgetting
-                    // the content of the SmallVec
-                    unsafe {
-                        let len = vec.len();
-                        let start_ptr =
-                            self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
-                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        vec.set_len(0);
-                        slice::from_raw_parts_mut(start_ptr, len)
-                    }
-                })
-            }
-        }
+        self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T
     }
 }
 
