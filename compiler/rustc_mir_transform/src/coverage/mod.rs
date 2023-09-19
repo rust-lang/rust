@@ -215,11 +215,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
     }
 
-    /// Inject a counter for each coverage span. There can be multiple coverage spans for a given
-    /// BCB, but only one actual counter needs to be incremented per BCB. `bcb_counters` maps each
-    /// `bcb` to its `Counter`, when injected. Subsequent coverage spans for a BCB that already has
-    /// a `Counter` will inject an `Expression` instead, and compute its value by adding `ZERO` to
-    /// the BCB `Counter` value.
+    /// Injects a single [`StatementKind::Coverage`] for each BCB that has one
+    /// or more coverage spans.
     fn inject_coverage_span_counters(&mut self, coverage_spans: &CoverageSpans) {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
@@ -227,7 +224,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
 
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
-        for (bcb, span) in coverage_spans.bcb_span_pairs() {
+        for (bcb, spans) in coverage_spans.bcbs_with_coverage_spans() {
             let counter_kind = if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
                 self.coverage_counters.make_identity_counter(counter_operand)
             } else if let Some(counter_kind) = self.coverage_counters.take_bcb_counter(bcb) {
@@ -237,20 +234,24 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
             };
 
-            let code_region = make_code_region(source_map, file_name, span, body_span);
+            // Convert the coverage spans into a vector of code regions to be
+            // associated with this BCB's coverage statement.
+            let code_regions = spans
+                .iter()
+                .map(|&span| make_code_region(source_map, file_name, span, body_span))
+                .collect::<Vec<_>>();
 
             inject_statement(
                 self.mir_body,
                 self.make_mir_coverage_kind(&counter_kind),
                 self.bcb_leader_bb(bcb),
-                vec![code_region],
+                code_regions,
             );
         }
     }
 
-    /// `inject_coverage_span_counters()` looped through the coverage spans and injected the
-    /// counter from the coverage span's `BasicCoverageBlock`, removing it from the BCB in the
-    /// process (via `take_counter()`).
+    /// At this point, any BCB with coverage counters has already had its counter injected
+    /// into MIR, and had its counter removed from `coverage_counters` (via `take_counter()`).
     ///
     /// Any other counter associated with a `BasicCoverageBlock`, or its incoming edge, but not
     /// associated with a coverage span, should only exist if the counter is an `Expression`

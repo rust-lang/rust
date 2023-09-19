@@ -1,7 +1,7 @@
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
 use rustc_data_structures::graph::WithNumNodes;
-use rustc_index::bit_set::BitSet;
+use rustc_index::IndexVec;
 use rustc_middle::mir::{
     self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
@@ -12,8 +12,8 @@ use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 use std::cell::OnceCell;
 
 pub(super) struct CoverageSpans {
-    coverage_spans: Vec<CoverageSpan>,
-    bcbs_with_coverage_spans: BitSet<BasicCoverageBlock>,
+    /// Map from BCBs to their list of coverage spans.
+    bcb_to_spans: IndexVec<BasicCoverageBlock, Vec<Span>>,
 }
 
 impl CoverageSpans {
@@ -30,20 +30,26 @@ impl CoverageSpans {
             basic_coverage_blocks,
         );
 
-        let mut bcbs_with_coverage_spans = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-        for coverage_span in &coverage_spans {
-            bcbs_with_coverage_spans.insert(coverage_span.bcb);
+        // Group the coverage spans by BCB, with the BCBs in sorted order.
+        let mut bcb_to_spans = IndexVec::from_elem_n(Vec::new(), basic_coverage_blocks.num_nodes());
+        for CoverageSpan { bcb, span, .. } in coverage_spans {
+            bcb_to_spans[bcb].push(span);
         }
 
-        Self { coverage_spans, bcbs_with_coverage_spans }
+        Self { bcb_to_spans }
     }
 
     pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
-        self.bcbs_with_coverage_spans.contains(bcb)
+        !self.bcb_to_spans[bcb].is_empty()
     }
 
-    pub(super) fn bcb_span_pairs(&self) -> impl Iterator<Item = (BasicCoverageBlock, Span)> + '_ {
-        self.coverage_spans.iter().map(|&CoverageSpan { bcb, span, .. }| (bcb, span))
+    pub(super) fn bcbs_with_coverage_spans(
+        &self,
+    ) -> impl Iterator<Item = (BasicCoverageBlock, &[Span])> {
+        self.bcb_to_spans.iter_enumerated().filter_map(|(bcb, spans)| {
+            // Only yield BCBs that have at least one coverage span.
+            (!spans.is_empty()).then_some((bcb, spans.as_slice()))
+        })
     }
 }
 
