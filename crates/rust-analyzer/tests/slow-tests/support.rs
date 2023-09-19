@@ -150,6 +150,7 @@ impl Project<'_> {
                 ..Default::default()
             },
             roots,
+            false,
         );
         config.update(self.config).expect("invalid config");
         config.rediscover_workspaces();

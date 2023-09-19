@@ -443,10 +443,11 @@ pub(crate) fn inlay_hint(
     file_id: FileId,
     inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
+    let is_visual_studio = snap.config.is_visual_studio();
     let needs_resolve = inlay_hint.needs_resolve;
     let (label, tooltip, mut something_to_resolve) =
         inlay_hint_label(snap, fields_to_resolve, needs_resolve, inlay_hint.label)?;
-    let text_edits = if needs_resolve && fields_to_resolve.resolve_text_edits {
+    let text_edits = if !is_visual_studio && needs_resolve && fields_to_resolve.resolve_text_edits {
         something_to_resolve |= inlay_hint.text_edit.is_some();
         None
     } else {
