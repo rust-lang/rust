@@ -412,6 +412,8 @@ impl Default for DroplessArena {
 }
 
 impl DroplessArena {
+    #[inline(never)]
+    #[cold]
     fn grow(&self, layout: Layout) {
         // Add some padding so we can align `self.end` while
         // still fitting in a `layout` allocation.
@@ -451,13 +453,6 @@ impl DroplessArena {
         }
     }
 
-    #[inline(never)]
-    #[cold]
-    fn grow_and_alloc_raw(&self, layout: Layout) -> *mut u8 {
-        self.grow(layout);
-        self.alloc_raw_without_grow(layout).unwrap()
-    }
-
     /// Allocates a byte slice with specified layout from the current memory
     /// chunk. Returns `None` if there is no free space left to satisfy the
     /// request.
@@ -488,12 +483,17 @@ impl DroplessArena {
     #[inline]
     pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
         assert!(layout.size() != 0);
-        if let Some(a) = self.alloc_raw_without_grow(layout) {
-            return a;
+
+        // This loop executes once or twice: if allocation fails the first
+        // time, the `grow` ensures it will succeed the second time.
+        loop {
+            if let Some(a) = self.alloc_raw_without_grow(layout) {
+                return a;
+            }
+            // No free space left. Allocate a new chunk to satisfy the request.
+            // On failure the grow will panic or abort.
+            self.grow(layout);
         }
-        // No free space left. Allocate a new chunk to satisfy the request.
-        // On failure the grow will panic or abort.
-        self.grow_and_alloc_raw(layout)
     }
 
     #[inline]
