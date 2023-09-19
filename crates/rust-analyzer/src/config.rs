@@ -565,6 +565,7 @@ pub struct Config {
     data: ConfigData,
     detached_files: Vec<AbsPathBuf>,
     snippets: Vec<Snippet>,
+    is_visual_studio_code: bool,
 }
 
 type ParallelCachePrimingNumThreads = u8;
@@ -760,6 +761,7 @@ impl Config {
         root_path: AbsPathBuf,
         caps: ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
+        is_visual_studio_code: bool,
     ) -> Self {
         Config {
             caps,
@@ -769,6 +771,7 @@ impl Config {
             root_path,
             snippets: Default::default(),
             workspace_roots,
+            is_visual_studio_code,
         }
     }
 
@@ -1667,6 +1670,12 @@ impl Config {
     pub fn typing_autoclose_angle(&self) -> bool {
         self.data.typing_autoClosingAngleBrackets_enable
     }
+
+    // FIXME: VSCode seems to work wrong sometimes, see https://github.com/microsoft/vscode/issues/193124
+    // hence, distinguish it for now.
+    pub fn is_visual_studio_code(&self) -> bool {
+        self.is_visual_studio_code
+    }
 }
 // Deserialization definitions
 
@@ -2555,8 +2564,12 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_null() {
-        let mut config =
-            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
         config
             .update(serde_json::json!({
                 "procMacro_server": null,
@@ -2567,8 +2580,12 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_abs() {
-        let mut config =
-            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
         config
             .update(serde_json::json!({
                 "procMacro": {"server": project_root().display().to_string()}
@@ -2579,8 +2596,12 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_rel() {
-        let mut config =
-            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
         config
             .update(serde_json::json!({
                 "procMacro": {"server": "./server"}
