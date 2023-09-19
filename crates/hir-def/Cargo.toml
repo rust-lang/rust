@@ -31,10 +31,7 @@ smallvec.workspace = true
 hashbrown.workspace = true
 triomphe.workspace = true
 
-rustc_abi.workspace = true
-rustc_index.workspace = true
-rustc_parse_format.workspace = true
-
+rustc-dependencies.workspace = true
 
 # local deps
 stdx.workspace = true
@@ -53,3 +50,6 @@ expect-test = "1.4.0"
 
 # local deps
 test-utils.workspace = true
+
+[features]
+in-rust-tree = ["rustc-dependencies/in-rust-tree"]

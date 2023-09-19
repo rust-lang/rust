@@ -1,0 +1,20 @@
+[package]
+name = "rustc-dependencies"
+version = "0.0.0"
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ra-ap-rustc_lexer = { version = "0.10.0" }
+ra-ap-rustc_parse_format = { version = "0.10.0", default-features = false }
+
+# Upstream broke this for us so we can't update it
+hkalbasi-rustc-ap-rustc_abi = { version = "0.0.20221221", default-features = false }
+hkalbasi-rustc-ap-rustc_index = { version = "0.0.20221221", default-features = false }
+
+[features]
+in-rust-tree = []
