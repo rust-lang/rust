@@ -7,7 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(lazy_cell)]
 #![feature(decl_macro)]
-#![feature(ice_to_disk)]
+#![feature(panic_update_hook)]
 #![feature(let_chains)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
@@ -50,9 +50,9 @@ use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
 use std::fmt::Write as _;
-use std::fs;
+use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, catch_unwind};
+use std::panic::{self, catch_unwind, PanicInfo};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
@@ -1326,31 +1326,59 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         std::env::set_var("RUST_BACKTRACE", "full");
     }
 
-    panic::set_hook(Box::new(move |info| {
-        // If the error was caused by a broken pipe then this is not a bug.
-        // Write the error and return immediately. See #98700.
-        #[cfg(windows)]
-        if let Some(msg) = info.payload().downcast_ref::<String>() {
-            if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)") {
-                // the error code is already going to be reported when the panic unwinds up the stack
-                let handler = EarlyErrorHandler::new(ErrorOutputType::default());
-                let _ = handler.early_error_no_abort(msg.clone());
-                return;
+    panic::update_hook(Box::new(
+        move |default_hook: &(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static),
+              info: &PanicInfo<'_>| {
+            // If the error was caused by a broken pipe then this is not a bug.
+            // Write the error and return immediately. See #98700.
+            #[cfg(windows)]
+            if let Some(msg) = info.payload().downcast_ref::<String>() {
+                if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
+                {
+                    // the error code is already going to be reported when the panic unwinds up the stack
+                    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+                    let _ = handler.early_error_no_abort(msg.clone());
+                    return;
+                }
+            };
+
+            // Invoke the default handler, which prints the actual panic message and optionally a backtrace
+            // Don't do this for delayed bugs, which already emit their own more useful backtrace.
+            if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
+                default_hook(info);
+                // Separate the output with an empty line
+                eprintln!();
+
+                if let Some(ice_path) = ice_path()
+                    && let Ok(mut out) =
+                        File::options().create(true).append(true).open(&ice_path)
+                {
+                    // The current implementation always returns `Some`.
+                    let location = info.location().unwrap();
+                    let msg = match info.payload().downcast_ref::<&'static str>() {
+                        Some(s) => *s,
+                        None => match info.payload().downcast_ref::<String>() {
+                            Some(s) => &s[..],
+                            None => "Box<dyn Any>",
+                        },
+                    };
+                    let thread = std::thread::current();
+                    let name = thread.name().unwrap_or("<unnamed>");
+                    let _ = write!(
+                        &mut out,
+                        "thread '{name}' panicked at {location}:\n\
+                        {msg}\n\
+                        stack backtrace:\n\
+                        {:#}",
+                        std::backtrace::Backtrace::force_capture()
+                    );
+                }
             }
-        };
 
-        // Invoke the default handler, which prints the actual panic message and optionally a backtrace
-        // Don't do this for delayed bugs, which already emit their own more useful backtrace.
-        if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
-            std::panic_hook_with_disk_dump(info, ice_path().as_deref());
-
-            // Separate the output with an empty line
-            eprintln!();
-        }
-
-        // Print the ICE message
-        report_ice(info, bug_report_url, extra_info);
-    }));
+            // Print the ICE message
+            report_ice(info, bug_report_url, extra_info);
+        },
+    ));
 }
 
 /// Prints the ICE message, including query stack, but without backtrace.
