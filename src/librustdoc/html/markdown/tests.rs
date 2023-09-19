@@ -1,5 +1,8 @@
 use super::{find_testable_code, plain_text_summary, short_markdown_summary};
-use super::{ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, Markdown, MarkdownItemInfo};
+use super::{
+    ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, LangStringToken, Markdown,
+    MarkdownItemInfo, TagIterator,
+};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
 #[test]
@@ -46,15 +49,37 @@ fn test_unique_id() {
 fn test_lang_string_parse() {
     fn t(lg: LangString) {
         let s = &lg.original;
-        assert_eq!(LangString::parse(s, ErrorCodes::Yes, true, None), lg)
+        assert_eq!(LangString::parse(s, ErrorCodes::Yes, true, None, true), lg)
     }
 
     t(Default::default());
     t(LangString { original: "rust".into(), ..Default::default() });
-    t(LangString { original: ".rust".into(), ..Default::default() });
-    t(LangString { original: "{rust}".into(), ..Default::default() });
-    t(LangString { original: "{.rust}".into(), ..Default::default() });
-    t(LangString { original: "sh".into(), rust: false, ..Default::default() });
+    t(LangString {
+        original: "rusta".into(),
+        rust: false,
+        unknown: vec!["rusta".into()],
+        ..Default::default()
+    });
+    // error
+    t(LangString { original: "{rust}".into(), rust: true, ..Default::default() });
+    t(LangString {
+        original: "{.rust}".into(),
+        rust: true,
+        added_classes: vec!["rust".into()],
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{.rust}".into(),
+        rust: false,
+        added_classes: vec!["rust".into()],
+        ..Default::default()
+    });
+    t(LangString {
+        original: "sh".into(),
+        rust: false,
+        unknown: vec!["sh".into()],
+        ..Default::default()
+    });
     t(LangString { original: "ignore".into(), ignore: Ignore::All, ..Default::default() });
     t(LangString {
         original: "ignore-foo".into(),
@@ -70,41 +95,56 @@ fn test_lang_string_parse() {
         compile_fail: true,
         ..Default::default()
     });
-    t(LangString { original: "no_run,example".into(), no_run: true, ..Default::default() });
+    t(LangString {
+        original: "no_run,example".into(),
+        no_run: true,
+        unknown: vec!["example".into()],
+        ..Default::default()
+    });
     t(LangString {
         original: "sh,should_panic".into(),
         should_panic: true,
         rust: false,
+        unknown: vec!["sh".into()],
         ..Default::default()
     });
-    t(LangString { original: "example,rust".into(), ..Default::default() });
     t(LangString {
-        original: "test_harness,.rust".into(),
+        original: "example,rust".into(),
+        unknown: vec!["example".into()],
+        ..Default::default()
+    });
+    t(LangString {
+        original: "test_harness,rusta".into(),
         test_harness: true,
+        unknown: vec!["rusta".into()],
         ..Default::default()
     });
     t(LangString {
         original: "text, no_run".into(),
         no_run: true,
         rust: false,
+        unknown: vec!["text".into()],
         ..Default::default()
     });
     t(LangString {
         original: "text,no_run".into(),
         no_run: true,
         rust: false,
+        unknown: vec!["text".into()],
         ..Default::default()
     });
     t(LangString {
         original: "text,no_run, ".into(),
         no_run: true,
         rust: false,
+        unknown: vec!["text".into()],
         ..Default::default()
     });
     t(LangString {
         original: "text,no_run,".into(),
         no_run: true,
         rust: false,
+        unknown: vec!["text".into()],
         ..Default::default()
     });
     t(LangString {
@@ -117,29 +157,125 @@ fn test_lang_string_parse() {
         edition: Some(Edition::Edition2018),
         ..Default::default()
     });
+    t(LangString {
+        original: "{class=test}".into(),
+        added_classes: vec!["test".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{class=test}".into(),
+        added_classes: vec!["test".into()],
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "{.test}".into(),
+        added_classes: vec!["test".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{.test}".into(),
+        added_classes: vec!["test".into()],
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "rust,{class=test,.test2}".into(),
+        added_classes: vec!["test".into(), "test2".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "{class=test:with:colon .test1}".into(),
+        added_classes: vec!["test:with:colon".into(), "test1".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{class=test:with:colon .test1}".into(),
+        added_classes: vec!["test:with:colon".into(), "test1".into()],
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "{class=first,class=second}".into(),
+        added_classes: vec!["first".into(), "second".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "custom,{class=first,class=second}".into(),
+        added_classes: vec!["first".into(), "second".into()],
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "{class=first,.second},unknown".into(),
+        added_classes: vec!["first".into(), "second".into()],
+        rust: false,
+        unknown: vec!["unknown".into()],
+        ..Default::default()
+    });
+    t(LangString {
+        original: "{class=first .second} unknown".into(),
+        added_classes: vec!["first".into(), "second".into()],
+        rust: false,
+        unknown: vec!["unknown".into()],
+        ..Default::default()
+    });
+    // error
+    t(LangString { original: "{.first.second}".into(), rust: true, ..Default::default() });
+    // error
+    t(LangString { original: "{class=first=second}".into(), rust: true, ..Default::default() });
+    // error
+    t(LangString { original: "{class=first.second}".into(), rust: true, ..Default::default() });
+    // error
+    t(LangString { original: "{class=.first}".into(), rust: true, ..Default::default() });
+    t(LangString {
+        original: r#"{class="first"}"#.into(),
+        added_classes: vec!["first".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: r#"custom,{class="first"}"#.into(),
+        added_classes: vec!["first".into()],
+        rust: false,
+        ..Default::default()
+    });
+    // error
+    t(LangString { original: r#"{class=f"irst"}"#.into(), rust: true, ..Default::default() });
 }
 
 #[test]
 fn test_lang_string_tokenizer() {
-    fn case(lang_string: &str, want: &[&str]) {
-        let have = LangString::tokens(lang_string).collect::<Vec<&str>>();
+    fn case(lang_string: &str, want: &[LangStringToken<'_>]) {
+        let have = TagIterator::new(lang_string, None).collect::<Vec<_>>();
         assert_eq!(have, want, "Unexpected lang string split for `{}`", lang_string);
     }
 
     case("", &[]);
-    case("foo", &["foo"]);
-    case("foo,bar", &["foo", "bar"]);
-    case(".foo,.bar", &["foo", "bar"]);
-    case("{.foo,.bar}", &["foo", "bar"]);
-    case("  {.foo,.bar}  ", &["foo", "bar"]);
-    case("foo bar", &["foo", "bar"]);
-    case("foo\tbar", &["foo", "bar"]);
-    case("foo\t, bar", &["foo", "bar"]);
-    case(" foo , bar ", &["foo", "bar"]);
-    case(",,foo,,bar,,", &["foo", "bar"]);
-    case("foo=bar", &["foo=bar"]);
-    case("a-b-c", &["a-b-c"]);
-    case("a_b_c", &["a_b_c"]);
+    case("foo", &[LangStringToken::LangToken("foo")]);
+    case("foo,bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case(".foo,.bar", &[]);
+    case(
+        "{.foo,.bar}",
+        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
+    );
+    case(
+        "  {.foo,.bar}  ",
+        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
+    );
+    case("foo bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case("foo\tbar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case("foo\t, bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case(" foo , bar ", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case(",,foo,,bar,,", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case("foo=bar", &[]);
+    case("a-b-c", &[LangStringToken::LangToken("a-b-c")]);
+    case("a_b_c", &[LangStringToken::LangToken("a_b_c")]);
 }
 
 #[test]
@@ -154,6 +290,7 @@ fn test_header() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            custom_code_classes_in_docs: true,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -193,6 +330,7 @@ fn test_header_ids_multiple_blocks() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            custom_code_classes_in_docs: true,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -297,7 +435,7 @@ fn test_find_testable_code_line() {
             }
         }
         let mut lines = Vec::<usize>::new();
-        find_testable_code(input, &mut lines, ErrorCodes::No, false, None);
+        find_testable_code(input, &mut lines, ErrorCodes::No, false, None, true);
         assert_eq!(lines, expect);
     }
 
@@ -322,6 +460,7 @@ fn test_ascii_with_prepending_hashtag() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            custom_code_classes_in_docs: true,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);

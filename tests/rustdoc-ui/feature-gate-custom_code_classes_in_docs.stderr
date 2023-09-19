@@ -1,0 +1,14 @@
+warning: custom classes in code blocks will change behaviour
+  --> $DIR/feature-gate-custom_code_classes_in_docs.rs:3:1
+   |
+LL | / /// ```{class=language-c}
+LL | | /// int main(void) { return 0; }
+LL | | /// ```
+   | |_______^
+   |
+   = note: see issue #79483 <https://github.com/rust-lang/rust/issues/79483> for more information
+   = help: add `#![feature(custom_code_classes_in_docs)]` to the crate attributes to enable
+   = note: found these custom classes: class=language-c
+
+warning: 1 warning emitted
+

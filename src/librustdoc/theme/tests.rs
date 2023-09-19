@@ -100,7 +100,7 @@ fn check_invalid_css() {
 
 #[test]
 fn test_with_minification() {
-    let text = include_str!("../html/static/css/themes/dark.css");
+    let text = include_str!("../html/static/css/noscript.css");
     let minified = minifier::css::minify(&text).expect("CSS minification failed").to_string();
 
     let against = load_css_paths(text).unwrap();

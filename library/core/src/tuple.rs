@@ -1,4 +1,4 @@
-// See src/libstd/primitive_docs.rs for documentation.
+// See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
 use crate::marker::ConstParamTy;

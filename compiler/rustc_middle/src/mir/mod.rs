@@ -565,6 +565,34 @@ impl<'tcx> Body<'tcx> {
     pub fn is_custom_mir(&self) -> bool {
         self.injection_phase.is_some()
     }
+
+    /// *Must* be called once the full substitution for this body is known, to ensure that the body
+    /// is indeed fit for code generation or consumption more generally.
+    ///
+    /// Sadly there's no nice way to represent an "arbitrary normalizer", so we take one for
+    /// constants specifically. (`Option<GenericArgsRef>` could be used for that, but the fact
+    /// that `Instance::args_for_mir_body` is private and instead instance exposes normalization
+    /// functions makes it seem like exposing the generic args is not the intended strategy.)
+    ///
+    /// Also sadly, CTFE doesn't even know whether it runs on MIR that is already polymorphic or still monomorphic,
+    /// so we cannot just immediately ICE on TooGeneric.
+    ///
+    /// Returns Ok(()) if everything went fine, and `Err` if a problem occurred and got reported.
+    pub fn post_mono_checks(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        normalize_const: impl Fn(ConstantKind<'tcx>) -> Result<ConstantKind<'tcx>, ErrorHandled>,
+    ) -> Result<(), ErrorHandled> {
+        // For now, the only thing we have to check is is to ensure that all the constants used in
+        // the body successfully evaluate.
+        for &const_ in &self.required_consts {
+            let c = normalize_const(const_.literal)?;
+            c.eval(tcx, param_env, Some(const_.span))?;
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -744,7 +772,7 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalAndLiftImpls! { BindingForm<'tcx> }
+TrivialTypeTraversalImpls! { BindingForm<'tcx> }
 
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -2295,7 +2323,7 @@ pub struct Constant<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
-#[derive(Lift, TypeFoldable, TypeVisitable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system.
     ///
@@ -2397,10 +2425,10 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn normalize(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
         match self.eval(tcx, param_env, None) {
             Ok(val) => Self::Val(val, self.ty()),
-            Err(ErrorHandled::Reported(guar)) => {
+            Err(ErrorHandled::Reported(guar, _span)) => {
                 Self::Ty(ty::Const::new_error(tcx, guar.into(), self.ty()))
             }
-            Err(ErrorHandled::TooGeneric) => self,
+            Err(ErrorHandled::TooGeneric(_span)) => self,
         }
     }
 
@@ -2615,7 +2643,7 @@ impl<'tcx> ConstantKind<'tcx> {
 }
 
 /// An unevaluated (potentially generic) constant used in MIR.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,

@@ -95,6 +95,34 @@ hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a par
 hir_analysis_impl_not_marked_default_err = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
     .note = parent implementation is in crate `{$cname}`
 
+hir_analysis_inherent_dyn = cannot define inherent `impl` for a dyn auto trait
+    .label = impl requires at least one non-auto trait
+    .note = define and implement a new trait or type instead
+
+hir_analysis_inherent_nominal = no nominal type found for inherent implementation
+    .label = impl requires a nominal type
+    .note = either implement a trait on it or create a newtype to wrap it instead
+hir_analysis_inherent_primitive_ty = cannot define inherent `impl` for primitive types
+    .help = consider using an extension trait instead
+
+hir_analysis_inherent_primitive_ty_note = you could also try moving the reference to uses of `{$subty}` (such as `self`) within the implementation
+
+hir_analysis_inherent_ty_outside = cannot define inherent `impl` for a type outside of the crate where the type is defined
+    .help = consider moving this inherent impl into the crate defining the type if possible
+    .span_help = alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
+
+hir_analysis_inherent_ty_outside_new = cannot define inherent `impl` for a type outside of the crate where the type is defined
+    .label = impl for type defined outside of crate.
+    .note = define and implement a trait or new type instead
+
+hir_analysis_inherent_ty_outside_primitive = cannot define inherent `impl` for primitive types outside of `core`
+    .help = consider moving this inherent impl into `core` if possible
+    .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
+
+hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a type outside of the crate where the type is defined
+    .help = consider moving this inherent impl into the crate defining the type if possible
+    .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
+
 hir_analysis_invalid_union_field =
     field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
@@ -276,13 +304,13 @@ hir_analysis_transparent_enum_variant = transparent enum needs exactly one varia
     .many_label = too many variants in `{$path}`
     .multi_label = variant here
 
-hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
-    .label = needs at most one non-zero-sized field, but has {$field_count}
-    .labels = this field is non-zero-sized
+hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .labels = this field has non-zero size or requires alignment
 
-hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
-    .label = needs at most one non-zero-sized field, but has {$field_count}
-    .labels = this field is non-zero-sized
+hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .labels = this field has non-zero size or requires alignment
 
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented

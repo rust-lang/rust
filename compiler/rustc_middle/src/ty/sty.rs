@@ -351,7 +351,7 @@ impl<'tcx> ClosureArgs<'tcx> {
 }
 
 /// Similar to `ClosureArgs`; see the above documentation for more.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub struct GeneratorArgs<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
@@ -1305,7 +1305,7 @@ impl<'tcx> AliasTy<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct GenSig<'tcx> {
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,

@@ -73,13 +73,13 @@ pub fn is_const_evaluatable<'tcx>(
             ty::ConstKind::Unevaluated(uv) => {
                 let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
                 match concrete {
-                    Err(ErrorHandled::TooGeneric) => {
+                    Err(ErrorHandled::TooGeneric(_)) => {
                         Err(NotConstEvaluatable::Error(infcx.tcx.sess.delay_span_bug(
                             span,
                             "Missing value for constant, but no error reported?",
                         )))
                     }
-                    Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e.into())),
+                    Err(ErrorHandled::Reported(e, _)) => Err(NotConstEvaluatable::Error(e.into())),
                     Ok(_) => Ok(()),
                 }
             }
@@ -132,7 +132,7 @@ pub fn is_const_evaluatable<'tcx>(
                     .emit()
             }
 
-            Err(ErrorHandled::TooGeneric) => {
+            Err(ErrorHandled::TooGeneric(_)) => {
                 let err = if uv.has_non_region_infer() {
                     NotConstEvaluatable::MentionsInfer
                 } else if uv.has_non_region_param() {
@@ -147,7 +147,7 @@ pub fn is_const_evaluatable<'tcx>(
 
                 Err(err)
             }
-            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e.into())),
+            Err(ErrorHandled::Reported(e, _)) => Err(NotConstEvaluatable::Error(e.into())),
             Ok(_) => Ok(()),
         }
     }

@@ -2634,4 +2634,33 @@ use qux as frob;
         // ",
         //         );
     }
+
+    #[test]
+    fn disallow_renaming_for_non_local_definition() {
+        check(
+            "Baz",
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub struct S;
+//- /main.rs crate:main deps:lib new_source_root:local
+use lib::S$0;
+"#,
+            "error: Cannot rename a non-local definition.",
+        );
+    }
+
+    #[test]
+    fn disallow_renaming_for_builtin_macros() {
+        check(
+            "Baz",
+            r#"
+//- minicore: derive, hash
+//- /main.rs crate:main
+use core::hash::Hash;
+#[derive(H$0ash)]
+struct A;
+            "#,
+            "error: Cannot rename a non-local definition.",
+        )
+    }
 }

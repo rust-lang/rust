@@ -165,7 +165,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
-                let load = if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
+                let load = if let PassMode::Cast { cast: ty, pad_i32: _ } = &fn_abi.ret.mode {
                     let llty = ty.llvm_type(self);
                     self.volatile_load(llty, ptr)
                 } else {
@@ -386,7 +386,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(_, _) = &fn_abi.ret.mode {
+            if let PassMode::Cast { .. } = &fn_abi.ret.mode {
                 self.store(llval, result.llval, result.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)

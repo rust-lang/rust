@@ -2,8 +2,12 @@
 
 mod format_like;
 
-use hir::{Documentation, HasAttrs};
-use ide_db::{imports::insert_use::ImportScope, ty_filter::TryEnum, SnippetCap};
+use ide_db::{
+    documentation::{Documentation, HasDocs},
+    imports::insert_use::ImportScope,
+    ty_filter::TryEnum,
+    SnippetCap,
+};
 use syntax::{
     ast::{self, make, AstNode, AstToken},
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},

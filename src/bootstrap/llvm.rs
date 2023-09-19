@@ -155,7 +155,7 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
         "".to_owned()
     };
 
-    if &llvm_sha == "" {
+    if llvm_sha.is_empty() {
         eprintln!("error: could not find commit hash for downloading LLVM");
         eprintln!("help: maybe your repository history is too shallow?");
         eprintln!("help: consider disabling `download-ci-llvm`");
@@ -208,10 +208,10 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         ("x86_64-unknown-netbsd", false),
     ];
 
-    if !supported_platforms.contains(&(&*config.build.triple, asserts)) {
-        if asserts == true || !supported_platforms.contains(&(&*config.build.triple, true)) {
-            return false;
-        }
+    if !supported_platforms.contains(&(&*config.build.triple, asserts))
+        && (asserts || !supported_platforms.contains(&(&*config.build.triple, true)))
+    {
+        return false;
     }
 
     if is_ci_llvm_modified(config) {
@@ -497,11 +497,11 @@ impl Step for Llvm {
             let mut cmd = Command::new(&res.llvm_config);
             let version = output(cmd.arg("--version"));
             let major = version.split('.').next().unwrap();
-            let lib_name = match &llvm_version_suffix {
+
+            match &llvm_version_suffix {
                 Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
                 None => format!("libLLVM-{major}.{extension}"),
-            };
-            lib_name
+            }
         };
 
         // When building LLVM with LLVM_LINK_LLVM_DYLIB for macOS, an unversioned
@@ -756,13 +756,15 @@ fn configure_cmake(
 
     // For distribution we want the LLVM tools to be *statically* linked to libstdc++.
     // We also do this if the user explicitly requested static libstdc++.
-    if builder.config.llvm_static_stdcpp {
-        if !target.contains("msvc") && !target.contains("netbsd") && !target.contains("solaris") {
-            if target.contains("apple") || target.contains("windows") {
-                ldflags.push_all("-static-libstdc++");
-            } else {
-                ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
-            }
+    if builder.config.llvm_static_stdcpp
+        && !target.contains("msvc")
+        && !target.contains("netbsd")
+        && !target.contains("solaris")
+    {
+        if target.contains("apple") || target.contains("windows") {
+            ldflags.push_all("-static-libstdc++");
+        } else {
+            ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
         }
     }
 
@@ -1061,6 +1063,7 @@ fn supported_sanitizers(
         "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-apple-ios" => darwin_libs("ios", &["asan", "tsan"]),
         "aarch64-apple-ios-sim" => darwin_libs("iossim", &["asan", "tsan"]),
+        "aarch64-apple-ios-macabi" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-unknown-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
@@ -1071,6 +1074,7 @@ fn supported_sanitizers(
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-unknown-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
         "x86_64-apple-ios" => darwin_libs("iossim", &["asan", "tsan"]),
+        "x86_64-apple-ios-macabi" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64", &["asan", "msan", "tsan"]),
         "x86_64-unknown-netbsd" => {
             common_libs("netbsd", "x86_64", &["asan", "lsan", "msan", "tsan"])

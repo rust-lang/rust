@@ -8,9 +8,9 @@ use stdx::thread::ThreadIntent;
 
 use crate::{
     global_state::{GlobalState, GlobalStateSnapshot},
+    lsp::LspError,
     main_loop::Task,
     version::version,
-    LspError,
 };
 
 /// A visitor for routing a raw JSON request to an appropriate handler function.

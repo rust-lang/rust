@@ -1,11 +1,7 @@
 DefId(0:8 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR1):
 Thir {
     body_type: Const(
-        Adt(
-            Foo,
-            [
-            ],
-        ),
+        Foo,
     ),
     arms: [],
     blocks: [],
@@ -50,11 +46,7 @@ Thir {
                     base: None,
                 },
             ),
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -68,11 +60,7 @@ Thir {
                 ),
                 value: e2,
             },
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -84,11 +72,7 @@ Thir {
                 lint_level: Inherited,
                 value: e3,
             },
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -102,11 +86,7 @@ Thir {
 DefId(0:9 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR2):
 Thir {
     body_type: Const(
-        Adt(
-            Foo,
-            [
-            ],
-        ),
+        Foo,
     ),
     arms: [],
     blocks: [],
@@ -151,11 +131,7 @@ Thir {
                     base: None,
                 },
             ),
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -169,11 +145,7 @@ Thir {
                 ),
                 value: e2,
             },
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -185,11 +157,7 @@ Thir {
                 lint_level: Inherited,
                 value: e3,
             },
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -203,11 +171,7 @@ Thir {
 DefId(0:10 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR3):
 Thir {
     body_type: Const(
-        Adt(
-            Foo,
-            [
-            ],
-        ),
+        Foo,
     ),
     arms: [],
     blocks: [],
@@ -252,11 +216,7 @@ Thir {
                     base: None,
                 },
             ),
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -270,11 +230,7 @@ Thir {
                 ),
                 value: e2,
             },
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -286,11 +242,7 @@ Thir {
                 lint_level: Inherited,
                 value: e3,
             },
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -304,11 +256,7 @@ Thir {
 DefId(0:11 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR4):
 Thir {
     body_type: Const(
-        Adt(
-            Foo,
-            [
-            ],
-        ),
+        Foo,
     ),
     arms: [],
     blocks: [],
@@ -353,11 +301,7 @@ Thir {
                     base: None,
                 },
             ),
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -371,11 +315,7 @@ Thir {
                 ),
                 value: e2,
             },
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),
@@ -387,11 +327,7 @@ Thir {
                 lint_level: Inherited,
                 value: e3,
             },
-            ty: Adt(
-                Foo,
-                [
-                ],
-            ),
+            ty: Foo,
             temp_lifetime: Some(
                 Node(3),
             ),

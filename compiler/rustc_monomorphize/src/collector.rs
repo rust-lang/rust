@@ -752,8 +752,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         let param_env = ty::ParamEnv::reveal_all();
         let val = match literal.eval(self.tcx, param_env, None) {
             Ok(v) => v,
-            Err(ErrorHandled::Reported(_)) => return,
-            Err(ErrorHandled::TooGeneric) => span_bug!(
+            Err(ErrorHandled::Reported(..)) => return,
+            Err(ErrorHandled::TooGeneric(..)) => span_bug!(
                 self.body.source_info(location).span,
                 "collection encountered polymorphic constant: {:?}",
                 literal

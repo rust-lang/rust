@@ -1,6 +1,6 @@
 //! MIR definitions and implementation
 
-use std::{fmt::Display, iter};
+use std::{collections::hash_map::Entry, fmt::Display, iter};
 
 use crate::{
     consteval::usize_const,
@@ -37,6 +37,7 @@ pub use monomorphization::{
     monomorphize_mir_body_bad, monomorphized_mir_body_for_closure_query,
     monomorphized_mir_body_query, monomorphized_mir_body_recover,
 };
+use rustc_hash::FxHashMap;
 use smallvec::{smallvec, SmallVec};
 use stdx::{impl_from, never};
 use triomphe::Arc;
@@ -165,8 +166,8 @@ impl<V, T> ProjectionElem<V, T> {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
-                _ => {
-                    never!("Only adt has field");
+                ty => {
+                    never!("Only adt has field, found {:?}", ty);
                     return TyKind::Error.intern(Interner);
                 }
             },
@@ -223,35 +224,93 @@ impl<V, T> ProjectionElem<V, T> {
 
 type PlaceElem = ProjectionElem<LocalId, Ty>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ProjectionId(u32);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectionStore {
+    id_to_proj: FxHashMap<ProjectionId, Box<[PlaceElem]>>,
+    proj_to_id: FxHashMap<Box<[PlaceElem]>, ProjectionId>,
+}
+
+impl Default for ProjectionStore {
+    fn default() -> Self {
+        let mut this = Self { id_to_proj: Default::default(), proj_to_id: Default::default() };
+        // Ensure that [] will get the id 0 which is used in `ProjectionId::Empty`
+        this.intern(Box::new([]));
+        this
+    }
+}
+
+impl ProjectionStore {
+    fn shrink_to_fit(&mut self) {
+        self.id_to_proj.shrink_to_fit();
+        self.proj_to_id.shrink_to_fit();
+    }
+
+    fn intern_if_exist(&self, projection: &[PlaceElem]) -> Option<ProjectionId> {
+        self.proj_to_id.get(projection).copied()
+    }
+
+    fn intern(&mut self, projection: Box<[PlaceElem]>) -> ProjectionId {
+        let new_id = ProjectionId(self.proj_to_id.len() as u32);
+        match self.proj_to_id.entry(projection) {
+            Entry::Occupied(id) => *id.get(),
+            Entry::Vacant(e) => {
+                let key_clone = e.key().clone();
+                e.insert(new_id);
+                self.id_to_proj.insert(new_id, key_clone);
+                new_id
+            }
+        }
+    }
+}
+
+impl ProjectionId {
+    const EMPTY: ProjectionId = ProjectionId(0);
+
+    fn lookup(self, store: &ProjectionStore) -> &[PlaceElem] {
+        store.id_to_proj.get(&self).unwrap()
+    }
+
+    fn project(self, projection: PlaceElem, store: &mut ProjectionStore) -> ProjectionId {
+        let mut current = self.lookup(store).to_vec();
+        current.push(projection);
+        store.intern(current.into())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Place {
     pub local: LocalId,
-    pub projection: Box<[PlaceElem]>,
+    pub projection: ProjectionId,
 }
 
 impl Place {
-    fn is_parent(&self, child: &Place) -> bool {
-        self.local == child.local && child.projection.starts_with(&self.projection)
+    fn is_parent(&self, child: &Place, store: &ProjectionStore) -> bool {
+        self.local == child.local
+            && child.projection.lookup(store).starts_with(&self.projection.lookup(store))
     }
 
     /// The place itself is not included
-    fn iterate_over_parents(&self) -> impl Iterator<Item = Place> + '_ {
-        (0..self.projection.len())
-            .map(|x| &self.projection[0..x])
-            .map(|x| Place { local: self.local, projection: x.to_vec().into() })
+    fn iterate_over_parents<'a>(
+        &'a self,
+        store: &'a ProjectionStore,
+    ) -> impl Iterator<Item = Place> + 'a {
+        let projection = self.projection.lookup(store);
+        (0..projection.len()).map(|x| &projection[0..x]).filter_map(move |x| {
+            Some(Place { local: self.local, projection: store.intern_if_exist(x)? })
+        })
     }
 
-    fn project(&self, projection: PlaceElem) -> Place {
-        Place {
-            local: self.local,
-            projection: self.projection.iter().cloned().chain([projection]).collect(),
-        }
+    fn project(&self, projection: PlaceElem, store: &mut ProjectionStore) -> Place {
+        Place { local: self.local, projection: self.projection.project(projection, store) }
     }
 }
 
 impl From<LocalId> for Place {
     fn from(local: LocalId) -> Self {
-        Self { local, projection: vec![].into() }
+        Self { local, projection: ProjectionId::EMPTY }
     }
 }
 
@@ -997,6 +1056,7 @@ pub struct BasicBlock {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MirBody {
+    pub projection_store: ProjectionStore,
     pub basic_blocks: Arena<BasicBlock>,
     pub locals: Arena<Local>,
     pub start_block: BasicBlockId,
@@ -1009,11 +1069,15 @@ pub struct MirBody {
 }
 
 impl MirBody {
-    fn walk_places(&mut self, mut f: impl FnMut(&mut Place)) {
-        fn for_operand(op: &mut Operand, f: &mut impl FnMut(&mut Place)) {
+    fn walk_places(&mut self, mut f: impl FnMut(&mut Place, &mut ProjectionStore)) {
+        fn for_operand(
+            op: &mut Operand,
+            f: &mut impl FnMut(&mut Place, &mut ProjectionStore),
+            store: &mut ProjectionStore,
+        ) {
             match op {
                 Operand::Copy(p) | Operand::Move(p) => {
-                    f(p);
+                    f(p, store);
                 }
                 Operand::Constant(_) | Operand::Static(_) => (),
             }
@@ -1022,30 +1086,30 @@ impl MirBody {
             for statement in &mut block.statements {
                 match &mut statement.kind {
                     StatementKind::Assign(p, r) => {
-                        f(p);
+                        f(p, &mut self.projection_store);
                         match r {
                             Rvalue::ShallowInitBoxWithAlloc(_) => (),
                             Rvalue::ShallowInitBox(o, _)
                             | Rvalue::UnaryOp(_, o)
                             | Rvalue::Cast(_, o, _)
                             | Rvalue::Repeat(o, _)
-                            | Rvalue::Use(o) => for_operand(o, &mut f),
+                            | Rvalue::Use(o) => for_operand(o, &mut f, &mut self.projection_store),
                             Rvalue::CopyForDeref(p)
                             | Rvalue::Discriminant(p)
                             | Rvalue::Len(p)
-                            | Rvalue::Ref(_, p) => f(p),
+                            | Rvalue::Ref(_, p) => f(p, &mut self.projection_store),
                             Rvalue::CheckedBinaryOp(_, o1, o2) => {
-                                for_operand(o1, &mut f);
-                                for_operand(o2, &mut f);
+                                for_operand(o1, &mut f, &mut self.projection_store);
+                                for_operand(o2, &mut f, &mut self.projection_store);
                             }
                             Rvalue::Aggregate(_, ops) => {
                                 for op in ops.iter_mut() {
-                                    for_operand(op, &mut f);
+                                    for_operand(op, &mut f, &mut self.projection_store);
                                 }
                             }
                         }
                     }
-                    StatementKind::Deinit(p) => f(p),
+                    StatementKind::Deinit(p) => f(p, &mut self.projection_store),
                     StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
                     | StatementKind::Nop => (),
@@ -1053,7 +1117,9 @@ impl MirBody {
             }
             match &mut block.terminator {
                 Some(x) => match &mut x.kind {
-                    TerminatorKind::SwitchInt { discr, .. } => for_operand(discr, &mut f),
+                    TerminatorKind::SwitchInt { discr, .. } => {
+                        for_operand(discr, &mut f, &mut self.projection_store)
+                    }
                     TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::Goto { .. }
@@ -1063,23 +1129,24 @@ impl MirBody {
                     | TerminatorKind::Return
                     | TerminatorKind::Unreachable => (),
                     TerminatorKind::Drop { place, .. } => {
-                        f(place);
+                        f(place, &mut self.projection_store);
                     }
                     TerminatorKind::DropAndReplace { place, value, .. } => {
-                        f(place);
-                        for_operand(value, &mut f);
+                        f(place, &mut self.projection_store);
+                        for_operand(value, &mut f, &mut self.projection_store);
                     }
                     TerminatorKind::Call { func, args, destination, .. } => {
-                        for_operand(func, &mut f);
-                        args.iter_mut().for_each(|x| for_operand(x, &mut f));
-                        f(destination);
+                        for_operand(func, &mut f, &mut self.projection_store);
+                        args.iter_mut()
+                            .for_each(|x| for_operand(x, &mut f, &mut self.projection_store));
+                        f(destination, &mut self.projection_store);
                     }
                     TerminatorKind::Assert { cond, .. } => {
-                        for_operand(cond, &mut f);
+                        for_operand(cond, &mut f, &mut self.projection_store);
                     }
                     TerminatorKind::Yield { value, resume_arg, .. } => {
-                        for_operand(value, &mut f);
-                        f(resume_arg);
+                        for_operand(value, &mut f, &mut self.projection_store);
+                        f(resume_arg, &mut self.projection_store);
                     }
                 },
                 None => (),
@@ -1096,7 +1163,9 @@ impl MirBody {
             binding_locals,
             param_locals,
             closures,
+            projection_store,
         } = self;
+        projection_store.shrink_to_fit();
         basic_blocks.shrink_to_fit();
         locals.shrink_to_fit();
         binding_locals.shrink_to_fit();

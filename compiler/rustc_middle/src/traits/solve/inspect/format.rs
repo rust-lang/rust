@@ -40,9 +40,12 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
     }
 
     pub(super) fn format_goal_evaluation(&mut self, eval: &GoalEvaluation<'_>) -> std::fmt::Result {
-        let goal_text = match eval.is_normalizes_to_hack {
-            IsNormalizesToHack::Yes => "NORMALIZES-TO HACK GOAL",
-            IsNormalizesToHack::No => "GOAL",
+        let goal_text = match eval.kind {
+            GoalEvaluationKind::Root => "ROOT GOAL",
+            GoalEvaluationKind::Nested { is_normalizes_to_hack } => match is_normalizes_to_hack {
+                IsNormalizesToHack::No => "GOAL",
+                IsNormalizesToHack::Yes => "NORMALIZES-TO HACK GOAL",
+            },
         };
         writeln!(self.f, "{}: {:?}", goal_text, eval.uncanonicalized_goal)?;
         self.nested(|this| this.format_canonical_goal_evaluation(&eval.evaluation))?;
@@ -68,16 +71,16 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         writeln!(self.f, "GOAL: {:?}", eval.goal)?;
 
         match &eval.kind {
-            GoalEvaluationKind::Overflow => {
+            CanonicalGoalEvaluationKind::Overflow => {
                 writeln!(self.f, "OVERFLOW: {:?}", eval.result)
             }
-            GoalEvaluationKind::CacheHit(CacheHit::Global) => {
+            CanonicalGoalEvaluationKind::CacheHit(CacheHit::Global) => {
                 writeln!(self.f, "GLOBAL CACHE HIT: {:?}", eval.result)
             }
-            GoalEvaluationKind::CacheHit(CacheHit::Provisional) => {
+            CanonicalGoalEvaluationKind::CacheHit(CacheHit::Provisional) => {
                 writeln!(self.f, "PROVISIONAL CACHE HIT: {:?}", eval.result)
             }
-            GoalEvaluationKind::Uncached { revisions } => {
+            CanonicalGoalEvaluationKind::Uncached { revisions } => {
                 for (n, step) in revisions.iter().enumerate() {
                     writeln!(self.f, "REVISION {n}")?;
                     self.nested(|this| this.format_evaluation_step(step))?;
@@ -92,11 +95,11 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         evaluation_step: &GoalEvaluationStep<'_>,
     ) -> std::fmt::Result {
         writeln!(self.f, "INSTANTIATED: {:?}", evaluation_step.instantiated_goal)?;
-        self.format_candidate(&evaluation_step.evaluation)
+        self.format_probe(&evaluation_step.evaluation)
     }
 
-    pub(super) fn format_candidate(&mut self, candidate: &GoalCandidate<'_>) -> std::fmt::Result {
-        match &candidate.kind {
+    pub(super) fn format_probe(&mut self, probe: &Probe<'_>) -> std::fmt::Result {
+        match &probe.kind {
             ProbeKind::Root { result } => {
                 writeln!(self.f, "ROOT RESULT: {result:?}")
             }
@@ -118,11 +121,12 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         }?;
 
         self.nested(|this| {
-            for candidate in &candidate.candidates {
-                this.format_candidate(candidate)?;
-            }
-            for nested in &candidate.added_goals_evaluations {
-                this.format_added_goals_evaluation(nested)?;
+            for step in &probe.steps {
+                match step {
+                    ProbeStep::AddGoal(goal) => writeln!(this.f, "ADDED GOAL: {goal:?}")?,
+                    ProbeStep::EvaluateGoals(eval) => this.format_added_goals_evaluation(eval)?,
+                    ProbeStep::NestedProbe(probe) => this.format_probe(probe)?,
+                }
             }
             Ok(())
         })

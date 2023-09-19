@@ -1,7 +1,7 @@
 //! Renderer for patterns.
 
-use hir::{db::HirDatabase, HasAttrs, Name, StructKind};
-use ide_db::SnippetCap;
+use hir::{db::HirDatabase, Name, StructKind};
+use ide_db::{documentation::HasDocs, SnippetCap};
 use itertools::Itertools;
 use syntax::SmolStr;
 
@@ -103,7 +103,7 @@ fn build_completion(
     label: SmolStr,
     lookup: SmolStr,
     pat: String,
-    def: impl HasAttrs + Copy,
+    def: impl HasDocs + Copy,
     adt_ty: hir::Type,
     // Missing in context of match statement completions
     is_variant_missing: bool,

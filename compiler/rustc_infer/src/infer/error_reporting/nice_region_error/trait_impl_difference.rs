@@ -67,9 +67,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         impl<'tcx> HighlightBuilder<'tcx> {
-            fn build(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> RegionHighlightMode<'tcx> {
+            fn build(ty: Ty<'tcx>) -> RegionHighlightMode<'tcx> {
                 let mut builder =
-                    HighlightBuilder { highlight: RegionHighlightMode::new(tcx), counter: 1 };
+                    HighlightBuilder { highlight: RegionHighlightMode::default(), counter: 1 };
                 builder.visit_ty(ty);
                 builder.highlight
             }
@@ -85,12 +85,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
 
-        let expected_highlight = HighlightBuilder::build(self.tcx(), expected);
+        let expected_highlight = HighlightBuilder::build(expected);
         let expected = self
             .cx
             .extract_inference_diagnostics_data(expected.into(), Some(expected_highlight))
             .name;
-        let found_highlight = HighlightBuilder::build(self.tcx(), found);
+        let found_highlight = HighlightBuilder::build(found);
         let found =
             self.cx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
 

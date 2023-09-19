@@ -67,7 +67,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -393,7 +393,7 @@ jobs:
           - name: dist-x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler"
-              SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist python x.py dist bootstrap --include-default-paths
+              SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist windows-ci -- python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-2019-8core-32gb
           - name: dist-i686-msvc
@@ -435,7 +435,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -555,7 +555,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -662,7 +662,7 @@ jobs:
     if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - name: publish toolstate

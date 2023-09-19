@@ -184,6 +184,11 @@ impl Vfs {
         mem::take(&mut self.changes)
     }
 
+    /// Provides a panic-less way to verify file_id validity.
+    pub fn exists(&self, file_id: FileId) -> bool {
+        self.get(file_id).is_some()
+    }
+
     /// Returns the id associated with `path`
     ///
     /// - If `path` does not exists in the `Vfs`, allocate a new id for it, associated with a

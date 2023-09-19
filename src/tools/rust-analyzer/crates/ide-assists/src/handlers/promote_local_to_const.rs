@@ -76,12 +76,19 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
             let name = to_upper_snake_case(&name.to_string());
             let usages = Definition::Local(local).usages(&ctx.sema).all();
             if let Some(usages) = usages.references.get(&ctx.file_id()) {
-                let name = make::name_ref(&name);
+                let name_ref = make::name_ref(&name);
 
                 for usage in usages {
                     let Some(usage) = usage.name.as_name_ref().cloned() else { continue };
-                    let usage = edit.make_mut(usage);
-                    ted::replace(usage.syntax(), name.clone_for_update().syntax());
+                    if let Some(record_field) = ast::RecordExprField::for_name_ref(&usage) {
+                        let record_field = edit.make_mut(record_field);
+                        let name_expr =
+                            make::expr_path(make::path_from_text(&name)).clone_for_update();
+                        record_field.replace_expr(name_expr);
+                    } else {
+                        let usage = edit.make_mut(usage);
+                        ted::replace(usage.syntax(), name_ref.clone_for_update().syntax());
+                    }
                 }
             }
 
@@ -120,8 +127,7 @@ fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
                 is_const &=
                     sema.resolve_method_call(&call).map(|it| it.is_const(sema.db)).unwrap_or(true)
             }
-            ast::Expr::BoxExpr(_)
-            | ast::Expr::ForExpr(_)
+            ast::Expr::ForExpr(_)
             | ast::Expr::ReturnExpr(_)
             | ast::Expr::TryExpr(_)
             | ast::Expr::YieldExpr(_)
@@ -177,6 +183,33 @@ fn foo() {
 }
 ",
         );
+    }
+
+    #[test]
+    fn usage_in_field_shorthand() {
+        check_assist(
+            promote_local_to_const,
+            r"
+struct Foo {
+    bar: usize,
+}
+
+fn main() {
+    let $0bar = 0;
+    let foo = Foo { bar };
+}
+",
+            r"
+struct Foo {
+    bar: usize,
+}
+
+fn main() {
+    const $0BAR: usize = 0;
+    let foo = Foo { bar: BAR };
+}
+",
+        )
     }
 
     #[test]

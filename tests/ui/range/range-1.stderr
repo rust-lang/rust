@@ -19,7 +19,7 @@ LL |     for i in false..true {}
              i64
              i128
              usize
-           and 6 others
+           and 8 others
    = note: required for `std::ops::Range<bool>` to implement `Iterator`
    = note: required for `std::ops::Range<bool>` to implement `IntoIterator`
 

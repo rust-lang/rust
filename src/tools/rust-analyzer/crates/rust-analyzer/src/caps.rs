@@ -16,10 +16,12 @@ use lsp_types::{
 };
 use serde_json::json;
 
-use crate::config::{Config, RustfmtConfig};
-use crate::line_index::PositionEncoding;
-use crate::lsp_ext::negotiated_encoding;
-use crate::semantic_tokens;
+use crate::{
+    config::{Config, RustfmtConfig},
+    line_index::PositionEncoding,
+    lsp::semantic_tokens,
+    lsp_ext::negotiated_encoding,
+};
 
 pub fn server_capabilities(config: &Config) -> ServerCapabilities {
     ServerCapabilities {
@@ -218,7 +220,7 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
 }
 
 fn more_trigger_character(config: &Config) -> Vec<String> {
-    let mut res = vec![".".to_string(), ">".to_string(), "{".to_string()];
+    let mut res = vec![".".to_string(), ">".to_string(), "{".to_string(), "(".to_string()];
     if config.snippet_cap() {
         res.push("<".to_string());
     }

@@ -68,7 +68,7 @@ pub enum Abi {
 impl Abi {
     pub fn supports_varargs(self) -> bool {
         // * C and Cdecl obviously support varargs.
-        // * C can be based on SysV64 or Win64, so they must support varargs.
+        // * C can be based on Aapcs, SysV64 or Win64, so they must support varargs.
         // * EfiApi is based on Win64 or C, so it also supports it.
         //
         // * Stdcall does not, because it would be impossible for the callee to clean
@@ -79,6 +79,7 @@ impl Abi {
         match self {
             Self::C { .. }
             | Self::Cdecl { .. }
+            | Self::Aapcs { .. }
             | Self::Win64 { .. }
             | Self::SysV64 { .. }
             | Self::EfiApi => true,

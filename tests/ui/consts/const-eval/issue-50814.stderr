@@ -4,7 +4,7 @@ error[E0080]: evaluation of `<Sum<U8, U8> as Unsigned>::MAX` failed
 LL |     const MAX: u8 = A::MAX + B::MAX;
    |                     ^^^^^^^^^^^^^^^ attempt to compute `u8::MAX + u8::MAX`, which would overflow
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/issue-50814.rs:20:6
    |
 LL |     &Sum::<U8, U8>::MAX

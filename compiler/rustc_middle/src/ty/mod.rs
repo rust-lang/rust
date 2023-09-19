@@ -1510,7 +1510,7 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable, Lift)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct OpaqueTypeKey<'tcx> {
     pub def_id: LocalDefId,
@@ -1793,7 +1793,7 @@ impl<'tcx> ParamEnv<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
-#[derive(HashStable, Lift)]
+#[derive(HashStable)]
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,
@@ -2403,6 +2403,22 @@ impl<'tcx> TyCtxt<'tcx> {
             self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {
             bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
+        } else {
+            self.item_attrs(did).iter().filter(filter_fn)
+        }
+    }
+
+    pub fn get_attrs_by_path<'attr>(
+        self,
+        did: DefId,
+        attr: &'attr [Symbol],
+    ) -> impl Iterator<Item = &'tcx ast::Attribute> + 'attr
+    where
+        'tcx: 'attr,
+    {
+        let filter_fn = move |a: &&ast::Attribute| a.path_matches(&attr);
+        if let Some(did) = did.as_local() {
+            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
             self.item_attrs(did).iter().filter(filter_fn)
         }

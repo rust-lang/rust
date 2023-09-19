@@ -16,6 +16,7 @@ use hir::{db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, HasA
 use ide_db::{
     base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
+    documentation::{docs_with_rangemap, Documentation, HasDocs},
     helpers::pick_best_token,
     RootDatabase,
 };
@@ -171,7 +172,7 @@ pub(crate) fn external_docs(
 /// Extracts all links from a given markdown text returning the definition text range, link-text
 /// and the namespace if known.
 pub(crate) fn extract_definitions_from_docs(
-    docs: &hir::Documentation,
+    docs: &Documentation,
 ) -> Vec<(TextRange, String, Option<hir::Namespace>)> {
     Parser::new_with_broken_link_callback(
         docs.as_str(),
@@ -297,7 +298,7 @@ impl DocCommentToken {
             let abs_in_expansion_offset = token_start + relative_comment_offset + descended_prefix_len;
 
             let (attributes, def) = doc_attributes(sema, &node)?;
-            let (docs, doc_mapping) = attributes.docs_with_rangemap(sema.db)?;
+            let (docs, doc_mapping) = docs_with_rangemap(sema.db, &attributes)?;
             let (in_expansion_range, link, ns) =
                 extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
                     let mapped = doc_mapping.map(range)?;

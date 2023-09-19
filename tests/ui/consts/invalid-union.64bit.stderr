@@ -9,13 +9,13 @@ LL | fn main() {
                ╾───────alloc7────────╼                         │ ╾──────╼
            }
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/invalid-union.rs:43:25
    |
 LL |     let _: &'static _ = &C;
    |                         ^^
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/invalid-union.rs:43:25
    |
 LL |     let _: &'static _ = &C;

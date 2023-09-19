@@ -75,11 +75,9 @@ LL |         tx.send(&z).unwrap();
    |                 ^^ borrowed value does not live long enough
 LL |     }
    |     - `z` dropped here while still borrowed
-...
-LL | }
-   | - borrow might be used here, when `tx` is dropped and runs the `Drop` code for type `Sender`
-   |
-   = note: values in a scope are dropped in the opposite order they are defined
+LL |
+LL |     tx.use_ref(); // (channel drop glue does not use `z` => needs explicit use)
+   |     -- borrow later used here
 
 error: aborting due to 6 previous errors
 

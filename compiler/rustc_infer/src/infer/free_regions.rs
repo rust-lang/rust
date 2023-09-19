@@ -4,7 +4,7 @@
 //! and use that to decide when one free region outlives another, and so forth.
 
 use rustc_data_structures::transitive_relation::TransitiveRelation;
-use rustc_middle::ty::{Lift, Region, TyCtxt};
+use rustc_middle::ty::{Region, TyCtxt};
 
 /// Combines a `FreeRegionMap` and a `TyCtxt`.
 ///
@@ -99,12 +99,5 @@ impl<'tcx> FreeRegionMap<'tcx> {
         };
         debug!("lub_free_regions(r_a={:?}, r_b={:?}) = {:?}", r_a, r_b, result);
         result
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for FreeRegionMap<'a> {
-    type Lifted = FreeRegionMap<'tcx>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<FreeRegionMap<'tcx>> {
-        self.relation.maybe_map(|fr| tcx.lift(fr)).map(|relation| FreeRegionMap { relation })
     }
 }

@@ -46,7 +46,7 @@ fn channel() {
         tx.send(&z).unwrap();
     }
     //~^^ ERROR `z` does not live long enough
-    // (channels lack #[may_dangle], thus their dtors are implicit uses of `z`)
+    tx.use_ref(); // (channel drop glue does not use `z` => needs explicit use)
 }
 
 fn main() {}

@@ -88,7 +88,7 @@
 //!
 //! When generating the `expr` for the `A` impl, the `SubstructureFields` is
 //!
-//! ```{.text}
+//! ```text
 //! Struct(vec![FieldInfo {
 //!            span: <span of x>
 //!            name: Some(<ident of x>),
@@ -99,7 +99,7 @@
 //!
 //! For the `B` impl, called with `B(a)` and `B(b)`,
 //!
-//! ```{.text}
+//! ```text
 //! Struct(vec![FieldInfo {
 //!           span: <span of `i32`>,
 //!           name: None,
@@ -113,7 +113,7 @@
 //! When generating the `expr` for a call with `self == C0(a)` and `other
 //! == C0(b)`, the SubstructureFields is
 //!
-//! ```{.text}
+//! ```text
 //! EnumMatching(0, <ast::Variant for C0>,
 //!              vec![FieldInfo {
 //!                 span: <span of i32>
@@ -125,7 +125,7 @@
 //!
 //! For `C1 {x}` and `C1 {x}`,
 //!
-//! ```{.text}
+//! ```text
 //! EnumMatching(1, <ast::Variant for C1>,
 //!              vec![FieldInfo {
 //!                 span: <span of x>
@@ -137,7 +137,7 @@
 //!
 //! For the tags,
 //!
-//! ```{.text}
+//! ```text
 //! EnumTag(
 //!     &[<ident of self tag>, <ident of other tag>], <expr to combine with>)
 //! ```
@@ -149,7 +149,7 @@
 //!
 //! A static method on the types above would result in,
 //!
-//! ```{.text}
+//! ```text
 //! StaticStruct(<ast::VariantData of A>, Named(vec![(<ident of x>, <span of x>)]))
 //!
 //! StaticStruct(<ast::VariantData of B>, Unnamed(vec![<span of x>]))
@@ -711,7 +711,9 @@ impl<'a> TraitDef<'a> {
                             .collect();
 
                         // Require the current trait.
-                        bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
+                        if !self.skip_path_as_bound {
+                            bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
+                        }
 
                         // Add a `Copy` bound if required.
                         if is_packed && self.needs_copy_as_bound_if_packed {
@@ -722,15 +724,17 @@ impl<'a> TraitDef<'a> {
                             ));
                         }
 
-                        let predicate = ast::WhereBoundPredicate {
-                            span: self.span,
-                            bound_generic_params: field_ty_param.bound_generic_params,
-                            bounded_ty: field_ty_param.ty,
-                            bounds,
-                        };
+                        if !bounds.is_empty() {
+                            let predicate = ast::WhereBoundPredicate {
+                                span: self.span,
+                                bound_generic_params: field_ty_param.bound_generic_params,
+                                bounded_ty: field_ty_param.ty,
+                                bounds,
+                            };
 
-                        let predicate = ast::WherePredicate::BoundPredicate(predicate);
-                        where_clause.predicates.push(predicate);
+                            let predicate = ast::WherePredicate::BoundPredicate(predicate);
+                            where_clause.predicates.push(predicate);
+                        }
                     }
                 }
             }

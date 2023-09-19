@@ -14,7 +14,7 @@ Number of file 0 mappings: 4
     = (c1 + (c0 - c1))
 
 Function name: generator::main
-Raw bytes (71): 0x[01, 01, 0b, 01, 00, 05, 0b, 09, 0d, 11, 00, 11, 15, 2a, 19, 11, 15, 15, 19, 26, 00, 2a, 19, 11, 15, 09, 01, 0f, 01, 02, 19, 03, 07, 0b, 00, 2e, 11, 01, 2b, 00, 2d, 07, 01, 0e, 00, 35, 0f, 02, 0b, 00, 2e, 2a, 01, 22, 00, 27, 26, 00, 2c, 00, 2e, 1f, 01, 0e, 00, 35, 23, 02, 01, 00, 02]
+Raw bytes (71): 0x[01, 01, 0b, 01, 00, 05, 0b, 09, 0d, 11, 00, 11, 15, 2a, 19, 11, 15, 15, 19, 26, 00, 2a, 19, 11, 15, 09, 01, 0f, 01, 02, 16, 03, 07, 0b, 00, 2e, 11, 01, 2b, 00, 2d, 07, 01, 0e, 00, 35, 0f, 02, 0b, 00, 2e, 2a, 01, 22, 00, 27, 26, 00, 2c, 00, 2e, 1f, 01, 0e, 00, 35, 23, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 11
@@ -30,7 +30,7 @@ Number of expressions: 11
 - expression 9 operands: lhs = Expression(10, Sub), rhs = Counter(6)
 - expression 10 operands: lhs = Counter(4), rhs = Counter(5)
 Number of file 0 mappings: 9
-- Code(Counter(0)) at (prev + 15, 1) to (start + 2, 25)
+- Code(Counter(0)) at (prev + 15, 1) to (start + 2, 22)
 - Code(Expression(0, Add)) at (prev + 7, 11) to (start + 0, 46)
     = (c0 + Zero)
 - Code(Counter(4)) at (prev + 1, 43) to (start + 0, 45)

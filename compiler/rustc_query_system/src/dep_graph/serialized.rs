@@ -43,9 +43,11 @@ use rustc_data_structures::fingerprint::PackedFingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use std::iter;
 use std::marker::PhantomData;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
@@ -81,8 +83,9 @@ pub struct SerializedDepGraph<K: DepKind> {
     /// A flattened list of all edge targets in the graph, stored in the same
     /// varint encoding that we use on disk. Edge sources are implicit in edge_list_indices.
     edge_list_data: Vec<u8>,
-    /// Reciprocal map to `nodes`.
-    index: FxHashMap<DepNode<K>, SerializedDepNodeIndex>,
+    /// Stores a map from fingerprints to nodes per dep node kind.
+    /// This is the reciprocal of `nodes`.
+    index: Vec<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
 }
 
 impl<K: DepKind> Default for SerializedDepGraph<K> {
@@ -137,7 +140,7 @@ impl<K: DepKind> SerializedDepGraph<K> {
 
     #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode<K>) -> Option<SerializedDepNodeIndex> {
-        self.index.get(dep_node).cloned()
+        self.index.get(dep_node.kind.to_u16() as usize)?.get(&dep_node.hash).cloned()
     }
 
     #[inline]
@@ -147,7 +150,7 @@ impl<K: DepKind> SerializedDepGraph<K> {
 
     #[inline]
     pub fn node_count(&self) -> usize {
-        self.index.len()
+        self.nodes.len()
     }
 }
 
@@ -220,7 +223,8 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
         for _index in 0..node_count {
             // Decode the header for this edge; the header packs together as many of the fixed-size
             // fields as possible to limit the number of times we update decoder state.
-            let node_header = SerializedNodeHeader { bytes: d.read_array(), _marker: PhantomData };
+            let node_header =
+                SerializedNodeHeader::<K> { bytes: d.read_array(), _marker: PhantomData };
 
             let _i: SerializedDepNodeIndex = nodes.push(node_header.node());
             debug_assert_eq!(_i.index(), _index);
@@ -251,8 +255,14 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
         // end of the array. This padding ensure it doesn't.
         edge_list_data.extend(&[0u8; DEP_NODE_PAD]);
 
-        let index: FxHashMap<_, _> =
-            nodes.iter_enumerated().map(|(idx, &dep_node)| (dep_node, idx)).collect();
+        // Read the number of each dep kind and use it to create an hash map with a suitable size.
+        let mut index: Vec<_> = (0..(K::MAX as usize + 1))
+            .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
+            .collect();
+
+        for (idx, node) in nodes.iter_enumerated() {
+            index[node.kind.to_u16() as usize].insert(node.hash, idx);
+        }
 
         SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data, index }
     }
@@ -419,6 +429,9 @@ struct EncoderState<K: DepKind> {
     total_node_count: usize,
     total_edge_count: usize,
     stats: Option<FxHashMap<K, Stat<K>>>,
+
+    /// Stores the number of times we've encoded each dep kind.
+    kind_stats: Vec<u32>,
 }
 
 impl<K: DepKind> EncoderState<K> {
@@ -428,6 +441,7 @@ impl<K: DepKind> EncoderState<K> {
             total_edge_count: 0,
             total_node_count: 0,
             stats: record_stats.then(FxHashMap::default),
+            kind_stats: iter::repeat(0).take(K::MAX as usize + 1).collect(),
         }
     }
 
@@ -438,6 +452,7 @@ impl<K: DepKind> EncoderState<K> {
     ) -> DepNodeIndex {
         let index = DepNodeIndex::new(self.total_node_count);
         self.total_node_count += 1;
+        self.kind_stats[node.node.kind.to_u16() as usize] += 1;
 
         let edge_count = node.edges.len();
         self.total_edge_count += edge_count;
@@ -463,10 +478,15 @@ impl<K: DepKind> EncoderState<K> {
     }
 
     fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
-        let Self { mut encoder, total_node_count, total_edge_count, stats: _ } = self;
+        let Self { mut encoder, total_node_count, total_edge_count, stats: _, kind_stats } = self;
 
         let node_count = total_node_count.try_into().unwrap();
         let edge_count = total_edge_count.try_into().unwrap();
+
+        // Encode the number of each dep kind encountered
+        for count in kind_stats.iter() {
+            count.encode(&mut encoder);
+        }
 
         debug!(?node_count, ?edge_count);
         debug!("position: {:?}", encoder.position());

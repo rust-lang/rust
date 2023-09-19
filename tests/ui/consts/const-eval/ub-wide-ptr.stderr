@@ -139,7 +139,7 @@ LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
                HEX_DUMP
            }
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/ub-wide-ptr.rs:85:40
    |
 LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
@@ -156,7 +156,7 @@ LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3
                HEX_DUMP
            }
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/ub-wide-ptr.rs:92:42
    |
 LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
@@ -173,7 +173,7 @@ LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::tran
                HEX_DUMP
            }
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/ub-wide-ptr.rs:96:42
    |
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
