@@ -407,6 +407,8 @@ impl Default for DroplessArena {
     #[inline]
     fn default() -> DroplessArena {
         DroplessArena {
+            // We set both `start` and `end` to 0 so that the first call to
+            // alloc() will trigger a grow().
             start: Cell::new(ptr::null_mut()),
             end: Cell::new(ptr::null_mut()),
             chunks: Default::default(),
@@ -417,7 +419,7 @@ impl Default for DroplessArena {
 impl DroplessArena {
     fn grow(&self, layout: Layout) {
         // Add some padding so we can align `self.end` while
-        // stilling fitting in a `layout` allocation.
+        // still fitting in a `layout` allocation.
         let additional = layout.size() + cmp::max(DROPLESS_ALIGNMENT, layout.align()) - 1;
 
         unsafe {
@@ -441,7 +443,7 @@ impl DroplessArena {
             let mut chunk = ArenaChunk::new(align_up(new_cap, PAGE));
             self.start.set(chunk.start());
 
-            // Align the end to DROPLESS_ALIGNMENT
+            // Align the end to DROPLESS_ALIGNMENT.
             let end = align_down(chunk.end().addr(), DROPLESS_ALIGNMENT);
 
             // Make sure we don't go past `start`. This should not happen since the allocation
