@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
+use rustc_codegen_ssa::assert_module_sources::CguReuse;
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
@@ -15,7 +16,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
-use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{DebugInfo, OutputFilenames, OutputType};
 use rustc_session::Session;
 
@@ -375,43 +375,47 @@ pub(crate) fn run_aot(
         }
     }
 
+    // Calculate the CGU reuse
+    let cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
+        cgus.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect::<Vec<_>>()
+    });
+
+    rustc_codegen_ssa::assert_module_sources::assert_module_sources(tcx, &|cgu_reuse_tracker| {
+        for (i, cgu) in cgus.iter().enumerate() {
+            let cgu_reuse = cgu_reuse[i];
+            cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
+        }
+    });
+
     let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
 
     let mut concurrency_limiter = ConcurrencyLimiter::new(tcx.sess, cgus.len());
 
     let modules = tcx.sess.time("codegen mono items", || {
         cgus.iter()
-            .map(|cgu| {
-                let cgu_reuse = if backend_config.disable_incr_cache {
-                    CguReuse::No
-                } else {
-                    determine_cgu_reuse(tcx, cgu)
-                };
-                tcx.sess.cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
-
-                match cgu_reuse {
-                    CguReuse::No => {
-                        let dep_node = cgu.codegen_dep_node(tcx);
-                        tcx.dep_graph
-                            .with_task(
-                                dep_node,
-                                tcx,
-                                (
-                                    backend_config.clone(),
-                                    global_asm_config.clone(),
-                                    cgu.name(),
-                                    concurrency_limiter.acquire(tcx.sess.diagnostic()),
-                                ),
-                                module_codegen,
-                                Some(rustc_middle::dep_graph::hash_result),
-                            )
-                            .0
-                    }
-                    CguReuse::PreLto => unreachable!(),
-                    CguReuse::PostLto => {
-                        concurrency_limiter.job_already_done();
-                        OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
-                    }
+            .enumerate()
+            .map(|(i, cgu)| match cgu_reuse[i] {
+                CguReuse::No => {
+                    let dep_node = cgu.codegen_dep_node(tcx);
+                    tcx.dep_graph
+                        .with_task(
+                            dep_node,
+                            tcx,
+                            (
+                                backend_config.clone(),
+                                global_asm_config.clone(),
+                                cgu.name(),
+                                concurrency_limiter.acquire(tcx.sess.diagnostic()),
+                            ),
+                            module_codegen,
+                            Some(rustc_middle::dep_graph::hash_result),
+                        )
+                        .0
+                }
+                CguReuse::PreLto => unreachable!(),
+                CguReuse::PostLto => {
+                    concurrency_limiter.job_already_done();
+                    OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
                 }
             })
             .collect::<Vec<_>>()
