@@ -893,11 +893,13 @@ pub(crate) enum Ignore {
 /// ```eBNF
 /// lang-string = *(token-list / delimited-attribute-list / comment)
 ///
-/// bareword = CHAR *(CHAR)
+/// bareword = LEADINGCHAR *(CHAR)
+/// bareword-without-leading-char = CHAR *(CHAR)
 /// quoted-string = QUOTE *(NONQUOTE) QUOTE
 /// token = bareword / quoted-string
+/// token-without-leading-char = bareword-without-leading-char / quoted-string
 /// sep = COMMA/WS *(COMMA/WS)
-/// attribute = (DOT token)/(token EQUAL token)
+/// attribute = (DOT token)/(token EQUAL token-without-leading-char)
 /// attribute-list = [sep] attribute *(sep attribute) [sep]
 /// delimited-attribute-list = OPEN-CURLY-BRACKET attribute-list CLOSE-CURLY-BRACKET
 /// token-list = [sep] token *(sep token) [sep]
@@ -907,8 +909,15 @@ pub(crate) enum Ignore {
 /// CLOSE_PARENT = ")"
 /// OPEN-CURLY-BRACKET = "{"
 /// CLOSE-CURLY-BRACKET = "}"
-/// CHAR = ALPHA / DIGIT / "_" / "-" / ":"
-/// QUOTE = %x22
+/// LEADINGCHAR = ALPHA | DIGIT | "_" | "-" | ":"
+/// ; All ASCII punctuation except comma, quote, equals, backslash, grave (backquote) and braces.
+/// ; Comma is used to separate language tokens, so it can't be used in one.
+/// ; Quote is used to allow otherwise-disallowed characters in language tokens.
+/// ; Equals is used to make key=value pairs in attribute blocks.
+/// ; Backslash and grave are special Markdown characters.
+/// ; Braces are used to start an attribute block.
+/// CHAR = ALPHA | DIGIT | "_" | "-" | ":" | "." | "!" | "#" | "$" | "%" | "&" | "*" | "+" | "/" |
+///        ";" | "<" | ">" | "?" | "@" | "^" | "|" | "~"
 /// NONQUOTE = %x09 / %x20 / %x21 / %x23-7E ; TAB / SPACE / all printable characters except `"`
 /// COMMA = ","
 /// DOT = "."
@@ -932,8 +941,11 @@ pub(crate) enum LangStringToken<'a> {
     KeyValueAttribute(&'a str, &'a str),
 }
 
-fn is_bareword_char(c: char) -> bool {
+fn is_leading_char(c: char) -> bool {
     c == '_' || c == '-' || c == ':' || c.is_ascii_alphabetic() || c.is_ascii_digit()
+}
+fn is_bareword_char(c: char) -> bool {
+    is_leading_char(c) || ".!#$%&*+/;<>?@^|~".contains(c)
 }
 fn is_separator(c: char) -> bool {
     c == ' ' || c == ',' || c == '\t'
@@ -1077,7 +1089,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                 return self.next();
             } else if c == '.' {
                 return self.parse_class(pos);
-            } else if c == '"' || is_bareword_char(c) {
+            } else if c == '"' || is_leading_char(c) {
                 return self.parse_key_value(c, pos);
             } else {
                 self.emit_error(format!("unexpected character `{c}`"));
@@ -1107,7 +1119,11 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                     return None;
                 }
                 let indices = self.parse_string(pos)?;
-                if let Some((_, c)) = self.inner.peek().copied() && c != '{' && !is_separator(c) && c != '(' {
+                if let Some((_, c)) = self.inner.peek().copied() &&
+                    c != '{' &&
+                    !is_separator(c) &&
+                    c != '('
+                {
                     self.emit_error(format!("expected ` `, `{{` or `,` after `\"`, found `{c}`"));
                     return None;
                 }
@@ -1115,8 +1131,6 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
             } else if c == '{' {
                 self.is_in_attribute_block = true;
                 return self.next();
-            } else if is_bareword_char(c) {
-                continue;
             } else if is_separator(c) {
                 if pos != start {
                     return Some(LangStringToken::LangToken(&self.data[start..pos]));
@@ -1130,6 +1144,10 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                     return Some(LangStringToken::LangToken(&self.data[start..pos]));
                 }
                 return self.next();
+            } else if pos == start && is_leading_char(c) {
+                continue;
+            } else if pos != start && is_bareword_char(c) {
+                continue;
             } else {
                 self.emit_error(format!("unexpected character `{c}`"));
                 return None;
