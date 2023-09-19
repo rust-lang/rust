@@ -4,6 +4,7 @@
 - [Command-line arguments](command-line-arguments.md)
 - [How to read rustdoc output](how-to-read-rustdoc.md)
     - [In-doc settings](read-documentation/in-doc-settings.md)
+    - [Search](read-documentation/search.md)
 - [How to write documentation](how-to-write-documentation.md)
     - [What to include (and exclude)](write-documentation/what-to-include.md)
     - [The `#[doc]` attribute](write-documentation/the-doc-attribute.md)
