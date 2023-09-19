@@ -12,7 +12,6 @@ use ide::{
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
-use project_model::{CargoConfig, RustLibSource};
 use scip::types as scip_types;
 
 use crate::{
@@ -24,8 +23,6 @@ impl flags::Scip {
     pub fn run(self) -> anyhow::Result<()> {
         eprintln!("Generating SCIP start...");
         let now = Instant::now();
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
 
         let no_progress = &|s| (eprintln!("rust-analyzer: Loading {s}"));
         let load_cargo_config = LoadCargoConfig {
@@ -34,6 +31,20 @@ impl flags::Scip {
             prefill_caches: true,
         };
         let root = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(&self.path)).normalize();
+
+        let mut config = crate::config::Config::new(
+            root.clone(),
+            lsp_types::ClientCapabilities::default(),
+            /* workspace_roots = */ vec![],
+            /* is_visual_studio_code = */ false,
+        );
+
+        if let Some(p) = self.config_path {
+            let mut file = std::io::BufReader::new(std::fs::File::open(p)?);
+            let json = serde_json::from_reader(&mut file)?;
+            config.update(json)?;
+        }
+        let cargo_config = config.cargo();
         let (host, vfs, _) = load_workspace_at(
             root.as_path().as_ref(),
             &cargo_config,
