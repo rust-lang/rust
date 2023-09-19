@@ -101,13 +101,11 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
 ];
 
-// FIXME(rust-random/rand#1293): Newer rand versions fail to test on Windows. Update once this is
-// fixed.
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rust-random",
     "rand",
-    "50b9a447410860af8d6db9a208c3576886955874",
-    "446203b96054891e",
+    "f3dd0b885c4597b9617ca79987a0dd899ab29fcb",
+    "3f869e4fcd602b66",
     "rand",
 );
 
