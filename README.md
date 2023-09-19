@@ -96,7 +96,7 @@ pkgs.mkShell {
 }
 ```
 
-In the case of the Nix Package Manager being used, the following shell can be used to install deependencies for users:
+In the case of the Nix Package Manager being used, the following shell can be used to install deependencies for contributors:
 
 ```nix
 # Rust Contributor Shell
