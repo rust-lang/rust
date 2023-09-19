@@ -123,5 +123,45 @@ LL | pub struct T16(Sized, ExternalIndirection<NonExhaustiveVariant>);
    = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
    = note: this enum contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
-error: aborting due to 12 previous errors
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-non-exhaustive.rs:97:16
+   |
+LL | pub struct T17(NonExhaustive, Sized);
+   |                ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-non-exhaustive.rs:102:31
+   |
+LL | pub struct T18(NonExhaustive, NonExhaustive);
+   |                               ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-non-exhaustive.rs:107:31
+   |
+LL | pub struct T19(NonExhaustive, Private);
+   |                               ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+   = note: this struct contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
+
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-non-exhaustive.rs:112:32
+   |
+LL | pub struct T19Flipped(Private, NonExhaustive);
+   |                                ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+
+error: aborting due to 16 previous errors
 

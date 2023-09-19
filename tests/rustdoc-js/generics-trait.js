@@ -12,10 +12,14 @@ const EXPECTED = [
         ],
     },
     {
-        'query': 'Result<SomeTraiz>',
-        'correction': null,
+        'query': 'Resulx<SomeTrait>',
         'in_args': [],
         'returned': [],
+    },
+    {
+        'query': 'Result<SomeTraiz>',
+        'proposeCorrectionFrom': 'SomeTraiz',
+        'proposeCorrectionTo': 'SomeTrait',
     },
     {
         'query': 'OtherThingxxxxxxxx',

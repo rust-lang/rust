@@ -324,8 +324,10 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         let count = count.min(quota);
-                        // SAFETY: affinity mask can't be empty and the quota gets clamped to a minimum of 1
-                        return Ok(NonZeroUsize::new_unchecked(count));
+                        // reported to occur on MIPS kernels older than our minimum supported kernel version for those targets
+                        let count = NonZeroUsize::new(count)
+                            .expect("CPU count must be > 0. This may be a bug in sched_getaffinity(); try upgrading the kernel.");
+                        return Ok(count);
                     }
                 }
             }
