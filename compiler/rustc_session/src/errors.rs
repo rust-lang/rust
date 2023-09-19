@@ -1,6 +1,5 @@
 use std::num::NonZeroU32;
 
-use crate::cgu_reuse_tracker::CguReuse;
 use crate::parse::ParseSess;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
@@ -8,24 +7,6 @@ use rustc_errors::{error_code, DiagnosticMessage, EmissionGuarantee, IntoDiagnos
 use rustc_macros::Diagnostic;
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
-
-#[derive(Diagnostic)]
-#[diag(session_incorrect_cgu_reuse_type)]
-pub struct IncorrectCguReuseType<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub cgu_user_name: &'a str,
-    pub actual_reuse: CguReuse,
-    pub expected_reuse: CguReuse,
-    pub at_least: u8,
-}
-
-#[derive(Diagnostic)]
-#[diag(session_cgu_not_recorded)]
-pub struct CguNotRecorded<'a> {
-    pub cgu_user_name: &'a str,
-    pub cgu_name: &'a str,
-}
 
 pub struct FeatureGateError {
     pub span: MultiSpan,

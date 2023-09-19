@@ -3650,6 +3650,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tempfile",
+ "thin-vec",
  "thorin-dwp",
  "tracing",
  "windows",

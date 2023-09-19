@@ -1,5 +1,6 @@
 //! Errors emitted by codegen_ssa
 
+use crate::assert_module_sources::CguReuse;
 use crate::back::command::Command;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
@@ -15,6 +16,74 @@ use std::borrow::Cow;
 use std::io::Error;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_incorrect_cgu_reuse_type)]
+pub struct IncorrectCguReuseType<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub cgu_user_name: &'a str,
+    pub actual_reuse: CguReuse,
+    pub expected_reuse: CguReuse,
+    pub at_least: u8,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_cgu_not_recorded)]
+pub struct CguNotRecorded<'a> {
+    pub cgu_user_name: &'a str,
+    pub cgu_name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unknown_reuse_kind)]
+pub struct UnknownReuseKind {
+    #[primary_span]
+    pub span: Span,
+    pub kind: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_missing_query_depgraph)]
+pub struct MissingQueryDepGraph {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_malformed_cgu_name)]
+pub struct MalformedCguName {
+    #[primary_span]
+    pub span: Span,
+    pub user_path: String,
+    pub crate_name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_no_module_named)]
+pub struct NoModuleNamed<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub user_path: &'a str,
+    pub cgu_name: Symbol,
+    pub cgu_names: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_field_associated_value_expected)]
+pub struct FieldAssociatedValueExpected {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_no_field)]
+pub struct NoField {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_lib_def_write_failure)]

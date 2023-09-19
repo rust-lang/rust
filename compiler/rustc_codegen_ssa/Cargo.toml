@@ -16,6 +16,7 @@ pathdiff = "0.2.0"
 serde_json = "1.0.59"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 regex = "1.4"
+thin-vec = "0.2.12"
 
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_arena = { path = "../rustc_arena" }
