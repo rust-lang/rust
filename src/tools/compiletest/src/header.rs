@@ -322,7 +322,15 @@ impl TestProps {
                 );
 
                 if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
-                    self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
+                    self.compile_flags.extend(
+                        flags
+                            .split("'")
+                            .enumerate()
+                            .flat_map(|(i, f)| {
+                                if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() }
+                            })
+                            .map(|s| s.to_owned()),
+                    );
                 }
                 if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
                     panic!("`compiler-flags` directive should be spelled `compile-flags`");
