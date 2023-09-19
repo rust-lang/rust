@@ -1295,7 +1295,10 @@ fn default_emitter(
                     .diagnostic_width(sopts.diagnostic_width)
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
-                    .terminal_url(terminal_url);
+                    .terminal_url(terminal_url)
+                    .ignored_directories_in_source_blocks(
+                        sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
+                    );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         }
@@ -1312,7 +1315,10 @@ fn default_emitter(
                 track_diagnostics,
                 terminal_url,
             )
-            .ui_testing(sopts.unstable_opts.ui_testing),
+            .ui_testing(sopts.unstable_opts.ui_testing)
+            .ignored_directories_in_source_blocks(
+                sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
+            ),
         ),
     }
 }

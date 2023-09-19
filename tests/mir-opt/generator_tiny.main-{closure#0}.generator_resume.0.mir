@@ -2,11 +2,7 @@
 /* generator_layout = GeneratorLayout {
     field_tys: {
         _0: GeneratorSavedTy {
-            ty: Adt(
-                HasDrop,
-                [
-                ],
-            ),
+            ty: HasDrop,
             source_info: SourceInfo {
                 span: $DIR/generator_tiny.rs:20:13: 20:15 (#0),
                 scope: scope[0],

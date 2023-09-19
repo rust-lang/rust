@@ -1,5 +1,5 @@
 Function name: closure::main
-Raw bytes (170): 0x[01, 01, 17, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 05, 05, 5a, 01, 05, 18, 01, 08, 01, 0f, 0d, 03, 16, 0e, 06, 0a, 07, 10, 05, 13, 0d, 0b, 1a, 0e, 08, 09, 0f, 10, 05, 0e, 09, 13, 16, 05, 0d, 18, 17, 19, 09, 01, 21, 1b, 04, 09, 00, 29, 1f, 01, 09, 00, 2d, 23, 01, 09, 00, 24, 27, 05, 09, 00, 24, 2b, 02, 09, 00, 21, 2f, 04, 09, 00, 21, 33, 04, 09, 00, 28, 37, 09, 09, 00, 32, 3b, 04, 09, 00, 33, 3f, 07, 09, 00, 4b, 43, 08, 09, 01, 09, 47, 0a, 09, 01, 09, 4b, 08, 09, 01, 09, 4f, 0a, 08, 00, 10, 05, 00, 11, 04, 06, 5a, 04, 06, 00, 07, 57, 01, 05, 03, 02]
+Raw bytes (170): 0x[01, 01, 17, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 00, 01, 05, 05, 5a, 01, 05, 18, 01, 08, 01, 0f, 0d, 03, 16, 0e, 06, 0a, 07, 10, 05, 13, 0d, 0b, 1a, 0e, 06, 0a, 0f, 10, 05, 0c, 16, 13, 16, 05, 0d, 18, 17, 19, 09, 01, 1e, 1b, 04, 09, 00, 29, 1f, 01, 09, 00, 2d, 23, 01, 09, 00, 24, 27, 05, 09, 00, 24, 2b, 02, 09, 00, 21, 2f, 04, 09, 00, 21, 33, 04, 09, 00, 28, 37, 09, 09, 00, 32, 3b, 04, 09, 00, 33, 3f, 07, 09, 00, 4b, 43, 08, 09, 00, 48, 47, 0a, 09, 00, 47, 4b, 08, 09, 00, 44, 4f, 0a, 08, 00, 10, 05, 00, 11, 04, 06, 5a, 04, 06, 00, 07, 57, 01, 05, 03, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 23
@@ -32,13 +32,13 @@ Number of file 0 mappings: 24
     = (c0 + Zero)
 - Code(Expression(1, Add)) at (prev + 16, 5) to (start + 19, 13)
     = (c0 + Zero)
-- Code(Expression(2, Add)) at (prev + 26, 14) to (start + 8, 9)
+- Code(Expression(2, Add)) at (prev + 26, 14) to (start + 6, 10)
     = (c0 + Zero)
-- Code(Expression(3, Add)) at (prev + 16, 5) to (start + 14, 9)
+- Code(Expression(3, Add)) at (prev + 16, 5) to (start + 12, 22)
     = (c0 + Zero)
 - Code(Expression(4, Add)) at (prev + 22, 5) to (start + 13, 24)
     = (c0 + Zero)
-- Code(Expression(5, Add)) at (prev + 25, 9) to (start + 1, 33)
+- Code(Expression(5, Add)) at (prev + 25, 9) to (start + 1, 30)
     = (c0 + Zero)
 - Code(Expression(6, Add)) at (prev + 4, 9) to (start + 0, 41)
     = (c0 + Zero)
@@ -60,11 +60,11 @@ Number of file 0 mappings: 24
     = (c0 + Zero)
 - Code(Expression(15, Add)) at (prev + 7, 9) to (start + 0, 75)
     = (c0 + Zero)
-- Code(Expression(16, Add)) at (prev + 8, 9) to (start + 1, 9)
+- Code(Expression(16, Add)) at (prev + 8, 9) to (start + 0, 72)
     = (c0 + Zero)
-- Code(Expression(17, Add)) at (prev + 10, 9) to (start + 1, 9)
+- Code(Expression(17, Add)) at (prev + 10, 9) to (start + 0, 71)
     = (c0 + Zero)
-- Code(Expression(18, Add)) at (prev + 8, 9) to (start + 1, 9)
+- Code(Expression(18, Add)) at (prev + 8, 9) to (start + 0, 68)
     = (c0 + Zero)
 - Code(Expression(19, Add)) at (prev + 10, 8) to (start + 0, 16)
     = (c0 + Zero)

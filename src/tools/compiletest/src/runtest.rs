@@ -695,7 +695,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_command_to_procres(&self, cmd: &mut Command) -> ProcRes {
-        let output = cmd.output().unwrap_or_else(|_| panic!("failed to exec `{cmd:?}`"));
+        let output = cmd.output().unwrap_or_else(|e| panic!("failed to exec `{cmd:?}`: {e:?}"));
 
         let proc_res = ProcRes {
             status: output.status,
@@ -1216,12 +1216,12 @@ impl<'test> TestCx<'test> {
                 .arg(&exe_file)
                 .arg(&self.config.adb_test_dir)
                 .status()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
             Command::new(adb_path)
                 .args(&["forward", "tcp:5039", "tcp:5039"])
                 .status()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
             let adb_arg = format!(
                 "export LD_LIBRARY_PATH={}; \
@@ -1238,7 +1238,7 @@ impl<'test> TestCx<'test> {
                 .stdout(Stdio::piped())
                 .stderr(Stdio::inherit())
                 .spawn()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
             // Wait for the gdbserver to print out "Listening on port ..."
             // at which point we know that it's started and then we can
@@ -1263,7 +1263,7 @@ impl<'test> TestCx<'test> {
             let Output { status, stdout, stderr } = Command::new(&gdb_path)
                 .args(debugger_opts)
                 .output()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", gdb_path));
+                .unwrap_or_else(|e| panic!("failed to exec `{gdb_path:?}`: {e:?}"));
             let cmdline = {
                 let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
                 gdb.args(debugger_opts);
@@ -2277,7 +2277,7 @@ impl<'test> TestCx<'test> {
         add_dylib_path(&mut command, iter::once(lib_path).chain(aux_path));
 
         let mut child = disable_error_reporting(|| command.spawn())
-            .unwrap_or_else(|_| panic!("failed to exec `{:?}`", &command));
+            .unwrap_or_else(|e| panic!("failed to exec `{command:?}`: {e:?}"));
         if let Some(input) = input {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
@@ -2334,6 +2334,15 @@ impl<'test> TestCx<'test> {
         // fact.
         rustc.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
         rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
+
+        // Hide Cargo dependency sources from ui tests to make sure the error message doesn't
+        // change depending on whether $CARGO_HOME is remapped or not. If this is not present,
+        // when $CARGO_HOME is remapped the source won't be shown, and when it's not remapped the
+        // source will be shown, causing a blessing hell.
+        rustc.arg("-Z").arg(format!(
+            "ignore-directory-in-diagnostics-source-blocks={}",
+            home::cargo_home().expect("failed to find cargo home").to_str().unwrap()
+        ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
@@ -3838,8 +3847,8 @@ impl<'test> TestCx<'test> {
                     .open(coverage_file_path.as_path())
                     .expect("could not create or open file");
 
-                if writeln!(file, "{}", self.testpaths.file.display()).is_err() {
-                    panic!("couldn't write to {}", coverage_file_path.display());
+                if let Err(e) = writeln!(file, "{}", self.testpaths.file.display()) {
+                    panic!("couldn't write to {}: {e:?}", coverage_file_path.display());
                 }
             }
         } else if self.props.run_rustfix {

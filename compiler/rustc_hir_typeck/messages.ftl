@@ -16,6 +16,21 @@ hir_typeck_candidate_trait_note = `{$trait_name}` defines an item `{$item_name}`
     *[other] , perhaps you need to restrict type parameter `{$action_or_ty}` with it
 }
 
+hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
+    .suggestion = compare with zero instead
+    .help = compare with zero instead
+    .label = unsupported cast
+
+hir_typeck_cast_enum_drop = cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`
+
+hir_typeck_cast_unknown_pointer = cannot cast {$to ->
+    [true] to
+    *[false] from
+    } a pointer of an unknown kind
+    .label_to = needs more type information
+    .note = the type information given here is insufficient to check whether the pointer cast is valid
+    .label_from = the type information given here is insufficient to check whether the pointer cast is valid
+
 hir_typeck_const_select_must_be_const = this argument must be a `const fn`
     .help = consult the documentation on `const_eval_select` for more information
 
@@ -28,6 +43,8 @@ hir_typeck_convert_to_str = try converting the passed type into a `&str`
 hir_typeck_convert_using_method = try using `{$sugg}` to convert `{$found}` to `{$expected}`
 
 hir_typeck_ctor_is_private = tuple struct constructor `{$def}` is private
+
+hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
 
 hir_typeck_expected_default_return_type = expected `()` because of default return type
 
@@ -57,6 +74,13 @@ hir_typeck_functional_record_update_on_non_struct =
 hir_typeck_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
 hir_typeck_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
 
+hir_typeck_int_to_fat = cannot cast `{$expr_ty}` to a pointer that {$known_wide ->
+    [true] is
+    *[false] may be
+    } wide
+hir_typeck_int_to_fat_label = creating a `{$cast_ty}` requires both an address and {$metadata}
+hir_typeck_int_to_fat_label_nightly = consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
+
 hir_typeck_invalid_callee = expected function, found {$ty}
 
 hir_typeck_lang_start_expected_sig_note = the `start` lang item should have the signature `fn(fn() -> T, isize, *const *const u8, u8) -> isize`
@@ -68,6 +92,16 @@ hir_typeck_lang_start_incorrect_param = parameter {$param_num} of the `start` la
 
 hir_typeck_lang_start_incorrect_ret_ty = the return type of the `start` lang item is incorrect
     .suggestion = change the type from `{$found_ty}` to `{$expected_ty}`
+
+hir_typeck_lossy_provenance_int2ptr =
+    strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`
+    .suggestion = use `.with_addr()` to adjust a valid pointer in the same allocation, to this address
+    .help = if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::from_exposed_addr()` instead
+
+hir_typeck_lossy_provenance_ptr2int =
+    under strict provenance it is considered bad style to cast pointer `{$expr_ty}` to integer `{$cast_ty}`
+    .suggestion = use `.addr()` to obtain the address of a pointer
+    .help = if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_addr()` instead
 
 hir_typeck_method_call_on_unknown_raw_pointee =
     cannot call a method on a raw pointer with an unknown pointee type
@@ -113,8 +147,18 @@ hir_typeck_suggest_boxing_when_appropriate = store this in the heap by calling `
 
 hir_typeck_suggest_ptr_null_mut = consider using `core::ptr::null_mut` instead
 
+hir_typeck_trivial_cast = trivial {$numeric ->
+    [true] numeric cast
+    *[false] cast
+    }: `{$expr_ty}` as `{$cast_ty}`
+    .help = cast can be replaced by coercion; this might require a temporary variable
+
 hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
 
 hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field
+
+hir_typeck_use_is_empty =
+    consider using the `is_empty` method on `{$expr_ty}` to determine if it contains anything
+
 hir_typeck_yield_expr_outside_of_generator =
     yield expression outside of generator literal

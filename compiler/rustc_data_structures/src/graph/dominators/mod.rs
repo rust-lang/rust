@@ -51,7 +51,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
     // Traverse the graph, collecting a number of things:
     //
     // * Preorder mapping (to it, and back to the actual ordering)
-    // * Postorder mapping (used exclusively for rank_partial_cmp on the final product)
+    // * Postorder mapping (used exclusively for `cmp_in_dominator_order` on the final product)
     // * Parents for each vertex in the preorder tree
     //
     // These are all done here rather than through one of the 'standard'
@@ -342,8 +342,8 @@ impl<Node: Idx> Dominators<Node> {
     /// relationship, the dominator will always precede the dominated. (The relative ordering
     /// of two unrelated nodes will also be consistent, but otherwise the order has no
     /// meaning.) This method cannot be used to determine if either Node dominates the other.
-    pub fn rank_partial_cmp(&self, lhs: Node, rhs: Node) -> Option<Ordering> {
-        self.post_order_rank[rhs].partial_cmp(&self.post_order_rank[lhs])
+    pub fn cmp_in_dominator_order(&self, lhs: Node, rhs: Node) -> Ordering {
+        self.post_order_rank[rhs].cmp(&self.post_order_rank[lhs])
     }
 
     /// Returns true if `a` dominates `b`.

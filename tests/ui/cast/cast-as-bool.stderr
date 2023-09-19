@@ -2,25 +2,45 @@ error[E0054]: cannot cast `i32` as `bool`
   --> $DIR/cast-as-bool.rs:2:13
    |
 LL |     let u = 5 as bool;
-   |             ^^^^^^^^^ help: compare with zero instead: `5 != 0`
+   |             ^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL |     let u = 5 != 0;
+   |               ~~~~
 
 error[E0054]: cannot cast `i32` as `bool`
   --> $DIR/cast-as-bool.rs:6:13
    |
 LL |     let t = (1 + 2) as bool;
-   |             ^^^^^^^^^^^^^^^ help: compare with zero instead: `(1 + 2) != 0`
+   |             ^^^^^^^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL |     let t = (1 + 2) != 0;
+   |                     ~~~~
 
 error[E0054]: cannot cast `u32` as `bool`
   --> $DIR/cast-as-bool.rs:10:13
    |
 LL |     let _ = 5_u32 as bool;
-   |             ^^^^^^^^^^^^^ help: compare with zero instead: `5_u32 != 0`
+   |             ^^^^^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL |     let _ = 5_u32 != 0;
+   |                   ~~~~
 
 error[E0054]: cannot cast `f64` as `bool`
   --> $DIR/cast-as-bool.rs:13:13
    |
 LL |     let _ = 64.0_f64 as bool;
-   |             ^^^^^^^^^^^^^^^^ help: compare with zero instead: `64.0_f64 != 0`
+   |             ^^^^^^^^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL |     let _ = 64.0_f64 != 0;
+   |                      ~~~~
 
 error[E0054]: cannot cast `IntEnum` as `bool`
   --> $DIR/cast-as-bool.rs:24:13
