@@ -968,6 +968,7 @@ impl f64 {
         } else if self == other {
             if self.is_sign_negative() && other.is_sign_positive() { self } else { other }
         } else {
+            // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
             self + other
         }
     }
