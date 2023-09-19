@@ -2214,10 +2214,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 // The name of a constructor is that of its parent.
                 rustc_hir::definitions::DefPathData::Ctor => self
                     .opt_item_name(DefId { krate: def_id.krate, index: def_key.parent.unwrap() }),
-                // The name of opaque types only exists in HIR.
-                rustc_hir::definitions::DefPathData::ImplTrait
-                    if let Some(def_id) = def_id.as_local() =>
-                    self.hir().opt_name(self.hir().local_def_id_to_hir_id(def_id)),
                 _ => def_key.get_opt_name(),
             }
         }

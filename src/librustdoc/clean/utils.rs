@@ -153,7 +153,7 @@ pub(super) fn external_path<'tcx>(
     args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
-    let name = cx.tcx.item_name(did);
+    let name = cx.tcx.opt_item_name(did).unwrap_or(kw::Empty);
     Path {
         res: Res::Def(def_kind, did),
         segments: thin_vec![PathSegment {
