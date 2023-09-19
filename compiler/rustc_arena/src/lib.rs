@@ -501,14 +501,7 @@ impl DroplessArena {
         assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
 
-        let layout = Layout::new::<T>();
-        let mem = if let Some(a) = self.alloc_raw_without_grow(layout) {
-            a
-        } else {
-            // No free space left. Allocate a new chunk to satisfy the request.
-            // On failure the grow will panic or abort.
-            self.grow_and_alloc_raw(layout)
-        } as *mut T;
+        let mem = self.alloc_raw(Layout::new::<T>()) as *mut T;
 
         unsafe {
             // Write into uninitialized memory.
