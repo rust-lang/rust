@@ -46,7 +46,6 @@ debug = 0
 
 [workspace.dependencies]
 # local crates
-anymap = { path = "./crates/anymap", version = "0.0.0" }
 base-db = { path = "./crates/base-db", version = "0.0.0" }
 cfg = { path = "./crates/cfg", version = "0.0.0" }
 flycheck = { path = "./crates/flycheck", version = "0.0.0" }

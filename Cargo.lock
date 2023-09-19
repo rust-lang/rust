@@ -50,13 +50,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
 
 [[package]]
-name = "anymap"
-version = "0.0.0"
-dependencies = [
- "hashbrown 0.14.0",
-]
-
-[[package]]
 name = "arbitrary"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -540,7 +533,6 @@ dependencies = [
 name = "hir-def"
 version = "0.0.0"
 dependencies = [
- "anymap",
  "arrayvec",
  "base-db",
  "bitflags 2.3.2",
@@ -1831,6 +1823,7 @@ dependencies = [
  "always-assert",
  "backtrace",
  "crossbeam-channel",
+ "hashbrown 0.14.0",
  "jod-thread",
  "libc",
  "miow",

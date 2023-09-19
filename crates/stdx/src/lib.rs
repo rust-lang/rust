@@ -12,6 +12,7 @@ pub mod panic_context;
 pub mod non_empty_vec;
 pub mod rand;
 pub mod thread;
+pub mod anymap;
 
 pub use always_assert::{always, never};
 

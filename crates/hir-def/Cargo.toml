@@ -33,7 +33,6 @@ triomphe.workspace = true
 rustc-dependencies.workspace = true
 
 # local deps
-anymap.workspace = true
 stdx.workspace = true
 intern.workspace = true
 base-db.workspace = true
