@@ -2,16 +2,10 @@ error[E0308]: `#[panic_handler]` function has wrong type
   --> $DIR/panic-handler-bad-signature-5.rs:9:1
    |
 LL | fn panic(info: &PanicInfo<'static>) -> !
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-   = note: expected signature `fn(&PanicInfo<'_>) -> _`
-              found signature `fn(&PanicInfo<'static>) -> _`
-note: the anonymous lifetime as defined here...
-  --> $DIR/panic-handler-bad-signature-5.rs:9:1
-   |
-LL | fn panic(info: &PanicInfo<'static>) -> !
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...does not necessarily outlive the static lifetime
+   = note: expected fn pointer `for<'a, 'b> fn(&'a PanicInfo<'b>) -> _`
+              found fn pointer `for<'a> fn(&'a PanicInfo<'static>) -> _`
 
 error: aborting due to previous error
 

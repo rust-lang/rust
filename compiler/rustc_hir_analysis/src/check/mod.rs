@@ -568,18 +568,15 @@ pub fn check_function_signature<'tcx>(
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
 
-    let unnormalized_actual_sig = infcx.instantiate_binder_with_fresh_vars(
-        cause.span,
-        infer::HigherRankedType,
-        tcx.fn_sig(fn_id).instantiate_identity(),
-    );
+    let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
 
     let norm_cause = ObligationCause::misc(cause.span, local_id);
-    let actual_sig = ocx.normalize(&norm_cause, param_env, unnormalized_actual_sig);
+    let actual_sig = ocx.normalize(&norm_cause, param_env, actual_sig);
 
-    let expected_sig = tcx.liberate_late_bound_regions(fn_id, expected_sig);
+    let expected_ty = Ty::new_fn_ptr(tcx, expected_sig);
+    let actual_ty = Ty::new_fn_ptr(tcx, actual_sig);
 
-    match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
+    match ocx.eq(&cause, param_env, expected_ty, actual_ty) {
         Ok(()) => {
             let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
@@ -599,8 +596,8 @@ pub fn check_function_signature<'tcx>(
                 &cause,
                 None,
                 Some(infer::ValuePairs::Sigs(ExpectedFound {
-                    expected: expected_sig,
-                    found: actual_sig,
+                    expected: tcx.liberate_late_bound_regions(fn_id, expected_sig),
+                    found: tcx.liberate_late_bound_regions(fn_id, actual_sig),
                 })),
                 err,
                 false,
