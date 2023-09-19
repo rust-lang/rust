@@ -715,10 +715,10 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
         }
 
         #[allow(clippy::mut_from_ref)]
-        pub fn alloc_from_iter<'a, T: ArenaAllocatable<'tcx, C>, C>(
-            &'a self,
+        pub fn alloc_from_iter<T: ArenaAllocatable<'tcx, C>, C>(
+            &self,
             iter: impl ::std::iter::IntoIterator<Item = T>,
-        ) -> &'a mut [T] {
+        ) -> &mut [T] {
             T::allocate_from_iter(self, iter)
         }
     }
