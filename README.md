@@ -75,7 +75,55 @@ See [the rustc-dev-guide for more info][sysllvm].
 
 [sysllvm]: https://rustc-dev-guide.rust-lang.org/building/new-target.html#using-pre-built-llvm
 
+In the case of the Nix Package Manager being used, the following shell can be used to install deependencies for users:
 
+```nix
+# Rust Contributor Shell
+let
+  # Unstable Channel | Rolling Release
+  pkgs = import (fetchTarball("channel:nixpkgs-unstable")) { };
+
+  packages = with pkgs; [
+    pkg-config
+    rustc
+    cargo
+    rustfmt
+    rust-analyzer
+  ];
+in
+pkgs.mkShell {
+  buildInputs = packages;
+}
+```
+
+In the case of the Nix Package Manager being used, the following shell can be used to install deependencies for users:
+
+```nix
+# Rust Contributor Shell
+let
+  # Unstable Channel | Rolling Release
+  pkgs = import (fetchTarball("channel:nixpkgs-unstable")) { };
+
+  packages = with pkgs; [
+    pkg-config
+    rustc
+    cargo
+    rustfmt
+    rust-analyzer
+    python3
+    git
+    libgcc
+    gnumake
+    curl
+    cmake
+    libstc
+    libstdc++5
+  ];
+in
+pkgs.mkShell {
+  buildInputs = packages;
+}
+```
 ### Building on a Unix-like system
 
 #### Build steps
