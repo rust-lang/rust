@@ -131,7 +131,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
-                    if lo.eval_bits(self.tcx, self.param_env, ty) != val {
+                    if lo.eval_bits(self.tcx, self.param_env) != val {
                         lower_overflow = true;
                         self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
                     }
@@ -139,7 +139,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
-                    if hi.eval_bits(self.tcx, self.param_env, ty) != val {
+                    if hi.eval_bits(self.tcx, self.param_env) != val {
                         higher_overflow = true;
                         self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
                     }
@@ -162,7 +162,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
-                    if lo.eval_bits(self.tcx, self.param_env, ty) != val {
+                    if lo.eval_bits(self.tcx, self.param_env) != val {
                         lower_overflow = true;
                         self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
                     }
@@ -170,7 +170,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
-                    if hi.eval_bits(self.tcx, self.param_env, ty) != val {
+                    if hi.eval_bits(self.tcx, self.param_env) != val {
                         higher_overflow = true;
                         self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
                     }
@@ -865,8 +865,8 @@ pub(crate) fn compare_const_vals<'tcx>(
         },
     }
 
-    let a = a.eval_bits(tcx, param_env, ty);
-    let b = b.eval_bits(tcx, param_env, ty);
+    let a = a.eval_bits(tcx, param_env);
+    let b = b.eval_bits(tcx, param_env);
 
     use rustc_apfloat::Float;
     match *ty.kind() {

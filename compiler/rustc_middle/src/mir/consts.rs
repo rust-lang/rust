@@ -323,23 +323,18 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_bits(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Option<u128> {
+    pub fn try_eval_bits(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<u128> {
         let int = self.try_eval_scalar_int(tcx, param_env)?;
-        assert_eq!(self.ty(), ty);
-        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+        let size =
+            tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
         int.to_bits(size).ok()
     }
 
     /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
     #[inline]
-    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
-        self.try_eval_bits(tcx, param_env, ty)
-            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", ty, self))
+    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {
+        self.try_eval_bits(tcx, param_env)
+            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", self.ty(), self))
     }
 
     #[inline]

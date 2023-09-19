@@ -146,7 +146,7 @@ impl IntRange {
                 valtree.unwrap_leaf().to_bits(target_size).ok()
             },
             // This is a more general form of the previous case.
-            _ => value.try_eval_bits(tcx, param_env, ty),
+            _ => value.try_eval_bits(tcx, param_env),
         }?;
 
         let val = val ^ bias;
@@ -1379,8 +1379,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 let ty = lo.ty();
                 ctor = if let Some(int_range) = IntRange::from_range(
                     cx.tcx,
-                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty()),
-                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty()),
+                    lo.eval_bits(cx.tcx, cx.param_env),
+                    hi.eval_bits(cx.tcx, cx.param_env),
                     ty,
                     &end,
                 ) {

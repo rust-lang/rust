@@ -85,7 +85,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
-        switch_ty: Ty<'tcx>,
         options: &mut FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> bool {
         let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
@@ -95,9 +94,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match match_pair.pattern.kind {
             PatKind::Constant { value } => {
-                options
-                    .entry(value)
-                    .or_insert_with(|| value.eval_bits(self.tcx, self.param_env, switch_ty));
+                options.entry(value).or_insert_with(|| value.eval_bits(self.tcx, self.param_env));
                 true
             }
             PatKind::Variant { .. } => {

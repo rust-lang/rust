@@ -1622,9 +1622,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // may want to add cases based on the candidates that are
         // available
         match test.kind {
-            TestKind::SwitchInt { switch_ty, ref mut options } => {
+            TestKind::SwitchInt { switch_ty: _, ref mut options } => {
                 for candidate in candidates.iter() {
-                    if !self.add_cases_to_switch(&match_place, candidate, switch_ty, options) {
+                    if !self.add_cases_to_switch(&match_place, candidate, options) {
                         break;
                     }
                 }

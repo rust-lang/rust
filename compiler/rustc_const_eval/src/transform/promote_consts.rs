@@ -554,7 +554,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             // Integer division: the RHS must be a non-zero const.
                             let const_val = match rhs {
                                 Operand::Constant(c) => {
-                                    c.literal.try_eval_bits(self.tcx, self.param_env, lhs_ty)
+                                    c.literal.try_eval_bits(self.tcx, self.param_env)
                                 }
                                 _ => None,
                             };
