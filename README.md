@@ -116,8 +116,7 @@ let
     gnumake
     curl
     cmake
-    libstc
-    libstdc++5
+    libstdcxx5
   ];
 in
 pkgs.mkShell {
