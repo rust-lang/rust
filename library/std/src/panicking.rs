@@ -9,8 +9,8 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use crate::panic::BacktraceStyle;
-use core::panic::{Location, PanicInfo, PanicPayload};
+use crate::panic::{BacktraceStyle, PanicInfo};
+use core::panic::{Location, PanicPayload};
 
 use crate::any::Any;
 use crate::fmt;
@@ -597,7 +597,7 @@ pub fn panicking() -> bool {
 /// Entry point of panics from the core crate (`panic_impl` lang item).
 #[cfg(not(any(test, doctest)))]
 #[panic_handler]
-pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
+pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
     struct FormatStringPayload<'a> {
         inner: &'a fmt::Arguments<'a>,
         string: Option<String>,
@@ -648,22 +648,20 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     }
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
-    let msg = info.message().unwrap(); // The current implementation always returns Some
+    let msg = info.message();
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
-        // FIXME: can we just pass `info` along rather than taking it apart here, only to have
-        // `rust_panic_with_hook` construct a new `PanicInfo`?
-        if let Some(msg) = msg.as_str() {
+        if let Some(s) = msg.as_str() {
             rust_panic_with_hook(
-                &mut StaticStrPayload(msg),
-                info.message(),
+                &mut StaticStrPayload(s),
+                Some(msg),
                 loc,
                 info.can_unwind(),
                 info.force_no_backtrace(),
             );
         } else {
             rust_panic_with_hook(
-                &mut FormatStringPayload::new(msg),
-                info.message(),
+                &mut FormatStringPayload::new(&msg),
+                Some(msg),
                 loc,
                 info.can_unwind(),
                 info.force_no_backtrace(),
@@ -740,7 +738,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
 /// abort or unwind.
 fn rust_panic_with_hook(
     payload: &mut dyn PanicPayload,
-    message: Option<&fmt::Arguments<'_>>,
+    message: Option<fmt::Arguments<'_>>,
     location: &Location<'_>,
     can_unwind: bool,
     force_no_backtrace: bool,
@@ -767,20 +765,17 @@ fn rust_panic_with_hook(
             panic_count::MustAbort::AlwaysAbort => {
                 // Unfortunately, this does not print a backtrace, because creating
                 // a `Backtrace` will allocate, which we must avoid here.
-                let panicinfo = PanicInfo::internal_constructor(
-                    message,
-                    location,
-                    can_unwind,
-                    force_no_backtrace,
-                );
-                rtprintpanic!("{panicinfo}\npanicked after panic::always_abort(), aborting.\n");
+                if let Some(message) = message {
+                    rtprintpanic!("aborting due to panic at {location}:\n{message}\n");
+                } else {
+                    rtprintpanic!("aborting due to panic at {location}\n");
+                }
             }
         }
         crate::sys::abort_internal();
     }
 
-    let mut info =
-        PanicInfo::internal_constructor(message, location, can_unwind, force_no_backtrace);
+    let mut info = PanicInfo::internal_constructor(location, can_unwind, force_no_backtrace);
     let hook = HOOK.read().unwrap_or_else(PoisonError::into_inner);
     match *hook {
         // Some platforms (like wasm) know that printing to stderr won't ever actually

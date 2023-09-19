@@ -4,10 +4,161 @@
 
 use crate::any::Any;
 use crate::collections;
+use crate::fmt;
 use crate::panicking;
 use crate::sync::atomic::{AtomicU8, Ordering};
 use crate::sync::{Condvar, Mutex, RwLock};
 use crate::thread::Result;
+
+/// A struct providing information about a panic.
+///
+/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook`]
+/// function.
+///
+/// [`set_hook`]: ../../std/panic/fn.set_hook.html
+///
+/// # Examples
+///
+/// ```should_panic
+/// use std::panic;
+///
+/// panic::set_hook(Box::new(|panic_info| {
+///     println!("panic occurred: {panic_info}");
+/// }));
+///
+/// panic!("critical system failure");
+/// ```
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[derive(Debug)]
+pub struct PanicInfo<'a> {
+    payload: &'a (dyn Any + Send),
+    location: &'a Location<'a>,
+    can_unwind: bool,
+    force_no_backtrace: bool,
+}
+
+impl<'a> PanicInfo<'a> {
+    #[unstable(feature = "panic_internals", issue = "none")]
+    #[doc(hidden)]
+    #[inline]
+    pub fn internal_constructor(
+        location: &'a Location<'a>,
+        can_unwind: bool,
+        force_no_backtrace: bool,
+    ) -> Self {
+        struct NoPayload;
+        PanicInfo { payload: &NoPayload, location, can_unwind, force_no_backtrace }
+    }
+
+    #[unstable(feature = "panic_internals", issue = "none")]
+    #[doc(hidden)]
+    #[inline]
+    pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
+        self.payload = info;
+    }
+
+    /// Returns the payload associated with the panic.
+    ///
+    /// This will commonly, but not always, be a `&'static str` or [`String`].
+    ///
+    /// [`String`]: ../../std/string/struct.String.html
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+    ///         println!("panic occurred: {s:?}");
+    ///     } else {
+    ///         println!("panic occurred");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[must_use]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    pub fn payload(&self) -> &(dyn Any + Send) {
+        self.payload
+    }
+
+    /// Returns information about the location from which the panic originated,
+    /// if available.
+    ///
+    /// This method will currently always return [`Some`], but this may change
+    /// in future versions.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(location) = panic_info.location() {
+    ///         println!("panic occurred in file '{}' at line {}",
+    ///             location.file(),
+    ///             location.line(),
+    ///         );
+    ///     } else {
+    ///         println!("panic occurred but can't get location information...");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[must_use]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    pub fn location(&self) -> Option<&Location<'_>> {
+        // NOTE: If this is changed to sometimes return None,
+        // deal with that case in std::panicking::default_hook and core::panicking::panic_fmt.
+        Some(&self.location)
+    }
+
+    /// Returns whether the panic handler is allowed to unwind the stack from
+    /// the point where the panic occurred.
+    ///
+    /// This is true for most kinds of panics with the exception of panics
+    /// caused by trying to unwind out of a `Drop` implementation or a function
+    /// whose ABI does not support unwinding.
+    ///
+    /// It is safe for a panic handler to unwind even when this function returns
+    /// false, however this will simply cause the panic handler to be called
+    /// again.
+    #[must_use]
+    #[unstable(feature = "panic_can_unwind", issue = "92988")]
+    pub fn can_unwind(&self) -> bool {
+        self.can_unwind
+    }
+
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` and related macros",
+        issue = "none"
+    )]
+    #[doc(hidden)]
+    #[inline]
+    pub fn force_no_backtrace(&self) -> bool {
+        self.force_no_backtrace
+    }
+}
+
+#[stable(feature = "panic_hook_display", since = "1.26.0")]
+impl fmt::Display for PanicInfo<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("panicked at ")?;
+        self.location.fmt(formatter)?;
+        if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
+            formatter.write_str(":\n")?;
+            formatter.write_str(payload)?;
+        } else if let Some(payload) = self.payload.downcast_ref::<String>() {
+            formatter.write_str(":\n")?;
+            formatter.write_str(payload)?;
+        }
+        Ok(())
+    }
+}
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
@@ -43,7 +194,7 @@ pub use crate::panicking::{set_hook, take_hook};
 pub use crate::panicking::update_hook;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use core::panic::{Location, PanicInfo};
+pub use core::panic::Location;
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
