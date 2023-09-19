@@ -15,10 +15,6 @@
 //! - **std** (default, *enabled* in this build):
 //!   an implementation using `std::collections::hash_map`, placed in the crate root
 //!   (e.g. `anymap::AnyMap`).
-//!
-//! - **hashbrown** (optional; *enabled* in this build):
-//!   an implementation using `alloc` and `hashbrown::hash_map`, placed in a module `hashbrown`
-//!   (e.g. `anymap::hashbrown::AnyMap`).
 
 #![warn(missing_docs, unused_results)]
 
