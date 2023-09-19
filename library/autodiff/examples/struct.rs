@@ -18,6 +18,7 @@ fn sin(x: &Foo) -> f32 {
 
 fn main() {
     let mut s = String::new();
+    println!("Please enter a value for c1");
     io::stdin().read_line(&mut s).unwrap();
     let c2 = s.trim_end().parse::<i16>().unwrap();
     dbg!(c2);
