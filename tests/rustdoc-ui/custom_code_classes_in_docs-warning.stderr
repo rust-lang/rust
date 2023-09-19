@@ -77,37 +77,21 @@ LL | | /// main;
 LL | | /// ```
    | |_______^
 
-error: unexpected `.` character
-  --> $DIR/custom_code_classes_in_docs-warning.rs:63:1
+error: unexpected `(` character after `=`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:68:1
    |
-LL | / /// ```{.one.two}
-LL | | /// main;
-LL | | /// ```
-   | |_______^
-
-error: unexpected `.` character after `=`
-  --> $DIR/custom_code_classes_in_docs-warning.rs:69:1
-   |
-LL | / /// ```{class=.one}
-LL | | /// main;
-LL | | /// ```
-   | |_______^
-
-error: unexpected `.` character
-  --> $DIR/custom_code_classes_in_docs-warning.rs:75:1
-   |
-LL | / /// ```{class=one.two}
+LL | / /// ```{class=(one}
 LL | | /// main;
 LL | | /// ```
    | |_______^
 
 error: unexpected character `(`
-  --> $DIR/custom_code_classes_in_docs-warning.rs:81:1
+  --> $DIR/custom_code_classes_in_docs-warning.rs:79:1
    |
 LL | / /// ```{(comment)}
 LL | | /// main;
 LL | | /// ```
    | |_______^
 
-error: aborting due to 13 previous errors
+error: aborting due to 11 previous errors
 

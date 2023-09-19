@@ -10,7 +10,6 @@ use std::ptr::NonNull;
 // Hence there are `cfg` throughout this test to disable parts of it on those targets.
 // sparc64: https://github.com/rust-lang/rust/issues/115336
 // mips64: https://github.com/rust-lang/rust/issues/115404
-// riscv64: https://github.com/rust-lang/rust/issues/115481
 // loongarch64: https://github.com/rust-lang/rust/issues/115509
 
 macro_rules! assert_abi_compatible {
@@ -110,7 +109,7 @@ macro_rules! test_transparent {
             test_abi_compatible!(wrap1, $t, Wrapper1<$t>);
             test_abi_compatible!(wrap2, $t, Wrapper2<$t>);
             test_abi_compatible!(wrap3, $t, Wrapper3<$t>);
-            #[cfg(not(any(target_arch = "riscv64", target_arch = "loongarch64")))]
+            #[cfg(not(target_arch = "loongarch64"))]
             test_abi_compatible!(wrap4, $t, WrapperUnion<$t>);
         }
     };

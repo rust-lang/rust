@@ -66,6 +66,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {
     fn is_never(this: TyAndLayout<'a, Self>) -> bool;
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
@@ -134,6 +135,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_unit(self)
+    }
+
+    pub fn is_transparent<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_transparent(self)
     }
 
     pub fn offset_of_subfield<C>(self, cx: &C, indices: impl Iterator<Item = usize>) -> Size

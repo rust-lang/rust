@@ -226,13 +226,28 @@ fn test_lang_string_parse() {
         ..Default::default()
     });
     // error
-    t(LangString { original: "{.first.second}".into(), rust: true, ..Default::default() });
+    t(LangString {
+        original: "{.first.second}".into(),
+        rust: true,
+        added_classes: vec!["first.second".into()],
+        ..Default::default()
+    });
     // error
     t(LangString { original: "{class=first=second}".into(), rust: true, ..Default::default() });
     // error
-    t(LangString { original: "{class=first.second}".into(), rust: true, ..Default::default() });
+    t(LangString {
+        original: "{class=first.second}".into(),
+        rust: true,
+        added_classes: vec!["first.second".into()],
+        ..Default::default()
+    });
     // error
-    t(LangString { original: "{class=.first}".into(), rust: true, ..Default::default() });
+    t(LangString {
+        original: "{class=.first}".into(),
+        added_classes: vec![".first".into()],
+        rust: true,
+        ..Default::default()
+    });
     t(LangString {
         original: r#"{class="first"}"#.into(),
         added_classes: vec!["first".into()],
