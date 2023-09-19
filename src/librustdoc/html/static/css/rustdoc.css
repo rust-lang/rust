@@ -492,6 +492,7 @@ ul.block, .block li {
 }
 
 .sidebar-elems,
+.sidebar > .version,
 .sidebar > h2 {
 	padding-left: 24px;
 }

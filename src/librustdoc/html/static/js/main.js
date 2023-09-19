@@ -51,12 +51,13 @@ function setMobileTopbar() {
     // but with the current code it's hard to get the right information in the right place.
     const mobileTopbar = document.querySelector(".mobile-topbar");
     const locationTitle = document.querySelector(".sidebar h2.location");
-    if (mobileLocationTitle) {
+    if (mobileTopbar) {
         const mobileTitle = document.createElement("h2");
+        mobileTitle.className = "location";
         if (hasClass(document.body, "crate")) {
-            mobileLocationTitle.innerText = `Crate ${window.currentCrate}`;
+            mobileTitle.innerText = `Crate ${window.currentCrate}`;
         } else if (locationTitle) {
-            mobileLocationTitle.innerHTML = locationTitle.innerHTML;
+            mobileTitle.innerHTML = locationTitle.innerHTML;
         }
         mobileTopbar.appendChild(mobileTitle);
     }

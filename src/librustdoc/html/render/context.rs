@@ -528,13 +528,17 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if let Some(url) = playground_url {
             playground = Some(markdown::Playground { crate_name: Some(krate.name(tcx)), url });
         }
+        let krate_version = cache.crate_version.as_deref().unwrap_or_default();
+        let (krate_version, krate_version_extra) =
+            krate_version.split_once(" ").unwrap_or((krate_version, ""));
         let mut layout = layout::Layout {
             logo: String::new(),
             favicon: String::new(),
             external_html,
             default_settings,
             krate: krate.name(tcx).to_string(),
-            krate_version: cache.crate_version.as_deref().unwrap_or_default().to_string(),
+            krate_version: krate_version.to_string(),
+            krate_version_extra: krate_version_extra.to_string(),
             css_file_extension: extension_css,
             scrape_examples_extension: !call_locations.is_empty(),
         };

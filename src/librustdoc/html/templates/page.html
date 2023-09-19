@@ -101,8 +101,11 @@
                 {% if !layout.krate_version.is_empty() %}
                     <span class="version">{{+ layout.krate_version}}</span>
                 {% endif %}
-            </h2>
-        </div>
+            </h2> {# #}
+        </div> {# #}
+        {% if !layout.krate_version_extra.is_empty() %}
+        <div class="version">{{+ layout.krate_version_extra}}</div> {# #}
+        {% endif %}
         {% endif %}
         {{ sidebar|safe }}
     </nav> {# #}

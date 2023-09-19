@@ -18,6 +18,7 @@ pub(crate) struct Layout {
     pub(crate) default_settings: FxHashMap<String, String>,
     pub(crate) krate: String,
     pub(crate) krate_version: String,
+    pub(crate) krate_version_extra: String,
     /// The given user css file which allow to customize the generated
     /// documentation theme.
     pub(crate) css_file_extension: Option<PathBuf>,
