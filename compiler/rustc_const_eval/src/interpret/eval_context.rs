@@ -7,7 +7,7 @@ use hir::CRATE_HIR_ID;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpError, InvalidMetaKind, ReportedErrorInfo};
+use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
@@ -21,10 +21,10 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 
 use super::{
     AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, PointerArithmetic,
+    MemPlaceMeta, Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic,
     Projectable, Provenance, Scalar, StackPopJump,
 };
-use crate::errors::{self, ErroneousConstUsed};
+use crate::errors;
 use crate::util;
 use crate::{fluent_generated as fluent, ReportErrorExt};
 
@@ -556,7 +556,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     >(
         &self,
         value: T,
-    ) -> Result<T, InterpError<'tcx>> {
+    ) -> Result<T, ErrorHandled> {
         self.subst_from_frame_and_normalize_erasing_regions(self.frame(), value)
     }
 
@@ -566,7 +566,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         value: T,
-    ) -> Result<T, InterpError<'tcx>> {
+    ) -> Result<T, ErrorHandled> {
         frame
             .instance
             .try_subst_mir_and_normalize_erasing_regions(
@@ -574,7 +574,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.param_env,
                 ty::EarlyBinder::bind(value),
             )
-            .map_err(|_| err_inval!(TooGeneric))
+            .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
     }
 
     /// The `args` are assumed to already be in our interpreter "universe" (param_env).
@@ -750,11 +750,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         if M::POST_MONO_CHECKS {
-            for ct in &body.required_consts {
-                let span = ct.span;
-                let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
-                self.eval_mir_constant(&ct, Some(span), None)?;
-            }
+            // `ctfe_query` does some error message decoration that we want to be in effect here.
+            self.ctfe_query(None, |tcx| {
+                body.post_mono_checks(*tcx, self.param_env, |c| {
+                    self.subst_from_current_frame_and_normalize_erasing_regions(c)
+                })
+            })?;
         }
 
         // done
@@ -1059,28 +1060,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         span: Option<Span>,
         query: impl FnOnce(TyCtxtAt<'tcx>) -> Result<T, ErrorHandled>,
-    ) -> InterpResult<'tcx, T> {
+    ) -> Result<T, ErrorHandled> {
         // Use a precise span for better cycle errors.
         query(self.tcx.at(span.unwrap_or_else(|| self.cur_span()))).map_err(|err| {
-            match err {
-                ErrorHandled::Reported(err) => {
-                    if !err.is_tainted_by_errors() && let Some(span) = span {
-                        // To make it easier to figure out where this error comes from, also add a note at the current location.
-                        self.tcx.sess.emit_note(ErroneousConstUsed { span });
-                    }
-                    err_inval!(AlreadyReported(err))
-                }
-                ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-            }
-            .into()
+            err.emit_note(*self.tcx);
+            err
         })
     }
 
     pub fn eval_global(
         &self,
-        gid: GlobalId<'tcx>,
-        span: Option<Span>,
+        instance: ty::Instance<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+        let gid = GlobalId { instance, promoted: None };
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
         // `self.param_env`, that would mean we invoke the query to evaluate the static
@@ -1091,8 +1083,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        let val = self.ctfe_query(span, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
+        let val = self.ctfe_query(None, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
         self.raw_const_to_mplace(val)
+    }
+
+    pub fn eval_mir_constant(
+        &self,
+        val: &mir::ConstantKind<'tcx>,
+        span: Option<Span>,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let const_val = self.ctfe_query(span, |tcx| val.eval(*tcx, self.param_env, span))?;
+        self.const_val_to_op(const_val, val.ty(), layout)
     }
 
     #[must_use]

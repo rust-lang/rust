@@ -410,9 +410,15 @@ impl Options {
 
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
-            let paths = match theme::load_css_paths(
-                std::str::from_utf8(static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
-            ) {
+            let mut content =
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+            if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
+                content = inside;
+            }
+            if let Some((inside, _)) = content.split_once("/* End theme: light */") {
+                content = inside;
+            }
+            let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
                     diag.struct_err(e).emit();
@@ -550,9 +556,15 @@ impl Options {
 
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
-            let paths = match theme::load_css_paths(
-                std::str::from_utf8(static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
-            ) {
+            let mut content =
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+            if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
+                content = inside;
+            }
+            if let Some((inside, _)) = content.split_once("/* End theme: light */") {
+                content = inside;
+            }
+            let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
                     diag.struct_err(e).emit();

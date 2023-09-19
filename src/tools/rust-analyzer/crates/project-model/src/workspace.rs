@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, process::Command, sync};
+use std::{collections::VecDeque, fmt, fs, iter, process::Command, str::FromStr, sync};
 
 use anyhow::{format_err, Context};
 use base_db::{
@@ -21,7 +21,7 @@ use crate::{
     cargo_workspace::{DepKind, PackageData, RustLibSource},
     cfg_flag::CfgFlag,
     project_json::Crate,
-    rustc_cfg,
+    rustc_cfg::{self, RustcCfgConfig},
     sysroot::SysrootCrate,
     target_data_layout, utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath,
     Package, ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
@@ -240,9 +240,9 @@ impl ProjectWorkspace {
                     Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
                         .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
                     Some(RustLibSource::Discover) => {
-                        sysroot.as_ref().ok().and_then(Sysroot::discover_rustc).ok_or_else(|| {
-                            Some(format!("Failed to discover rustc source for sysroot."))
-                        })
+                        sysroot.as_ref().ok().and_then(Sysroot::discover_rustc_src).ok_or_else(
+                            || Some(format!("Failed to discover rustc source for sysroot.")),
+                        )
                     }
                     None => Err(None),
                 };
@@ -279,8 +279,11 @@ impl ProjectWorkspace {
                     }
                 });
 
-                let rustc_cfg =
-                    rustc_cfg::get(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
+                let rustc_cfg = rustc_cfg::get(
+                    config.target.as_deref(),
+                    &config.extra_env,
+                    RustcCfgConfig::Cargo(cargo_toml),
+                );
 
                 let cfg_overrides = config.cfg_overrides.clone();
                 let data_layout = target_data_layout::get(
@@ -331,11 +334,18 @@ impl ProjectWorkspace {
             }
             (None, None) => Err(None),
         };
-        if let Ok(sysroot) = &sysroot {
-            tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
-        }
+        let config = match &sysroot {
+            Ok(sysroot) => {
+                tracing::debug!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
+                RustcCfgConfig::Explicit(sysroot)
+            }
+            Err(_) => {
+                tracing::debug!("discovering sysroot");
+                RustcCfgConfig::Discover
+            }
+        };
 
-        let rustc_cfg = rustc_cfg::get(None, target, extra_env);
+        let rustc_cfg = rustc_cfg::get(target, extra_env, config);
         ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg, toolchain }
     }
 
@@ -357,10 +367,18 @@ impl ProjectWorkspace {
             }
             None => Err(None),
         };
-        if let Ok(sysroot) = &sysroot {
-            tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
-        }
-        let rustc_cfg = rustc_cfg::get(None, None, &Default::default());
+        let rustc_config = match &sysroot {
+            Ok(sysroot) => {
+                tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
+                RustcCfgConfig::Explicit(sysroot)
+            }
+            Err(_) => {
+                tracing::info!("discovering sysroot");
+                RustcCfgConfig::Discover
+            }
+        };
+
+        let rustc_cfg = rustc_cfg::get(None, &FxHashMap::default(), rustc_config);
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
     }
 
@@ -730,6 +748,7 @@ fn project_json_to_crate_graph(
         )
     });
 
+    let r_a_cfg_flag = CfgFlag::Atom("rust_analyzer".to_owned());
     let mut cfg_cache: FxHashMap<&str, Vec<CfgFlag>> = FxHashMap::default();
     let crates: FxHashMap<CrateId, CrateId> = project
         .crates()
@@ -754,9 +773,14 @@ fn project_json_to_crate_graph(
                 let env = env.clone().into_iter().collect();
 
                 let target_cfgs = match target.as_deref() {
-                    Some(target) => cfg_cache
-                        .entry(target)
-                        .or_insert_with(|| rustc_cfg::get(None, Some(target), extra_env)),
+                    Some(target) => cfg_cache.entry(target).or_insert_with(|| {
+                        let rustc_cfg = match sysroot {
+                            Some(sysroot) => RustcCfgConfig::Explicit(sysroot),
+                            None => RustcCfgConfig::Discover,
+                        };
+
+                        rustc_cfg::get(Some(target), extra_env, rustc_cfg)
+                    }),
                     None => &rustc_cfg,
                 };
 
@@ -765,7 +789,12 @@ fn project_json_to_crate_graph(
                     *edition,
                     display_name.clone(),
                     version.clone(),
-                    target_cfgs.iter().chain(cfg.iter()).cloned().collect(),
+                    target_cfgs
+                        .iter()
+                        .chain(cfg.iter())
+                        .chain(iter::once(&r_a_cfg_flag))
+                        .cloned()
+                        .collect(),
                     None,
                     env,
                     *is_proc_macro,
@@ -820,7 +849,7 @@ fn cargo_to_crate_graph(
     sysroot: Option<&Sysroot>,
     rustc_cfg: Vec<CfgFlag>,
     override_cfg: &CfgOverrides,
-    // Don't compute cfg and use this if present
+    // Don't compute cfg and use this if present, only used for the sysroot experiment hack
     forced_cfg: Option<CfgOptions>,
     build_scripts: &WorkspaceBuildScripts,
     target_layout: TargetLayoutLoadResult,
@@ -842,12 +871,7 @@ fn cargo_to_crate_graph(
         None => (SysrootPublicDeps::default(), None),
     };
 
-    let cfg_options = {
-        let mut cfg_options = CfgOptions::default();
-        cfg_options.extend(rustc_cfg);
-        cfg_options.insert_atom("debug_assertions".into());
-        cfg_options
-    };
+    let cfg_options = create_cfg_options(rustc_cfg);
 
     // Mapping of a package to its library target
     let mut pkg_to_lib_crate = FxHashMap::default();
@@ -865,6 +889,9 @@ fn cargo_to_crate_graph(
             // Add test cfg for local crates
             if cargo[pkg].is_local {
                 cfg_options.insert_atom("test".into());
+            }
+            if cargo[pkg].is_member {
+                cfg_options.insert_atom("rust_analyzer".into());
             }
 
             if !override_cfg.global.is_empty() {
@@ -1029,8 +1056,8 @@ fn detached_files_to_crate_graph(
         None => (SysrootPublicDeps::default(), None),
     };
 
-    let mut cfg_options = CfgOptions::default();
-    cfg_options.extend(rustc_cfg);
+    let mut cfg_options = create_cfg_options(rustc_cfg);
+    cfg_options.insert_atom("rust_analyzer".into());
 
     for detached_file in detached_files {
         let file_id = match load(detached_file) {
@@ -1228,6 +1255,10 @@ fn add_target_crate_root(
 
     let mut env = Env::default();
     inject_cargo_env(pkg, &mut env);
+    if let Ok(cname) = String::from_str(cargo_name) {
+        // CARGO_CRATE_NAME is the name of the Cargo target with - converted to _, such as the name of the library, binary, example, integration test, or benchmark.
+        env.set("CARGO_CRATE_NAME", cname.replace("-", "_"));
+    }
 
     if let Some(envs) = build_data.map(|it| &it.envs) {
         for (k, v) in envs {
@@ -1291,8 +1322,7 @@ fn sysroot_to_crate_graph(
     channel: Option<ReleaseChannel>,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = profile::span("sysroot_to_crate_graph");
-    let mut cfg_options = CfgOptions::default();
-    cfg_options.extend(rustc_cfg.clone());
+    let cfg_options = create_cfg_options(rustc_cfg.clone());
     let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = match &sysroot.hack_cargo_workspace {
         Some(cargo) => handle_hack_cargo_workspace(
             load,
@@ -1470,4 +1500,11 @@ fn inject_cargo_env(package: &PackageData, env: &mut Env) {
     env.set("CARGO_PKG_LICENSE", String::new());
 
     env.set("CARGO_PKG_LICENSE_FILE", String::new());
+}
+
+fn create_cfg_options(rustc_cfg: Vec<CfgFlag>) -> CfgOptions {
+    let mut cfg_options = CfgOptions::default();
+    cfg_options.extend(rustc_cfg);
+    cfg_options.insert_atom("debug_assertions".into());
+    cfg_options
 }

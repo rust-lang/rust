@@ -16,6 +16,7 @@ use rustc_hir::{
     self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
 };
 use rustc_hir::{MethodKind, Target, Unsafety};
+use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
@@ -24,7 +25,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
-    UNUSED_ATTRIBUTES,
+    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -35,6 +36,10 @@ use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
+
+#[derive(LintDiagnostic)]
+#[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]
+pub struct DiagnosticOnUnimplementedOnlyForTraits;
 
 pub(crate) fn target_from_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -104,6 +109,9 @@ impl CheckAttrVisitor<'_> {
         let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
+            if attr.path_matches(&[sym::diagnostic, sym::on_unimplemented]) {
+                self.check_diagnostic_on_unimplemented(attr.span, hir_id, target);
+            }
             match attr.name_or_empty() {
                 sym::do_not_recommend => self.check_do_not_recommend(attr.span, target),
                 sym::inline => self.check_inline(hir_id, attr, span, target),
@@ -139,6 +147,9 @@ impl CheckAttrVisitor<'_> {
                     self.check_rustc_std_internal_symbol(&attr, span, target)
                 }
                 sym::naked => self.check_naked(hir_id, attr, span, target),
+                sym::rustc_never_returns_null_ptr => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
                 sym::rustc_legacy_const_generics => {
                     self.check_rustc_legacy_const_generics(hir_id, &attr, span, target, item)
                 }
@@ -281,6 +292,18 @@ impl CheckAttrVisitor<'_> {
         } else {
             self.tcx.sess.emit_err(errors::IncorrectDoNotRecommendLocation { span: attr_span });
             false
+        }
+    }
+
+    /// Checks if `#[diagnostic::on_unimplemented]` is applied to a trait definition
+    fn check_diagnostic_on_unimplemented(&self, attr_span: Span, hir_id: HirId, target: Target) {
+        if !matches!(target, Target::Trait) {
+            self.tcx.emit_spanned_lint(
+                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                DiagnosticOnUnimplementedOnlyForTraits,
+            );
         }
     }
 

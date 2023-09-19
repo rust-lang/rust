@@ -268,7 +268,7 @@ They are independent from the rest of the code.
 And it also handles the actual parsing and expansion of declarative macro (a-la "Macros By Example" or mbe).
 
 For proc macros, the client-server model are used.
-We pass an argument `--proc-macro` to `rust-analyzer` binary to start a separate process  (`proc_macro_srv`).
+We start a separate process  (`proc_macro_srv`) which loads and runs the proc-macros for us.
 And the client (`proc_macro_api`) provides an interface to talk to that server separately.
 
 And then token trees are passed from client, and the server will load the corresponding dynamic library (which built by `cargo`).

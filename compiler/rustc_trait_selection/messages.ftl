@@ -27,6 +27,8 @@ trait_selection_inherent_projection_normalization_overflow = overflow evaluating
 trait_selection_invalid_on_clause_in_rustc_on_unimplemented = invalid `on`-clause in `#[rustc_on_unimplemented]`
     .label = invalid on-clause here
 
+trait_selection_malformed_on_unimplemented_attr = malformed `on_unimplemented` attribute
+
 trait_selection_negative_positive_conflict = found both positive and negative implementation of trait `{$trait_desc}`{$self_desc ->
         [none] {""}
        *[default] {" "}for type `{$self_desc}`

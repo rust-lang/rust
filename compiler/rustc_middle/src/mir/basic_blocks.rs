@@ -178,7 +178,7 @@ impl<'tcx> graph::WithPredecessors for BasicBlocks<'tcx> {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! { Cache }
+TrivialTypeTraversalImpls! { Cache }
 
 impl<S: Encoder> Encodable<S> for Cache {
     #[inline]

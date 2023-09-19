@@ -1,11 +1,11 @@
 fn main() {
     let u = 5 as bool; //~ ERROR cannot cast `i32` as `bool`
                        //~| HELP compare with zero instead
-                       //~| SUGGESTION 5 != 0
+                       //~| SUGGESTION != 0
 
     let t = (1 + 2) as bool; //~ ERROR cannot cast `i32` as `bool`
                              //~| HELP compare with zero instead
-                             //~| SUGGESTION (1 + 2) != 0
+                             //~| SUGGESTION != 0
 
     let _ = 5_u32 as bool; //~ ERROR cannot cast `u32` as `bool`
                            //~| HELP compare with zero instead

@@ -635,6 +635,8 @@ pub enum PtrNullChecksDiag<'a> {
         #[label]
         label: Span,
     },
+    #[diag(lint_ptr_null_checks_fn_ret)]
+    FnRet { fn_name: Ident },
 }
 
 // for_loops_over_fallibles.rs

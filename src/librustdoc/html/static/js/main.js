@@ -49,10 +49,12 @@ window.currentCrate = getVar("current-crate");
 function setMobileTopbar() {
     // FIXME: It would be nicer to generate this text content directly in HTML,
     // but with the current code it's hard to get the right information in the right place.
-    const mobileLocationTitle = document.querySelector(".mobile-topbar h2");
+    const mobileTopbar = document.querySelector(".mobile-topbar");
     const locationTitle = document.querySelector(".sidebar h2.location");
-    if (mobileLocationTitle && locationTitle) {
-        mobileLocationTitle.innerHTML = locationTitle.innerHTML;
+    if (mobileTopbar && locationTitle) {
+        const mobileTitle = document.createElement("h2");
+        mobileTitle.innerHTML = locationTitle.innerHTML;
+        mobileTopbar.appendChild(mobileTitle);
     }
 }
 
@@ -204,9 +206,6 @@ function preLoadCss(cssUrl) {
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
         loadScript(getVar("static-root-path") + getVar("settings-js"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-light-css"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-dark-css"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-ayu-css"));
         // Pre-load all theme CSS files, so that switching feels seamless.
         //
         // When loading settings.html as a standalone page, the equivalent HTML is

@@ -28,8 +28,8 @@ use std::ops::ControlFlow;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 use super::inspect::ProofTreeBuilder;
-use super::search_graph;
 use super::SolverMode;
+use super::{search_graph, GoalEvaluationKind};
 use super::{search_graph::SearchGraph, Goal};
 pub use select::InferCtxtSelectExt;
 
@@ -85,7 +85,7 @@ pub struct EvalCtxt<'a, 'tcx> {
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    inspect: ProofTreeBuilder<'tcx>,
+    pub(super) inspect: ProofTreeBuilder<'tcx>,
 }
 
 #[derive(Debug, Clone)]
@@ -164,7 +164,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         Option<inspect::GoalEvaluation<'tcx>>,
     ) {
         EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
-            ecx.evaluate_goal(IsNormalizesToHack::No, goal)
+            ecx.evaluate_goal(GoalEvaluationKind::Root, goal)
         })
     }
 }
@@ -340,11 +340,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     /// been constrained and the certainty of the result.
     fn evaluate_goal(
         &mut self,
-        is_normalizes_to_hack: IsNormalizesToHack,
+        goal_evaluation_kind: GoalEvaluationKind,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
-        let mut goal_evaluation = self.inspect.new_goal_evaluation(goal, is_normalizes_to_hack);
+        let mut goal_evaluation = self.inspect.new_goal_evaluation(goal, goal_evaluation_kind);
         let encountered_overflow = self.search_graph.encountered_overflow();
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
             self.tcx(),
@@ -389,7 +389,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // solver cycle.
         if cfg!(debug_assertions)
             && has_changed
-            && is_normalizes_to_hack == IsNormalizesToHack::No
+            && !matches!(
+                goal_evaluation_kind,
+                GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::Yes }
+            )
             && !self.search_graph.in_cycle()
         {
             // The nested evaluation has to happen with the original state
@@ -561,8 +564,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 },
             );
 
-            let (_, certainty, instantiate_goals) =
-                self.evaluate_goal(IsNormalizesToHack::Yes, unconstrained_goal)?;
+            let (_, certainty, instantiate_goals) = self.evaluate_goal(
+                GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::Yes },
+                unconstrained_goal,
+            )?;
             self.add_goals(instantiate_goals);
 
             // Finally, equate the goal's RHS with the unconstrained var.
@@ -596,8 +601,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
 
         for goal in goals.goals.drain(..) {
-            let (has_changed, certainty, instantiate_goals) =
-                self.evaluate_goal(IsNormalizesToHack::No, goal)?;
+            let (has_changed, certainty, instantiate_goals) = self.evaluate_goal(
+                GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::No },
+                goal,
+            )?;
             self.add_goals(instantiate_goals);
             if has_changed {
                 unchanged_certainty = None;
@@ -949,8 +956,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         use rustc_middle::mir::interpret::ErrorHandled;
         match self.infcx.try_const_eval_resolve(param_env, unevaluated, ty, None) {
             Ok(ct) => Some(ct),
-            Err(ErrorHandled::Reported(e)) => Some(ty::Const::new_error(self.tcx(), e.into(), ty)),
-            Err(ErrorHandled::TooGeneric) => None,
+            Err(ErrorHandled::Reported(e, _)) => {
+                Some(ty::Const::new_error(self.tcx(), e.into(), ty))
+            }
+            Err(ErrorHandled::TooGeneric(_)) => None,
         }
     }
 

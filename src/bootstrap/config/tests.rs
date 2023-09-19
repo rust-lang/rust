@@ -136,7 +136,7 @@ build-config = {}
         "setting string value without quotes"
     );
     assert_eq!(config.gdb, Some("bar".into()), "setting string value with quotes");
-    assert_eq!(config.deny_warnings, false, "setting boolean value");
+    assert!(!config.deny_warnings, "setting boolean value");
     assert_eq!(
         config.tools,
         Some(["cargo".to_string()].into_iter().collect()),
@@ -181,13 +181,13 @@ fn profile_user_dist() {
 
 #[test]
 fn rust_optimize() {
-    assert_eq!(parse("").rust_optimize.is_release(), true);
-    assert_eq!(parse("rust.optimize = false").rust_optimize.is_release(), false);
-    assert_eq!(parse("rust.optimize = true").rust_optimize.is_release(), true);
-    assert_eq!(parse("rust.optimize = 0").rust_optimize.is_release(), false);
-    assert_eq!(parse("rust.optimize = 1").rust_optimize.is_release(), true);
+    assert!(parse("").rust_optimize.is_release());
+    assert!(!parse("rust.optimize = false").rust_optimize.is_release());
+    assert!(parse("rust.optimize = true").rust_optimize.is_release());
+    assert!(!parse("rust.optimize = 0").rust_optimize.is_release());
+    assert!(parse("rust.optimize = 1").rust_optimize.is_release());
+    assert!(parse("rust.optimize = \"s\"").rust_optimize.is_release());
     assert_eq!(parse("rust.optimize = 1").rust_optimize.get_opt_level(), Some("1".to_string()));
-    assert_eq!(parse("rust.optimize = \"s\"").rust_optimize.is_release(), true);
     assert_eq!(parse("rust.optimize = \"s\"").rust_optimize.get_opt_level(), Some("s".to_string()));
 }
 

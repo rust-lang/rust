@@ -103,7 +103,6 @@ pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>)
 
         match expr {
             ast::Expr::RefExpr(inner) => next_expr = inner.expr(),
-            ast::Expr::BoxExpr(inner) => next_expr = inner.expr(),
             ast::Expr::AwaitExpr(inner) => next_expr = inner.expr(),
             // ast::Expr::BlockExpr(block) => expr = block.tail_expr(),
             ast::Expr::CastExpr(inner) => next_expr = inner.expr(),

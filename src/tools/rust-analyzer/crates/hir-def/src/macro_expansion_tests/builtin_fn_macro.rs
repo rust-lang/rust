@@ -23,6 +23,45 @@ fn main() { 0 as u32; }
 }
 
 #[test]
+fn test_asm_expand() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! asm {() => {}}
+
+fn main() {
+    let i: u64 = 3;
+    let o: u64;
+    unsafe {
+        asm!(
+            "mov {0}, {1}",
+            "add {0}, 5",
+            out(reg) o,
+            in(reg) i,
+        );
+    }
+}
+"#,
+        expect![[r##"
+#[rustc_builtin_macro]
+macro_rules! asm {() => {}}
+
+fn main() {
+    let i: u64 = 3;
+    let o: u64;
+    unsafe {
+        builtin #asm ( {
+            $crate::format_args!("mov {0}, {1}");
+            $crate::format_args!("add {0}, 5");
+        }
+        );
+    }
+}
+"##]],
+    );
+}
+
+#[test]
 fn test_line_expand() {
     check(
         r#"
@@ -201,7 +240,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    ::core::fmt::Arguments::new_v1(&["", " ", ], &[::core::fmt::ArgumentV1::new(&(arg1(a, b, c)), ::core::fmt::Display::fmt), ::core::fmt::ArgumentV1::new(&(arg2), ::core::fmt::Debug::fmt), ]);
+    builtin #format_args ("{} {:?}", arg1(a, b, c), arg2);
 }
 "##]],
     );
@@ -219,10 +258,10 @@ macro_rules! format_args {
 
 fn main() {
     format_args!(x = 2);
-    format_args!(x =);
-    format_args!(x =, x = 2);
-    format_args!("{}", x =);
-    format_args!(=, "{}", x =);
+    format_args!/*+errors*/(x =);
+    format_args!/*+errors*/(x =, x = 2);
+    format_args!/*+errors*/("{}", x =);
+    format_args!/*+errors*/(=, "{}", x =);
     format_args!(x = 2, "{}", 5);
 }
 "#,
@@ -234,12 +273,19 @@ macro_rules! format_args {
 }
 
 fn main() {
-    /* error: no rule matches input tokens */;
-    /* error: expected expression */;
-    /* error: expected expression, expected COMMA */;
-    /* error: expected expression */::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(), ::core::fmt::Display::fmt), ]);
-    /* error: expected expression, expected R_PAREN */;
-    ::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(5), ::core::fmt::Display::fmt), ]);
+    builtin #format_args (x = 2);
+    /* parse error: expected expression */
+builtin #format_args (x = );
+    /* parse error: expected expression */
+/* parse error: expected R_PAREN */
+/* parse error: expected expression, item or let statement */
+builtin #format_args (x = , x = 2);
+    /* parse error: expected expression */
+builtin #format_args ("{}", x = );
+    /* parse error: expected expression */
+/* parse error: expected expression */
+builtin #format_args ( = , "{}", x = );
+    builtin #format_args (x = 2, "{}", 5);
 }
 "##]],
     );
@@ -267,7 +313,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    ::core::fmt::Arguments::new_v1(&["", " ", ], &[::core::fmt::ArgumentV1::new(&(a::<A, B>()), ::core::fmt::Display::fmt), ::core::fmt::ArgumentV1::new(&(b), ::core::fmt::Debug::fmt), ]);
+    builtin #format_args ("{} {:?}", a::<A, B>(), b);
 }
 "##]],
     );
@@ -300,7 +346,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    ::core::fmt::Arguments::new_v1(&[r#""#, r#",mismatch,""#, r#"",""#, r#"""#, ], &[::core::fmt::ArgumentV1::new(&(location_csv_pat(db, &analysis, vfs, &sm, pat_id)), ::core::fmt::Display::fmt), ::core::fmt::ArgumentV1::new(&(mismatch.expected.display(db)), ::core::fmt::Display::fmt), ::core::fmt::ArgumentV1::new(&(mismatch.actual.display(db)), ::core::fmt::Display::fmt), ]);
+    builtin #format_args (r#"{},mismatch,"{}","{}""#, location_csv_pat(db, &analysis, vfs, &sm, pat_id), mismatch.expected.display(db), mismatch.actual.display(db));
 }
 "##]],
     );
@@ -334,7 +380,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    ::core::fmt::Arguments::new_v1(&["xxx", "y", "zzz", ], &[::core::fmt::ArgumentV1::new(&(2), ::core::fmt::Display::fmt), ::core::fmt::ArgumentV1::new(&(b), ::core::fmt::Debug::fmt), ]);
+    builtin #format_args (concat!("xxx{}y", "{:?}zzz"), 2, b);
 }
 "##]],
     );
@@ -364,8 +410,8 @@ macro_rules! format_args {
 
 fn main() {
     let _ =
-        /* error: expected field name or number *//* parse error: expected field name or number */
-::core::fmt::Arguments::new_v1(&["", " ", ], &[::core::fmt::ArgumentV1::new(&(a.), ::core::fmt::Display::fmt), ::core::fmt::ArgumentV1::new(&(), ::core::fmt::Debug::fmt), ]);
+        /* parse error: expected field name or number */
+builtin #format_args ("{} {:?}", a.);
 }
 "##]],
     );

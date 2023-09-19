@@ -95,20 +95,19 @@ pub fn check(build: &mut Build) {
                     .unwrap_or(true)
             })
             .any(|build_llvm_ourselves| build_llvm_ourselves);
+
     let need_cmake = building_llvm || build.config.any_sanitizers_enabled();
-    if need_cmake {
-        if cmd_finder.maybe_have("cmake").is_none() {
-            eprintln!(
-                "
+    if need_cmake && cmd_finder.maybe_have("cmake").is_none() {
+        eprintln!(
+            "
 Couldn't find required command: cmake
 
 You should install cmake, or set `download-ci-llvm = true` in the
 `[llvm]` section of `config.toml` to download LLVM rather
 than building it.
 "
-            );
-            crate::exit!(1);
-        }
+        );
+        crate::exit!(1);
     }
 
     build.config.python = build
@@ -202,10 +201,10 @@ than building it.
             .entry(*target)
             .or_insert_with(|| Target::from_triple(&target.triple));
 
-        if target.contains("-none-") || target.contains("nvptx") {
-            if build.no_std(*target) == Some(false) {
-                panic!("All the *-none-* and nvptx* targets are no-std targets")
-            }
+        if (target.contains("-none-") || target.contains("nvptx"))
+            && build.no_std(*target) == Some(false)
+        {
+            panic!("All the *-none-* and nvptx* targets are no-std targets")
         }
 
         // Some environments don't want or need these tools, such as when testing Miri.

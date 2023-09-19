@@ -626,11 +626,6 @@ impl<T> Clone for Sender<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for Sender<T> {
-    fn drop(&mut self) {}
-}
-
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Sender<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -753,11 +748,6 @@ impl<T> Clone for SyncSender<T> {
     fn clone(&self) -> SyncSender<T> {
         SyncSender { inner: self.inner.clone() }
     }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for SyncSender<T> {
-    fn drop(&mut self) {}
 }
 
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
@@ -1094,11 +1084,6 @@ impl<T> IntoIterator for Receiver<T> {
     fn into_iter(self) -> IntoIter<T> {
         IntoIter { rx: self }
     }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for Receiver<T> {
-    fn drop(&mut self) {}
 }
 
 #[stable(feature = "mpsc_debug", since = "1.8.0")]

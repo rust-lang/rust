@@ -2,6 +2,7 @@ use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 use rustc_span::Symbol;
+use std::fmt;
 use std::str::FromStr;
 
 mod aarch64;
@@ -45,17 +46,17 @@ pub enum PassMode {
     ///
     /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
-    /// Pass the argument after casting it, to either a single uniform or a
-    /// pair of registers. The bool indicates if a `Reg::i32()` dummy argument
-    /// is emitted before the real argument.
-    Cast(Box<CastTarget>, bool),
+    /// Pass the argument after casting it. See the `CastTarget` docs for details. The bool
+    /// indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
+    Cast { pad_i32: bool, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
-    /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
-    /// which indicates that it refers to an unsized rvalue.
-    /// `on_stack` defines that the value should be passed at a fixed
-    /// stack offset in accordance to the ABI rather than passed using a
-    /// pointer. This corresponds to the `byval` LLVM argument attribute.
-    Indirect { attrs: ArgAttributes, extra_attrs: Option<ArgAttributes>, on_stack: bool },
+    /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
+    /// argument. (This is the only mode that supports unsized arguments.)
+    /// `on_stack` defines that the value should be passed at a fixed stack offset in accordance to
+    /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
+    /// attribute (using the Rust type of this argument). `on_stack` cannot be true for unsized
+    /// arguments, i.e., when `meta_attrs` is `Some`.
+    Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
 }
 
 impl PassMode {
@@ -64,17 +65,20 @@ impl PassMode {
     /// so that needs to be compared as well!
     pub fn eq_abi(&self, other: &Self) -> bool {
         match (self, other) {
-            (PassMode::Ignore, PassMode::Ignore) => true, // can still be reached for the return type
+            (PassMode::Ignore, PassMode::Ignore) => true,
             (PassMode::Direct(a1), PassMode::Direct(a2)) => a1.eq_abi(a2),
             (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => a1.eq_abi(a2) && b1.eq_abi(b2),
-            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1.eq_abi(c2) && pad1 == pad2,
             (
-                PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
-                PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
+                PassMode::Cast { cast: c1, pad_i32: pad1 },
+                PassMode::Cast { cast: c2, pad_i32: pad2 },
+            ) => c1.eq_abi(c2) && pad1 == pad2,
+            (
+                PassMode::Indirect { attrs: a1, meta_attrs: None, on_stack: s1 },
+                PassMode::Indirect { attrs: a2, meta_attrs: None, on_stack: s2 },
             ) => a1.eq_abi(a2) && s1 == s2,
             (
-                PassMode::Indirect { attrs: a1, extra_attrs: Some(e1), on_stack: s1 },
-                PassMode::Indirect { attrs: a2, extra_attrs: Some(e2), on_stack: s2 },
+                PassMode::Indirect { attrs: a1, meta_attrs: Some(e1), on_stack: s1 },
+                PassMode::Indirect { attrs: a2, meta_attrs: Some(e2), on_stack: s2 },
             ) => a1.eq_abi(a2) && e1.eq_abi(e2) && s1 == s2,
             _ => false,
         }
@@ -255,6 +259,13 @@ impl Uniform {
     }
 }
 
+/// Describes the type used for `PassMode::Cast`.
+///
+/// Passing arguments in this mode works as follows: the registers in the `prefix` (the ones that
+/// are `Some`) get laid out one after the other (using `repr(C)` layout rules). Then the
+/// `rest.unit` register type gets repeated often enough to cover `rest.size`. This describes the
+/// actual type used for the call; the Rust type of the argument is then transmuted to this ABI type
+/// (and all data in the padding between the registers is dropped).
 #[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
     pub prefix: [Option<Reg>; 8],
@@ -515,10 +526,18 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
     pub mode: PassMode,
+}
+
+// Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
+impl<'a, Ty: fmt::Display> fmt::Debug for ArgAbi<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ArgAbi { layout, mode } = self;
+        f.debug_struct("ArgAbi").field("layout", layout).field("mode", mode).finish()
+    }
 }
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
@@ -556,15 +575,15 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         attrs.pointee_size = layout.size;
         attrs.pointee_align = Some(layout.align.abi);
 
-        let extra_attrs = layout.is_unsized().then_some(ArgAttributes::new());
+        let meta_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
-        PassMode::Indirect { attrs, extra_attrs, on_stack: false }
+        PassMode::Indirect { attrs, meta_attrs, on_stack: false }
     }
 
     pub fn make_indirect(&mut self) {
         match self.mode {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {}
-            PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: false } => return,
+            PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: false } => return,
             _ => panic!("Tried to make {:?} indirect", self.mode),
         }
 
@@ -574,7 +593,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { ref mut attrs, extra_attrs: _, ref mut on_stack } => {
+            PassMode::Indirect { ref mut attrs, meta_attrs: _, ref mut on_stack } => {
                 *on_stack = true;
 
                 // Some platforms, like 32-bit x86, change the alignment of the type when passing
@@ -607,11 +626,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        self.mode = PassMode::Cast(Box::new(target.into()), false);
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32: false };
     }
 
     pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
-        self.mode = PassMode::Cast(Box::new(target.into()), pad_i32);
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32 };
     }
 
     pub fn is_indirect(&self) -> bool {
@@ -619,11 +638,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_sized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ })
+        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ })
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ })
+        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ })
     }
 
     pub fn is_ignore(&self) -> bool {
@@ -694,7 +713,7 @@ impl RiscvInterruptKind {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
     pub args: Box<[ArgAbi<'a, Ty>]>,
@@ -713,6 +732,21 @@ pub struct FnAbi<'a, Ty> {
     pub conv: Conv,
 
     pub can_unwind: bool,
+}
+
+// Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
+impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FnAbi { args, ret, c_variadic, fixed_count, conv, can_unwind } = self;
+        f.debug_struct("FnAbi")
+            .field("args", args)
+            .field("ret", ret)
+            .field("c_variadic", c_variadic)
+            .field("fixed_count", fixed_count)
+            .field("conv", conv)
+            .field("can_unwind", can_unwind)
+            .finish()
+    }
 }
 
 /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.

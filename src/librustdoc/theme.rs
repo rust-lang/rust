@@ -185,6 +185,9 @@ pub(crate) fn parse_selectors(
     while let Some(c) = iter.next() {
         match c {
             '{' => {
+                if selector.trim().starts_with(":root[data-theme") {
+                    selector = String::from(":root");
+                }
                 let s = minifier::css::minify(selector.trim()).map(|s| s.to_string())?;
                 parse_rules(content, s, iter, paths)?;
                 selector.clear();

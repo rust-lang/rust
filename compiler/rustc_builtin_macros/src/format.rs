@@ -260,20 +260,29 @@ fn make_format_args(
         if let Some((label, span)) = err.secondary_label && is_source_literal {
             e.label_ = Some(errors::InvalidFormatStringLabel { span: fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label } );
         }
-        if err.should_be_replaced_with_positional_argument {
-            let captured_arg_span =
-                fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
-            if let Ok(arg) = ecx.source_map().span_to_snippet(captured_arg_span) {
-                let span = match args.unnamed_args().last() {
-                    Some(arg) => arg.expr.span,
-                    None => fmt_span,
-                };
-                e.sugg_ = Some(errors::InvalidFormatStringSuggestion {
-                    captured: captured_arg_span,
-                    len: args.unnamed_args().len().to_string(),
-                    span: span.shrink_to_hi(),
-                    arg,
-                });
+        match err.suggestion {
+            parse::Suggestion::None => {}
+            parse::Suggestion::UsePositional => {
+                let captured_arg_span =
+                    fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
+                if let Ok(arg) = ecx.source_map().span_to_snippet(captured_arg_span) {
+                    let span = match args.unnamed_args().last() {
+                        Some(arg) => arg.expr.span,
+                        None => fmt_span,
+                    };
+                    e.sugg_ = Some(errors::InvalidFormatStringSuggestion::UsePositional {
+                        captured: captured_arg_span,
+                        len: args.unnamed_args().len().to_string(),
+                        span: span.shrink_to_hi(),
+                        arg,
+                    });
+                }
+            }
+            parse::Suggestion::RemoveRawIdent(span) => {
+                if is_source_literal {
+                    let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
+                    e.sugg_ = Some(errors::InvalidFormatStringSuggestion::RemoveRawIdent { span })
+                }
             }
         }
         ecx.emit_err(e);

@@ -2,8 +2,11 @@
 
 use std::fmt;
 
-use hir::{Documentation, Mutability};
-use ide_db::{imports::import_assets::LocatedImport, RootDatabase, SnippetCap, SymbolKind};
+use hir::Mutability;
+use ide_db::{
+    documentation::Documentation, imports::import_assets::LocatedImport, RootDatabase, SnippetCap,
+    SymbolKind,
+};
 use itertools::Itertools;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};

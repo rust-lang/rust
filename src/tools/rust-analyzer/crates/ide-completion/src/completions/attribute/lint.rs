@@ -1,5 +1,5 @@
 //! Completion for lints
-use ide_db::{generated::lints::Lint, SymbolKind};
+use ide_db::{documentation::Documentation, generated::lints::Lint, SymbolKind};
 use syntax::ast;
 
 use crate::{context::CompletionContext, item::CompletionItem, Completions};
@@ -55,7 +55,7 @@ pub(super) fn complete_lint(
             _ => name.to_owned(),
         };
         let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);
-        item.documentation(hir::Documentation::new(description.to_owned()));
+        item.documentation(Documentation::new(description.to_owned()));
         item.add_to(acc, ctx.db)
     }
 }

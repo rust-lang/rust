@@ -1,10 +1,11 @@
 //! Context for lowering paths.
+use std::cell::OnceCell;
+
 use hir_expand::{
     ast_id_map::{AstIdMap, AstIdNode},
     hygiene::Hygiene,
     AstId, HirFileId, InFile,
 };
-use once_cell::unsync::OnceCell;
 use syntax::ast;
 use triomphe::Arc;
 

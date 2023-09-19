@@ -386,6 +386,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "rustc_str_as_ptr", since = "1.32.0")]
+    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
     #[must_use]
     #[inline(always)]
     pub const fn as_ptr(&self) -> *const u8 {
@@ -401,6 +402,7 @@ impl str {
     /// It is your responsibility to make sure that the string slice only gets
     /// modified in a way that it remains valid UTF-8.
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
+    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
     #[must_use]
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {

@@ -165,7 +165,7 @@ pub struct TypeckResults<'tcx> {
     /// reading places that are mentioned in a closure (because of _ patterns). However,
     /// to ensure the places are initialized, we introduce fake reads.
     /// Consider these two examples:
-    /// ``` (discriminant matching with only wildcard arm)
+    /// ```ignore (discriminant matching with only wildcard arm)
     /// let x: u8;
     /// let c = || match x { _ => () };
     /// ```
@@ -173,7 +173,7 @@ pub struct TypeckResults<'tcx> {
     /// want to capture it. However, we do still want an error here, because `x` should have
     /// to be initialized at the point where c is created. Therefore, we add a "fake read"
     /// instead.
-    /// ``` (destructured assignments)
+    /// ```ignore (destructured assignments)
     /// let c = || {
     ///     let (t1, t2) = t;
     /// }
@@ -654,7 +654,7 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: Box<CanonicalUserType<'tcx>>,
     pub span: Span,
@@ -714,7 +714,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 

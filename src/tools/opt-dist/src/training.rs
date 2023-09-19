@@ -1,4 +1,4 @@
-use crate::environment::Environment;
+use crate::environment::{executable_extension, Environment};
 use crate::exec::{cmd, CmdBuilder};
 use crate::utils::io::{count_files, delete_directory};
 use crate::utils::with_log_group;
@@ -30,7 +30,7 @@ const RUSTC_PGO_CRATES: &[&str] = &[
 const LLVM_BOLT_CRATES: &[&str] = LLVM_PGO_CRATES;
 
 fn init_compiler_benchmarks(
-    env: &dyn Environment,
+    env: &Environment,
     profiles: &[&str],
     scenarios: &[&str],
     crates: &[&str],
@@ -75,7 +75,7 @@ enum LlvmProfdata {
 }
 
 fn merge_llvm_profiles(
-    env: &dyn Environment,
+    env: &Environment,
     merged_path: &Utf8Path,
     profile_dir: &Utf8Path,
     profdata: LlvmProfdata,
@@ -86,7 +86,7 @@ fn merge_llvm_profiles(
             .build_artifacts()
             .join("llvm")
             .join("build")
-            .join(format!("bin/llvm-profdata{}", env.executable_extension())),
+            .join(format!("bin/llvm-profdata{}", executable_extension())),
     };
 
     cmd(&[llvm_profdata.as_str(), "merge", "-o", merged_path.as_str(), profile_dir.as_str()])
@@ -116,7 +116,7 @@ fn log_profile_stats(
 pub struct LlvmPGOProfile(pub Utf8PathBuf);
 
 pub fn gather_llvm_profiles(
-    env: &dyn Environment,
+    env: &Environment,
     profile_root: &Utf8Path,
 ) -> anyhow::Result<LlvmPGOProfile> {
     log::info!("Running benchmarks with PGO instrumented LLVM");
@@ -127,7 +127,7 @@ pub fn gather_llvm_profiles(
             .context("Cannot gather LLVM PGO profiles")
     })?;
 
-    let merged_profile = env.opt_artifacts().join("llvm-pgo.profdata");
+    let merged_profile = env.artifact_dir().join("llvm-pgo.profdata");
     log::info!("Merging LLVM PGO profiles to {merged_profile}");
 
     merge_llvm_profiles(env, &merged_profile, profile_root, LlvmProfdata::Host)?;
@@ -143,7 +143,7 @@ pub fn gather_llvm_profiles(
 pub struct RustcPGOProfile(pub Utf8PathBuf);
 
 pub fn gather_rustc_profiles(
-    env: &dyn Environment,
+    env: &Environment,
     profile_root: &Utf8Path,
 ) -> anyhow::Result<RustcPGOProfile> {
     log::info!("Running benchmarks with PGO instrumented rustc");
@@ -163,7 +163,7 @@ pub fn gather_rustc_profiles(
             .context("Cannot gather rustc PGO profiles")
     })?;
 
-    let merged_profile = env.opt_artifacts().join("rustc-pgo.profdata");
+    let merged_profile = env.artifact_dir().join("rustc-pgo.profdata");
     log::info!("Merging Rustc PGO profiles to {merged_profile}");
 
     merge_llvm_profiles(env, &merged_profile, profile_root, LlvmProfdata::Target)?;
@@ -178,7 +178,7 @@ pub fn gather_rustc_profiles(
 
 pub struct LlvmBoltProfile(pub Utf8PathBuf);
 
-pub fn gather_llvm_bolt_profiles(env: &dyn Environment) -> anyhow::Result<LlvmBoltProfile> {
+pub fn gather_llvm_bolt_profiles(env: &Environment) -> anyhow::Result<LlvmBoltProfile> {
     log::info!("Running benchmarks with BOLT instrumented LLVM");
 
     with_log_group("Running benchmarks", || {
@@ -187,12 +187,12 @@ pub fn gather_llvm_bolt_profiles(env: &dyn Environment) -> anyhow::Result<LlvmBo
             .context("Cannot gather LLVM BOLT profiles")
     })?;
 
-    let merged_profile = env.opt_artifacts().join("llvm-bolt.profdata");
+    let merged_profile = env.artifact_dir().join("llvm-bolt.profdata");
     let profile_root = Utf8PathBuf::from("/tmp/prof.fdata");
     log::info!("Merging LLVM BOLT profiles to {merged_profile}");
 
     let profiles: Vec<_> =
-        glob::glob(&format!("{profile_root}*"))?.into_iter().collect::<Result<Vec<_>, _>>()?;
+        glob::glob(&format!("{profile_root}*"))?.collect::<Result<Vec<_>, _>>()?;
 
     let mut merge_args = vec!["merge-fdata"];
     merge_args.extend(profiles.iter().map(|p| p.to_str().unwrap()));

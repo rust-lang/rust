@@ -898,6 +898,9 @@ impl OutFileName {
 #[derive(Clone, Hash, Debug, HashStable_Generic)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
+    /// Crate name. Never contains '-'.
+    crate_stem: String,
+    /// Typically based on `.rs` input file name. Any '-' is preserved.
     filestem: String,
     pub single_output_file: Option<OutFileName>,
     pub temps_directory: Option<PathBuf>,
@@ -911,6 +914,7 @@ pub const DWARF_OBJECT_EXT: &str = "dwo";
 impl OutputFilenames {
     pub fn new(
         out_directory: PathBuf,
+        out_crate_name: String,
         out_filestem: String,
         single_output_file: Option<OutFileName>,
         temps_directory: Option<PathBuf>,
@@ -922,6 +926,7 @@ impl OutputFilenames {
             single_output_file,
             temps_directory,
             outputs,
+            crate_stem: format!("{out_crate_name}{extra}"),
             filestem: format!("{out_filestem}{extra}"),
         }
     }
@@ -938,7 +943,12 @@ impl OutputFilenames {
     /// should be placed on disk.
     pub fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
-        self.with_directory_and_extension(&self.out_directory, extension)
+        match flavor {
+            OutputType::Metadata => {
+                self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
+            }
+            _ => self.with_directory_and_extension(&self.out_directory, extension),
+        }
     }
 
     /// Gets the path where a compilation artifact of the given type for the

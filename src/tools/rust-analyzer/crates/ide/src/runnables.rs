@@ -7,6 +7,7 @@ use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
     defs::Definition,
+    documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::SearchScope,
     FxHashMap, FxHashSet, RootDatabase, SymbolKind,
@@ -496,7 +497,7 @@ const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
     &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
 
 fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
-    attrs.docs().map_or(false, |doc| {
+    docs_from_attrs(attrs).map_or(false, |doc| {
         let mut in_code_block = false;
 
         for line in String::from(doc).lines() {

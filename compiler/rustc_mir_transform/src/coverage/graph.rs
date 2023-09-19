@@ -199,12 +199,8 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
-    pub fn rank_partial_cmp(
-        &self,
-        a: BasicCoverageBlock,
-        b: BasicCoverageBlock,
-    ) -> Option<Ordering> {
-        self.dominators.as_ref().unwrap().rank_partial_cmp(a, b)
+    pub fn cmp_in_dominator_order(&self, a: BasicCoverageBlock, b: BasicCoverageBlock) -> Ordering {
+        self.dominators.as_ref().unwrap().cmp_in_dominator_order(a, b)
     }
 }
 

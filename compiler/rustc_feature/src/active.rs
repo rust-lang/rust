@@ -401,6 +401,8 @@ declare_features! (
     /// Allows function attribute `#[coverage(on/off)]`, to control coverage
     /// instrumentation of that function.
     (active, coverage_attribute, "CURRENT_RUSTC_VERSION", Some(84605), None),
+    /// Allows users to provide classes for fenced code block using `class:classname`.
+    (active, custom_code_classes_in_docs, "CURRENT_RUSTC_VERSION", Some(79483), None),
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
@@ -414,7 +416,7 @@ declare_features! (
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
     /// Allows using the `#[diagnostic]` attribute tool namespace
-    (active, diagnostic_namespace, "1.73.0", Some(94785), None),
+    (active, diagnostic_namespace, "1.73.0", Some(111996), None),
     /// Controls errors in trait implementations.
     (active, do_not_recommend, "1.67.0", Some(51992), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.

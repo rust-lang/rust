@@ -568,6 +568,13 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
     ) {
         sess.emit_fatal(errors::MultipleOutputTypesToStdout);
     }
+
+    let crate_name = sess
+        .opts
+        .crate_name
+        .clone()
+        .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()));
+
     match sess.io.output_file {
         None => {
             // "-" as input file will cause the parser to read from stdin so we
@@ -576,15 +583,11 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
             let dirpath = sess.io.output_dir.clone().unwrap_or_default();
 
             // If a crate name is present, we use it as the link name
-            let stem = sess
-                .opts
-                .crate_name
-                .clone()
-                .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()))
-                .unwrap_or_else(|| sess.io.input.filestem().to_owned());
+            let stem = crate_name.clone().unwrap_or_else(|| sess.io.input.filestem().to_owned());
 
             OutputFilenames::new(
                 dirpath,
+                crate_name.unwrap_or_else(|| stem.replace('-', "_")),
                 stem,
                 None,
                 sess.io.temps_dir.clone(),
@@ -609,9 +612,12 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
                 sess.emit_warning(errors::IgnoringOutDir);
             }
 
+            let out_filestem =
+                out_file.filestem().unwrap_or_default().to_str().unwrap().to_string();
             OutputFilenames::new(
                 out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
-                out_file.filestem().unwrap_or_default().to_str().unwrap().to_string(),
+                crate_name.unwrap_or_else(|| out_filestem.replace('-', "_")),
+                out_filestem,
                 ofile,
                 sess.io.temps_dir.clone(),
                 sess.opts.cg.extra_filename.clone(),

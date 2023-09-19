@@ -575,12 +575,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_consume(bx, place.as_ref())
             }
 
-            mir::Operand::Constant(ref constant) => {
-                // This cannot fail because we checked all required_consts in advance.
-                self.eval_mir_constant_to_operand(bx, constant).unwrap_or_else(|_err| {
-                    span_bug!(constant.span, "erroneous constant not captured by required_consts")
-                })
-            }
+            mir::Operand::Constant(ref constant) => self.eval_mir_constant_to_operand(bx, constant),
         }
     }
 }

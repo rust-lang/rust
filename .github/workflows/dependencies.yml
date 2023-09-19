@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: install the bootstrap toolchain
@@ -87,7 +87,7 @@ jobs:
       pull-requests: write
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: download Cargo.lock from update job
         uses: actions/download-artifact@v3

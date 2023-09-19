@@ -35,6 +35,25 @@ fn foo() {
     }
 
     #[test]
+    fn while_let_loop_with_label_in_condition() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    let mut optional = Some(0);
+
+    'my_label: while let Some(a) = match optional {
+        None => break 'my_label,
+        Some(val) => Some(val),
+    } {
+        optional = None;
+        continue 'my_label;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn for_loop() {
         check_diagnostics(
             r#"

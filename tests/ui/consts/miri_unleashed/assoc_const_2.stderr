@@ -4,13 +4,13 @@ error[E0080]: evaluation of `<std::string::String as Bar<std::string::String>>::
 LL |     const F: u32 = 100 / U::X;
    |                    ^^^^^^^^^^ attempt to divide `100_u32` by zero
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/assoc_const_2.rs:27:13
    |
 LL |     let y = <String as Bar<String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/assoc_const_2.rs:27:13
    |
 LL |     let y = <String as Bar<String>>::F;

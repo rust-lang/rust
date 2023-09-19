@@ -13,13 +13,13 @@ note: inside `<String as Bar<Vec<u32>, String>>::F`
 LL |     const F: u32 = (U::X, 42).1;
    |                               ^
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/assoc_const.rs:29:13
    |
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/assoc_const.rs:29:13
    |
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;

@@ -2,6 +2,7 @@
 //!
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
+use hir_expand::name::Name;
 use rustc_hash::FxHashMap;
 use syntax::SmolStr;
 use triomphe::Arc;
@@ -238,7 +239,17 @@ impl LangItem {
 
     pub fn path(&self, db: &dyn DefDatabase, start_crate: CrateId) -> Option<Path> {
         let t = db.lang_item(start_crate, *self)?;
-        Some(Path::LangItem(t))
+        Some(Path::LangItem(t, None))
+    }
+
+    pub fn ty_rel_path(
+        &self,
+        db: &dyn DefDatabase,
+        start_crate: CrateId,
+        seg: Name,
+    ) -> Option<Path> {
+        let t = db.lang_item(start_crate, *self)?;
+        Some(Path::LangItem(t, Some(seg)))
     }
 }
 

@@ -1,10 +1,8 @@
 //! Completion for cfg
 
-use std::iter;
-
 use ide_db::SymbolKind;
 use itertools::Itertools;
-use syntax::SyntaxKind;
+use syntax::{algo, ast::Ident, AstToken, Direction, NodeOrToken, SyntaxKind};
 
 use crate::{completions::Completions, context::CompletionContext, CompletionItem};
 
@@ -15,31 +13,44 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
         acc.add(completion.build(ctx.db));
     };
 
-    let previous = iter::successors(ctx.original_token.prev_token(), |t| {
-        (matches!(t.kind(), SyntaxKind::EQ) || t.kind().is_trivia())
-            .then(|| t.prev_token())
-            .flatten()
-    })
-    .find(|t| matches!(t.kind(), SyntaxKind::IDENT));
+    // FIXME: Move this into context/analysis.rs
+    let previous = ctx
+        .original_token
+        .prev_token()
+        .and_then(|it| {
+            if matches!(it.kind(), SyntaxKind::EQ) {
+                Some(it.into())
+            } else {
+                algo::non_trivia_sibling(it.into(), Direction::Prev)
+            }
+        })
+        .filter(|t| matches!(t.kind(), SyntaxKind::EQ))
+        .and_then(|it| algo::non_trivia_sibling(it.prev_sibling_or_token()?, Direction::Prev))
+        .map(|it| match it {
+            NodeOrToken::Node(_) => None,
+            NodeOrToken::Token(t) => Ident::cast(t),
+        });
+    match previous {
+        Some(None) => (),
+        Some(Some(p)) => match p.text() {
+            "target_arch" => KNOWN_ARCH.iter().copied().for_each(add_completion),
+            "target_env" => KNOWN_ENV.iter().copied().for_each(add_completion),
+            "target_os" => KNOWN_OS.iter().copied().for_each(add_completion),
+            "target_vendor" => KNOWN_VENDOR.iter().copied().for_each(add_completion),
+            "target_endian" => ["little", "big"].into_iter().for_each(add_completion),
+            name => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).cloned().for_each(|s| {
+                let insert_text = format!(r#""{s}""#);
+                let mut item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
+                item.insert_text(insert_text);
 
-    match previous.as_ref().map(|p| p.text()) {
-        Some("target_arch") => KNOWN_ARCH.iter().copied().for_each(add_completion),
-        Some("target_env") => KNOWN_ENV.iter().copied().for_each(add_completion),
-        Some("target_os") => KNOWN_OS.iter().copied().for_each(add_completion),
-        Some("target_vendor") => KNOWN_VENDOR.iter().copied().for_each(add_completion),
-        Some("target_endian") => ["little", "big"].into_iter().for_each(add_completion),
-        Some(name) => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).cloned().for_each(|s| {
-            let insert_text = format!(r#""{s}""#);
-            let mut item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
-            item.insert_text(insert_text);
-
-            acc.add(item.build(ctx.db));
-        }),
+                acc.add(item.build(ctx.db));
+            }),
+        },
         None => ctx.krate.potential_cfg(ctx.db).get_cfg_keys().cloned().unique().for_each(|s| {
             let item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
             acc.add(item.build(ctx.db));
         }),
-    };
+    }
 }
 
 const KNOWN_ARCH: [&str; 20] = [

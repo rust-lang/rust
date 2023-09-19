@@ -15,26 +15,13 @@ use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 // Move an expression out of a format string.
 //
 // ```
-// macro_rules! format_args {
-//     ($lit:literal $(tt:tt)*) => { 0 },
-// }
-// macro_rules! print {
-//     ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-// }
-//
+// # //- minicore: fmt
 // fn main() {
 //     print!("{var} {x + 1}$0");
 // }
 // ```
 // ->
 // ```
-// macro_rules! format_args {
-//     ($lit:literal $(tt:tt)*) => { 0 },
-// }
-// macro_rules! print {
-//     ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-// }
-//
 // fn main() {
 //     print!("{var} {}"$0, x + 1);
 // }
@@ -158,37 +145,21 @@ mod tests {
     use super::*;
     use crate::tests::check_assist;
 
-    const MACRO_DECL: &'static str = r#"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
-macro_rules! print {
-    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-}
-"#;
-
-    fn add_macro_decl(s: &'static str) -> String {
-        MACRO_DECL.to_string() + s
-    }
-
     #[test]
     fn multiple_middle_arg() {
         check_assist(
             extract_expressions_from_format_string,
-            &add_macro_decl(
-                r#"
+            r#"
+//- minicore: fmt
 fn main() {
     print!("{} {x + 1:b} {}$0", y + 2, 2);
 }
 "#,
-            ),
-            &add_macro_decl(
-                r#"
+            r#"
 fn main() {
     print!("{} {:b} {}"$0, y + 2, x + 1, 2);
 }
 "#,
-            ),
         );
     }
 
@@ -196,20 +167,17 @@ fn main() {
     fn single_arg() {
         check_assist(
             extract_expressions_from_format_string,
-            &add_macro_decl(
-                r#"
+            r#"
+//- minicore: fmt
 fn main() {
     print!("{obj.value:b}$0",);
 }
 "#,
-            ),
-            &add_macro_decl(
-                r#"
+            r#"
 fn main() {
     print!("{:b}"$0, obj.value);
 }
 "#,
-            ),
         );
     }
 
@@ -217,20 +185,17 @@ fn main() {
     fn multiple_middle_placeholders_arg() {
         check_assist(
             extract_expressions_from_format_string,
-            &add_macro_decl(
-                r#"
+            r#"
+//- minicore: fmt
 fn main() {
     print!("{} {x + 1:b} {} {}$0", y + 2, 2);
 }
 "#,
-            ),
-            &add_macro_decl(
-                r#"
+            r#"
 fn main() {
     print!("{} {:b} {} {}"$0, y + 2, x + 1, 2, $1);
 }
 "#,
-            ),
         );
     }
 
@@ -238,20 +203,17 @@ fn main() {
     fn multiple_trailing_args() {
         check_assist(
             extract_expressions_from_format_string,
-            &add_macro_decl(
-                r#"
+            r#"
+//- minicore: fmt
 fn main() {
     print!("{:b} {x + 1:b} {Struct(1, 2)}$0", 1);
 }
 "#,
-            ),
-            &add_macro_decl(
-                r#"
+            r#"
 fn main() {
     print!("{:b} {:b} {}"$0, 1, x + 1, Struct(1, 2));
 }
 "#,
-            ),
         );
     }
 
@@ -259,20 +221,17 @@ fn main() {
     fn improper_commas() {
         check_assist(
             extract_expressions_from_format_string,
-            &add_macro_decl(
-                r#"
+            r#"
+//- minicore: fmt
 fn main() {
     print!("{} {x + 1:b} {Struct(1, 2)}$0", 1,);
 }
 "#,
-            ),
-            &add_macro_decl(
-                r#"
+            r#"
 fn main() {
     print!("{} {:b} {}"$0, 1, x + 1, Struct(1, 2));
 }
 "#,
-            ),
         );
     }
 
@@ -280,20 +239,17 @@ fn main() {
     fn nested_tt() {
         check_assist(
             extract_expressions_from_format_string,
-            &add_macro_decl(
-                r#"
+            r#"
+//- minicore: fmt
 fn main() {
     print!("My name is {} {x$0 + x}", stringify!(Paperino))
 }
 "#,
-            ),
-            &add_macro_decl(
-                r#"
+            r#"
 fn main() {
     print!("My name is {} {}"$0, stringify!(Paperino), x + x)
 }
 "#,
-            ),
         );
     }
 
@@ -301,22 +257,19 @@ fn main() {
     fn extract_only_expressions() {
         check_assist(
             extract_expressions_from_format_string,
-            &add_macro_decl(
-                r#"
+            r#"
+//- minicore: fmt
 fn main() {
     let var = 1 + 1;
     print!("foobar {var} {var:?} {x$0 + x}")
 }
 "#,
-            ),
-            &add_macro_decl(
-                r#"
+            r#"
 fn main() {
     let var = 1 + 1;
     print!("foobar {var} {var:?} {}"$0, x + x)
 }
 "#,
-            ),
         );
     }
 }

@@ -4,7 +4,7 @@ error[E0080]: evaluation of `main::{constant#3}` failed
 LL |     const { &ARR[idx4()] }; // Ok, should not produce stderr, since `suppress-restriction-lint-in-const` is set true.
    |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/test.rs:37:5
    |
 LL |     const { &ARR[idx4()] }; // Ok, should not produce stderr, since `suppress-restriction-lint-in-const` is set true.

@@ -1,5 +1,5 @@
 use super::apple_base::{opts, Arch};
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let llvm_target = "x86_64-apple-ios14.0-macabi";
@@ -7,6 +7,7 @@ pub fn target() -> Target {
     let arch = Arch::X86_64_macabi;
     let mut base = opts("ios", arch);
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-target", llvm_target]);
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
     Target {
         llvm_target: llvm_target.into(),

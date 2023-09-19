@@ -18,6 +18,20 @@ pub fn expand_deriving_eq(
     is_const: bool,
 ) {
     let span = cx.with_def_site_ctxt(span);
+
+    let structural_trait_def = TraitDef {
+        span,
+        path: path_std!(marker::StructuralEq),
+        skip_path_as_bound: true, // crucial!
+        needs_copy_as_bound_if_packed: false,
+        additional_bounds: Vec::new(),
+        supports_unions: true,
+        methods: Vec::new(),
+        associated_types: Vec::new(),
+        is_const: false,
+    };
+    structural_trait_def.expand(cx, mitem, item, push);
+
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::Eq),
@@ -44,9 +58,6 @@ pub fn expand_deriving_eq(
         associated_types: Vec::new(),
         is_const,
     };
-
-    super::inject_impl_of_structural_trait(cx, span, item, path_std!(marker::StructuralEq), push);
-
     trait_def.expand_ext(cx, mitem, item, push, true)
 }
 

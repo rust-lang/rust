@@ -119,26 +119,11 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
     }
 }
 
-pub fn filename_for_metadata(
-    sess: &Session,
-    crate_name: Symbol,
-    outputs: &OutputFilenames,
-) -> OutFileName {
-    // If the command-line specified the path, use that directly.
-    if let Some(Some(out_filename)) = sess.opts.output_types.get(&OutputType::Metadata) {
-        return out_filename.clone();
-    }
-
-    let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
-
-    let out_filename = outputs.single_output_file.clone().unwrap_or_else(|| {
-        OutFileName::Real(outputs.out_directory.join(&format!("lib{libname}.rmeta")))
-    });
-
+pub fn filename_for_metadata(sess: &Session, outputs: &OutputFilenames) -> OutFileName {
+    let out_filename = outputs.path(OutputType::Metadata);
     if let OutFileName::Real(ref path) = out_filename {
         check_file_is_writeable(path, sess);
     }
-
     out_filename
 }
 
