@@ -2,7 +2,7 @@ use crate::errors;
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::Abi;
@@ -20,7 +20,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         OperandRef::from_const(bx, val, ty)
     }
 
-    pub fn eval_mir_constant(&self, constant: &mir::Constant<'tcx>) -> ConstValue<'tcx> {
+    pub fn eval_mir_constant(&self, constant: &mir::Constant<'tcx>) -> mir::ConstValue<'tcx> {
         self.monomorphize(constant.literal)
             .eval(self.cx.tcx(), ty::ParamEnv::reveal_all(), Some(constant.span))
             .expect("erroneous constant not captured by required_consts")

@@ -4,7 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::mir::{
-    interpret::{ConstValue, Scalar},
+    interpret::Scalar,
     visit::{PlaceContext, Visitor},
 };
 use rustc_middle::ty::{Ty, TyCtxt, TypeAndMut};

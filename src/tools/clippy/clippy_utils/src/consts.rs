@@ -656,7 +656,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 }
 
 pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'tcx>) -> Option<Constant<'tcx>> {
-    use rustc_middle::mir::interpret::ConstValue;
+    use rustc_middle::mir::ConstValue;
     match result {
         mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(int)), _) => match result.ty().kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),

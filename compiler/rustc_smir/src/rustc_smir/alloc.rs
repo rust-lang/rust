@@ -1,4 +1,7 @@
-use rustc_middle::mir::interpret::{alloc_range, AllocRange, ConstValue, Pointer};
+use rustc_middle::mir::{
+    interpret::{alloc_range, AllocRange, Pointer},
+    ConstValue,
+};
 
 use crate::{
     rustc_smir::{Stable, Tables},
