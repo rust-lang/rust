@@ -169,9 +169,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let indexes = {
                 use rustc_middle::mir::interpret::*;
                 let idx_const = match idx {
-                    Operand::Constant(const_) => {
-                        crate::constant::eval_mir_constant(fx, const_).unwrap().0
-                    }
+                    Operand::Constant(const_) => crate::constant::eval_mir_constant(fx, const_).0,
                     Operand::Copy(_) | Operand::Move(_) => unreachable!("{idx:?}"),
                 };
 

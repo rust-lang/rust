@@ -75,9 +75,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let x = codegen_operand(fx, x);
             let y = codegen_operand(fx, y);
             let kind = match kind {
-                Operand::Constant(const_) => {
-                    crate::constant::eval_mir_constant(fx, const_).unwrap().0
-                }
+                Operand::Constant(const_) => crate::constant::eval_mir_constant(fx, const_).0,
                 Operand::Copy(_) | Operand::Move(_) => unreachable!("{kind:?}"),
             };
 
