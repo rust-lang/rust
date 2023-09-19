@@ -12,7 +12,7 @@ struct B(i32);
 
 fn main() {
     const FOO: [B; 1] = [B(0)];
-    match [B(1)] { //~ ERROR: non-exhaustive patterns: `[_]` not covered
+    match [B(1)] {
         FOO => { }
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
     }

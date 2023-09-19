@@ -19,7 +19,7 @@ use rustc_hir::HirId;
 use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
@@ -682,6 +682,12 @@ fn non_exhaustive_match<'p, 'tcx>(
     arms: &[ArmId],
     expr_span: Span,
 ) -> ErrorGuaranteed {
+    for &arm in arms {
+        if let Err(err) = thir[arm].pattern.error_reported() {
+            return err;
+        }
+    }
+
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
         ty::Adt(def, _) => def.is_enum() && !def.variants().is_empty(),

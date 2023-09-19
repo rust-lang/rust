@@ -581,13 +581,13 @@ pub enum BindingMode {
     ByRef(BorrowKind),
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct FieldPat<'tcx> {
     pub field: FieldIdx,
     pub pattern: Box<Pat<'tcx>>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
@@ -664,7 +664,7 @@ impl<'tcx> IntoDiagnosticArg for Pat<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct Ascription<'tcx> {
     pub annotation: CanonicalUserTypeAnnotation<'tcx>,
     /// Variance to use when relating the `user_ty` to the **type of the value being
@@ -688,7 +688,7 @@ pub struct Ascription<'tcx> {
     pub variance: ty::Variance,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub enum PatKind<'tcx> {
     /// A wildcard pattern: `_`.
     Wild,
@@ -702,7 +702,9 @@ pub enum PatKind<'tcx> {
     Binding {
         mutability: Mutability,
         name: Symbol,
+        #[type_visitable(ignore)]
         mode: BindingMode,
+        #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
         subpattern: Option<Box<Pat<'tcx>>>,
@@ -771,10 +773,11 @@ pub enum PatKind<'tcx> {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, PartialEq, HashStable, TypeVisitable)]
 pub struct PatRange<'tcx> {
     pub lo: mir::Const<'tcx>,
     pub hi: mir::Const<'tcx>,
+    #[type_visitable(ignore)]
     pub end: RangeEnd,
 }
 

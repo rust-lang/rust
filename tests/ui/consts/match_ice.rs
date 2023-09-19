@@ -7,7 +7,7 @@ struct T;
 
 fn main() {
     const C: &S = &S;
-    match C { //~ ERROR: non-exhaustive patterns: `&_` not covered
+    match C {
         C => {}
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
     }

@@ -4,18 +4,5 @@ error: `dyn PartialEq<u32>` cannot be used in patterns
 LL |         F => panic!(),
    |         ^
 
-error[E0004]: non-exhaustive patterns: `&_` not covered
-  --> $DIR/issue-72565.rs:5:11
-   |
-LL |     match a {
-   |           ^ pattern `&_` not covered
-   |
-   = note: the matched value is of type `&dyn PartialEq<u32>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
-   |
-LL |         F => panic!(), &_ => todo!(),
-   |                      +++++++++++++++
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0004`.
