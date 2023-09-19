@@ -1,8 +1,8 @@
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio};
+use std::process::{self, Command};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::path::{Dirs, RelPath};
@@ -218,28 +218,6 @@ pub(crate) fn retry_spawn_and_wait(tries: u64, mut cmd: Command) {
     }
     println!("The command has failed after {tries} attempts.");
     process::exit(1);
-}
-
-#[track_caller]
-pub(crate) fn spawn_and_wait_with_input(mut cmd: Command, input: String) -> String {
-    let mut child = cmd
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn child process");
-
-    let mut stdin = child.stdin.take().expect("Failed to open stdin");
-    std::thread::spawn(move || {
-        stdin.write_all(input.as_bytes()).expect("Failed to write to stdin");
-    });
-
-    let output = child.wait_with_output().expect("Failed to read stdout");
-    if !output.status.success() {
-        eprintln!("{cmd:?} exited with status {:?}", output.status);
-        process::exit(1);
-    }
-
-    String::from_utf8(output.stdout).unwrap()
 }
 
 pub(crate) fn remove_dir_if_exists(path: &Path) {

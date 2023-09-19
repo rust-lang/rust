@@ -156,6 +156,41 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             });
         }
 
+        // FIXME generalize vector types
+        "llvm.aarch64.neon.tbl1.v16i8" => {
+            intrinsic_args!(fx, args => (t, idx); intrinsic);
+
+            let zero = fx.bcx.ins().iconst(types::I8, 0);
+            for i in 0..16 {
+                let idx_lane = idx.value_lane(fx, i).load_scalar(fx);
+                let is_zero =
+                    fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
+                let t_idx = fx.bcx.ins().uextend(fx.pointer_type, idx_lane);
+                let t_lane = t.value_lane_dyn(fx, t_idx).load_scalar(fx);
+                let res = fx.bcx.ins().select(is_zero, zero, t_lane);
+                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+            }
+        }
+
+        // FIXME generalize vector types
+        "llvm.aarch64.neon.umaxp.v16i8" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            // FIXME add helper for horizontal pairwise operations
+            for i in 0..8 {
+                let lane1 = a.value_lane(fx, i * 2).load_scalar(fx);
+                let lane2 = a.value_lane(fx, i * 2 + 1).load_scalar(fx);
+                let res = fx.bcx.ins().umax(lane1, lane2);
+                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+            }
+            for i in 0..8 {
+                let lane1 = b.value_lane(fx, i * 2).load_scalar(fx);
+                let lane2 = b.value_lane(fx, i * 2 + 1).load_scalar(fx);
+                let res = fx.bcx.ins().umax(lane1, lane2);
+                ret.place_lane(fx, 8 + i).to_ptr().store(fx, res, MemFlags::trusted());
+            }
+        }
+
         /*
         _ if intrinsic.starts_with("llvm.aarch64.neon.sshl.v")
             || intrinsic.starts_with("llvm.aarch64.neon.sqshl.v")

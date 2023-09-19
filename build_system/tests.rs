@@ -9,7 +9,7 @@ use crate::path::{Dirs, RelPath};
 use crate::prepare::{apply_patches, GitRepo};
 use crate::rustc_info::get_default_sysroot;
 use crate::shared_utils::rustflags_from_env;
-use crate::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler, LogGroup};
+use crate::utils::{spawn_and_wait, CargoProject, Compiler, LogGroup};
 use crate::{CodegenBackend, SysrootKind};
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
@@ -114,8 +114,8 @@ pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir()
 pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "regex",
-    "32fed9429eafba0ae92a64b01796a0c5a75b88c8",
-    "fcc4df7c5b902633",
+    "061ee815ef2c44101dba7b0b124600fcb03c1912",
+    "dc26aefbeeac03ca",
     "regex",
 );
 
@@ -178,40 +178,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             spawn_and_wait(build_cmd);
         }
     }),
-    TestCase::custom("test.regex-shootout-regex-dna", &|runner| {
-        REGEX_REPO.patch(&runner.dirs);
-
-        REGEX.clean(&runner.dirs);
-
-        let mut build_cmd = REGEX.build(&runner.target_compiler, &runner.dirs);
-        build_cmd.arg("--example").arg("shootout-regex-dna");
-        spawn_and_wait(build_cmd);
-
-        if runner.is_native {
-            let mut run_cmd = REGEX.run(&runner.target_compiler, &runner.dirs);
-            run_cmd.arg("--example").arg("shootout-regex-dna");
-
-            let input = fs::read_to_string(
-                REGEX.source_dir(&runner.dirs).join("examples").join("regexdna-input.txt"),
-            )
-            .unwrap();
-            let expected = fs::read_to_string(
-                REGEX.source_dir(&runner.dirs).join("examples").join("regexdna-output.txt"),
-            )
-            .unwrap();
-
-            let output = spawn_and_wait_with_input(run_cmd, input);
-
-            let output_matches = expected.lines().eq(output.lines());
-            if !output_matches {
-                println!("Output files don't match!");
-                println!("Expected Output:\n{}", expected);
-                println!("Actual Output:\n{}", output);
-
-                std::process::exit(1);
-            }
-        }
-    }),
     TestCase::custom("test.regex", &|runner| {
         REGEX_REPO.patch(&runner.dirs);
 
@@ -221,7 +187,22 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             let mut run_cmd = REGEX.test(&runner.target_compiler, &runner.dirs);
             // regex-capi and regex-debug don't have any tests. Nor do they contain any code
             // that is useful to test with cg_clif. Skip building them to reduce test time.
-            run_cmd.args(["-p", "regex", "-p", "regex-syntax", "--", "-q"]);
+            run_cmd.args([
+                "-p",
+                "regex",
+                "-p",
+                "regex-syntax",
+                "--release",
+                "--all-targets",
+                "--",
+                "-q",
+            ]);
+            spawn_and_wait(run_cmd);
+
+            let mut run_cmd = REGEX.test(&runner.target_compiler, &runner.dirs);
+            // don't run integration tests for regex-autonata. they take like 2min each without
+            // much extra coverage of simd usage.
+            run_cmd.args(["-p", "regex-automata", "--release", "--lib", "--", "-q"]);
             spawn_and_wait(run_cmd);
         } else {
             eprintln!("Cross-Compiling: Not running tests");
