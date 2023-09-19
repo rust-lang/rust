@@ -453,33 +453,6 @@ impl DroplessArena {
         }
     }
 
-    /// Allocates a byte slice with specified layout from the current memory
-    /// chunk. Returns `None` if there is no free space left to satisfy the
-    /// request.
-    #[inline]
-    fn alloc_raw_without_grow(&self, layout: Layout) -> Option<*mut u8> {
-        let start = self.start.get().addr();
-        let old_end = self.end.get();
-        let end = old_end.addr();
-
-        // Align allocated bytes so that `self.end` stays aligned to DROPLESS_ALIGNMENT
-        let bytes = align_up(layout.size(), DROPLESS_ALIGNMENT);
-
-        // Tell LLVM that `end` is aligned to DROPLESS_ALIGNMENT
-        unsafe { intrinsics::assume(end == align_down(end, DROPLESS_ALIGNMENT)) };
-
-        let new_end = align_down(end.checked_sub(bytes)?, layout.align());
-        if start <= new_end {
-            let new_end = old_end.with_addr(new_end);
-            // `new_end` is aligned to DROPLESS_ALIGNMENT as `align_down` preserves alignment
-            // as both `end` and `bytes` are already aligned to DROPLESS_ALIGNMENT.
-            self.end.set(new_end);
-            Some(new_end)
-        } else {
-            None
-        }
-    }
-
     #[inline]
     pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
         assert!(layout.size() != 0);
@@ -487,9 +460,29 @@ impl DroplessArena {
         // This loop executes once or twice: if allocation fails the first
         // time, the `grow` ensures it will succeed the second time.
         loop {
-            if let Some(a) = self.alloc_raw_without_grow(layout) {
-                return a;
+            let start = self.start.get().addr();
+            let old_end = self.end.get();
+            let end = old_end.addr();
+
+            // Align allocated bytes so that `self.end` stays aligned to
+            // DROPLESS_ALIGNMENT.
+            let bytes = align_up(layout.size(), DROPLESS_ALIGNMENT);
+
+            // Tell LLVM that `end` is aligned to DROPLESS_ALIGNMENT.
+            unsafe { intrinsics::assume(end == align_down(end, DROPLESS_ALIGNMENT)) };
+
+            if let Some(sub) = end.checked_sub(bytes) {
+                let new_end = align_down(sub, layout.align());
+                if start <= new_end {
+                    let new_end = old_end.with_addr(new_end);
+                    // `new_end` is aligned to DROPLESS_ALIGNMENT as `align_down`
+                    // preserves alignment as both `end` and `bytes` are already
+                    // aligned to DROPLESS_ALIGNMENT.
+                    self.end.set(new_end);
+                    return new_end;
+                }
             }
+
             // No free space left. Allocate a new chunk to satisfy the request.
             // On failure the grow will panic or abort.
             self.grow(layout);
