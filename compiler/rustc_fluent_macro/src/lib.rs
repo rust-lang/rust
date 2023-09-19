@@ -1,4 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![deny(rustc::untranslatable_diagnostic)]

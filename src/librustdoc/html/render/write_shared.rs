@@ -341,6 +341,7 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                 static_root_path: shared.static_root_path.as_deref(),
                 description: "List of crates",
                 resource_suffix: &shared.resource_suffix,
+                rust_logo: true,
             };
 
             let content = format!(

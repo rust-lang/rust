@@ -24,6 +24,7 @@ use super::{
     sidebar::{sidebar_module_like, Sidebar},
     AllTypes, LinkFromSrc, StylePath,
 };
+use crate::clean::utils::has_doc_flag;
 use crate::clean::{self, types::ExternalLocation, ExternalCrate, TypeAliasItem};
 use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
@@ -277,6 +278,7 @@ impl<'tcx> Context<'tcx> {
                 title: &title,
                 description: &desc,
                 resource_suffix: &clone_shared.resource_suffix,
+                rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
             };
             let mut page_buffer = Buffer::html();
             print_item(self, it, &mut page_buffer, &page);
@@ -529,8 +531,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             playground = Some(markdown::Playground { crate_name: Some(krate.name(tcx)), url });
         }
         let krate_version = cache.crate_version.as_deref().unwrap_or_default();
-        let (krate_version, krate_version_extra) =
-            krate_version.split_once(" ").unwrap_or((krate_version, ""));
         let mut layout = layout::Layout {
             logo: String::new(),
             favicon: String::new(),
@@ -538,7 +538,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             default_settings,
             krate: krate.name(tcx).to_string(),
             krate_version: krate_version.to_string(),
-            krate_version_extra: krate_version_extra.to_string(),
             css_file_extension: extension_css,
             scrape_examples_extension: !call_locations.is_empty(),
         };
@@ -668,6 +667,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             static_root_path: shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
             resource_suffix: &shared.resource_suffix,
+            rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
         };
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
@@ -693,9 +693,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         shared.fs.write(final_file, v)?;
 
         // Generating settings page.
-        page.title = "Rustdoc settings";
+        page.title = "Settings";
         page.description = "Settings of Rustdoc";
         page.root_path = "./";
+        page.rust_logo = true;
 
         let sidebar = "<h2 class=\"location\">Settings</h2><div class=\"sidebar-elems\"></div>";
         let v = layout::render(
@@ -743,9 +744,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         shared.fs.write(settings_file, v)?;
 
         // Generating help page.
-        page.title = "Rustdoc help";
+        page.title = "Help";
         page.description = "Documentation for Rustdoc";
         page.root_path = "./";
+        page.rust_logo = true;
 
         let sidebar = "<h2 class=\"location\">Help</h2><div class=\"sidebar-elems\"></div>";
         let v = layout::render(

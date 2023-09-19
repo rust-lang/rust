@@ -521,7 +521,8 @@ ul.block, .block li {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin: 0 32px;
+	margin: 10px 32px 0;
+	row-gap: 10px;
 	column-gap: 32px;
 	flex-wrap: wrap;
 }
@@ -540,7 +541,7 @@ ul.block, .block li {
 }
 
 .sidebar-crate .logo-container {
-	margin: 10px -16px;
+	margin: 0 -16px;
 	text-align: center;
 }
 
