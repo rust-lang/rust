@@ -286,22 +286,15 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         let new_bb = inject_edge_counter_basic_block(self.mir_body, from_bb, to_bb);
                         debug!(
                             "Edge {:?} (last {:?}) -> {:?} (leader {:?}) requires a new MIR \
-                            BasicBlock {:?}, for unclaimed edge counter {}",
-                            edge_from_bcb,
-                            from_bb,
-                            target_bcb,
-                            to_bb,
-                            new_bb,
-                            self.format_counter(&counter_kind),
+                            BasicBlock {:?}, for unclaimed edge counter {:?}",
+                            edge_from_bcb, from_bb, target_bcb, to_bb, new_bb, counter_kind,
                         );
                         new_bb
                     } else {
                         let target_bb = self.bcb_last_bb(target_bcb);
                         debug!(
-                            "{:?} ({:?}) gets a new Coverage statement for unclaimed counter {}",
-                            target_bcb,
-                            target_bb,
-                            self.format_counter(&counter_kind),
+                            "{:?} ({:?}) gets a new Coverage statement for unclaimed counter {:?}",
+                            target_bcb, target_bb, counter_kind,
                         );
                         target_bb
                     };
@@ -334,11 +327,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     #[inline]
     fn bcb_data(&self, bcb: BasicCoverageBlock) -> &BasicCoverageBlockData {
         &self.basic_coverage_blocks[bcb]
-    }
-
-    #[inline]
-    fn format_counter(&self, counter_kind: &BcbCounter) -> String {
-        format!("{counter_kind:?}")
     }
 
     fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
