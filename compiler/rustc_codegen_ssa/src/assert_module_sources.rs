@@ -35,12 +35,11 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
-use std::fmt::{self};
-use std::sync::{Arc, Mutex};
+use std::fmt;
 use thin_vec::ThinVec;
 
 #[allow(missing_docs)]
-pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&CguReuseTracker)) {
+pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTracker)) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
             return;
@@ -49,7 +48,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&CguReuseTracke
         let available_cgus =
             tcx.collect_and_partition_mono_items(()).1.iter().map(|cgu| cgu.name()).collect();
 
-        let ams = AssertModuleSource {
+        let mut ams = AssertModuleSource {
             tcx,
             available_cgus,
             cgu_reuse_tracker: if tcx.sess.opts.unstable_opts.query_dep_graph {
@@ -63,7 +62,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&CguReuseTracke
             ams.check_attr(attr);
         }
 
-        set_reuse(&ams.cgu_reuse_tracker);
+        set_reuse(&mut ams.cgu_reuse_tracker);
 
         ams.cgu_reuse_tracker.check_expected_reuse(tcx.sess);
     });
@@ -76,7 +75,7 @@ struct AssertModuleSource<'tcx> {
 }
 
 impl<'tcx> AssertModuleSource<'tcx> {
-    fn check_attr(&self, attr: &ast::Attribute) {
+    fn check_attr(&mut self, attr: &ast::Attribute) {
         let (expected_reuse, comp_kind) = if attr.has_name(sym::rustc_partition_reused) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)
         } else if attr.has_name(sym::rustc_partition_codegened) {
@@ -220,20 +219,11 @@ pub enum ComparisonKind {
 
 struct TrackerData {
     actual_reuse: FxHashMap<String, CguReuse>,
-    expected_reuse: FxHashMap<String, (String, SendSpan, CguReuse, ComparisonKind)>,
+    expected_reuse: FxHashMap<String, (String, Span, CguReuse, ComparisonKind)>,
 }
 
-// Span does not implement `Send`, so we can't just store it in the shared
-// `TrackerData` object. Instead of splitting up `TrackerData` into shared and
-// non-shared parts (which would be complicated), we just mark the `Span` here
-// explicitly as `Send`. That's safe because the span data here is only ever
-// accessed from the main thread.
-struct SendSpan(Span);
-unsafe impl Send for SendSpan {}
-
-#[derive(Clone)]
 pub struct CguReuseTracker {
-    data: Option<Arc<Mutex<TrackerData>>>,
+    data: Option<TrackerData>,
 }
 
 impl CguReuseTracker {
@@ -241,45 +231,42 @@ impl CguReuseTracker {
         let data =
             TrackerData { actual_reuse: Default::default(), expected_reuse: Default::default() };
 
-        CguReuseTracker { data: Some(Arc::new(Mutex::new(data))) }
+        CguReuseTracker { data: Some(data) }
     }
 
     pub fn new_disabled() -> CguReuseTracker {
         CguReuseTracker { data: None }
     }
 
-    pub fn set_actual_reuse(&self, cgu_name: &str, kind: CguReuse) {
-        if let Some(ref data) = self.data {
+    pub fn set_actual_reuse(&mut self, cgu_name: &str, kind: CguReuse) {
+        if let Some(data) = &mut self.data {
             debug!("set_actual_reuse({cgu_name:?}, {kind:?})");
 
-            let prev_reuse = data.lock().unwrap().actual_reuse.insert(cgu_name.to_string(), kind);
+            let prev_reuse = data.actual_reuse.insert(cgu_name.to_string(), kind);
             assert!(prev_reuse.is_none());
         }
     }
 
     pub fn set_expectation(
-        &self,
+        &mut self,
         cgu_name: Symbol,
         cgu_user_name: &str,
         error_span: Span,
         expected_reuse: CguReuse,
         comparison_kind: ComparisonKind,
     ) {
-        if let Some(ref data) = self.data {
+        if let Some(data) = &mut self.data {
             debug!("set_expectation({cgu_name:?}, {expected_reuse:?}, {comparison_kind:?})");
-            let mut data = data.lock().unwrap();
 
             data.expected_reuse.insert(
                 cgu_name.to_string(),
-                (cgu_user_name.to_string(), SendSpan(error_span), expected_reuse, comparison_kind),
+                (cgu_user_name.to_string(), error_span, expected_reuse, comparison_kind),
             );
         }
     }
 
     pub fn check_expected_reuse(&self, sess: &Session) {
         if let Some(ref data) = self.data {
-            let data = data.lock().unwrap();
-
             for (cgu_name, &(ref cgu_user_name, ref error_span, expected_reuse, comparison_kind)) in
                 &data.expected_reuse
             {
@@ -292,7 +279,7 @@ impl CguReuseTracker {
                     if error {
                         let at_least = if at_least { 1 } else { 0 };
                         errors::IncorrectCguReuseType {
-                            span: error_span.0,
+                            span: *error_span,
                             cgu_user_name,
                             actual_reuse,
                             expected_reuse,
