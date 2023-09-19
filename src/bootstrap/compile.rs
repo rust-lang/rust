@@ -570,6 +570,9 @@ fn copy_sanitizers(
         let dst = libdir.join(&runtime.name);
         builder.copy(&runtime.path, &dst);
 
+        // The `aarch64-apple-ios-macabi` and `x86_64-apple-ios-macabi` are also supported for
+        // sanitizers, but they share a sanitizer runtime with `${arch}-apple-darwin`, so we do
+        // not list them here to rename and sign the runtime library.
         if target == "x86_64-apple-darwin"
             || target == "aarch64-apple-darwin"
             || target == "aarch64-apple-ios"
