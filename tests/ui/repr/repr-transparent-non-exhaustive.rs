@@ -93,4 +93,44 @@ pub struct T16(Sized, ExternalIndirection<NonExhaustiveVariant>);
 //~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
 //~| WARN this was previously accepted by the compiler
 
+#[repr(transparent)]
+pub struct T17(NonExhaustive, Sized);
+//~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T18(NonExhaustive, NonExhaustive);
+//~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T19(NonExhaustive, Private);
+//~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T19Flipped(Private, NonExhaustive);
+//~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T20(NonExhaustive);
+// Okay, since it's the only field.
+
+#[repr(transparent)]
+pub struct T21(NonExhaustive, InternalNonExhaustive);
+// Okay, since there's only 1 foreign non-exhaustive type.
+
+#[repr(transparent)]
+pub struct T21Flipped(InternalNonExhaustive, NonExhaustive);
+// Okay, since there's only 1 foreign non-exhaustive type.
+
+#[repr(transparent)]
+pub struct T22(NonExhaustive, InternalPrivate);
+// Okay, since there's only 1 foreign non-exhaustive type.
+
+#[repr(transparent)]
+pub struct T22Flipped(InternalPrivate, NonExhaustive);
+// Okay, since there's only 1 foreign non-exhaustive type.
+
 fn main() {}
