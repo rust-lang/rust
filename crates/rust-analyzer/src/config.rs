@@ -565,7 +565,7 @@ pub struct Config {
     data: ConfigData,
     detached_files: Vec<AbsPathBuf>,
     snippets: Vec<Snippet>,
-    is_visual_studio: bool,
+    is_visual_studio_code: bool,
 }
 
 type ParallelCachePrimingNumThreads = u8;
@@ -761,7 +761,7 @@ impl Config {
         root_path: AbsPathBuf,
         caps: ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
-        is_visual_studio: bool,
+        is_visual_studio_code: bool,
     ) -> Self {
         Config {
             caps,
@@ -771,7 +771,7 @@ impl Config {
             root_path,
             snippets: Default::default(),
             workspace_roots,
-            is_visual_studio,
+            is_visual_studio_code,
         }
     }
 
@@ -1673,8 +1673,8 @@ impl Config {
 
     // FIXME: VSCode seems to work wrong sometimes, see https://github.com/microsoft/vscode/issues/193124
     // hence, distinguish it for now.
-    pub fn is_visual_studio(&self) -> bool {
-        self.is_visual_studio
+    pub fn is_visual_studio_code(&self) -> bool {
+        self.is_visual_studio_code
     }
 }
 // Deserialization definitions
