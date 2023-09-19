@@ -204,6 +204,10 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             }
             if let Some(handler) = handler {
                 rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
+                #[cfg(target_os = "hurd")]
+                {
+                    rtassert!(signal(libc::SIGLOST, handler) != libc::SIG_ERR);
+                }
             }
         }
     }

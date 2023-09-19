@@ -37,6 +37,7 @@ struct Outer {
           target_os = "emscripten",
           target_os = "freebsd",
           target_os = "fuchsia",
+          target_os = "hurd",
           target_os = "illumos",
           target_os = "linux",
           target_os = "macos",

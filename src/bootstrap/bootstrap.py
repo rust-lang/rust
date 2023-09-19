@@ -265,7 +265,8 @@ def default_build_triple(verbose):
         'FreeBSD': 'unknown-freebsd',
         'Haiku': 'unknown-haiku',
         'NetBSD': 'unknown-netbsd',
-        'OpenBSD': 'unknown-openbsd'
+        'OpenBSD': 'unknown-openbsd',
+        'GNU': 'unknown-hurd',
     }
 
     # Consider the direct transformation first and then the special cases
@@ -336,6 +337,7 @@ def default_build_triple(verbose):
         'i386': 'i686',
         'i486': 'i686',
         'i686': 'i686',
+        'i686-AT386': 'i686',
         'i786': 'i686',
         'loongarch64': 'loongarch64',
         'm68k': 'm68k',

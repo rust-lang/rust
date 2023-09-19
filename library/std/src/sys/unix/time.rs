@@ -35,7 +35,7 @@ pub(in crate::sys::unix) struct Timespec {
 }
 
 impl SystemTime {
-    #[cfg_attr(target_os = "horizon", allow(unused))]
+    #[cfg_attr(any(target_os = "horizon", target_os = "hurd"), allow(unused))]
     pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
         SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
     }

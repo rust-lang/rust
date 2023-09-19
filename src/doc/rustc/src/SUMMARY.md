@@ -28,6 +28,7 @@
     - [armv7-unknown-linux-uclibceabihf](platform-support/armv7-unknown-linux-uclibceabihf.md)
     - [\*-android and \*-androideabi](platform-support/android.md)
     - [\*-linux-ohos](platform-support/openharmony.md)
+    - [\*-hurd-gnu](platform-support/hurd.md)
     - [aarch64-unknown-teeos](platform-support/aarch64-unknown-teeos.md)
     - [\*-esp-espidf](platform-support/esp-idf.md)
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
