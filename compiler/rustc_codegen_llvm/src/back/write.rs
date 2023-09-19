@@ -748,7 +748,6 @@ pub(crate) unsafe fn differentiate(
 
     if std::env::var("ENZYME_PRINT_MOD").is_ok() {
         unsafe {LLVMDumpModule(llmod);}
-
     }
     for item in diff_items {
         let res = enzyme_ad(llmod, llcx, item);
@@ -771,6 +770,9 @@ pub(crate) unsafe fn differentiate(
         } else {
             break;
         }
+    }
+    if std::env::var("ENZYME_PRINT_MOD_AFTER").is_ok() {
+        unsafe {LLVMDumpModule(llmod);}
     }
 
     Ok(())
