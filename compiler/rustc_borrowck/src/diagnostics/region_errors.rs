@@ -95,6 +95,12 @@ impl<'tcx> RegionErrors<'tcx> {
     }
 }
 
+impl std::fmt::Debug for RegionErrors<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("RegionErrors").field(&self.0).finish()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum RegionErrorKind<'tcx> {
     /// A generic bound failure for a type test (`T: 'a`).

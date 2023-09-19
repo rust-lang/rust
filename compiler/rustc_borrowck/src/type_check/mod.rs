@@ -1181,7 +1181,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    #[instrument(skip(self, body, location), level = "debug")]
+    #[instrument(skip(self, body), level = "debug")]
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
         debug!("stmt kind: {:?}", stmt.kind);
