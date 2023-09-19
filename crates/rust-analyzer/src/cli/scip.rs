@@ -11,10 +11,9 @@ use ide::{
     TokenStaticData,
 };
 use ide_db::LineIndexDatabase;
-use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
+use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use project_model::{CargoConfig, RustLibSource};
 use scip::types as scip_types;
-use std::env;
 
 use crate::{
     cli::flags,
@@ -34,14 +33,13 @@ impl flags::Scip {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: true,
         };
-        let path = vfs::AbsPathBuf::assert(env::current_dir()?.join(&self.path));
-        let rootpath = path.normalize();
-        let manifest = ProjectManifest::discover_single(&path)?;
-
-        let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
-
-        let (host, vfs, _) =
-            load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
+        let root = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(&self.path)).normalize();
+        let (host, vfs, _) = load_workspace_at(
+            root.as_path().as_ref(),
+            &cargo_config,
+            &load_cargo_config,
+            &no_progress,
+        )?;
         let db = host.raw_database();
         let analysis = host.analysis();
 
@@ -58,8 +56,7 @@ impl flags::Scip {
             .into(),
             project_root: format!(
                 "file://{}",
-                path.normalize()
-                    .as_os_str()
+                root.as_os_str()
                     .to_str()
                     .ok_or(anyhow::format_err!("Unable to normalize project_root path"))?
             ),
@@ -80,7 +77,7 @@ impl flags::Scip {
                 new_symbol
             };
 
-            let relative_path = match get_relative_filepath(&vfs, &rootpath, file_id) {
+            let relative_path = match get_relative_filepath(&vfs, &root, file_id) {
                 Some(relative_path) => relative_path,
                 None => continue,
             };
