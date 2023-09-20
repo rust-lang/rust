@@ -1,3 +1,4 @@
+#[cfg(feature="master")]
 use gccjit::Context;
 use smallvec::{smallvec, SmallVec};
 
@@ -202,11 +203,16 @@ fn handle_native(name: &str) -> &str {
         return name;
     }
 
-    // Get the native arch.
-    let context = Context::default();
-    context.get_target_info().arch().unwrap()
-        .to_str()
-        .unwrap()
+    #[cfg(feature="master")]
+    {
+        // Get the native arch.
+        let context = Context::default();
+        context.get_target_info().arch().unwrap()
+            .to_str()
+            .unwrap()
+    }
+    #[cfg(not(feature="master"))]
+    unimplemented!();
 }
 
 pub fn target_cpu(sess: &Session) -> &str {
