@@ -17,22 +17,10 @@ LL | const fn wrap(x: impl ~const PartialEq + ~const Destruct)
    |                              ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:16:49
-   |
-LL | const fn wrap(x: impl ~const PartialEq + ~const Destruct)
-   |                                                 ^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:17:20
    |
 LL |     -> impl ~const PartialEq + ~const Destruct
    |                    ^^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:17:39
-   |
-LL |     -> impl ~const PartialEq + ~const Destruct
-   |                                       ^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:24:29
@@ -41,35 +29,11 @@ LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
    |                             ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:24:48
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                                                ^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:28:29
    |
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
    |                             ^^^^^^^^^
 
-error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:28:48
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
-   |                                                ^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:49:41
-   |
-LL | const fn apit(_: impl ~const T + ~const Destruct) {}
-   |                                         ^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:53:73
-   |
-LL | const fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T> + ~const Destruct) {}
-   |                                                                         ^^^^^^^^
-
-error: aborting due to 12 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0635`.

@@ -17,12 +17,6 @@ LL |     T: ~const Fn<()> + ~const Destruct,
    |               ^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:15:31
-   |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                               ^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:15:15
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
@@ -35,12 +29,6 @@ LL |     T: ~const FnMut<()> + ~const Destruct,
    |               ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:22:34
-   |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                                  ^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:22:15
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
@@ -65,12 +53,6 @@ LL |     T: ~const Fn<()> + ~const Destruct,
    |               ^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:36:31
-   |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                               ^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:36:15
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
@@ -83,17 +65,11 @@ LL |     T: ~const FnMut<()> + ~const Destruct,
    |               ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:50:34
-   |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                                  ^^^^^^^^
-
-error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:50:15
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |               ^^^^^^^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0635`.
