@@ -1,22 +1,13 @@
-// failure-status: 101
 // known-bug: unknown
-// error-pattern:internal compiler error
-// normalize-stderr-test "internal compiler error.*" -> ""
-// normalize-stderr-test "DefId\([^)]*\)" -> "..."
-// normalize-stderr-test "\nerror: internal compiler error.*\n\n" -> ""
-// normalize-stderr-test "note:.*unexpectedly panicked.*\n\n" -> ""
-// normalize-stderr-test "note: we would appreciate a bug report.*\n\n" -> ""
-// normalize-stderr-test "note: compiler flags.*\n\n" -> ""
-// normalize-stderr-test "note: rustc.*running on.*\n\n" -> ""
-// normalize-stderr-test "thread.*panicked.*:\n.*\n" -> ""
-// normalize-stderr-test "stack backtrace:\n" -> ""
-// normalize-stderr-test "\s\d{1,}: .*\n" -> ""
-// normalize-stderr-test "\s at .*\n" -> ""
-// normalize-stderr-test ".*note: Some details.*\n" -> ""
-// normalize-stderr-test "\n\n[ ]*\n" -> ""
-// normalize-stderr-test "compiler/.*: projection" -> "projection"
-// normalize-stderr-test ".*omitted \d{1,} frame.*\n" -> ""
-// normalize-stderr-test "error: [\s\n]*query stack" -> "error: query stack"
+
+// If we want this to compile, then we'd need to do something like RPITs do,
+// where nested associated constants have early-bound versions of their captured
+// late-bound vars inserted into their generics. This gives us substitutable
+// lifetimes to actually use when borrow-checking the associated const, which is
+// lowered as a totally separate body from its parent. Since this doesn't exist,
+// we should just error rather than resolving this late-bound var with no
+// binder to actually attach it to, or worse, as a free region that can't even be
+// substituted correctly, and ICEing. - @compiler-errors
 
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
