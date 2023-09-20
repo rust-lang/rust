@@ -207,12 +207,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if left_layout.ty != right_layout.ty {
             span_bug!(
                 self.cur_span(),
-                "invalid asymmetric binary op {:?}: {:?} ({:?}), {:?} ({:?})",
-                bin_op,
-                l,
-                left_layout.ty,
-                r,
-                right_layout.ty,
+                "invalid asymmetric binary op {bin_op:?}: {l:?} ({l_ty}), {r:?} ({r_ty})",
+                l_ty = left_layout.ty,
+                r_ty = right_layout.ty,
             )
         }
 
@@ -309,7 +306,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             _ => span_bug!(
                 self.cur_span(),
-                "invalid binary op {:?}: {:?}, {:?} (both {:?})",
+                "invalid binary op {:?}: {:?}, {:?} (both {})",
                 bin_op,
                 l,
                 r,
@@ -355,7 +352,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         right: &ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, (ImmTy<'tcx, M::Provenance>, bool)> {
         trace!(
-            "Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
+            "Running binary op {:?}: {:?} ({}), {:?} ({})",
             bin_op,
             *left,
             left.layout.ty,
@@ -394,7 +391,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the RHS type can be different, e.g. for shifts -- but it has to be integral, too
                 assert!(
                     right.layout.ty.is_integral(),
-                    "Unexpected types for BinOp: {:?} {:?} {:?}",
+                    "Unexpected types for BinOp: {} {:?} {}",
                     left.layout.ty,
                     bin_op,
                     right.layout.ty
@@ -409,7 +406,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // (Even when both sides are pointers, their type might differ, see issue #91636)
                 assert!(
                     right.layout.ty.is_any_ptr() || right.layout.ty.is_integral(),
-                    "Unexpected types for BinOp: {:?} {:?} {:?}",
+                    "Unexpected types for BinOp: {} {:?} {}",
                     left.layout.ty,
                     bin_op,
                     right.layout.ty
@@ -419,7 +416,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             _ => span_bug!(
                 self.cur_span(),
-                "Invalid MIR: bad LHS type for binop: {:?}",
+                "Invalid MIR: bad LHS type for binop: {}",
                 left.layout.ty
             ),
         }
@@ -447,7 +444,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let layout = val.layout;
         let val = val.to_scalar();
-        trace!("Running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty);
+        trace!("Running unary op {:?}: {:?} ({})", un_op, val, layout.ty);
 
         match layout.ty.kind() {
             ty::Bool => {

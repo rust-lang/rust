@@ -87,7 +87,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "reify fn pointer on {:?}", src.layout.ty),
+                    _ => span_bug!(self.cur_span(), "reify fn pointer on {}", src.layout.ty),
                 }
             }
 
@@ -98,7 +98,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // No change to value
                         self.write_immediate(*src, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "fn to unsafe fn cast on {:?}", cast_ty),
+                    _ => span_bug!(self.cur_span(), "fn to unsafe fn cast on {}", cast_ty),
                 }
             }
 
@@ -119,7 +119,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
+                    _ => span_bug!(self.cur_span(), "closure fn pointer on {}", src.layout.ty),
                 }
             }
 
@@ -190,7 +190,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Float(FloatTy::F32) => self.cast_from_float(src.to_scalar().to_f32()?, cast_ty),
             Float(FloatTy::F64) => self.cast_from_float(src.to_scalar().to_f64()?, cast_ty),
             _ => {
-                bug!("Can't cast 'Float' type into {:?}", cast_ty);
+                bug!("Can't cast 'Float' type into {}", cast_ty);
             }
         };
         Ok(ImmTy::from_scalar(val, layout))
@@ -218,7 +218,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Immediate::ScalarPair(data, _) => Ok(ImmTy::from_scalar(data, dest_layout)),
                 Immediate::Scalar(..) => span_bug!(
                     self.cur_span(),
-                    "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
+                    "{:?} input to a fat-to-thin cast ({} -> {})",
                     *src,
                     src.layout.ty,
                     cast_ty
@@ -302,7 +302,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            _ => span_bug!(self.cur_span(), "invalid int to {:?} cast", cast_ty),
+            _ => span_bug!(self.cur_span(), "invalid int to {} cast", cast_ty),
         })
     }
 
@@ -335,7 +335,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // float -> f64
             Float(FloatTy::F64) => Scalar::from_f64(f.convert(&mut false).value),
             // That's it.
-            _ => span_bug!(self.cur_span(), "invalid float to {:?} cast", dest_ty),
+            _ => span_bug!(self.cur_span(), "invalid float to {} cast", dest_ty),
         }
     }
 
@@ -393,7 +393,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 span_bug!(
                     self.cur_span(),
-                    "invalid pointer unsizing {:?} -> {:?}",
+                    "invalid pointer unsizing {} -> {}",
                     src.layout.ty,
                     cast_ty
                 )
@@ -407,7 +407,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         cast_ty: TyAndLayout<'tcx>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
+        trace!("Unsizing {:?} of type {} into {}", *src, src.layout.ty, cast_ty.ty);
         match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
             (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(TypeAndMut { ty: c, .. }))
             | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: c, .. })) => {

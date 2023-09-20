@@ -514,11 +514,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abi::Scalar(abi::Scalar::Initialized { .. })
                 | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
         ) {
-            span_bug!(
-                self.cur_span(),
-                "primitive read not possible for type: {:?}",
-                op.layout().ty
-            );
+            span_bug!(self.cur_span(), "primitive read not possible for type: {}", op.layout().ty);
         }
         let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
@@ -669,7 +665,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?)?,
                 op.layout,
             ),
-            "eval_place of a MIR place with type {:?} produced an interpreter operand with type {:?}",
+            "eval_place of a MIR place with type {:?} produced an interpreter operand with type {}",
             mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
             op.layout.ty,
         );
