@@ -234,7 +234,8 @@ fn panic_in_cleanup() -> ! {
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
-        panic_str(msg);
+        // The panic_display function is hooked by conost eval.
+        panic_display(&msg);
     } else {
         // SAFETY: This is only evaluated at compile time, which reliably
         // handles this UB (in case this branch turns out to be reachable
