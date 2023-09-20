@@ -1,46 +1,29 @@
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
 
-use crate::cell::RefCell;
+use crate::cell::OnceCell;
 use crate::sys::thread::guard::Guard;
 use crate::thread::Thread;
 
-struct ThreadInfo {
-    stack_guard: Option<Guard>,
-    thread: Thread,
-}
-
-thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = const { RefCell::new(None) } }
-
-impl ThreadInfo {
-    fn with<R, F>(f: F) -> Option<R>
-    where
-        F: FnOnce(&mut ThreadInfo) -> R,
-    {
-        THREAD_INFO
-            .try_with(move |thread_info| {
-                let mut thread_info = thread_info.borrow_mut();
-                let thread_info = thread_info.get_or_insert_with(|| ThreadInfo {
-                    stack_guard: None,
-                    thread: Thread::new(None),
-                });
-                f(thread_info)
-            })
-            .ok()
-    }
+thread_local! {
+    static THREAD: OnceCell<Thread> = const { OnceCell::new() };
+    // Use a separate thread local for the stack guard page location.
+    // Since `Guard` does not implement drop, this is always available
+    // on systems with ELF-TLS, in particular during TLS destruction.
+    static STACK_GUARD: OnceCell<Guard> = const { OnceCell::new() };
 }
 
 pub fn current_thread() -> Option<Thread> {
-    ThreadInfo::with(|info| info.thread.clone())
+    THREAD.try_with(|thread| thread.get_or_init(|| Thread::new(None)).clone()).ok()
 }
 
 pub fn stack_guard() -> Option<Guard> {
-    ThreadInfo::with(|info| info.stack_guard.clone()).and_then(|o| o)
+    STACK_GUARD.try_with(|guard| guard.get().cloned()).ok().flatten()
 }
 
 pub fn set(stack_guard: Option<Guard>, thread: Thread) {
-    THREAD_INFO.with(move |thread_info| {
-        let mut thread_info = thread_info.borrow_mut();
-        rtassert!(thread_info.is_none());
-        *thread_info = Some(ThreadInfo { stack_guard, thread });
-    });
+    #[allow(unreachable_patterns, unreachable_code)] // On some platforms, `Guard` is `!`.
+    if let Some(guard) = stack_guard {
+        rtassert!(STACK_GUARD.with(|s| s.set(guard)).is_ok());
+    }
+    rtassert!(THREAD.with(|t| t.set(thread)).is_ok());
 }
