@@ -328,6 +328,26 @@ foo_bar
 Prefer line-breaking at an assignment operator (either `=` or `+=`, etc.) rather
 than at other binary operators.
 
+### Casts (`as`)
+
+Format `as` casts like a binary operator. In particular, always include spaces
+around `as`, and if line-breaking, break before the `as` (never after) and
+block-indent the subsequent line. Format the type on the right-hand side using
+the rules for types.
+
+However, unlike with other binary operators, if chaining a series of `as` casts
+that require line-breaking, and line-breaking before the first `as` suffices to
+make the remainder fit on the next line, don't break before any subsequent
+`as`; instead, leave the series of types all on the same line:
+
+```rust
+let cstr = very_long_expression()
+    as *const str as *const [u8] as *const std::os::raw::c_char;
+```
+
+If the subsequent line still requires line-breaking, break and block-indent
+before each `as` as with other binary operators.
+
 ## Control flow
 
 Do not include extraneous parentheses for `if` and `while` expressions.
@@ -424,14 +444,6 @@ assert_eq!(
     "x and y were not equal, see {}",
     reason,
 );
-```
-
-## Casts (`as`)
-
-Put spaces before and after `as`:
-
-```rust
-let cstr = "Hi\0" as *const str as *const [u8] as *const std::os::raw::c_char;
 ```
 
 ## Chains of fields and method calls
