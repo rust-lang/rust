@@ -1478,15 +1478,12 @@ options! {
     dump_mir_exclude_pass_number: bool = (false, parse_bool, [UNTRACKED],
         "exclude the pass number when dumping MIR (used in tests) (default: no)"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],
-        "in addition to `.mir` files, create graphviz `.dot` files (and with \
-        `-Z instrument-coverage`, also create a `.dot` file for the MIR-derived \
-        coverage graph) (default: no)"),
+        "in addition to `.mir` files, create graphviz `.dot` files (default: no)"),
     dump_mir_spanview: Option<MirSpanview> = (None, parse_mir_spanview, [UNTRACKED],
         "in addition to `.mir` files, create `.html` files to view spans for \
         all `statement`s (including terminators), only `terminator` spans, or \
         computed `block` spans (one span encompassing a block's terminator and \
-        all statements). If `-Z instrument-coverage` is also enabled, create \
-        an additional `.html` file showing the computed coverage spans."),
+        all statements)."),
     dump_mono_stats: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "output statistics about monomorphization collection"),

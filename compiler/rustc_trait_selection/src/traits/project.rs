@@ -1644,7 +1644,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     let env_predicates = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.def_id)
-        .map(|p| p.with_self_ty(tcx, object_ty).to_predicate(tcx));
+        .map(|p| ty::Clause::from_projection_clause(tcx, p.with_self_ty(tcx, object_ty)));
 
     assemble_candidates_from_predicates(
         selcx,

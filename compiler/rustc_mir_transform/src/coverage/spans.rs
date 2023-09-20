@@ -1,13 +1,10 @@
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
-use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
-use rustc_middle::mir::spanview::source_range_no_file;
 use rustc_middle::mir::{
     self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
-use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
@@ -20,31 +17,6 @@ pub(super) enum CoverageStatement {
 }
 
 impl CoverageStatement {
-    pub fn format<'tcx>(&self, tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> String {
-        match *self {
-            Self::Statement(bb, span, stmt_index) => {
-                let stmt = &mir_body[bb].statements[stmt_index];
-                format!(
-                    "{}: @{}[{}]: {:?}",
-                    source_range_no_file(tcx, span),
-                    bb.index(),
-                    stmt_index,
-                    stmt
-                )
-            }
-            Self::Terminator(bb, span) => {
-                let term = mir_body[bb].terminator();
-                format!(
-                    "{}: @{}.{}: {:?}",
-                    source_range_no_file(tcx, span),
-                    bb.index(),
-                    term.kind.name(),
-                    term.kind
-                )
-            }
-        }
-    }
-
     pub fn span(&self) -> Span {
         match self {
             Self::Statement(_, span, _) | Self::Terminator(_, span) => *span,
@@ -148,27 +120,6 @@ impl CoverageSpan {
     #[inline]
     pub fn is_in_same_bcb(&self, other: &Self) -> bool {
         self.bcb == other.bcb
-    }
-
-    pub fn format<'tcx>(&self, tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> String {
-        format!(
-            "{}\n    {}",
-            source_range_no_file(tcx, self.span),
-            self.format_coverage_statements(tcx, mir_body).replace('\n', "\n    "),
-        )
-    }
-
-    pub fn format_coverage_statements<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        mir_body: &mir::Body<'tcx>,
-    ) -> String {
-        let mut sorted_coverage_statements = self.coverage_statements.clone();
-        sorted_coverage_statements.sort_unstable_by_key(|covstmt| match *covstmt {
-            CoverageStatement::Statement(bb, _, index) => (bb, index),
-            CoverageStatement::Terminator(bb, _) => (bb, usize::MAX),
-        });
-        sorted_coverage_statements.iter().map(|covstmt| covstmt.format(tcx, mir_body)).join("\n")
     }
 
     /// If the span is part of a macro, returns the macro name symbol.

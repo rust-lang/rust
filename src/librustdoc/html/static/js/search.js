@@ -2334,11 +2334,20 @@ ${item.displayPath}<span class="${type}">${name}</span>\
     }
 
     function makeTabHeader(tabNb, text, nbElems) {
+        // https://blog.horizon-eda.org/misc/2020/02/19/ui.html
+        //
+        // CSS runs with `font-variant-numeric: tabular-nums` to ensure all
+        // digits are the same width. \u{2007} is a Unicode space character
+        // that is defined to be the same width as a digit.
+        const fmtNbElems =
+            nbElems < 10  ? `\u{2007}(${nbElems})\u{2007}\u{2007}` :
+            nbElems < 100 ? `\u{2007}(${nbElems})\u{2007}` :
+            `\u{2007}(${nbElems})`;
         if (searchState.currentTab === tabNb) {
             return "<button class=\"selected\">" + text +
-                   " <span class=\"count\">(" + nbElems + ")</span></button>";
+                   "<span class=\"count\">" + fmtNbElems + "</span></button>";
         }
-        return "<button>" + text + " <span class=\"count\">(" + nbElems + ")</span></button>";
+        return "<button>" + text + "<span class=\"count\">" + fmtNbElems + "</span></button>";
     }
 
     /**
