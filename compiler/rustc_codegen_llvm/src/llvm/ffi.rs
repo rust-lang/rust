@@ -2766,6 +2766,11 @@ extern "C" {
 }
 
 extern "C" {
+    pub static mut MaxIntOffset: c_void;
+    pub static mut MaxTypeOffset: c_void;
+    pub static mut EnzymeMaxTypeDepth: c_void;
+
+    pub static mut EnzymePrintPerf: c_void;
     pub static mut EnzymePrintActivity: c_void;
     pub static mut EnzymePrintType: c_void;
     pub static mut EnzymePrint: c_void;
