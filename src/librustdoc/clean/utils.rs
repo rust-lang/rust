@@ -283,7 +283,7 @@ pub(crate) fn print_evaluated_const(
             (_, &ty::Ref(..)) => None,
             (mir::ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (mir::ConstValue::Scalar(_), _) => {
-                let const_ = mir::ConstantKind::from_value(val, ty);
+                let const_ = mir::Const::from_value(val, ty);
                 Some(print_const_with_custom_print_scalar(tcx, const_, underscores_and_type))
             }
             _ => None,
@@ -319,20 +319,20 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
 
 fn print_const_with_custom_print_scalar<'tcx>(
     tcx: TyCtxt<'tcx>,
-    ct: mir::ConstantKind<'tcx>,
+    ct: mir::Const<'tcx>,
     underscores_and_type: bool,
 ) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct, ct.ty().kind()) {
-        (mir::ConstantKind::Val(mir::ConstValue::Scalar(int), _), ty::Uint(ui)) => {
+        (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Uint(ui)) => {
             if underscores_and_type {
                 format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
             } else {
                 int.to_string()
             }
         }
-        (mir::ConstantKind::Val(mir::ConstValue::Scalar(int), _), ty::Int(i)) => {
+        (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Int(i)) => {
             let ty = ct.ty();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);

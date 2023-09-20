@@ -13,37 +13,37 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant_to_operand(
         &self,
         bx: &mut Bx,
-        constant: &mir::Constant<'tcx>,
+        constant: &mir::ConstOperand<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
         let val = self.eval_mir_constant(constant);
         let ty = self.monomorphize(constant.ty());
         OperandRef::from_const(bx, val, ty)
     }
 
-    pub fn eval_mir_constant(&self, constant: &mir::Constant<'tcx>) -> mir::ConstValue<'tcx> {
-        self.monomorphize(constant.literal)
+    pub fn eval_mir_constant(&self, constant: &mir::ConstOperand<'tcx>) -> mir::ConstValue<'tcx> {
+        self.monomorphize(constant.const_)
             .eval(self.cx.tcx(), ty::ParamEnv::reveal_all(), Some(constant.span))
             .expect("erroneous constant not captured by required_consts")
     }
 
     /// This is a convenience helper for `simd_shuffle_indices`. It has the precondition
-    /// that the given `constant` is an `ConstantKind::Unevaluated` and must be convertible to
+    /// that the given `constant` is an `Const::Unevaluated` and must be convertible to
     /// a `ValTree`. If you want a more general version of this, talk to `wg-const-eval` on zulip.
     ///
     /// Note that this function is cursed, since usually MIR consts should not be evaluated to valtrees!
     pub fn eval_unevaluated_mir_constant_to_valtree(
         &self,
-        constant: &mir::Constant<'tcx>,
+        constant: &mir::ConstOperand<'tcx>,
     ) -> Result<Option<ty::ValTree<'tcx>>, ErrorHandled> {
-        let uv = match self.monomorphize(constant.literal) {
-            mir::ConstantKind::Unevaluated(uv, _) => uv.shrink(),
-            mir::ConstantKind::Ty(c) => match c.kind() {
+        let uv = match self.monomorphize(constant.const_) {
+            mir::Const::Unevaluated(uv, _) => uv.shrink(),
+            mir::Const::Ty(c) => match c.kind() {
                 // A constant that came from a const generic but was then used as an argument to old-style
                 // simd_shuffle (passing as argument instead of as a generic param).
                 rustc_type_ir::ConstKind::Value(valtree) => return Ok(Some(valtree)),
                 other => span_bug!(constant.span, "{other:#?}"),
             },
-            // We should never encounter `ConstantKind::Val` unless MIR opts (like const prop) evaluate
+            // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
             // a constant and write that value back into `Operand`s. This could happen, but is unlikely.
             // Also: all users of `simd_shuffle` are on unstable and already need to take a lot of care
             // around intrinsics. For an issue to happen here, it would require a macro expanding to a
@@ -65,7 +65,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn simd_shuffle_indices(
         &mut self,
         bx: &Bx,
-        constant: &mir::Constant<'tcx>,
+        constant: &mir::ConstOperand<'tcx>,
     ) -> (Bx::Value, Ty<'tcx>) {
         let ty = self.monomorphize(constant.ty());
         let val = self

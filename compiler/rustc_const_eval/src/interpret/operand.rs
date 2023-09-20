@@ -686,7 +686,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Constant(constant) => {
                 let c =
-                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
+                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.const_)?;
 
                 // This can still fail:
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all

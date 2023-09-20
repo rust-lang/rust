@@ -746,20 +746,20 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     /// to walk it would attempt to evaluate the `ty::Const` inside, which doesn't necessarily
     /// work, as some constants cannot be represented in the type system.
     #[instrument(skip(self), level = "debug")]
-    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
-        let literal = self.monomorphize(constant.literal);
+    fn visit_constant(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
+        let const_ = self.monomorphize(constant.const_);
         let param_env = ty::ParamEnv::reveal_all();
-        let val = match literal.eval(self.tcx, param_env, None) {
+        let val = match const_.eval(self.tcx, param_env, None) {
             Ok(v) => v,
             Err(ErrorHandled::Reported(..)) => return,
             Err(ErrorHandled::TooGeneric(..)) => span_bug!(
                 self.body.source_info(location).span,
                 "collection encountered polymorphic constant: {:?}",
-                literal
+                const_
             ),
         };
         collect_const_value(self.tcx, val, self.output);
-        MirVisitor::visit_ty(self, literal.ty(), TyContext::Location(location));
+        MirVisitor::visit_ty(self, const_.ty(), TyContext::Location(location));
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
@@ -796,7 +796,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 for op in operands {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
-                            let fn_ty = self.monomorphize(value.literal.ty());
+                            let fn_ty = self.monomorphize(value.const_.ty());
                             visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output, &[]);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {

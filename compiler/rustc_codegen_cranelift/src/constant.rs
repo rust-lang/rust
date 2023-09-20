@@ -64,9 +64,9 @@ pub(crate) fn codegen_tls_ref<'tcx>(
 
 pub(crate) fn eval_mir_constant<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
-    constant: &Constant<'tcx>,
+    constant: &ConstOperand<'tcx>,
 ) -> (ConstValue<'tcx>, Ty<'tcx>) {
-    let cv = fx.monomorphize(constant.literal);
+    let cv = fx.monomorphize(constant.const_);
     // This cannot fail because we checked all required_consts in advance.
     let val = cv
         .eval(fx.tcx, ty::ParamEnv::reveal_all(), Some(constant.span))
@@ -76,7 +76,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
 
 pub(crate) fn codegen_constant_operand<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    constant: &Constant<'tcx>,
+    constant: &ConstOperand<'tcx>,
 ) -> CValue<'tcx> {
     let (const_val, ty) = eval_mir_constant(fx, constant);
     codegen_const_value(fx, const_val, ty)

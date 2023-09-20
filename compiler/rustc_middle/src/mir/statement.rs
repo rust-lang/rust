@@ -1,5 +1,5 @@
 /// Functionality for statements, operands, places, and things that appear in them.
-use super::*;
+use super::{interpret::GlobalAlloc, *};
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements
@@ -302,10 +302,10 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Self {
         let ty = Ty::new_fn_def(tcx, def_id, args);
-        Operand::Constant(Box::new(Constant {
+        Operand::Constant(Box::new(ConstOperand {
             span,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::ZeroSized, ty),
+            const_: Const::Val(ConstValue::ZeroSized, ty),
         }))
     }
 
@@ -333,10 +333,10 @@ impl<'tcx> Operand<'tcx> {
             };
             scalar_size == type_size
         });
-        Operand::Constant(Box::new(Constant {
+        Operand::Constant(Box::new(ConstOperand {
             span,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::Scalar(val), ty),
+            const_: Const::Val(ConstValue::Scalar(val), ty),
         }))
     }
 
@@ -356,9 +356,9 @@ impl<'tcx> Operand<'tcx> {
         }
     }
 
-    /// Returns the `Constant` that is the target of this `Operand`, or `None` if this `Operand` is a
+    /// Returns the `ConstOperand` that is the target of this `Operand`, or `None` if this `Operand` is a
     /// place.
-    pub fn constant(&self) -> Option<&Constant<'tcx>> {
+    pub fn constant(&self) -> Option<&ConstOperand<'tcx>> {
         match self {
             Operand::Constant(x) => Some(&**x),
             Operand::Copy(_) | Operand::Move(_) => None,
@@ -370,8 +370,28 @@ impl<'tcx> Operand<'tcx> {
     /// While this is unlikely in general, it's the normal case of what you'll
     /// find as the `func` in a [`TerminatorKind::Call`].
     pub fn const_fn_def(&self) -> Option<(DefId, GenericArgsRef<'tcx>)> {
-        let const_ty = self.constant()?.literal.ty();
+        let const_ty = self.constant()?.const_.ty();
         if let ty::FnDef(def_id, args) = *const_ty.kind() { Some((def_id, args)) } else { None }
+    }
+}
+
+impl<'tcx> ConstOperand<'tcx> {
+    pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
+        match self.const_.try_to_scalar() {
+            Some(Scalar::Ptr(ptr, _size)) => match tcx.global_alloc(ptr.provenance) {
+                GlobalAlloc::Static(def_id) => {
+                    assert!(!tcx.is_thread_local_static(def_id));
+                    Some(def_id)
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn ty(&self) -> Ty<'tcx> {
+        self.const_.ty()
     }
 }
 

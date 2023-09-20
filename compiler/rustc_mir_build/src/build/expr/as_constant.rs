@@ -15,7 +15,7 @@ use rustc_target::abi::Size;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
-    pub(crate) fn as_constant(&mut self, expr: &Expr<'tcx>) -> Constant<'tcx> {
+    pub(crate) fn as_constant(&mut self, expr: &Expr<'tcx>) -> ConstOperand<'tcx> {
         let this = self;
         let tcx = this.tcx;
         let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
@@ -42,62 +42,62 @@ pub fn as_constant_inner<'tcx>(
     expr: &Expr<'tcx>,
     push_cuta: impl FnMut(&Box<CanonicalUserType<'tcx>>) -> Option<UserTypeAnnotationIndex>,
     tcx: TyCtxt<'tcx>,
-) -> Constant<'tcx> {
+) -> ConstOperand<'tcx> {
     let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
     match *kind {
         ExprKind::Literal { lit, neg } => {
-            let literal =
-                match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
-                    Ok(c) => c,
-                    Err(LitToConstError::Reported(guar)) => {
-                        ConstantKind::Ty(ty::Const::new_error(tcx, guar, ty))
-                    }
-                    Err(LitToConstError::TypeError) => {
-                        bug!("encountered type error in `lit_to_mir_constant`")
-                    }
-                };
+            let const_ = match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg })
+            {
+                Ok(c) => c,
+                Err(LitToConstError::Reported(guar)) => {
+                    Const::Ty(ty::Const::new_error(tcx, guar, ty))
+                }
+                Err(LitToConstError::TypeError) => {
+                    bug!("encountered type error in `lit_to_mir_constant`")
+                }
+            };
 
-            Constant { span, user_ty: None, literal }
+            ConstOperand { span, user_ty: None, const_ }
         }
         ExprKind::NonHirLiteral { lit, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
 
-            let literal = ConstantKind::Val(ConstValue::Scalar(Scalar::Int(lit)), ty);
+            let const_ = Const::Val(ConstValue::Scalar(Scalar::Int(lit)), ty);
 
-            Constant { span, user_ty, literal }
+            ConstOperand { span, user_ty, const_ }
         }
         ExprKind::ZstLiteral { ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
 
-            let literal = ConstantKind::Val(ConstValue::ZeroSized, ty);
+            let const_ = Const::Val(ConstValue::ZeroSized, ty);
 
-            Constant { span, user_ty, literal }
+            ConstOperand { span, user_ty, const_ }
         }
         ExprKind::NamedConst { def_id, args, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
 
             let uneval = mir::UnevaluatedConst::new(def_id, args);
-            let literal = ConstantKind::Unevaluated(uneval, ty);
+            let const_ = Const::Unevaluated(uneval, ty);
 
-            Constant { user_ty, span, literal }
+            ConstOperand { user_ty, span, const_ }
         }
         ExprKind::ConstParam { param, def_id: _ } => {
             let const_param = ty::Const::new_param(tcx, param, expr.ty);
-            let literal = ConstantKind::Ty(const_param);
+            let const_ = Const::Ty(const_param);
 
-            Constant { user_ty: None, span, literal }
+            ConstOperand { user_ty: None, span, const_ }
         }
         ExprKind::ConstBlock { did: def_id, args } => {
             let uneval = mir::UnevaluatedConst::new(def_id, args);
-            let literal = ConstantKind::Unevaluated(uneval, ty);
+            let const_ = Const::Unevaluated(uneval, ty);
 
-            Constant { user_ty: None, span, literal }
+            ConstOperand { user_ty: None, span, const_ }
         }
         ExprKind::StaticRef { alloc_id, ty, .. } => {
             let const_val = ConstValue::Scalar(Scalar::from_pointer(alloc_id.into(), &tcx));
-            let literal = ConstantKind::Val(const_val, ty);
+            let const_ = Const::Val(const_val, ty);
 
-            Constant { span, user_ty: None, literal }
+            ConstOperand { span, user_ty: None, const_ }
         }
         _ => span_bug!(span, "expression is not a valid constant {:?}", kind),
     }
@@ -107,7 +107,7 @@ pub fn as_constant_inner<'tcx>(
 fn lit_to_mir_constant<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
-) -> Result<ConstantKind<'tcx>, LitToConstError> {
+) -> Result<Const<'tcx>, LitToConstError> {
     let LitToConstInput { lit, ty, neg } = lit_input;
     let trunc = |n| {
         let param_ty = ty::ParamEnv::reveal_all().and(ty);
@@ -173,5 +173,5 @@ fn lit_to_mir_constant<'tcx>(
         _ => return Err(LitToConstError::TypeError),
     };
 
-    Ok(ConstantKind::Val(value, ty))
+    Ok(Const::Val(value, ty))
 }

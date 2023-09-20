@@ -346,8 +346,8 @@ where
     };
 
     // Check the qualifs of the value of `const` items.
-    let uneval = match constant.literal {
-        ConstantKind::Ty(ct)
+    let uneval = match constant.const_ {
+        Const::Ty(ct)
             if matches!(
                 ct.kind(),
                 ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_)
@@ -355,11 +355,11 @@ where
         {
             None
         }
-        ConstantKind::Ty(c) => {
+        Const::Ty(c) => {
             bug!("expected ConstKind::Param or ConstKind::Value here, found {:?}", c)
         }
-        ConstantKind::Unevaluated(uv, _) => Some(uv),
-        ConstantKind::Val(..) => None,
+        Const::Unevaluated(uv, _) => Some(uv),
+        Const::Val(..) => None,
     };
 
     if let Some(mir::UnevaluatedConst { def, args: _, promoted }) = uneval {
@@ -383,5 +383,5 @@ where
     }
 
     // Otherwise use the qualifs of the type.
-    Q::in_any_value_of_ty(cx, constant.literal.ty())
+    Q::in_any_value_of_ty(cx, constant.const_.ty())
 }
