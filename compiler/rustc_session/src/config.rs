@@ -233,8 +233,13 @@ pub struct LinkSelfContained {
     /// Used for compatibility with the existing opt-in and target inference.
     pub explicitly_set: Option<bool>,
 
-    /// The components that are enabled.
-    components: LinkSelfContainedComponents,
+    /// The components that are enabled on the CLI, using the `+component` syntax or one of the
+    /// `true` shorcuts.
+    enabled_components: LinkSelfContainedComponents,
+
+    /// The components that are disabled on the CLI, using the `-component` syntax or one of the
+    /// `false` shortcuts.
+    disabled_components: LinkSelfContainedComponents,
 }
 
 impl LinkSelfContained {
@@ -247,11 +252,13 @@ impl LinkSelfContained {
         // `explicitly_set` state.
         if let Some(component_to_enable) = component.strip_prefix('+') {
             self.explicitly_set = None;
-            self.components.insert(LinkSelfContainedComponents::from_str(component_to_enable)?);
+            self.enabled_components
+                .insert(LinkSelfContainedComponents::from_str(component_to_enable)?);
             Some(())
         } else if let Some(component_to_disable) = component.strip_prefix('-') {
             self.explicitly_set = None;
-            self.components.remove(LinkSelfContainedComponents::from_str(component_to_disable)?);
+            self.disabled_components
+                .insert(LinkSelfContainedComponents::from_str(component_to_disable)?);
             Some(())
         } else {
             None
@@ -262,11 +269,14 @@ impl LinkSelfContained {
     /// purposes.
     pub(crate) fn set_all_explicitly(&mut self, enabled: bool) {
         self.explicitly_set = Some(enabled);
-        self.components = if enabled {
-            LinkSelfContainedComponents::all()
+
+        if enabled {
+            self.enabled_components = LinkSelfContainedComponents::all();
+            self.disabled_components = LinkSelfContainedComponents::empty();
         } else {
-            LinkSelfContainedComponents::empty()
-        };
+            self.enabled_components = LinkSelfContainedComponents::empty();
+            self.disabled_components = LinkSelfContainedComponents::all();
+        }
     }
 
     /// Helper creating a fully enabled `LinkSelfContained` instance. Used in tests.
@@ -280,13 +290,21 @@ impl LinkSelfContained {
     /// components was set individually. This would also require the `-Zunstable-options` flag, to
     /// be allowed.
     fn are_unstable_variants_set(&self) -> bool {
-        let any_component_set = !self.components.is_empty();
+        let any_component_set =
+            !self.enabled_components.is_empty() || !self.disabled_components.is_empty();
         self.explicitly_set.is_none() && any_component_set
     }
 
-    /// Returns whether the self-contained linker component is enabled.
-    pub fn linker(&self) -> bool {
-        self.components.contains(LinkSelfContainedComponents::LINKER)
+    /// Returns whether the self-contained linker component was enabled on the CLI, using the
+    /// `-C link-self-contained=+linker` syntax, or one of the `true` shorcuts.
+    pub fn is_linker_enabled(&self) -> bool {
+        self.enabled_components.contains(LinkSelfContainedComponents::LINKER)
+    }
+
+    /// Returns whether the self-contained linker component was disabled on the CLI, using the
+    /// `-C link-self-contained=-linker` syntax, or one of the `false` shorcuts.
+    pub fn is_linker_disabled(&self) -> bool {
+        self.disabled_components.contains(LinkSelfContainedComponents::LINKER)
     }
 }
 

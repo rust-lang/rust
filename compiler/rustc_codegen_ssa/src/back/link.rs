@@ -2978,8 +2978,9 @@ fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     }
 
     // 1. Implement the "self-contained" part of this feature by adding rustc distribution
-    //    directories to the tool's search path.
-    if sess.opts.cg.link_self_contained.linker() {
+    // directories to the tool's search path:
+    // - if the self-contained linker is enabled on the CLI.
+    if sess.opts.cg.link_self_contained.is_linker_enabled() {
         for path in sess.get_tools_search_paths(false) {
             cmd.arg({
                 let mut arg = OsString::from("-B");
@@ -2990,7 +2991,7 @@ fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     }
 
     // 2. Implement the "linker flavor" part of this feature by asking `cc` to use some kind of
-    //    `lld` as the linker.
+    // `lld` as the linker.
     cmd.arg("-fuse-ld=lld");
 
     if !flavor.is_gnu() {
