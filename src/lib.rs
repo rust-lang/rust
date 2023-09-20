@@ -258,9 +258,9 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
     let preserve_frame_pointer = sess.target.options.frame_pointer
         != rustc_target::spec::FramePointer::MayOmit
         || matches!(sess.opts.cg.force_frame_pointers, Some(true));
-    if preserve_frame_pointer {
-        flags_builder.set("preserve_frame_pointers", "true").unwrap();
-    }
+    flags_builder
+        .set("preserve_frame_pointers", if preserve_frame_pointer { "true" } else { "false" })
+        .unwrap();
 
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",
