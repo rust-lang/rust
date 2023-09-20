@@ -13,7 +13,7 @@ allow-unauthenticated = [
     "WG-*",
     "beta-nominated",
     "const-hack",
-    "llvm-main",
+    "llvm-*",
     "needs-fcp",
     "relnotes",
     "requires-*",
