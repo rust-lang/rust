@@ -97,7 +97,7 @@ use rustc_hir::{
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::mir::ConstantKind;
+use rustc_middle::mir::Const;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -1510,7 +1510,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 && let bnd_ty = subst.type_at(0)
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
                 && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, min_val.to_valtree()))
-                && let min_const_kind = ConstantKind::from_value(const_val, bnd_ty)
+                && let min_const_kind = Const::from_value(const_val, bnd_ty)
                 && let Some(min_const) = miri_to_const(cx, min_const_kind)
                 && let Some(start_const) = constant(cx, cx.typeck_results(), start)
             {
@@ -1526,7 +1526,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                         && let bnd_ty = subst.type_at(0)
                         && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
                         && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, max_val.to_valtree()))
-                        && let max_const_kind = ConstantKind::from_value(const_val, bnd_ty)
+                        && let max_const_kind = Const::from_value(const_val, bnd_ty)
                         && let Some(max_const) = miri_to_const(cx, max_const_kind)
                         && let Some(end_const) = constant(cx, cx.typeck_results(), end)
                     {
