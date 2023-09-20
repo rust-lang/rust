@@ -725,7 +725,7 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
                 self.rebind(tr).with_self_ty(tcx, self_ty).to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
-                self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
+                ty::Clause::from_projection_clause(tcx, self.rebind(p.with_self_ty(tcx, self_ty)))
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let generics = tcx.generics_of(did);
