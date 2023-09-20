@@ -60,7 +60,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     let dest = this.project_index(&dest, i)?;
                     let val = match which {
-                        Op::MirOp(mir_op) => this.unary_op(mir_op, &op)?.to_scalar(),
+                        Op::MirOp(mir_op) => this.wrapping_unary_op(mir_op, &op)?.to_scalar(),
                         Op::Abs => {
                             // Works for f32 and f64.
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
@@ -177,7 +177,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i)?;
                     let val = match which {
                         Op::MirOp(mir_op) => {
-                            let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
+                            let (val, overflowed) = this.overflowing_binary_op(mir_op, &left, &right)?;
                             if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
                                 // Shifts have extra UB as SIMD operations that the MIR binop does not have.
                                 // See <https://github.com/rust-lang/rust/issues/91237>.
@@ -188,13 +188,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             }
                             if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
                                 // Special handling for boolean-returning operations
-                                assert_eq!(ty, this.tcx.types.bool);
-                                let val = val.to_bool().unwrap();
+                                assert_eq!(val.layout.ty, this.tcx.types.bool);
+                                let val = val.to_scalar().to_bool().unwrap();
                                 bool_to_simd_element(val, dest.layout.size)
                             } else {
-                                assert_ne!(ty, this.tcx.types.bool);
-                                assert_eq!(ty, dest.layout.ty);
-                                val
+                                assert_ne!(val.layout.ty, this.tcx.types.bool);
+                                assert_eq!(val.layout.ty, dest.layout.ty);
+                                val.to_scalar()
                             }
                         }
                         Op::SaturatingOp(mir_op) => {
@@ -304,18 +304,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     res = match which {
                         Op::MirOp(mir_op) => {
-                            this.binary_op(mir_op, &res, &op)?
+                            this.wrapping_binary_op(mir_op, &res, &op)?
                         }
                         Op::MirOpBool(mir_op) => {
                             let op = imm_from_bool(simd_element_to_bool(op)?);
-                            this.binary_op(mir_op, &res, &op)?
+                            this.wrapping_binary_op(mir_op, &res, &op)?
                         }
                         Op::Max => {
                             if matches!(res.layout.ty.kind(), ty::Float(_)) {
                                 ImmTy::from_scalar(fmax_op(&res, &op)?, res.layout)
                             } else {
                                 // Just boring integers, so NaNs to worry about
-                                if this.binary_op(BinOp::Ge, &res, &op)?.to_scalar().to_bool()? {
+                                if this.wrapping_binary_op(BinOp::Ge, &res, &op)?.to_scalar().to_bool()? {
                                     res
                                 } else {
                                     op
@@ -327,7 +327,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 ImmTy::from_scalar(fmin_op(&res, &op)?, res.layout)
                             } else {
                                 // Just boring integers, so NaNs to worry about
-                                if this.binary_op(BinOp::Le, &res, &op)?.to_scalar().to_bool()? {
+                                if this.wrapping_binary_op(BinOp::Le, &res, &op)?.to_scalar().to_bool()? {
                                     res
                                 } else {
                                     op
@@ -356,7 +356,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let mut res = init;
                 for i in 0..op_len {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    res = this.binary_op(mir_op, &res, &op)?;
+                    res = this.wrapping_binary_op(mir_op, &res, &op)?;
                 }
                 this.write_immediate(*res, dest)?;
             }
@@ -487,7 +487,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 to_ty = dest.layout.ty,
                             ),
                     };
-                    this.write_immediate(val, &dest)?;
+                    this.write_immediate(*val, &dest)?;
                 }
             }
             "shuffle" => {

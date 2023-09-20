@@ -89,10 +89,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [left, right] = check_arg_count(args)?;
                 let left = this.read_immediate(left)?;
                 let right = this.read_immediate(right)?;
-                let (val, _overflowed, _ty) =
-                    this.overflowing_binary_op(mir::BinOp::Eq, &left, &right)?;
+                let val = this.wrapping_binary_op(mir::BinOp::Eq, &left, &right)?;
                 // We're type punning a bool as an u8 here.
-                this.write_scalar(val, dest)?;
+                this.write_scalar(val.to_scalar(), dest)?;
             }
             "const_allocate" => {
                 // For now, for compatibility with the run-time implementation of this, we just return null.
@@ -396,7 +395,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         ),
                 };
 
-                this.write_scalar(res, dest)?;
+                this.write_immediate(*res, dest)?;
             }
 
             // Other

@@ -98,14 +98,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 for (const_int, target) in targets.iter() {
                     // Compare using MIR BinOp::Eq, to also support pointer values.
                     // (Avoiding `self.binary_op` as that does some redundant layout computation.)
-                    let res = self
-                        .overflowing_binary_op(
-                            mir::BinOp::Eq,
-                            &discr,
-                            &ImmTy::from_uint(const_int, discr.layout),
-                        )?
-                        .0;
-                    if res.to_bool()? {
+                    let res = self.wrapping_binary_op(
+                        mir::BinOp::Eq,
+                        &discr,
+                        &ImmTy::from_uint(const_int, discr.layout),
+                    )?;
+                    if res.to_scalar().to_bool()? {
                         target_block = target;
                         break;
                     }
