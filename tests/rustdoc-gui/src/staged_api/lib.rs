@@ -1,6 +1,8 @@
 #![feature(staged_api)]
+#![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![stable(feature = "some_feature", since = "1.3.5")]
+#![doc(rust_logo)]
 
 #[stable(feature = "some_feature", since = "1.3.5")]
 pub struct Foo {}
