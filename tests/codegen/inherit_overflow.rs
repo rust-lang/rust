@@ -1,4 +1,4 @@
-// compile-flags: -Zmir-enable-passes=+Inline,+ConstProp --crate-type lib
+// compile-flags: -Zmir-enable-passes=+Inline,+GVN --crate-type lib
 // revisions: ASSERT NOASSERT
 //[ASSERT] compile-flags: -Coverflow-checks=on
 //[NOASSERT] compile-flags: -Coverflow-checks=off

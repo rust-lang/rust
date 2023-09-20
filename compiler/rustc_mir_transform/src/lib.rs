@@ -590,7 +590,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &separate_const_switch::SeparateConstSwitch,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
-            &const_prop::ConstProp,
             &dataflow_const_prop::DataflowConstProp,
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
