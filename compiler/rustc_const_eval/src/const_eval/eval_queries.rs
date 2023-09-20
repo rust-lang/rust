@@ -151,19 +151,26 @@ pub(super) fn op_to_const<'tcx>(
             Immediate::Scalar(x) => ConstValue::Scalar(x),
             Immediate::ScalarPair(a, b) => {
                 debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
-                // FIXME: assert that this has an appropriate type.
-                // Currently we actually get here for non-[u8] slices during valtree construction!
-                let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to actually allocated memory";
+                // This codepath solely exists for `valtree_to_const_value` to not need to generate
+                // a `ConstValue::Indirect` for wide references, so it is tightly restricted to just
+                // that case.
+                let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap().ty; // `false` = no raw ptrs
+                debug_assert!(
+                    matches!(
+                        ecx.tcx.struct_tail_without_normalization(pointee_ty).kind(),
+                        ty::Str | ty::Slice(..),
+                    ),
+                    "`ConstValue::Slice` is for slice-tailed types only, but got {}",
+                    imm.layout.ty,
+                );
+                let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to the beginning of an actual allocation";
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                // We use `ConstValue::Slice` so that we don't have to generate an allocation for
-                // `ConstValue::Indirect` here.
                 let (alloc_id, offset) = a.to_pointer(ecx).expect(msg).into_parts();
                 let alloc_id = alloc_id.expect(msg);
                 let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
-                let start = offset.bytes_usize();
-                let len = b.to_target_usize(ecx).expect(msg);
-                let len: usize = len.try_into().unwrap();
-                ConstValue::Slice { data, start, end: start + len }
+                assert!(offset == abi::Size::ZERO, "{}", msg);
+                let meta = b.to_target_usize(ecx).expect(msg);
+                ConstValue::Slice { data, meta }
             }
             Immediate::Uninit => bug!("`Uninit` is not a valid value for {}", op.layout.ty),
         },
