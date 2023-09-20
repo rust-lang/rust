@@ -1,12 +1,12 @@
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
-0..  1
-| Act|    └─┬──<TAG=root of the allocation>
-| Res|      └─┬──<TAG=n>
-| Res|        ├─┬──<TAG=x>
-| Res|        │ └─┬──<TAG=caller:x>
-| Res|        │   └────<TAG=callee:x> Strongly protected
-| Res|        └────<TAG=y, callee:y, caller:y>
+0..   1
+| Act |    └─┬──<TAG=root of the allocation>
+| Rs  |      └─┬──<TAG=n>
+| Rs  |        ├─┬──<TAG=x>
+| Rs  |        │ └─┬──<TAG=caller:x>
+| Rs  |        │   └────<TAG=callee:x> Strongly protected
+| Rs  |        └────<TAG=y, callee:y, caller:y>
 ──────────────────────────────────────────────────
 error: Undefined Behavior: write access through <TAG> (y, callee:y, caller:y) is forbidden
   --> $DIR/int-protected-write.rs:LL:CC
