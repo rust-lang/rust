@@ -240,21 +240,21 @@ pub struct LinkSelfContained {
 impl LinkSelfContained {
     /// Incorporates an enabled or disabled component as specified on the CLI, if possible.
     /// For example: `+linker`, and `-crto`.
-    pub(crate) fn handle_cli_component(&mut self, component: &str) -> Result<(), ()> {
+    pub(crate) fn handle_cli_component(&mut self, component: &str) -> Option<()> {
         // Note that for example `-Cself-contained=y -Cself-contained=-linker` is not an explicit
         // set of all values like `y` or `n` used to be. Therefore, if this flag had previously been
         // set in bulk with its historical values, then manually setting a component clears that
         // `explicitly_set` state.
         if let Some(component_to_enable) = component.strip_prefix('+') {
             self.explicitly_set = None;
-            self.components.insert(component_to_enable.parse()?);
-            Ok(())
+            self.components.insert(LinkSelfContainedComponents::from_str(component_to_enable)?);
+            Some(())
         } else if let Some(component_to_disable) = component.strip_prefix('-') {
             self.explicitly_set = None;
-            self.components.remove(component_to_disable.parse()?);
-            Ok(())
+            self.components.remove(LinkSelfContainedComponents::from_str(component_to_disable)?);
+            Some(())
         } else {
-            Err(())
+            None
         }
     }
 

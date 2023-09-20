@@ -539,18 +539,17 @@ bitflags::bitflags! {
     }
 }
 
-impl FromStr for LinkSelfContainedComponents {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
+impl LinkSelfContainedComponents {
+    /// Parses a single `-Clink-self-contained` well-known component, not a set of flags.
+    pub fn from_str(s: &str) -> Option<LinkSelfContainedComponents> {
+        Some(match s {
             "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
             "libc" => LinkSelfContainedComponents::LIBC,
             "unwind" => LinkSelfContainedComponents::UNWIND,
             "linker" => LinkSelfContainedComponents::LINKER,
             "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
             "mingw" => LinkSelfContainedComponents::MINGW,
-            _ => return Err(()),
+            _ => return None,
         })
     }
 }
