@@ -2758,9 +2758,8 @@ pub fn build_session_options(
     }
 
     // For testing purposes, until we have more feedback about these options: ensure `-Z
-    // unstable-options` is required when using the unstable `-C link-self-contained` options, like
-    // `-C link-self-contained=+linker`, and when using the unstable `-C linker-flavor` options, like
-    // `-C linker-flavor=gnu-lld-cc`.
+    // unstable-options` is required when using the unstable `-C link-self-contained` and `-C
+    // linker-flavor` options.
     if !nightly_options::is_unstable_enabled(matches) {
         let uses_unstable_self_contained_option =
             cg.link_self_contained.are_unstable_variants_set();
