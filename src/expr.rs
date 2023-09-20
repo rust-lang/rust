@@ -1453,7 +1453,7 @@ pub(crate) fn rewrite_paren(
     let remove_nested_parens = context.config.remove_nested_parens();
     loop {
         // 1 = "(" or ")"
-        pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span.lo());
+        pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span().lo());
         post_span = mk_sp(subexpr.span.hi(), span.hi() - BytePos(1));
         pre_comment = rewrite_missing_comment(pre_span, shape, context)?;
         post_comment = rewrite_missing_comment(post_span, shape, context)?;
