@@ -2,6 +2,7 @@ mod impl_trait_in_params;
 mod misnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
+mod renamed_function_params;
 mod result;
 mod too_many_arguments;
 mod too_many_lines;
@@ -359,6 +360,37 @@ declare_clippy_lint! {
     "`impl Trait` is used in the function's parameters"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Lints when the name of function parameters from trait impl is
+    /// different than its default implementation.
+    ///
+    /// ### Why is this bad?
+    /// Using the default name for parameters of a trait method is often
+    /// more desirable for consistency's sake.
+    ///
+    /// ### Example
+    /// ```rust
+    /// impl From<A> for String {
+    ///     fn from(a: A) -> Self {
+    ///         a.0.to_string()
+    ///     }
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// impl From<A> for String {
+    ///     fn from(value: A) -> Self {
+    ///         value.0.to_string()
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub RENAMED_FUNCTION_PARAMS,
+    restriction,
+    "renamed function parameters in trait implementation"
+}
+
 #[derive(Copy, Clone)]
 #[allow(clippy::struct_field_names)]
 pub struct Functions {
@@ -395,6 +427,7 @@ impl_lint_pass!(Functions => [
     RESULT_LARGE_ERR,
     MISNAMED_GETTERS,
     IMPL_TRAIT_IN_PARAMS,
+    RENAMED_FUNCTION_PARAMS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -424,6 +457,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         must_use::check_impl_item(cx, item);
         result::check_impl_item(cx, item, self.large_error_threshold);
         impl_trait_in_params::check_impl_item(cx, item);
+        renamed_function_params::check_impl_item(cx, item);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
