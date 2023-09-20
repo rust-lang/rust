@@ -1,5 +1,6 @@
 // unit-test: DataflowConstProp
 // compile-flags: -Zmir-enable-passes=+ConstProp,+Inline
+// ignore-debug assertions change the output MIR
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
