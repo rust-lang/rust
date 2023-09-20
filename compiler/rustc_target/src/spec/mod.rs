@@ -520,6 +520,41 @@ impl ToJson for LinkerFlavorCli {
     }
 }
 
+bitflags::bitflags! {
+    #[derive(Default)]
+    /// The `-C link-self-contained` components that can individually be enabled or disabled.
+    pub struct LinkSelfContainedComponents: u8 {
+        /// CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
+        const CRT_OBJECTS = 1 << 0;
+        /// libc static library (e.g. on `musl`, `wasi` targets)
+        const LIBC        = 1 << 1;
+        /// libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
+        const UNWIND      = 1 << 2;
+        /// Linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for `rust-lld`)
+        const LINKER      = 1 << 3;
+        /// Sanitizer runtime libraries
+        const SANITIZERS  = 1 << 4;
+        /// Other MinGW libs and Windows import libs
+        const MINGW       = 1 << 5;
+    }
+}
+
+impl FromStr for LinkSelfContainedComponents {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
+            "libc" => LinkSelfContainedComponents::LIBC,
+            "unwind" => LinkSelfContainedComponents::UNWIND,
+            "linker" => LinkSelfContainedComponents::LINKER,
+            "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
+            "mingw" => LinkSelfContainedComponents::MINGW,
+            _ => return Err(()),
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub enum PanicStrategy {
     Unwind,

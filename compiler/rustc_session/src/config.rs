@@ -12,6 +12,7 @@ use crate::{EarlyErrorHandler, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
+use rustc_target::spec::LinkSelfContainedComponents;
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
@@ -234,41 +235,6 @@ pub struct LinkSelfContained {
 
     /// The components that are enabled.
     components: LinkSelfContainedComponents,
-}
-
-bitflags::bitflags! {
-    #[derive(Default)]
-    /// The `-C link-self-contained` components that can individually be enabled or disabled.
-    pub struct LinkSelfContainedComponents: u8 {
-        /// CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
-        const CRT_OBJECTS = 1 << 0;
-        /// libc static library (e.g. on `musl`, `wasi` targets)
-        const LIBC        = 1 << 1;
-        /// libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
-        const UNWIND      = 1 << 2;
-        /// Linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for `rust-lld`)
-        const LINKER      = 1 << 3;
-        /// Sanitizer runtime libraries
-        const SANITIZERS  = 1 << 4;
-        /// Other MinGW libs and Windows import libs
-        const MINGW       = 1 << 5;
-    }
-}
-
-impl FromStr for LinkSelfContainedComponents {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
-            "libc" => LinkSelfContainedComponents::LIBC,
-            "unwind" => LinkSelfContainedComponents::UNWIND,
-            "linker" => LinkSelfContainedComponents::LINKER,
-            "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
-            "mingw" => LinkSelfContainedComponents::MINGW,
-            _ => return Err(()),
-        })
-    }
 }
 
 impl LinkSelfContained {
