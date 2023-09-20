@@ -37,23 +37,6 @@ use std::ptr::{self, NonNull};
 use std::slice;
 use std::{cmp, intrinsics};
 
-/// An arena that can hold objects of only one type.
-pub struct TypedArena<T> {
-    /// A pointer to the next object to be allocated.
-    ptr: Cell<*mut T>,
-
-    /// A pointer to the end of the allocated area. When this pointer is
-    /// reached, a new chunk is allocated.
-    end: Cell<*mut T>,
-
-    /// A vector of arena chunks.
-    chunks: RefCell<Vec<ArenaChunk<T>>>,
-
-    /// Marker indicating that dropping the arena causes its owned
-    /// instances of `T` to be dropped.
-    _own: PhantomData<T>,
-}
-
 struct ArenaChunk<T = u8> {
     /// The raw storage for the arena chunk.
     storage: NonNull<[MaybeUninit<T>]>,
@@ -122,20 +105,6 @@ impl<T> ArenaChunk<T> {
 // the usual sizes of pages and huge pages on Linux.
 const PAGE: usize = 4096;
 const HUGE_PAGE: usize = 2 * 1024 * 1024;
-
-impl<T> Default for TypedArena<T> {
-    /// Creates a new `TypedArena`.
-    fn default() -> TypedArena<T> {
-        TypedArena {
-            // We set both `ptr` and `end` to 0 so that the first call to
-            // alloc() will trigger a grow().
-            ptr: Cell::new(ptr::null_mut()),
-            end: Cell::new(ptr::null_mut()),
-            chunks: Default::default(),
-            _own: PhantomData,
-        }
-    }
-}
 
 /// Implemented for various collection types.
 trait IterExt<A, T> {
@@ -209,6 +178,37 @@ where
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             self.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
+        }
+    }
+}
+
+/// An arena that can hold objects of only one type.
+pub struct TypedArena<T> {
+    /// A pointer to the next object to be allocated.
+    ptr: Cell<*mut T>,
+
+    /// A pointer to the end of the allocated area. When this pointer is
+    /// reached, a new chunk is allocated.
+    end: Cell<*mut T>,
+
+    /// A vector of arena chunks.
+    chunks: RefCell<Vec<ArenaChunk<T>>>,
+
+    /// Marker indicating that dropping the arena causes its owned
+    /// instances of `T` to be dropped.
+    _own: PhantomData<T>,
+}
+
+impl<T> Default for TypedArena<T> {
+    /// Creates a new `TypedArena`.
+    fn default() -> TypedArena<T> {
+        TypedArena {
+            // We set both `ptr` and `end` to 0 so that the first call to
+            // alloc() will trigger a grow().
+            ptr: Cell::new(ptr::null_mut()),
+            end: Cell::new(ptr::null_mut()),
+            chunks: Default::default(),
+            _own: PhantomData,
         }
     }
 }
