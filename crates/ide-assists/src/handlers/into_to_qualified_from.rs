@@ -36,7 +36,7 @@ use crate::assist_context::{AssistContext, Assists};
 //
 // fn main() -> () {
 //     let a = 3;
-//     let b: B = B::from(a);
+//     let b: B = <B>::from(a);
 // }
 // ```
 pub(crate) fn into_to_qualified_from(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
