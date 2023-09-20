@@ -673,11 +673,15 @@ pub(crate) unsafe fn enzyme_ad(
         CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
 
     llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
+
     if std::env::var("ENZYME_PRINT_TA").is_ok() {
       llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
     }
     if std::env::var("ENZYME_PRINT_AA").is_ok() {
         llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintActivity), 1);
+    }
+    if std::env::var("ENZYME_PRINT_PERF").is_ok() {
+      llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintPerf), 1);
     }
     if std::env::var("ENZYME_PRINT").is_ok() {
         llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
@@ -733,22 +737,29 @@ pub(crate) unsafe fn differentiate(
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
     _typetrees: FxHashMap<String, DiffTypeTree>,
-    config: &ModuleConfig,
+    _config: &ModuleConfig,
 ) -> Result<(), FatalError> {
     let llmod = module.module_llvm.llmod();
     let llcx = &module.module_llvm.llcx;
-
-    if config.enzyme_print_activity {
-        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintActivity), 1);
-        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
-        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
-    }
 
     llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
 
     if std::env::var("ENZYME_PRINT_MOD").is_ok() {
         unsafe {LLVMDumpModule(llmod);}
     }
+    if std::env::var("ENZYME_TT_DEPTH").is_ok() {
+        let depth = std::env::var("ENZYME_TT_DEPTH").unwrap();
+        let depth = depth.parse::<i64>().unwrap();
+        assert!(depth >= 1);
+        llvm::EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::EnzymeMaxTypeDepth), depth);
+    }
+    if std::env::var("ENZYME_TT_WIDTH").is_ok() {
+        let width = std::env::var("ENZYME_TT_WIDTH").unwrap();
+        let width = width.parse::<i64>().unwrap();
+        assert!(width >= 1);
+        llvm::EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::MaxTypeOffset), width);
+    }
+
     for item in diff_items {
         let res = enzyme_ad(llmod, llcx, item);
         assert!(res.is_ok());
