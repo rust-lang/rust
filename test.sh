@@ -220,6 +220,7 @@ changelog-seen = 2
 [rust]
 codegen-backends = []
 deny-warnings = false
+verbose-tests = true
 
 [build]
 cargo = "$(rustup which cargo)"

@@ -37,3 +37,4 @@ tests/ui/simd/intrinsic/generic-gather-pass.rs
 tests/ui/simd/issue-85915-simd-ptrs.rs
 tests/ui/issues/issue-68010-large-zst-consts.rs
 tests/ui/rust-2018/proc-macro-crate-in-paths.rs
+tests/ui/target-feature/missing-plusminus.rs

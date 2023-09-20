@@ -922,6 +922,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // require dereferencing the pointer.
         for index in indices {
             pointee_type = pointee_type.get_pointee().expect("pointee type");
+            #[cfg(feature="master")]
+            let pointee_size = {
+                let size = self.cx.context.new_sizeof(pointee_type);
+                self.context.new_cast(None, size, index.get_type())
+            };
+            #[cfg(not(feature="master"))]
             let pointee_size = self.context.new_rvalue_from_int(index.get_type(), pointee_type.get_size() as i32);
             result = result + self.gcc_int_cast(*index * pointee_size, self.sizet_type);
         }
