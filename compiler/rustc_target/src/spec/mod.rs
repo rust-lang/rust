@@ -278,6 +278,7 @@ impl LinkerFlavor {
         }
     }
 
+    /// Returns the corresponding backwards-compatible CLI flavor.
     fn to_cli(self) -> LinkerFlavorCli {
         match self {
             LinkerFlavor::Gnu(Cc::Yes, _)
@@ -293,6 +294,20 @@ impl LinkerFlavor {
             LinkerFlavor::Msvc(Lld::Yes) => LinkerFlavorCli::Lld(LldFlavor::Link),
             LinkerFlavor::Msvc(..) => LinkerFlavorCli::Msvc(Lld::No),
             LinkerFlavor::EmCc => LinkerFlavorCli::Em,
+            LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
+            LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
+        }
+    }
+
+    /// Returns the modern CLI flavor that is the counterpart of this flavor.
+    fn to_cli_counterpart(self) -> LinkerFlavorCli {
+        match self {
+            LinkerFlavor::Gnu(cc, lld) => LinkerFlavorCli::Gnu(cc, lld),
+            LinkerFlavor::Darwin(cc, lld) => LinkerFlavorCli::Darwin(cc, lld),
+            LinkerFlavor::WasmLld(cc) => LinkerFlavorCli::WasmLld(cc),
+            LinkerFlavor::Unix(cc) => LinkerFlavorCli::Unix(cc),
+            LinkerFlavor::Msvc(lld) => LinkerFlavorCli::Msvc(lld),
+            LinkerFlavor::EmCc => LinkerFlavorCli::EmCc,
             LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
             LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
         }
@@ -2273,7 +2288,7 @@ impl TargetOptions {
     }
 
     fn update_to_cli(&mut self) {
-        self.linker_flavor_json = self.linker_flavor.to_cli();
+        self.linker_flavor_json = self.linker_flavor.to_cli_counterpart();
         self.lld_flavor_json = self.linker_flavor.lld_flavor();
         self.linker_is_gnu_json = self.linker_flavor.is_gnu();
         for (args, args_json) in [
@@ -2283,8 +2298,10 @@ impl TargetOptions {
             (&self.late_link_args_static, &mut self.late_link_args_static_json),
             (&self.post_link_args, &mut self.post_link_args_json),
         ] {
-            *args_json =
-                args.iter().map(|(flavor, args)| (flavor.to_cli(), args.clone())).collect();
+            *args_json = args
+                .iter()
+                .map(|(flavor, args)| (flavor.to_cli_counterpart(), args.clone()))
+                .collect();
         }
     }
 }
