@@ -159,7 +159,15 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline(always)]
     pub fn from_immediate(imm: Immediate<Prov>, layout: TyAndLayout<'tcx>) -> Self {
-        debug_assert!(layout.is_sized(), "immediates must be sized");
+        debug_assert!(
+            match (imm, layout.abi) {
+                (Immediate::Scalar(..), Abi::Scalar(..)) => true,
+                (Immediate::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                (Immediate::Uninit, _) if layout.is_sized() => true,
+                _ => false,
+            },
+            "immediate {imm:?} does not fit to layout {layout:?}",
+        );
         ImmTy { imm, layout }
     }
 
@@ -448,7 +456,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     alloc_range(Size::ZERO, size),
                     /*read_provenance*/ matches!(s, abi::Pointer(_)),
                 )?;
-                Some(ImmTy { imm: scalar.into(), layout: mplace.layout })
+                Some(ImmTy::from_scalar(scalar, mplace.layout))
             }
             Abi::ScalarPair(
                 abi::Scalar::Initialized { value: a, .. },
@@ -468,7 +476,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     alloc_range(b_offset, b_size),
                     /*read_provenance*/ matches!(b, abi::Pointer(_)),
                 )?;
-                Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout })
+                Some(ImmTy::from_immediate(Immediate::ScalarPair(a_val, b_val), mplace.layout))
             }
             _ => {
                 // Neither a scalar nor scalar pair.
