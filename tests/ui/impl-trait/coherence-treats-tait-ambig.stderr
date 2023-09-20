@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Into<T>` for type `Foo`
-  --> $DIR/coherence-treats-tait-ambig.rs:10:1
+  --> $DIR/coherence-treats-tait-ambig.rs:7:1
    |
 LL | impl Into<T> for Foo {
    | ^^^^^^^^^^^^^^^^^^^^
