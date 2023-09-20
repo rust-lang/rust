@@ -416,6 +416,9 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"));
     }
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::INTERRUPT) {
+        to_add.push(llvm::CreateAttrString(cx.llcx, "interrupt"));
+    }
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align as usize);
     }

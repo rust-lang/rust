@@ -694,4 +694,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         omit_gdb_pretty_printer_section, Normal, template!(Word), WarnFollowing,
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
+
+    ungated!(interrupt, Normal, template!(Word), ErrorPreceding),
 ];

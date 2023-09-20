@@ -227,6 +227,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 }
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY
             }
+            sym::interrupt => codegen_fn_attrs.flags |= CodegenFnAttrFlags::INTERRUPT,
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::track_caller => {
                 let is_closure = tcx.is_closure_like(did.to_def_id());

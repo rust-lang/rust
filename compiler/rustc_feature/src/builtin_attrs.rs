@@ -950,6 +950,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         TEST, pattern_complexity, CrateLevel, template!(NameValueStr: "N"),
         ErrorFollowing, @only_local: true,
     ),
+    ungated!(interrupt, Normal, template!(Word), ErrorPreceding),
 ];
 
 pub fn deprecated_attributes() -> Vec<&'static BuiltinAttribute> {

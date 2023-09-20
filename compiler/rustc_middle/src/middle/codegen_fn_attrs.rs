@@ -100,6 +100,8 @@ bitflags! {
         const ALLOCATOR_ZEROED          = 1 << 18;
         /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
         const NO_BUILTINS               = 1 << 19;
+        /// `#[interrupt]`: this function is meant to serve as a platform-specific interrupt
+        const INTERRUPT                 = 1 << 20;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }

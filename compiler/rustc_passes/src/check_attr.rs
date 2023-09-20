@@ -180,6 +180,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 sym::cmse_nonsecure_entry => {
                     self.check_cmse_nonsecure_entry(hir_id, attr, span, target)
                 }
+                sym::interrupt => self.check_interrupt(hir_id, attr, span, target),
                 sym::collapse_debuginfo => self.check_collapse_debuginfo(attr, span, target),
                 sym::must_not_suspend => self.check_must_not_suspend(attr, span, target),
                 sym::must_use => self.check_must_use(hir_id, attr, target),
@@ -463,6 +464,27 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
+                    attr_span: attr.span,
+                    defn_span: span,
+                    on_crate: hir_id == CRATE_HIR_ID,
+                });
+                false
+            }
+        }
+    }
+
+    /// Checks if `#[interrupt]` is applied to a function definition.
+    fn check_interrupt(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        match target {
+            Target::Fn => true,
+            _ => {
+                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToFn {
                     attr_span: attr.span,
                     defn_span: span,
                     on_crate: hir_id == CRATE_HIR_ID,
