@@ -1,15 +1,14 @@
-//! Copyright © 2014–2022 Chris Morgan
-//! https://github.com/chris-morgan/anymap/blob/master/COPYING
-//! Copyright © 2014–2022 Chris Morgan
-//! https://github.com/chris-morgan/anymap/blob/master/COPYING
+//! This file is a port of only the necessary features from https://github.com/chris-morgan/anymap version 1.0.0-beta.2 for use within rust-analyzer.
+//! Copyright © 2014–2022 Chris Morgan. COPYING: https://github.com/chris-morgan/anymap/blob/master/COPYING"
+//! Note that the license is changed from Blue Oak Model 1.0.0 or MIT or Apache-2.0 to MIT OR Apache-2.0
 //!
-//! This crate provides a safe and convenient store for one value of each type.
+//! This implementation provides a safe and convenient store for one value of each type.
 //!
 //! Your starting point is [`Map`]. It has an example.
 //!
 //! # Cargo features
 //!
-//! This crate has two independent features, each of which provides an implementation providing
+//! This implementation has two independent features, each of which provides an implementation providing
 //! types `Map`, `AnyMap`, `OccupiedEntry`, `VacantEntry`, `Entry` and `RawMap`:
 //!
 //! - **std** (default, *enabled* in this build):
