@@ -806,14 +806,9 @@ impl Step for Enzyme {
 
         builder.update_submodule(&Path::new("src").join("tools").join("enzyme"));
         let mut cfg = cmake::Config::new(builder.src.join("src/tools/enzyme/enzyme/"));
-        cfg.profile("Debug");
-        // let dst = Config::new("libfoo")
-        //                  .define("FOO", "BAR")
-        //                  .cflag("-foo")
-        //cfg.profile = Some("Debug".to_string());
-        // add -DCMAKE_BUILD_TYPE=Release to builders
-        cfg.define("CMAKE_BUILD_TYPE", "Debug");
-        //cfg.build_type("Debug");
+        // TODO: Find a nicer way to use Enzyme Debug builds
+        //cfg.profile("Debug");
+        //cfg.define("CMAKE_BUILD_TYPE", "Debug");
         configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), &[]);
 
         // Re-use the same flags as llvm to control the level of debug information
