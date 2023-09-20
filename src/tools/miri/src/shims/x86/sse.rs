@@ -5,7 +5,7 @@ use rustc_target::spec::abi::Abi;
 
 use rand::Rng as _;
 
-use super::FloatCmpOp;
+use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp, FloatCmpOp};
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 
@@ -45,7 +45,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                bin_op_ss(this, which, left, right, dest)?;
+                bin_op_simd_float_first::<Single>(this, which, left, right, dest)?;
             }
             // Used to implement _mm_min_ps and _mm_max_ps functions.
             // Note that the semantics are a bit different from Rust simd_min
@@ -62,7 +62,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                bin_op_ps(this, which, left, right, dest)?;
+                bin_op_simd_float_all::<Single>(this, which, left, right, dest)?;
             }
             // Used to implement _mm_{sqrt,rcp,rsqrt}_ss functions.
             // Performs the operations on the first component of `op` and
@@ -106,7 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "llvm.x86.sse.cmp.ss",
                 )?);
 
-                bin_op_ss(this, which, left, right, dest)?;
+                bin_op_simd_float_first::<Single>(this, which, left, right, dest)?;
             }
             // Used to implement the _mm_cmp_ps function.
             // Performs a comparison operation on each component of `left`
@@ -121,7 +121,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "llvm.x86.sse.cmp.ps",
                 )?);
 
-                bin_op_ps(this, which, left, right, dest)?;
+                bin_op_simd_float_all::<Single>(this, which, left, right, dest)?;
             }
             // Used to implement _mm_{,u}comi{eq,lt,le,gt,ge,neq}_ss functions.
             // Compares the first component of `left` and `right` and returns
@@ -154,9 +154,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
                 this.write_scalar(Scalar::from_i32(i32::from(res)), dest)?;
             }
-            // Use to implement _mm_cvtss_si32 and _mm_cvttss_si32.
-            // Converts the first component of `op` from f32 to i32.
-            "cvtss2si" | "cvttss2si" => {
+            // Use to implement the _mm_cvtss_si32, _mm_cvttss_si32,
+            // _mm_cvtss_si64 and _mm_cvttss_si64 functions.
+            // Converts the first component of `op` from f32 to i32/i64.
+            "cvtss2si" | "cvttss2si" | "cvtss2si64" | "cvttss2si64" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let (op, _) = this.operand_to_simd(op)?;
 
@@ -165,51 +166,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
                     // https://www.felixcloutier.com/x86/cvtss2si
-                    "cvtss2si" => rustc_apfloat::Round::NearestTiesToEven,
+                    "cvtss2si" | "cvtss2si64" => rustc_apfloat::Round::NearestTiesToEven,
                     // always truncate
                     // https://www.felixcloutier.com/x86/cvttss2si
-                    "cvttss2si" => rustc_apfloat::Round::TowardZero,
+                    "cvttss2si" | "cvttss2si64" => rustc_apfloat::Round::TowardZero,
                     _ => unreachable!(),
                 };
 
                 let res = this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
                     // Fallback to minimum acording to SSE semantics.
-                    Scalar::from_i32(i32::MIN)
+                    Scalar::from_int(dest.layout.size.signed_int_min(), dest.layout.size)
                 });
 
                 this.write_scalar(res, dest)?;
             }
-            // Use to implement _mm_cvtss_si64 and _mm_cvttss_si64.
-            // Converts the first component of `op` from f32 to i64.
-            "cvtss2si64" | "cvttss2si64" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let (op, _) = this.operand_to_simd(op)?;
-
-                let op = this.read_scalar(&this.project_index(&op, 0)?)?.to_f32()?;
-
-                let rnd = match unprefixed_name {
-                    // "current SSE rounding mode", assume nearest
-                    // https://www.felixcloutier.com/x86/cvtss2si
-                    "cvtss2si64" => rustc_apfloat::Round::NearestTiesToEven,
-                    // always truncate
-                    // https://www.felixcloutier.com/x86/cvttss2si
-                    "cvttss2si64" => rustc_apfloat::Round::TowardZero,
-                    _ => unreachable!(),
-                };
-
-                let res = this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
-                    // Fallback to minimum acording to SSE semantics.
-                    Scalar::from_i64(i64::MIN)
-                });
-
-                this.write_scalar(res, dest)?;
-            }
-            // Used to implement the _mm_cvtsi32_ss function.
-            // Converts `right` from i32 to f32. Returns a SIMD vector with
+            // Used to implement the _mm_cvtsi32_ss and _mm_cvtsi64_ss functions.
+            // Converts `right` from i32/i64 to f32. Returns a SIMD vector with
             // the result in the first component and the remaining components
             // are copied from `left`.
             // https://www.felixcloutier.com/x86/cvtsi2ss
-            "cvtsi2ss" => {
+            "cvtsi2ss" | "cvtsi642ss" => {
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
@@ -218,42 +194,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 assert_eq!(dest_len, left_len);
 
-                let right = this.read_scalar(right)?.to_i32()?;
-
-                let res0 = Scalar::from_f32(Single::from_i128(right.into()).value);
-                this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
-
-                for i in 1..dest_len {
-                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    this.write_immediate(*left, &dest)?;
-                }
-            }
-            // Used to implement the _mm_cvtsi64_ss function.
-            // Converts `right` from i64 to f32. Returns a SIMD vector with
-            // the result in the first component and the remaining components
-            // are copied from `left`.
-            // https://www.felixcloutier.com/x86/cvtsi2ss
-            "cvtsi642ss" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-
-                let right = this.read_scalar(right)?.to_i64()?;
-
-                let res0 = Scalar::from_f32(Single::from_i128(right.into()).value);
-                this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
+                let right = this.read_immediate(right)?;
+                let dest0 = this.project_index(&dest, 0)?;
+                let res0 = this.int_to_int_or_float(&right, dest0.layout.ty)?;
+                this.write_immediate(res0, &dest0)?;
 
                 for i in 1..dest_len {
-                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    this.write_immediate(*left, &dest)?;
+                    this.copy_op(
+                        &this.project_index(&left, i)?,
+                        &this.project_index(&dest, i)?,
+                        /*allow_transmute*/ false,
+                    )?;
                 }
             }
             // Used to implement the _mm_movemask_ps function.
@@ -279,148 +230,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         Ok(EmulateByNameResult::NeedsJumping)
     }
-}
-
-#[derive(Copy, Clone)]
-enum FloatBinOp {
-    /// Arithmetic operation
-    Arith(mir::BinOp),
-    /// Comparison
-    Cmp(FloatCmpOp),
-    /// Minimum value (with SSE semantics)
-    ///
-    /// <https://www.felixcloutier.com/x86/minss>
-    /// <https://www.felixcloutier.com/x86/minps>
-    Min,
-    /// Maximum value (with SSE semantics)
-    ///
-    /// <https://www.felixcloutier.com/x86/maxss>
-    /// <https://www.felixcloutier.com/x86/maxps>
-    Max,
-}
-
-/// Performs `which` scalar operation on `left` and `right` and returns
-/// the result.
-fn bin_op_f32<'tcx>(
-    this: &crate::MiriInterpCx<'_, 'tcx>,
-    which: FloatBinOp,
-    left: &ImmTy<'tcx, Provenance>,
-    right: &ImmTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, Scalar<Provenance>> {
-    match which {
-        FloatBinOp::Arith(which) => {
-            let (res, _, _) = this.overflowing_binary_op(which, left, right)?;
-            Ok(res)
-        }
-        FloatBinOp::Cmp(which) => {
-            let left = left.to_scalar().to_f32()?;
-            let right = right.to_scalar().to_f32()?;
-            // FIXME: Make sure that these operations match the semantics of cmpps
-            let res = match which {
-                FloatCmpOp::Eq => left == right,
-                FloatCmpOp::Lt => left < right,
-                FloatCmpOp::Le => left <= right,
-                FloatCmpOp::Unord => left.is_nan() || right.is_nan(),
-                FloatCmpOp::Neq => left != right,
-                FloatCmpOp::Nlt => !(left < right),
-                FloatCmpOp::Nle => !(left <= right),
-                FloatCmpOp::Ord => !left.is_nan() && !right.is_nan(),
-            };
-            Ok(Scalar::from_u32(if res { u32::MAX } else { 0 }))
-        }
-        FloatBinOp::Min => {
-            let left = left.to_scalar().to_f32()?;
-            let right = right.to_scalar().to_f32()?;
-            // SSE semantics to handle zero and NaN. Note that `x == Single::ZERO`
-            // is true when `x` is either +0 or -0.
-            if (left == Single::ZERO && right == Single::ZERO)
-                || left.is_nan()
-                || right.is_nan()
-                || left >= right
-            {
-                Ok(Scalar::from_f32(right))
-            } else {
-                Ok(Scalar::from_f32(left))
-            }
-        }
-        FloatBinOp::Max => {
-            let left = left.to_scalar().to_f32()?;
-            let right = right.to_scalar().to_f32()?;
-            // SSE semantics to handle zero and NaN. Note that `x == Single::ZERO`
-            // is true when `x` is either +0 or -0.
-            if (left == Single::ZERO && right == Single::ZERO)
-                || left.is_nan()
-                || right.is_nan()
-                || left <= right
-            {
-                Ok(Scalar::from_f32(right))
-            } else {
-                Ok(Scalar::from_f32(left))
-            }
-        }
-    }
-}
-
-/// Performs `which` operation on the first component of `left` and `right`
-/// and copies the other components from `left`. The result is stored in `dest`.
-fn bin_op_ss<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    which: FloatBinOp,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
-
-    assert_eq!(dest_len, left_len);
-    assert_eq!(dest_len, right_len);
-
-    let res0 = bin_op_f32(
-        this,
-        which,
-        &this.read_immediate(&this.project_index(&left, 0)?)?,
-        &this.read_immediate(&this.project_index(&right, 0)?)?,
-    )?;
-    this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
-
-    for i in 1..dest_len {
-        let left = this.read_immediate(&this.project_index(&left, i)?)?;
-        let dest = this.project_index(&dest, i)?;
-
-        this.write_immediate(*left, &dest)?;
-    }
-
-    Ok(())
-}
-
-/// Performs `which` operation on each component of `left` and
-/// `right`, storing the result is stored in `dest`.
-fn bin_op_ps<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    which: FloatBinOp,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
-
-    assert_eq!(dest_len, left_len);
-    assert_eq!(dest_len, right_len);
-
-    for i in 0..dest_len {
-        let left = this.read_immediate(&this.project_index(&left, i)?)?;
-        let right = this.read_immediate(&this.project_index(&right, i)?)?;
-        let dest = this.project_index(&dest, i)?;
-
-        let res = bin_op_f32(this, which, &left, &right)?;
-        this.write_scalar(res, &dest)?;
-    }
-
-    Ok(())
 }
 
 #[derive(Copy, Clone)]
@@ -510,10 +319,11 @@ fn unary_op_ss<'tcx>(
     this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
 
     for i in 1..dest_len {
-        let op = this.read_immediate(&this.project_index(&op, i)?)?;
-        let dest = this.project_index(&dest, i)?;
-
-        this.write_immediate(*op, &dest)?;
+        this.copy_op(
+            &this.project_index(&op, i)?,
+            &this.project_index(&dest, i)?,
+            /*allow_transmute*/ false,
+        )?;
     }
 
     Ok(())

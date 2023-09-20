@@ -14,7 +14,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{
     self,
     layout::{IntegerExt as _, LayoutOf, TyAndLayout},
-    Ty, TyCtxt,
+    IntTy, Ty, TyCtxt, UintTy,
 };
 use rustc_span::{def_id::CrateNum, sym, Span, Symbol};
 use rustc_target::abi::{Align, FieldIdx, FieldsShape, Integer, Size, Variants};
@@ -1066,6 +1066,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ),
         }
     }
+
+    /// Returns an integer type that is twice wide as `ty`
+    fn get_twice_wide_int_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let this = self.eval_context_ref();
+        match ty.kind() {
+            // Unsigned
+            ty::Uint(UintTy::U8) => this.tcx.types.u16,
+            ty::Uint(UintTy::U16) => this.tcx.types.u32,
+            ty::Uint(UintTy::U32) => this.tcx.types.u64,
+            ty::Uint(UintTy::U64) => this.tcx.types.u128,
+            // Signed
+            ty::Int(IntTy::I8) => this.tcx.types.i16,
+            ty::Int(IntTy::I16) => this.tcx.types.i32,
+            ty::Int(IntTy::I32) => this.tcx.types.i64,
+            ty::Int(IntTy::I64) => this.tcx.types.i128,
+            _ => span_bug!(this.cur_span(), "unexpected type: {ty:?}"),
+        }
+    }
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -1150,4 +1168,21 @@ pub fn get_local_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
 /// `target_os` is a supported UNIX OS.
 pub fn target_os_is_unix(target_os: &str) -> bool {
     matches!(target_os, "linux" | "macos" | "freebsd" | "android")
+}
+
+pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Provenance> {
+    // SIMD uses all-1 as pattern for "true". In two's complement,
+    // -1 has all its bits set to one and `from_int` will truncate or
+    // sign-extend it to `size` as required.
+    let val = if b { -1 } else { 0 };
+    Scalar::from_int(val, size)
+}
+
+pub(crate) fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<'_, bool> {
+    let val = elem.to_scalar().to_int(elem.layout.size)?;
+    Ok(match val {
+        0 => false,
+        -1 => true,
+        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
+    })
 }

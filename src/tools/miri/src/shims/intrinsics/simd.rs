@@ -1,10 +1,10 @@
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
-use rustc_target::abi::{Endian, HasDataLayout, Size};
+use rustc_target::abi::{Endian, HasDataLayout};
 
 use crate::*;
-use helpers::check_arg_count;
+use helpers::{bool_to_simd_element, check_arg_count, simd_element_to_bool};
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -610,21 +610,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         Ok(())
     }
-}
-
-fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Provenance> {
-    // SIMD uses all-1 as pattern for "true"
-    let val = if b { -1 } else { 0 };
-    Scalar::from_int(val, size)
-}
-
-fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<'_, bool> {
-    let val = elem.to_scalar().to_int(elem.layout.size)?;
-    Ok(match val {
-        0 => false,
-        -1 => true,
-        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
-    })
 }
 
 fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {

@@ -174,6 +174,16 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
+    pub fn from_i8(i: i8) -> Self {
+        Self::from_int(i, Size::from_bits(8))
+    }
+
+    #[inline]
+    pub fn from_i16(i: i16) -> Self {
+        Self::from_int(i, Size::from_bits(16))
+    }
+
+    #[inline]
     pub fn from_i32(i: i32) -> Self {
         Self::from_int(i, Size::from_bits(32))
     }
@@ -401,14 +411,18 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     }
 
     #[inline]
+    pub fn to_float<F: Float>(self) -> InterpResult<'tcx, F> {
+        // Going through `to_uint` to check size and truncation.
+        Ok(F::from_bits(self.to_uint(Size::from_bits(F::BITS))?))
+    }
+
+    #[inline]
     pub fn to_f32(self) -> InterpResult<'tcx, Single> {
-        // Going through `u32` to check size and truncation.
-        Ok(Single::from_bits(self.to_u32()?.into()))
+        self.to_float()
     }
 
     #[inline]
     pub fn to_f64(self) -> InterpResult<'tcx, Double> {
-        // Going through `u64` to check size and truncation.
-        Ok(Double::from_bits(self.to_u64()?.into()))
+        self.to_float()
     }
 }
