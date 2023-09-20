@@ -1,0 +1,21 @@
+error[E0658]: mutable references are not allowed in constant functions
+  --> $DIR/issue-114994-fail.rs:6:27
+   |
+LL | const fn use_mut_const_fn(_f: &mut fn(&mut String)) {
+   |                           ^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+
+error[E0658]: mutable references are not allowed in constant functions
+  --> $DIR/issue-114994-fail.rs:10:33
+   |
+LL | const fn use_mut_const_tuple_fn(_f: (fn(), &mut u32)) {
+   |                                 ^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
