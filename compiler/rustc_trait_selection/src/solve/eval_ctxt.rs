@@ -344,7 +344,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
-        let mut goal_evaluation = self.inspect.new_goal_evaluation(goal, goal_evaluation_kind);
+        let mut goal_evaluation =
+            self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let encountered_overflow = self.search_graph.encountered_overflow();
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
             self.tcx(),
@@ -568,7 +569,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::Yes },
                 unconstrained_goal,
             )?;
-            self.add_goals(instantiate_goals);
+            self.nested_goals.goals.extend(instantiate_goals);
 
             // Finally, equate the goal's RHS with the unconstrained var.
             // We put the nested goals from this into goals instead of
@@ -605,7 +606,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::No },
                 goal,
             )?;
-            self.add_goals(instantiate_goals);
+            self.nested_goals.goals.extend(instantiate_goals);
             if has_changed {
                 unchanged_certainty = None;
             }
@@ -613,7 +614,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe(_) => {
-                    self.add_goal(goal);
+                    self.nested_goals.goals.push(goal);
                     unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
                 }
             }

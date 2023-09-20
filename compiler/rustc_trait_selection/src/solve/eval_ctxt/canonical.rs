@@ -10,17 +10,21 @@
 //! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
 use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
-use crate::solve::{response_no_constraints_raw, CanonicalResponse, QueryResult, Response};
+use crate::solve::{
+    inspect, response_no_constraints_raw, CanonicalResponse, QueryResult, Response,
+};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
-use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
+use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
 };
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
     self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
@@ -28,6 +32,22 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
+
+trait ResponseT<'tcx> {
+    fn var_values(&self) -> CanonicalVarValues<'tcx>;
+}
+
+impl<'tcx> ResponseT<'tcx> for Response<'tcx> {
+    fn var_values(&self) -> CanonicalVarValues<'tcx> {
+        self.var_values
+    }
+}
+
+impl<'tcx, T> ResponseT<'tcx> for inspect::State<'tcx, T> {
+    fn var_values(&self) -> CanonicalVarValues<'tcx> {
+        self.var_values
+    }
+}
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// Canonicalizes the goal remembering the original values
@@ -188,12 +208,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
     ) -> Result<(Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
-        let substitution = self.compute_query_response_substitution(&original_values, &response);
+        let substitution =
+            Self::compute_query_response_substitution(self.infcx, &original_values, &response);
 
         let Response { var_values, external_constraints, certainty } =
             response.substitute(self.tcx(), &substitution);
 
-        let nested_goals = self.unify_query_var_values(param_env, &original_values, var_values)?;
+        let nested_goals =
+            Self::unify_query_var_values(self.infcx, param_env, &original_values, var_values)?;
 
         let ExternalConstraintsData { region_constraints, opaque_types } =
             external_constraints.deref();
@@ -206,21 +228,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// This returns the substitutions to instantiate the bound variables of
     /// the canonical response. This depends on the `original_values` for the
     /// bound variables.
-    fn compute_query_response_substitution(
-        &self,
+    fn compute_query_response_substitution<T: ResponseT<'tcx>>(
+        infcx: &InferCtxt<'tcx>,
         original_values: &[ty::GenericArg<'tcx>],
-        response: &CanonicalResponse<'tcx>,
+        response: &Canonical<'tcx, T>,
     ) -> CanonicalVarValues<'tcx> {
         // FIXME: Longterm canonical queries should deal with all placeholders
         // created inside of the query directly instead of returning them to the
         // caller.
-        let prev_universe = self.infcx.universe();
+        let prev_universe = infcx.universe();
         let universes_created_in_query = response.max_universe.index();
         for _ in 0..universes_created_in_query {
-            self.infcx.create_next_universe();
+            infcx.create_next_universe();
         }
 
-        let var_values = response.value.var_values;
+        let var_values = response.value.var_values();
         assert_eq!(original_values.len(), var_values.len());
 
         // If the query did not make progress with constraining inference variables,
@@ -254,13 +276,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
 
-        let var_values = self.tcx().mk_args_from_iter(response.variables.iter().enumerate().map(
+        let var_values = infcx.tcx.mk_args_from_iter(response.variables.iter().enumerate().map(
             |(index, info)| {
                 if info.universe() != ty::UniverseIndex::ROOT {
                     // A variable from inside a binder of the query. While ideally these shouldn't
                     // exist at all (see the FIXME at the start of this method), we have to deal with
                     // them for now.
-                    self.infcx.instantiate_canonical_var(DUMMY_SP, info, |idx| {
+                    infcx.instantiate_canonical_var(DUMMY_SP, info, |idx| {
                         ty::UniverseIndex::from(prev_universe.index() + idx.index())
                     })
                 } else if info.is_existential() {
@@ -274,7 +296,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     if let Some(v) = opt_values[BoundVar::from_usize(index)] {
                         v
                     } else {
-                        self.infcx.instantiate_canonical_var(DUMMY_SP, info, |_| prev_universe)
+                        infcx.instantiate_canonical_var(DUMMY_SP, info, |_| prev_universe)
                     }
                 } else {
                     // For placeholders which were already part of the input, we simply map this
@@ -287,9 +309,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         CanonicalVarValues { var_values }
     }
 
-    #[instrument(level = "debug", skip(self, param_env), ret)]
+    #[instrument(level = "debug", skip(infcx, param_env), ret)]
     fn unify_query_var_values(
-        &self,
+        infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &[ty::GenericArg<'tcx>],
         var_values: CanonicalVarValues<'tcx>,
@@ -298,7 +320,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let mut nested_goals = vec![];
         for (&orig, response) in iter::zip(original_values, var_values.var_values) {
-            nested_goals.extend(self.eq_and_get_goals(param_env, orig, response)?);
+            nested_goals.extend(
+                infcx
+                    .at(&ObligationCause::dummy(), param_env)
+                    .eq(DefineOpaqueTypes::No, orig, response)
+                    .map(|InferOk { value: (), obligations }| {
+                        obligations.into_iter().map(|o| Goal::from(o))
+                    })
+                    .map_err(|e| {
+                        debug!(?e, "failed to equate");
+                        NoSolution
+                    })?,
+            );
         }
 
         Ok(nested_goals)
@@ -401,5 +434,37 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerResolver<'_, 'tcx> {
                 }
             }
         }
+    }
+}
+
+impl<'tcx> inspect::ProofTreeBuilder<'tcx> {
+    pub fn make_canonical_state<T: TypeFoldable<TyCtxt<'tcx>>>(
+        ecx: &EvalCtxt<'_, 'tcx>,
+        data: T,
+    ) -> inspect::CanonicalState<'tcx, T> {
+        let state = inspect::State { var_values: ecx.var_values, data };
+        let state = state.fold_with(&mut EagerResolver { infcx: ecx.infcx });
+        Canonicalizer::canonicalize(
+            ecx.infcx,
+            CanonicalizeMode::Response { max_input_universe: ecx.max_input_universe },
+            &mut vec![],
+            state,
+        )
+    }
+
+    pub fn instantiate_canonical_state<T: TypeFoldable<TyCtxt<'tcx>>>(
+        infcx: &InferCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        original_values: &[ty::GenericArg<'tcx>],
+        state: inspect::CanonicalState<'tcx, T>,
+    ) -> Result<(Vec<Goal<'tcx, ty::Predicate<'tcx>>>, T), NoSolution> {
+        let substitution =
+            EvalCtxt::compute_query_response_substitution(infcx, original_values, &state);
+
+        let inspect::State { var_values, data } = state.substitute(infcx.tcx, &substitution);
+
+        let nested_goals =
+            EvalCtxt::unify_query_var_values(infcx, param_env, original_values, var_values)?;
+        Ok((nested_goals, data))
     }
 }
