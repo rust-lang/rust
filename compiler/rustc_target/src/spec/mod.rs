@@ -520,6 +520,92 @@ impl ToJson for LinkerFlavorCli {
     }
 }
 
+/// The different `-Clink-self-contained` options that can be specified in a target spec:
+/// - enabling or disabling in bulk
+/// - some target-specific pieces of inference to determine whether to use self-contained linking
+///   if `-Clink-self-contained` is not specified explicitly (e.g. on musl/mingw)
+/// - explicitly enabling some of the self-contained linking components, e.g. the linker component
+///   to use `rust-lld`
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum LinkSelfContained {
+    /// The target spec explicitly enables self-contained linking.
+    True,
+
+    /// The target spec explicitly disables self-contained linking.
+    False,
+
+    /// The target spec requests that the self-contained mode is inferred, in the context of musl.
+    InferredForMusl,
+
+    /// The target spec requests that the self-contained mode is inferred, in the context of mingw.
+    InferredForMingw,
+
+    /// The target spec explicitly enables a list of self-contained linking components: e.g. for
+    /// targets opting into a subset of components like the CLI's `-C link-self-contained=+linker`.
+    WithComponents(LinkSelfContainedComponents),
+}
+
+impl ToJson for LinkSelfContained {
+    fn to_json(&self) -> Json {
+        match *self {
+            LinkSelfContained::WithComponents(components) => {
+                // Serialize the components in a json object's `components` field, to prepare for a
+                // future where `crt-objects-fallback` is removed from the json specs and
+                // incorporated as a field here.
+                let mut map = BTreeMap::new();
+                map.insert("components", components);
+                map.to_json()
+            }
+
+            // Stable values backwards-compatible with `LinkSelfContainedDefault`
+            LinkSelfContained::True => "true".to_json(),
+            LinkSelfContained::False => "false".to_json(),
+            LinkSelfContained::InferredForMusl => "musl".to_json(),
+            LinkSelfContained::InferredForMingw => "mingw".to_json(),
+        }
+    }
+}
+
+impl LinkSelfContained {
+    /// Returns whether the target spec has self-contained linking explicitly disabled. Used to emit
+    /// errors if the user then enables it on the CLI.
+    pub fn is_disabled(self) -> bool {
+        self == LinkSelfContained::False
+    }
+
+    /// Returns whether the target spec explictly requests self-contained linking, i.e. not via
+    /// inference.
+    pub fn is_linker_enabled(self) -> bool {
+        match self {
+            LinkSelfContained::True => true,
+            LinkSelfContained::False => false,
+            LinkSelfContained::WithComponents(c) => c.contains(LinkSelfContainedComponents::LINKER),
+            _ => false,
+        }
+    }
+
+    /// Returns the key to use when serializing the setting to json:
+    /// - individual components in a `link-self-contained` object value
+    /// - the other variants as a backwards-compatible `crt-objects-fallback` string
+    fn json_key(self) -> &'static str {
+        match self {
+            LinkSelfContained::WithComponents(_) => "link-self-contained",
+            _ => "crt-objects-fallback",
+        }
+    }
+}
+
+impl From<LinkSelfContainedDefault> for LinkSelfContained {
+    fn from(value: LinkSelfContainedDefault) -> Self {
+        match value {
+            LinkSelfContainedDefault::True => LinkSelfContained::True,
+            LinkSelfContainedDefault::False => LinkSelfContained::False,
+            LinkSelfContainedDefault::Musl => LinkSelfContained::InferredForMusl,
+            LinkSelfContainedDefault::Mingw => LinkSelfContained::InferredForMingw,
+        }
+    }
+}
+
 bitflags::bitflags! {
     #[derive(Default)]
     /// The `-C link-self-contained` components that can individually be enabled or disabled.
@@ -591,6 +677,22 @@ impl IntoIterator for LinkSelfContainedComponents {
             .filter(|&s| self.contains(s))
             .collect::<Vec<_>>()
             .into_iter()
+    }
+}
+
+impl ToJson for LinkSelfContainedComponents {
+    fn to_json(&self) -> Json {
+        let components: Vec<_> = Self::all_components()
+            .into_iter()
+            .filter(|c| self.contains(*c))
+            .map(|c| {
+                // We can unwrap because we're iterating over all the known singular components,
+                // not an actual set of flags where `as_str` can fail.
+                c.as_str().unwrap().to_owned()
+            })
+            .collect();
+
+        components.to_json()
     }
 }
 
@@ -1769,7 +1871,9 @@ pub struct TargetOptions {
     /// Same as `(pre|post)_link_objects`, but when self-contained linking mode is enabled.
     pub pre_link_objects_self_contained: CrtObjects,
     pub post_link_objects_self_contained: CrtObjects,
-    pub link_self_contained: LinkSelfContainedDefault,
+    /// Behavior for the self-contained linking mode: inferred for some targets, or explicitly
+    /// enabled (in bulk, or with individual components).
+    pub link_self_contained: LinkSelfContained,
 
     /// Linker arguments that are passed *before* any user-defined libraries.
     pub pre_link_args: LinkArgs,
@@ -2242,7 +2346,7 @@ impl Default for TargetOptions {
             post_link_objects: Default::default(),
             pre_link_objects_self_contained: Default::default(),
             post_link_objects_self_contained: Default::default(),
-            link_self_contained: LinkSelfContainedDefault::False,
+            link_self_contained: LinkSelfContained::False,
             pre_link_args: LinkArgs::new(),
             pre_link_args_json: LinkArgsCli::new(),
             late_link_args: LinkArgs::new(),
@@ -2723,12 +2827,47 @@ impl Target {
                 }
                 Ok::<(), String>(())
             } );
-
-            ($key_name:ident = $json_name:expr, link_self_contained) => ( {
+            ($key_name:ident, LinkSelfContained) => ( {
+                // Skeleton of what needs to be parsed:
+                //
+                // ```
+                // $name: {
+                //     "components": [
+                //         <array of strings>
+                //     ]
+                // }
+                // ```
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(o) = obj.remove(&name) {
+                    if let Some(o) = o.as_object() {
+                        let component_array = o.get("components")
+                            .ok_or_else(|| format!("{name}: expected a \
+                                JSON object with a `components` field."))?;
+                        let component_array = component_array.as_array()
+                            .ok_or_else(|| format!("{name}.components: expected a JSON array"))?;
+                        let mut components = LinkSelfContainedComponents::empty();
+                        for s in component_array {
+                            components |= match s.as_str() {
+                                Some(s) => {
+                                    LinkSelfContainedComponents::from_str(s)
+                                        .ok_or_else(|| format!("unknown \
+                                        `-Clink-self-contained` component: {s}"))?
+                                },
+                                _ => return Err(format!("not a string: {:?}", s)),
+                            };
+                        }
+                        base.$key_name = LinkSelfContained::WithComponents(components);
+                    } else {
+                        incorrect_type.push(name)
+                    }
+                }
+                Ok::<(), String>(())
+            } );
+            ($key_name:ident = $json_name:expr, LinkSelfContainedDefault) => ( {
                 let name = $json_name;
                 obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
                     match s.parse::<LinkSelfContainedDefault>() {
-                        Ok(lsc_default) => base.$key_name = lsc_default,
+                        Ok(lsc_default) => base.$key_name = lsc_default.into(),
                         _ => return Some(Err(format!("'{}' is not a valid `-Clink-self-contained` default. \
                                                       Use 'false', 'true', 'musl' or 'mingw'", s))),
                     }
@@ -2877,7 +3016,10 @@ impl Target {
         key!(post_link_objects = "post-link-objects", link_objects);
         key!(pre_link_objects_self_contained = "pre-link-objects-fallback", link_objects);
         key!(post_link_objects_self_contained = "post-link-objects-fallback", link_objects);
-        key!(link_self_contained = "crt-objects-fallback", link_self_contained)?;
+        // Deserializes the backwards-compatible variants of `-Clink-self-contained`
+        key!(link_self_contained = "crt-objects-fallback", LinkSelfContainedDefault)?;
+        // Deserializes the components variant of `-Clink-self-contained`
+        key!(link_self_contained, LinkSelfContained)?;
         key!(pre_link_args_json = "pre-link-args", link_args);
         key!(late_link_args_json = "late-link-args", link_args);
         key!(late_link_args_dynamic_json = "late-link-args-dynamic", link_args);
@@ -3133,7 +3275,6 @@ impl ToJson for Target {
         target_option_val!(post_link_objects);
         target_option_val!(pre_link_objects_self_contained, "pre-link-objects-fallback");
         target_option_val!(post_link_objects_self_contained, "post-link-objects-fallback");
-        target_option_val!(link_self_contained, "crt-objects-fallback");
         target_option_val!(link_args - pre_link_args_json, "pre-link-args");
         target_option_val!(link_args - late_link_args_json, "late-link-args");
         target_option_val!(link_args - late_link_args_dynamic_json, "late-link-args-dynamic");
@@ -3229,6 +3370,10 @@ impl ToJson for Target {
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());
         }
+
+        // Serializing `-Clink-self-contained` needs a dynamic key to support the
+        // backwards-compatible variants.
+        d.insert(self.link_self_contained.json_key().into(), self.link_self_contained.to_json());
 
         Json::Object(d)
     }

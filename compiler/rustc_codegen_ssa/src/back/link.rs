@@ -22,7 +22,8 @@ use rustc_session::utils::NativeLibKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
+use rustc_target::spec::crt_objects::CrtObjects;
+use rustc_target::spec::LinkSelfContained;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
 
@@ -1703,21 +1704,37 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
 /// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
 fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
+    // Emit an error if the user requested self-contained mode on the CLI but the target explicitly
+    // refuses it.
     if let Some(self_contained) = sess.opts.cg.link_self_contained.explicitly_set {
-        if sess.target.link_self_contained == LinkSelfContainedDefault::False {
+        if sess.target.link_self_contained.is_disabled() {
             sess.emit_err(errors::UnsupportedLinkSelfContained);
         }
         return self_contained;
     }
 
     match sess.target.link_self_contained {
-        LinkSelfContainedDefault::False => false,
-        LinkSelfContainedDefault::True => true,
+        LinkSelfContained::True => true,
+        LinkSelfContained::False => false,
+        LinkSelfContained::WithComponents(components) => {
+            if components.is_all() {
+                true
+            } else if components.is_empty() {
+                false
+            } else {
+                // FIXME: Currently no target makes use of individual components to mean
+                // self-contained linking is fully enabled, in the sense of what the code downstream
+                // from here expects. Until components are handled a bit more deeply, we can
+                // consider that it's disabled and remain backwards compatible.
+                false
+            }
+        }
+
         // FIXME: Find a better heuristic for "native musl toolchain is available",
         // based on host and linker path, for example.
         // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
-        LinkSelfContainedDefault::Musl => sess.crt_static(Some(crate_type)),
-        LinkSelfContainedDefault::Mingw => {
+        LinkSelfContained::InferredForMusl => sess.crt_static(Some(crate_type)),
+        LinkSelfContained::InferredForMingw => {
             sess.host == sess.target
                 && sess.target.vendor != "uwp"
                 && detect_self_contained_mingw(&sess)
@@ -2978,9 +2995,13 @@ fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     }
 
     // 1. Implement the "self-contained" part of this feature by adding rustc distribution
-    // directories to the tool's search path:
-    // - if the self-contained linker is enabled on the CLI.
-    if sess.opts.cg.link_self_contained.is_linker_enabled() {
+    // directories to the tool's search path, depending on a mix between what users can specify on
+    // the CLI, and what the target spec enables (as it can't disable components):
+    // - if the self-contained linker is enabled on the CLI or by the target spec,
+    // - and if the self-contained linker is not disabled on the CLI.
+    let self_contained_linker = sess.opts.cg.link_self_contained.is_linker_enabled()
+        || sess.target.options.link_self_contained.is_linker_enabled();
+    if self_contained_linker && !sess.opts.cg.link_self_contained.is_linker_disabled() {
         for path in sess.get_tools_search_paths(false) {
             cmd.arg({
                 let mut arg = OsString::from("-B");
