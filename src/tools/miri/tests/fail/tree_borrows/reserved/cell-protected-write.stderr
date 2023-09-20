@@ -1,12 +1,12 @@
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
-0..  1
-| Act|    └─┬──<TAG=root of the allocation>
-| Re*|      └─┬──<TAG=base>
-| Re*|        ├─┬──<TAG=x>
-| Re*|        │ └─┬──<TAG=caller:x>
-| Re*|        │   └────<TAG=callee:x> Strongly protected
-| Re*|        └────<TAG=y, callee:y, caller:y>
+0..   1
+| Act |    └─┬──<TAG=root of the allocation>
+| RsM |      └─┬──<TAG=base>
+| RsM |        ├─┬──<TAG=x>
+| RsM |        │ └─┬──<TAG=caller:x>
+| RsM |        │   └────<TAG=callee:x> Strongly protected
+| RsM |        └────<TAG=y, callee:y, caller:y>
 ──────────────────────────────────────────────────
 error: Undefined Behavior: write access through <TAG> (y, callee:y, caller:y) is forbidden
   --> $DIR/cell-protected-write.rs:LL:CC

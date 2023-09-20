@@ -2,7 +2,9 @@ use log::trace;
 
 use rustc_target::abi::{Abi, Align, Size};
 
-use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind, RetagFields};
+use crate::borrow_tracker::{
+    AccessKind, GlobalState, GlobalStateInner, ProtectorKind, RetagFields,
+};
 use rustc_middle::{
     mir::{Mutability, RetagKind},
     ty::{
@@ -70,7 +72,7 @@ impl<'tcx> Tree {
         self.perform_access(
             access_kind,
             tag,
-            range,
+            Some(range),
             global,
             span,
             diagnostics::AccessCause::Explicit(access_kind),
@@ -98,6 +100,29 @@ impl<'tcx> Tree {
 
     pub fn expose_tag(&mut self, _tag: BorTag) {
         // TODO
+    }
+
+    /// A tag just lost its protector.
+    ///
+    /// This emits a special kind of access that is only applied
+    /// to initialized locations, as a protection against other
+    /// tags not having been made aware of the existence of this
+    /// protector.
+    pub fn release_protector(
+        &mut self,
+        machine: &MiriMachine<'_, 'tcx>,
+        global: &GlobalState,
+        tag: BorTag,
+    ) -> InterpResult<'tcx> {
+        let span = machine.current_span();
+        self.perform_access(
+            AccessKind::Read,
+            tag,
+            None, // no specified range because it occurs on the entire allocation
+            global,
+            span,
+            diagnostics::AccessCause::FnExit,
+        )
     }
 }
 
@@ -248,7 +273,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             // We register the protection in two different places.
             // This makes creating a protector slower, but checking whether a tag
             // is protected faster.
-            this.frame_mut().extra.borrow_tracker.as_mut().unwrap().protected_tags.push(new_tag);
+            this.frame_mut()
+                .extra
+                .borrow_tracker
+                .as_mut()
+                .unwrap()
+                .protected_tags
+                .push((alloc_id, new_tag));
             this.machine
                 .borrow_tracker
                 .as_mut()
@@ -275,7 +306,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         tree_borrows.perform_access(
             AccessKind::Read,
             orig_tag,
-            range,
+            Some(range),
             this.machine.borrow_tracker.as_ref().unwrap(),
             this.machine.current_span(),
             diagnostics::AccessCause::Reborrow,
@@ -287,21 +318,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Also inform the data race model (but only if any bytes are actually affected).
         if range.size.bytes() > 0 {
             if let Some(data_race) = alloc_extra.data_race.as_ref() {
-                // We sometimes need to make it a write, since not all retags commute with reads!
-                // FIXME: Is that truly the semantics we want? Some optimizations are likely to be
-                // very unhappy without this. We'd tsill ge some UB just by picking a suitable
-                // interleaving, but wether UB happens can depend on whether a write occurs in the
-                // future...
-                let is_write = new_perm.initial_state.is_active()
-                    || (new_perm.initial_state.is_reserved(None) && new_perm.protector.is_some());
-                if is_write {
-                    // Need to get mutable access to alloc_extra.
-                    // (Cannot always do this as we can do read-only reborrowing on read-only allocations.)
-                    let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
-                    alloc_extra.data_race.as_mut().unwrap().write(alloc_id, range, machine)?;
-                } else {
-                    data_race.read(alloc_id, range, &this.machine)?;
-                }
+                data_race.read(alloc_id, range, &this.machine)?;
             }
         }
 
@@ -532,7 +549,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // if converting this alloc_id from a global to a local one
                 // uncovers a non-supported `extern static`.
                 let alloc_extra = this.get_alloc_extra(alloc_id)?;
-                trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
+                trace!("Tree Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag);
             }
             AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
