@@ -70,10 +70,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             );
         }
         // `Some(x) if x == Some(2)`
+        // `Some(x) if Some(2) == x`
         else if let Guard::If(if_expr) = guard
             && let ExprKind::Binary(bin_op, local, pat) = if_expr.kind
             && matches!(bin_op.node, BinOpKind::Eq)
-            && expr_can_be_pat(cx, pat)
             // Ensure they have the same type. If they don't, we'd need deref coercion which isn't
             // possible (currently) in a pattern. In some cases, you can use something like
             // `as_deref` or similar but in general, we shouldn't lint this as it'd create an
@@ -81,7 +81,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             //
             // This isn't necessary in the other two checks, as they must be a pattern already.
             && cx.typeck_results().expr_ty(local) == cx.typeck_results().expr_ty(pat)
-            && let Some(binding) = get_pat_binding(cx, local, outer_arm)
+            // Since we want to lint on both `x == Some(2)` and `Some(2) == x`, we might have to "swap"
+            // `local` and `pat`, depending on which side they are.
+            && let Some((binding, pat)) = get_pat_binding(cx, local, outer_arm)
+                .map(|binding| (binding, pat))
+                .or_else(|| get_pat_binding(cx, pat, outer_arm).map(|binding| (binding, local)))
+            && expr_can_be_pat(cx, pat)
         {
             let pat_span = match (pat.kind, binding.byref_ident) {
                 (ExprKind::AddrOf(BorrowKind::Ref, _, expr), Some(_)) => expr.span,

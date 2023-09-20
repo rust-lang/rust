@@ -60,7 +60,19 @@ LL +         Some(Some(2)) => ..,
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:68:20
+  --> $DIR/redundant_guards.rs:46:20
+   |
+LL |         Some(x) if Some(2) == x => ..,
+   |                    ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if Some(2) == x => ..,
+LL +         Some(Some(2)) => ..,
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:71:20
    |
 LL |         B { e } if matches!(e, Some(A(2))) => ..,
    |                    ^^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +84,7 @@ LL +         B { e: Some(A(2)) } => ..,
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:105:20
+  --> $DIR/redundant_guards.rs:108:20
    |
 LL |         E::A(y) if y == "not from an or pattern" => {},
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +96,7 @@ LL +         E::A("not from an or pattern") => {},
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:112:14
+  --> $DIR/redundant_guards.rs:115:14
    |
 LL |         x if matches!(x, Some(0)) => ..,
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +108,7 @@ LL +         Some(0) => ..,
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:160:28
+  --> $DIR/redundant_guards.rs:165:28
    |
 LL |             Some(ref x) if x == &1 => {},
    |                            ^^^^^^^
@@ -108,7 +120,19 @@ LL +             Some(1) => {},
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:161:28
+  --> $DIR/redundant_guards.rs:166:28
+   |
+LL |             Some(ref x) if &1 == x => {},
+   |                            ^^^^^^^
+   |
+help: try
+   |
+LL -             Some(ref x) if &1 == x => {},
+LL +             Some(1) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:167:28
    |
 LL |             Some(ref x) if let &2 = x => {},
    |                            ^^^^^^^^^^
@@ -120,7 +144,7 @@ LL +             Some(2) => {},
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:162:28
+  --> $DIR/redundant_guards.rs:168:28
    |
 LL |             Some(ref x) if matches!(x, &3) => {},
    |                            ^^^^^^^^^^^^^^^
@@ -132,7 +156,7 @@ LL +             Some(3) => {},
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:180:32
+  --> $DIR/redundant_guards.rs:188:32
    |
 LL |             B { ref c, .. } if c == &1 => {},
    |                                ^^^^^^^
@@ -144,7 +168,19 @@ LL +             B { c: 1, .. } => {},
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:181:32
+  --> $DIR/redundant_guards.rs:189:32
+   |
+LL |             B { ref c, .. } if &1 == c => {},
+   |                                ^^^^^^^
+   |
+help: try
+   |
+LL -             B { ref c, .. } if &1 == c => {},
+LL +             B { c: 1, .. } => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:190:32
    |
 LL |             B { ref c, .. } if let &1 = c => {},
    |                                ^^^^^^^^^^
@@ -156,7 +192,7 @@ LL +             B { c: 1, .. } => {},
    |
 
 error: redundant guard
-  --> $DIR/redundant_guards.rs:182:32
+  --> $DIR/redundant_guards.rs:191:32
    |
 LL |             B { ref c, .. } if matches!(c, &1) => {},
    |                                ^^^^^^^^^^^^^^^
@@ -167,5 +203,5 @@ LL -             B { ref c, .. } if matches!(c, &1) => {},
 LL +             B { c: 1, .. } => {},
    |
 
-error: aborting due to 14 previous errors
+error: aborting due to 17 previous errors
 

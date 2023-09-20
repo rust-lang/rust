@@ -43,6 +43,7 @@ fn main() {
         },
         Some(x) if let Some(1) = x => ..,
         Some(x) if x == Some(2) => ..,
+        Some(x) if Some(2) == x => ..,
         // Don't lint, since x is used in the body
         Some(x) if let Some(1) = x => {
             x;
@@ -56,11 +57,13 @@ fn main() {
         Some(x) if matches!(y, 1 if true) => ..,
         Some(x) if let 1 = y => ..,
         Some(x) if y == 2 => ..,
+        Some(x) if 2 == y => ..,
         _ => todo!(),
     };
     let a = A(1);
     match a {
         _ if a.0 == 1 => {},
+        _ if 1 == a.0 => {},
         _ => todo!(),
     }
     let b = B { e: Some(A(0)) };
@@ -119,6 +122,7 @@ fn h(v: Option<u32>) {
 fn f(s: Option<std::ffi::OsString>) {
     match s {
         Some(x) if x == "a" => {},
+        Some(x) if "a" == x => {},
         _ => {},
     }
 }
@@ -140,6 +144,7 @@ static CONST_S: S = S { a: 1 };
 fn g(opt_s: Option<S>) {
     match opt_s {
         Some(x) if x == CONST_S => {},
+        Some(x) if CONST_S == x => {},
         _ => {},
     }
 }
@@ -158,6 +163,7 @@ mod issue11465 {
         let c = Some(1);
         match c {
             Some(ref x) if x == &1 => {},
+            Some(ref x) if &1 == x => {},
             Some(ref x) if let &2 = x => {},
             Some(ref x) if matches!(x, &3) => {},
             _ => {},
@@ -166,6 +172,7 @@ mod issue11465 {
         let enum_a = A::Foo([98, 97, 114]);
         match enum_a {
             A::Foo(ref arr) if arr == b"foo" => {},
+            A::Foo(ref arr) if b"foo" == arr => {},
             A::Foo(ref arr) if let b"bar" = arr => {},
             A::Foo(ref arr) if matches!(arr, b"baz") => {},
             _ => {},
@@ -177,7 +184,9 @@ mod issue11465 {
         };
         match struct_b {
             B { ref b, .. } if b == "bar" => {},
+            B { ref b, .. } if "bar" == b => {},
             B { ref c, .. } if c == &1 => {},
+            B { ref c, .. } if &1 == c => {},
             B { ref c, .. } if let &1 = c => {},
             B { ref c, .. } if matches!(c, &1) => {},
             _ => {},
