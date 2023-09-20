@@ -9,16 +9,17 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::BuiltinImplSource;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::ty::{TraitRef, TypeVisitableExt};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
+use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
 
 use std::mem;
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 
 use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
@@ -188,6 +189,24 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     }
 }
 
+struct LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
+    kind: LocalKind,
+    checker: &'ck mut Checker<'mir, 'tcx>,
+}
+
+impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match t.kind() {
+            ty::FnPtr(_) => ControlFlow::Continue(()),
+            ty::Ref(_, _, hir::Mutability::Mut) => {
+                self.checker.check_op(ops::ty::MutRef(self.kind));
+                t.super_visit_with(self)
+            }
+            _ => t.super_visit_with(self),
+        }
+    }
+}
+
 pub struct Checker<'mir, 'tcx> {
     ccx: &'mir ConstCx<'mir, 'tcx>,
     qualifs: Qualifs<'mir, 'tcx>,
@@ -346,20 +365,9 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>, local: Local) {
         let kind = self.body.local_kind(local);
 
-        for ty in ty.walk() {
-            let ty = match ty.unpack() {
-                GenericArgKind::Type(ty) => ty,
+        let mut visitor = LocalReturnTyVisitor { kind, checker: self };
 
-                // No constraints on lifetimes or constants, except potentially
-                // constants' types, but `walk` will get to them as well.
-                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
-            };
-
-            match *ty.kind() {
-                ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
-                _ => {}
-            }
-        }
+        visitor.visit_ty(ty);
     }
 
     fn check_mut_borrow(&mut self, local: Local, kind: hir::BorrowKind) {
