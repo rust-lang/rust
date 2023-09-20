@@ -99,7 +99,7 @@ pub macro unreachable_2021 {
 /// use.
 #[unstable(feature = "std_internals", issue = "none")]
 #[doc(hidden)]
-pub unsafe trait BoxMeUp {
+pub unsafe trait PanicPayload {
     /// Take full ownership of the contents.
     /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in core.
     ///
@@ -107,7 +107,7 @@ pub unsafe trait BoxMeUp {
     /// Calling this method twice, or calling `get` after calling this method, is an error.
     ///
     /// The argument is borrowed because the panic runtime (`__rust_start_panic`) only
-    /// gets a borrowed `dyn BoxMeUp`.
+    /// gets a borrowed `dyn PanicPayload`.
     fn take_box(&mut self) -> *mut (dyn Any + Send);
 
     /// Just borrow the contents.
