@@ -180,7 +180,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "instant",
     "intl-memoizer",
     "intl_pluralrules",
-    "io-lifetimes",
     "is-terminal",
     "itertools",
     "itoa",
