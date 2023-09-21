@@ -1,5 +1,5 @@
 #![deny(large_assignments)]
-#![feature(large_assignments)]
+#![cfg_attr(attribute, feature(large_assignments))]
 #![cfg_attr(attribute, move_size_limit = "1000")]
 // build-fail
 // only-x86_64
