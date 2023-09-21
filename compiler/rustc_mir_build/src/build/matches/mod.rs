@@ -425,7 +425,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         None,
                         arm.span,
                         &arm.pattern,
-                        arm.guard.as_ref(),
+                        arm.guard,
                         opt_scrutinee_place,
                     );
 
@@ -717,7 +717,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut visibility_scope: Option<SourceScope>,
         scope_span: Span,
         pattern: &Pat<'tcx>,
-        guard: Option<&Guard<'tcx>>,
+        guard: Option<ExprId>,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
         self.visit_primary_bindings(
@@ -745,7 +745,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             },
         );
-        if let Some(&Guard::If(guard_expr)) = guard {
+        if let Some(guard_expr) = guard {
             self.declare_guard_bindings(guard_expr, scope_span, visibility_scope);
         }
         visibility_scope
@@ -2044,7 +2044,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
         if let Some((arm, match_scope)) = arm_match_scope
-            && let Some(guard) = &arm.guard
+            && let Some(guard) = arm.guard
         {
             let tcx = self.tcx;
             let bindings = parent_bindings
@@ -2069,22 +2069,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let mut guard_span = rustc_span::DUMMY_SP;
 
             let (post_guard_block, otherwise_post_guard_block) =
-                self.in_if_then_scope(match_scope, guard_span, |this| match *guard {
-                    Guard::If(e) => {
-                        guard_span = this.thir[e].span;
-                        this.then_else_break(
-                            block,
-                            e,
-                            None,
-                            match_scope,
-                            this.source_info(arm.span),
-                            false,
-                        )
-                    }
-                    Guard::IfLet(ref pat, s) => {
-                        guard_span = this.thir[s].span;
-                        this.lower_let_expr(block, s, pat, match_scope, None, arm.span, false)
-                    }
+                self.in_if_then_scope(match_scope, guard_span, |this| {
+                    guard_span = this.thir[guard].span;
+                    this.then_else_break(
+                        block,
+                        guard,
+                        None,
+                        match_scope,
+                        this.source_info(arm.span),
+                        false,
+                    )
                 });
 
             let source_info = self.source_info(guard_span);
