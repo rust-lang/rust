@@ -1,7 +1,7 @@
 use super::{
     mir::Safety,
     mir::{Body, Mutability},
-    with, AllocId, DefId,
+    with, AllocId, DefId, Symbol,
 };
 use crate::Opaque;
 use std::fmt::{self, Debug, Formatter};
@@ -34,7 +34,52 @@ pub struct Const {
 }
 
 type Ident = Opaque;
-pub type Region = Opaque;
+pub(crate) struct Region {
+    kind: RegionKind,
+}
+
+enum RegionKind {
+    ReEarlyBound(EarlyBoundRegion),
+    ReLateBound(DebruijnIndex, BoundRegion),
+    ReFree(FreeRegion),
+    ReStatic,
+    ReVar(RegionVid),
+    RePlaceholder(Placeholder<BoundRegion>),
+    ReErased,
+    ReError(ErrorGuaranteed),
+}
+
+pub(crate) type DebruijnIndex = u32;
+
+pub struct EarlyBoundRegion {
+    pub def_id: DefId,
+    pub index: u32,
+    pub name: Symbol,
+}
+
+pub(crate) type BoundVar = u32;
+
+pub struct BoundRegion {
+    pub var: BoundVar,
+    pub kind: BoundRegionKind,
+}
+
+pub struct FreeRegion {
+    pub scope: DefId,
+    pub bound_region: BoundRegionKind,
+}
+
+pub(crate) type RegionVid = u32;
+
+pub(crate) type UniverseIndex = u32;
+
+pub struct Placeholder<T> {
+    pub universe: UniverseIndex,
+    pub bound: T,
+}
+
+pub(crate) type ErrorGuaranteed = ();
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Span(pub usize);
 
