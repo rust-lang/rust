@@ -1463,6 +1463,14 @@ pub enum ObligationCauseFailureCode {
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
+    #[diag(infer_oc_fn_lang_correct_type, code = "E0308")]
+    FnLangCorrectType {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+        lang_item_name: Symbol,
+    },
     #[diag(infer_oc_intrinsic_correct_type, code = "E0308")]
     IntrinsicCorrectType {
         #[primary_span]

@@ -1,11 +1,11 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
+use crate::check::check_function_signature;
 use crate::errors::{
     UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
     WrongNumberOfGenericArgumentsToIntrinsic,
 };
-use crate::require_same_types;
 
 use hir::def_id::DefId;
 use rustc_errors::{struct_span_err, DiagnosticMessage};
@@ -53,15 +53,12 @@ fn equate_intrinsic_type<'tcx>(
         && gen_count_ok(own_counts.types, n_tps, "type")
         && gen_count_ok(own_counts.consts, 0, "const")
     {
-        let fty = Ty::new_fn_ptr(tcx, sig);
         let it_def_id = it.owner_id.def_id;
-        let cause = ObligationCause::new(it.span, it_def_id, ObligationCauseCode::IntrinsicType);
-        require_same_types(
+        check_function_signature(
             tcx,
-            &cause,
-            ty::ParamEnv::empty(), // FIXME: do all intrinsics have an empty param env?
-            Ty::new_fn_ptr(tcx, tcx.fn_sig(it.owner_id).instantiate_identity()),
-            fty,
+            ObligationCause::new(it.span, it_def_id, ObligationCauseCode::IntrinsicType),
+            it_def_id.into(),
+            sig,
         );
     }
 }

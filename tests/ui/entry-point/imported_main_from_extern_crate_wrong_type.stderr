@@ -1,11 +1,11 @@
 error[E0580]: `main` function has wrong type
-  --> $DIR/main-wrong-type.rs:6:1
+  --> $DIR/auxiliary/bad_main_functions.rs:1:1
    |
-LL | fn main(foo: S) {
-   | ^^^^^^^^^^^^^^^ incorrect number of function parameters
+LL | pub fn boilerplate(x: u8) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
    = note: expected signature `fn()`
-              found signature `fn(S)`
+              found signature `fn(u8)`
 
 error: aborting due to previous error
 
