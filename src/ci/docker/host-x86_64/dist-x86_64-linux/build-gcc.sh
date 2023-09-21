@@ -3,7 +3,7 @@ set -ex
 
 source shared.sh
 
-GCC=8.5.0
+GCC=9.5.0
 
 curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.xz | xzcat | tar xf -
 cd gcc-$GCC
