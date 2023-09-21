@@ -1013,7 +1013,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn float_to_int_checked<F>(
         &self,
         f: F,
-        dest_ty: Ty<'tcx>,
+        cast_to: TyAndLayout<'tcx>,
         round: rustc_apfloat::Round,
     ) -> Option<ImmTy<'tcx, Provenance>>
     where
@@ -1021,7 +1021,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     {
         let this = self.eval_context_ref();
 
-        let val = match dest_ty.kind() {
+        let val = match cast_to.ty.kind() {
             // Unsigned
             ty::Uint(t) => {
                 let size = Integer::from_uint_ty(this, *t).size();
@@ -1062,10 +1062,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ =>
                 span_bug!(
                     this.cur_span(),
-                    "attempted float-to-int conversion with non-int output type {dest_ty:?}"
+                    "attempted float-to-int conversion with non-int output type {}",
+                    cast_to.ty,
                 ),
         };
-        Some(ImmTy::from_scalar(val, this.layout_of(dest_ty).unwrap()))
+        Some(ImmTy::from_scalar(val, cast_to))
     }
 
     /// Returns an integer type that is twice wide as `ty`

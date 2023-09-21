@@ -368,7 +368,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     ty::Float(FloatTy::F32) => {
                         let f = val.to_scalar().to_f32()?;
                         this
-                            .float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            .float_to_int_checked(f, dest.layout, Round::TowardZero)
                             .ok_or_else(|| {
                                 err_ub_format!(
                                     "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
@@ -379,7 +379,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     ty::Float(FloatTy::F64) => {
                         let f = val.to_scalar().to_f64()?;
                         this
-                            .float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            .float_to_int_checked(f, dest.layout, Round::TowardZero)
                             .ok_or_else(|| {
                                 err_ub_format!(
                                     "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",

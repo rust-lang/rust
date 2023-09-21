@@ -234,20 +234,26 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 }
             }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
+                let Ok(layout) = self.tcx.layout_of(self.param_env.and(*ty)) else {
+                    return ValueOrPlace::Value(FlatSet::Top);
+                };
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self
                         .ecx
-                        .int_to_int_or_float(&op, *ty)
+                        .int_to_int_or_float(&op, layout)
                         .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
                     FlatSet::Bottom => FlatSet::Bottom,
                     FlatSet::Top => FlatSet::Top,
                 }
             }
             Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand, ty) => {
+                let Ok(layout) = self.tcx.layout_of(self.param_env.and(*ty)) else {
+                    return ValueOrPlace::Value(FlatSet::Top);
+                };
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self
                         .ecx
-                        .float_to_float_or_int(&op, *ty)
+                        .float_to_float_or_int(&op, layout)
                         .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
                     FlatSet::Bottom => FlatSet::Bottom,
                     FlatSet::Top => FlatSet::Top,

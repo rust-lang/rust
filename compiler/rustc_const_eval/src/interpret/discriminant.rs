@@ -163,7 +163,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Cast bits from tag layout to discriminant layout.
                 // After the checks we did above, this cannot fail, as
                 // discriminants are int-like.
-                let discr_val = self.int_to_int_or_float(&tag_val, discr_layout.ty).unwrap();
+                let discr_val = self.int_to_int_or_float(&tag_val, discr_layout).unwrap();
                 let discr_bits = discr_val.to_scalar().assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match *ty.kind() {
