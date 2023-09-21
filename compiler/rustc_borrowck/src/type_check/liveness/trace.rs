@@ -2,6 +2,8 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::outlives::test_type_match;
+use rustc_infer::infer::region_constraints::VerifyIfEq;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::{
@@ -568,6 +570,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                     bug!();
                 };
                 let tcx = self.typeck.infcx.tcx;
+                let param_env = self.typeck.param_env;
                 let mut outlives_bounds = tcx
                     .item_bounds(alias_ty.def_id)
                     .iter_instantiated(tcx, alias_ty.args)
@@ -579,7 +582,24 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                     } else {
                         None
                     }
-                    });
+                    })
+                    .chain(param_env.caller_bounds().iter().filter_map(|clause| {
+                        let outlives = clause.as_type_outlives_clause()?;
+                        if let Some(outlives) = outlives.no_bound_vars()
+                            && outlives.0 == t
+                        {
+                            Some(outlives.1)
+                        } else {
+                            test_type_match::extract_verify_if_eq(
+                                tcx,
+                                param_env,
+                                &outlives.map_bound(|ty::OutlivesPredicate(ty, bound)| {
+                                    VerifyIfEq { ty, bound }
+                                }),
+                                t,
+                            )
+                        }
+                    }));
                 if let Some(r) = outlives_bounds.next()
                     && !r.is_late_bound()
                     && outlives_bounds.all(|other_r| {
