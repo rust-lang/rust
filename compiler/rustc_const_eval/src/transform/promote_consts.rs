@@ -644,7 +644,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         // Everywhere else, we require `#[rustc_promotable]` on the callee.
         let promote_all_const_fn = matches!(
             self.const_kind,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const)
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { inline: false })
         );
         if !promote_all_const_fn {
             if let ty::FnDef(def_id, _) = *fn_ty.kind() {

@@ -580,7 +580,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 }
             }
 
-            BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
+            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
                 let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
                 if self.mir_def.to_def_id() == typeck_root_def_id {
                     let args =

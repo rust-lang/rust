@@ -167,7 +167,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
                 false
             }
 
-            hir::ConstContext::Const | hir::ConstContext::Static(_) => {
+            hir::ConstContext::Const { .. } | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
                     .into_engine(ccx.tcx, &ccx.body)
                     .iterate_to_fixpoint()
