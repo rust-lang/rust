@@ -1,8 +1,6 @@
-//! The first version of the core prelude.
+//! Items common to the prelude of all editions.
 //!
 //! See the [module-level documentation](super) for more.
-
-#![stable(feature = "core_prelude", since = "1.4.0")]
 
 // Re-exported core operators
 #[stable(feature = "core_prelude", since = "1.4.0")]
@@ -67,16 +65,6 @@ pub use crate::{
 )]
 #[doc(no_inline)]
 pub use crate::concat_bytes;
-
-// Do not `doc(inline)` these `doc(hidden)` items.
-#[unstable(
-    feature = "rustc_encodable_decodable",
-    issue = "none",
-    soft,
-    reason = "unstable implementation detail of the `rustc` compiler, do not use"
-)]
-#[allow(deprecated)]
-pub use crate::macros::builtin::{RustcDecodable, RustcEncodable};
 
 // Do not `doc(no_inline)` so that they become doc items on their own
 // (no public module for them to be re-exported from).

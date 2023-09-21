@@ -1,8 +1,6 @@
-//! The first version of the prelude of The Rust Standard Library.
+//! Items common to the prelude of all editions.
 //!
 //! See the [module-level documentation](super) for more.
-
-#![stable(feature = "rust1", since = "1.0.0")]
 
 // Re-exported core operators
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -51,16 +49,6 @@ pub use core::prelude::v1::{
 )]
 #[doc(no_inline)]
 pub use core::prelude::v1::concat_bytes;
-
-// Do not `doc(inline)` these `doc(hidden)` items.
-#[unstable(
-    feature = "rustc_encodable_decodable",
-    issue = "none",
-    soft,
-    reason = "unstable implementation detail of the `rustc` compiler, do not use"
-)]
-#[allow(deprecated)]
-pub use core::prelude::v1::{RustcDecodable, RustcEncodable};
 
 // Do not `doc(no_inline)` so that they become doc items on their own
 // (no public module for them to be re-exported from).
