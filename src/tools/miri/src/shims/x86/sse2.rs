@@ -56,36 +56,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i)?;
 
                     // Widen the operands to avoid overflow
-                    let twice_wide_ty = this.get_twice_wide_int_ty(left.layout.ty);
-                    let twice_wide_layout = this.layout_of(twice_wide_ty)?;
-                    let left = this.int_to_int_or_float(&left, twice_wide_ty)?;
-                    let right = this.int_to_int_or_float(&right, twice_wide_ty)?;
+                    let twice_wide = this.layout_of(this.get_twice_wide_int_ty(left.layout.ty))?;
+                    let left = this.int_to_int_or_float(&left, twice_wide)?;
+                    let right = this.int_to_int_or_float(&right, twice_wide)?;
 
                     // Calculate left + right + 1
-                    let (added, _overflow, _ty) = this.overflowing_binary_op(
+                    let added = this.wrapping_binary_op(
                         mir::BinOp::Add,
-                        &ImmTy::from_immediate(left, twice_wide_layout),
-                        &ImmTy::from_immediate(right, twice_wide_layout),
+                        &left,
+                        &right,
                     )?;
-                    let (added, _overflow, _ty) = this.overflowing_binary_op(
+                    let added = this.wrapping_binary_op(
                         mir::BinOp::Add,
-                        &ImmTy::from_scalar(added, twice_wide_layout),
-                        &ImmTy::from_uint(1u32, twice_wide_layout),
+                        &added,
+                        &ImmTy::from_uint(1u32, twice_wide),
                     )?;
 
                     // Calculate (left + right + 1) / 2
-                    let (divided, _overflow, _ty) = this.overflowing_binary_op(
+                    let divided = this.wrapping_binary_op(
                         mir::BinOp::Div,
-                        &ImmTy::from_scalar(added, twice_wide_layout),
-                        &ImmTy::from_uint(2u32, twice_wide_layout),
+                        &added,
+                        &ImmTy::from_uint(2u32, twice_wide),
                     )?;
 
                     // Narrow back to the original type
                     let res = this.int_to_int_or_float(
-                        &ImmTy::from_scalar(divided, twice_wide_layout),
-                        dest.layout.ty,
+                        &divided,
+                        dest.layout,
                     )?;
-                    this.write_immediate(res, &dest)?;
+                    this.write_immediate(*res, &dest)?;
                 }
             }
             // Used to implement the _mm_mulhi_epi16 and _mm_mulhi_epu16 functions.
@@ -106,30 +105,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i)?;
 
                     // Widen the operands to avoid overflow
-                    let twice_wide_ty = this.get_twice_wide_int_ty(left.layout.ty);
-                    let twice_wide_layout = this.layout_of(twice_wide_ty)?;
-                    let left = this.int_to_int_or_float(&left, twice_wide_ty)?;
-                    let right = this.int_to_int_or_float(&right, twice_wide_ty)?;
+                    let twice_wide = this.layout_of(this.get_twice_wide_int_ty(left.layout.ty))?;
+                    let left = this.int_to_int_or_float(&left, twice_wide)?;
+                    let right = this.int_to_int_or_float(&right, twice_wide)?;
 
                     // Multiply
-                    let (multiplied, _overflow, _ty) = this.overflowing_binary_op(
+                    let multiplied = this.wrapping_binary_op(
                         mir::BinOp::Mul,
-                        &ImmTy::from_immediate(left, twice_wide_layout),
-                        &ImmTy::from_immediate(right, twice_wide_layout),
+                        &left,
+                        &right,
                     )?;
                     // Keep the high half
-                    let (high, _overflow, _ty) = this.overflowing_binary_op(
+                    let high = this.wrapping_binary_op(
                         mir::BinOp::Shr,
-                        &ImmTy::from_scalar(multiplied, twice_wide_layout),
-                        &ImmTy::from_uint(dest.layout.size.bits(), twice_wide_layout),
+                        &multiplied,
+                        &ImmTy::from_uint(dest.layout.size.bits(), twice_wide),
                     )?;
 
                     // Narrow back to the original type
                     let res = this.int_to_int_or_float(
-                        &ImmTy::from_scalar(high, twice_wide_layout),
-                        dest.layout.ty,
+                        &high,
+                        dest.layout,
                     )?;
-                    this.write_immediate(res, &dest)?;
+                    this.write_immediate(*res, &dest)?;
                 }
             }
             // Used to implement the _mm_mul_epu32 function.
@@ -392,11 +390,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i)?;
 
                     let res =
-                        this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
+                        this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
                             // Fallback to minimum acording to SSE2 semantics.
-                            Scalar::from_i32(i32::MIN)
+                            ImmTy::from_int(i32::MIN, this.machine.layouts.i32)
                         });
-                    this.write_scalar(res, &dest)?;
+                    this.write_immediate(*res, &dest)?;
                 }
             }
             // Used to implement the _mm_packs_epi16 function.
@@ -648,8 +646,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     let dest = this.project_index(&dest, i)?;
 
-                    let res = this.float_to_float_or_int(&op, dest.layout.ty)?;
-                    this.write_immediate(res, &dest)?;
+                    let res = this.float_to_float_or_int(&op, dest.layout)?;
+                    this.write_immediate(*res, &dest)?;
                 }
                 // For f32 -> f64, ignore the remaining
                 // For f64 -> f32, fill the remaining with zeros
@@ -685,11 +683,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i)?;
 
                     let res =
-                        this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
+                        this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
                             // Fallback to minimum acording to SSE2 semantics.
-                            Scalar::from_i32(i32::MIN)
+                            ImmTy::from_int(i32::MIN, this.machine.layouts.i32)
                         });
-                    this.write_scalar(res, &dest)?;
+                    this.write_immediate(*res, &dest)?;
                 }
                 // Fill the remaining with zeros
                 for i in op_len..dest_len {
@@ -716,12 +714,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                let res = this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
+                let res = this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
                     // Fallback to minimum acording to SSE semantics.
-                    Scalar::from_int(dest.layout.size.signed_int_min(), dest.layout.size)
+                    ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
 
-                this.write_scalar(res, dest)?;
+                this.write_immediate(*res, dest)?;
             }
             // Used to implement the _mm_cvtsd_ss and _mm_cvtss_sd functions.
             // Converts the first f64/f32 from `right` to f32/f64 and copies
@@ -741,8 +739,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let dest0 = this.project_index(&dest, 0)?;
                 // `float_to_float_or_int` here will convert from f64 to f32 (cvtsd2ss) or
                 // from f32 to f64 (cvtss2sd).
-                let res0 = this.float_to_float_or_int(&right0, dest0.layout.ty)?;
-                this.write_immediate(res0, &dest0)?;
+                let res0 = this.float_to_float_or_int(&right0, dest0.layout)?;
+                this.write_immediate(*res0, &dest0)?;
 
                 // Copy remianing from `left`
                 for i in 1..dest_len {

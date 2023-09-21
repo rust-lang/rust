@@ -234,21 +234,27 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 }
             }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
+                let Ok(layout) = self.tcx.layout_of(self.param_env.and(*ty)) else {
+                    return ValueOrPlace::Value(FlatSet::Top);
+                };
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self
                         .ecx
-                        .int_to_int_or_float(&op, *ty)
-                        .map_or(FlatSet::Top, |result| self.wrap_immediate(result)),
+                        .int_to_int_or_float(&op, layout)
+                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
                     FlatSet::Bottom => FlatSet::Bottom,
                     FlatSet::Top => FlatSet::Top,
                 }
             }
             Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand, ty) => {
+                let Ok(layout) = self.tcx.layout_of(self.param_env.and(*ty)) else {
+                    return ValueOrPlace::Value(FlatSet::Top);
+                };
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self
                         .ecx
-                        .float_to_float_or_int(&op, *ty)
-                        .map_or(FlatSet::Top, |result| self.wrap_immediate(result)),
+                        .float_to_float_or_int(&op, layout)
+                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
                     FlatSet::Bottom => FlatSet::Bottom,
                     FlatSet::Top => FlatSet::Top,
                 }
@@ -268,7 +274,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
                 FlatSet::Elem(value) => self
                     .ecx
-                    .unary_op(*op, &value)
+                    .wrapping_unary_op(*op, &value)
                     .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
                 FlatSet::Bottom => FlatSet::Bottom,
                 FlatSet::Top => FlatSet::Top,
@@ -439,7 +445,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             // Both sides are known, do the actual computation.
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
                 match self.ecx.overflowing_binary_op(op, &left, &right) {
-                    Ok((val, overflow, _)) => (FlatSet::Elem(val), FlatSet::Elem(overflow)),
+                    Ok((val, overflow)) => {
+                        (FlatSet::Elem(val.to_scalar()), FlatSet::Elem(overflow))
+                    }
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
             }
@@ -783,8 +791,8 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         _bin_op: BinOp,
         _left: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
         _right: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
-    ) -> interpret::InterpResult<'tcx, (Scalar<Self::Provenance>, bool, Ty<'tcx>)> {
-        throw_unsup!(Unsupported("".into()))
+    ) -> interpret::InterpResult<'tcx, (ImmTy<'tcx, Self::Provenance>, bool)> {
+        crate::const_prop::throw_machine_stop_str!("can't do pointer arithmetic");
     }
 
     fn expose_ptr(

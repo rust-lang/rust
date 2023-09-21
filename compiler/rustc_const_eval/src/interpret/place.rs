@@ -460,7 +460,7 @@ where
         trace!("deref to {} on {:?}", val.layout.ty, *val);
 
         if val.layout.ty.is_box() {
-            bug!("dereferencing {:?}", val.layout.ty);
+            bug!("dereferencing {}", val.layout.ty);
         }
 
         let mplace = self.ref_to_mplace(&val)?;
@@ -582,7 +582,7 @@ where
                 )?)?,
                 place.layout,
             ),
-            "eval_place of a MIR place with type {:?} produced an interpreter place with type {:?}",
+            "eval_place of a MIR place with type {:?} produced an interpreter place with type {}",
             mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
             place.layout.ty,
         );
@@ -835,7 +835,7 @@ where
         if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),
-                "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
+                "type mismatch when copying!\nsrc: {},\ndest: {}",
                 src.layout().ty,
                 dest.layout().ty,
             );

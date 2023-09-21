@@ -80,8 +80,8 @@ fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     match which {
         FloatBinOp::Arith(which) => {
-            let (res, _overflow, _ty) = this.overflowing_binary_op(which, left, right)?;
-            Ok(res)
+            let res = this.wrapping_binary_op(which, left, right)?;
+            Ok(res.to_scalar())
         }
         FloatBinOp::Cmp(which) => {
             let left = left.to_scalar().to_float::<F>()?;
