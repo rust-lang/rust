@@ -316,25 +316,38 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             target_os = "solaris",
             target_os = "illumos",
         ))] {
+            #[allow(unused_assignments)]
+            #[allow(unused_mut)]
+            let mut quota = usize::MAX;
+
             #[cfg(any(target_os = "android", target_os = "linux"))]
             {
-                let quota = cgroups::quota().max(1);
+                quota = cgroups::quota().max(1);
                 let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
                 unsafe {
                     if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         let count = count.min(quota);
-                        // reported to occur on MIPS kernels older than our minimum supported kernel version for those targets
-                        let count = NonZeroUsize::new(count)
-                            .expect("CPU count must be > 0. This may be a bug in sched_getaffinity(); try upgrading the kernel.");
-                        return Ok(count);
+
+                        // According to sched_getaffinity's API it should always be non-zero, but
+                        // some old MIPS kernels were buggy and zero-initialized the mask if
+                        // none was explicitly set.
+                        // In that case we use the sysconf fallback.
+                        if let Some(count) = NonZeroUsize::new(count) {
+                            return Ok(count)
+                        }
                     }
                 }
             }
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
                 0 => Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform")),
-                cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) }),
+                cpus => {
+                    let count = cpus as usize;
+                    // Cover the unusual situation where we were able to get the quota but not the affinity mask
+                    let count = count.min(quota);
+                    Ok(unsafe { NonZeroUsize::new_unchecked(count) })
+                }
             }
         } else if #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))] {
             use crate::ptr;
