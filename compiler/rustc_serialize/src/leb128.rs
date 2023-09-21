@@ -15,23 +15,20 @@ pub const fn largest_max_leb128_len() -> usize {
 macro_rules! impl_write_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
         #[inline]
-        pub fn $fn_name(
-            out: &mut [::std::mem::MaybeUninit<u8>; max_leb128_len::<$int_ty>()],
-            mut value: $int_ty,
-        ) -> &[u8] {
+        pub fn $fn_name(out: &mut [u8; max_leb128_len::<$int_ty>()], mut value: $int_ty) -> usize {
             let mut i = 0;
 
             loop {
                 if value < 0x80 {
                     unsafe {
-                        *out.get_unchecked_mut(i).as_mut_ptr() = value as u8;
+                        *out.get_unchecked_mut(i) = value as u8;
                     }
 
                     i += 1;
                     break;
                 } else {
                     unsafe {
-                        *out.get_unchecked_mut(i).as_mut_ptr() = ((value & 0x7f) | 0x80) as u8;
+                        *out.get_unchecked_mut(i) = ((value & 0x7f) | 0x80) as u8;
                     }
 
                     value >>= 7;
@@ -39,7 +36,7 @@ macro_rules! impl_write_unsigned_leb128 {
                 }
             }
 
-            unsafe { ::std::mem::MaybeUninit::slice_assume_init_ref(&out.get_unchecked(..i)) }
+            i
         }
     };
 }
@@ -87,10 +84,7 @@ impl_read_unsigned_leb128!(read_usize_leb128, usize);
 macro_rules! impl_write_signed_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
         #[inline]
-        pub fn $fn_name(
-            out: &mut [::std::mem::MaybeUninit<u8>; max_leb128_len::<$int_ty>()],
-            mut value: $int_ty,
-        ) -> &[u8] {
+        pub fn $fn_name(out: &mut [u8; max_leb128_len::<$int_ty>()], mut value: $int_ty) -> usize {
             let mut i = 0;
 
             loop {
@@ -104,7 +98,7 @@ macro_rules! impl_write_signed_leb128 {
                 }
 
                 unsafe {
-                    *out.get_unchecked_mut(i).as_mut_ptr() = byte;
+                    *out.get_unchecked_mut(i) = byte;
                 }
 
                 i += 1;
@@ -114,7 +108,7 @@ macro_rules! impl_write_signed_leb128 {
                 }
             }
 
-            unsafe { ::std::mem::MaybeUninit::slice_assume_init_ref(&out.get_unchecked(..i)) }
+            i
         }
     };
 }

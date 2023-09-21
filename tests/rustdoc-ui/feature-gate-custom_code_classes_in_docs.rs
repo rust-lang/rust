@@ -8,3 +8,8 @@
 //~| NOTE see issue #79483 <https://github.com/rust-lang/rust/issues/79483>
 //~| HELP add `#![feature(custom_code_classes_in_docs)]` to the crate attributes to enable
 pub struct Bar;
+
+/// ```ASN.1
+/// int main(void) { return 0; }
+/// ```
+pub struct Bar2;

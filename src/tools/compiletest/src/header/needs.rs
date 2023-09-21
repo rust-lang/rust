@@ -1,6 +1,5 @@
-use crate::common::{Config, Debugger};
+use crate::common::{Config, Debugger, Sanitizer};
 use crate::header::IgnoreDecision;
-use crate::util;
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -220,21 +219,22 @@ impl CachedNeedsConditions {
             path.iter().any(|dir| dir.join("x86_64-w64-mingw32-dlltool").is_file());
 
         let target = &&*config.target;
+        let sanitizers = &config.target_cfg().sanitizers;
         Self {
             sanitizer_support: std::env::var_os("RUSTC_SANITIZER_SUPPORT").is_some(),
-            sanitizer_address: util::ASAN_SUPPORTED_TARGETS.contains(target),
-            sanitizer_cfi: util::CFI_SUPPORTED_TARGETS.contains(target),
-            sanitizer_kcfi: util::KCFI_SUPPORTED_TARGETS.contains(target),
-            sanitizer_kasan: util::KASAN_SUPPORTED_TARGETS.contains(target),
-            sanitizer_leak: util::LSAN_SUPPORTED_TARGETS.contains(target),
-            sanitizer_memory: util::MSAN_SUPPORTED_TARGETS.contains(target),
-            sanitizer_thread: util::TSAN_SUPPORTED_TARGETS.contains(target),
-            sanitizer_hwaddress: util::HWASAN_SUPPORTED_TARGETS.contains(target),
-            sanitizer_memtag: util::MEMTAG_SUPPORTED_TARGETS.contains(target),
-            sanitizer_shadow_call_stack: util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(target),
-            sanitizer_safestack: util::SAFESTACK_SUPPORTED_TARGETS.contains(target),
+            sanitizer_address: sanitizers.contains(&Sanitizer::Address),
+            sanitizer_cfi: sanitizers.contains(&Sanitizer::Cfi),
+            sanitizer_kcfi: sanitizers.contains(&Sanitizer::Kcfi),
+            sanitizer_kasan: sanitizers.contains(&Sanitizer::KernelAddress),
+            sanitizer_leak: sanitizers.contains(&Sanitizer::Leak),
+            sanitizer_memory: sanitizers.contains(&Sanitizer::Memory),
+            sanitizer_thread: sanitizers.contains(&Sanitizer::Thread),
+            sanitizer_hwaddress: sanitizers.contains(&Sanitizer::Hwaddress),
+            sanitizer_memtag: sanitizers.contains(&Sanitizer::Memtag),
+            sanitizer_shadow_call_stack: sanitizers.contains(&Sanitizer::ShadowCallStack),
+            sanitizer_safestack: sanitizers.contains(&Sanitizer::Safestack),
             profiler_support: std::env::var_os("RUSTC_PROFILER_SUPPORT").is_some(),
-            xray: util::XRAY_SUPPORTED_TARGETS.contains(target),
+            xray: config.target_cfg().xray,
 
             // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find
             // whether `rust-lld` is present in the compiler under test.

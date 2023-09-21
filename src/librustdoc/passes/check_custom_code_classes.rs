@@ -21,6 +21,10 @@ pub(crate) const CHECK_CUSTOM_CODE_CLASSES: Pass = Pass {
 };
 
 pub(crate) fn check_custom_code_classes(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    if cx.tcx.features().custom_code_classes_in_docs {
+        // Nothing to check here if the feature is enabled.
+        return krate;
+    }
     let mut coll = CustomCodeClassLinter { cx };
 
     coll.fold_crate(krate)
@@ -59,7 +63,7 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
     let dox = item.attrs.doc_value();
     find_codes(&dox, &mut tests, ErrorCodes::No, false, None, true, true);
 
-    if !tests.custom_classes_found.is_empty() && !cx.tcx.features().custom_code_classes_in_docs {
+    if !tests.custom_classes_found.is_empty() {
         let span = item.attr_span(cx.tcx);
         let sess = &cx.tcx.sess.parse_sess;
         let mut err = sess

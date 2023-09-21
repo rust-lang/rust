@@ -41,7 +41,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
 
     pub(super) fn format_goal_evaluation(&mut self, eval: &GoalEvaluation<'_>) -> std::fmt::Result {
         let goal_text = match eval.kind {
-            GoalEvaluationKind::Root => "ROOT GOAL",
+            GoalEvaluationKind::Root { orig_values: _ } => "ROOT GOAL",
             GoalEvaluationKind::Nested { is_normalizes_to_hack } => match is_normalizes_to_hack {
                 IsNormalizesToHack::No => "GOAL",
                 IsNormalizesToHack::Yes => "NORMALIZES-TO HACK GOAL",

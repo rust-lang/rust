@@ -725,7 +725,7 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
                 self.rebind(tr).with_self_ty(tcx, self_ty).to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
-                self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
+                ty::Clause::from_projection_clause(tcx, self.rebind(p.with_self_ty(tcx, self_ty)))
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let generics = tcx.generics_of(did);
@@ -2943,6 +2943,33 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             ty::Adt(adt, _) => tcx.lang_items().get(LangItem::CVoid) == Some(adt.did()),
             _ => false,
+        }
+    }
+
+    pub fn is_known_rigid(self) -> bool {
+        match self.kind() {
+            Bool
+            | Char
+            | Int(_)
+            | Uint(_)
+            | Float(_)
+            | Adt(_, _)
+            | Foreign(_)
+            | Str
+            | Array(_, _)
+            | Slice(_)
+            | RawPtr(_)
+            | Ref(_, _, _)
+            | FnDef(_, _)
+            | FnPtr(_)
+            | Dynamic(_, _, _)
+            | Closure(_, _)
+            | Generator(_, _, _)
+            | GeneratorWitness(_)
+            | GeneratorWitnessMIR(_, _)
+            | Never
+            | Tuple(_) => true,
+            Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
         }
     }
 }

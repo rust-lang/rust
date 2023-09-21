@@ -5,6 +5,8 @@ LL | impl<T: TraitB> Overlaps<Box<T>> for <T as TraitB>::Assoc {}
    | --------------------------------------------------------- first implementation here
 LL | impl<U: TraitB> Overlaps<U> for <U as TraitB>::Assoc {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<_ as TraitB>::Assoc`
+   |
+   = note: downstream crates may implement trait `TraitB` for type `std::boxed::Box<_>`
 
 error: aborting due to previous error
 

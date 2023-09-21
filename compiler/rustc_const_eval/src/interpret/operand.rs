@@ -13,9 +13,8 @@ use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer, Projectable,
-    Provenance, Scalar,
+    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, Frame, InterpCx, InterpResult,
+    MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer, Projectable, Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -44,24 +43,30 @@ impl<Prov: Provenance> From<Scalar<Prov>> for Immediate<Prov> {
 }
 
 impl<Prov: Provenance> Immediate<Prov> {
-    pub fn from_pointer(p: Pointer<Prov>, cx: &impl HasDataLayout) -> Self {
-        Immediate::Scalar(Scalar::from_pointer(p, cx))
+    pub fn from_pointer(ptr: Pointer<Prov>, cx: &impl HasDataLayout) -> Self {
+        Immediate::Scalar(Scalar::from_pointer(ptr, cx))
     }
 
-    pub fn from_maybe_pointer(p: Pointer<Option<Prov>>, cx: &impl HasDataLayout) -> Self {
-        Immediate::Scalar(Scalar::from_maybe_pointer(p, cx))
+    pub fn from_maybe_pointer(ptr: Pointer<Option<Prov>>, cx: &impl HasDataLayout) -> Self {
+        Immediate::Scalar(Scalar::from_maybe_pointer(ptr, cx))
     }
 
-    pub fn new_slice(val: Scalar<Prov>, len: u64, cx: &impl HasDataLayout) -> Self {
-        Immediate::ScalarPair(val, Scalar::from_target_usize(len, cx))
+    pub fn new_slice(ptr: Pointer<Option<Prov>>, len: u64, cx: &impl HasDataLayout) -> Self {
+        Immediate::ScalarPair(
+            Scalar::from_maybe_pointer(ptr, cx),
+            Scalar::from_target_usize(len, cx),
+        )
     }
 
     pub fn new_dyn_trait(
-        val: Scalar<Prov>,
+        val: Pointer<Option<Prov>>,
         vtable: Pointer<Option<Prov>>,
         cx: &impl HasDataLayout,
     ) -> Self {
-        Immediate::ScalarPair(val, Scalar::from_maybe_pointer(vtable, cx))
+        Immediate::ScalarPair(
+            Scalar::from_maybe_pointer(val, cx),
+            Scalar::from_maybe_pointer(vtable, cx),
+        )
     }
 
     #[inline]
@@ -702,7 +707,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(crate) fn const_val_to_op(
         &self,
-        val_val: ConstValue<'tcx>,
+        val_val: mir::ConstValue<'tcx>,
         ty: Ty<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
@@ -715,24 +720,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
         let op = match val_val {
-            ConstValue::Indirect { alloc_id, offset } => {
+            mir::ConstValue::Indirect { alloc_id, offset } => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
                 let ptr = self.global_base_pointer(Pointer::new(alloc_id, offset))?;
                 Operand::Indirect(MemPlace::from_ptr(ptr.into()))
             }
-            ConstValue::Scalar(x) => Operand::Immediate(adjust_scalar(x)?.into()),
-            ConstValue::ZeroSized => Operand::Immediate(Immediate::Uninit),
-            ConstValue::Slice { data, start, end } => {
+            mir::ConstValue::Scalar(x) => Operand::Immediate(adjust_scalar(x)?.into()),
+            mir::ConstValue::ZeroSized => Operand::Immediate(Immediate::Uninit),
+            mir::ConstValue::Slice { data, meta } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
-                let ptr = Pointer::new(
-                    self.tcx.reserve_and_set_memory_alloc(data),
-                    Size::from_bytes(start), // offset: `start`
-                );
+                let ptr = Pointer::new(self.tcx.reserve_and_set_memory_alloc(data), Size::ZERO);
                 Operand::Immediate(Immediate::new_slice(
-                    Scalar::from_pointer(self.global_base_pointer(ptr)?, &*self.tcx),
-                    u64::try_from(end.checked_sub(start).unwrap()).unwrap(), // len: `end - start`
+                    self.global_base_pointer(ptr)?.into(),
+                    meta,
                     self,
                 ))
             }

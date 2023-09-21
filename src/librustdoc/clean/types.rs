@@ -1639,10 +1639,6 @@ impl Type {
         matches!(self, Type::Generic(_))
     }
 
-    pub(crate) fn is_impl_trait(&self) -> bool {
-        matches!(self, Type::ImplTrait(_))
-    }
-
     pub(crate) fn is_unit(&self) -> bool {
         matches!(self, Type::Tuple(v) if v.is_empty())
     }

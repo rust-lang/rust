@@ -9,16 +9,15 @@ use either::{Either, Left, Right};
 use rustc_ast::Mutability;
 use rustc_index::IndexSlice;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
-    alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
-    ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand,
-    Pointer, Projectable, Provenance, Readable, Scalar,
+    alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg, ImmTy,
+    Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand, Pointer,
+    PointerArithmetic, Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -1037,7 +1036,7 @@ where
 
     pub fn raw_const_to_mplace(
         &self,
-        raw: ConstAlloc<'tcx>,
+        raw: mir::ConstAlloc<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         // This must be an allocation in `tcx`
         let _ = self.tcx.global_alloc(raw.alloc_id);

@@ -5,7 +5,6 @@ use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::Idx;
 use rustc_middle::ty::{ParameterizedOverTcx, UnusedGenericParams};
 use rustc_serialize::opaque::FileEncoder;
-use rustc_serialize::Encoder as _;
 use rustc_span::hygiene::MacroKind;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
@@ -468,7 +467,10 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
 
         let width = self.width;
         for block in &self.blocks {
-            buf.emit_raw_bytes(&block[..width]);
+            buf.write_with(|dest| {
+                *dest = *block;
+                width
+            });
         }
 
         LazyTable::from_position_and_encoded_size(

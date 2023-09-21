@@ -325,13 +325,16 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
         // FIXME: normalization and escaping regions
         let ty = if !ty.has_escaping_bound_vars() {
-            if let ty::Alias(
-                ty::AliasKind::Projection | ty::AliasKind::Weak,
-                ty::AliasTy { args, def_id, .. },
-            ) = ty.kind()
+            // NOTE: These obligations are 100% redundant and are implied by
+            // WF obligations that are registered elsewhere, but they have a
+            // better cause code assigned to them in `add_required_obligations_for_hir`.
+            // This means that they should shadow obligations with worse spans.
+            if let ty::Alias(ty::Projection | ty::Weak, ty::AliasTy { args, def_id, .. }) =
+                ty.kind()
             {
                 self.add_required_obligations_for_hir(span, *def_id, args, hir_id);
             }
+
             self.normalize(span, ty)
         } else {
             ty

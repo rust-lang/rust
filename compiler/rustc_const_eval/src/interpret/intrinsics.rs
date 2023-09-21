@@ -5,10 +5,8 @@
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{
-        Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar,
-    },
-    BinOp, NonDivergingIntrinsic,
+    interpret::{Allocation, ConstAllocation, GlobalId, InterpResult, PointerArithmetic, Scalar},
+    BinOp, ConstValue, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
@@ -64,7 +62,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
             let alloc = alloc_type_name(tcx, tp_ty);
-            ConstValue::Slice { data: alloc, start: 0, end: alloc.inner().len() }
+            ConstValue::Slice { data: alloc, meta: alloc.inner().size().bytes() }
         }
         sym::needs_drop => {
             ensure_monomorphic_enough(tcx, tp_ty)?;

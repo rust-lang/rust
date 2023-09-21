@@ -121,16 +121,12 @@ impl EraseType for Result<mir::ConstantKind<'_>, mir::interpret::LitToConstError
         [u8; size_of::<Result<mir::ConstantKind<'static>, mir::interpret::LitToConstError>>()];
 }
 
-impl EraseType for Result<mir::interpret::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
-    type Result = [u8; size_of::<
-        Result<mir::interpret::ConstAlloc<'static>, mir::interpret::ErrorHandled>,
-    >()];
+impl EraseType for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
+    type Result = [u8; size_of::<Result<mir::ConstAlloc<'static>, mir::interpret::ErrorHandled>>()];
 }
 
-impl EraseType for Result<mir::interpret::ConstValue<'_>, mir::interpret::ErrorHandled> {
-    type Result = [u8; size_of::<
-        Result<mir::interpret::ConstValue<'static>, mir::interpret::ErrorHandled>,
-    >()];
+impl EraseType for Result<mir::ConstValue<'_>, mir::interpret::ErrorHandled> {
+    type Result = [u8; size_of::<Result<mir::ConstValue<'static>, mir::interpret::ErrorHandled>>()];
 }
 
 impl EraseType for Result<Option<ty::ValTree<'_>>, mir::interpret::ErrorHandled> {
@@ -317,8 +313,8 @@ tcx_lifetime! {
     rustc_middle::middle::exported_symbols::ExportedSymbol,
     rustc_middle::mir::ConstantKind,
     rustc_middle::mir::DestructuredConstant,
-    rustc_middle::mir::interpret::ConstAlloc,
-    rustc_middle::mir::interpret::ConstValue,
+    rustc_middle::mir::ConstAlloc,
+    rustc_middle::mir::ConstValue,
     rustc_middle::mir::interpret::GlobalId,
     rustc_middle::mir::interpret::LitToConstInput,
     rustc_middle::traits::query::MethodAutoderefStepsResult,

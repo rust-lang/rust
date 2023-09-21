@@ -404,7 +404,7 @@ struct NodeInfo<K: DepKind> {
 impl<K: DepKind> Encodable<FileEncoder> for NodeInfo<K> {
     fn encode(&self, e: &mut FileEncoder) {
         let header = SerializedNodeHeader::new(self);
-        e.emit_raw_bytes(&header.bytes);
+        e.write_array(header.bytes);
 
         if header.len().is_none() {
             e.emit_usize(self.edges.len());
@@ -412,8 +412,10 @@ impl<K: DepKind> Encodable<FileEncoder> for NodeInfo<K> {
 
         let bytes_per_index = header.bytes_per_index();
         for node_index in self.edges.iter() {
-            let bytes = node_index.as_u32().to_le_bytes();
-            e.emit_raw_bytes(&bytes[..bytes_per_index]);
+            e.write_with(|dest| {
+                *dest = node_index.as_u32().to_le_bytes();
+                bytes_per_index
+            });
         }
     }
 }

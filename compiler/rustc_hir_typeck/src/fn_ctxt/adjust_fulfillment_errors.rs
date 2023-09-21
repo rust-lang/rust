@@ -33,27 +33,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let generics = self.tcx.generics_of(def_id);
-        let predicate_args = match unsubstituted_pred.kind().skip_binder() {
-            ty::ClauseKind::Trait(pred) => pred.trait_ref.args.to_vec(),
-            ty::ClauseKind::Projection(pred) => pred.projection_ty.args.to_vec(),
-            ty::ClauseKind::ConstArgHasType(arg, ty) => {
-                vec![ty.into(), arg.into()]
-            }
-            ty::ClauseKind::ConstEvaluatable(e) => vec![e.into()],
-            _ => return false,
-        };
+        let (predicate_args, predicate_self_type_to_point_at) =
+            match unsubstituted_pred.kind().skip_binder() {
+                ty::ClauseKind::Trait(pred) => {
+                    (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
+                }
+                ty::ClauseKind::Projection(pred) => (pred.projection_ty.args.to_vec(), None),
+                ty::ClauseKind::ConstArgHasType(arg, ty) => (vec![ty.into(), arg.into()], None),
+                ty::ClauseKind::ConstEvaluatable(e) => (vec![e.into()], None),
+                _ => return false,
+            };
 
-        let direct_param = if let ty::ClauseKind::Trait(pred) = unsubstituted_pred.kind().skip_binder()
-            && let ty = pred.trait_ref.self_ty()
-            && let ty::Param(_param) = ty.kind()
-            && let Some(arg) = predicate_args.get(0)
-            && let ty::GenericArgKind::Type(arg_ty) = arg.unpack()
-            && arg_ty == ty
-        {
-            Some(*arg)
-        } else {
-            None
-        };
         let find_param_matching = |matches: &dyn Fn(ty::ParamTerm) -> bool| {
             predicate_args.iter().find_map(|arg| {
                 arg.walk().find_map(|arg| {
@@ -112,18 +102,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let qpath =
                     if let hir::ExprKind::Path(qpath) = expr.kind { Some(qpath) } else { None };
 
-                (Some(*expr), qpath)
+                (Some(&expr.kind), qpath)
             }
             hir::Node::Ty(hir::Ty { kind: hir::TyKind::Path(qpath), .. }) => (None, Some(*qpath)),
             _ => return false,
         };
 
         if let Some(qpath) = qpath {
-            if let Some(param) = direct_param {
-                if self.point_at_path_if_possible(error, def_id, param, &qpath) {
-                    return true;
-                }
+            // Prefer pointing at the turbofished arg that corresponds to the
+            // self type of the failing predicate over anything else.
+            if let Some(param) = predicate_self_type_to_point_at
+                && self.point_at_path_if_possible(error, def_id, param, &qpath)
+            {
+                return true;
             }
+
             if let hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Call(callee, args),
                 hir_id: call_hir_id,
@@ -166,11 +159,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        match expr.map(|e| e.kind) {
+        match expr {
             Some(hir::ExprKind::MethodCall(segment, receiver, args, ..)) => {
-                if let Some(param) = direct_param
+                if let Some(param) = predicate_self_type_to_point_at
                     && self.point_at_generic_if_possible(error, def_id, param, segment)
                 {
+                    // HACK: This is not correct, since `predicate_self_type_to_point_at` might
+                    // not actually correspond to the receiver of the method call. But we
+                    // re-adjust the cause code here in order to prefer pointing at one of
+                    // the method's turbofish segments but still use `FunctionArgumentObligation`
+                    // elsewhere. Hopefully this doesn't break something.
                     error.obligation.cause.map_code(|parent_code| {
                         ObligationCauseCode::FunctionArgumentObligation {
                             arg_hir_id: receiver.hir_id,
@@ -180,6 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                     return true;
                 }
+
                 for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
@@ -237,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for param in [
-                    direct_param,
+                    predicate_self_type_to_point_at,
                     param_to_point_at,
                     fallback_param_to_point_at,
                     self_param_to_point_at,

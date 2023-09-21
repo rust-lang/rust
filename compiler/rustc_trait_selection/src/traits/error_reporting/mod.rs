@@ -986,6 +986,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             }
                         }
 
+                        self.explain_hrtb_projection(&mut err, trait_predicate, obligation.param_env, &obligation.cause);
+
                         // Return early if the trait is Debug or Display and the invocation
                         // originates within a standard library macro, because the output
                         // is otherwise overwhelming and unhelpful (see #85844 for an

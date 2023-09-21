@@ -3,10 +3,13 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::query::{
     normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution,
 };
-use rustc_trait_selection::traits::{self, ObligationCause, SelectionContext};
+use rustc_trait_selection::traits::{
+    self, FulfillmentErrorCode, ObligationCause, SelectionContext,
+};
 use std::sync::atomic::Ordering;
 
 pub(crate) fn provide(p: &mut Providers) {
@@ -40,6 +43,27 @@ fn normalize_projection_ty<'tcx>(
                 &mut obligations,
             );
             ocx.register_obligations(obligations);
+            // #112047: With projections and opaques, we are able to create opaques that
+            // are recursive (given some substitution of the opaque's type variables).
+            // In that case, we may only realize a cycle error when calling
+            // `normalize_erasing_regions` in mono.
+            if !ocx.infcx.next_trait_solver() {
+                let errors = ocx.select_where_possible();
+                if !errors.is_empty() {
+                    // Rustdoc may attempt to normalize type alias types which are not
+                    // well-formed. Rustdoc also normalizes types that are just not
+                    // well-formed, since we don't do as much HIR analysis (checking
+                    // that impl vars are constrained by the signature, for example).
+                    if !tcx.sess.opts.actually_rustdoc {
+                        for error in &errors {
+                            if let FulfillmentErrorCode::CodeCycle(cycle) = &error.code {
+                                ocx.infcx.err_ctxt().report_overflow_obligation_cycle(cycle);
+                            }
+                        }
+                    }
+                    return Err(NoSolution);
+                }
+            }
             // FIXME(associated_const_equality): All users of normalize_projection_ty expected
             // a type, but there is the possibility it could've been a const now. Maybe change
             // it to a Term later?

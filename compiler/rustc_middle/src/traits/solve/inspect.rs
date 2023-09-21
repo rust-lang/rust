@@ -1,12 +1,46 @@
+//! Data structure used to inspect trait solver behavior.
+//!
+//! During trait solving we optionally build "proof trees", the root of
+//! which is a [GoalEvaluation] with [GoalEvaluationKind::Root]. These
+//! trees are used to improve the debug experience and are also used by
+//! the compiler itself to provide necessary context for error messages.
+//!
+//! Because each nested goal in the solver gets [canonicalized] separately
+//! and we discard inference progress via "probes", we cannot mechanically
+//! use proof trees without somehow "lifting up" data local to the current
+//! `InferCtxt`. Any data used mechanically is therefore canonicalized and
+//! stored as [CanonicalState]. As printing canonicalized data worsens the
+//! debugging dumps, we do not simply canonicalize everything.
+//!
+//! This means proof trees contain inference variables and placeholders
+//! local to a different `InferCtxt` which must not be used with the
+//! current one.
+//!
+//! [canonicalized]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
+
 use super::{
-    CandidateSource, CanonicalInput, Certainty, Goal, IsNormalizesToHack, NoSolution, QueryInput,
-    QueryResult,
+    CandidateSource, Canonical, CanonicalInput, Certainty, Goal, IsNormalizesToHack, NoSolution,
+    QueryInput, QueryResult,
 };
-use crate::ty;
+use crate::{infer::canonical::CanonicalVarValues, ty};
 use format::ProofTreeFormatter;
 use std::fmt::{Debug, Write};
 
 mod format;
+
+/// Some `data` together with information about how they relate to the input
+/// of the canonical query.
+///
+/// This is only ever used as [CanonicalState]. Any type information in proof
+/// trees used mechanically has to be canonicalized as we otherwise leak
+/// inference variables from a nested `InferCtxt`.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, TypeFoldable, TypeVisitable)]
+pub struct State<'tcx, T> {
+    pub var_values: CanonicalVarValues<'tcx>,
+    pub data: T,
+}
+
+pub type CanonicalState<'tcx, T> = Canonical<'tcx, State<'tcx, T>>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum CacheHit {
@@ -14,17 +48,23 @@ pub enum CacheHit {
     Global,
 }
 
+/// When evaluating the root goals we also store the
+/// original values for the `CanonicalVarValues` of the
+/// canonicalized goal. We use this to map any [CanonicalState]
+/// from the local `InferCtxt` of the solver query to
+/// the `InferCtxt` of the caller.
 #[derive(Eq, PartialEq)]
-pub enum GoalEvaluationKind {
-    Root,
+pub enum GoalEvaluationKind<'tcx> {
+    Root { orig_values: Vec<ty::GenericArg<'tcx>> },
     Nested { is_normalizes_to_hack: IsNormalizesToHack },
 }
 
 #[derive(Eq, PartialEq)]
 pub struct GoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    pub kind: GoalEvaluationKind,
+    pub kind: GoalEvaluationKind<'tcx>,
     pub evaluation: CanonicalGoalEvaluation<'tcx>,
+    /// The nested goals from instantiating the query response.
     pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
@@ -66,6 +106,7 @@ pub struct GoalEvaluationStep<'tcx> {
 /// of a goal.
 #[derive(Eq, PartialEq)]
 pub struct Probe<'tcx> {
+    /// What happened inside of this probe in chronological order.
     pub steps: Vec<ProbeStep<'tcx>>,
     pub kind: ProbeKind<'tcx>,
 }
@@ -78,12 +119,21 @@ impl Debug for Probe<'_> {
 
 #[derive(Eq, PartialEq)]
 pub enum ProbeStep<'tcx> {
-    AddGoal(Goal<'tcx, ty::Predicate<'tcx>>),
+    /// We added a goal to the `EvalCtxt` which will get proven
+    /// the next time `EvalCtxt::try_evaluate_added_goals` is called.
+    AddGoal(CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
+    /// The inside of a `EvalCtxt::try_evaluate_added_goals` call.
     EvaluateGoals(AddedGoalsEvaluation<'tcx>),
+    /// A call to `probe` while proving the current goal. This is
+    /// used whenever there are multiple candidates to prove the
+    /// current goalby .
     NestedProbe(Probe<'tcx>),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+/// What kind of probe we're in. In case the probe represents a candidate, or
+/// the final result of the current goal - via [ProbeKind::Root] - we also
+/// store the [QueryResult].
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ProbeKind<'tcx> {
     /// The root inference context while proving a goal.
     Root { result: QueryResult<'tcx> },

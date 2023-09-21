@@ -53,47 +53,117 @@ fn test_parse_normalization_string() {
     assert_eq!(s, r#"normalize-stderr-16bit: something (16 bits) -> something ($WORD bits)."#);
 }
 
-fn config() -> Config {
-    let args = &[
-        "compiletest",
-        "--mode=ui",
-        "--suite=ui",
-        "--compile-lib-path=",
-        "--run-lib-path=",
-        "--python=",
-        "--jsondocck-path=",
-        "--src-base=",
-        "--build-base=",
-        "--sysroot-base=",
-        "--stage-id=stage2-x86_64-unknown-linux-gnu",
-        "--cc=c",
-        "--cxx=c++",
-        "--cflags=",
-        "--cxxflags=",
-        "--llvm-components=",
-        "--android-cross-path=",
-        "--target=x86_64-unknown-linux-gnu",
-        "--channel=nightly",
-    ];
-    let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
-    args.push("--rustc-path".to_string());
-    // This is a subtle/fragile thing. On rust-lang CI, there is no global
-    // `rustc`, and Cargo doesn't offer a convenient way to get the path to
-    // `rustc`. Fortunately bootstrap sets `RUSTC` for us, which is pointing
-    // to the stage0 compiler.
-    //
-    // Otherwise, if you are running compiletests's tests manually, you
-    // probably don't have `RUSTC` set, in which case this falls back to the
-    // global rustc. If your global rustc is too far out of sync with stage0,
-    // then this may cause confusing errors. Or if for some reason you don't
-    // have rustc in PATH, that would also fail.
-    args.push(std::env::var("RUSTC").unwrap_or_else(|_| {
-        eprintln!(
-            "warning: RUSTC not set, using global rustc (are you not running via bootstrap?)"
-        );
-        "rustc".to_string()
-    }));
-    crate::parse_config(args)
+#[derive(Default)]
+struct ConfigBuilder {
+    channel: Option<String>,
+    host: Option<String>,
+    target: Option<String>,
+    stage_id: Option<String>,
+    llvm_version: Option<String>,
+    git_hash: bool,
+    system_llvm: bool,
+}
+
+impl ConfigBuilder {
+    fn channel(&mut self, s: &str) -> &mut Self {
+        self.channel = Some(s.to_owned());
+        self
+    }
+
+    fn host(&mut self, s: &str) -> &mut Self {
+        self.host = Some(s.to_owned());
+        self
+    }
+
+    fn target(&mut self, s: &str) -> &mut Self {
+        self.target = Some(s.to_owned());
+        self
+    }
+
+    fn stage_id(&mut self, s: &str) -> &mut Self {
+        self.stage_id = Some(s.to_owned());
+        self
+    }
+
+    fn llvm_version(&mut self, s: &str) -> &mut Self {
+        self.llvm_version = Some(s.to_owned());
+        self
+    }
+
+    fn git_hash(&mut self, b: bool) -> &mut Self {
+        self.git_hash = b;
+        self
+    }
+
+    fn system_llvm(&mut self, s: bool) -> &mut Self {
+        self.system_llvm = s;
+        self
+    }
+
+    fn build(&mut self) -> Config {
+        let args = &[
+            "compiletest",
+            "--mode=ui",
+            "--suite=ui",
+            "--compile-lib-path=",
+            "--run-lib-path=",
+            "--python=",
+            "--jsondocck-path=",
+            "--src-base=",
+            "--build-base=",
+            "--sysroot-base=",
+            "--cc=c",
+            "--cxx=c++",
+            "--cflags=",
+            "--cxxflags=",
+            "--llvm-components=",
+            "--android-cross-path=",
+            "--stage-id",
+            self.stage_id.as_deref().unwrap_or("stage2-x86_64-unknown-linux-gnu"),
+            "--channel",
+            self.channel.as_deref().unwrap_or("nightly"),
+            "--host",
+            self.host.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
+            "--target",
+            self.target.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
+        ];
+        let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
+
+        if let Some(ref llvm_version) = self.llvm_version {
+            args.push("--llvm-version".to_owned());
+            args.push(llvm_version.clone());
+        }
+
+        if self.git_hash {
+            args.push("--git-hash".to_owned());
+        }
+        if self.system_llvm {
+            args.push("--system-llvm".to_owned());
+        }
+
+        args.push("--rustc-path".to_string());
+        // This is a subtle/fragile thing. On rust-lang CI, there is no global
+        // `rustc`, and Cargo doesn't offer a convenient way to get the path to
+        // `rustc`. Fortunately bootstrap sets `RUSTC` for us, which is pointing
+        // to the stage0 compiler.
+        //
+        // Otherwise, if you are running compiletests's tests manually, you
+        // probably don't have `RUSTC` set, in which case this falls back to the
+        // global rustc. If your global rustc is too far out of sync with stage0,
+        // then this may cause confusing errors. Or if for some reason you don't
+        // have rustc in PATH, that would also fail.
+        args.push(std::env::var("RUSTC").unwrap_or_else(|_| {
+            eprintln!(
+                "warning: RUSTC not set, using global rustc (are you not running via bootstrap?)"
+            );
+            "rustc".to_string()
+        }));
+        crate::parse_config(args)
+    }
+}
+
+fn cfg() -> ConfigBuilder {
+    ConfigBuilder::default()
 }
 
 fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
@@ -115,7 +185,7 @@ fn parse_makefile(config: &Config, contents: &str) -> EarlyProps {
 
 #[test]
 fn should_fail() {
-    let config = config();
+    let config: Config = cfg().build();
     let tn = test::DynTestName(String::new());
     let p = Path::new("a.rs");
 
@@ -127,7 +197,7 @@ fn should_fail() {
 
 #[test]
 fn revisions() {
-    let config = config();
+    let config: Config = cfg().build();
 
     assert_eq!(parse_rs(&config, "// revisions: a b c").revisions, vec!["a", "b", "c"],);
     assert_eq!(
@@ -138,7 +208,7 @@ fn revisions() {
 
 #[test]
 fn aux_build() {
-    let config = config();
+    let config: Config = cfg().build();
 
     assert_eq!(
         parse_rs(
@@ -155,36 +225,31 @@ fn aux_build() {
 
 #[test]
 fn no_system_llvm() {
-    let mut config = config();
-
-    config.system_llvm = false;
+    let config: Config = cfg().system_llvm(false).build();
     assert!(!check_ignore(&config, "// no-system-llvm"));
 
-    config.system_llvm = true;
+    let config: Config = cfg().system_llvm(true).build();
     assert!(check_ignore(&config, "// no-system-llvm"));
 }
 
 #[test]
 fn llvm_version() {
-    let mut config = config();
-
-    config.llvm_version = Some(80102);
+    let config: Config = cfg().llvm_version("8.1.2").build();
     assert!(check_ignore(&config, "// min-llvm-version: 9.0"));
 
-    config.llvm_version = Some(90001);
+    let config: Config = cfg().llvm_version("9.0.1").build();
     assert!(check_ignore(&config, "// min-llvm-version: 9.2"));
 
-    config.llvm_version = Some(90301);
+    let config: Config = cfg().llvm_version("9.3.1").build();
     assert!(!check_ignore(&config, "// min-llvm-version: 9.2"));
 
-    config.llvm_version = Some(100000);
+    let config: Config = cfg().llvm_version("10.0.0").build();
     assert!(!check_ignore(&config, "// min-llvm-version: 9.0"));
 }
 
 #[test]
 fn ignore_target() {
-    let mut config = config();
-    config.target = "x86_64-unknown-linux-gnu".to_owned();
+    let config: Config = cfg().target("x86_64-unknown-linux-gnu").build();
 
     assert!(check_ignore(&config, "// ignore-x86_64-unknown-linux-gnu"));
     assert!(check_ignore(&config, "// ignore-x86_64"));
@@ -200,8 +265,7 @@ fn ignore_target() {
 
 #[test]
 fn only_target() {
-    let mut config = config();
-    config.target = "x86_64-pc-windows-gnu".to_owned();
+    let config: Config = cfg().target("x86_64-pc-windows-gnu").build();
 
     assert!(check_ignore(&config, "// only-x86"));
     assert!(check_ignore(&config, "// only-linux"));
@@ -217,8 +281,7 @@ fn only_target() {
 
 #[test]
 fn stage() {
-    let mut config = config();
-    config.stage_id = "stage1-x86_64-unknown-linux-gnu".to_owned();
+    let config: Config = cfg().stage_id("stage1-x86_64-unknown-linux-gnu").build();
 
     assert!(check_ignore(&config, "// ignore-stage1"));
     assert!(!check_ignore(&config, "// ignore-stage2"));
@@ -226,18 +289,16 @@ fn stage() {
 
 #[test]
 fn cross_compile() {
-    let mut config = config();
-    config.host = "x86_64-apple-darwin".to_owned();
-    config.target = "wasm32-unknown-unknown".to_owned();
+    let config: Config = cfg().host("x86_64-apple-darwin").target("wasm32-unknown-unknown").build();
     assert!(check_ignore(&config, "// ignore-cross-compile"));
 
-    config.target = config.host.clone();
+    let config: Config = cfg().host("x86_64-apple-darwin").target("x86_64-apple-darwin").build();
     assert!(!check_ignore(&config, "// ignore-cross-compile"));
 }
 
 #[test]
 fn debugger() {
-    let mut config = config();
+    let mut config = cfg().build();
     config.debugger = None;
     assert!(!check_ignore(&config, "// ignore-cdb"));
 
@@ -253,27 +314,24 @@ fn debugger() {
 
 #[test]
 fn git_hash() {
-    let mut config = config();
-    config.git_hash = false;
+    let config: Config = cfg().git_hash(false).build();
     assert!(check_ignore(&config, "// needs-git-hash"));
 
-    config.git_hash = true;
+    let config: Config = cfg().git_hash(true).build();
     assert!(!check_ignore(&config, "// needs-git-hash"));
 }
 
 #[test]
 fn sanitizers() {
-    let mut config = config();
-
     // Target that supports all sanitizers:
-    config.target = "x86_64-unknown-linux-gnu".to_owned();
+    let config: Config = cfg().target("x86_64-unknown-linux-gnu").build();
     assert!(!check_ignore(&config, "// needs-sanitizer-address"));
     assert!(!check_ignore(&config, "// needs-sanitizer-leak"));
     assert!(!check_ignore(&config, "// needs-sanitizer-memory"));
     assert!(!check_ignore(&config, "// needs-sanitizer-thread"));
 
     // Target that doesn't support sanitizers:
-    config.target = "wasm32-unknown-emscripten".to_owned();
+    let config: Config = cfg().target("wasm32-unknown-emscripten").build();
     assert!(check_ignore(&config, "// needs-sanitizer-address"));
     assert!(check_ignore(&config, "// needs-sanitizer-leak"));
     assert!(check_ignore(&config, "// needs-sanitizer-memory"));
@@ -291,8 +349,7 @@ fn asm_support() {
         ("i686-unknown-netbsd", true),
     ];
     for (target, has_asm) in asms {
-        let mut config = config();
-        config.target = target.to_string();
+        let config = cfg().target(target).build();
         assert_eq!(config.has_asm_support(), has_asm);
         assert_eq!(check_ignore(&config, "// needs-asm-support"), !has_asm)
     }
@@ -300,8 +357,7 @@ fn asm_support() {
 
 #[test]
 fn channel() {
-    let mut config = config();
-    config.channel = "beta".into();
+    let config: Config = cfg().channel("beta").build();
 
     assert!(check_ignore(&config, "// ignore-beta"));
     assert!(check_ignore(&config, "// only-nightly"));
@@ -330,7 +386,7 @@ fn test_extract_version_range() {
 #[test]
 #[should_panic(expected = "Duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
 fn test_duplicate_revisions() {
-    let config = config();
+    let config: Config = cfg().build();
     parse_rs(&config, "// revisions: rpass1 rpass1");
 }
 
@@ -345,8 +401,7 @@ fn ignore_arch() {
         ("thumbv7m-none-eabi", "thumb"),
     ];
     for (target, arch) in archs {
-        let mut config = config();
-        config.target = target.to_string();
+        let config: Config = cfg().target(target).build();
         assert!(config.matches_arch(arch), "{target} {arch}");
         assert!(check_ignore(&config, &format!("// ignore-{arch}")));
     }
@@ -361,8 +416,7 @@ fn matches_os() {
         ("x86_64-unknown-none", "none"),
     ];
     for (target, os) in oss {
-        let mut config = config();
-        config.target = target.to_string();
+        let config = cfg().target(target).build();
         assert!(config.matches_os(os), "{target} {os}");
         assert!(check_ignore(&config, &format!("// ignore-{os}")));
     }
@@ -376,8 +430,7 @@ fn matches_env() {
         ("arm-unknown-linux-musleabi", "musl"),
     ];
     for (target, env) in envs {
-        let mut config = config();
-        config.target = target.to_string();
+        let config: Config = cfg().target(target).build();
         assert!(config.matches_env(env), "{target} {env}");
         assert!(check_ignore(&config, &format!("// ignore-{env}")));
     }
@@ -391,8 +444,7 @@ fn matches_abi() {
         ("arm-unknown-linux-gnueabi", "eabi"),
     ];
     for (target, abi) in abis {
-        let mut config = config();
-        config.target = target.to_string();
+        let config: Config = cfg().target(target).build();
         assert!(config.matches_abi(abi), "{target} {abi}");
         assert!(check_ignore(&config, &format!("// ignore-{abi}")));
     }
@@ -408,8 +460,7 @@ fn is_big_endian() {
         ("powerpc64-unknown-linux-gnu", true),
     ];
     for (target, is_big) in endians {
-        let mut config = config();
-        config.target = target.to_string();
+        let config = cfg().target(target).build();
         assert_eq!(config.is_big_endian(), is_big, "{target} {is_big}");
         assert_eq!(check_ignore(&config, "// ignore-endian-big"), is_big);
     }
@@ -424,8 +475,7 @@ fn pointer_width() {
         ("msp430-none-elf", 16),
     ];
     for (target, width) in widths {
-        let mut config = config();
-        config.target = target.to_string();
+        let config: Config = cfg().target(target).build();
         assert_eq!(config.get_pointer_width(), width, "{target} {width}");
         assert_eq!(check_ignore(&config, "// ignore-16bit"), width == 16);
         assert_eq!(check_ignore(&config, "// ignore-32bit"), width == 32);
@@ -456,8 +506,7 @@ fn wasm_special() {
         ("wasm64-unknown-unknown", "wasm64", true),
     ];
     for (target, pattern, ignore) in ignores {
-        let mut config = config();
-        config.target = target.to_string();
+        let config: Config = cfg().target(target).build();
         assert_eq!(
             check_ignore(&config, &format!("// ignore-{pattern}")),
             ignore,
@@ -476,8 +525,7 @@ fn families() {
         ("wasm32-unknown-emscripten", "unix"),
     ];
     for (target, family) in families {
-        let mut config = config();
-        config.target = target.to_string();
+        let config: Config = cfg().target(target).build();
         assert!(config.matches_family(family));
         let other = if family == "windows" { "unix" } else { "windows" };
         assert!(!config.matches_family(other));

@@ -260,6 +260,7 @@
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
 #![cfg_attr(windows, feature(round_char_boundary))]
+#![cfg_attr(target_os = "xous", feature(slice_ptr_len))]
 //
 // Language features:
 // tidy-alphabetical-start
@@ -635,9 +636,6 @@ pub mod alloc;
 
 // Private support modules
 mod panicking;
-
-#[unstable(feature = "ice_to_disk", issue = "none")]
-pub use panicking::panic_hook_with_disk_dump;
 
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]

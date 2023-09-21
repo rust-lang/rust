@@ -141,9 +141,32 @@ fn resolve_associated_item<'tcx>(
                     false
                 }
             };
-
             if !eligible {
                 return Ok(None);
+            }
+
+            // HACK: We may have overlapping `dyn Trait` built-in impls and
+            // user-provided blanket impls. Detect that case here, and return
+            // ambiguity.
+            //
+            // This should not affect totally monomorphized contexts, only
+            // resolve calls that happen polymorphically, such as the mir-inliner
+            // and const-prop (and also some lints).
+            let self_ty = rcvr_args.type_at(0);
+            if !self_ty.is_known_rigid() {
+                let predicates = tcx
+                    .predicates_of(impl_data.impl_def_id)
+                    .instantiate(tcx, impl_data.args)
+                    .predicates;
+                let sized_def_id = tcx.lang_items().sized_trait();
+                // If we find a `Self: Sized` bound on the item, then we know
+                // that `dyn Trait` can certainly never apply here.
+                if !predicates.into_iter().filter_map(ty::Clause::as_trait_clause).any(|clause| {
+                    Some(clause.def_id()) == sized_def_id
+                        && clause.skip_binder().self_ty() == self_ty
+                }) {
+                    return Ok(None);
+                }
             }
 
             // Any final impl is required to define all associated items.
