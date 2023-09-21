@@ -123,6 +123,9 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                 &inspect::ProbeStep::AddGoal(goal) => nested_goals.push(goal),
                 inspect::ProbeStep::EvaluateGoals(_) => (),
                 inspect::ProbeStep::NestedProbe(ref probe) => {
+                    // Nested probes have to prove goals added in their parent
+                    // but do not leak them, so we truncate the added goals
+                    // afterwards.
                     let num_goals = nested_goals.len();
                     self.candidates_recur(candidates, nested_goals, probe);
                     nested_goals.truncate(num_goals);
@@ -131,10 +134,25 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         }
 
         match probe.kind {
-            inspect::ProbeKind::Root { result: _ }
-            | inspect::ProbeKind::NormalizedSelfTyAssembly
+            inspect::ProbeKind::NormalizedSelfTyAssembly
             | inspect::ProbeKind::UnsizeAssembly
             | inspect::ProbeKind::UpcastProjectionCompatibility => (),
+            // We add a candidate for the root evaluation if there
+            // is only one way to prove a given goal, e.g. for `WellFormed`.
+            //
+            // FIXME: This is currently wrong if we don't even try any
+            // candidates, e.g. for a trait goal, as in this case `candidates` is
+            // actually supposed to be empty.
+            inspect::ProbeKind::Root { result: _ } => {
+                if candidates.is_empty() {
+                    candidates.push(InspectCandidate {
+                        goal: self,
+                        kind: probe.kind,
+                        nested_goals: nested_goals.clone(),
+                        result,
+                    });
+                }
+            }
             inspect::ProbeKind::MiscCandidate { name: _, result }
             | inspect::ProbeKind::TraitCandidate { source: _, result } => {
                 candidates.push(InspectCandidate {
@@ -166,15 +184,6 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
         let mut nested_goals = vec![];
         self.candidates_recur(&mut candidates, &mut nested_goals, &last_eval_step.evaluation);
-
-        if candidates.is_empty() {
-            candidates.push(InspectCandidate {
-                goal: self,
-                kind: last_eval_step.evaluation.kind,
-                nested_goals,
-                result: self.evaluation.evaluation.result,
-            });
-        }
 
         candidates
     }
