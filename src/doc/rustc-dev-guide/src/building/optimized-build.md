@@ -102,33 +102,28 @@ To use the tool, you will need to provide some external dependencies:
 - Compiled LLVM toolchain, with the `llvm-profdata` binary. Optionally, if you want to use BOLT,
   the `llvm-bolt` and
   `merge-fdata` binaries have to be available in the toolchain.
-- Downloaded [Rust benchmark suite].
 
-These dependencies are provided to `opt-dist` by an implementation of the [`Environment`] trait. You
-can either implement the trait for your custom environment, by providing paths to these dependencies
-in its methods, or reuse one of the existing implementations (currently, there is an implementation
-for Linux and Windows). If you want your environment to support BOLT, return `true` from
-the `supports_bolt` method.
+These dependencies are provided to `opt-dist` by an implementation of the [`Environment`] struct.
+It specifies directories where will the PGO/BOLT pipeline take place, and also external dependencies
+like Python or LLVM.
 
-Here is an example of how can `opt-dist` be used with the default Linux environment (it assumes that
-you execute the following commands on a Linux system):
+Here is an example of how can `opt-dist` be used locally (outside of CI):
 
 1. Build the tool with the following command:
     ```bash
     ./x build tools/opt-dist
     ```
-2. Run the tool with the `PGO_HOST` environment variable set to the 64-bit Linux target:
+2. Run the tool with the `local` mode and provide necessary parameters:
     ```bash
-    PGO_HOST=x86_64-unknown-linux-gnu ./build/host/stage0-tools-bin/opt-dist
+    ./build/host/stage0-tools-bin/opt-dist local \
+      --target-triple <target> \ # select target, e.g. "x86_64-unknown-linux-gnu"
+      --checkout-dir <path>    \ # path to rust checkout, e.g. "."
+      --llvm-dir <path>        \ # path to built LLVM toolchain, e.g. "/foo/bar/llvm/install"
+      -- python3 x.py dist       # pass the actual build command
     ```
-   Note that the default Linux environment expects several hardcoded paths to exist:
-    - `/checkout` should contain a checkout of the Rust compiler repository that will be compiled.
-    - `/rustroot` should contain the compiled LLVM toolchain (containing BOLT).
-    - A Python 3 interpreter should be available under the `python3` binary.
-    - `/tmp/rustc-perf` should contain a downloaded checkout of the Rust benchmark suite.
+    You can run `--help` to see further parameters that you can modify.
 
-You can modify `LinuxEnvironment` (or implement your own) to override these paths.
+[`Environment`]: https://github.com/rust-lang/rust/blob/ee451f8faccf3050c76cdcd82543c917b40c7962/src/tools/opt-dist/src/environment.rs#L5
 
-[`Environment`]: https://github.com/rust-lang/rust/blob/65e468f9c259749c210b1ae8972bfe14781f72f1/src/tools/opt-dist/src/environment/mod.rs#L8-L70
-
-[Rust benchmark suite]: https://github.com/rust-lang/rustc-perf
+> Note: if you want to run the actual CI pipeline, instead of running `opt-dist` locally,
+> you can execute `DEPLOY=1 src/ci/docker/run.sh dist-x86_64-linux`.
