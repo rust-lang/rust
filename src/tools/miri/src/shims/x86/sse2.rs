@@ -13,7 +13,9 @@ use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
+    crate::MiriInterpCxExt<'mir, 'tcx>
+{
     fn emulate_x86_sse2_intrinsic(
         &mut self,
         link_name: Symbol,
@@ -752,6 +754,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
 
                 this.write_scalar(Scalar::from_u32(res.try_into().unwrap()), dest)?;
+            }
+            // Used to implement the `_mm_pause` function.
+            // The intrinsic is used to hint the processor that the code is in a spin-loop.
+            "pause" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.yield_active_thread();
             }
             _ => return Ok(EmulateByNameResult::NotSupported),
         }

@@ -1,11 +1,65 @@
 use rustc_middle::mir;
+use rustc_span::Symbol;
 use rustc_target::abi::Size;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use helpers::bool_to_simd_element;
+use helpers::convert::Truncate as _;
+use shims::foreign_items::EmulateByNameResult;
 
-pub(super) mod sse;
-pub(super) mod sse2;
+mod sse;
+mod sse2;
+
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
+    crate::MiriInterpCxExt<'mir, 'tcx>
+{
+    fn emulate_x86_intrinsic(
+        &mut self,
+        link_name: Symbol,
+        abi: Abi,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
+        let this = self.eval_context_mut();
+        // Prefix should have already been checked.
+        let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
+        match unprefixed_name {
+            "addcarry.64" if this.tcx.sess.target.arch == "x86_64" => {
+                // Computes u8+u64+u64, returning tuple (u8,u64) comprising the output carry and truncated sum.
+                let [c_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let c_in = this.read_scalar(c_in)?.to_u8()?;
+                let a = this.read_scalar(a)?.to_u64()?;
+                let b = this.read_scalar(b)?.to_u64()?;
+
+                #[allow(clippy::arithmetic_side_effects)]
+                // adding two u64 and a u8 cannot wrap in a u128
+                let wide_sum = u128::from(c_in) + u128::from(a) + u128::from(b);
+                #[allow(clippy::arithmetic_side_effects)] // it's a u128, we can shift by 64
+                let (c_out, sum) = ((wide_sum >> 64).truncate::<u8>(), wide_sum.truncate::<u64>());
+
+                let c_out_field = this.project_field(dest, 0)?;
+                this.write_scalar(Scalar::from_u8(c_out), &c_out_field)?;
+                let sum_field = this.project_field(dest, 1)?;
+                this.write_scalar(Scalar::from_u64(sum), &sum_field)?;
+            }
+
+            name if name.starts_with("sse.") => {
+                return sse::EvalContextExt::emulate_x86_sse_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("sse2.") => {
+                return sse2::EvalContextExt::emulate_x86_sse2_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            _ => return Ok(EmulateByNameResult::NotSupported),
+        }
+        Ok(EmulateByNameResult::NeedsJumping)
+    }
+}
 
 /// Floating point comparison operation
 ///
