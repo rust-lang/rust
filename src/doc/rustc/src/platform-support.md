@@ -268,6 +268,7 @@ target | std | host | notes
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 `i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
+[`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
 `i686-uwp-windows-gnu` | ? |  |
