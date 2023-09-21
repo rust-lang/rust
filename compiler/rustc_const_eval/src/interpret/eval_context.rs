@@ -1089,7 +1089,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn eval_mir_constant(
         &self,
-        val: &mir::ConstantKind<'tcx>,
+        val: &mir::Const<'tcx>,
         span: Option<Span>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {

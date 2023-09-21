@@ -85,8 +85,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
-        switch_ty: Ty<'tcx>,
-        options: &mut FxIndexMap<ConstantKind<'tcx>, u128>,
+        options: &mut FxIndexMap<Const<'tcx>, u128>,
     ) -> bool {
         let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
         else {
@@ -95,9 +94,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match match_pair.pattern.kind {
             PatKind::Constant { value } => {
-                options
-                    .entry(value)
-                    .or_insert_with(|| value.eval_bits(self.tcx, self.param_env, switch_ty));
+                options.entry(value).or_insert_with(|| value.eval_bits(self.tcx, self.param_env));
                 true
             }
             PatKind::Variant { .. } => {
@@ -255,10 +252,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         TerminatorKind::Call {
-                            func: Operand::Constant(Box::new(Constant {
+                            func: Operand::Constant(Box::new(ConstOperand {
                                 span: test.span,
                                 user_ty: None,
-                                literal: method,
+                                const_: method,
                             })),
                             args: vec![Operand::Move(ref_string)],
                             destination: ref_str,
@@ -388,7 +385,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
-        value: ConstantKind<'tcx>,
+        value: Const<'tcx>,
         mut val: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
@@ -485,7 +482,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             TerminatorKind::Call {
-                func: Operand::Constant(Box::new(Constant {
+                func: Operand::Constant(Box::new(ConstOperand {
                     span: source_info.span,
 
                     // FIXME(#54571): This constant comes from user input (a
@@ -494,7 +491,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Need to experiment.
                     user_ty: None,
 
-                    literal: method,
+                    const_: method,
                 })),
                 args: vec![Operand::Copy(val), expect],
                 destination: eq_result,
@@ -800,11 +797,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span_bug!(match_pair.pattern.span, "simplifiable pattern found: {:?}", match_pair.pattern)
     }
 
-    fn const_range_contains(
-        &self,
-        range: &PatRange<'tcx>,
-        value: ConstantKind<'tcx>,
-    ) -> Option<bool> {
+    fn const_range_contains(&self, range: &PatRange<'tcx>, value: Const<'tcx>) -> Option<bool> {
         use std::cmp::Ordering::*;
 
         // For performance, it's important to only do the second
@@ -821,7 +814,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: &PatRange<'tcx>,
-        options: &FxIndexMap<ConstantKind<'tcx>, u128>,
+        options: &FxIndexMap<Const<'tcx>, u128>,
     ) -> Option<bool> {
         for &val in options.keys() {
             if self.const_range_contains(range, val)? {
@@ -866,7 +859,7 @@ fn trait_method<'tcx>(
     trait_def_id: DefId,
     method_name: Symbol,
     args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-) -> ConstantKind<'tcx> {
+) -> Const<'tcx> {
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.
     let item = tcx
@@ -877,5 +870,5 @@ fn trait_method<'tcx>(
 
     let method_ty = Ty::new_fn_def(tcx, item.def_id, args);
 
-    ConstantKind::zero_sized(method_ty)
+    Const::zero_sized(method_ty)
 }

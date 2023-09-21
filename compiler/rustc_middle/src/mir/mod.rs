@@ -318,7 +318,7 @@ pub struct Body<'tcx> {
 
     /// Constants that are required to evaluate successfully for this MIR to be well-formed.
     /// We hold in this field all the constants we are not able to evaluate yet.
-    pub required_consts: Vec<Constant<'tcx>>,
+    pub required_consts: Vec<ConstOperand<'tcx>>,
 
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
@@ -585,12 +585,12 @@ impl<'tcx> Body<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        normalize_const: impl Fn(ConstantKind<'tcx>) -> Result<ConstantKind<'tcx>, ErrorHandled>,
+        normalize_const: impl Fn(Const<'tcx>) -> Result<Const<'tcx>, ErrorHandled>,
     ) -> Result<(), ErrorHandled> {
         // For now, the only thing we have to check is is to ensure that all the constants used in
         // the body successfully evaluate.
         for &const_ in &self.required_consts {
-            let c = normalize_const(const_.literal)?;
+            let c = normalize_const(const_.const_)?;
             c.eval(tcx, param_env, Some(const_.span))?;
         }
 
@@ -1096,7 +1096,7 @@ impl<'tcx> LocalDecl<'tcx> {
 pub enum VarDebugInfoContents<'tcx> {
     /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
     Place(Place<'tcx>),
-    Const(Constant<'tcx>),
+    Const(ConstOperand<'tcx>),
 }
 
 impl<'tcx> Debug for VarDebugInfoContents<'tcx> {

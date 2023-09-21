@@ -225,7 +225,7 @@ pub trait ValueAnalysis<'tcx> {
 
     fn handle_constant(
         &self,
-        constant: &Constant<'tcx>,
+        constant: &ConstOperand<'tcx>,
         state: &mut State<Self::Value>,
     ) -> Self::Value {
         self.super_constant(constant, state)
@@ -233,7 +233,7 @@ pub trait ValueAnalysis<'tcx> {
 
     fn super_constant(
         &self,
-        _constant: &Constant<'tcx>,
+        _constant: &ConstOperand<'tcx>,
         _state: &mut State<Self::Value>,
     ) -> Self::Value {
         Self::Value::TOP

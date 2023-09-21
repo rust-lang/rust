@@ -402,10 +402,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn constant_bool(&self, span: Span, val: bool) -> Rvalue<'tcx> {
-        Rvalue::Use(Operand::Constant(Box::new(Constant {
+        Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
             span,
             user_ty: None,
-            literal: ConstantKind::from_bool(self.tcx, val),
+            const_: Const::from_bool(self.tcx, val),
         })))
     }
 

@@ -563,11 +563,11 @@ pub enum InlineAsmOperand<'tcx> {
         out_expr: Option<ExprId>,
     },
     Const {
-        value: mir::ConstantKind<'tcx>,
+        value: mir::Const<'tcx>,
         span: Span,
     },
     SymFn {
-        value: mir::ConstantKind<'tcx>,
+        value: mir::Const<'tcx>,
         span: Span,
     },
     SymStatic {
@@ -739,7 +739,7 @@ pub enum PatKind<'tcx> {
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.
     Constant {
-        value: mir::ConstantKind<'tcx>,
+        value: mir::Const<'tcx>,
     },
 
     Range(Box<PatRange<'tcx>>),
@@ -769,8 +769,8 @@ pub enum PatKind<'tcx> {
 
 #[derive(Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
-    pub lo: mir::ConstantKind<'tcx>,
-    pub hi: mir::ConstantKind<'tcx>,
+    pub lo: mir::Const<'tcx>,
+    pub hi: mir::Const<'tcx>,
     pub end: RangeEnd,
 }
 

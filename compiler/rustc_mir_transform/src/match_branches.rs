@@ -98,10 +98,10 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                         StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
                         StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
                     ) if lhs_f == lhs_s
-                        && f_c.literal.ty().is_bool()
-                        && s_c.literal.ty().is_bool()
-                        && f_c.literal.try_eval_bool(tcx, param_env).is_some()
-                        && s_c.literal.try_eval_bool(tcx, param_env).is_some() => {}
+                        && f_c.const_.ty().is_bool()
+                        && s_c.const_.ty().is_bool()
+                        && f_c.const_.try_eval_bool(tcx, param_env).is_some()
+                        && s_c.const_.try_eval_bool(tcx, param_env).is_some() => {}
 
                     // Otherwise we cannot optimize. Try another block.
                     _ => continue 'outer,
@@ -128,8 +128,8 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                         StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(s_c)))),
                     ) => {
                         // From earlier loop we know that we are dealing with bool constants only:
-                        let f_b = f_c.literal.try_eval_bool(tcx, param_env).unwrap();
-                        let s_b = s_c.literal.try_eval_bool(tcx, param_env).unwrap();
+                        let f_b = f_c.const_.try_eval_bool(tcx, param_env).unwrap();
+                        let s_b = s_c.const_.try_eval_bool(tcx, param_env).unwrap();
                         if f_b == s_b {
                             // Same value in both blocks. Use statement as is.
                             (*f).clone()

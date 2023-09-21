@@ -190,7 +190,7 @@ impl PeekCall {
         if let mir::TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
             &terminator.kind
         {
-            if let ty::FnDef(def_id, fn_args) = *func.literal.ty().kind() {
+            if let ty::FnDef(def_id, fn_args) = *func.const_.ty().kind() {
                 let name = tcx.item_name(def_id);
                 if !tcx.is_intrinsic(def_id) || name != sym::rustc_peek {
                     return None;

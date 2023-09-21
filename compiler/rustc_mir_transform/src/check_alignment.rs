@@ -181,13 +181,10 @@ fn insert_alignment_check<'tcx>(
     // Subtract 1 from the alignment to get the alignment mask
     let alignment_mask =
         local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
-    let one = Operand::Constant(Box::new(Constant {
+    let one = Operand::Constant(Box::new(ConstOperand {
         span: source_info.span,
         user_ty: None,
-        literal: ConstantKind::Val(
-            ConstValue::Scalar(Scalar::from_target_usize(1, &tcx)),
-            tcx.types.usize,
-        ),
+        const_: Const::Val(ConstValue::Scalar(Scalar::from_target_usize(1, &tcx)), tcx.types.usize),
     }));
     block_data.statements.push(Statement {
         source_info,
@@ -213,13 +210,10 @@ fn insert_alignment_check<'tcx>(
 
     // Check if the alignment bits are all zero
     let is_ok = local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    let zero = Operand::Constant(Box::new(Constant {
+    let zero = Operand::Constant(Box::new(ConstOperand {
         span: source_info.span,
         user_ty: None,
-        literal: ConstantKind::Val(
-            ConstValue::Scalar(Scalar::from_target_usize(0, &tcx)),
-            tcx.types.usize,
-        ),
+        const_: Const::Val(ConstValue::Scalar(Scalar::from_target_usize(0, &tcx)), tcx.types.usize),
     }));
     block_data.statements.push(Statement {
         source_info,
