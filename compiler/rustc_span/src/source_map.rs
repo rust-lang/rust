@@ -127,10 +127,39 @@ impl FileLoader for RealFileLoader {
 
         let mut bytes = Lrc::new_uninit_slice(len as usize);
         let mut buf = BorrowedBuf::from(Lrc::get_mut(&mut bytes).unwrap());
-        file.read_buf_exact(buf.unfilled())?;
+        match file.read_buf_exact(buf.unfilled()) {
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
+                drop(bytes);
+                return fs::read(path).map(Vec::into);
+            }
+            Err(e) => return Err(e),
+        }
         // SAFETY: If the read_buf_exact call returns Ok(()), then we have
         // read len bytes and initialized the buffer.
-        Ok(unsafe { bytes.assume_init() })
+        let bytes = unsafe { bytes.assume_init() };
+
+        // At this point, we've read all the bytes that filesystem metadata reported exist.
+        // But we are not guaranteed to be at the end of the file, because we did not attempt to do
+        // a read with a non-zero-sized buffer and get Ok(0).
+        // So we do small read to a fixed-size buffer. If the read returns no bytes then we're
+        // already done, and we just return the Lrc we built above.
+        // If the read returns bytes however, we just fall back to reading into a Vec then turning
+        // that into an Lrc, losing our nice peak memory behavior. This fallback code path should
+        // be rarely exercised.
+
+        let mut probe = [0u8; 32];
+        let n = loop {
+            match file.read(&mut probe) {
+                Ok(0) => return Ok(bytes),
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+                Ok(n) => break n,
+            }
+        };
+        let mut bytes: Vec<u8> = bytes.iter().copied().chain(probe[..n].iter().copied()).collect();
+        file.read_to_end(&mut bytes)?;
+        Ok(bytes.into())
     }
 }
 
