@@ -206,7 +206,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     && let operand_ty = operand.ty(self.local_decls, self.tcx)
                     && let Some(operand_ty) = operand_ty.builtin_deref(true)
                     && let ty::Array(_, len) = operand_ty.ty.kind()
-                    && let Some(len) = ConstantKind::Ty(*len).try_eval_scalar_int(self.tcx, self.param_env)
+                    && let Some(len) = Const::Ty(*len).try_eval_scalar_int(self.tcx, self.param_env)
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), self.map());
                 }
@@ -224,7 +224,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             Rvalue::Len(place) => {
                 let place_ty = place.ty(self.local_decls, self.tcx);
                 if let ty::Array(_, len) = place_ty.ty.kind() {
-                    ConstantKind::Ty(*len)
+                    Const::Ty(*len)
                         .try_eval_scalar(self.tcx, self.param_env)
                         .map_or(FlatSet::Top, FlatSet::Elem)
                 } else if let [ProjectionElem::Deref] = place.projection[..] {
@@ -295,11 +295,11 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
 
     fn handle_constant(
         &self,
-        constant: &Constant<'tcx>,
+        constant: &ConstOperand<'tcx>,
         _state: &mut State<Self::Value>,
     ) -> Self::Value {
         constant
-            .literal
+            .const_
             .try_eval_scalar(self.tcx, self.param_env)
             .map_or(FlatSet::Top, FlatSet::Elem)
     }
@@ -360,7 +360,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             }
             Operand::Constant(box constant) => {
-                if let Ok(constant) = self.ecx.eval_mir_constant(&constant.literal, None, None) {
+                if let Ok(constant) = self.ecx.eval_mir_constant(&constant.const_, None, None) {
                     self.assign_constant(state, place, constant, &[]);
                 }
             }
@@ -518,10 +518,10 @@ pub(crate) struct Patch<'tcx> {
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
     /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    pub(crate) before_effect: FxHashMap<(Location, Place<'tcx>), ConstantKind<'tcx>>,
+    pub(crate) before_effect: FxHashMap<(Location, Place<'tcx>), Const<'tcx>>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
-    pub(crate) assignments: FxHashMap<Location, ConstantKind<'tcx>>,
+    pub(crate) assignments: FxHashMap<Location, Const<'tcx>>,
 }
 
 impl<'tcx> Patch<'tcx> {
@@ -529,8 +529,8 @@ impl<'tcx> Patch<'tcx> {
         Self { tcx, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
     }
 
-    fn make_operand(&self, literal: ConstantKind<'tcx>) -> Operand<'tcx> {
-        Operand::Constant(Box::new(Constant { span: DUMMY_SP, user_ty: None, literal }))
+    fn make_operand(&self, const_: Const<'tcx>) -> Operand<'tcx> {
+        Operand::Constant(Box::new(ConstOperand { span: DUMMY_SP, user_ty: None, const_ }))
     }
 }
 
@@ -549,12 +549,12 @@ impl<'tcx, 'locals> Collector<'tcx, 'locals> {
         place: Place<'tcx>,
         state: &State<FlatSet<Scalar>>,
         map: &Map,
-    ) -> Option<ConstantKind<'tcx>> {
+    ) -> Option<Const<'tcx>> {
         let FlatSet::Elem(Scalar::Int(value)) = state.get(place.as_ref(), &map) else {
             return None;
         };
         let ty = place.ty(self.local_decls, self.patch.tcx).ty;
-        Some(ConstantKind::Val(ConstValue::Scalar(value.into()), ty))
+        Some(Const::Val(ConstValue::Scalar(value.into()), ty))
     }
 }
 

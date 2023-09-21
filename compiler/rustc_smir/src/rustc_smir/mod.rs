@@ -14,8 +14,8 @@ use crate::stable_mir::ty::{
 };
 use crate::stable_mir::{self, CompilerError, Context};
 use rustc_hir as hir;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
-use rustc_middle::mir::{self, ConstantKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::ErrorGuaranteed;
@@ -539,14 +539,14 @@ impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::Constant<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::ConstOperand<'tcx> {
     type T = stable_mir::mir::Constant;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         stable_mir::mir::Constant {
             span: self.span.stable(tables),
             user_ty: self.user_ty.map(|u| u.as_usize()).or(None),
-            literal: self.literal.stable(tables),
+            literal: self.const_.stable(tables),
         }
     }
 }
@@ -1247,13 +1247,13 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
+impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
     type T = stable_mir::ty::Const;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         match *self {
-            ConstantKind::Ty(c) => c.stable(tables),
-            ConstantKind::Unevaluated(unev_const, ty) => stable_mir::ty::Const {
+            mir::Const::Ty(c) => c.stable(tables),
+            mir::Const::Unevaluated(unev_const, ty) => stable_mir::ty::Const {
                 literal: stable_mir::ty::ConstantKind::Unevaluated(
                     stable_mir::ty::UnevaluatedConst {
                         def: tables.const_def(unev_const.def),
@@ -1263,7 +1263,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
                 ),
                 ty: tables.intern_ty(ty),
             },
-            ConstantKind::Val(val, ty) => stable_mir::ty::Const {
+            mir::Const::Val(val, ty) => stable_mir::ty::Const {
                 literal: stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
                     ty, val, tables,
                 )),

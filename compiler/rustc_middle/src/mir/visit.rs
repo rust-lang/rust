@@ -186,7 +186,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_constant(
                 &mut self,
-                constant: & $($mutability)? Constant<'tcx>,
+                constant: & $($mutability)? ConstOperand<'tcx>,
                 location: Location,
             ) {
                 self.super_constant(constant, location);
@@ -870,20 +870,20 @@ macro_rules! make_mir_visitor {
 
             fn super_constant(
                 &mut self,
-                constant: & $($mutability)? Constant<'tcx>,
+                constant: & $($mutability)? ConstOperand<'tcx>,
                 location: Location
             ) {
-                let Constant {
+                let ConstOperand {
                     span,
                     user_ty: _, // no visit method for this
-                    literal,
+                    const_,
                 } = constant;
 
                 self.visit_span($(& $mutability)? *span);
-                match literal {
-                    ConstantKind::Ty(ct) => self.visit_ty_const($(&$mutability)? *ct, location),
-                    ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
-                    ConstantKind::Unevaluated(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
+                match const_ {
+                    Const::Ty(ct) => self.visit_ty_const($(&$mutability)? *ct, location),
+                    Const::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
+                    Const::Unevaluated(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                 }
             }
 
