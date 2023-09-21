@@ -235,7 +235,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn add_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
-        self.inspect.add_goal(goal);
+        inspect::ProofTreeBuilder::add_goal(self, goal);
         self.nested_goals.goals.push(goal);
     }
 
