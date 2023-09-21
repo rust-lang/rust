@@ -426,8 +426,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right_res =
                         i8::try_from(right).unwrap_or(if right < 0 { i8::MIN } else { i8::MAX });
 
-                    this.write_scalar(Scalar::from_i8(left_res.try_into().unwrap()), &left_dest)?;
-                    this.write_scalar(Scalar::from_i8(right_res.try_into().unwrap()), &right_dest)?;
+                    this.write_scalar(Scalar::from_i8(left_res), &left_dest)?;
+                    this.write_scalar(Scalar::from_i8(right_res), &right_dest)?;
                 }
             }
             // Used to implement the _mm_packus_epi16 function.
@@ -487,11 +487,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right_res =
                         i16::try_from(right).unwrap_or(if right < 0 { i16::MIN } else { i16::MAX });
 
-                    this.write_scalar(Scalar::from_i16(left_res.try_into().unwrap()), &left_dest)?;
-                    this.write_scalar(
-                        Scalar::from_i16(right_res.try_into().unwrap()),
-                        &right_dest,
-                    )?;
+                    this.write_scalar(Scalar::from_i16(left_res), &left_dest)?;
+                    this.write_scalar(Scalar::from_i16(right_res), &right_dest)?;
                 }
             }
             // Used to implement _mm_min_sd and _mm_max_sd functions.
