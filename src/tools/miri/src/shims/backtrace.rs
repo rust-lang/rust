@@ -88,10 +88,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_pointer(ptr, &place)?;
                 }
 
-                this.write_immediate(
-                    Immediate::new_slice(alloc.ptr(), len, this),
-                    dest,
-                )?;
+                this.write_immediate(Immediate::new_slice(alloc.ptr(), len, this), dest)?;
             }
             // storage for pointers is allocated by the caller
             1 => {
