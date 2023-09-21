@@ -4,7 +4,7 @@ use crate::Opaque;
 
 use super::ty::{
     Allocation, Binder, Const, ConstDef, ConstantKind, ExistentialPredicate, FnSig, GenericArgKind,
-    GenericArgs, Promoted, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
+    GenericArgs, Promoted, Region, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
 };
 
 pub trait Folder: Sized {
@@ -103,6 +103,12 @@ impl Foldable for Promoted {
 impl Foldable for GenericArgs {
     fn super_fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
         ControlFlow::Continue(GenericArgs(self.0.fold(folder)?))
+    }
+}
+
+impl Foldable for Region {
+    fn super_fold<V: Folder>(&self, _folder: &mut V) -> ControlFlow<V::Break, Self> {
+        ControlFlow::Continue(self.clone())
     }
 }
 

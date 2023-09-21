@@ -34,10 +34,13 @@ pub struct Const {
 }
 
 type Ident = Opaque;
-pub(crate) struct Region {
+
+#[derive(Debug, Clone)]
+pub struct Region {
     pub kind: RegionKind,
 }
 
+#[derive(Debug, Clone)]
 pub enum RegionKind {
     ReEarlyBound(EarlyBoundRegion),
     ReLateBound(DebruijnIndex, BoundRegion),
@@ -51,6 +54,7 @@ pub enum RegionKind {
 
 pub(crate) type DebruijnIndex = u32;
 
+#[derive(Debug, Clone)]
 pub struct EarlyBoundRegion {
     pub def_id: RegionDef,
     pub index: u32,
@@ -59,11 +63,13 @@ pub struct EarlyBoundRegion {
 
 pub(crate) type BoundVar = u32;
 
+#[derive(Debug, Clone)]
 pub struct BoundRegion {
     pub var: BoundVar,
     pub kind: BoundRegionKind,
 }
 
+#[derive(Debug, Clone)]
 pub struct FreeRegion {
     pub scope: RegionDef,
     pub bound_region: BoundRegionKind,
@@ -73,6 +79,7 @@ pub(crate) type RegionVid = u32;
 
 pub(crate) type UniverseIndex = u32;
 
+#[derive(Debug, Clone)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub bound: T,

@@ -4,7 +4,7 @@ use crate::Opaque;
 
 use super::ty::{
     Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
-    Promoted, RigidTy, TermKind, Ty, UnevaluatedConst,
+    Promoted, Region, RigidTy, TermKind, Ty, UnevaluatedConst,
 };
 
 pub trait Visitor: Sized {
@@ -98,6 +98,12 @@ impl Visitable for Promoted {
 impl Visitable for GenericArgs {
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         self.0.visit(visitor)
+    }
+}
+
+impl Visitable for Region {
+    fn super_visit<V: Visitor>(&self, _visitor: &mut V) -> ControlFlow<V::Break> {
+        ControlFlow::Continue(())
     }
 }
 
