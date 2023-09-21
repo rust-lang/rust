@@ -20,7 +20,7 @@
 mod android;
 
 use core::any::Any;
-use core::panic::BoxMeUp;
+use core::panic::PanicPayload;
 
 #[rustc_std_internal_symbol]
 #[allow(improper_ctypes_definitions)]
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
 
 // "Leak" the payload and shim to the relevant abort on the platform in question.
 #[rustc_std_internal_symbol]
-pub unsafe fn __rust_start_panic(_payload: &mut dyn BoxMeUp) -> u32 {
+pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
     // Android has the ability to attach a message as part of the abort.
     #[cfg(target_os = "android")]
     android::android_set_abort_message(_payload);

@@ -29,7 +29,7 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
-use core::panic::BoxMeUp;
+use core::panic::PanicPayload;
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "emscripten")] {
@@ -99,7 +99,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[rustc_std_internal_symbol]
-pub unsafe fn __rust_start_panic(payload: &mut dyn BoxMeUp) -> u32 {
+pub unsafe fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32 {
     let payload = Box::from_raw(payload.take_box());
 
     imp::panic(payload)
