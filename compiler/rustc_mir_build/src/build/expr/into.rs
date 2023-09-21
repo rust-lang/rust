@@ -114,10 +114,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     true_block,
                     source_info,
                     destination,
-                    Constant {
+                    ConstOperand {
                         span: expr_span,
                         user_ty: None,
-                        literal: ConstantKind::from_bool(this.tcx, true),
+                        const_: Const::from_bool(this.tcx, true),
                     },
                 );
 
@@ -125,10 +125,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     false_block,
                     source_info,
                     destination,
-                    Constant {
+                    ConstOperand {
                         span: expr_span,
                         user_ty: None,
-                        literal: ConstantKind::from_bool(this.tcx, false),
+                        const_: Const::from_bool(this.tcx, false),
                     },
                 );
 
@@ -186,10 +186,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     short_circuit,
                     source_info,
                     destination,
-                    Constant {
+                    ConstOperand {
                         span: expr.span,
                         user_ty: None,
-                        literal: ConstantKind::from_bool(this.tcx, constant),
+                        const_: Const::from_bool(this.tcx, constant),
                     },
                 );
                 let rhs = unpack!(this.expr_into_dest(destination, continuation, &this.thir[rhs]));
@@ -433,12 +433,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                         thir::InlineAsmOperand::Const { value, span } => {
                             mir::InlineAsmOperand::Const {
-                                value: Box::new(Constant { span, user_ty: None, literal: value }),
+                                value: Box::new(ConstOperand {
+                                    span,
+                                    user_ty: None,
+                                    const_: value,
+                                }),
                             }
                         }
                         thir::InlineAsmOperand::SymFn { value, span } => {
                             mir::InlineAsmOperand::SymFn {
-                                value: Box::new(Constant { span, user_ty: None, literal: value }),
+                                value: Box::new(ConstOperand {
+                                    span,
+                                    user_ty: None,
+                                    const_: value,
+                                }),
                             }
                         }
                         thir::InlineAsmOperand::SymStatic { def_id } => {

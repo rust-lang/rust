@@ -23,7 +23,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
                 TerminatorKind::SwitchInt {
                     discr: Operand::Constant(ref c), ref targets, ..
                 } => {
-                    let constant = c.literal.try_eval_bits(tcx, param_env, c.ty());
+                    let constant = c.const_.try_eval_bits(tcx, param_env);
                     if let Some(constant) = constant {
                         let target = targets.target_for_value(constant);
                         TerminatorKind::Goto { target }
@@ -33,7 +33,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
                 }
                 TerminatorKind::Assert {
                     target, cond: Operand::Constant(ref c), expected, ..
-                } => match c.literal.try_eval_bool(tcx, param_env) {
+                } => match c.const_.try_eval_bool(tcx, param_env) {
                     Some(v) if v == expected => TerminatorKind::Goto { target },
                     _ => continue,
                 },

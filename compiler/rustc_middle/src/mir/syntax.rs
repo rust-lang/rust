@@ -3,7 +3,7 @@
 //! This is in a dedicated file so that changes to this file can be reviewed more carefully.
 //! The intention is that this file only contains datatype declarations, no code.
 
-use super::{BasicBlock, Constant, Local, UserTypeProjection};
+use super::{BasicBlock, Const, Local, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
 use crate::traits::Reveal;
@@ -437,17 +437,6 @@ pub enum NonDivergingIntrinsic<'tcx> {
     /// **Needs clarification**: Is this typed or not, ie is there a typed load and store involved?
     /// I vaguely remember Ralf saying somewhere that he thought it should not be.
     CopyNonOverlapping(CopyNonOverlapping<'tcx>),
-}
-
-impl std::fmt::Display for NonDivergingIntrinsic<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Assume(op) => write!(f, "assume({op:?})"),
-            Self::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
-                write!(f, "copy_nonoverlapping(dst = {dst:?}, src = {src:?}, count = {count:?})")
-            }
-        }
-    }
 }
 
 /// Describes what kind of retag is to be performed.
@@ -913,10 +902,10 @@ pub enum InlineAsmOperand<'tcx> {
         out_place: Option<Place<'tcx>>,
     },
     Const {
-        value: Box<Constant<'tcx>>,
+        value: Box<ConstOperand<'tcx>>,
     },
     SymFn {
-        value: Box<Constant<'tcx>>,
+        value: Box<ConstOperand<'tcx>>,
     },
     SymStatic {
         def_id: DefId,
@@ -1136,7 +1125,22 @@ pub enum Operand<'tcx> {
     Move(Place<'tcx>),
 
     /// Constants are already semantically values, and remain unchanged.
-    Constant(Box<Constant<'tcx>>),
+    Constant(Box<ConstOperand<'tcx>>),
+}
+
+#[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub struct ConstOperand<'tcx> {
+    pub span: Span,
+
+    /// Optional user-given type: for something like
+    /// `collect::<Vec<_>>`, this would be present and would
+    /// indicate that `Vec<_>` was explicitly specified.
+    ///
+    /// Needed for NLL to impose user-given type constraints.
+    pub user_ty: Option<UserTypeAnnotationIndex>,
+
+    pub const_: Const<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////

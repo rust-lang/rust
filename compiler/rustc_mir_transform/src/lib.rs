@@ -31,9 +31,9 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstQualifs, Constant, LocalDecl,
-    MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
-    Statement, StatementKind, TerminatorKind, START_BLOCK,
+    traversal, AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs,
+    LocalDecl, MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
+    SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
@@ -149,14 +149,14 @@ fn remap_mir_for_const_eval_select<'tcx>(
         let terminator = bb.terminator.as_mut().expect("invalid terminator");
         match terminator.kind {
             TerminatorKind::Call {
-                func: Operand::Constant(box Constant { ref literal, .. }),
+                func: Operand::Constant(box ConstOperand { ref const_, .. }),
                 ref mut args,
                 destination,
                 target,
                 unwind,
                 fn_span,
                 ..
-            } if let ty::FnDef(def_id, _) = *literal.ty().kind()
+            } if let ty::FnDef(def_id, _) = *const_.ty().kind()
                 && tcx.item_name(def_id) == sym::const_eval_select
                 && tcx.is_intrinsic(def_id) =>
             {
@@ -343,7 +343,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     let body = match tcx.hir().body_const_context(def) {
         // consts and statics do not have `optimized_mir`, so we can steal the body instead of
         // cloning it.
-        Some(hir::ConstContext::Const | hir::ConstContext::Static(_)) => body.steal(),
+        Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => body.steal(),
         Some(hir::ConstContext::ConstFn) => body.borrow().clone(),
         None => bug!("`mir_for_ctfe` called on non-const {def:?}"),
     };

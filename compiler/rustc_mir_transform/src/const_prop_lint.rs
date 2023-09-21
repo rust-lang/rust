@@ -281,7 +281,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &Constant<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &ConstOperand<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.has_param() {
             return None;
@@ -293,7 +293,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // that the `RevealAll` pass has happened and that the body's consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
-        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.literal).ok()?;
+        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
 
         self.use_ecx(location, |this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
     }
@@ -580,7 +580,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
         self.eval_constant(constant, location);

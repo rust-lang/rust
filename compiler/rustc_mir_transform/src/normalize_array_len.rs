@@ -90,10 +90,10 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             && let [PlaceElem::Deref] = &place.projection[..]
             && let Some(len) = self.slice_lengths[place.local]
         {
-            *rvalue = Rvalue::Use(Operand::Constant(Box::new(Constant {
+            *rvalue = Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                 span: rustc_span::DUMMY_SP,
                 user_ty: None,
-                literal: ConstantKind::from_ty_const(len, self.tcx),
+                const_: Const::from_ty_const(len, self.tcx),
             })));
         }
         self.super_rvalue(rvalue, loc);

@@ -633,7 +633,7 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
                 _ => bug!("expected closure or generator, found {ty:?}"),
             }
         }
-        hir::BodyOwnerKind::Const => 0,
+        hir::BodyOwnerKind::Const { .. } => 0,
         hir::BodyOwnerKind::Static(_) => 0,
     };
     let mut cfg = CFG { basic_blocks: IndexVec::new() };
@@ -700,7 +700,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Constants always need overflow checks.
         check_overflow |= matches!(
             tcx.hir().body_owner_kind(def),
-            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_)
+            hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_)
         );
 
         let lint_level = LintLevel::Explicit(hir_id);

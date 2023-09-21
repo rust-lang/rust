@@ -788,7 +788,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let effect = match const_context {
             _ if host_always_on => tcx.consts.true_,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const) => tcx.consts.false_,
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { .. }) => {
+                tcx.consts.false_
+            }
             Some(hir::ConstContext::ConstFn) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, context);
                 args.host_effect_param().expect("ConstContext::Maybe must have host effect param")

@@ -100,7 +100,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     expected: "constant pattern".to_string(),
                 });
             };
-            values.push(value.eval_bits(self.tcx, self.param_env, arm.pattern.ty));
+            values.push(value.eval_bits(self.tcx, self.param_env));
             targets.push(self.parse_block(arm.body)?);
         }
 
@@ -283,12 +283,12 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             ExprKind::StaticRef { alloc_id, ty, .. } => {
                 let const_val =
                     ConstValue::Scalar(Scalar::from_pointer((*alloc_id).into(), &self.tcx));
-                let literal = ConstantKind::Val(const_val, *ty);
+                let const_ = Const::Val(const_val, *ty);
 
-                Ok(Operand::Constant(Box::new(Constant {
+                Ok(Operand::Constant(Box::new(ConstOperand {
                     span: expr.span,
                     user_ty: None,
-                    literal
+                    const_
                 })))
             },
         )
@@ -301,7 +301,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             | ExprKind::NonHirLiteral { .. }
             | ExprKind::ConstBlock { .. } => Ok({
                 let value = as_constant_inner(expr, |_| None, self.tcx);
-                value.literal.eval_bits(self.tcx, self.param_env, value.ty())
+                value.const_.eval_bits(self.tcx, self.param_env)
             }),
         )
     }

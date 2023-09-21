@@ -46,7 +46,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_def_id) {
-            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
+            hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) => {
                 let item_hir_id = self.tcx.hir().local_def_id_to_hir_id(item_def_id);
                 wbcx.visit_node_id(body.value.span, item_hir_id);
             }

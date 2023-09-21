@@ -594,7 +594,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
                 self = ty.print(self)?;
 
-                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ty);
+                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all());
 
                 // Negative integer values are mangled using `n` as a "sign prefix".
                 if let ty::Int(ity) = ty.kind() {

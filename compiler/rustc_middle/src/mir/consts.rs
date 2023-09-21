@@ -6,13 +6,11 @@ use rustc_hir::{self as hir};
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::mir::interpret::{
-    alloc_range, AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar,
-};
+use crate::mir::interpret::{alloc_range, AllocId, ConstAllocation, ErrorHandled, Scalar};
 use crate::mir::{pretty_print_const_value, Promoted};
+use crate::ty::ScalarInt;
 use crate::ty::{self, print::pretty_print_const, List, Ty, TyCtxt};
 use crate::ty::{GenericArgs, GenericArgsRef};
-use crate::ty::{ScalarInt, UserTypeAnnotationIndex};
 
 ///////////////////////////////////////////////////////////////////////////
 /// Evaluated Constants
@@ -178,29 +176,10 @@ impl<'tcx> ConstValue<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 /// Constants
-///
-/// Two constants are equal if they are the same constant. Note that
-/// this does not necessarily mean that they are `==` in Rust. In
-/// particular, one must be wary of `NaN`!
-
-#[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct Constant<'tcx> {
-    pub span: Span,
-
-    /// Optional user-given type: for something like
-    /// `collect::<Vec<_>>`, this would be present and would
-    /// indicate that `Vec<_>` was explicitly specified.
-    ///
-    /// Needed for NLL to impose user-given type constraints.
-    pub user_ty: Option<UserTypeAnnotationIndex>,
-
-    pub literal: ConstantKind<'tcx>,
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub enum ConstantKind<'tcx> {
+pub enum Const<'tcx> {
     /// This constant came from the type system.
     ///
     /// Any way of turning `ty::Const` into `ConstValue` should go through `valtree_to_const_val`;
@@ -221,46 +200,27 @@ pub enum ConstantKind<'tcx> {
     Val(ConstValue<'tcx>, Ty<'tcx>),
 }
 
-impl<'tcx> Constant<'tcx> {
-    pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        match self.literal.try_to_scalar() {
-            Some(Scalar::Ptr(ptr, _size)) => match tcx.global_alloc(ptr.provenance) {
-                GlobalAlloc::Static(def_id) => {
-                    assert!(!tcx.is_thread_local_static(def_id));
-                    Some(def_id)
-                }
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn ty(&self) -> Ty<'tcx> {
-        self.literal.ty()
-    }
-}
-
-impl<'tcx> ConstantKind<'tcx> {
+impl<'tcx> Const<'tcx> {
     #[inline(always)]
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
-            ConstantKind::Ty(c) => c.ty(),
-            ConstantKind::Val(_, ty) | ConstantKind::Unevaluated(_, ty) => *ty,
+            Const::Ty(c) => c.ty(),
+            Const::Val(_, ty) | Const::Unevaluated(_, ty) => *ty,
         }
     }
 
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
-            ConstantKind::Ty(c) => match c.kind() {
+            Const::Ty(c) => match c.kind() {
                 ty::ConstKind::Value(valtree) => match valtree {
                     ty::ValTree::Leaf(scalar_int) => Some(Scalar::Int(scalar_int)),
                     ty::ValTree::Branch(_) => None,
                 },
                 _ => None,
             },
-            ConstantKind::Val(val, _) => val.try_to_scalar(),
-            ConstantKind::Unevaluated(..) => None,
+            Const::Val(val, _) => val.try_to_scalar(),
+            Const::Unevaluated(..) => None,
         }
     }
 
@@ -287,17 +247,17 @@ impl<'tcx> ConstantKind<'tcx> {
         span: Option<Span>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         match self {
-            ConstantKind::Ty(c) => {
+            Const::Ty(c) => {
                 // We want to consistently have a "clean" value for type system constants (i.e., no
                 // data hidden in the padding), so we always go through a valtree here.
                 let val = c.eval(tcx, param_env, span)?;
                 Ok(tcx.valtree_to_const_val((self.ty(), val)))
             }
-            ConstantKind::Unevaluated(uneval, _) => {
+            Const::Unevaluated(uneval, _) => {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
                 tcx.const_eval_resolve(param_env, uneval, span)
             }
-            ConstantKind::Val(val, _) => Ok(val),
+            Const::Val(val, _) => Ok(val),
         }
     }
 
@@ -332,23 +292,18 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_bits(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Option<u128> {
+    pub fn try_eval_bits(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<u128> {
         let int = self.try_eval_scalar_int(tcx, param_env)?;
-        assert_eq!(self.ty(), ty);
-        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+        let size =
+            tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
         int.to_bits(size).ok()
     }
 
     /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
     #[inline]
-    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
-        self.try_eval_bits(tcx, param_env, ty)
-            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", ty, self))
+    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {
+        self.try_eval_bits(tcx, param_env)
+            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", self.ty(), self))
     }
 
     #[inline]
@@ -416,7 +371,7 @@ impl<'tcx> ConstantKind<'tcx> {
         Self::Val(val, ty)
     }
 
-    /// Literals are converted to `ConstantKindVal`, const generic parameters are eagerly
+    /// Literals are converted to `Const::Val`, const generic parameters are eagerly
     /// converted to a constant, everything else becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug", ret)]
     pub fn from_anon_const(
@@ -552,29 +507,13 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     }
 }
 
-impl<'tcx> Debug for Constant<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{self}")
-    }
-}
-
-impl<'tcx> Display for Constant<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        match self.ty().kind() {
-            ty::FnDef(..) => {}
-            _ => write!(fmt, "const ")?,
-        }
-        Display::fmt(&self.literal, fmt)
-    }
-}
-
-impl<'tcx> Display for ConstantKind<'tcx> {
+impl<'tcx> Display for Const<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match *self {
-            ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
-            ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt),
+            Const::Ty(c) => pretty_print_const(c, fmt, true),
+            Const::Val(val, ty) => pretty_print_const_value(val, ty, fmt),
             // FIXME(valtrees): Correctly print mir constants.
-            ConstantKind::Unevaluated(..) => {
+            Const::Unevaluated(..) => {
                 fmt.write_str("_")?;
                 Ok(())
             }

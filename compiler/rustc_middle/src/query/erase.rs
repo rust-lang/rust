@@ -116,9 +116,8 @@ impl EraseType for Result<ty::Const<'_>, mir::interpret::LitToConstError> {
     type Result = [u8; size_of::<Result<ty::Const<'static>, mir::interpret::LitToConstError>>()];
 }
 
-impl EraseType for Result<mir::ConstantKind<'_>, mir::interpret::LitToConstError> {
-    type Result =
-        [u8; size_of::<Result<mir::ConstantKind<'static>, mir::interpret::LitToConstError>>()];
+impl EraseType for Result<mir::Const<'_>, mir::interpret::LitToConstError> {
+    type Result = [u8; size_of::<Result<mir::Const<'static>, mir::interpret::LitToConstError>>()];
 }
 
 impl EraseType for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
@@ -311,7 +310,7 @@ macro_rules! tcx_lifetime {
 tcx_lifetime! {
     rustc_middle::hir::Owner,
     rustc_middle::middle::exported_symbols::ExportedSymbol,
-    rustc_middle::mir::ConstantKind,
+    rustc_middle::mir::Const,
     rustc_middle::mir::DestructuredConstant,
     rustc_middle::mir::ConstAlloc,
     rustc_middle::mir::ConstValue,

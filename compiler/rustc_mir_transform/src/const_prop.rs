@@ -525,7 +525,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn replace_with_const(&mut self, place: Place<'tcx>) -> Option<ConstantKind<'tcx>> {
+    fn replace_with_const(&mut self, place: Place<'tcx>) -> Option<Const<'tcx>> {
         // This will return None if the above `const_prop` invocation only "wrote" a
         // type whose creation requires no write. E.g. a generator whose initial state
         // consists solely of uninitialized memory (so it doesn't capture any locals).
@@ -541,7 +541,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let Right(imm) = imm else { return None };
         match *imm {
             Immediate::Scalar(scalar) if scalar.try_to_int().is_ok() => {
-                Some(ConstantKind::from_scalar(self.tcx, scalar, value.layout.ty))
+                Some(Const::from_scalar(self.tcx, scalar, value.layout.ty))
             }
             Immediate::ScalarPair(l, r) if l.try_to_int().is_ok() && r.try_to_int().is_ok() => {
                 let alloc_id = self
@@ -551,7 +551,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     })
                     .ok()?;
 
-                Some(ConstantKind::Val(
+                Some(Const::Val(
                     ConstValue::Indirect { alloc_id, offset: Size::ZERO },
                     value.layout.ty,
                 ))
@@ -731,7 +731,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 if let Some(()) = self.eval_rvalue_with_identities(rvalue, *place) {
                     // If this was already an evaluated constant, keep it.
                     if let Rvalue::Use(Operand::Constant(c)) = rvalue
-                        && let ConstantKind::Val(..) = c.literal
+                        && let Const::Val(..) = c.const_
                     {
                         trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
                     } else if let Some(operand) = self.replace_with_const(*place) {

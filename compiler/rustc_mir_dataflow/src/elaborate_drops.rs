@@ -973,10 +973,10 @@ where
     }
 
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {
-        Operand::Constant(Box::new(Constant {
+        Operand::Constant(Box::new(ConstOperand {
             span: self.source_info.span,
             user_ty: None,
-            literal: ConstantKind::from_usize(self.tcx(), val.into()),
+            const_: Const::from_usize(self.tcx(), val.into()),
         }))
     }
 
