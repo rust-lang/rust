@@ -306,6 +306,17 @@ impl LinkSelfContained {
     pub fn is_linker_disabled(&self) -> bool {
         self.disabled_components.contains(LinkSelfContainedComponents::LINKER)
     }
+
+    /// Returns CLI inconsistencies to emit errors: individual components were both enabled and
+    /// disabled.
+    fn check_consistency(&self) -> Option<LinkSelfContainedComponents> {
+        if self.explicitly_set.is_some() {
+            None
+        } else {
+            let common = self.enabled_components.intersection(self.disabled_components);
+            if common.is_empty() { None } else { Some(common) }
+        }
+    }
 }
 
 /// Used with `-Z assert-incr-state`.
@@ -2763,6 +2774,19 @@ pub fn build_session_options(
                 ));
             }
         }
+    }
+
+    // Check `-C link-self-contained` for consistency: individual components cannot be both enabled
+    // and disabled at the same time.
+    if let Some(erroneous_components) = cg.link_self_contained.check_consistency() {
+        let names: String = erroneous_components
+            .into_iter()
+            .map(|c| c.as_str().unwrap())
+            .intersperse(", ")
+            .collect();
+        handler.early_error(format!(
+            "some `-C link-self-contained` components were both enabled and disabled: {names}"
+        ));
     }
 
     let prints = collect_print_requests(handler, &mut cg, &mut unstable_opts, matches);
