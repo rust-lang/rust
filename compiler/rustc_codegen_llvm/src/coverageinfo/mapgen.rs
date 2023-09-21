@@ -60,8 +60,11 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Encode coverage mappings and generate function records
     let mut function_data = Vec::new();
-    for (instance, function_coverage) in function_coverage_map {
+    for (instance, mut function_coverage) in function_coverage_map {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
+        function_coverage.simplify_expressions();
+        let function_coverage = function_coverage;
+
         let mangled_function_name = tcx.symbol_name(instance).name;
         let source_hash = function_coverage.source_hash();
         let is_used = function_coverage.is_used();
