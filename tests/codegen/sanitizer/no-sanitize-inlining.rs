@@ -4,8 +4,9 @@
 // needs-sanitizer-address
 // needs-sanitizer-leak
 // revisions: ASAN LSAN
-//[ASAN] compile-flags: -Zsanitizer=address -C opt-level=3 -Z mir-opt-level=4
-//[LSAN] compile-flags: -Zsanitizer=leak    -C opt-level=3 -Z mir-opt-level=4
+//       compile-flags: -Copt-level=3 -Zmir-opt-level=4 -Ctarget-feature=-crt-static
+//[ASAN] compile-flags: -Zsanitizer=address
+//[LSAN] compile-flags: -Zsanitizer=leak
 
 #![crate_type="lib"]
 #![feature(no_sanitize)]

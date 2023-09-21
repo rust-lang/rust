@@ -566,6 +566,11 @@ impl rustc_errors::IntoDiagnosticArg for Clause<'_> {
 pub struct Clause<'tcx>(Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>);
 
 impl<'tcx> Clause<'tcx> {
+    pub fn from_projection_clause(tcx: TyCtxt<'tcx>, pred: PolyProjectionPredicate<'tcx>) -> Self {
+        let pred: Predicate<'tcx> = pred.to_predicate(tcx);
+        pred.expect_clause()
+    }
+
     pub fn as_predicate(self) -> Predicate<'tcx> {
         Predicate(self.0)
     }
@@ -1253,14 +1258,6 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitPredicate<'tcx> {
-    #[inline(always)]
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
-        let p: Predicate<'tcx> = self.to_predicate(tcx);
-        p.expect_clause()
-    }
-}
-
 impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, TraitRef<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
@@ -1287,18 +1284,6 @@ impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for TraitRef<'tcx> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> PolyTraitPredicate<'tcx> {
-        ty::Binder::dummy(self).to_predicate(tcx)
-    }
-}
-
-impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for TraitPredicate<'tcx> {
-    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> PolyTraitPredicate<'tcx> {
-        ty::Binder::dummy(self)
-    }
-}
-
 impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::Trait(p))).to_predicate(tcx)
@@ -1312,12 +1297,6 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyTraitPredicate<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::RegionOutlives(self))).to_predicate(tcx)
-    }
-}
-
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::RegionOutlives(p))).to_predicate(tcx)
@@ -1327,12 +1306,6 @@ impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
 impl<'tcx> ToPredicate<'tcx> for OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::Binder::dummy(PredicateKind::Clause(ClauseKind::TypeOutlives(self))).to_predicate(tcx)
-    }
-}
-
-impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(|p| PredicateKind::Clause(ClauseKind::TypeOutlives(p))).to_predicate(tcx)
     }
 }
 
@@ -1349,13 +1322,6 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for ProjectionPredicate<'tcx> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
-        let p: Predicate<'tcx> = self.to_predicate(tcx);
-        p.expect_clause()
-    }
-}
-
-impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
         let p: Predicate<'tcx> = self.to_predicate(tcx);
         p.expect_clause()
@@ -2214,10 +2180,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 // The name of a constructor is that of its parent.
                 rustc_hir::definitions::DefPathData::Ctor => self
                     .opt_item_name(DefId { krate: def_id.krate, index: def_key.parent.unwrap() }),
-                // The name of opaque types only exists in HIR.
-                rustc_hir::definitions::DefPathData::ImplTrait
-                    if let Some(def_id) = def_id.as_local() =>
-                    self.hir().opt_name(self.hir().local_def_id_to_hir_id(def_id)),
                 _ => def_key.get_opt_name(),
             }
         }

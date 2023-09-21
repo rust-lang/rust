@@ -2,7 +2,6 @@
 
 use crate::infer::canonical::Canonical;
 use crate::mir;
-use crate::mir::interpret::ConstValue;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{TyAndLayout, ValidityRequirement};
@@ -369,7 +368,7 @@ impl<'tcx> Key for (ty::Const<'tcx>, FieldIdx) {
     }
 }
 
-impl<'tcx> Key for (ConstValue<'tcx>, Ty<'tcx>) {
+impl<'tcx> Key for (mir::ConstValue<'tcx>, Ty<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
@@ -377,7 +376,7 @@ impl<'tcx> Key for (ConstValue<'tcx>, Ty<'tcx>) {
     }
 }
 
-impl<'tcx> Key for mir::interpret::ConstAlloc<'tcx> {
+impl<'tcx> Key for mir::ConstAlloc<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

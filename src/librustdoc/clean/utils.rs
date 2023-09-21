@@ -16,7 +16,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
@@ -154,7 +153,7 @@ pub(super) fn external_path<'tcx>(
     args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
-    let name = cx.tcx.item_name(did);
+    let name = cx.tcx.opt_item_name(did).unwrap_or(kw::Empty);
     Path {
         res: Res::Def(def_kind, did),
         segments: thin_vec![PathSegment {
@@ -282,8 +281,8 @@ pub(crate) fn print_evaluated_const(
         let ty = tcx.type_of(def_id).instantiate_identity();
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
-            (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
-            (ConstValue::Scalar(_), _) => {
+            (mir::ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
+            (mir::ConstValue::Scalar(_), _) => {
                 let const_ = mir::ConstantKind::from_value(val, ty);
                 Some(print_const_with_custom_print_scalar(tcx, const_, underscores_and_type))
             }
@@ -326,14 +325,14 @@ fn print_const_with_custom_print_scalar<'tcx>(
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct, ct.ty().kind()) {
-        (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Uint(ui)) => {
+        (mir::ConstantKind::Val(mir::ConstValue::Scalar(int), _), ty::Uint(ui)) => {
             if underscores_and_type {
                 format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
             } else {
                 int.to_string()
             }
         }
-        (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
+        (mir::ConstantKind::Val(mir::ConstValue::Scalar(int), _), ty::Int(i)) => {
             let ty = ct.ty();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);

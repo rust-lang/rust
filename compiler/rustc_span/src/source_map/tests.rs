@@ -567,3 +567,30 @@ fn test_next_point() {
     assert_eq!(span.hi().0, 6);
     assert!(sm.span_to_snippet(span).is_err());
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+fn read_binary_file_handles_lying_stat() {
+    // read_binary_file tries to read the contents of a file into an Lrc<[u8]> while
+    // never having two copies of the data in memory at once. This is an optimization
+    // to support include_bytes! with large files. But since Rust allocators are
+    // sensitive to alignment, our implementation can't be bootstrapped off calling
+    // std::fs::read. So we test that we have the same behavior even on files where
+    // fs::metadata lies.
+
+    // stat always says that /proc/self/cmdline is length 0, but it isn't.
+    let cmdline = Path::new("/proc/self/cmdline");
+    let len = std::fs::metadata(cmdline).unwrap().len() as usize;
+    let real = std::fs::read(cmdline).unwrap();
+    assert!(len < real.len());
+    let bin = RealFileLoader.read_binary_file(cmdline).unwrap();
+    assert_eq!(&real[..], &bin[..]);
+
+    // stat always says that /sys/devices/system/cpu/kernel_max is the size of a block.
+    let kernel_max = Path::new("/sys/devices/system/cpu/kernel_max");
+    let len = std::fs::metadata(kernel_max).unwrap().len() as usize;
+    let real = std::fs::read(kernel_max).unwrap();
+    assert!(len > real.len());
+    let bin = RealFileLoader.read_binary_file(kernel_max).unwrap();
+    assert_eq!(&real[..], &bin[..]);
+}

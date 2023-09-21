@@ -22,8 +22,8 @@ rm $TMPDIR/rustc-ice-*.txt
 # Explicitly disabling ICE dump
 export RUSTC_ICE=0
 $RUSTC src/lib.rs -Z treat-err-as-bug=1 1>$TMPDIR/rust-test-disabled.log 2>&1
-should_be_empty_tmp=$(ls -l $TMPDIR/rustc-ice-*.txt | wc -l)
-should_be_empty_dot=$(ls -l ./rustc-ice-*.txt | wc -l)
+should_be_empty_tmp=$(ls -l $TMPDIR/rustc-ice-*.txt 2>/dev/null | wc -l)
+should_be_empty_dot=$(ls -l ./rustc-ice-*.txt 2>/dev/null | wc -l)
 
 echo "#### ICE Dump content:"
 echo $content

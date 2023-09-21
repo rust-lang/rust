@@ -79,6 +79,7 @@ const EXPECTED = [
             { 'path': 'generics_match_ambiguity', 'name': 'baac' },
             { 'path': 'generics_match_ambiguity', 'name': 'baaf' },
             { 'path': 'generics_match_ambiguity', 'name': 'baag' },
+            { 'path': 'generics_match_ambiguity', 'name': 'baah' },
         ],
     },
     {

@@ -6,8 +6,8 @@ use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc_middle::mir;
-use rustc_middle::mir::interpret::{alloc_range, ConstValue, Pointer, Scalar};
+use rustc_middle::mir::interpret::{alloc_range, Pointer, Scalar};
+use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{self, Abi, Align, Size};
@@ -86,7 +86,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        val: ConstValue<'tcx>,
+        val: mir::ConstValue<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
         let layout = bx.layout_of(ty);
@@ -100,15 +100,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 OperandValue::Immediate(llval)
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
-            ConstValue::Slice { data, start, end } => {
+            ConstValue::Slice { data, meta } => {
                 let Abi::ScalarPair(a_scalar, _) = layout.abi else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
                 let a = Scalar::from_pointer(
-                    Pointer::new(
-                        bx.tcx().reserve_and_set_memory_alloc(data),
-                        Size::from_bytes(start),
-                    ),
+                    Pointer::new(bx.tcx().reserve_and_set_memory_alloc(data), Size::ZERO),
                     &bx.tcx(),
                 );
                 let a_llval = bx.scalar_to_backend(
@@ -116,7 +113,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     a_scalar,
                     bx.scalar_pair_element_backend_type(layout, 0, true),
                 );
-                let b_llval = bx.const_usize((end - start) as u64);
+                let b_llval = bx.const_usize(meta);
                 OperandValue::Pair(a_llval, b_llval)
             }
             ConstValue::Indirect { alloc_id, offset } => {

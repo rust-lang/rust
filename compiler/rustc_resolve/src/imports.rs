@@ -991,9 +991,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if !is_prelude
                     && let Some(max_vis) = max_vis.get()
                     && !max_vis.is_at_least(import.expect_vis(), self.tcx)
-                {
-                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, id, import.span, fluent::resolve_glob_import_doesnt_reexport);
-                }
+                    {
+                        self.lint_buffer.buffer_lint(UNUSED_IMPORTS, id, import.span, fluent::resolve_glob_import_doesnt_reexport);
+                    }
                     return None;
                 }
                 _ => unreachable!(),

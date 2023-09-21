@@ -1118,6 +1118,10 @@ where
     fn is_unit(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Tuple(list) if list.len() == 0)
     }
+
+    fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
+    }
 }
 
 /// Calculates whether a function's ABI can unwind or not.

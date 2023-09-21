@@ -22,9 +22,14 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
         assert!(!ty.is_ty_var(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
-            while let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, projection_ty) =
-                *ty.kind()
-            {
+            // FIXME(-Ztrait-solver=next): correctly handle
+            // overflow here.
+            for _ in 0..256 {
+                let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, projection_ty) = *ty.kind()
+                else {
+                    break;
+                };
+
                 let new_infer_ty = self.infcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::NormalizeProjectionType,
                     span: self.cause.span,
@@ -49,6 +54,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
                     break;
                 }
             }
+
             Ok(ty)
         } else {
             Ok(self.normalize(ty).into_value_registering_obligations(self.infcx, fulfill_cx))

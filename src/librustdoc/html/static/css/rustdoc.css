@@ -1355,6 +1355,7 @@ a.tooltip:hover::after {
 
 #search-tabs .count {
 	font-size: 1rem;
+	font-variant-numeric: tabular-nums;
 	color: var(--search-tab-title-count-color);
 }
 
@@ -1637,6 +1638,13 @@ However, it's not needed with smaller screen width because the doc/code block is
 
 /* Media Queries */
 
+/* Make sure all the buttons line wrap at the same time */
+@media (max-width: 850px) {
+	#search-tabs .count {
+		display: block;
+	}
+}
+
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
@@ -1762,10 +1770,6 @@ in src-script.js
 
 	.anchor {
 		display: none !important;
-	}
-
-	#search-tabs .count {
-		display: block;
 	}
 
 	#main-content > details.toggle > summary::before,

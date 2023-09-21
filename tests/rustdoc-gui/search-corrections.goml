@@ -54,3 +54,53 @@ assert-text: (
     ".search-corrections",
     "Type \"notablestructwithlongnamr\" not found. Showing results for closest type name \"notablestructwithlongname\" instead."
 )
+
+// Now, generic correction
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// Intentionally wrong spelling of "NotableStructWithLongName"
+write: (".search-input", "NotableStructWithLongNamr, NotableStructWithLongNamr")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+
+assert-css: (".search-corrections", {
+    "display": "block"
+})
+assert-text: (
+    ".search-corrections",
+    "Type \"notablestructwithlongnamr\" not found and used as generic parameter. Consider searching for \"notablestructwithlongname\" instead."
+)
+
+// Now, generic correction plus error
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// Intentionally wrong spelling of "NotableStructWithLongName"
+write: (".search-input", "Foo<NotableStructWithLongNamr>,y")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+
+assert-css: (".search-corrections", {
+    "display": "block"
+})
+assert-text: (
+    ".search-corrections",
+    "Type \"notablestructwithlongnamr\" not found and used as generic parameter. Consider searching for \"notablestructwithlongname\" instead."
+)
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// Intentionally wrong spelling of "NotableStructWithLongName"
+write: (".search-input", "generic:NotableStructWithLongNamr<x>,y")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+
+assert-css: (".error", {
+    "display": "block"
+})
+assert-text: (
+    ".error",
+    "Query parser error: \"Generic type parameter notablestructwithlongnamr does not accept generic parameters\"."
+)

@@ -1,7 +1,7 @@
 // Not in interpret to make sure we do not use private implementation details
 
 use crate::errors::MaxNumNodesInConstErr;
-use crate::interpret::{intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, Scalar};
+use crate::interpret::{intern_const_alloc_recursive, InternKind, InterpCx, Scalar};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -22,7 +22,7 @@ pub(crate) use valtrees::{const_to_valtree_inner, valtree_to_const_value};
 pub(crate) fn const_caller_location(
     tcx: TyCtxt<'_>,
     (file, line, col): (Symbol, u32, u32),
-) -> ConstValue<'_> {
+) -> mir::ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
 
@@ -30,7 +30,7 @@ pub(crate) fn const_caller_location(
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
         bug!("intern_const_alloc_recursive should not error in this case")
     }
-    ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx))
+    mir::ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx))
 }
 
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
@@ -87,7 +87,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
     tcx: TyCtxt<'tcx>,
-    val: ConstValue<'tcx>,
+    val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
     let param_env = ty::ParamEnv::reveal_all();

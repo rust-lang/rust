@@ -3,9 +3,7 @@
 use crate::build::{parse_float_into_constval, Builder};
 use rustc_ast as ast;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{
-    Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
-};
+use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
@@ -133,14 +131,14 @@ fn lit_to_mir_constant<'tcx>(
             let s = s.as_str();
             let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes());
             let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, start: 0, end: s.len() }
+            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
             let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
             let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, start: 0, end: data.len() }
+            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
             let id = tcx.allocate_bytes(data);
@@ -150,7 +148,7 @@ fn lit_to_mir_constant<'tcx>(
         {
             let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
             let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, start: 0, end: data.len() }
+            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))

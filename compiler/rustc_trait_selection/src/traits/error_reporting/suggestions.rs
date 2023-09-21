@@ -406,6 +406,14 @@ pub trait TypeErrCtxtExt<'tcx> {
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     );
+
+    fn explain_hrtb_projection(
+        &self,
+        diag: &mut Diagnostic,
+        pred: ty::PolyTraitPredicate<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -> (Span, String) {
@@ -4025,6 +4033,71 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             } else {
                 err.span_help(span, msg);
             }
+        }
+    }
+
+    fn explain_hrtb_projection(
+        &self,
+        diag: &mut Diagnostic,
+        pred: ty::PolyTraitPredicate<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) {
+        if pred.skip_binder().has_escaping_bound_vars() && pred.skip_binder().has_non_region_infer()
+        {
+            self.probe(|_| {
+                let ocx = ObligationCtxt::new(self);
+                let pred = self.instantiate_binder_with_placeholders(pred);
+                let pred = ocx.normalize(&ObligationCause::dummy(), param_env, pred);
+                ocx.register_obligation(Obligation::new(
+                    self.tcx,
+                    ObligationCause::dummy(),
+                    param_env,
+                    pred,
+                ));
+                if !ocx.select_where_possible().is_empty() {
+                    // encountered errors.
+                    return;
+                }
+
+                if let ObligationCauseCode::FunctionArgumentObligation {
+                    call_hir_id,
+                    arg_hir_id,
+                    parent_code: _,
+                } = cause.code()
+                {
+                    let arg_span = self.tcx.hir().span(*arg_hir_id);
+                    let mut sp: MultiSpan = arg_span.into();
+
+                    sp.push_span_label(
+                        arg_span,
+                        "the trait solver is unable to infer the \
+                        generic types that should be inferred from this argument",
+                    );
+                    sp.push_span_label(
+                        self.tcx.hir().span(*call_hir_id),
+                        "add turbofish arguments to this call to \
+                        specify the types manually, even if it's redundant",
+                    );
+                    diag.span_note(
+                        sp,
+                        "this is a known limitation of the trait solver that \
+                        will be lifted in the future",
+                    );
+                } else {
+                    let mut sp: MultiSpan = cause.span.into();
+                    sp.push_span_label(
+                        cause.span,
+                        "try adding turbofish arguments to this expression to \
+                        specify the types manually, even if it's redundant",
+                    );
+                    diag.span_note(
+                        sp,
+                        "this is a known limitation of the trait solver that \
+                        will be lifted in the future",
+                    );
+                }
+            });
         }
     }
 }

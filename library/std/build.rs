@@ -37,6 +37,7 @@ fn main() {
         || target.contains("nintendo-3ds")
         || target.contains("vita")
         || target.contains("nto")
+        || target.contains("xous")
         // See src/bootstrap/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
     {

@@ -11,7 +11,7 @@ fn outer(_1: u8) -> u8 {
         _0 = inner(move _2) -> [return: bb1, unwind continue]; // scope 0 at $DIR/spans.rs:10:5: 10:14
                                          // mir::Constant
                                          // + span: $DIR/spans.rs:10:5: 10:10
-                                         // + literal: Const { ty: for<'a> fn(&'a u8) -> u8 {inner}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a> fn(&'a u8) -> u8 {inner}, val: Value(inner) }
     }
 
     bb1: {

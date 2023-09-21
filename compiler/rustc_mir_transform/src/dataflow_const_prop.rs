@@ -6,7 +6,7 @@ use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ConstValue, InterpResult, Scalar};
+use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;

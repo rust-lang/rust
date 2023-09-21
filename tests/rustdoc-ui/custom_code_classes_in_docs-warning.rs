@@ -57,25 +57,23 @@ pub fn foo8() {}
 /// ```{class=one=two}
 /// main;
 /// ```
-//~^^^ ERROR unexpected `=`
+//~^^^ ERROR unexpected `=` character
 pub fn foo9() {}
 
 /// ```{.one.two}
 /// main;
 /// ```
-//~^^^ ERROR unexpected `.` character
 pub fn foo10() {}
 
-/// ```{class=.one}
+/// ```{class=(one}
 /// main;
 /// ```
-//~^^^ ERROR unexpected `.` character after `=`
+//~^^^ ERROR unexpected `(` character after `=`
 pub fn foo11() {}
 
 /// ```{class=one.two}
 /// main;
 /// ```
-//~^^^ ERROR unexpected `.` character
 pub fn foo12() {}
 
 /// ```{(comment)}

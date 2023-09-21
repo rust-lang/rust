@@ -1,5 +1,5 @@
 use std::env::args;
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 use std::process::{exit, Command};
@@ -14,6 +14,7 @@ fn get_themes<P: AsRef<Path>>(style_path: P) -> Vec<String> {
         std::time::SystemTime::UNIX_EPOCH.elapsed().expect("time is after UNIX epoch").as_millis();
 
     let mut in_theme = None;
+    create_dir_all("build/tmp").expect("failed to create temporary test directory");
     for line in BufReader::new(File::open(style_path).expect("read rustdoc.css failed")).lines() {
         let line = line.expect("read line from rustdoc.css failed");
         let line = line.trim();
