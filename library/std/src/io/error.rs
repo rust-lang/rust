@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(target_pointer_width = "64")]
+#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 mod repr_bitpacked;
-#[cfg(target_pointer_width = "64")]
+#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 use repr_bitpacked::Repr;
 
-#[cfg(not(target_pointer_width = "64"))]
+#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 mod repr_unpacked;
-#[cfg(not(target_pointer_width = "64"))]
+#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 use repr_unpacked::Repr;
 
 use crate::error;
