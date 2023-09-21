@@ -987,6 +987,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
 
                         self.explain_hrtb_projection(&mut err, trait_predicate, obligation.param_env, &obligation.cause);
+                        self.suggest_desugaring_async_fn_in_trait(&mut err, trait_ref);
 
                         // Return early if the trait is Debug or Display and the invocation
                         // originates within a standard library macro, because the output

@@ -41,7 +41,6 @@ use crate::{
     },
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
-use hir::IsAsync;
 use rustc_ast::attr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
@@ -1294,7 +1293,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         span: Span,
         def_id: LocalDefId,
     ) {
-        if fn_kind.asyncness() == IsAsync::Async
+        if fn_kind.asyncness().is_async()
             && !cx.tcx.features().async_fn_track_caller
             // Now, check if the function has the `#[track_caller]` attribute
             && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)

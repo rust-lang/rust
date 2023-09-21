@@ -31,7 +31,7 @@ use rustc_resolve::rustdoc::{
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, FileName, Loc};
+use rustc_span::{self, FileName, Loc, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
@@ -622,7 +622,7 @@ impl Item {
         fn build_fn_header(
             def_id: DefId,
             tcx: TyCtxt<'_>,
-            asyncness: hir::IsAsync,
+            asyncness: ty::Asyncness,
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
             let constness =
@@ -631,6 +631,10 @@ impl Item {
                 } else {
                     hir::Constness::NotConst
                 };
+            let asyncness = match asyncness {
+                ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
+                ty::Asyncness::No => hir::IsAsync::NotAsync,
+            };
             hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
         }
         let header = match *self.kind {

@@ -1213,7 +1213,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && let Some(generics) = self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
                         && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
                         && param.is_elided_lifetime()
-                        && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id)
+                        && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
                         let mut diag =  rustc_session::parse::feature_err(

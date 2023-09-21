@@ -296,9 +296,12 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 }
 
 /// Check if a function is async.
-fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::IsAsync {
+fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
     let node = tcx.hir().get_by_def_id(def_id);
-    node.fn_sig().map_or(hir::IsAsync::NotAsync, |sig| sig.header.asyncness)
+    node.fn_sig().map_or(ty::Asyncness::No, |sig| match sig.header.asyncness {
+        hir::IsAsync::Async(_) => ty::Asyncness::Yes,
+        hir::IsAsync::NotAsync => ty::Asyncness::No,
+    })
 }
 
 fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {

@@ -265,6 +265,7 @@ trivial! {
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::AssocItem,
     rustc_middle::ty::AssocItemContainer,
+    rustc_middle::ty::Asyncness,
     rustc_middle::ty::BoundVariableKind,
     rustc_middle::ty::DeducedParamAttrs,
     rustc_middle::ty::Destructor,

@@ -2304,7 +2304,7 @@ impl<'a> State<'a> {
 
         match header.asyncness {
             hir::IsAsync::NotAsync => {}
-            hir::IsAsync::Async => self.word_nbsp("async"),
+            hir::IsAsync::Async(_) => self.word_nbsp("async"),
         }
 
         self.print_unsafety(header.unsafety);
