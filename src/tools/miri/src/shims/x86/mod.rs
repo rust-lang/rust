@@ -26,15 +26,17 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
         match unprefixed_name {
             // Used to implement the `_addcarry_u32` and `_addcarry_u64` functions.
-            // Computes u8+uX+uX (uX is u32 or u64), returning tuple (u8,uX) comprising
-            // the output carry and truncated sum.
+            // Computes a + b with input and output carry. The input carry is an 8-bit
+            // value, which is interpreted as 1 if it is non-zero. The output carry is
+            // an 8-bit value that will be 0 or 1.
+            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarry-u32-addcarry-u64.html
             "addcarry.32" | "addcarry.64" => {
                 if unprefixed_name == "addcarry.64" && this.tcx.sess.target.arch != "x86_64" {
                     return Ok(EmulateByNameResult::NotSupported);
                 }
 
                 let [c_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
-                let c_in = this.read_scalar(c_in)?.to_u8()?;
+                let c_in = this.read_scalar(c_in)?.to_u8()? != 0;
                 let a = this.read_immediate(a)?;
                 let b = this.read_immediate(b)?;
 
@@ -44,10 +46,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     &sum,
                     &ImmTy::from_uint(c_in, a.layout),
                 )?;
-                #[allow(clippy::arithmetic_side_effects)] // adding two bools into a u8
-                let c_out = u8::from(overflow1) + u8::from(overflow2);
+                let c_out = overflow1 | overflow2;
 
-                this.write_scalar(Scalar::from_u8(c_out), &this.project_field(dest, 0)?)?;
+                this.write_scalar(Scalar::from_u8(c_out.into()), &this.project_field(dest, 0)?)?;
                 this.write_immediate(*sum, &this.project_field(dest, 1)?)?;
             }
 

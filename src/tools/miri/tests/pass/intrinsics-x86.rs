@@ -14,8 +14,14 @@ mod x86 {
     }
 
     pub fn main() {
+        assert_eq!(adc(0, 1, 1), (0, 2));
         assert_eq!(adc(1, 1, 1), (0, 3));
-        assert_eq!(adc(3, u32::MAX, u32::MAX), (2, 1));
+        assert_eq!(adc(2, 1, 1), (0, 3)); // any non-zero carry acts as 1!
+        assert_eq!(adc(u8::MAX, 1, 1), (0, 3));
+        assert_eq!(adc(0, u32::MAX, u32::MAX), (1, u32::MAX - 1));
+        assert_eq!(adc(1, u32::MAX, u32::MAX), (1, u32::MAX));
+        assert_eq!(adc(2, u32::MAX, u32::MAX), (1, u32::MAX));
+        assert_eq!(adc(u8::MAX, u32::MAX, u32::MAX), (1, u32::MAX));
     }
 }
 
@@ -32,8 +38,14 @@ mod x86_64 {
     }
 
     pub fn main() {
+        assert_eq!(adc(0, 1, 1), (0, 2));
         assert_eq!(adc(1, 1, 1), (0, 3));
-        assert_eq!(adc(3, u64::MAX, u64::MAX), (2, 1));
+        assert_eq!(adc(2, 1, 1), (0, 3)); // any non-zero carry acts as 1!
+        assert_eq!(adc(u8::MAX, 1, 1), (0, 3));
+        assert_eq!(adc(0, u64::MAX, u64::MAX), (1, u64::MAX - 1));
+        assert_eq!(adc(1, u64::MAX, u64::MAX), (1, u64::MAX));
+        assert_eq!(adc(2, u64::MAX, u64::MAX), (1, u64::MAX));
+        assert_eq!(adc(u8::MAX, u64::MAX, u64::MAX), (1, u64::MAX));
     }
 }
 
