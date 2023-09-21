@@ -5,10 +5,13 @@ use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
-use rustc_middle::ty::{RegionVid, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, RegionVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -601,34 +604,88 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             values::location_set_str(elements, live_at.iter()),
         );
 
-        let tcx = typeck.tcx();
-        let borrowck_context = &mut typeck.borrowck_context;
-
         // When using `-Zpolonius=next`, we want to record the loans that flow into this value's
         // regions as being live at the given `live_at` points: this will be used to compute the
         // location where a loan goes out of scope.
-        let num_loans = borrowck_context.borrow_set.len();
-        let mut value_loans = HybridBitSet::new_empty(num_loans);
+        let num_loans = typeck.borrowck_context.borrow_set.len();
+        let value_loans = &mut HybridBitSet::new_empty(num_loans);
 
-        tcx.for_each_free_region(&value, |live_region| {
-            let live_region_vid = borrowck_context.universal_regions.to_region_vid(live_region);
-
-            borrowck_context
-                .constraints
-                .liveness_constraints
-                .add_elements(live_region_vid, live_at);
-
-            // There can only be inflowing loans for this region when we are using
-            // `-Zpolonius=next`.
-            if let Some(inflowing) = inflowing_loans.row(live_region_vid) {
-                value_loans.union(inflowing);
+        struct MakeAllRegionsLive<'a, 'b, 'tcx> {
+            typeck: &'b mut TypeChecker<'a, 'tcx>,
+            live_at: &'b IntervalSet<PointIndex>,
+            value_loans: &'b mut HybridBitSet<BorrowIndex>,
+            inflowing_loans: &'b SparseBitMatrix<RegionVid, BorrowIndex>,
+        }
+        impl<'tcx> MakeAllRegionsLive<'_, '_, 'tcx> {
+            fn make_alias_live(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
+                let ty::Alias(_kind, alias_ty) = t.kind() else {
+                    bug!();
+                };
+                let tcx = self.typeck.infcx.tcx;
+                let mut outlives_bounds = tcx
+                    .item_bounds(alias_ty.def_id)
+                    .iter_instantiated(tcx, alias_ty.args)
+                    .filter_map(|clause| {
+                        if let Some(outlives) = clause.as_type_outlives_clause()
+                        && outlives.skip_binder().0 == t
+                    {
+                        Some(outlives.skip_binder().1)
+                    } else {
+                        None
+                    }
+                    });
+                if let Some(r) = outlives_bounds.next()
+                    && !r.is_late_bound()
+                    && outlives_bounds.all(|other_r| {
+                        other_r == r
+                    })
+                {
+                    r.visit_with(self)
+                } else {
+                    t.super_visit_with(self)
+                }
             }
-        });
+        }
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MakeAllRegionsLive<'_, '_, 'tcx> {
+            type BreakTy = !;
+
+            fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+                if r.is_late_bound() {
+                    return ControlFlow::Continue(());
+                }
+                let live_region_vid =
+                    self.typeck.borrowck_context.universal_regions.to_region_vid(r);
+
+                self.typeck
+                    .borrowck_context
+                    .constraints
+                    .liveness_constraints
+                    .add_elements(live_region_vid, self.live_at);
+
+                // There can only be inflowing loans for this region when we are using
+                // `-Zpolonius=next`.
+                if let Some(inflowing) = self.inflowing_loans.row(live_region_vid) {
+                    self.value_loans.union(inflowing);
+                }
+                ControlFlow::Continue(())
+            }
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                if !t.has_free_regions() {
+                    ControlFlow::Continue(())
+                } else if let ty::Alias(..) = t.kind() {
+                    self.make_alias_live(t)
+                } else {
+                    t.super_visit_with(self)
+                }
+            }
+        }
+        value.visit_with(&mut MakeAllRegionsLive { typeck, live_at, value_loans, inflowing_loans });
 
         // Record the loans reaching the value.
         if !value_loans.is_empty() {
             for point in live_at.iter() {
-                borrowck_context.live_loans.union_row(point, &value_loans);
+                typeck.borrowck_context.live_loans.union_row(point, value_loans);
             }
         }
     }
