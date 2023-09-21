@@ -305,7 +305,7 @@ jobs:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
               RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.7
+              MACOSX_DEPLOYMENT_TARGET: 10.12
               SELECT_XCODE: /Applications/Xcode_13.4.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
@@ -317,7 +317,7 @@ jobs:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim"
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.7
+              MACOSX_DEPLOYMENT_TARGET: 10.12
               SELECT_XCODE: /Applications/Xcode_13.4.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
@@ -328,8 +328,8 @@ jobs:
               SCRIPT: "./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps"
               RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.8
-              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              MACOSX_STD_DEPLOYMENT_TARGET: 10.12
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -339,8 +339,8 @@ jobs:
               SCRIPT: "./x.py --stage 2 test tests/ui tests/rustdoc tests/run-make-fulldeps"
               RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.8
-              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              MACOSX_STD_DEPLOYMENT_TARGET: 10.12
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1

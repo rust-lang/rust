@@ -9,7 +9,7 @@ include ../tools.mk
 ifeq ($(strip $(shell uname -m)),arm64)
 	GREP_PATTERN = "minos 11.0"
 else
- 	GREP_PATTERN = "version 10.9"
+ 	GREP_PATTERN = "version 10.14"
 endif
 
 OUT_FILE=$(TMPDIR)/with_deployment_target.dylib

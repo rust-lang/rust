@@ -36,7 +36,7 @@ target | notes
 `i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support]
 `i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+)
-`x86_64-apple-darwin` | 64-bit macOS (10.7+, Lion+)
+`x86_64-apple-darwin` | 64-bit macOS (10.12+, Sierra+)
 `x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
 `x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
@@ -245,7 +245,6 @@ target | std | host | notes
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
-`armv7-apple-ios` | ✓ |  | ARMv7-A Cortex-A8 iOS
 [`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ? |  | ARMv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
 [`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | ARMv7-A OpenHarmony |
 [`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | ARMv7-A Linux with uClibc, softfloat
@@ -265,7 +264,7 @@ target | std | host | notes
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |
-`i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
+`i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+)
 `i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
 [`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
