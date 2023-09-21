@@ -47,7 +47,7 @@ struct ExtendedTextEdit {
 // - typing `=` between two expressions adds `;` when in statement position
 // - typing `=` to turn an assignment into an equality comparison removes `;` when in expression position
 // - typing `.` in a chain method call auto-indents
-// - typing `{` in front of an expression inserts a closing `}` after the expression
+// - typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression
 // - typing `{` in a use item adds a closing `}` in the right place
 //
 // VS Code::
