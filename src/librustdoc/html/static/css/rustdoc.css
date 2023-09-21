@@ -521,7 +521,9 @@ ul.block, .block li {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin: 10px 32px 0;
+	/* there's a 10px padding at the top of <main>, and a 4px margin at the
+		top of the search form. To line them up, add them. */
+	margin: 14px 32px 0;
 	row-gap: 10px;
 	column-gap: 32px;
 	flex-wrap: wrap;
@@ -538,18 +540,36 @@ ul.block, .block li {
 		center properly) and the crate name and version need 24px on their
 		left margin. */
 	margin: 0 -8px;
+	/* To align this with the search bar, it should not be centered, even when
+		the logo is. */
+	align-self: start;
 }
 
 .sidebar-crate .logo-container {
-	margin: 0 -16px;
+	/* The logo is expected to have 8px "slop" along its edges, so we can optically
+		center it. */
+	margin: 0 -16px 0 -16px;
 	text-align: center;
 }
 
 .sidebar-crate h2 a {
 	display: block;
-	margin-left: -0.25rem;
-	padding-left: 0.25rem;
-	margin-right: -24px;
+	margin: 0 calc(-24px + 0.25rem) 0 -0.5rem;
+	/* Align the sidebar crate link with the search bar, which have different
+		font sizes.
+
+		|        | font-size | line-height | total line-height | padding-y |     total    |
+		|:-------|----------:|------------:|------------------:|----------:|-------------:|
+		| crate  |  1.375rem |        1.25 |           1.72rem |         x |   2x+1.72rem |
+		| search |      1rem |        1.15 |           1.15rem |       8px | 1.15rem+16px |
+
+		2x + 1.72rem = 1.15rem + 16px
+		2x = 1.15rem + 16px - 1.72rem
+		2x = 16px - 0.57rem
+		x = ( 16px - 0.57rem ) / 2
+	*/
+	padding: calc( ( 16px - 0.57rem ) / 2 ) 0.25rem;
+	padding-left: 0.5rem;
 }
 
 .sidebar-crate h2 .version {
@@ -557,6 +577,8 @@ ul.block, .block li {
 	font-weight: normal;
 	font-size: 1rem;
 	overflow-wrap: break-word;
+	/* opposite of the link padding, cut in half again */
+	margin-top: calc( ( -16px + 0.57rem ) / 2 );
 }
 
 .mobile-topbar {
