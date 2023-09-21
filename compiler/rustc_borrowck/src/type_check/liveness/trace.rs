@@ -565,13 +565,21 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             live_at: &'b IntervalSet<PointIndex>,
         }
         impl<'tcx> MakeAllRegionsLive<'_, '_, 'tcx> {
+            /// We can prove that an alias is live two ways:
+            /// 1. All the components are live.
+            /// 2. There is a known outlives bound or where-clause, and that
+            ///    region is live.
+            /// We search through the item bounds and where clauses for
+            /// either `'static` or a unique outlives region, and if one is
+            /// found, we just need to prove that that region is still live.
+            /// If one is not found, then we continue to walk through the alias.
             fn make_alias_live(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
                 let ty::Alias(_kind, alias_ty) = t.kind() else {
-                    bug!();
+                    bug!("`make_alias_live` only takes alias types");
                 };
                 let tcx = self.typeck.infcx.tcx;
                 let param_env = self.typeck.param_env;
-                let mut outlives_bounds = tcx
+                let outlives_bounds: Vec<_> = tcx
                     .item_bounds(alias_ty.def_id)
                     .iter_instantiated(tcx, alias_ty.args)
                     .filter_map(|clause| {
@@ -599,12 +607,16 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                                 t,
                             )
                         }
-                    }));
-                if let Some(r) = outlives_bounds.next()
-                    && !r.is_late_bound()
-                    && outlives_bounds.all(|other_r| {
-                        other_r == r
-                    })
+                    }))
+                    .collect();
+                // If we find `'static`, then we know the alias doesn't capture *any* regions.
+                // Otherwise, all of the outlives regions should be equal -- if they're not,
+                // we don't really know how to proceed, so we continue recursing through the
+                // alias.
+                if outlives_bounds.contains(&tcx.lifetimes.re_static) {
+                    ControlFlow::Continue(())
+                } else if let Some(r) = outlives_bounds.first()
+                    && outlives_bounds[1..].iter().all(|other_r| other_r == r)
                 {
                     r.visit_with(self)
                 } else {
