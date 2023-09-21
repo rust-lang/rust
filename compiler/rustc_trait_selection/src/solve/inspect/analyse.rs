@@ -143,7 +143,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             // FIXME: This is currently wrong if we don't even try any
             // candidates, e.g. for a trait goal, as in this case `candidates` is
             // actually supposed to be empty.
-            inspect::ProbeKind::Root { result: _ } => {
+            inspect::ProbeKind::Root { result } => {
                 if candidates.is_empty() {
                     candidates.push(InspectCandidate {
                         goal: self,
