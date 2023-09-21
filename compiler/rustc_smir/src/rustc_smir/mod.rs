@@ -10,7 +10,8 @@
 use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{
-    EarlyBoundRegion, FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy,
+    BoundRegion, EarlyBoundRegion, FloatTy, FreeRegion, GenericParamDef, IntTy, Movability, Region,
+    RigidTy, Span, TyKind, UintTy,
 };
 use crate::stable_mir::{self, CompilerError, Context};
 use rustc_hir as hir;
@@ -1505,9 +1506,8 @@ impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
 impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
     type T = stable_mir::ty::Region;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        // FIXME: add a real implementation of stable regions
-        opaque(self)
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        Region { kind: self.kind().stable(tables) }
     }
 }
 
@@ -1515,19 +1515,34 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
     type T = stable_mir::ty::RegionKind;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use crate::stable_mir::ty::RegionKind;
         match self {
             ty::ReEarlyBound(early_reg) => RegionKind::ReEarlyBound(EarlyBoundRegion {
                 def_id: tables.region_def(early_reg.def_id),
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
             }),
-            ty::ReLateBound(_, _) => todo!(),
-            ty::ReFree(_) => todo!(),
-            ty::ReStatic => todo!(),
-            ty::ReVar(_) => todo!(),
-            ty::RePlaceholder(_) => todo!(),
-            ty::ReErased => todo!(),
-            ty::ReError(_) => todo!(),
+            ty::ReLateBound(db_index, bound_reg) => RegionKind::ReLateBound(
+                db_index.as_u32(),
+                BoundRegion { var: bound_reg.var.as_u32(), kind: bound_reg.kind.stable(tables) },
+            ),
+            ty::ReFree(free_reg) => RegionKind::ReFree(FreeRegion {
+                scope: tables.region_def(free_reg.scope),
+                bound_region: free_reg.bound_region.stable(tables),
+            }),
+            ty::ReStatic => RegionKind::ReStatic,
+            ty::ReVar(vid_reg) => RegionKind::ReVar(vid_reg.as_u32()),
+            ty::RePlaceholder(place_holder) => {
+                RegionKind::RePlaceholder(stable_mir::ty::Placeholder {
+                    universe: place_holder.universe.as_u32(),
+                    bound: BoundRegion {
+                        var: place_holder.bound.var.as_u32(),
+                        kind: place_holder.bound.kind.stable(tables),
+                    },
+                })
+            }
+            ty::ReErased => RegionKind::ReErased,
+            ty::ReError(_) => RegionKind::ReError(()),
         }
     }
 }

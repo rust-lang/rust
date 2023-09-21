@@ -35,7 +35,7 @@ pub struct Const {
 
 type Ident = Opaque;
 pub(crate) struct Region {
-    kind: RegionKind,
+    pub kind: RegionKind,
 }
 
 pub enum RegionKind {
