@@ -214,76 +214,69 @@ fn overlap<'tcx>(
     let mut obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
-    if !overlap_mode.use_implicit_negative() {
-        let impl_header = selcx.infcx.resolve_vars_if_possible(impl1_header);
-        return Some(OverlapResult {
-            impl_header,
-            intercrate_ambiguity_causes: Default::default(),
-            involves_placeholder: false,
-        });
-    };
-
     obligations.extend(
         [&impl1_header.predicates, &impl2_header.predicates].into_iter().flatten().map(
             |&predicate| Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate),
         ),
     );
 
-    for mode in [TreatInductiveCycleAs::Ambig, TreatInductiveCycleAs::Recur] {
-        if let Some(failing_obligation) = selcx.with_treat_inductive_cycle_as(mode, |selcx| {
-            impl_intersection_has_impossible_obligation(selcx, &obligations)
-        }) {
-            if matches!(mode, TreatInductiveCycleAs::Recur) {
-                let first_local_impl = impl1_header
-                    .impl_def_id
-                    .as_local()
-                    .or(impl2_header.impl_def_id.as_local())
-                    .expect("expected one of the impls to be local");
-                infcx.tcx.struct_span_lint_hir(
-                    COINDUCTIVE_OVERLAP_IN_COHERENCE,
-                    infcx.tcx.local_def_id_to_hir_id(first_local_impl),
-                    infcx.tcx.def_span(first_local_impl),
-                    format!(
-                        "implementations {} will conflict in the future",
-                        match impl1_header.trait_ref {
-                            Some(trait_ref) => {
-                                let trait_ref = infcx.resolve_vars_if_possible(trait_ref);
-                                format!(
-                                    "of `{}` for `{}`",
-                                    trait_ref.print_only_trait_path(),
-                                    trait_ref.self_ty()
-                                )
-                            }
-                            None => format!(
-                                "for `{}`",
-                                infcx.resolve_vars_if_possible(impl1_header.self_ty)
-                            ),
+    if overlap_mode.use_implicit_negative() {
+        for mode in [TreatInductiveCycleAs::Ambig, TreatInductiveCycleAs::Recur] {
+            if let Some(failing_obligation) = selcx.with_treat_inductive_cycle_as(mode, |selcx| {
+                impl_intersection_has_impossible_obligation(selcx, &obligations)
+            }) {
+                if matches!(mode, TreatInductiveCycleAs::Recur) {
+                    let first_local_impl = impl1_header
+                        .impl_def_id
+                        .as_local()
+                        .or(impl2_header.impl_def_id.as_local())
+                        .expect("expected one of the impls to be local");
+                    infcx.tcx.struct_span_lint_hir(
+                        COINDUCTIVE_OVERLAP_IN_COHERENCE,
+                        infcx.tcx.local_def_id_to_hir_id(first_local_impl),
+                        infcx.tcx.def_span(first_local_impl),
+                        format!(
+                            "implementations {} will conflict in the future",
+                            match impl1_header.trait_ref {
+                                Some(trait_ref) => {
+                                    let trait_ref = infcx.resolve_vars_if_possible(trait_ref);
+                                    format!(
+                                        "of `{}` for `{}`",
+                                        trait_ref.print_only_trait_path(),
+                                        trait_ref.self_ty()
+                                    )
+                                }
+                                None => format!(
+                                    "for `{}`",
+                                    infcx.resolve_vars_if_possible(impl1_header.self_ty)
+                                ),
+                            },
+                        ),
+                        |lint| {
+                            lint.note(
+                                "impls that are not considered to overlap may be considered to \
+                                overlap in the future",
+                            )
+                            .span_label(
+                                infcx.tcx.def_span(impl1_header.impl_def_id),
+                                "the first impl is here",
+                            )
+                            .span_label(
+                                infcx.tcx.def_span(impl2_header.impl_def_id),
+                                "the second impl is here",
+                            );
+                            lint.note(format!(
+                                "`{}` may be considered to hold in future releases, \
+                                    causing the impls to overlap",
+                                infcx.resolve_vars_if_possible(failing_obligation.predicate)
+                            ));
+                            lint
                         },
-                    ),
-                    |lint| {
-                        lint.note(
-                            "impls that are not considered to overlap may be considered to \
-                            overlap in the future",
-                        )
-                        .span_label(
-                            infcx.tcx.def_span(impl1_header.impl_def_id),
-                            "the first impl is here",
-                        )
-                        .span_label(
-                            infcx.tcx.def_span(impl2_header.impl_def_id),
-                            "the second impl is here",
-                        );
-                        lint.note(format!(
-                            "`{}` may be considered to hold in future releases, \
-                                causing the impls to overlap",
-                            infcx.resolve_vars_if_possible(failing_obligation.predicate)
-                        ));
-                        lint
-                    },
-                );
-            }
+                    );
+                }
 
-            return None;
+                return None;
+            }
         }
     }
 
@@ -294,7 +287,9 @@ fn overlap<'tcx>(
         return None;
     }
 
-    let intercrate_ambiguity_causes = if infcx.next_trait_solver() {
+    let intercrate_ambiguity_causes = if !overlap_mode.use_implicit_negative() {
+        Default::default()
+    } else if infcx.next_trait_solver() {
         compute_intercrate_ambiguity_causes(&infcx, &obligations)
     } else {
         selcx.take_intercrate_ambiguity_causes()
@@ -932,6 +927,8 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
 
         let Goal { param_env, predicate } = goal.goal();
 
+        // For bound predicates we simply call `infcx.replace_bound_vars_with_placeholders`
+        // and then prove the resulting predicate as a nested goal.
         let trait_ref = match predicate.kind().no_bound_vars() {
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))) => {
@@ -942,21 +939,6 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
 
         let mut ambiguity_cause = None;
         for cand in goal.candidates() {
-            match cand.result() {
-                Ok(Certainty::Maybe(_)) => {}
-                // We only add intercrate ambiguity causes if the goal would
-                // otherwise result in an error.
-                //
-                // FIXME: this isn't quite right. Changing a goal from YES with
-                // inference contraints to AMBIGUOUS can also cause a goal to not
-                // fail.
-                Ok(Certainty::Yes) => {
-                    ambiguity_cause = None;
-                    break;
-                }
-                Err(NoSolution) => continue,
-            }
-
             // FIXME: boiiii, using string comparisions here sure is scuffed.
             if let inspect::ProbeKind::MiscCandidate { name: "coherence unknowable", result: _ } =
                 cand.kind()
@@ -1011,6 +993,21 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
                         }
                     }
                 })
+            } else {
+                match cand.result() {
+                    // We only add an ambiguity cause if the goal would otherwise
+                    // result in an error.
+                    //
+                    // FIXME: While this matches the behavior of the
+                    // old solver, it is not the only way in which the unknowable
+                    // candidates *weaken* coherence, they can also force otherwise
+                    // sucessful normalization to be ambiguous.
+                    Ok(Certainty::Maybe(_) | Certainty::Yes) => {
+                        ambiguity_cause = None;
+                        break;
+                    }
+                    Err(NoSolution) => continue,
+                }
             }
         }
 
