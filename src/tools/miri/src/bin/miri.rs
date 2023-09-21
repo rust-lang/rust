@@ -358,6 +358,10 @@ fn main() {
                         since it is now enabled by default"
             );
         } else if arg == "-Zmiri-disable-abi-check" {
+            eprintln!(
+                "WARNING: the flag `-Zmiri-disable-abi-check` is deprecated and planned to be removed.\n\
+                If you have a use-case for it, please file an issue."
+            );
             miri_config.check_abi = false;
         } else if arg == "-Zmiri-disable-isolation" {
             if matches!(isolation_enabled, Some(true)) {
