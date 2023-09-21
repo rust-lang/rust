@@ -552,6 +552,46 @@ impl LinkSelfContainedComponents {
             _ => return None,
         })
     }
+
+    /// Return the component's name.
+    ///
+    /// Returns `None` if the bitflags aren't a singular component (but a mix of multiple flags).
+    pub fn as_str(self) -> Option<&'static str> {
+        Some(match self {
+            LinkSelfContainedComponents::CRT_OBJECTS => "crto",
+            LinkSelfContainedComponents::LIBC => "libc",
+            LinkSelfContainedComponents::UNWIND => "unwind",
+            LinkSelfContainedComponents::LINKER => "linker",
+            LinkSelfContainedComponents::SANITIZERS => "sanitizers",
+            LinkSelfContainedComponents::MINGW => "mingw",
+            _ => return None,
+        })
+    }
+
+    /// Returns an array of all the components.
+    fn all_components() -> [LinkSelfContainedComponents; 6] {
+        [
+            LinkSelfContainedComponents::CRT_OBJECTS,
+            LinkSelfContainedComponents::LIBC,
+            LinkSelfContainedComponents::UNWIND,
+            LinkSelfContainedComponents::LINKER,
+            LinkSelfContainedComponents::SANITIZERS,
+            LinkSelfContainedComponents::MINGW,
+        ]
+    }
+}
+
+impl IntoIterator for LinkSelfContainedComponents {
+    type Item = LinkSelfContainedComponents;
+    type IntoIter = std::vec::IntoIter<LinkSelfContainedComponents>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        LinkSelfContainedComponents::all_components()
+            .into_iter()
+            .filter(|&s| self.contains(s))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
