@@ -1364,13 +1364,8 @@ pub fn build_session(
     }
 
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
-    let hash_kind = sopts.unstable_opts.src_hash_algorithm.unwrap_or_else(|| {
-        if target_cfg.is_like_msvc {
-            SourceFileHashAlgorithm::Sha256
-        } else {
-            SourceFileHashAlgorithm::Md5
-        }
-    });
+    let hash_kind =
+        sopts.unstable_opts.src_hash_algorithm.unwrap_or(SourceFileHashAlgorithm::Sha256);
     let source_map = Lrc::new(SourceMap::with_file_loader_and_hash_kind(
         loader,
         sopts.file_path_mapping(),

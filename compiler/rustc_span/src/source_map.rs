@@ -228,7 +228,7 @@ impl SourceMap {
         Self::with_file_loader_and_hash_kind(
             Box::new(RealFileLoader),
             path_mapping,
-            SourceFileHashAlgorithm::Md5,
+            SourceFileHashAlgorithm::Sha256,
         )
     }
 
