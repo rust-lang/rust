@@ -126,7 +126,6 @@ pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
@@ -3926,18 +3925,20 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if_chain! {
             if let TraitItemKind::Fn(ref sig, _) = item.kind;
             if sig.decl.implicit_self.has_implicit_self();
-            if let Some(first_arg_ty) = sig.decl.inputs.iter().next();
-
+            if let Some(first_arg_hir_ty) = sig.decl.inputs.first();
+            if let Some(&first_arg_ty) = cx.tcx.fn_sig(item.owner_id)
+                .instantiate_identity()
+                .inputs()
+                .skip_binder()
+                .first();
             then {
-                let first_arg_span = first_arg_ty.span;
-                let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
                 let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
                 wrong_self_convention::check(
                     cx,
                     item.ident.name.as_str(),
                     self_ty,
                     first_arg_ty,
-                    first_arg_span,
+                    first_arg_hir_ty.span,
                     false,
                     true,
                 );
