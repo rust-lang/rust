@@ -38,7 +38,7 @@ pub(crate) struct Region {
     kind: RegionKind,
 }
 
-enum RegionKind {
+pub enum RegionKind {
     ReEarlyBound(EarlyBoundRegion),
     ReLateBound(DebruijnIndex, BoundRegion),
     ReFree(FreeRegion),
@@ -52,7 +52,7 @@ enum RegionKind {
 pub(crate) type DebruijnIndex = u32;
 
 pub struct EarlyBoundRegion {
-    pub def_id: DefId,
+    pub def_id: RegionDef,
     pub index: u32,
     pub name: Symbol,
 }
@@ -65,7 +65,7 @@ pub struct BoundRegion {
 }
 
 pub struct FreeRegion {
-    pub scope: DefId,
+    pub scope: RegionDef,
     pub bound_region: BoundRegionKind,
 }
 
@@ -196,6 +196,9 @@ pub struct ConstDef(pub DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ImplDef(pub DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct RegionDef(pub(crate) DefId);
 
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);

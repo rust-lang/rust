@@ -7,7 +7,12 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use hir::def::DefKind;
+use crate::rustc_internal::{self, opaque};
+use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
+use crate::stable_mir::ty::{
+    EarlyBoundRegion, FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy,
+};
+use crate::stable_mir::{self, CompilerError, Context};
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -1503,6 +1508,27 @@ impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         // FIXME: add a real implementation of stable regions
         opaque(self)
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
+    type T = stable_mir::ty::RegionKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            ty::ReEarlyBound(early_reg) => RegionKind::ReEarlyBound(EarlyBoundRegion {
+                def_id: tables.region_def(early_reg.def_id),
+                index: early_reg.index,
+                name: early_reg.name.to_string(),
+            }),
+            ty::ReLateBound(_, _) => todo!(),
+            ty::ReFree(_) => todo!(),
+            ty::ReStatic => todo!(),
+            ty::ReVar(_) => todo!(),
+            ty::RePlaceholder(_) => todo!(),
+            ty::ReErased => todo!(),
+            ty::ReError(_) => todo!(),
+        }
     }
 }
 
