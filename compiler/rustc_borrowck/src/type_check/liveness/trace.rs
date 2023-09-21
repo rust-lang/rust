@@ -4,10 +4,13 @@ use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
-use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -555,16 +558,68 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             values::location_set_str(elements, live_at.iter()),
         );
 
-        let tcx = typeck.tcx();
-        tcx.for_each_free_region(&value, |live_region| {
-            let live_region_vid =
-                typeck.borrowck_context.universal_regions.to_region_vid(live_region);
-            typeck
-                .borrowck_context
-                .constraints
-                .liveness_constraints
-                .add_elements(live_region_vid, live_at);
-        });
+        struct MakeAllRegionsLive<'a, 'b, 'tcx> {
+            typeck: &'b mut TypeChecker<'a, 'tcx>,
+            live_at: &'b IntervalSet<PointIndex>,
+        }
+        impl<'tcx> MakeAllRegionsLive<'_, '_, 'tcx> {
+            fn make_alias_live(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
+                let ty::Alias(_kind, alias_ty) = t.kind() else {
+                    bug!();
+                };
+                let tcx = self.typeck.infcx.tcx;
+                let mut outlives_bounds = tcx
+                    .item_bounds(alias_ty.def_id)
+                    .iter_instantiated(tcx, alias_ty.args)
+                    .filter_map(|clause| {
+                        if let Some(outlives) = clause.as_type_outlives_clause()
+                        && outlives.skip_binder().0 == t
+                    {
+                        Some(outlives.skip_binder().1)
+                    } else {
+                        None
+                    }
+                    });
+                if let Some(r) = outlives_bounds.next()
+                    && !r.is_late_bound()
+                    && outlives_bounds.all(|other_r| {
+                        other_r == r
+                    })
+                {
+                    r.visit_with(self)
+                } else {
+                    t.super_visit_with(self)
+                }
+            }
+        }
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MakeAllRegionsLive<'_, '_, 'tcx> {
+            type BreakTy = !;
+
+            fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+                if r.is_late_bound() {
+                    return ControlFlow::Continue(());
+                }
+                let live_region_vid =
+                    self.typeck.borrowck_context.universal_regions.to_region_vid(r);
+                self.typeck
+                    .borrowck_context
+                    .constraints
+                    .liveness_constraints
+                    .add_elements(live_region_vid, self.live_at);
+                ControlFlow::Continue(())
+            }
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                if !t.has_free_regions() {
+                    ControlFlow::Continue(())
+                } else if let ty::Alias(..) = t.kind() {
+                    self.make_alias_live(t)
+                } else {
+                    t.super_visit_with(self)
+                }
+            }
+        }
+        value.visit_with(&mut MakeAllRegionsLive { typeck, live_at });
     }
 
     fn compute_drop_data(
