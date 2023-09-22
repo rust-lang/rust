@@ -151,7 +151,12 @@ impl fmt::Display for DiagnosticLocation {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticId {
     Error(String),
-    Lint { name: String, has_future_breakage: bool, is_force_warn: bool },
+    Lint {
+        name: String,
+        /// Indicates whether this lint should show up in cargo's future breakage report.
+        has_future_breakage: bool,
+        is_force_warn: bool,
+    },
 }
 
 /// A "sub"-diagnostic attached to a parent diagnostic.
@@ -301,6 +306,7 @@ impl Diagnostic {
         }
     }
 
+    /// Indicates whether this diagnostic should show up in cargo's future breakage report.
     pub fn has_future_breakage(&self) -> bool {
         match self.code {
             Some(DiagnosticId::Lint { has_future_breakage, .. }) => has_future_breakage,

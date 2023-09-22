@@ -347,12 +347,18 @@ pub struct FutureIncompatibleInfo {
 /// The reason for future incompatibility
 #[derive(Copy, Clone, Debug)]
 pub enum FutureIncompatibilityReason {
-    /// This will be an error in a future release
-    /// for all editions
-    FutureReleaseError,
+    /// This will be an error in a future release for all editions
+    ///
+    /// This will *not* show up in cargo's future breakage report.
+    /// The warning will hence only be seen in local crates, not in dependencies.
+    FutureReleaseErrorDontReportInDeps,
     /// This will be an error in a future release, and
     /// Cargo should create a report even for dependencies
-    FutureReleaseErrorReportNow,
+    ///
+    /// This is the *only* reason that will make future incompatibility warnings show up in cargo's
+    /// reports. All other future incompatibility warnings are not visible when they occur in a
+    /// dependency.
+    FutureReleaseErrorReportInDeps,
     /// Code that changes meaning in some way in a
     /// future release.
     FutureReleaseSemanticsChange,
@@ -380,7 +386,7 @@ impl FutureIncompatibleInfo {
     pub const fn default_fields_for_macro() -> Self {
         FutureIncompatibleInfo {
             reference: "",
-            reason: FutureIncompatibilityReason::FutureReleaseError,
+            reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
             explain_reason: true,
         }
     }
@@ -718,7 +724,10 @@ macro_rules! declare_lint {
     );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $(@feature_gate = $gate:expr;)?
-     $(@future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
+     $(@future_incompatible = FutureIncompatibleInfo {
+        reason: $reason:expr,
+        $($field:ident : $val:expr),* $(,)*
+     }; )?
      $(@edition $lint_edition:ident => $edition_level:ident;)?
      $($v:ident),*) => (
         $(#[$attr])*
@@ -730,6 +739,7 @@ macro_rules! declare_lint {
             $($v: true,)*
             $(feature_gate: Some($gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
+                reason: $reason,
                 $($field: $val,)*
                 ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
             }),)?
