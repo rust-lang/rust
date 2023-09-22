@@ -162,6 +162,7 @@
 #![feature(const_slice_ptr_len)]
 #![feature(const_slice_split_at_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]
+#![feature(const_strict_overflow_ops)]
 #![feature(const_swap)]
 #![feature(const_try)]
 #![feature(const_type_id)]
