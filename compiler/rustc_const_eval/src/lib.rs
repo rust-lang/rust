@@ -38,12 +38,11 @@ pub use errors::ReportErrorExt;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
-use rustc_middle::query::Providers;
-use rustc_middle::{hooks, ty};
+use rustc_middle::{ty, util::Providers};
 
 fluent_messages! { "../messages.ftl" }
 
-pub fn provide(providers: &mut Providers, hooks: &mut hooks::Providers) {
+pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);
     providers.eval_to_const_value_raw = const_eval::eval_to_const_value_raw_provider;
     providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
@@ -52,7 +51,7 @@ pub fn provide(providers: &mut Providers, hooks: &mut hooks::Providers) {
         let (param_env, raw) = param_env_and_value.into_parts();
         const_eval::eval_to_valtree(tcx, param_env, raw)
     };
-    hooks.try_destructure_mir_constant_for_diagnostics =
+    providers.hooks.try_destructure_mir_constant_for_diagnostics =
         const_eval::try_destructure_mir_constant_for_diagnostics;
     providers.valtree_to_const_val = |tcx, (ty, valtree)| {
         const_eval::valtree_to_const_value(tcx, ty::ParamEnv::empty().and(ty), valtree)

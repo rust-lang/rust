@@ -286,7 +286,7 @@ pub(crate) fn create_config(
                 let body = hir.body(hir.body_owned_by(def_id));
                 debug!("visiting body for {def_id:?}");
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
-                (rustc_interface::DEFAULT_QUERY_PROVIDERS.0.typeck)(tcx, def_id)
+                (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
         make_codegen_backend: None,

@@ -80,9 +80,8 @@ use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMes
 use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::query::Providers;
+use rustc_middle::util::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::hooks;
 use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
 use rustc_span::Symbol;
@@ -128,7 +127,7 @@ impl CodegenBackend for GccCodegenBackend {
         *self.supports_128bit_integers.lock().expect("lock") = check_context.get_last_error() == Ok(None);
     }
 
-    fn provide(&self, providers: &mut Providers, _: &mut hooks::Providers) {
+    fn provide(&self, providers: &mut Providers) {
         // FIXME(antoyo) compute list of enabled features from cli flags
         providers.global_backend_features = |_tcx, ()| vec![];
     }

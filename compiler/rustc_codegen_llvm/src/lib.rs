@@ -39,9 +39,8 @@ use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, FatalError, Handler, Subd
 use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::hooks;
-use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -269,7 +268,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::init(sess); // Make sure llvm is inited
     }
 
-    fn provide(&self, providers: &mut Providers, _hooks: &mut hooks::Providers) {
+    fn provide(&self, providers: &mut Providers) {
         providers.global_backend_features =
             |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true)
     }

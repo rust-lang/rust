@@ -18,9 +18,9 @@ use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintSto
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::hooks;
-use rustc_middle::query::{ExternProviders, Providers};
+use rustc_middle::query::ExternProviders;
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, abi_test, hir_stats, layout_test};
@@ -646,16 +646,15 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     outputs.into()
 }
 
-pub static DEFAULT_QUERY_PROVIDERS: LazyLock<(Providers, hooks::Providers)> = LazyLock::new(|| {
+pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
-    let hooks = &mut hooks::Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.output_filenames = output_filenames;
     providers.resolver_for_lowering = resolver_for_lowering;
     providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
-    rustc_const_eval::provide(providers, hooks);
+    rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
     mir_borrowck::provide(providers);
     mir_build::provide(providers);
@@ -674,7 +673,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<(Providers, hooks::Providers)> = La
     rustc_lint::provide(providers);
     rustc_symbol_mangling::provide(providers);
     rustc_codegen_ssa::provide(providers);
-    (*providers, *hooks)
+    *providers
 });
 
 pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock::new(|| {
@@ -704,14 +703,14 @@ pub fn create_global_ctxt<'tcx>(
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
-    let (mut local_providers, mut hooks) = *DEFAULT_QUERY_PROVIDERS;
-    codegen_backend.provide(&mut local_providers, &mut hooks);
+    let mut providers = *DEFAULT_QUERY_PROVIDERS;
+    codegen_backend.provide(&mut providers);
 
     let mut extern_providers = *DEFAULT_EXTERN_QUERY_PROVIDERS;
     codegen_backend.provide_extern(&mut extern_providers);
 
     if let Some(callback) = compiler.override_queries {
-        callback(sess, &mut local_providers, &mut extern_providers);
+        callback(sess, &mut providers, &mut extern_providers);
     }
 
     let incremental = dep_graph.is_fully_enabled();
@@ -729,12 +728,12 @@ pub fn create_global_ctxt<'tcx>(
                 dep_graph,
                 rustc_query_impl::query_callbacks(arena),
                 rustc_query_impl::query_system(
-                    local_providers,
+                    providers.queries,
                     extern_providers,
                     query_result_on_disk_cache,
                     incremental,
                 ),
-                hooks,
+                providers.hooks,
             )
         })
     })
