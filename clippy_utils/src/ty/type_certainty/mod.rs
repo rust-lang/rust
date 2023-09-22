@@ -207,7 +207,8 @@ fn path_segment_certainty(
             // Checking `res_generics_def_id(..)` before calling `generics_of` avoids an ICE.
             if cx.tcx.res_generics_def_id(path_segment.res).is_some() {
                 let generics = cx.tcx.generics_of(def_id);
-                let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && generics.params.is_empty()
+                let count = generics.params.len() - generics.host_effect_index.is_some() as usize;
+                let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && count == 0
                 {
                     Certainty::Certain(None)
                 } else {
@@ -299,7 +300,7 @@ fn type_is_inferrable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> b
 
     // Check that all type parameters appear in the functions input types.
     (0..(generics.parent_count + generics.params.len()) as u32).all(|index| {
-        fn_sig
+        Some(index as usize) == generics.host_effect_index || fn_sig
             .inputs()
             .iter()
             .any(|input_ty| contains_param(*input_ty.skip_binder(), index))
