@@ -1259,6 +1259,10 @@ macro_rules! uint_impl {
         /// This function exists, so that all operations
         /// are accounted for in the wrapping operations.
         ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -1283,6 +1287,10 @@ macro_rules! uint_impl {
         /// Since, for the positive integers, all common
         /// definitions of division are equal, this
         /// is exactly equal to `self.wrapping_div(rhs)`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
         ///
         /// # Examples
         ///
@@ -1336,6 +1344,10 @@ macro_rules! uint_impl {
         /// Since, for the positive integers, all common
         /// definitions of division are equal, this
         /// is exactly equal to `self.wrapping_rem(rhs)`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
         ///
         /// # Examples
         ///
