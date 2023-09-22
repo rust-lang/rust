@@ -499,10 +499,7 @@ impl_from!(Macro2Id, MacroRulesId, ProcMacroId for MacroId);
 
 impl MacroId {
     pub fn is_attribute(self, db: &dyn db::DefDatabase) -> bool {
-        match self {
-            MacroId::ProcMacroId(it) => it.lookup(db).kind == ProcMacroKind::Attr,
-            _ => false,
-        }
+        matches!(self, MacroId::ProcMacroId(it) if it.lookup(db).kind == ProcMacroKind::Attr)
     }
 }
 

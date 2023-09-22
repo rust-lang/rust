@@ -888,7 +888,7 @@ fn scope_for_offset(
         .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| {
-            let InFile { file_id, value } = source_map.expr_syntax(*id).ok()?;
+            let InFile { file_id, value } = source_map.expr_syntax(id).ok()?;
             if from_file == file_id {
                 return Some((value.text_range(), scope));
             }
@@ -923,7 +923,7 @@ fn adjust(
         .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| {
-            let source = source_map.expr_syntax(*id).ok()?;
+            let source = source_map.expr_syntax(id).ok()?;
             // FIXME: correctly handle macro expansion
             if source.file_id != from_file {
                 return None;
