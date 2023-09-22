@@ -407,6 +407,10 @@ passes_invalid_stability =
     .label = invalid stability version
     .item = the stability attribute annotates this item
 
+passes_lang_item_fn_with_target_feature =
+    `{$name}` language item function is not allowed to have `#[target_feature]`
+    .label = `{$name}` language item function is not allowed to have `#[target_feature]`
+
 passes_lang_item_on_incorrect_target =
     `{$name}` language item must be applied to a {$expected_target}
     .label = attribute should be applied to a {$expected_target}, not a {$actual_target}
