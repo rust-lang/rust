@@ -108,7 +108,15 @@ LL | async fn inner_async3(x: &mut i32, y: &mut u32) {
    |                          ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:235:25
+  --> $DIR/needless_pass_by_ref_mut.rs:235:34
+   |
+LL | pub async fn call_in_closure1(n: &mut str) {
+   |                                  ^^^^^^^^ help: consider changing to: `&str`
+   |
+   = warning: changing this function will impact semver compatibility
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:247:25
    |
 LL | pub async fn closure(n: &mut usize) -> impl '_ + FnMut() {
    |                         ^^^^^^^^^^ help: consider changing to: `&usize`
@@ -116,7 +124,7 @@ LL | pub async fn closure(n: &mut usize) -> impl '_ + FnMut() {
    = warning: changing this function will impact semver compatibility
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:242:20
+  --> $DIR/needless_pass_by_ref_mut.rs:254:20
    |
 LL | pub fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
    |                    ^^^^^^^^^^ help: consider changing to: `&usize`
@@ -124,12 +132,12 @@ LL | pub fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
    = warning: changing this function will impact semver compatibility
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:253:26
+  --> $DIR/needless_pass_by_ref_mut.rs:265:26
    |
 LL | pub async fn closure4(n: &mut usize) {
    |                          ^^^^^^^^^^ help: consider changing to: `&usize`
    |
    = warning: changing this function will impact semver compatibility
 
-error: aborting due to 20 previous errors
+error: aborting due to 21 previous errors
 
