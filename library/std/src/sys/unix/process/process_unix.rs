@@ -374,6 +374,13 @@ impl Command {
                         return Err(io::Error::last_os_error());
                     }
                 }
+                #[cfg(target_os = "hurd")]
+                {
+                    let ret = sys::signal(libc::SIGLOST, libc::SIG_DFL);
+                    if ret == libc::SIG_ERR {
+                        return Err(io::Error::last_os_error());
+                    }
+                }
             }
         }
 
@@ -620,6 +627,10 @@ impl Command {
                 let mut default_set = MaybeUninit::<libc::sigset_t>::uninit();
                 cvt(sigemptyset(default_set.as_mut_ptr()))?;
                 cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGPIPE))?;
+                #[cfg(target_os = "hurd")]
+                {
+                    cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGLOST))?;
+                }
                 cvt_nz(libc::posix_spawnattr_setsigdefault(
                     attrs.0.as_mut_ptr(),
                     default_set.as_ptr(),
@@ -993,6 +1004,8 @@ fn signal_string(signal: i32) -> &'static str {
             target_os = "dragonfly"
         ))]
         libc::SIGINFO => " (SIGINFO)",
+        #[cfg(target_os = "hurd")]
+        libc::SIGLOST => " (SIGLOST)",
         _ => "",
     }
 }

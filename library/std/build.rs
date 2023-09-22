@@ -38,6 +38,7 @@ fn main() {
         || target.contains("vita")
         || target.contains("nto")
         || target.contains("xous")
+        || target.contains("hurd")
         // See src/bootstrap/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
     {

@@ -281,7 +281,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &Constant<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &ConstOperand<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.has_param() {
             return None;
@@ -293,7 +293,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // that the `RevealAll` pass has happened and that the body's consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
-        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.literal).ok()?;
+        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
 
         self.use_ecx(location, |this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
     }
@@ -322,7 +322,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn check_unary_op(&mut self, op: UnOp, arg: &Operand<'tcx>, location: Location) -> Option<()> {
         if let (val, true) = self.use_ecx(location, |this| {
             let val = this.ecx.read_immediate(&this.ecx.eval_operand(arg, None)?)?;
-            let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, &val)?;
+            let (_res, overflow) = this.ecx.overflowing_unary_op(op, &val)?;
             Ok((val, overflow))
         })? {
             // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
@@ -390,7 +390,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if let (Some(l), Some(r)) = (l, r) {
             // The remaining operators are handled through `overflowing_binary_op`.
             if self.use_ecx(location, |this| {
-                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, &l, &r)?;
+                let (_res, overflow) = this.ecx.overflowing_binary_op(op, &l, &r)?;
                 Ok(overflow)
             })? {
                 let source_info = self.body().source_info(location);
@@ -580,7 +580,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
         self.eval_constant(constant, location);

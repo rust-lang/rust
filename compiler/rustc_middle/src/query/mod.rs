@@ -7,7 +7,6 @@
 #![allow(unused_parens)]
 
 use crate::dep_graph;
-use crate::dep_graph::DepKind;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -731,7 +730,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query asyncness(key: DefId) -> hir::IsAsync {
+    query asyncness(key: DefId) -> ty::Asyncness {
         desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
@@ -1101,7 +1100,7 @@ rustc_queries! {
         desc { "destructuring type level constant"}
     }
 
-    /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
+    /// Tries to destructure an `mir::Const` ADT or array into its variant index
     /// and its field values. This should only be used for pretty printing.
     query try_destructure_mir_constant_for_diagnostics(
         key: (mir::ConstValue<'tcx>, Ty<'tcx>)

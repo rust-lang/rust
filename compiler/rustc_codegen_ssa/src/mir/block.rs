@@ -1098,8 +1098,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     InlineAsmOperandRef::Const { string }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
-                    let literal = self.monomorphize(value.literal);
-                    if let ty::FnDef(def_id, args) = *literal.ty().kind() {
+                    let const_ = self.monomorphize(value.const_);
+                    if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
                             ty::ParamEnv::reveal_all(),

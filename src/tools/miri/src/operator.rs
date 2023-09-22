@@ -1,6 +1,6 @@
 use log::trace;
 
-use rustc_middle::{mir, ty::Ty};
+use rustc_middle::mir;
 use rustc_target::abi::Size;
 
 use crate::*;
@@ -11,7 +11,7 @@ pub trait EvalContextExt<'tcx> {
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Provenance>,
         right: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, (Scalar<Provenance>, bool, Ty<'tcx>)>;
+    ) -> InterpResult<'tcx, (ImmTy<'tcx, Provenance>, bool)>;
 }
 
 impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
@@ -20,7 +20,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Provenance>,
         right: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, (Scalar<Provenance>, bool, Ty<'tcx>)> {
+    ) -> InterpResult<'tcx, (ImmTy<'tcx, Provenance>, bool)> {
         use rustc_middle::mir::BinOp::*;
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
@@ -50,7 +50,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
                     Ge => left >= right,
                     _ => bug!(),
                 };
-                (Scalar::from_bool(res), false, self.tcx.types.bool)
+                (ImmTy::from_bool(res, *self.tcx), false)
             }
 
             // Some more operations are possible with atomics.
@@ -65,12 +65,16 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
                     right.to_scalar().to_target_usize(self)?,
                     self.machine.layouts.usize,
                 );
-                let (result, overflowing, _ty) =
-                    self.overflowing_binary_op(bin_op, &left, &right)?;
+                let (result, overflowing) = self.overflowing_binary_op(bin_op, &left, &right)?;
                 // Construct a new pointer with the provenance of `ptr` (the LHS).
-                let result_ptr =
-                    Pointer::new(ptr.provenance, Size::from_bytes(result.to_target_usize(self)?));
-                (Scalar::from_maybe_pointer(result_ptr, self), overflowing, left.layout.ty)
+                let result_ptr = Pointer::new(
+                    ptr.provenance,
+                    Size::from_bytes(result.to_scalar().to_target_usize(self)?),
+                );
+                (
+                    ImmTy::from_scalar(Scalar::from_maybe_pointer(result_ptr, self), left.layout),
+                    overflowing,
+                )
             }
 
             _ => span_bug!(self.cur_span(), "Invalid operator on pointers: {:?}", bin_op),

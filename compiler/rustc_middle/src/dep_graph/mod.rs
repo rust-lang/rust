@@ -6,49 +6,24 @@ use rustc_session::Session;
 #[macro_use]
 mod dep_node;
 
+pub use rustc_query_system::dep_graph::debug::EdgeFilter;
 pub use rustc_query_system::dep_graph::{
-    debug::DepNodeFilter, hash_result, DepContext, DepNodeColor, DepNodeIndex,
-    SerializedDepNodeIndex, WorkProduct, WorkProductId, WorkProductMap,
+    debug::DepNodeFilter, hash_result, DepContext, DepGraphQuery, DepNodeColor, DepNodeIndex, Deps,
+    SerializedDepGraph, SerializedDepNodeIndex, TaskDeps, TaskDepsRef, WorkProduct, WorkProductId,
+    WorkProductMap,
 };
 
-pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};
+pub use dep_node::{dep_kinds, label_strs, DepKind, DepNode, DepNodeExt};
 pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 
-pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
+pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;
 
-pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
-pub type TaskDepsRef<'a> = rustc_query_system::dep_graph::TaskDepsRef<'a, DepKind>;
-pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
-pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
-pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
 pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCtxt<'tcx>>;
 
-impl rustc_query_system::dep_graph::DepKind for DepKind {
-    const NULL: Self = DepKind::Null;
-    const RED: Self = DepKind::Red;
-    const MAX: u16 = DepKind::VARIANTS - 1;
+#[derive(Clone)]
+pub struct DepsType;
 
-    fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}(", node.kind)?;
-
-        ty::tls::with_opt(|opt_tcx| {
-            if let Some(tcx) = opt_tcx {
-                if let Some(def_id) = node.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.def_path_debug_str(def_id))?;
-                } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*node) {
-                    write!(f, "{s}")?;
-                } else {
-                    write!(f, "{}", node.hash)?;
-                }
-            } else {
-                write!(f, "{}", node.hash)?;
-            }
-            Ok(())
-        })?;
-
-        write!(f, ")")
-    }
-
+impl Deps for DepsType {
     fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R
     where
         OP: FnOnce() -> R,
@@ -70,24 +45,13 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         })
     }
 
-    #[track_caller]
-    #[inline]
-    fn from_u16(u: u16) -> Self {
-        if u > Self::MAX {
-            panic!("Invalid DepKind {u}");
-        }
-        // SAFETY: See comment on DepKind::VARIANTS
-        unsafe { std::mem::transmute(u) }
-    }
-
-    #[inline]
-    fn to_u16(self) -> u16 {
-        self as u16
-    }
+    const DEP_KIND_NULL: DepKind = dep_kinds::Null;
+    const DEP_KIND_RED: DepKind = dep_kinds::Red;
+    const DEP_KIND_MAX: u16 = dep_node::DEP_KIND_VARIANTS - 1;
 }
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {
-    type DepKind = DepKind;
+    type Deps = DepsType;
 
     #[inline]
     fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R {
@@ -111,6 +75,6 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 
     #[inline]
     fn dep_kind_info(&self, dk: DepKind) -> &DepKindStruct<'tcx> {
-        &self.query_kinds[dk as usize]
+        &self.query_kinds[dk.as_usize()]
     }
 }

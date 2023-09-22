@@ -15,6 +15,11 @@ note: required by a bound in `assert_is_send`
    |
 LL | fn assert_is_send(_: impl Send) {}
    |                           ^^^^ required by this bound in `assert_is_send`
+help: `Send` can be made part of the associated future's guarantees for all implementations of `Foo::bar`
+   |
+LL -     async fn bar();
+LL +     fn bar() -> impl std::future::Future<Output = ()> + Send;
+   |
 
 error: aborting due to previous error
 

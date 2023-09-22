@@ -126,8 +126,8 @@ macro_rules! provide_one {
             // External query providers call `crate_hash` in order to register a dependency
             // on the crate metadata. The exception is `crate_hash` itself, which obviously
             // doesn't need to do this (and can't, as it would cause a query cycle).
-            use rustc_middle::dep_graph::DepKind;
-            if DepKind::$name != DepKind::crate_hash && $tcx.dep_graph.is_fully_enabled() {
+            use rustc_middle::dep_graph::dep_kinds;
+            if dep_kinds::$name != dep_kinds::crate_hash && $tcx.dep_graph.is_fully_enabled() {
                 $tcx.ensure().crate_hash($def_id.krate);
             }
 

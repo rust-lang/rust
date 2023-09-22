@@ -227,7 +227,7 @@ impl<'tcx> Operand<'tcx> {
     {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
-            Operand::Constant(c) => c.literal.ty(),
+            Operand::Constant(c) => c.const_.ty(),
         }
     }
 }

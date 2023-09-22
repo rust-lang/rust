@@ -13,33 +13,33 @@ pub trait Sized {}
 #[cfg(missing_all_args)]
 #[lang = "start"]
 fn start<T>() -> isize {
-    //[missing_all_args]~^ ERROR incorrect number of parameters
+    //[missing_all_args]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(missing_sigpipe_arg)]
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8) -> isize {
-    //[missing_sigpipe_arg]~^ ERROR incorrect number of parameters
+    //[missing_sigpipe_arg]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(missing_ret)]
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
-//[missing_ret]~^ ERROR the return type of the `start` lang item is incorrect
+//[missing_ret]~^ ERROR lang item `start` function has wrong type [E0308]
 
 #[cfg(start_ret)]
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> u8 {
-    //[start_ret]~^ ERROR the return type of the `start` lang item is incorrect
+    //[start_ret]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(too_many_args)]
 #[lang = "start"]
 fn start<T>(
-    //[too_many_args]~^ ERROR incorrect number of parameters
+    //[too_many_args]~^ ERROR lang item `start` function has wrong type [E0308]
     _main: fn() -> T,
     _argc: isize,
     _argv: *const *const u8,
@@ -52,49 +52,49 @@ fn start<T>(
 #[cfg(main_ty)]
 #[lang = "start"]
 fn start<T>(_main: u64, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
-    //[main_ty]~^ ERROR parameter 1 of the `start` lang item is incorrect
+    //[main_ty]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(main_args)]
 #[lang = "start"]
 fn start<T>(_main: fn(i32) -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
-    //[main_args]~^ ERROR parameter 1 of the `start` lang item is incorrect
+    //[main_args]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(main_ret)]
 #[lang = "start"]
 fn start<T>(_main: fn() -> u16, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
-    //[main_ret]~^ ERROR parameter 1 of the `start` lang item is incorrect
+    //[main_ret]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(argc)]
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: i8, _argv: *const *const u8, _sigpipe: u8) -> isize {
-    //[argc]~^ ERROR parameter 2 of the `start` lang item is incorrect
+    //[argc]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(argv_inner_ptr)]
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const usize, _sigpipe: u8) -> isize {
-    //[argv_inner_ptr]~^ ERROR parameter 3 of the `start` lang item is incorrect
+    //[argv_inner_ptr]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(argv)]
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: u8, _sigpipe: u8) -> isize {
-    //[argv]~^ ERROR parameter 3 of the `start` lang item is incorrect
+    //[argv]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 
 #[cfg(sigpipe)]
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: i64) -> isize {
-    //[sigpipe]~^ ERROR parameter 4 of the `start` lang item is incorrect
+    //[sigpipe]~^ ERROR lang item `start` function has wrong type [E0308]
     100
 }
 

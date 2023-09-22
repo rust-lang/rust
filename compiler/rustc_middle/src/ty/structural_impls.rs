@@ -479,7 +479,6 @@ TrivialTypeTraversalImpls! {
     ::rustc_target::asm::InlineAsmRegOrRegClass,
     crate::mir::coverage::CounterId,
     crate::mir::coverage::ExpressionId,
-    crate::mir::coverage::MappedExpressionIndex,
     crate::mir::Local,
     crate::mir::Promoted,
     crate::traits::Reveal,

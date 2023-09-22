@@ -17,9 +17,9 @@ extern "C" fn eh_personality() {}
 static EH_CATCH_TYPEINFO: u8 = 0;
 
 #[panic_handler]
-fn panic_handler() {}
-//~^ ERROR return type should be `!`
-//~| ERROR function should have one argument
+fn panic_handler(_: &core::panic::PanicInfo) -> ! {
+    unimplemented!();
+}
 
 // take a reference to any built-in range
 fn take_range(_r: &impl RangeBounds<i8>) {}

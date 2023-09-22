@@ -416,7 +416,7 @@ impl<'tcx> Key for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> Key for mir::ConstantKind<'tcx> {
+impl<'tcx> Key for mir::Const<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

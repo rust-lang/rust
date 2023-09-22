@@ -416,7 +416,7 @@ pub(super) fn from_known_layout<'tcx>(
                 if !mir_assign_valid_types(tcx.tcx, param_env, check_layout, known_layout) {
                     span_bug!(
                         tcx.span,
-                        "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
+                        "expected type differs from actual type.\nexpected: {}\nactual: {}",
                         known_layout.ty,
                         check_layout.ty,
                     );
@@ -712,7 +712,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             ty::Foreign(_) => Ok(None),
 
-            _ => span_bug!(self.cur_span(), "size_and_align_of::<{:?}> not supported", layout.ty),
+            _ => span_bug!(self.cur_span(), "size_and_align_of::<{}> not supported", layout.ty),
         }
     }
     #[inline]
@@ -982,7 +982,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 ty::Bound(..)
                 | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                    bug!("`is_very_trivially_sized` applied to unexpected type: {:?}", ty)
+                    bug!("`is_very_trivially_sized` applied to unexpected type: {}", ty)
                 }
             }
         }
@@ -1089,7 +1089,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn eval_mir_constant(
         &self,
-        val: &mir::ConstantKind<'tcx>,
+        val: &mir::Const<'tcx>,
         span: Option<Span>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {

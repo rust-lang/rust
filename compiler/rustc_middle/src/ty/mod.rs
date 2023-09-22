@@ -280,6 +280,19 @@ impl fmt::Display for ImplPolarity {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub enum Asyncness {
+    Yes,
+    No,
+}
+
+impl Asyncness {
+    pub fn is_async(self) -> bool {
+        matches!(self, Asyncness::Yes)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
 pub enum Visibility<Id = LocalDefId> {
     /// Visible everywhere (including in other crates).

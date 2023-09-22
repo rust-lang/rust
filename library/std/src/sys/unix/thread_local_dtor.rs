@@ -11,7 +11,7 @@
 // Note, however, that we run on lots older linuxes, as well as cross
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
-#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox"))]
+#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox", target_os = "hurd"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::mem;
     use crate::sys_common::thread_local_dtor::register_dtor_fallback;

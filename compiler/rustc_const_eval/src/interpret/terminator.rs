@@ -98,14 +98,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 for (const_int, target) in targets.iter() {
                     // Compare using MIR BinOp::Eq, to also support pointer values.
                     // (Avoiding `self.binary_op` as that does some redundant layout computation.)
-                    let res = self
-                        .overflowing_binary_op(
-                            mir::BinOp::Eq,
-                            &discr,
-                            &ImmTy::from_uint(const_int, discr.layout),
-                        )?
-                        .0;
-                    if res.to_bool()? {
+                    let res = self.wrapping_binary_op(
+                        mir::BinOp::Eq,
+                        &discr,
+                        &ImmTy::from_uint(const_int, discr.layout),
+                    )?;
+                    if res.to_scalar().to_bool()? {
                         target_block = target;
                         break;
                     }
@@ -151,7 +149,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     _ => span_bug!(
                         terminator.source_info.span,
-                        "invalid callee of type {:?}",
+                        "invalid callee of type {}",
                         func.layout.ty
                     ),
                 };
@@ -681,10 +679,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             self.storage_live(local)?;
                             // Must be a tuple
                             let ty::Tuple(fields) = ty.kind() else {
-                                span_bug!(
-                                    self.cur_span(),
-                                    "non-tuple type for `spread_arg`: {ty:?}"
-                                )
+                                span_bug!(self.cur_span(), "non-tuple type for `spread_arg`: {ty}")
                             };
                             for (i, field_ty) in fields.iter().enumerate() {
                                 let dest = dest.project_deeper(
@@ -926,7 +921,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         target: mir::BasicBlock,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
+        trace!("drop_in_place: {:?},\n  instance={:?}", place, instance);
         // We take the address of the object. This may well be unaligned, which is fine
         // for us here. However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.

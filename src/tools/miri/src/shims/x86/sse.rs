@@ -173,12 +173,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                let res = this.float_to_int_checked(op, dest.layout.ty, rnd).unwrap_or_else(|| {
+                let res = this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
                     // Fallback to minimum acording to SSE semantics.
-                    Scalar::from_int(dest.layout.size.signed_int_min(), dest.layout.size)
+                    ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
 
-                this.write_scalar(res, dest)?;
+                this.write_immediate(*res, dest)?;
             }
             // Used to implement the _mm_cvtsi32_ss and _mm_cvtsi64_ss functions.
             // Converts `right` from i32/i64 to f32. Returns a SIMD vector with
@@ -196,8 +196,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let right = this.read_immediate(right)?;
                 let dest0 = this.project_index(&dest, 0)?;
-                let res0 = this.int_to_int_or_float(&right, dest0.layout.ty)?;
-                this.write_immediate(res0, &dest0)?;
+                let res0 = this.int_to_int_or_float(&right, dest0.layout)?;
+                this.write_immediate(*res0, &dest0)?;
 
                 for i in 1..dest_len {
                     this.copy_op(

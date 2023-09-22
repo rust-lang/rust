@@ -696,6 +696,17 @@ impl Debug for Statement<'_> {
     }
 }
 
+impl Display for NonDivergingIntrinsic<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Assume(op) => write!(f, "assume({op:?})"),
+            Self::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
+                write!(f, "copy_nonoverlapping(dst = {dst:?}, src = {src:?}, count = {count:?})")
+            }
+        }
+    }
+}
+
 impl<'tcx> Debug for TerminatorKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         self.fmt_head(fmt)?;
@@ -1058,6 +1069,22 @@ impl<'tcx> Debug for Operand<'tcx> {
     }
 }
 
+impl<'tcx> Debug for ConstOperand<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        write!(fmt, "{self}")
+    }
+}
+
+impl<'tcx> Display for ConstOperand<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match self.ty().kind() {
+            ty::FnDef(..) => {}
+            _ => write!(fmt, "const ")?,
+        }
+        Display::fmt(&self.const_, fmt)
+    }
+}
+
 impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         self.as_ref().fmt(fmt)
@@ -1184,10 +1211,10 @@ fn use_verbose(ty: Ty<'_>, fn_def: bool) -> bool {
 }
 
 impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, _location: Location) {
-        let Constant { span, user_ty, literal } = constant;
-        if use_verbose(literal.ty(), true) {
-            self.push("mir::Constant");
+    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, _location: Location) {
+        let ConstOperand { span, user_ty, const_ } = constant;
+        if use_verbose(const_.ty(), true) {
+            self.push("mir::ConstOperand");
             self.push(&format!(
                 "+ span: {}",
                 self.tcx.sess.source_map().span_to_embeddable_string(*span)
@@ -1209,8 +1236,8 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ty::ValTree::Branch(_) => "Branch(..)".to_string(),
             };
 
-            let val = match literal {
-                ConstantKind::Ty(ct) => match ct.kind() {
+            let val = match const_ {
+                Const::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
                     ty::ConstKind::Unevaluated(uv) => {
                         format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
@@ -1222,9 +1249,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     ty::ConstKind::Placeholder(_)
                     | ty::ConstKind::Infer(_)
                     | ty::ConstKind::Expr(_)
-                    | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", literal),
+                    | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", const_),
                 },
-                ConstantKind::Unevaluated(uv, _) => {
+                Const::Unevaluated(uv, _) => {
                     format!(
                         "Unevaluated({}, {:?}, {:?})",
                         self.tcx.def_path_str(uv.def),
@@ -1232,13 +1259,13 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                         uv.promoted,
                     )
                 }
-                ConstantKind::Val(val, ty) => format!("Value({})", fmt_val(*val, *ty)),
+                Const::Val(val, ty) => format!("Value({})", fmt_val(*val, *ty)),
             };
 
             // This reflects what `Const` looked liked before `val` was renamed
             // as `kind`. We print it like this to avoid having to update
             // expected output in a lot of tests.
-            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
+            self.push(&format!("+ const_: Const {{ ty: {}, val: {} }}", const_.ty(), val));
         }
     }
 
@@ -1312,10 +1339,10 @@ pub fn write_allocations<'tcx>(
     struct CollectAllocIds(BTreeSet<AllocId>);
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_constant(&mut self, c: &Constant<'tcx>, _: Location) {
-            match c.literal {
-                ConstantKind::Ty(_) | ConstantKind::Unevaluated(..) => {}
-                ConstantKind::Val(val, _) => {
+        fn visit_constant(&mut self, c: &ConstOperand<'tcx>, _: Location) {
+            match c.const_ {
+                Const::Ty(_) | Const::Unevaluated(..) => {}
+                Const::Val(val, _) => {
                     self.0.extend(alloc_ids_from_const_val(val));
                 }
             }

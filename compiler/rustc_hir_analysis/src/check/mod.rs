@@ -73,23 +73,31 @@ pub mod wfcheck;
 
 pub use check::check_abi;
 
+use std::num::NonZeroU32;
+
 use check::check_mod_item_types;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, DiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
+use rustc_infer::infer::error_reporting::ObligationCauseExt as _;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{self, TyCtxtInferExt as _};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, BytePos, Span, Symbol};
+use rustc_span::{self, def_id::CRATE_DEF_ID, BytePos, Span, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
-use std::num::NonZeroU32;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::errors;
 use crate::require_c_abi_if_c_variadic;
@@ -545,4 +553,80 @@ fn bad_non_zero_sized_fields<'tcx>(
 // FIXME: Consider moving this method to a more fitting place.
 pub fn potentially_plural_count(count: usize, word: &str) -> String {
     format!("{} {}{}", count, word, pluralize!(count))
+}
+
+pub fn check_function_signature<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut cause: ObligationCause<'tcx>,
+    fn_id: DefId,
+    expected_sig: ty::PolyFnSig<'tcx>,
+) {
+    let local_id = fn_id.as_local().unwrap_or(CRATE_DEF_ID);
+
+    let param_env = ty::ParamEnv::empty();
+
+    let infcx = &tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new(infcx);
+
+    let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
+
+    let norm_cause = ObligationCause::misc(cause.span, local_id);
+    let actual_sig = ocx.normalize(&norm_cause, param_env, actual_sig);
+
+    let expected_ty = Ty::new_fn_ptr(tcx, expected_sig);
+    let actual_ty = Ty::new_fn_ptr(tcx, actual_sig);
+
+    match ocx.eq(&cause, param_env, expected_ty, actual_ty) {
+        Ok(()) => {
+            let errors = ocx.select_all_or_error();
+            if !errors.is_empty() {
+                infcx.err_ctxt().report_fulfillment_errors(&errors);
+                return;
+            }
+        }
+        Err(err) => {
+            let err_ctxt = infcx.err_ctxt();
+            if fn_id.is_local() {
+                cause.span = extract_span_for_error_reporting(tcx, err, &cause, local_id);
+            }
+            let failure_code = cause.as_failure_code_diag(err, cause.span, vec![]);
+            let mut diag = tcx.sess.create_err(failure_code);
+            err_ctxt.note_type_err(
+                &mut diag,
+                &cause,
+                None,
+                Some(infer::ValuePairs::Sigs(ExpectedFound {
+                    expected: tcx.liberate_late_bound_regions(fn_id, expected_sig),
+                    found: tcx.liberate_late_bound_regions(fn_id, actual_sig),
+                })),
+                err,
+                false,
+                false,
+            );
+            diag.emit();
+            return;
+        }
+    }
+
+    let outlives_env = OutlivesEnvironment::new(param_env);
+    let _ = ocx.resolve_regions_and_report_errors(local_id, &outlives_env);
+
+    fn extract_span_for_error_reporting<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        err: TypeError<'_>,
+        cause: &ObligationCause<'tcx>,
+        fn_id: LocalDefId,
+    ) -> rustc_span::Span {
+        let mut args = {
+            let node = tcx.hir().expect_owner(fn_id);
+            let decl = node.fn_decl().unwrap_or_else(|| bug!("expected fn decl, found {:?}", node));
+            decl.inputs.iter().map(|t| t.span).chain(std::iter::once(decl.output.span()))
+        };
+
+        match err {
+            TypeError::ArgumentMutability(i)
+            | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => args.nth(i).unwrap(),
+            _ => cause.span(),
+        }
+    }
 }
