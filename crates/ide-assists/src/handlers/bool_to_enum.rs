@@ -111,7 +111,7 @@ fn find_bool_node(ctx: &AssistContext<'_>) -> Option<BoolNodeData> {
             initializer: let_stmt.initializer(),
             definition: Definition::Local(def),
         })
-    } else if let Some(const_) = name.syntax().ancestors().find_map(ast::Const::cast) {
+    } else if let Some(const_) = name.syntax().parent().and_then(ast::Const::cast) {
         let def = ctx.sema.to_def(&const_)?;
         if !def.ty(ctx.db()).is_bool() {
             cov_mark::hit!(not_applicable_non_bool_const);
@@ -125,7 +125,7 @@ fn find_bool_node(ctx: &AssistContext<'_>) -> Option<BoolNodeData> {
             initializer: const_.body(),
             definition: Definition::Const(def),
         })
-    } else if let Some(static_) = name.syntax().ancestors().find_map(ast::Static::cast) {
+    } else if let Some(static_) = name.syntax().parent().and_then(ast::Static::cast) {
         let def = ctx.sema.to_def(&static_)?;
         if !def.ty(ctx.db()).is_bool() {
             cov_mark::hit!(not_applicable_non_bool_static);
@@ -140,7 +140,7 @@ fn find_bool_node(ctx: &AssistContext<'_>) -> Option<BoolNodeData> {
             definition: Definition::Static(def),
         })
     } else {
-        let field = name.syntax().ancestors().find_map(ast::RecordField::cast)?;
+        let field = name.syntax().parent().and_then(ast::RecordField::cast)?;
         if field.name()? != name {
             return None;
         }
