@@ -158,13 +158,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     }
                 },
                 ProjectionElem::Field(_, _) => match place_ty.kind() {
-                    ty::Adt(adt, _) if adt.has_dtor(tcx) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfTypeWithDestructor { container_ty: place_ty },
-                        ));
-                    }
                     ty::Adt(adt, _) => {
+                        if adt.has_dtor(tcx) {
+                            return Err(MoveError::cannot_move_out_of(
+                                self.loc,
+                                InteriorOfTypeWithDestructor { container_ty: place_ty },
+                            ));
+                        }
                         if adt.is_union() {
                             union_path.get_or_insert(base);
                         }
@@ -207,7 +207,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                                 },
                             ));
                         }
-                        _ => (),
+                        ty::Array(_, _) => (),
+                        _ => bug!("Unexpected type {:#?}", place_ty.is_array()),
                     }
                 }
                 ProjectionElem::Index(_) => match place_ty.kind() {
@@ -226,7 +227,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                             },
                         ));
                     }
-                    _ => (),
+                    _ => bug!("Unexpected type {place_ty:#?}"),
                 },
                 // `OpaqueCast` only transmutes the type, so no moves there and
                 // `Downcast` only changes information about a `Place` without moving
