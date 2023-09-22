@@ -481,8 +481,12 @@ fn inline(
     };
     body.reindent_to(original_indentation);
 
+    let no_stmts = body.statements().next().is_none();
     match body.tail_expr() {
-        Some(expr) if !is_async_fn && body.statements().next().is_none() => expr,
+        Some(expr) if matches!(expr, ast::Expr::ClosureExpr(_)) && no_stmts => {
+            make::expr_paren(expr).clone_for_update()
+        }
+        Some(expr) if !is_async_fn && no_stmts => expr,
         _ => match node
             .syntax()
             .parent()
@@ -1470,6 +1474,31 @@ fn main() {
             y + y + *z
         }
     });
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_call_closure_body() {
+        check_assist(
+            inline_call,
+            r#"
+fn f() -> impl Fn() -> i32 {
+    || 2
+}
+
+fn main() {
+    let _ = $0f()();
+}
+"#,
+            r#"
+fn f() -> impl Fn() -> i32 {
+    || 2
+}
+
+fn main() {
+    let _ = (|| 2)();
 }
 "#,
         );
