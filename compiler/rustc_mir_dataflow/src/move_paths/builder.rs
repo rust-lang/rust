@@ -208,12 +208,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 }
                 ProjectionElem::Index(_) => match place_ty.kind() {
                     ty::Array(..) => {
-                        if let ProjectionElem::Index(..) = elem {
-                            return Err(MoveError::cannot_move_out_of(
-                                self.loc,
-                                InteriorOfSliceOrArray { ty: place_ty, is_index: true },
-                            ));
-                        }
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            InteriorOfSliceOrArray { ty: place_ty, is_index: true },
+                        ));
                     }
                     ty::Slice(_) => {
                         return Err(MoveError::cannot_move_out_of(
