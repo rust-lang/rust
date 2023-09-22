@@ -38,11 +38,16 @@ pub struct FileEncoder {
 
 impl FileEncoder {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        // File::create opens the file for writing only. When -Zmeta-stats is enabled, the metadata
+        // encoder rewinds the file to inspect what was written. So we need to always open the file
+        // for reading and writing.
+        let file = File::options().read(true).write(true).create(true).truncate(true).open(path)?;
+
         Ok(FileEncoder {
             buf: vec![0u8; BUF_SIZE].into_boxed_slice().try_into().unwrap(),
             buffered: 0,
             flushed: 0,
-            file: File::create(path)?,
+            file,
             res: Ok(()),
         })
     }
