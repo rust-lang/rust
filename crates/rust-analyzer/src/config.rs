@@ -91,6 +91,12 @@ config_data! {
         /// and should therefore include `--message-format=json` or a similar
         /// option.
         ///
+        /// If there are multiple linked projects/workspaces, this command is invoked for
+        /// each of them, with the working directory being the workspace root
+        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
+        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#` and
+        /// `#rust-analyzer.cargo.buildScripts.invocationLocation#`.
+        ///
         /// By default, a cargo invocation will be constructed for the configured
         /// targets and features, with the following base command line:
         ///
@@ -182,9 +188,11 @@ config_data! {
         /// Cargo, you might also want to change
         /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
         ///
-        /// If there are multiple linked projects, this command is invoked for
-        /// each of them, with the working directory being the project root
-        /// (i.e., the folder containing the `Cargo.toml`).
+        /// If there are multiple linked projects/workspaces, this command is invoked for
+        /// each of them, with the working directory being the workspace root
+        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
+        /// by changing `#rust-analyzer.cargo.check.invocationStrategy#` and
+        /// `#rust-analyzer.cargo.check.invocationLocation#`.
         ///
         /// An example command would be:
         ///
