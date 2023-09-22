@@ -341,6 +341,11 @@ impl<'tcx> Instance<'tcx> {
             !args.has_escaping_bound_vars(),
             "args of instance {def_id:?} not normalized for codegen: {args:?}"
         );
+        if cfg!(debug_assertions) {
+            super::tls::with(|tcx| {
+                assert_eq!(tcx.generics_of(def_id).count(), args.len());
+            });
+        }
         Instance { def: InstanceDef::Item(def_id), args }
     }
 

@@ -661,7 +661,7 @@ fn build_call_shim<'tcx>(
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
         let arg_tup = Ty::new_tup(tcx, untuple_args);
 
-        (Some([ty.into(), arg_tup.into()]), Some(untuple_args))
+        (Some([ty.into(), arg_tup.into(), tcx.consts.true_.into()]), Some(untuple_args))
     } else {
         (None, None)
     };

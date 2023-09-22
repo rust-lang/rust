@@ -271,7 +271,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => Ty::new_tup(tcx, sig.skip_binder().inputs()),
     };
-    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple]);
+    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [ty::GenericArg::from(self_ty), arguments_tuple.into(), tcx.consts.true_.into()]);
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 

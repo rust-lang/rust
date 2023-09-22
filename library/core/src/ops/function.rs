@@ -72,8 +72,8 @@ use crate::marker::Tuple;
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
-// FIXME(effects) #[const_trait]
-pub trait Fn<Args: Tuple>: FnMut<Args> {
+#[const_trait]
+pub trait Fn<Args: Tuple>: ~const FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
@@ -159,8 +159,8 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
-// FIXME(effects) #[const_trait]
-pub trait FnMut<Args: Tuple>: FnOnce<Args> {
+#[const_trait]
+pub trait FnMut<Args: Tuple>: ~const FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
@@ -238,7 +238,7 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
-// FIXME(effects) #[const_trait]
+#[const_trait]
 pub trait FnOnce<Args: Tuple> {
     /// The returned type after the call operator is used.
     #[lang = "fn_once_output"]

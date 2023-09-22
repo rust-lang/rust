@@ -7,7 +7,7 @@
 // not remove this test.
 //
 // FIXME(effects) add `const_trait` to `Fn` so we use `~const`
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 #![crate_name = "foo"]
 
 use std::marker::Destruct;
