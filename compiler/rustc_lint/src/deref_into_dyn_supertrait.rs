@@ -5,6 +5,7 @@ use crate::{
 
 use rustc_hir as hir;
 use rustc_middle::{traits::util::supertraits, ty};
+use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_span::sym;
 
 declare_lint! {
@@ -48,6 +49,7 @@ declare_lint! {
     Warn,
     "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
     @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
     };
 }
