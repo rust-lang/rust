@@ -1944,4 +1944,35 @@ fn main() {
 "#,
         );
     }
+
+    /// See [`discussion`](https://github.com/rust-lang/rust-analyzer/pull/15594#discussion_r1322960614)
+    #[test]
+    fn missing_field_name() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum A {
+    A,
+    Missing { a: u32, : u32, c: u32 }
+}
+
+fn a() {
+    let b = A::A;
+    match b$0 {}
+}"#,
+            r#"
+enum A {
+    A,
+    Missing { a: u32, : u32, c: u32 }
+}
+
+fn a() {
+    let b = A::A;
+    match b {
+        $0A::A => todo!(),
+        A::Missing { a, u32, c } => todo!(),
+    }
+}"#,
+        )
+    }
 }
