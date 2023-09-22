@@ -1432,6 +1432,19 @@ where
     table: &'a mut RawTable<T, A>,
 }
 
+unsafe impl<T, A> Send for OccupiedEntry<'_, T, A>
+where
+    T: Send,
+    A: Send + Allocator,
+{
+}
+unsafe impl<T, A> Sync for OccupiedEntry<'_, T, A>
+where
+    T: Sync,
+    A: Sync + Allocator,
+{
+}
+
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for OccupiedEntry<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
