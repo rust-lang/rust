@@ -23,7 +23,7 @@ pub fn streaming_output(
         let idx = if eof {
             data.len()
         } else {
-            match data.iter().rposition(|b| *b == b'\n') {
+            match data.iter().rposition(|&b| b == b'\n') {
                 Some(i) => i + 1,
                 None => return,
             }

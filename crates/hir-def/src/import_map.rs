@@ -1,7 +1,6 @@
 //! A map of all publicly exported items in a crate.
 
-use std::collections::hash_map::Entry;
-use std::{fmt, hash::BuildHasherDefault};
+use std::{collections::hash_map::Entry, fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
 use fst::{self, Streamer};
@@ -11,10 +10,12 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use triomphe::Arc;
 
-use crate::item_scope::ImportOrExternCrate;
 use crate::{
-    db::DefDatabase, item_scope::ItemInNs, nameres::DefMap, visibility::Visibility, AssocItemId,
-    ModuleDefId, ModuleId, TraitId,
+    db::DefDatabase,
+    item_scope::{ImportOrExternCrate, ItemInNs},
+    nameres::DefMap,
+    visibility::Visibility,
+    AssocItemId, ModuleDefId, ModuleId, TraitId,
 };
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -94,7 +95,7 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
 
     // We look only into modules that are public(ly reexported), starting with the crate root.
     let root = def_map.module_id(DefMap::ROOT);
-    let mut worklist = vec![(root, 0)];
+    let mut worklist = vec![(root, 0u32)];
     // Records items' minimum module depth.
     let mut depth_map = FxHashMap::default();
 
