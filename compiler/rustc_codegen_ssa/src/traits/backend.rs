@@ -11,6 +11,7 @@ use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::hooks;
 use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -84,7 +85,7 @@ pub trait CodegenBackend {
         Box::new(crate::back::metadata::DefaultMetadataLoader)
     }
 
-    fn provide(&self, _providers: &mut Providers) {}
+    fn provide(&self, _providers: &mut Providers, _hooks: &mut hooks::Providers) {}
     fn provide_extern(&self, _providers: &mut ExternProviders) {}
     fn codegen_crate<'tcx>(
         &self,

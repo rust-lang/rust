@@ -18,6 +18,7 @@ use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintSto
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::hooks;
 use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_mir_build as mir_build;
@@ -645,15 +646,16 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     outputs.into()
 }
 
-pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
+pub static DEFAULT_QUERY_PROVIDERS: LazyLock<(Providers, hooks::Providers)> = LazyLock::new(|| {
     let providers = &mut Providers::default();
+    let hooks = &mut hooks::Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.output_filenames = output_filenames;
     providers.resolver_for_lowering = resolver_for_lowering;
     providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
-    rustc_const_eval::provide(providers);
+    rustc_const_eval::provide(providers, hooks);
     rustc_middle::hir::provide(providers);
     mir_borrowck::provide(providers);
     mir_build::provide(providers);
@@ -672,7 +674,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_lint::provide(providers);
     rustc_symbol_mangling::provide(providers);
     rustc_codegen_ssa::provide(providers);
-    *providers
+    (*providers, *hooks)
 });
 
 pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock::new(|| {
@@ -702,8 +704,8 @@ pub fn create_global_ctxt<'tcx>(
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
-    let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
-    codegen_backend.provide(&mut local_providers);
+    let (mut local_providers, mut hooks) = *DEFAULT_QUERY_PROVIDERS;
+    codegen_backend.provide(&mut local_providers, &mut hooks);
 
     let mut extern_providers = *DEFAULT_EXTERN_QUERY_PROVIDERS;
     codegen_backend.provide_extern(&mut extern_providers);
@@ -732,6 +734,7 @@ pub fn create_global_ctxt<'tcx>(
                     query_result_on_disk_cache,
                     incremental,
                 ),
+                hooks,
             )
         })
     })
