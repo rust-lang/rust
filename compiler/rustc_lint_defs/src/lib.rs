@@ -724,7 +724,10 @@ macro_rules! declare_lint {
     );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $(@feature_gate = $gate:expr;)?
-     $(@future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
+     $(@future_incompatible = FutureIncompatibleInfo {
+        reason: $reason:expr,
+        $($field:ident : $val:expr),* $(,)*
+     }; )?
      $(@edition $lint_edition:ident => $edition_level:ident;)?
      $($v:ident),*) => (
         $(#[$attr])*
@@ -736,6 +739,7 @@ macro_rules! declare_lint {
             $($v: true,)*
             $(feature_gate: Some($gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
+                reason: $reason,
                 $($field: $val,)*
                 ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
             }),)?
