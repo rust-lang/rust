@@ -83,6 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.annotate_expected_due_to_let_ty(err, expr, error);
+        self.annotate_loop_expected_due_to_inference(err, expr, error);
 
         // FIXME(#73154): For now, we do leak check when coercing function
         // pointers in typeck, instead of only during borrowck. This can lead
@@ -525,6 +526,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We must've not found something that constrained the expr.
         false
+    }
+
+    // When encountering a type error on the value of a `break`, try to point at the reason for the
+    // expected type.
+    fn annotate_loop_expected_due_to_inference(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        error: Option<TypeError<'tcx>>,
+    ) {
+        let Some(TypeError::Sorts(ExpectedFound { expected, .. })) = error else {
+            return;
+        };
+        let mut parent_id = self.tcx.hir().parent_id(expr.hir_id);
+        loop {
+            // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
+            let Some(hir::Node::Expr(parent)) = self.tcx.hir().find(parent_id) else {
+                break;
+            };
+            parent_id = self.tcx.hir().parent_id(parent.hir_id);
+            let hir::ExprKind::Break(destination, _) = parent.kind else {
+                continue;
+            };
+            let mut parent_id = parent.hir_id;
+            loop {
+                // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
+                let parent = match self.tcx.hir().find(parent_id) {
+                    Some(hir::Node::Expr(&ref parent)) => {
+                        parent_id = self.tcx.hir().parent_id(parent.hir_id);
+                        parent
+                    }
+                    Some(hir::Node::Stmt(hir::Stmt {
+                        hir_id,
+                        kind: hir::StmtKind::Semi(&ref parent) | hir::StmtKind::Expr(&ref parent),
+                        ..
+                    })) => {
+                        parent_id = self.tcx.hir().parent_id(*hir_id);
+                        parent
+                    }
+                    Some(hir::Node::Block(hir::Block { .. })) => {
+                        parent_id = self.tcx.hir().parent_id(parent_id);
+                        parent
+                    }
+                    _ => break,
+                };
+                if let hir::ExprKind::Loop(_, label, _, span) = parent.kind
+                    && destination.label == label
+                {
+                    if let Some((reason_span, message)) =
+                        self.maybe_get_coercion_reason(parent_id, parent.span)
+                    {
+                        err.span_label(reason_span, message);
+                        err.span_label(
+                            span,
+                            format!("this loop is expected to be of type `{expected}`"),
+                        );
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     fn annotate_expected_due_to_let_ty(
