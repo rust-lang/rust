@@ -2476,28 +2476,9 @@ macro_rules! int_impl {
             if self <= 0 || base <= 1 {
                 None
             } else {
-                let mut n = 0;
-                let mut r = 1;
-
-                // Optimization for 128 bit wide integers.
-                if Self::BITS == 128 {
-                    // The following is a correct lower bound for ⌊log(base,self)⌋ because
-                    //
-                    // log(base,self) = log(2,self) / log(2,base)
-                    //                ≥ ⌊log(2,self)⌋ / (⌊log(2,base)⌋ + 1)
-                    //
-                    // hence
-                    //
-                    // ⌊log(base,self)⌋ ≥ ⌊ ⌊log(2,self)⌋ / (⌊log(2,base)⌋ + 1) ⌋ .
-                    n = self.ilog2() / (base.ilog2() + 1);
-                    r = base.pow(n);
-                }
-
-                while r <= self / base {
-                    n += 1;
-                    r *= base;
-                }
-                Some(n)
+                // Delegate to the unsigned implementation.
+                // The condition makes sure that both casts are exact.
+                (self as $UnsignedT).checked_ilog(base as $UnsignedT)
             }
         }
 
