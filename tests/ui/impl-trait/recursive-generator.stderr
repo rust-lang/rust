@@ -12,7 +12,7 @@ LL | |
 ...  |
 LL | |         }
 LL | |     }
-   | |_____- returning here with type `[generator@$DIR/recursive-generator.rs:9:5: 9:7]`
+   | |_____- returning here with type `{generator@$DIR/recursive-generator.rs:9:5: 9:7}`
 
 error: aborting due to previous error
 

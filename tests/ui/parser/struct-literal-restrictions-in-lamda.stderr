@@ -24,7 +24,7 @@ LL | |     }.hi() {
    | |__________^ expected `bool`, found closure
    |
    = note: expected type `bool`
-           found closure `[closure@$DIR/struct-literal-restrictions-in-lamda.rs:12:11: 12:13]`
+           found closure `{closure@$DIR/struct-literal-restrictions-in-lamda.rs:12:11: 12:13}`
 help: use parentheses to call this closure
    |
 LL ~     while (|| Foo {

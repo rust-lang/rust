@@ -34,7 +34,7 @@ LL | |         let _y = y;
 LL | |     });
    | |_____^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/ref-upvar-not-send.rs:23:17: 23:24]`, the trait `Send` is not implemented for `*mut ()`
+   = help: within `{generator@$DIR/ref-upvar-not-send.rs:23:17: 23:24}`, the trait `Send` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`
   --> $DIR/ref-upvar-not-send.rs:27:18
    |

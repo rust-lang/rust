@@ -1616,7 +1616,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     //    |     expected `()`, found closure
                     //    |
                     //    = note: expected unit type `()`
-                    //                 found closure `[closure@$DIR/issue-20862.rs:2:5: 2:14 x:_]`
+                    //                 found closure `{closure@$DIR/issue-20862.rs:2:5: 2:14 x:_}`
                     //
                     // Also ignore opaque `Future`s that come from async fns.
                     if !self.ignore_span.overlaps(span)

@@ -2,7 +2,7 @@ error[E0382]: borrow of moved value: `g`
   --> $DIR/issue-105084.rs:45:14
    |
 LL |     let mut g = || {
-   |         ----- move occurs because `g` has type `[generator@$DIR/issue-105084.rs:22:17: 22:19]`, which does not implement the `Copy` trait
+   |         ----- move occurs because `g` has type `{generator@$DIR/issue-105084.rs:22:17: 22:19}`, which does not implement the `Copy` trait
 ...
 LL |     let mut h = copy(g);
    |                      - value moved here
@@ -22,14 +22,14 @@ help: consider cloning the value if the performance cost is acceptable
 LL |     let mut h = copy(g.clone());
    |                       ++++++++
 
-error[E0277]: the trait bound `Box<(i32, ())>: Copy` is not satisfied in `[generator@$DIR/issue-105084.rs:22:17: 22:19]`
+error[E0277]: the trait bound `Box<(i32, ())>: Copy` is not satisfied in `{generator@$DIR/issue-105084.rs:22:17: 22:19}`
   --> $DIR/issue-105084.rs:39:17
    |
 LL |     let mut g = || {
-   |                 -- within this `[generator@$DIR/issue-105084.rs:22:17: 22:19]`
+   |                 -- within this `{generator@$DIR/issue-105084.rs:22:17: 22:19}`
 ...
 LL |     let mut h = copy(g);
-   |                 ^^^^ within `[generator@$DIR/issue-105084.rs:22:17: 22:19]`, the trait `Copy` is not implemented for `Box<(i32, ())>`
+   |                 ^^^^ within `{generator@$DIR/issue-105084.rs:22:17: 22:19}`, the trait `Copy` is not implemented for `Box<(i32, ())>`
    |
 note: generator does not implement `Copy` as this value is used across a yield
   --> $DIR/issue-105084.rs:29:22
