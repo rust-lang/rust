@@ -793,6 +793,7 @@ fn clean_ty_generics<'tcx>(
                 }
                 Some(clean_generic_param_def(param, cx))
             }
+            ty::GenericParamDefKind::Const { is_host_effect: true, .. } => None,
             ty::GenericParamDefKind::Const { .. } => Some(clean_generic_param_def(param, cx)),
         })
         .collect::<ThinVec<GenericParamDef>>();
