@@ -36,7 +36,7 @@ use crate::assist_context::{AssistContext, Assists};
 //
 // fn main() -> () {
 //     let a = 3;
-//     let b: B = <B>::from(a);
+//     let b: B = B::from(a);
 // }
 // ```
 pub(crate) fn into_to_qualified_from(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
@@ -54,22 +54,24 @@ pub(crate) fn into_to_qualified_from(acc: &mut Assists, ctx: &AssistContext<'_>)
         let type_call = sema.type_of_expr(&method_call.clone().into())?;
         let adjusted_tc = type_call.adjusted();
 
-        if adjusted_tc.is_unknown() && adjusted_tc.contains_unknown() {
+        if adjusted_tc.contains_unknown() {
             return None;
         }
 
-        let qualified_from = format!(
-            "<{}>::from({})",
-            adjusted_tc.display_source_code(db, scope.module().into(), true).ok()?,
-            receiver
-        );
-
+        let sc = adjusted_tc.display_source_code(db, scope.module().into(), true).ok()?;
         acc.add(
             AssistId("into_to_qualified_from", AssistKind::Generate),
             "Convert `into` to fully qualified `from`",
             nameref.syntax().text_range(),
             |edit| {
-                edit.replace(method_call.syntax().text_range(), qualified_from);
+                edit.replace(
+                    method_call.syntax().text_range(),
+                    if sc.chars().find(|c| !c.is_alphanumeric() && c != &':').is_some() {
+                        format!("<{}>::from({})", sc, receiver)
+                    } else {
+                        format!("{}::from({})", sc, receiver)
+                    },
+                );
             },
         );
     }
@@ -112,7 +114,7 @@ impl From<A> for B {
 
 fn main() -> () {
     let a: A = A;
-    let b: B = <B>::from(a);
+    let b: B = B::from(a);
 }"#,
         )
     }
@@ -160,7 +162,7 @@ mod C {
 
 fn main() -> () {
     let a: A = A;
-    let b: B = <B>::from(a);
+    let b: B = B::from(a);
 }"#,
         )
     }
@@ -204,7 +206,7 @@ mod C {
 
 fn main() -> () {
     let a: A = A;
-    let b: C::B = <C::B>::from(a);
+    let b: C::B = C::B::from(a);
 }"#,
         )
     }

@@ -1812,7 +1812,7 @@ impl From<i32> for B {
 
 fn main() -> () {
     let a = 3;
-    let b: B = <B>::from(a);
+    let b: B = B::from(a);
 }
 "#####,
     )
