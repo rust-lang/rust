@@ -2946,6 +2946,11 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Returns `true` when the outermost type cannot be further normalized,
+    /// resolved, or substituted. This includes all primitive types, but also
+    /// things like ADTs and trait objects, sice even if their arguments or
+    /// nested types may be further simplified, the outermost [`TyKind`] or
+    /// type constructor remains the same.
     pub fn is_known_rigid(self) -> bool {
         match self.kind() {
             Bool
