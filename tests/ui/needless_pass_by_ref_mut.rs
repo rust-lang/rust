@@ -230,6 +230,18 @@ async fn async_vec(b: &mut Vec<bool>) {
 async fn async_vec2(b: &mut Vec<bool>) {
     b.push(true);
 }
+fn non_mut(n: &str) {}
+//Should warn
+pub async fn call_in_closure1(n: &mut str) {
+    (|| non_mut(n))()
+}
+fn str_mut(str: &mut String) -> bool {
+    str.pop().is_some()
+}
+//Should not warn
+pub async fn call_in_closure2(str: &mut String) {
+    (|| str_mut(str))();
+}
 
 // Should not warn.
 pub async fn closure(n: &mut usize) -> impl '_ + FnMut() {
