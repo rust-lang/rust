@@ -23,6 +23,7 @@ macro_rules! declare_hooks {
             $(#[$attr])*
             #[inline(always)]
             #[must_use]
+            #[instrument(level = "debug", skip(self), ret)]
             pub fn $name(self, $($arg: $K,)*) -> $V
             {
                 (self.tcx.hooks.$name)(self, $($arg,)*)
