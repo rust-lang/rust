@@ -1017,7 +1017,7 @@ declare_lint! {
     "raw pointers must be aligned before dereferencing",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #68585 <https://github.com/rust-lang/rust/issues/104616>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
     };
 }
 
@@ -1387,7 +1387,7 @@ declare_lint! {
     "trait-object types were treated as different depending on marker-trait order",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
     };
 }
 
@@ -2006,7 +2006,7 @@ declare_lint! {
     "detects proc macro derives using inaccessible names from parent modules",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #83583 <https://github.com/rust-lang/rust/issues/83583>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
     };
 }
 
@@ -2618,7 +2618,7 @@ declare_lint! {
     "a C-like enum implementing Drop is cast",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #73333 <https://github.com/rust-lang/rust/issues/73333>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
     };
 }
 
@@ -2976,7 +2976,7 @@ declare_lint! {
     "trailing semicolon in macro body used as expression",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #79813 <https://github.com/rust-lang/rust/issues/79813>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
     };
 }
 
@@ -3709,7 +3709,7 @@ declare_lint! {
     "detects usage of old versions of certain proc-macro crates",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #83125 <https://github.com/rust-lang/rust/issues/83125>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
     };
 }
 
@@ -4222,7 +4222,7 @@ declare_lint! {
     "impl method assumes more implied bounds than its corresponding trait method",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #105572 <https://github.com/rust-lang/rust/issues/105572>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
     };
 }
 
@@ -4254,7 +4254,7 @@ declare_lint! {
     "`[u8]` or `str` used in a packed struct with `derive`",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #107457 <https://github.com/rust-lang/rust/issues/107457>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
     };
     report_in_external_macro
 }
@@ -4483,7 +4483,7 @@ declare_lint! {
     Warn,
     "detects certain glob imports that require reporting an ambiguity error",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #114095 <https://github.com/rust-lang/rust/issues/114095>",
     };
 }
@@ -4568,7 +4568,7 @@ declare_lint! {
     Warn,
     "elided lifetimes cannot be used in associated constants in impls",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #115010 <https://github.com/rust-lang/rust/issues/115010>",
     };
 }
