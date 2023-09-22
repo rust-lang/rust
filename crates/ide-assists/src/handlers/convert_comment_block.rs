@@ -89,12 +89,12 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
             // contents of each line comment when they're put into the block comment.
             let indentation = IndentLevel::from_token(comment.syntax());
 
-            let cms = comments
+            let block_comment_body = comments
                 .into_iter()
                 .map(|c| line_comment_text(indentation, c))
-                .collect::<Vec<String>>();
-
-            let block_comment_body = cms.into_iter().join("\n");
+                .collect::<Vec<String>>()
+                .into_iter()
+                .join("\n");
 
             let block_prefix =
                 CommentKind { shape: CommentShape::Block, ..comment.kind() }.prefix();
