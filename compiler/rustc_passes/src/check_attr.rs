@@ -2333,7 +2333,10 @@ impl CheckAttrVisitor<'_> {
                 &mut diag,
                 &cause,
                 None,
-                Some(ValuePairs::Sigs(ExpectedFound { expected: expected_sig, found: sig })),
+                Some(ValuePairs::PolySigs(ExpectedFound {
+                    expected: ty::Binder::dummy(expected_sig),
+                    found: ty::Binder::dummy(sig),
+                })),
                 terr,
                 false,
                 false,

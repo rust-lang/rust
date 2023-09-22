@@ -1134,7 +1134,10 @@ fn report_trait_method_mismatch<'tcx>(
         &mut diag,
         &cause,
         trait_err_span.map(|sp| (sp, Cow::from("type in trait"))),
-        Some(infer::ValuePairs::Sigs(ExpectedFound { expected: trait_sig, found: impl_sig })),
+        Some(infer::ValuePairs::PolySigs(ExpectedFound {
+            expected: ty::Binder::dummy(trait_sig),
+            found: ty::Binder::dummy(impl_sig),
+        })),
         terr,
         false,
         false,
