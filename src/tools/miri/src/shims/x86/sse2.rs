@@ -61,11 +61,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right = this.int_to_int_or_float(&right, twice_wide)?;
 
                     // Calculate left + right + 1
-                    let added = this.wrapping_binary_op(
-                        mir::BinOp::Add,
-                        &left,
-                        &right,
-                    )?;
+                    let added = this.wrapping_binary_op(mir::BinOp::Add, &left, &right)?;
                     let added = this.wrapping_binary_op(
                         mir::BinOp::Add,
                         &added,
@@ -80,10 +76,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     )?;
 
                     // Narrow back to the original type
-                    let res = this.int_to_int_or_float(
-                        &divided,
-                        dest.layout,
-                    )?;
+                    let res = this.int_to_int_or_float(&divided, dest.layout)?;
                     this.write_immediate(*res, &dest)?;
                 }
             }
@@ -110,11 +103,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right = this.int_to_int_or_float(&right, twice_wide)?;
 
                     // Multiply
-                    let multiplied = this.wrapping_binary_op(
-                        mir::BinOp::Mul,
-                        &left,
-                        &right,
-                    )?;
+                    let multiplied = this.wrapping_binary_op(mir::BinOp::Mul, &left, &right)?;
                     // Keep the high half
                     let high = this.wrapping_binary_op(
                         mir::BinOp::Shr,
@@ -123,10 +112,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     )?;
 
                     // Narrow back to the original type
-                    let res = this.int_to_int_or_float(
-                        &high,
-                        dest.layout,
-                    )?;
+                    let res = this.int_to_int_or_float(&high, dest.layout)?;
                     this.write_immediate(*res, &dest)?;
                 }
             }

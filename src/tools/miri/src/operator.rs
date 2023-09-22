@@ -65,12 +65,16 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
                     right.to_scalar().to_target_usize(self)?,
                     self.machine.layouts.usize,
                 );
-                let (result, overflowing) =
-                    self.overflowing_binary_op(bin_op, &left, &right)?;
+                let (result, overflowing) = self.overflowing_binary_op(bin_op, &left, &right)?;
                 // Construct a new pointer with the provenance of `ptr` (the LHS).
-                let result_ptr =
-                    Pointer::new(ptr.provenance, Size::from_bytes(result.to_scalar().to_target_usize(self)?));
-                (ImmTy::from_scalar(Scalar::from_maybe_pointer(result_ptr, self), left.layout), overflowing)
+                let result_ptr = Pointer::new(
+                    ptr.provenance,
+                    Size::from_bytes(result.to_scalar().to_target_usize(self)?),
+                );
+                (
+                    ImmTy::from_scalar(Scalar::from_maybe_pointer(result_ptr, self), left.layout),
+                    overflowing,
+                )
             }
 
             _ => span_bug!(self.cur_span(), "Invalid operator on pointers: {:?}", bin_op),
