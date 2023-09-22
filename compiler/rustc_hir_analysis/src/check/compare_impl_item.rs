@@ -662,8 +662,6 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
         tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().instantiate_identity();
-    let param_env = tcx.param_env(impl_m_def_id);
-
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during substitution later.
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
@@ -688,6 +686,19 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // Create mapping from trait to placeholder.
     let trait_to_placeholder_args =
         impl_to_placeholder_args.rebase_onto(tcx, impl_m.container_id(tcx), trait_to_impl_args);
+
+    let hybrid_preds = tcx
+        .predicates_of(impl_m.container_id(tcx))
+        .instantiate_identity(tcx)
+        .into_iter()
+        .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_placeholder_args))
+        .map(|(clause, _)| clause);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds), Reveal::UserFacing);
+    let param_env = traits::normalize_param_env_or_error(
+        tcx,
+        param_env,
+        ObligationCause::misc(tcx.def_span(impl_m_def_id), impl_m_def_id),
+    );
 
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
