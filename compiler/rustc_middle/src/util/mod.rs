@@ -9,6 +9,7 @@ pub use find_self_call::find_self_call;
 #[derive(Default, Copy, Clone)]
 pub struct Providers {
     pub queries: rustc_middle::query::Providers,
+    pub extern_queries: rustc_middle::query::ExternProviders,
     pub hooks: rustc_middle::hooks::Providers,
 }
 

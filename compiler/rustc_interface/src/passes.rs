@@ -18,7 +18,6 @@ use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintSto
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::query::ExternProviders;
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_mir_build as mir_build;
@@ -676,13 +675,6 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock::new(|| {
-    let mut extern_providers = ExternProviders::default();
-    rustc_metadata::provide_extern(&mut extern_providers);
-    rustc_codegen_ssa::provide_extern(&mut extern_providers);
-    extern_providers
-});
-
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     crate_types: Vec<CrateType>,
@@ -706,11 +698,8 @@ pub fn create_global_ctxt<'tcx>(
     let mut providers = *DEFAULT_QUERY_PROVIDERS;
     codegen_backend.provide(&mut providers);
 
-    let mut extern_providers = *DEFAULT_EXTERN_QUERY_PROVIDERS;
-    codegen_backend.provide_extern(&mut extern_providers);
-
     if let Some(callback) = compiler.override_queries {
-        callback(sess, &mut providers, &mut extern_providers);
+        callback(sess, &mut providers);
     }
 
     let incremental = dep_graph.is_fully_enabled();
@@ -729,7 +718,7 @@ pub fn create_global_ctxt<'tcx>(
                 rustc_query_impl::query_callbacks(arena),
                 rustc_query_impl::query_system(
                     providers.queries,
-                    extern_providers,
+                    providers.extern_queries,
                     query_result_on_disk_cache,
                     incremental,
                 ),

@@ -14,10 +14,11 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
+use rustc_middle::query::ExternProviders;
 use rustc_middle::query::LocalCrate;
-use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_session::cstore::CrateStore;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
@@ -147,7 +148,7 @@ macro_rules! provide_one {
 macro_rules! provide {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => { $($compute:tt)* })*) => {
-        pub fn provide_extern(providers: &mut ExternProviders) {
+        fn provide_extern(providers: &mut ExternProviders) {
             $(provide_one! {
                 $tcx, $def_id, $other, $cdata, $name => { $($compute)* }
             })*
@@ -385,7 +386,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
-    *providers = Providers {
+    providers.queries = rustc_middle::query::Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
         alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, LocalCrate| false,
@@ -513,8 +514,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             tcx.untracked().cstore.freeze();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
-        ..*providers
+        ..providers.queries
     };
+    provide_extern(&mut providers.extern_queries);
 }
 
 impl CStore {

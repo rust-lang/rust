@@ -44,7 +44,6 @@ use std::sync::atomic::Ordering;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
-pub use cstore_impl::provide_extern;
 use rustc_span::hygiene::HygieneDecodeContext;
 
 mod cstore_impl;

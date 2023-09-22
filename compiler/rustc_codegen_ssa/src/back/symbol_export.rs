@@ -11,10 +11,10 @@ use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
-use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, SymbolName, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_target::spec::SanitizerSet;
 
@@ -457,11 +457,9 @@ pub fn provide(providers: &mut Providers) {
     providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
     providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;
     providers.wasm_import_module_map = wasm_import_module_map;
-}
-
-pub fn provide_extern(providers: &mut ExternProviders) {
-    providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
-    providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
+    providers.extern_queries.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
+    providers.extern_queries.upstream_monomorphizations_for =
+        upstream_monomorphizations_for_provider;
 }
 
 fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel {
