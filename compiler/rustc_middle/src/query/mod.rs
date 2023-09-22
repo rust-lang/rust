@@ -7,7 +7,6 @@
 #![allow(unused_parens)]
 
 use crate::dep_graph;
-use crate::dep_graph::DepKind;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;

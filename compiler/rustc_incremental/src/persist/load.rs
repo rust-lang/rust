@@ -3,7 +3,7 @@
 use crate::errors;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
-use rustc_middle::dep_graph::{SerializedDepGraph, WorkProductMap};
+use rustc_middle::dep_graph::{DepsType, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::Decodable;
@@ -208,7 +208,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                     return LoadResult::DataOutOfDate;
                 }
 
-                let dep_graph = SerializedDepGraph::decode(&mut decoder);
+                let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder);
 
                 LoadResult::Ok { data: (dep_graph, prev_work_products) }
             }
