@@ -6,7 +6,7 @@
 //!
 //! This module provides three types for representing raw handles and sockets
 //! with different ownership properties: raw, borrowed, and owned, which are
-//! analogous to types used for representing pointers:
+//! analogous to types used for representing pointers. These types reflect the Windows version of [I/O safety].
 //!
 //! | Type                   | Analogous to |
 //! | ---------------------- | ------------ |
@@ -47,6 +47,7 @@
 //!
 //! [`BorrowedHandle<'a>`]: crate::os::windows::io::BorrowedHandle
 //! [`BorrowedSocket<'a>`]: crate::os::windows::io::BorrowedSocket
+//! [I/O safety]: crate::io#io-safety
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

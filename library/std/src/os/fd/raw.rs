@@ -84,7 +84,10 @@ pub trait FromRawFd {
     ///
     /// # Safety
     ///
-    /// The `fd` passed in must be a valid and open file descriptor.
+    /// The `fd` passed in must be an [owned file descriptor][io-safety];
+    /// in particular, it must be open.
+    ///
+    /// [io-safety]: io#io-safety
     ///
     /// # Example
     ///
