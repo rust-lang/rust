@@ -414,6 +414,12 @@ pub trait TypeErrCtxtExt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
     );
+
+    fn suggest_desugaring_async_fn_in_trait(
+        &self,
+        err: &mut Diagnostic,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -> (Span, String) {
@@ -2711,6 +2717,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::IfExpressionWithNoElse
             | ObligationCauseCode::MainFunctionType
             | ObligationCauseCode::StartFunctionType
+            | ObligationCauseCode::LangFunctionType(_)
             | ObligationCauseCode::IntrinsicType
             | ObligationCauseCode::MethodReceiver
             | ObligationCauseCode::ReturnNoExpression
@@ -4099,6 +4106,136 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             });
         }
+    }
+
+    fn suggest_desugaring_async_fn_in_trait(
+        &self,
+        err: &mut Diagnostic,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) {
+        // Don't suggest if RTN is active -- we should prefer a where-clause bound instead.
+        if self.tcx.features().return_type_notation {
+            return;
+        }
+
+        let trait_def_id = trait_ref.def_id();
+
+        // Only suggest specifying auto traits
+        if !self.tcx.trait_is_auto(trait_def_id) {
+            return;
+        }
+
+        // Look for an RPITIT
+        let ty::Alias(ty::Projection, alias_ty) = trait_ref.self_ty().skip_binder().kind() else {
+            return;
+        };
+        let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) =
+            self.tcx.opt_rpitit_info(alias_ty.def_id)
+        else {
+            return;
+        };
+
+        let auto_trait = self.tcx.def_path_str(trait_def_id);
+        // ... which is a local function
+        let Some(fn_def_id) = fn_def_id.as_local() else {
+            // If it's not local, we can at least mention that the method is async, if it is.
+            if self.tcx.asyncness(fn_def_id).is_async() {
+                err.span_note(
+                    self.tcx.def_span(fn_def_id),
+                    format!(
+                        "`{}::{}` is an `async fn` in trait, which does not \
+                    automatically imply that its future is `{auto_trait}`",
+                        alias_ty.trait_ref(self.tcx),
+                        self.tcx.item_name(fn_def_id)
+                    ),
+                );
+            }
+            return;
+        };
+        let Some(hir::Node::TraitItem(item)) = self.tcx.hir().find_by_def_id(fn_def_id) else {
+            return;
+        };
+
+        // ... whose signature is `async` (i.e. this is an AFIT)
+        let (sig, body) = item.expect_fn();
+        let hir::IsAsync::Async(async_span) = sig.header.asyncness else {
+            return;
+        };
+        let Ok(async_span) =
+            self.tcx.sess.source_map().span_extend_while(async_span, |c| c.is_whitespace())
+        else {
+            return;
+        };
+        let hir::FnRetTy::Return(hir::Ty { kind: hir::TyKind::OpaqueDef(def, ..), .. }) =
+            sig.decl.output
+        else {
+            // This should never happen, but let's not ICE.
+            return;
+        };
+
+        // Check that this is *not* a nested `impl Future` RPIT in an async fn
+        // (i.e. `async fn foo() -> impl Future`)
+        if def.owner_id.to_def_id() != opaque_def_id {
+            return;
+        }
+
+        let future = self.tcx.hir().item(*def).expect_opaque_ty();
+        let Some(hir::GenericBound::LangItemTrait(_, _, _, generics)) = future.bounds.get(0) else {
+            // `async fn` should always lower to a lang item bound... but don't ICE.
+            return;
+        };
+        let Some(hir::TypeBindingKind::Equality { term: hir::Term::Ty(future_output_ty) }) =
+            generics.bindings.get(0).map(|binding| binding.kind)
+        else {
+            // Also should never happen.
+            return;
+        };
+
+        let function_name = self.tcx.def_path_str(fn_def_id);
+
+        let mut sugg = if future_output_ty.span.is_empty() {
+            vec![
+                (async_span, String::new()),
+                (
+                    future_output_ty.span,
+                    format!(" -> impl std::future::Future<Output = ()> + {auto_trait}"),
+                ),
+            ]
+        } else {
+            vec![
+                (
+                    future_output_ty.span.shrink_to_lo(),
+                    "impl std::future::Future<Output = ".to_owned(),
+                ),
+                (future_output_ty.span.shrink_to_hi(), format!("> + {auto_trait}")),
+                (async_span, String::new()),
+            ]
+        };
+
+        // If there's a body, we also need to wrap it in `async {}`
+        if let hir::TraitFn::Provided(body) = body {
+            let body = self.tcx.hir().body(*body);
+            let body_span = body.value.span;
+            let body_span_without_braces =
+                body_span.with_lo(body_span.lo() + BytePos(1)).with_hi(body_span.hi() - BytePos(1));
+            if body_span_without_braces.is_empty() {
+                sugg.push((body_span_without_braces, " async {} ".to_owned()));
+            } else {
+                sugg.extend([
+                    (body_span_without_braces.shrink_to_lo(), "async {".to_owned()),
+                    (body_span_without_braces.shrink_to_hi(), "} ".to_owned()),
+                ]);
+            }
+        }
+
+        err.multipart_suggestion(
+            format!(
+                "`{auto_trait}` can be made part of the associated future's \
+                guarantees for all implementations of `{function_name}`"
+            ),
+            sugg,
+            Applicability::MachineApplicable,
+        );
     }
 }
 

@@ -161,7 +161,7 @@ impl IntoDiagnosticArg for hir::ConstContext {
         DiagnosticArgValue::Str(Cow::Borrowed(match self {
             hir::ConstContext::ConstFn => "const_fn",
             hir::ConstContext::Static(_) => "static",
-            hir::ConstContext::Const => "const",
+            hir::ConstContext::Const { .. } => "const",
         }))
     }
 }

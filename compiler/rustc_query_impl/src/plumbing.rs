@@ -8,7 +8,9 @@ use crate::QueryConfigRestored;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::Diagnostic;
+
 use rustc_index::Idx;
+use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::{
     self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
 };
@@ -53,7 +55,7 @@ impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
 }
 
 impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
-    type DepKind = rustc_middle::dep_graph::DepKind;
+    type Deps = rustc_middle::dep_graph::DepsType;
     type DepContext = TyCtxt<'tcx>;
 
     #[inline]
@@ -78,7 +80,7 @@ impl QueryContext for QueryCtxt<'_> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
-    fn try_collect_active_jobs(self) -> Option<QueryMap<DepKind>> {
+    fn try_collect_active_jobs(self) -> Option<QueryMap> {
         let mut jobs = QueryMap::default();
 
         for collect in super::TRY_COLLECT_ACTIVE_JOBS.iter() {
@@ -154,7 +156,7 @@ impl QueryContext for QueryCtxt<'_> {
         let mut span = None;
         let mut layout_of_depth = None;
         if let Some(map) = self.try_collect_active_jobs() {
-            if let Some((info, depth)) = job.try_find_layout_root(map) {
+            if let Some((info, depth)) = job.try_find_layout_root(map, dep_kinds::layout_of) {
                 span = Some(info.job.span);
                 layout_of_depth = Some(LayoutOfDepth { desc: info.query.description, depth });
             }
@@ -300,7 +302,7 @@ pub(crate) fn create_query_frame<
     key: K,
     kind: DepKind,
     name: &'static str,
-) -> QueryStackFrame<DepKind> {
+) -> QueryStackFrame {
     // Avoid calling queries while formatting the description
     let description = ty::print::with_no_queries!(
         // Disable visible paths printing for performance reasons.
@@ -312,7 +314,7 @@ pub(crate) fn create_query_frame<
     );
     let description =
         if tcx.sess.verbose() { format!("{description} [{name:?}]") } else { description };
-    let span = if kind == dep_graph::DepKind::def_span || with_no_queries() {
+    let span = if kind == dep_graph::dep_kinds::def_span || with_no_queries() {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.
         None
@@ -320,7 +322,7 @@ pub(crate) fn create_query_frame<
         Some(key.default_span(tcx))
     };
     let def_id = key.key_as_def_id();
-    let def_kind = if kind == dep_graph::DepKind::opt_def_kind || with_no_queries() {
+    let def_kind = if kind == dep_graph::dep_kinds::opt_def_kind || with_no_queries() {
         // Try to avoid infinite recursion.
         None
     } else {
@@ -329,7 +331,7 @@ pub(crate) fn create_query_frame<
     let hash = || {
         tcx.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
-            std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
+            kind.as_usize().hash_stable(&mut hcx, &mut hasher);
             key.hash_stable(&mut hcx, &mut hasher);
             hasher.finish::<Hash64>()
         })
@@ -430,8 +432,8 @@ where
     // hit the cache instead of having to go through `force_from_dep_node`.
     // This assertion makes sure, we actually keep applying the solution above.
     debug_assert!(
-        dep_node.kind != DepKind::codegen_unit,
-        "calling force_from_dep_node() on DepKind::codegen_unit"
+        dep_node.kind != dep_kinds::codegen_unit,
+        "calling force_from_dep_node() on dep_kinds::codegen_unit"
     );
 
     if let Some(key) = Q::Key::recover(tcx, &dep_node) {
@@ -457,6 +459,7 @@ where
             fingerprint_style,
             force_from_dep_node: None,
             try_load_from_on_disk_cache: None,
+            name: Q::NAME,
         };
     }
 
@@ -470,6 +473,7 @@ where
         try_load_from_on_disk_cache: Some(|tcx, dep_node| {
             try_load_from_on_disk_cache(Q::config(tcx), tcx, dep_node)
         }),
+        name: Q::NAME,
     }
 }
 
@@ -565,7 +569,7 @@ macro_rules! define_queries {
                 DynamicQuery {
                     name: stringify!($name),
                     eval_always: is_eval_always!([$($modifiers)*]),
-                    dep_kind: dep_graph::DepKind::$name,
+                    dep_kind: dep_graph::dep_kinds::$name,
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                     query_state: offset_of!(QueryStates<'tcx> => $name),
                     query_cache: offset_of!(QueryCaches<'tcx> => $name),
@@ -636,6 +640,8 @@ macro_rules! define_queries {
                     { feedable!([$($modifiers)*]) },
                 >;
 
+                const NAME: &'static &'static str = &stringify!($name);
+
                 #[inline(always)]
                 fn config(tcx: TyCtxt<'tcx>) -> Self::Config {
                     DynamicConfig {
@@ -649,9 +655,9 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap<DepKind>) {
+            pub fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap) {
                 let make_query = |tcx, key| {
-                    let kind = rustc_middle::dep_graph::DepKind::$name;
+                    let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
                     $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                 };
@@ -709,7 +715,7 @@ macro_rules! define_queries {
 
         // These arrays are used for iteration and can't be indexed by `DepKind`.
 
-        const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<DepKind>)] =
+        const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap)] =
             &[$(query_impl::$name::try_collect_active_jobs),*];
 
         const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[
@@ -737,6 +743,7 @@ macro_rules! define_queries {
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node)),
                     try_load_from_on_disk_cache: None,
+                    name: &"Null",
                 }
             }
 
@@ -748,6 +755,7 @@ macro_rules! define_queries {
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node)),
                     try_load_from_on_disk_cache: None,
+                    name: &"Red",
                 }
             }
 
@@ -758,6 +766,7 @@ macro_rules! define_queries {
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
+                    name: &"TraitSelect",
                 }
             }
 
@@ -768,6 +777,7 @@ macro_rules! define_queries {
                     fingerprint_style: FingerprintStyle::Opaque,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
+                    name: &"CompileCodegenUnit",
                 }
             }
 
@@ -778,6 +788,7 @@ macro_rules! define_queries {
                     fingerprint_style: FingerprintStyle::Opaque,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
+                    name: &"CompileMonoItem",
                 }
             }
 

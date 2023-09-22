@@ -1,7 +1,6 @@
+use std::cell::RefCell;
+
 use crate::coercion::CoerceMany;
-use crate::errors::{
-    LangStartIncorrectNumberArgs, LangStartIncorrectParam, LangStartIncorrectRetTy,
-};
 use crate::gather_locals::GatherLocalsVisitor;
 use crate::FnCtxt;
 use crate::GeneratorTypes;
@@ -9,14 +8,15 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir_analysis::check::fn_maybe_err;
+use rustc_hir_analysis::check::{check_function_signature, fn_maybe_err};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
+use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
-use std::cell::RefCell;
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
 /// body and returns the function context used for that purpose, since in the case of a fn item
@@ -166,52 +166,17 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl()
         && panic_impl_did == fn_def_id.to_def_id()
     {
-        check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
+        check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig);
     }
 
     if let Some(lang_start_defid) = tcx.lang_items().start_fn() && lang_start_defid == fn_def_id.to_def_id() {
-        check_lang_start_fn(tcx, fn_sig, decl, fn_def_id);
+        check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 
     gen_ty
 }
 
-fn check_panic_info_fn(
-    tcx: TyCtxt<'_>,
-    fn_id: LocalDefId,
-    fn_sig: ty::FnSig<'_>,
-    decl: &hir::FnDecl<'_>,
-    declared_ret_ty: Ty<'_>,
-) {
-    let Some(panic_info_did) = tcx.lang_items().panic_info() else {
-        tcx.sess.err("language item required, but not found: `panic_info`");
-        return;
-    };
-
-    if *declared_ret_ty.kind() != ty::Never {
-        tcx.sess.span_err(decl.output.span(), "return type should be `!`");
-    }
-
-    let inputs = fn_sig.inputs();
-    if inputs.len() != 1 {
-        tcx.sess.span_err(tcx.def_span(fn_id), "function should have one argument");
-        return;
-    }
-
-    let arg_is_panic_info = match *inputs[0].kind() {
-        ty::Ref(region, ty, mutbl) => match *ty.kind() {
-            ty::Adt(ref adt, _) => {
-                adt.did() == panic_info_did && mutbl.is_not() && !region.is_static()
-            }
-            _ => false,
-        },
-        _ => false,
-    };
-
-    if !arg_is_panic_info {
-        tcx.sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
-    }
-
+fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {
     let DefKind::Fn = tcx.def_kind(fn_id) else {
         let span = tcx.def_span(fn_id);
         tcx.sess.span_err(span, "should be a function");
@@ -227,125 +192,87 @@ fn check_panic_info_fn(
         let span = tcx.def_span(fn_id);
         tcx.sess.span_err(span, "should have no const parameters");
     }
+
+    let Some(panic_info_did) = tcx.lang_items().panic_info() else {
+        tcx.sess.err("language item required, but not found: `panic_info`");
+        return;
+    };
+
+    // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
+    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
+        tcx,
+        &[ty::GenericArg::from(ty::Region::new_late_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon(None) },
+        ))],
+    );
+    let panic_info_ref_ty = Ty::new_imm_ref(
+        tcx,
+        ty::Region::new_late_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(None) },
+        ),
+        panic_info_ty,
+    );
+
+    let bounds = tcx.mk_bound_variable_kinds(&[
+        ty::BoundVariableKind::Region(ty::BrAnon(None)),
+        ty::BoundVariableKind::Region(ty::BrAnon(None)),
+    ]);
+    let expected_sig = ty::Binder::bind_with_vars(
+        tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.unsafety, Abi::Rust),
+        bounds,
+    );
+
+    check_function_signature(
+        tcx,
+        ObligationCause::new(
+            tcx.def_span(fn_id),
+            fn_id,
+            ObligationCauseCode::LangFunctionType(sym::panic_impl),
+        ),
+        fn_id.into(),
+        expected_sig,
+    );
 }
 
-fn check_lang_start_fn<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    fn_sig: ty::FnSig<'tcx>,
-    decl: &'tcx hir::FnDecl<'tcx>,
-    def_id: LocalDefId,
-) {
-    let inputs = fn_sig.inputs();
+fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id: LocalDefId) {
+    // build type `fn(main: fn() -> T, argc: isize, argv: *const *const u8, sigpipe: u8)`
 
-    let arg_count = inputs.len();
-    if arg_count != 4 {
-        tcx.sess.emit_err(LangStartIncorrectNumberArgs {
-            params_span: tcx.def_span(def_id),
-            found_param_count: arg_count,
-        });
-    }
+    // make a Ty for the generic on the fn for diagnostics
+    // FIXME: make the lang item generic checks check for the right generic *kind*
+    // for example `start`'s generic should be a type parameter
+    let generics = tcx.generics_of(def_id);
+    let fn_generic = generics.param_at(0, tcx);
+    let generic_ty = Ty::new_param(tcx, fn_generic.index, fn_generic.name);
+    let main_fn_ty = Ty::new_fn_ptr(
+        tcx,
+        Binder::dummy(tcx.mk_fn_sig([], generic_ty, false, hir::Unsafety::Normal, Abi::Rust)),
+    );
 
-    // only check args if they should exist by checking the count
-    // note: this does not handle args being shifted or their order swapped very nicely
-    // but it's a lang item, users shouldn't frequently encounter this
+    let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+        [
+            main_fn_ty,
+            tcx.types.isize,
+            Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8)),
+            tcx.types.u8,
+        ],
+        tcx.types.isize,
+        false,
+        fn_sig.unsafety,
+        Abi::Rust,
+    ));
 
-    // first arg is `main: fn() -> T`
-    if let Some(&main_arg) = inputs.get(0) {
-        // make a Ty for the generic on the fn for diagnostics
-        // FIXME: make the lang item generic checks check for the right generic *kind*
-        // for example `start`'s generic should be a type parameter
-        let generics = tcx.generics_of(def_id);
-        let fn_generic = generics.param_at(0, tcx);
-        let generic_ty = Ty::new_param(tcx, fn_generic.index, fn_generic.name);
-        let expected_fn_sig =
-            tcx.mk_fn_sig([], generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
-        let expected_ty = Ty::new_fn_ptr(tcx, Binder::dummy(expected_fn_sig));
-
-        // we emit the same error to suggest changing the arg no matter what's wrong with the arg
-        let emit_main_fn_arg_err = || {
-            tcx.sess.emit_err(LangStartIncorrectParam {
-                param_span: decl.inputs[0].span,
-                param_num: 1,
-                expected_ty: expected_ty,
-                found_ty: main_arg,
-            });
-        };
-
-        if let ty::FnPtr(main_fn_sig) = main_arg.kind() {
-            let main_fn_inputs = main_fn_sig.inputs();
-            if main_fn_inputs.iter().count() != 0 {
-                emit_main_fn_arg_err();
-            }
-
-            let output = main_fn_sig.output();
-            output.map_bound(|ret_ty| {
-                // if the output ty is a generic, it's probably the right one
-                if !matches!(ret_ty.kind(), ty::Param(_)) {
-                    emit_main_fn_arg_err();
-                }
-            });
-        } else {
-            emit_main_fn_arg_err();
-        }
-    }
-
-    // second arg is isize
-    if let Some(&argc_arg) = inputs.get(1) {
-        if argc_arg != tcx.types.isize {
-            tcx.sess.emit_err(LangStartIncorrectParam {
-                param_span: decl.inputs[1].span,
-                param_num: 2,
-                expected_ty: tcx.types.isize,
-                found_ty: argc_arg,
-            });
-        }
-    }
-
-    // third arg is `*const *const u8`
-    if let Some(&argv_arg) = inputs.get(2) {
-        let mut argv_is_okay = false;
-        if let ty::RawPtr(outer_ptr) = argv_arg.kind() {
-            if outer_ptr.mutbl.is_not() {
-                if let ty::RawPtr(inner_ptr) = outer_ptr.ty.kind() {
-                    if inner_ptr.mutbl.is_not() && inner_ptr.ty == tcx.types.u8 {
-                        argv_is_okay = true;
-                    }
-                }
-            }
-        }
-
-        if !argv_is_okay {
-            let inner_ptr_ty =
-                Ty::new_ptr(tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: tcx.types.u8 });
-            let expected_ty =
-                Ty::new_ptr(tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: inner_ptr_ty });
-            tcx.sess.emit_err(LangStartIncorrectParam {
-                param_span: decl.inputs[2].span,
-                param_num: 3,
-                expected_ty,
-                found_ty: argv_arg,
-            });
-        }
-    }
-
-    // fourth arg is `sigpipe: u8`
-    if let Some(&sigpipe_arg) = inputs.get(3) {
-        if sigpipe_arg != tcx.types.u8 {
-            tcx.sess.emit_err(LangStartIncorrectParam {
-                param_span: decl.inputs[3].span,
-                param_num: 4,
-                expected_ty: tcx.types.u8,
-                found_ty: sigpipe_arg,
-            });
-        }
-    }
-
-    // output type is isize
-    if fn_sig.output() != tcx.types.isize {
-        tcx.sess.emit_err(LangStartIncorrectRetTy {
-            ret_span: decl.output.span(),
-            expected_ty: tcx.types.isize,
-            found_ty: fn_sig.output(),
-        });
-    }
+    check_function_signature(
+        tcx,
+        ObligationCause::new(
+            tcx.def_span(def_id),
+            def_id,
+            ObligationCauseCode::LangFunctionType(sym::start),
+        ),
+        def_id.into(),
+        expected_sig,
+    );
 }

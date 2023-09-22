@@ -90,14 +90,14 @@ use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
-    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, IsAsync, Item,
+    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
     ItemKind, LangItem, Local, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
     QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::mir::ConstantKind;
+use rustc_middle::mir::Const;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -1510,7 +1510,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 && let bnd_ty = subst.type_at(0)
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
                 && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, min_val.to_valtree()))
-                && let min_const_kind = ConstantKind::from_value(const_val, bnd_ty)
+                && let min_const_kind = Const::from_value(const_val, bnd_ty)
                 && let Some(min_const) = miri_to_const(cx, min_const_kind)
                 && let Some(start_const) = constant(cx, cx.typeck_results(), start)
             {
@@ -1526,7 +1526,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                         && let bnd_ty = subst.type_at(0)
                         && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
                         && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, max_val.to_valtree()))
-                        && let max_const_kind = ConstantKind::from_value(const_val, bnd_ty)
+                        && let max_const_kind = Const::from_value(const_val, bnd_ty)
                         && let Some(max_const) = miri_to_const(cx, max_const_kind)
                         && let Some(end_const) = constant(cx, cx.typeck_results(), end)
                     {
@@ -1958,8 +1958,8 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 /// Checks if the given function kind is an async function.
 pub fn is_async_fn(kind: FnKind<'_>) -> bool {
     match kind {
-        FnKind::ItemFn(_, _, header) => header.asyncness == IsAsync::Async,
-        FnKind::Method(_, sig) => sig.header.asyncness == IsAsync::Async,
+        FnKind::ItemFn(_, _, header) => header.asyncness .is_async(),
+        FnKind::Method(_, sig) => sig.header.asyncness.is_async(),
         FnKind::Closure => false,
     }
 }

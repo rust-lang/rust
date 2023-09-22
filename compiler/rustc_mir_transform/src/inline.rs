@@ -652,11 +652,11 @@ impl<'tcx> Inliner<'tcx> {
                 // `required_consts`, here we may not only have `ConstKind::Unevaluated`
                 // because we are calling `subst_and_normalize_erasing_regions`.
                 caller_body.required_consts.extend(
-                    callee_body.required_consts.iter().copied().filter(|&ct| match ct.literal {
-                        ConstantKind::Ty(_) => {
+                    callee_body.required_consts.iter().copied().filter(|&ct| match ct.const_ {
+                        Const::Ty(_) => {
                             bug!("should never encounter ty::UnevaluatedConst in `required_consts`")
                         }
-                        ConstantKind::Val(..) | ConstantKind::Unevaluated(..) => true,
+                        Const::Val(..) | Const::Unevaluated(..) => true,
                     }),
                 );
             }
@@ -824,7 +824,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 }
             }
             TerminatorKind::Call { func: Operand::Constant(ref f), unwind, .. } => {
-                let fn_ty = self.instance.subst_mir(tcx, ty::EarlyBinder::bind(&f.literal.ty()));
+                let fn_ty = self.instance.subst_mir(tcx, ty::EarlyBinder::bind(&f.const_.ty()));
                 self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind() && tcx.is_intrinsic(def_id) {
                     // Don't give intrinsics the extra penalty for calls
                     INSTR_COST

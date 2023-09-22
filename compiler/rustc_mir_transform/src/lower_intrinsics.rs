@@ -32,10 +32,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
                                     *destination,
-                                    Rvalue::Use(Operand::Constant(Box::new(Constant {
+                                    Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                                         span: terminator.source_info.span,
                                         user_ty: None,
-                                        literal: ConstantKind::zero_sized(tcx.types.unit),
+                                        const_: Const::zero_sized(tcx.types.unit),
                                     }))),
                                 ))),
                             });

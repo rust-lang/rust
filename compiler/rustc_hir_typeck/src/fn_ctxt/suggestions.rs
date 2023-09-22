@@ -987,10 +987,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let bound_vars = self.tcx.late_bound_vars(fn_id);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = match self.tcx.asyncness(fn_id.owner) {
-                hir::IsAsync::Async => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                ty::Asyncness::Yes => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
                     span_bug!(fn_decl.output.span(), "failed to get output type of async function")
                 }),
-                hir::IsAsync::NotAsync => ty,
+                ty::Asyncness::No => ty,
             };
             let ty = self.normalize(expr.span, ty);
             if self.can_coerce(found, ty) {

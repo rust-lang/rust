@@ -26,13 +26,13 @@ pub trait Visitor<'a, 'tcx: 'a>: Sized {
         walk_pat(self, pat);
     }
 
-    // Note: We don't have visitors for `ty::Const` and `mir::ConstantKind`
+    // Note: We don't have visitors for `ty::Const` and `mir::Const`
     // (even though these types occur in THIR) for consistency and to reduce confusion,
     // since the lazy creation of constants during thir construction causes most
-    // 'constants' to not be of type `ty::Const` or `mir::ConstantKind` at that
+    // 'constants' to not be of type `ty::Const` or `mir::Const` at that
     // stage (they are mostly still identified by `DefId` or `hir::Lit`, see
     // the variants `Literal`, `NonHirLiteral` and `NamedConst` in `thir::ExprKind`).
-    // You have to manually visit `ty::Const` and `mir::ConstantKind` through the
+    // You have to manually visit `ty::Const` and `mir::Const` through the
     // other `visit*` functions.
 }
 

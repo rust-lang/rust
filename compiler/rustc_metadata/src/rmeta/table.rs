@@ -205,9 +205,9 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
-    hir::IsAsync {
-        ( NotAsync )
-        ( Async    )
+    ty::Asyncness {
+        ( Yes )
+        ( No  )
     }
 }
 

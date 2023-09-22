@@ -4,8 +4,7 @@ use crate::BorrowckInferCtxt;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
-use rustc_middle::mir::Constant;
-use rustc_middle::mir::{Body, Location, Promoted};
+use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
@@ -117,9 +116,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
-        let literal = constant.literal;
-        constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(location));
+    fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, location: Location) {
+        let const_ = constant.const_;
+        constant.const_ = self.renumber_regions(const_, || RegionCtxt::Location(location));
         debug!("constant: {:#?}", constant);
     }
 }

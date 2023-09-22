@@ -8,7 +8,7 @@ use either::{Either, Left, Right};
 use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, Ty};
+use rustc_middle::ty::{ConstInt, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
@@ -165,7 +165,15 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline(always)]
     pub fn from_immediate(imm: Immediate<Prov>, layout: TyAndLayout<'tcx>) -> Self {
-        debug_assert!(layout.is_sized(), "immediates must be sized");
+        debug_assert!(
+            match (imm, layout.abi) {
+                (Immediate::Scalar(..), Abi::Scalar(..)) => true,
+                (Immediate::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                (Immediate::Uninit, _) if layout.is_sized() => true,
+                _ => false,
+            },
+            "immediate {imm:?} does not fit to layout {layout:?}",
+        );
         ImmTy { imm, layout }
     }
 
@@ -192,6 +200,12 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
+    }
+
+    #[inline]
+    pub fn from_bool(b: bool, tcx: TyCtxt<'tcx>) -> Self {
+        let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(tcx.types.bool)).unwrap();
+        Self::from_scalar(Scalar::from_bool(b), layout)
     }
 
     #[inline]
@@ -448,7 +462,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     alloc_range(Size::ZERO, size),
                     /*read_provenance*/ matches!(s, abi::Pointer(_)),
                 )?;
-                Some(ImmTy { imm: scalar.into(), layout: mplace.layout })
+                Some(ImmTy::from_scalar(scalar, mplace.layout))
             }
             Abi::ScalarPair(
                 abi::Scalar::Initialized { value: a, .. },
@@ -468,7 +482,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     alloc_range(b_offset, b_size),
                     /*read_provenance*/ matches!(b, abi::Pointer(_)),
                 )?;
-                Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout })
+                Some(ImmTy::from_immediate(Immediate::ScalarPair(a_val, b_val), mplace.layout))
             }
             _ => {
                 // Neither a scalar nor scalar pair.
@@ -514,11 +528,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abi::Scalar(abi::Scalar::Initialized { .. })
                 | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
         ) {
-            span_bug!(
-                self.cur_span(),
-                "primitive read not possible for type: {:?}",
-                op.layout().ty
-            );
+            span_bug!(self.cur_span(), "primitive read not possible for type: {}", op.layout().ty);
         }
         let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
@@ -669,7 +679,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?)?,
                 op.layout,
             ),
-            "eval_place of a MIR place with type {:?} produced an interpreter operand with type {:?}",
+            "eval_place of a MIR place with type {:?} produced an interpreter operand with type {}",
             mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
             op.layout.ty,
         );
@@ -692,7 +702,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Constant(constant) => {
                 let c =
-                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
+                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.const_)?;
 
                 // This can still fail:
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all

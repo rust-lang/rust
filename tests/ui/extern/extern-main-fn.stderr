@@ -4,8 +4,8 @@ error[E0580]: `main` function has wrong type
 LL | extern "C" fn main() {}
    | ^^^^^^^^^^^^^^^^^^^^ expected "Rust" fn, found "C" fn
    |
-   = note: expected fn pointer `fn()`
-              found fn pointer `extern "C" fn()`
+   = note: expected signature `fn()`
+              found signature `extern "C" fn()`
 
 error: aborting due to previous error
 

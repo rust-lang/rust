@@ -11,8 +11,8 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use std::ops::Not;
 
+use super::check_function_signature;
 use crate::errors;
-use crate::require_same_types;
 
 pub(crate) fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     match tcx.entry_fn(()) {
@@ -112,7 +112,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     let main_asyncness = tcx.asyncness(main_def_id);
-    if let hir::IsAsync::Async = main_asyncness {
+    if main_asyncness.is_async() {
         let asyncness_span = main_fn_asyncness_span(tcx, main_def_id);
         tcx.sess.emit_err(errors::MainFunctionAsync { span: main_span, asyncness: asyncness_span });
         error = true;
@@ -162,33 +162,33 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             error = true;
         }
         // now we can take the return type of the given main function
-        expected_return_type = main_fnsig.output();
+        expected_return_type = norm_return_ty;
     } else {
         // standard () main return type
-        expected_return_type = ty::Binder::dummy(Ty::new_unit(tcx));
+        expected_return_type = tcx.types.unit;
     }
 
     if error {
         return;
     }
 
-    let se_ty = Ty::new_fn_ptr(
-        tcx,
-        expected_return_type.map_bound(|expected_return_type| {
-            tcx.mk_fn_sig([], expected_return_type, false, hir::Unsafety::Normal, Abi::Rust)
-        }),
-    );
+    let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+        [],
+        expected_return_type,
+        false,
+        hir::Unsafety::Normal,
+        Abi::Rust,
+    ));
 
-    require_same_types(
+    check_function_signature(
         tcx,
-        &ObligationCause::new(
+        ObligationCause::new(
             main_span,
             main_diagnostics_def_id,
             ObligationCauseCode::MainFunctionType,
         ),
-        param_env,
-        se_ty,
-        Ty::new_fn_ptr(tcx, main_fnsig),
+        main_def_id,
+        expected_sig,
     );
 }
 
@@ -212,7 +212,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         });
                         error = true;
                     }
-                    if let hir::IsAsync::Async = sig.header.asyncness {
+                    if sig.header.asyncness.is_async() {
                         let span = tcx.def_span(it.owner_id);
                         tcx.sess.emit_err(errors::StartAsync { span: span });
                         error = true;
@@ -247,27 +247,23 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 }
             }
 
-            let se_ty = Ty::new_fn_ptr(
-                tcx,
-                ty::Binder::dummy(tcx.mk_fn_sig(
-                    [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
-                    tcx.types.isize,
-                    false,
-                    hir::Unsafety::Normal,
-                    Abi::Rust,
-                )),
-            );
+            let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+                [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
+                tcx.types.isize,
+                false,
+                hir::Unsafety::Normal,
+                Abi::Rust,
+            ));
 
-            require_same_types(
+            check_function_signature(
                 tcx,
-                &ObligationCause::new(
+                ObligationCause::new(
                     start_span,
                     start_def_id,
                     ObligationCauseCode::StartFunctionType,
                 ),
-                ty::ParamEnv::empty(), // start should not have any where bounds.
-                se_ty,
-                Ty::new_fn_ptr(tcx, tcx.fn_sig(start_def_id).instantiate_identity()),
+                start_def_id.into(),
+                expected_sig,
             );
         }
         _ => {

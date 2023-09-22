@@ -595,7 +595,7 @@ fn compare_asyncness<'tcx>(
     trait_m: ty::AssocItem,
     delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.asyncness(trait_m.def_id) == hir::IsAsync::Async {
+    if tcx.asyncness(trait_m.def_id).is_async() {
         match tcx.fn_sig(impl_m.def_id).skip_binder().skip_binder().output().kind() {
             ty::Alias(ty::Opaque, ..) => {
                 // allow both `async fn foo()` and `fn foo() -> impl Future`

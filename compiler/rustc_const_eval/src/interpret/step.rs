@@ -177,7 +177,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             UnaryOp(un_op, ref operand) => {
                 // The operand always has the same type as the result.
                 let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
-                let val = self.unary_op(un_op, &val)?;
+                let val = self.wrapping_unary_op(un_op, &val)?;
                 assert_eq!(val.layout, dest.layout, "layout mismatch for result of {un_op:?}");
                 self.write_immediate(*val, &dest)?;
             }

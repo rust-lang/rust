@@ -42,36 +42,84 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 
-use super::{DepContext, DepKind, FingerprintStyle};
+use super::{DepContext, FingerprintStyle};
 use crate::ich::StableHashingContext;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::AtomicRef;
 use rustc_hir::definitions::DefPathHash;
 use std::fmt;
 use std::hash::Hash;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-pub struct DepNode<K> {
-    pub kind: K,
+/// This serves as an index into arrays built by `make_dep_kind_array`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DepKind {
+    variant: u16,
+}
+
+impl DepKind {
+    #[inline]
+    pub const fn new(variant: u16) -> Self {
+        Self { variant }
+    }
+
+    #[inline]
+    pub const fn as_inner(&self) -> u16 {
+        self.variant
+    }
+
+    #[inline]
+    pub const fn as_usize(&self) -> usize {
+        self.variant as usize
+    }
+}
+
+static_assert_size!(DepKind, 2);
+
+pub fn default_dep_kind_debug(kind: DepKind, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.debug_struct("DepKind").field("variant", &kind.variant).finish()
+}
+
+pub static DEP_KIND_DEBUG: AtomicRef<fn(DepKind, &mut fmt::Formatter<'_>) -> fmt::Result> =
+    AtomicRef::new(&(default_dep_kind_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+
+impl fmt::Debug for DepKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (*DEP_KIND_DEBUG)(*self, f)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DepNode {
+    pub kind: DepKind,
     pub hash: PackedFingerprint,
 }
 
-impl<K: DepKind> DepNode<K> {
+// We keep a lot of `DepNode`s in memory during compilation. It's not
+// required that their size stay the same, but we don't want to change
+// it inadvertently. This assert just ensures we're aware of any change.
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+static_assert_size!(DepNode, 18);
+
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+static_assert_size!(DepNode, 24);
+
+impl DepNode {
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
-    pub fn new_no_params<Tcx>(tcx: Tcx, kind: K) -> DepNode<K>
+    pub fn new_no_params<Tcx>(tcx: Tcx, kind: DepKind) -> DepNode
     where
-        Tcx: super::DepContext<DepKind = K>,
+        Tcx: super::DepContext,
     {
         debug_assert_eq!(tcx.fingerprint_style(kind), FingerprintStyle::Unit);
         DepNode { kind, hash: Fingerprint::ZERO.into() }
     }
 
-    pub fn construct<Tcx, Key>(tcx: Tcx, kind: K, arg: &Key) -> DepNode<K>
+    pub fn construct<Tcx, Key>(tcx: Tcx, kind: DepKind, arg: &Key) -> DepNode
     where
-        Tcx: super::DepContext<DepKind = K>,
+        Tcx: super::DepContext,
         Key: DepNodeParams<Tcx>,
     {
         let hash = arg.to_fingerprint(tcx);
@@ -93,18 +141,25 @@ impl<K: DepKind> DepNode<K> {
     /// Construct a DepNode from the given DepKind and DefPathHash. This
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
-    pub fn from_def_path_hash<Tcx>(tcx: Tcx, def_path_hash: DefPathHash, kind: K) -> Self
+    pub fn from_def_path_hash<Tcx>(tcx: Tcx, def_path_hash: DefPathHash, kind: DepKind) -> Self
     where
-        Tcx: super::DepContext<DepKind = K>,
+        Tcx: super::DepContext,
     {
         debug_assert!(tcx.fingerprint_style(kind) == FingerprintStyle::DefPathHash);
         DepNode { kind, hash: def_path_hash.0.into() }
     }
 }
 
-impl<K: DepKind> fmt::Debug for DepNode<K> {
+pub fn default_dep_node_debug(node: DepNode, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.debug_struct("DepNode").field("kind", &node.kind).field("hash", &node.hash).finish()
+}
+
+pub static DEP_NODE_DEBUG: AtomicRef<fn(DepNode, &mut fmt::Formatter<'_>) -> fmt::Result> =
+    AtomicRef::new(&(default_dep_node_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+
+impl fmt::Debug for DepNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        K::debug_node(self, f)
+        (*DEP_NODE_DEBUG)(*self, f)
     }
 }
 
@@ -129,7 +184,7 @@ pub trait DepNodeParams<Tcx: DepContext>: fmt::Debug + Sized {
     /// `fingerprint_style()` is not `FingerprintStyle::Opaque`.
     /// It is always valid to return `None` here, in which case incremental
     /// compilation will treat the query as having changed instead of forcing it.
-    fn recover(tcx: Tcx, dep_node: &DepNode<Tcx::DepKind>) -> Option<Self>;
+    fn recover(tcx: Tcx, dep_node: &DepNode) -> Option<Self>;
 }
 
 impl<Tcx: DepContext, T> DepNodeParams<Tcx> for T
@@ -156,7 +211,7 @@ where
     }
 
     #[inline(always)]
-    default fn recover(_: Tcx, _: &DepNode<Tcx::DepKind>) -> Option<Self> {
+    default fn recover(_: Tcx, _: &DepNode) -> Option<Self> {
         None
     }
 }
@@ -216,10 +271,13 @@ pub struct DepKindStruct<Tcx: DepContext> {
     /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
     /// is actually a `DefPathHash`, and can therefore just look up the corresponding
     /// `DefId` in `tcx.def_path_hash_to_def_id`.
-    pub force_from_dep_node: Option<fn(tcx: Tcx, dep_node: DepNode<Tcx::DepKind>) -> bool>,
+    pub force_from_dep_node: Option<fn(tcx: Tcx, dep_node: DepNode) -> bool>,
 
     /// Invoke a query to put the on-disk cached value in memory.
-    pub try_load_from_on_disk_cache: Option<fn(Tcx, DepNode<Tcx::DepKind>)>,
+    pub try_load_from_on_disk_cache: Option<fn(Tcx, DepNode)>,
+
+    /// The name of this dep kind.
+    pub name: &'static &'static str,
 }
 
 /// A "work product" corresponds to a `.o` (or other) file that we
