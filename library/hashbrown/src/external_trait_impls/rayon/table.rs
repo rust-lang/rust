@@ -165,7 +165,7 @@ impl<T: Send, A: Allocator> HashTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_drain(&mut self) -> ParDrain<'_, T, A> {
         ParDrain {
-            inner: self.table.par_drain(),
+            inner: self.raw.par_drain(),
         }
     }
 }
@@ -177,7 +177,7 @@ impl<T: Send, A: Allocator + Send> IntoParallelIterator for HashTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
         IntoParIter {
-            inner: self.table.into_par_iter(),
+            inner: self.raw.into_par_iter(),
         }
     }
 }
@@ -189,7 +189,7 @@ impl<'a, T: Sync, A: Allocator> IntoParallelIterator for &'a HashTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
         ParIter {
-            inner: unsafe { self.table.par_iter() },
+            inner: unsafe { self.raw.par_iter() },
             marker: PhantomData,
         }
     }
@@ -202,7 +202,7 @@ impl<'a, T: Send, A: Allocator> IntoParallelIterator for &'a mut HashTable<T, A>
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
         ParIterMut {
-            inner: unsafe { self.table.par_iter() },
+            inner: unsafe { self.raw.par_iter() },
             marker: PhantomData,
         }
     }
