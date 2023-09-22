@@ -530,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // When encountering a type error on the value of a `break`, try to point at the reason for the
     // expected type.
-    fn annotate_loop_expected_due_to_inference(
+    pub fn annotate_loop_expected_due_to_inference(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
@@ -540,11 +540,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         let mut parent_id = self.tcx.hir().parent_id(expr.hir_id);
+        let mut parent;
         loop {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
-            let Some(hir::Node::Expr(parent)) = self.tcx.hir().find(parent_id) else {
+            let Some(hir::Node::Expr(p)) = self.tcx.hir().find(parent_id) else {
                 break;
             };
+            parent = p;
             parent_id = self.tcx.hir().parent_id(parent.hir_id);
             let hir::ExprKind::Break(destination, _) = parent.kind else {
                 continue;
@@ -582,6 +584,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             format!("this loop is expected to be of type `{expected}`"),
                         );
+                    } else {
+                        // Locate all other `break` statements within the same `loop` that might
+                        // have affected inference.
+                        struct FindBreaks<'tcx> {
+                            destination: hir::Destination,
+                            uses: Vec<&'tcx hir::Expr<'tcx>>,
+                        }
+                        impl<'tcx> Visitor<'tcx> for FindBreaks<'tcx> {
+                            fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+                                if let hir::ExprKind::Break(destination, _) = ex.kind
+                                    && self.destination.label == destination.label
+                                {
+                                    self.uses.push(ex);
+                                }
+                                hir::intravisit::walk_expr(self, ex);
+                            }
+                        }
+                        let mut expr_finder = FindBreaks { destination, uses: vec![] };
+                        expr_finder.visit_expr(parent);
+                        for ex in expr_finder.uses {
+                            let hir::ExprKind::Break(_, val) = ex.kind else {
+                                continue;
+                            };
+                            let ty = match val {
+                                Some(val) => {
+                                    match self.typeck_results.borrow().expr_ty_adjusted_opt(val) {
+                                        None => continue,
+                                        Some(ty) => ty,
+                                    }
+                                }
+                                None => self.tcx.types.unit,
+                            };
+                            if self.can_eq(self.param_env, ty, expected) {
+                                err.span_label(
+                                    ex.span,
+                                    format!("expected because of this `break`"),
+                                );
+                            }
+                        }
                     }
                     break;
                 }
