@@ -863,6 +863,137 @@ where
             },
         }
     }
+
+    /// Attempts to get mutable references to `N` values in the map at once.
+    ///
+    /// The `eq` argument should be a closure such that `eq(i, k)` returns true if `k` is equal to
+    /// the `i`th key to be looked up.
+    ///
+    /// Returns an array of length `N` with the results of each query. For soundness, at most one
+    /// mutable reference will be returned to any value. `None` will be returned if any of the
+    /// keys are duplicates or missing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use ahash::AHasher;
+    /// use hashbrown::hash_table::Entry;
+    /// use hashbrown::HashTable;
+    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    ///
+    /// let mut libraries: HashTable<(&str, u32)> = HashTable::new();
+    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// for (k, v) in [
+    ///     ("Bodleian Library", 1602),
+    ///     ("Athenæum", 1807),
+    ///     ("Herzogin-Anna-Amalia-Bibliothek", 1691),
+    ///     ("Library of Congress", 1800),
+    /// ] {
+    ///     libraries.insert_unchecked(hasher(&k), (k, v), |(k, _)| hasher(&k));
+    /// }
+    ///
+    /// let keys = ["Athenæum", "Library of Congress"];
+    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// assert_eq!(
+    ///     got,
+    ///     Some([&mut ("Athenæum", 1807), &mut ("Library of Congress", 1800),]),
+    /// );
+    ///
+    /// // Missing keys result in None
+    /// let keys = ["Athenæum", "New York Public Library"];
+    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// assert_eq!(got, None);
+    ///
+    /// // Duplicate keys result in None
+    /// let keys = ["Athenæum", "Athenæum"];
+    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// assert_eq!(got, None);
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn get_many_mut<const N: usize>(
+        &mut self,
+        hashes: [u64; N],
+        eq: impl FnMut(usize, &T) -> bool,
+    ) -> Option<[&'_ mut T; N]> {
+        self.table.get_many_mut(hashes, eq)
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once, without validating that
+    /// the values are unique.
+    ///
+    /// The `eq` argument should be a closure such that `eq(i, k)` returns true if `k` is equal to
+    /// the `i`th key to be looked up.
+    ///
+    /// Returns an array of length `N` with the results of each query. `None` will be returned if
+    /// any of the keys are missing.
+    ///
+    /// For a safe alternative see [`get_many_mut`](`HashMap::get_many_mut`).
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with overlapping keys is *[undefined behavior]* even if the resulting
+    /// references are not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use ahash::AHasher;
+    /// use hashbrown::hash_table::Entry;
+    /// use hashbrown::HashTable;
+    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    ///
+    /// let mut libraries: HashTable<(&str, u32)> = HashTable::new();
+    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// for (k, v) in [
+    ///     ("Bodleian Library", 1602),
+    ///     ("Athenæum", 1807),
+    ///     ("Herzogin-Anna-Amalia-Bibliothek", 1691),
+    ///     ("Library of Congress", 1800),
+    /// ] {
+    ///     libraries.insert_unchecked(hasher(&k), (k, v), |(k, _)| hasher(&k));
+    /// }
+    ///
+    /// let keys = ["Athenæum", "Library of Congress"];
+    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// assert_eq!(
+    ///     got,
+    ///     Some([&mut ("Athenæum", 1807), &mut ("Library of Congress", 1800),]),
+    /// );
+    ///
+    /// // Missing keys result in None
+    /// let keys = ["Athenæum", "New York Public Library"];
+    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// assert_eq!(got, None);
+    ///
+    /// // Duplicate keys result in None
+    /// let keys = ["Athenæum", "Athenæum"];
+    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// assert_eq!(got, None);
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub unsafe fn get_many_unchecked_mut<const N: usize>(
+        &mut self,
+        hashes: [u64; N],
+        eq: impl FnMut(usize, &T) -> bool,
+    ) -> Option<[&'_ mut T; N]> {
+        self.table.get_many_unchecked_mut(hashes, eq)
+    }
 }
 
 impl<T, A> IntoIterator for HashTable<T, A>
