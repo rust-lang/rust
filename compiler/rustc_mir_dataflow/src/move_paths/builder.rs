@@ -127,7 +127,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     }
                     ty::Adt(adt, _) => {
                         if !adt.is_box() {
-                            bug!("Adt should be a box type");
+                            bug!("Adt should be a box type when Place is deref");
                         }
                     }
                     ty::Bool
@@ -153,7 +153,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     | ty::Bound(_, _)
                     | ty::Infer(_)
                     | ty::Error(_)
-                    | ty::Placeholder(_) => bug!("Place has a wrong type {place_ty:#?}"),
+                    | ty::Placeholder(_) => {
+                        bug!("When Place is Deref it's type shouldn't be {place_ty:#?}")
+                    }
                 },
                 ProjectionElem::Field(_, _) => match place_ty.kind() {
                     ty::Adt(adt, _) if adt.has_dtor(tcx) => {
@@ -190,7 +192,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     | ty::Bound(_, _)
                     | ty::Infer(_)
                     | ty::Error(_)
-                    | ty::Placeholder(_) => bug!("Place has a wrong type {place_ty:#?}"),
+                    | ty::Placeholder(_) => bug!(
+                        "When Place contains ProjectionElem::Field it's type shouldn't be {place_ty:#?}"
+                    ),
                 },
                 ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                     match place_ty.kind() {
