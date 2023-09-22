@@ -336,7 +336,12 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
     fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _id: HirId, borrow: ty::BorrowKind) {
         self.prev_bind = None;
         if let euv::Place {
-            base: euv::PlaceBase::Local(vid),
+            base:
+                euv::PlaceBase::Local(vid)
+                | euv::PlaceBase::Upvar(UpvarId {
+                    var_path: UpvarPath { hir_id: vid },
+                    ..
+                }),
             base_ty,
             ..
         } = &cmt.place
