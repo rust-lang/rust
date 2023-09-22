@@ -51,6 +51,32 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 this.write_scalar(Scalar::from_u8(c_out.into()), &this.project_field(dest, 0)?)?;
                 this.write_immediate(*sum, &this.project_field(dest, 1)?)?;
             }
+            // Used to implement the `_subborrow_u32` and `_subborrow_u64` functions.
+            // Computes a - b with input and output borrow. The input borrow is an 8-bit
+            // value, which is interpreted as 1 if it is non-zero. The output borrow is
+            // an 8-bit value that will be 0 or 1.
+            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
+            "subborrow.32" | "subborrow.64" => {
+                if unprefixed_name == "subborrow.64" && this.tcx.sess.target.arch != "x86_64" {
+                    return Ok(EmulateByNameResult::NotSupported);
+                }
+
+                let [b_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let b_in = this.read_scalar(b_in)?.to_u8()? != 0;
+                let a = this.read_immediate(a)?;
+                let b = this.read_immediate(b)?;
+
+                let (sub, overflow1) = this.overflowing_binary_op(mir::BinOp::Sub, &a, &b)?;
+                let (sub, overflow2) = this.overflowing_binary_op(
+                    mir::BinOp::Sub,
+                    &sub,
+                    &ImmTy::from_uint(b_in, a.layout),
+                )?;
+                let b_out = overflow1 | overflow2;
+
+                this.write_scalar(Scalar::from_u8(b_out.into()), &this.project_field(dest, 0)?)?;
+                this.write_immediate(*sub, &this.project_field(dest, 1)?)?;
+            }
 
             name if name.starts_with("sse.") => {
                 return sse::EvalContextExt::emulate_x86_sse_intrinsic(

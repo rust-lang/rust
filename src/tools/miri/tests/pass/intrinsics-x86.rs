@@ -13,6 +13,14 @@ mod x86 {
         (c_out, sum)
     }
 
+    fn sbb(b_in: u8, a: u32, b: u32) -> (u8, u32) {
+        let mut sum = 0;
+        // SAFETY: There are no safety requirements for calling `_subborrow_u32`.
+        // It's just unsafe for API consistency with other intrinsics.
+        let b_out = unsafe { arch::_subborrow_u32(b_in, a, b, &mut sum) };
+        (b_out, sum)
+    }
+
     pub fn main() {
         assert_eq!(adc(0, 1, 1), (0, 2));
         assert_eq!(adc(1, 1, 1), (0, 3));
@@ -22,6 +30,19 @@ mod x86 {
         assert_eq!(adc(1, u32::MAX, u32::MAX), (1, u32::MAX));
         assert_eq!(adc(2, u32::MAX, u32::MAX), (1, u32::MAX));
         assert_eq!(adc(u8::MAX, u32::MAX, u32::MAX), (1, u32::MAX));
+
+        assert_eq!(sbb(0, 1, 1), (0, 0));
+        assert_eq!(sbb(1, 1, 1), (1, u32::MAX));
+        assert_eq!(sbb(2, 1, 1), (1, u32::MAX)); // any non-zero borrow acts as 1!
+        assert_eq!(sbb(u8::MAX, 1, 1), (1, u32::MAX));
+        assert_eq!(sbb(0, 2, 1), (0, 1));
+        assert_eq!(sbb(1, 2, 1), (0, 0));
+        assert_eq!(sbb(2, 2, 1), (0, 0));
+        assert_eq!(sbb(u8::MAX, 2, 1), (0, 0));
+        assert_eq!(sbb(0, 1, 2), (1, u32::MAX));
+        assert_eq!(sbb(1, 1, 2), (1, u32::MAX - 1));
+        assert_eq!(sbb(2, 1, 2), (1, u32::MAX - 1));
+        assert_eq!(sbb(u8::MAX, 1, 2), (1, u32::MAX - 1));
     }
 }
 
@@ -37,6 +58,14 @@ mod x86_64 {
         (c_out, sum)
     }
 
+    fn sbb(b_in: u8, a: u64, b: u64) -> (u8, u64) {
+        let mut sum = 0;
+        // SAFETY: There are no safety requirements for calling `_subborrow_u64`.
+        // It's just unsafe for API consistency with other intrinsics.
+        let b_out = unsafe { arch::_subborrow_u64(b_in, a, b, &mut sum) };
+        (b_out, sum)
+    }
+
     pub fn main() {
         assert_eq!(adc(0, 1, 1), (0, 2));
         assert_eq!(adc(1, 1, 1), (0, 3));
@@ -46,6 +75,19 @@ mod x86_64 {
         assert_eq!(adc(1, u64::MAX, u64::MAX), (1, u64::MAX));
         assert_eq!(adc(2, u64::MAX, u64::MAX), (1, u64::MAX));
         assert_eq!(adc(u8::MAX, u64::MAX, u64::MAX), (1, u64::MAX));
+
+        assert_eq!(sbb(0, 1, 1), (0, 0));
+        assert_eq!(sbb(1, 1, 1), (1, u64::MAX));
+        assert_eq!(sbb(2, 1, 1), (1, u64::MAX)); // any non-zero borrow acts as 1!
+        assert_eq!(sbb(u8::MAX, 1, 1), (1, u64::MAX));
+        assert_eq!(sbb(0, 2, 1), (0, 1));
+        assert_eq!(sbb(1, 2, 1), (0, 0));
+        assert_eq!(sbb(2, 2, 1), (0, 0));
+        assert_eq!(sbb(u8::MAX, 2, 1), (0, 0));
+        assert_eq!(sbb(0, 1, 2), (1, u64::MAX));
+        assert_eq!(sbb(1, 1, 2), (1, u64::MAX - 1));
+        assert_eq!(sbb(2, 1, 2), (1, u64::MAX - 1));
+        assert_eq!(sbb(u8::MAX, 1, 2), (1, u64::MAX - 1));
     }
 }
 
