@@ -95,4 +95,7 @@ fn main() {
         break LOOP;
         //~^ ERROR cannot find value `LOOP` in this scope
     }
+    loop { // point at the return type
+        break 2; //~ ERROR mismatched types
+    }
 }
