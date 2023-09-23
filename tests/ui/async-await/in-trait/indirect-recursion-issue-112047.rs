@@ -1,6 +1,6 @@
 // edition: 2021
 // build-fail
-//~^^ ERROR overflow evaluating the requirement `<A as Second>::{opaque#0} == _`
+//~^^ ERROR cycle detected when computing layout of
 
 #![feature(async_fn_in_trait)]
 

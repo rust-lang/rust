@@ -657,9 +657,8 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Generator(did, args, movability) => {
                 ty::Generator(did, args.try_fold_with(folder)?, movability)
             }
-            ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
-            ty::GeneratorWitnessMIR(did, args) => {
-                ty::GeneratorWitnessMIR(did, args.try_fold_with(folder)?)
+            ty::GeneratorWitness(did, args) => {
+                ty::GeneratorWitness(did, args.try_fold_with(folder)?)
             }
             ty::Closure(did, args) => ty::Closure(did, args.try_fold_with(folder)?),
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
@@ -708,8 +707,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 ty.visit_with(visitor)
             }
             ty::Generator(_did, ref args, _) => args.visit_with(visitor),
-            ty::GeneratorWitness(ref types) => types.visit_with(visitor),
-            ty::GeneratorWitnessMIR(_did, ref args) => args.visit_with(visitor),
+            ty::GeneratorWitness(_did, ref args) => args.visit_with(visitor),
             ty::Closure(_did, ref args) => args.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
 

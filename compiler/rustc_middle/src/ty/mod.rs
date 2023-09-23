@@ -106,9 +106,8 @@ pub use self::sty::{
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
-    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,
-    UserTypeAnnotationIndex,
+    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, TypeckResults,
+    UserType, UserTypeAnnotationIndex,
 };
 
 pub mod _match;

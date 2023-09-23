@@ -1458,17 +1458,11 @@ options! {
     dont_buffer_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) \
         (default: no)"),
-    drop_tracking: bool = (false, parse_bool, [TRACKED],
-        "enables drop tracking in generators (default: no)"),
-    drop_tracking_mir: bool = (false, parse_bool, [TRACKED],
-        "enables drop tracking on MIR in generators (default: no)"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv) \
         (default: no)"),
-    dump_drop_tracking_cfg: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "dump drop-tracking control-flow graph as a `.dot` file (default: no)"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "dump MIR state to file.
         `val` is used to select which passes and functions to dump. For example:

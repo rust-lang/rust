@@ -436,8 +436,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Ref(_, _, _)
                 | ty::Closure(_, _)
                 | ty::Generator(_, _, _)
-                | ty::GeneratorWitness(_)
-                | ty::GeneratorWitnessMIR(_, _)
+                | ty::GeneratorWitness(..)
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::Error(_) => return true,
@@ -569,8 +568,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Generator(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::GeneratorWitness(_)
-                | ty::GeneratorWitnessMIR(..) => {
+                | ty::GeneratorWitness(..) => {
                     // Only consider auto impls if there are no manual impls for the root of `self_ty`.
                     //
                     // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
@@ -946,8 +944,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::Tuple(_)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(..) => {
+            | ty::GeneratorWitness(..) => {
                 // These are built-in, and cannot have a custom `impl const Destruct`.
                 candidates.vec.push(ConstDestructCandidate(None));
             }
@@ -1020,8 +1017,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(..)
+            | ty::GeneratorWitness(..)
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)
@@ -1083,7 +1079,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(..)
             | ty::Alias(..)

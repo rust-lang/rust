@@ -1813,7 +1813,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Closure(..)
                         | ty::Generator(..)
                         | ty::GeneratorWitness(..)
-                        | ty::GeneratorWitnessMIR(..)
                         | ty::Never
                         | ty::Tuple(..)
                         // Integers and floats always have `u8` as their discriminant.
@@ -1863,7 +1862,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Closure(..)
                         | ty::Generator(..)
                         | ty::GeneratorWitness(..)
-                        | ty::GeneratorWitnessMIR(..)
                         | ty::Never
                         // Extern types have unit metadata, according to RFC 2850
                         | ty::Foreign(_)

@@ -245,7 +245,6 @@ fn do_orphan_check_impl<'tcx>(
             ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(..) => {

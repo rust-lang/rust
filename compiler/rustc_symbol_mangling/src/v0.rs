@@ -484,8 +484,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             ty::Alias(ty::Inherent, _) => bug!("symbol_names: unexpected inherent projection"),
             ty::Alias(ty::Weak, _) => bug!("symbol_names: unexpected weak projection"),
-            ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
-            ty::GeneratorWitnessMIR(..) => bug!("symbol_names: unexpected `GeneratorWitnessMIR`"),
+            ty::GeneratorWitness(..) => bug!("symbol_names: unexpected `GeneratorWitness`"),
         }
 
         // Only cache types that do not refer to an enclosing

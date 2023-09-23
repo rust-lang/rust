@@ -1,7 +1,4 @@
 // edition:2021
-// revisions: no_drop_tracking drop_tracking
-// [drop_tracking] compile-flags: -Zdrop-tracking=yes
-// [no_drop_tracking] compile-flags: -Zdrop-tracking=no
 #![feature(negative_impls)]
 #![allow(unused)]
 

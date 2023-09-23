@@ -940,7 +940,6 @@ impl TyCoercionStability {
                 | ty::FnDef(..)
                 | ty::Generator(..)
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Closure(..)
                 | ty::Never
                 | ty::Tuple(_)

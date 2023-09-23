@@ -453,24 +453,14 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_generator(tcx, a_id, args, movability))
         }
 
-        (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) => {
-            // Wrap our types with a temporary GeneratorWitness struct
-            // inside the binder so we can related them
-            let a_types = a_types.map_bound(GeneratorWitness);
-            let b_types = b_types.map_bound(GeneratorWitness);
-            // Then remove the GeneratorWitness for the result
-            let types = relation.relate(a_types, b_types)?.map_bound(|witness| witness.0);
-            Ok(Ty::new_generator_witness(tcx, types))
-        }
-
-        (&ty::GeneratorWitnessMIR(a_id, a_args), &ty::GeneratorWitnessMIR(b_id, b_args))
+        (&ty::GeneratorWitness(a_id, a_args), &ty::GeneratorWitness(b_id, b_args))
             if a_id == b_id =>
         {
             // All GeneratorWitness types with the same id represent
             // the (anonymous) type of the same generator expression. So
             // all of their regions should be equated.
             let args = relation.relate(a_args, b_args)?;
-            Ok(Ty::new_generator_witness_mir(tcx, a_id, args))
+            Ok(Ty::new_generator_witness(tcx, a_id, args))
         }
 
         (&ty::Closure(a_id, a_args), &ty::Closure(b_id, b_args)) if a_id == b_id => {
