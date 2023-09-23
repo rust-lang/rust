@@ -1765,9 +1765,9 @@ fn check_variances_for_type_defn<'tcx>(
         }
 
         let ty_param = &ty_generics.params[index];
-        let mut hir_param = &hir_generics.params[index];
+        let hir_param = &hir_generics.params[index];
 
-        if ty_param.name != hir_param.name.ident().name {
+        if ty_param.def_id != hir_param.def_id.into() {
             // valid programs always have lifetimes before types in the generic parameter list
             // ty_generics are normalized to be in this required order, and variances are built
             // from ty generics, not from hir generics. but we need hir generics to get
@@ -1777,12 +1777,7 @@ fn check_variances_for_type_defn<'tcx>(
             // got an error about it (or I'm wrong about this)
             tcx.sess
                 .delay_span_bug(hir_param.span, "hir generics and ty generics in different order");
-            for hp in hir_generics.params {
-                if hp.name.ident().name == ty_param.name {
-                    hir_param = hp;
-                    break;
-                }
-            }
+            continue;
         }
 
         match hir_param.name {
