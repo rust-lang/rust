@@ -490,19 +490,33 @@ function preLoadCss(cssUrl) {
         }
 
         if (sidebar) {
+            // keep this synchronized with ItemSection::ALL in html/render/mod.rs
+            // Re-exports aren't shown here, because they don't have child pages
+            //block("reexport", "reexports", "Re-exports");
             block("primitive", "primitives", "Primitive Types");
             block("mod", "modules", "Modules");
             block("macro", "macros", "Macros");
             block("struct", "structs", "Structs");
             block("enum", "enums", "Enums");
-            block("union", "unions", "Unions");
             block("constant", "constants", "Constants");
             block("static", "static", "Statics");
             block("trait", "traits", "Traits");
             block("fn", "functions", "Functions");
             block("type", "types", "Type Aliases");
+            block("union", "unions", "Unions");
+            // No point, because these items don't appear in modules
+            //block("impl", "impls", "Implementations");
+            //block("tymethod", "tymethods", "Type Methods");
+            //block("method", "methods", "Methods");
+            //block("structfield", "fields", "Fields");
+            //block("variant", "variants", "Variants");
+            //block("associatedtype", "associated-types", "Associated Types");
+            //block("associatedconstant", "associated-consts", "Associated Constants");
             block("foreigntype", "foreign-types", "Foreign Types");
             block("keyword", "keywords", "Keywords");
+            block("opaque", "opaque-types", "Opaque Types");
+            block("attr", "attributes", "Attribute Macros");
+            block("derive", "derives", "Derive Macros");
             block("traitalias", "trait-aliases", "Trait Aliases");
         }
     }
