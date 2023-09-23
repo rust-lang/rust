@@ -550,6 +550,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         may_dangle, Normal, template!(Word), WarnFollowing, dropck_eyepatch,
         "`may_dangle` has unstable semantics and may be removed in the future",
     ),
+    rustc_attr!(
+        rustc_auto_trait, Normal, template!(Word), WarnFollowing,
+        "`#[rustc_auto_trait]` is used to mark auto traits, only intended to be used in `core`",
+    ),
 
     // ==========================================================================
     // Internal attributes: Runtime related:
@@ -712,7 +716,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_coinductive, AttributeType::Normal, template!(Word), WarnFollowing, @only_local: true,
-        "#![rustc_coinductive] changes a trait to be coinductive, allowing cycles in the trait solver."
+        "#[rustc_coinductive] changes a trait to be coinductive, allowing cycles in the trait solver."
     ),
     rustc_attr!(
         rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,

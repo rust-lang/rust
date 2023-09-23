@@ -7,6 +7,12 @@ use crate::pin::Pin;
 use crate::ptr::{NonNull, Unique};
 use crate::task::{Context, Poll};
 
+#[cfg(bootstrap)]
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "unwind_safe_trait")]
+#[allow(missing_docs)]
+pub auto trait UnwindSafe {}
+
 /// A marker trait which represents "panic safe" types in Rust.
 ///
 /// This trait is implemented by default for many types and behaves similarly in
@@ -81,13 +87,21 @@ use crate::task::{Context, Poll};
 /// above, the lack of `unsafe` means it is mostly an advisory. The
 /// [`AssertUnwindSafe`] wrapper struct can be used to force this trait to be
 /// implemented for any closed over variables passed to `catch_unwind`.
+#[cfg(not(bootstrap))]
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "unwind_safe_trait")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may not be safely transferred across an unwind boundary",
     label = "`{Self}` may not be safely transferred across an unwind boundary"
 )]
-pub auto trait UnwindSafe {}
+#[rustc_auto_trait]
+pub trait UnwindSafe {}
+
+#[cfg(bootstrap)]
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "ref_unwind_safe_trait")]
+#[allow(missing_docs)]
+pub auto trait RefUnwindSafe {}
 
 /// A marker trait representing types where a shared reference is considered
 /// unwind safe.
@@ -97,6 +111,7 @@ pub auto trait UnwindSafe {}
 ///
 /// This is a "helper marker trait" used to provide impl blocks for the
 /// [`UnwindSafe`] trait, for more information see that documentation.
+#[cfg(not(bootstrap))]
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "ref_unwind_safe_trait")]
 #[rustc_on_unimplemented(
@@ -105,7 +120,8 @@ pub auto trait UnwindSafe {}
     label = "`{Self}` may contain interior mutability and a reference may not be safely \
              transferrable across a catch_unwind boundary"
 )]
-pub auto trait RefUnwindSafe {}
+#[rustc_auto_trait]
+pub trait RefUnwindSafe {}
 
 /// A simple wrapper around a type to assert that it is unwind safe.
 ///

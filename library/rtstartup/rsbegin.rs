@@ -14,19 +14,21 @@
 
 #![feature(no_core)]
 #![feature(lang_items)]
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![crate_type = "rlib"]
 #![no_core]
-#![allow(non_camel_case_types)]
+#![allow(internal_features, non_camel_case_types)]
 
 #[lang = "sized"]
 trait Sized {}
 #[lang = "sync"]
-auto trait Sync {}
+#[rustc_auto_trait]
+trait Sync {}
 #[lang = "copy"]
 trait Copy {}
 #[lang = "freeze"]
-auto trait Freeze {}
+#[rustc_auto_trait]
+trait Freeze {}
 
 #[lang = "drop_in_place"]
 #[inline]

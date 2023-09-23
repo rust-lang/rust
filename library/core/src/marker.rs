@@ -56,6 +56,12 @@ macro marker_impls {
     ( $(#[$($meta:tt)*])* unsafe $Trait:ident for ) => {},
 }
 
+#[cfg(bootstrap)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
+#[allow(missing_docs)]
+pub unsafe auto trait Send {}
+
 /// Types that can be transferred across thread boundaries.
 ///
 /// This trait is automatically implemented when the compiler determines it's
@@ -73,13 +79,15 @@ macro marker_impls {
 /// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
+#[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
 #[rustc_on_unimplemented(
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"
 )]
-pub unsafe auto trait Send {
+#[rustc_auto_trait]
+pub unsafe trait Send {
     // empty.
 }
 
@@ -498,6 +506,13 @@ impl Copy for ! {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Copy for &T {}
 
+#[cfg(bootstrap)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Sync")]
+#[lang = "sync"]
+#[allow(missing_docs)]
+pub unsafe auto trait Sync {}
+
 /// Types for which it is safe to share references between threads.
 ///
 /// This trait is automatically implemented when the compiler determines
@@ -568,6 +583,7 @@ impl<T: ?Sized> Copy for &T {}
 /// [ub]: ../../reference/behavior-considered-undefined.html
 /// [transmute]: crate::mem::transmute
 /// [nomicon-send-and-sync]: ../../nomicon/send-and-sync.html
+#[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Sync")]
 #[lang = "sync"]
@@ -631,7 +647,8 @@ impl<T: ?Sized> Copy for &T {}
     message = "`{Self}` cannot be shared between threads safely",
     label = "`{Self}` cannot be shared between threads safely"
 )]
-pub unsafe auto trait Sync {
+#[rustc_auto_trait]
+pub unsafe trait Sync {
     // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
     // lands in beta, and it has been extended to check whether a closure is
     // anywhere in the requirement chain, extend it as such (#48534):
@@ -862,12 +879,18 @@ pub trait DiscriminantKind {
     type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
 }
 
+#[cfg(bootstrap)]
+#[lang = "freeze"]
+pub(crate) unsafe auto trait Freeze {}
+
 /// Compiler-internal trait used to determine whether a type contains
 /// any `UnsafeCell` internally, but not through an indirection.
 /// This affects, for example, whether a `static` of that type is
 /// placed in read-only static memory or writable static memory.
+#[cfg(not(bootstrap))]
 #[lang = "freeze"]
-pub(crate) unsafe auto trait Freeze {}
+#[rustc_auto_trait]
+pub(crate) unsafe trait Freeze {}
 
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 marker_impls! {
@@ -878,6 +901,12 @@ marker_impls! {
         {T: ?Sized} &T,
         {T: ?Sized} &mut T,
 }
+
+#[cfg(bootstrap)]
+#[stable(feature = "pin", since = "1.33.0")]
+#[lang = "unpin"]
+#[allow(missing_docs)]
+pub auto trait Unpin {}
 
 /// Types that can be safely moved after being pinned.
 ///
@@ -920,13 +949,15 @@ marker_impls! {
 /// [`mem::replace`]: crate::mem::replace
 /// [Pin]: crate::pin::Pin
 /// [`pin` module]: crate::pin
+#[cfg(not(bootstrap))]
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_on_unimplemented(
     note = "consider using the `pin!` macro\nconsider using `Box::pin` if you need to access the pinned value outside of the current scope",
     message = "`{Self}` cannot be unpinned"
 )]
 #[lang = "unpin"]
-pub auto trait Unpin {}
+#[rustc_auto_trait]
+pub trait Unpin {}
 
 /// A marker type which does not implement `Unpin`.
 ///

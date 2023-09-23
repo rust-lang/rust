@@ -810,7 +810,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         errors::VisibilityNotPermittedNote::TraitImpl,
                     );
                     if let TyKind::Err = self_ty.kind {
-                        this.err_handler().emit_err(errors::ObsoleteAuto { span: item.span });
+                        this.err_handler().emit_err(errors::ObsoleteAutoSyntax {
+                            span: item.span,
+                            syntax: "impl Trait for .. {}",
+                        });
                     }
                     if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)
                     {
@@ -941,10 +944,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Trait(box Trait { is_auto, generics, bounds, items, .. }) => {
+            // We intentionally ignore `is_auto` since `auto` is now meaningless.
+            ItemKind::Trait(box Trait { is_auto: _, generics, bounds, items, .. }) => {
                 let is_const_trait = attr::contains_name(&item.attrs, sym::const_trait);
                 self.with_in_trait(is_const_trait, |this| {
-                    if *is_auto == IsAuto::Yes {
+                    if attr::contains_name(&item.attrs, sym::rustc_auto_trait) {
                         // Auto traits cannot have generics, super traits nor contain items.
                         this.deny_generic_params(generics, item.ident.span);
                         this.deny_super_traits(bounds, item.ident.span);

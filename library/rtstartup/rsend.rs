@@ -2,9 +2,10 @@
 
 #![feature(no_core)]
 #![feature(lang_items)]
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![crate_type = "rlib"]
 #![no_core]
+#![allow(internal_features)]
 
 #[lang = "sized"]
 trait Sized {}
@@ -14,7 +15,8 @@ impl<T> Sync for T {}
 #[lang = "copy"]
 trait Copy {}
 #[lang = "freeze"]
-auto trait Freeze {}
+#[rustc_auto_trait]
+trait Freeze {}
 
 #[lang = "drop_in_place"]
 #[inline]

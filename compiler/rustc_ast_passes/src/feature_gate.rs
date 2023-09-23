@@ -298,12 +298,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Trait(box ast::Trait { is_auto: ast::IsAuto::Yes, .. }) => {
-                gate_feature_post!(
-                    &self,
-                    auto_traits,
-                    i.span,
-                    "auto traits are experimental and possibly buggy"
-                );
+                // FIXME: Consider using a structured suggestion.
+                self.sess.emit_err(errors::ObsoleteAutoSyntax {
+                    span: i.span,
+                    syntax: "auto trait Trait {}",
+                });
             }
 
             ast::ItemKind::TraitAlias(..) => {

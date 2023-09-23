@@ -196,6 +196,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(auto_traits))]
 #![cfg_attr(not(bootstrap), feature(effects))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
@@ -203,7 +204,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm_const)]
 #![feature(associated_type_bounds)]
-#![feature(auto_traits)]
 #![feature(c_unwind)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]

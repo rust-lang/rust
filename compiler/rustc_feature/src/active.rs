@@ -223,9 +223,6 @@ declare_features! (
     // feature-group-start: internal feature gates
     // -------------------------------------------------------------------------
 
-    /// Allows features specific to auto traits.
-    /// Renamed from `optin_builtin_traits`.
-    (active, auto_traits, "1.50.0", Some(13231), None),
     /// Allows using `box` in patterns (RFC 469).
     (active, box_patterns, "1.0.0", Some(29641), None),
     /// Allows `#[doc(notable_trait)]`.

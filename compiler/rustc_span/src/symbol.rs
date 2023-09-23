@@ -1291,6 +1291,7 @@ symbols! {
         rustc_allow_incoherent_impl,
         rustc_allowed_through_unstable_modules,
         rustc_attrs,
+        rustc_auto_trait,
         rustc_box,
         rustc_builtin_macro,
         rustc_capture_analysis,

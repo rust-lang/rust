@@ -167,10 +167,13 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_dirty
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
-                sym::rustc_coinductive
-                | sym::rustc_must_implement_one_of
+                sym::const_trait
+                | sym::rustc_auto_trait
+                | sym::rustc_coinductive
                 | sym::rustc_deny_explicit_impl
-                | sym::const_trait => self.check_must_be_applied_to_trait(&attr, span, target),
+                | sym::rustc_must_implement_one_of => {
+                    self.check_must_be_applied_to_trait(&attr, span, target)
+                }
                 sym::cmse_nonsecure_entry => {
                     self.check_cmse_nonsecure_entry(hir_id, attr, span, target)
                 }

@@ -184,8 +184,8 @@ ast_passes_nested_lifetimes = nested quantification of lifetimes
 
 ast_passes_nomangle_ascii = `#[no_mangle]` requires ASCII identifier
 
-ast_passes_obsolete_auto = `impl Trait for .. {"{}"}` is an obsolete syntax
-    .help = use `auto trait Trait {"{}"}` instead
+ast_passes_obsolete_auto_syntax = `{$syntax}` is an obsolete syntax for auto traits
+    .help = use `#[rustc_auto_trait] trait Trait {"{}"}` instead
 
 ast_passes_optional_const_exclusive = `~const` and `{$modifier}` are mutually exclusive
 

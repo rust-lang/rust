@@ -50,6 +50,9 @@ declare_features! (
     (removed, allocator, "1.0.0", None, None, None),
     /// Allows a test to fail without failing the whole suite.
     (removed, allow_fail, "1.19.0", Some(46488), None, Some("removed due to no clear use cases")),
+    /// Allows features specific to auto traits.
+    /// Renamed from `optin_builtin_traits`.
+    (removed, auto_traits, "1.50.0", Some(13231), None, Some("removed in favor of `#[rustc_auto_trait]`")),
     (removed, await_macro, "1.38.0", Some(50547), None,
      Some("subsumed by `.await` syntax")),
     /// Allows using the `box $expr` syntax.
@@ -147,9 +150,8 @@ declare_features! (
     /// A way to temporarily opt out of opt-in copy. This will *never* be accepted.
     (removed, opt_out_copy, "1.0.0", None, None, None),
     /// Allows features specific to OIBIT (now called auto traits).
-    /// Renamed to `auto_traits`.
-    (removed, optin_builtin_traits, "1.0.0", Some(13231), None,
-     Some("renamed to `auto_traits`")),
+    /// Renamed to `auto_traits` which has then been removed in favor of `rustc_attrs`.
+    (removed, optin_builtin_traits, "1.0.0", Some(13231), None, Some("removed in favor of `#[rustc_auto_trait]`")),
     /// Allows overlapping impls of marker traits.
     (removed, overlapping_marker_traits, "1.42.0", Some(29864), None,
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),

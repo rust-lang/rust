@@ -417,11 +417,12 @@ pub struct OutOfOrderParams<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_obsolete_auto)]
+#[diag(ast_passes_obsolete_auto_syntax)]
 #[help]
-pub struct ObsoleteAuto {
+pub struct ObsoleteAutoSyntax {
     #[primary_span]
     pub span: Span,
+    pub syntax: &'static str,
 }
 
 #[derive(Diagnostic)]
