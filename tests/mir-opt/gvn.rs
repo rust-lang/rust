@@ -61,7 +61,6 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     let e = &z;
     opaque(*e + x);
     opaque(*e + x);
-
 }
 
 fn wrap_unwrap<T: Copy>(x: T) -> T {
@@ -237,6 +236,9 @@ fn aggregates() {
 
     let a_tuple: S<()> = S(());
     let b_tuple: S<()> = S(()); // But this can be with `a_tuple`.
+
+    let val = 5;
+    let array = [val, val, val, val, val, val, val, val, val, val];
 }
 
 fn main() {

@@ -795,6 +795,20 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             .collect();
         let fields = fields?;
 
+        if let AggregateTy::Array = ty && fields.len() > 4 {
+            let first = fields[0];
+            if fields.iter().all(|&v| v == first) {
+                let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
+                if let Some(const_) = self.try_as_constant(first) {
+                    *rvalue = Rvalue::Repeat(Operand::Constant(Box::new(const_)), len);
+                } else if let Some(local) = self.try_as_local(first, location) {
+                    *rvalue = Rvalue::Repeat(Operand::Copy(local.into()), len);
+                    self.reused_locals.insert(local);
+                }
+                return Some(Value::Repeat(first, len));
+            }
+        }
+
         let value = Value::Aggregate(ty, variant_index, fields);
         Some(value)
     }
