@@ -236,7 +236,7 @@ declare_features! (
     /// Allows using the `#[fundamental]` attribute.
     (active, fundamental, "1.0.0", Some(29635), None),
     /// Allows using `#[link_name="llvm.*"]`.
-    (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
+    (internal, link_llvm_intrinsics, "1.0.0", Some(29602), None),
     /// Allows using the `#[linkage = ".."]` attribute.
     (active, linkage, "1.0.0", Some(29603), None),
     /// Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
