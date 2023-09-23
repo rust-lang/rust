@@ -14,11 +14,6 @@ error[E0425]: cannot find function `bar` in this scope
    |
 LL |         bar();
    |         ^^^ not found in this scope
-   |
-help: consider using the associated function
-   |
-LL |         self.bar();
-   |         +++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/assoc_fn_without_self.rs:18:9
@@ -37,6 +32,45 @@ error[E0425]: cannot find function `foo` in this scope
 LL |             foo();
    |             ^^^ not found in this scope
 
-error: aborting due to 4 previous errors
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/assoc_fn_without_self.rs:24:9
+   |
+LL |         foo();
+   |         ^^^ not found in this scope
+   |
+help: consider using the associated function
+   |
+LL |         Self::foo();
+   |         ++++++
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/assoc_fn_without_self.rs:25:9
+   |
+LL |         bar();
+   |         ^^^ not found in this scope
+   |
+help: consider using the associated function
+   |
+LL |         self.bar();
+   |         +++++
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/assoc_fn_without_self.rs:26:9
+   |
+LL |         baz(2, 3);
+   |         ^^^ not found in this scope
+   |
+help: consider using the associated function
+   |
+LL |         Self::baz(2, 3);
+   |         ++++++
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/assoc_fn_without_self.rs:22:13
+   |
+LL |             foo();
+   |             ^^^ not found in this scope
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

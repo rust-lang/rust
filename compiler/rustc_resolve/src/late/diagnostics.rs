@@ -224,14 +224,21 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     && let FnKind::Fn(_, _, sig, ..) = fn_kind
                     && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        if let AssocItemKind::Fn(..) | AssocItemKind::Const(..) = &i.kind
-                            && i.ident.name == item_str.name
-                            // don't suggest if the item is in Fn signature arguments
-                            // issue #112590
+                        if i.ident.name == item_str.name
+                            // Don't suggest if the item is in Fn signature arguments (#112590).
                             && !sig.span.contains(item_span)
                         {
                             debug!(?item_str.name);
-                            return true
+                            return match &i.kind {
+                                AssocItemKind::Fn(fn_)
+                                if !sig.decl.has_self() && fn_.sig.decl.has_self() => {
+                                    // Ensure that we only suggest `self.` if `self` is available,
+                                    // you can't call `fn foo(&self)` from `fn bar()` (#115992).
+                                    false
+                                }
+                                AssocItemKind::Fn(_) | AssocItemKind::Const(..) => true,
+                                _ => false
+                            }
                         }
                         false
                     })
