@@ -280,6 +280,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::manual_clamp::MANUAL_CLAMP_INFO,
     crate::manual_float_methods::MANUAL_IS_FINITE_INFO,
     crate::manual_float_methods::MANUAL_IS_INFINITE_INFO,
+    crate::manual_hash_one::MANUAL_HASH_ONE_INFO,
     crate::manual_is_ascii_check::MANUAL_IS_ASCII_CHECK_INFO,
     crate::manual_let_else::MANUAL_LET_ELSE_INFO,
     crate::manual_main_separator_str::MANUAL_MAIN_SEPARATOR_STR_INFO,
