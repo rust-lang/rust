@@ -1,0 +1,21 @@
+error[E0425]: cannot find value `field` in this scope
+  --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:11:9
+   |
+LL |     fn field(&self) -> u32 {
+   |        ----- a method by that name is available on `Self` here
+...
+LL |         field;
+   |         ^^^^^ a field by this name exists in `Self`
+
+error[E0425]: cannot find value `field` in this scope
+  --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:12:15
+   |
+LL |     fn field(&self) -> u32 {
+   |        ----- a method by that name is available on `Self` here
+...
+LL |         Foo { field }
+   |               ^^^^^ a field by this name exists in `Self`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

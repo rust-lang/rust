@@ -214,6 +214,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 module: None,
             }
         } else {
+            let mut span_label = None;
             let item_span = path.last().unwrap().ident.span;
             let (mod_prefix, mod_str, module, suggestion) = if path.len() == 1 {
                 debug!(?self.diagnostic_metadata.current_impl_items);
@@ -224,32 +225,41 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     && let FnKind::Fn(_, _, sig, ..) = fn_kind
                     && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        if let AssocItemKind::Fn(..) | AssocItemKind::Const(..) = &i.kind
-                            && i.ident.name == item_str.name
-                            // don't suggest if the item is in Fn signature arguments
-                            // issue #112590
+                        i.ident.name == item_str.name
+                            // Don't suggest if the item is in Fn signature arguments (#112590).
                             && !sig.span.contains(item_span)
-                        {
-                            debug!(?item_str.name);
-                            return true
-                        }
-                        false
                     })
                 {
-                    let self_sugg = match &item.kind {
-                        AssocItemKind::Fn(fn_) if fn_.sig.decl.has_self() => "self.",
-                        _ => "Self::",
-                    };
-
-                    Some((
-                        item_span.shrink_to_lo(),
-                        match &item.kind {
-                            AssocItemKind::Fn(..) => "consider using the associated function",
-                            AssocItemKind::Const(..) => "consider using the associated constant",
-                            _ => unreachable!("item kind was filtered above"),
-                        },
-                        self_sugg.to_string()
-                    ))
+                    let sp = item_span.shrink_to_lo();
+                    match &item.kind {
+                        AssocItemKind::Fn(fn_)
+                        if !sig.decl.has_self() && fn_.sig.decl.has_self() => {
+                            // Ensure that we only suggest `self.` if `self` is available,
+                            // you can't call `fn foo(&self)` from `fn bar()` (#115992).
+                            // We also want to mention that the method exists.
+                            span_label = Some((
+                                item.ident.span,
+                                "a method by that name is available on `Self` here",
+                            ));
+                            None
+                        }
+                        AssocItemKind::Fn(fn_) if fn_.sig.decl.has_self() => Some((
+                            sp,
+                            "consider using the method on `Self`",
+                            "self.".to_string(),
+                        )),
+                        AssocItemKind::Fn(_) => Some((
+                            sp,
+                            "consider using the associated function on `Self`",
+                            "Self::".to_string(),
+                        )),
+                        AssocItemKind::Const(..) => Some((
+                            sp,
+                            "consider using the associated constant on `Self`",
+                            "Self::".to_string(),
+                        )),
+                        _ => None
+                    }
                 } else {
                     None
                 };
@@ -314,7 +324,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
                 fallback_label,
                 span: item_span,
-                span_label: None,
+                span_label,
                 could_be_expr: false,
                 suggestion,
                 module,
