@@ -518,8 +518,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.select_obligations_where_possible(|_| {});
 
         let mut generators = self.deferred_generator_interiors.borrow_mut();
-        for (_, body_id, interior, kind) in generators.drain(..) {
-            crate::generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
+        for (generator_def_id, body_id, interior, kind) in generators.drain(..) {
+            crate::generator_interior::resolve_interior(
+                self,
+                def_id,
+                generator_def_id,
+                body_id,
+                interior,
+                kind,
+            );
             self.select_obligations_where_possible(|_| {});
         }
     }
