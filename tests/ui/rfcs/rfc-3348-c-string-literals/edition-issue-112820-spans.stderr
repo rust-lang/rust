@@ -1,0 +1,10 @@
+error: proc macro panicked
+  --> $DIR/edition-issue-112820-spans.rs:11:5
+   |
+LL |     wrong_parsing::repro!(c"cstr");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: panic on: `cstr`
+
+error: aborting due to previous error
+
