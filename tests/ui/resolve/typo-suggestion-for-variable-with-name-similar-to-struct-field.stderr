@@ -25,7 +25,7 @@ LL |         println!("{config}");
 help: you might have meant to use the available field
    |
 LL |         println!("{self.config}");
-   |                    ~~~~~~~~~~~
+   |                    +++++
 help: a local variable with a similar name exists
    |
 LL |         println!("{cofig}");
@@ -43,7 +43,7 @@ LL | fn ba() {}
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
-   |         ~~~~~~~~~
+   |         ++++++
 help: a function with a similar name exists
    |
 LL |         ba;
@@ -61,7 +61,7 @@ LL | const BARR: u32 = 3;
 help: you might have meant to use the associated `const`
    |
 LL |         Self::BAR;
-   |         ~~~~~~~~~
+   |         ++++++
 help: a constant with a similar name exists
    |
 LL |         BARR;
@@ -79,7 +79,7 @@ LL | type Bar = String;
 help: you might have meant to use the associated type
    |
 LL |         let foo: Self::Baz = "".to_string();
-   |                  ~~~~~~~~~
+   |                  ++++++
 help: a type alias with a similar name exists
    |
 LL |         let foo: Bar = "".to_string();
@@ -97,7 +97,7 @@ LL | fn ba() {}
 help: you might have meant to call the method
    |
 LL |         self.baz();
-   |         ~~~~~~~~
+   |         +++++
 help: a function with a similar name exists
    |
 LL |         ba();
