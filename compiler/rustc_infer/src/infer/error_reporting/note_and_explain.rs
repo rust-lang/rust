@@ -616,9 +616,13 @@ fn foo(&self) -> Self::T { String::new() }
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
                         let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-
-                        if self.infcx.can_eq(param_env, assoc_ty, found) {
-                            diag.span_label(item.span, "expected this associated type");
+                        if let hir::Defaultness::Default { has_value: true } = tcx.defaultness(item.id.owner_id)
+                            && self.infcx.can_eq(param_env, assoc_ty, found)
+                        {
+                            diag.span_label(
+                                item.span,
+                                format!("associated type is `default` and may be overridden"),
+                            );
                             return true;
                         }
                     }
