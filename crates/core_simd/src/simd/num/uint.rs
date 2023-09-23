@@ -29,7 +29,7 @@ pub trait SimdUint: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdUint};
+    /// # use simd::prelude::*;
     /// use core::u32::MAX;
     /// let x = Simd::from_array([2, 1, 0, MAX]);
     /// let max = Simd::splat(MAX);
@@ -47,7 +47,7 @@ pub trait SimdUint: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdUint};
+    /// # use simd::prelude::*;
     /// use core::u32::MAX;
     /// let x = Simd::from_array([2, 1, 0, MAX]);
     /// let max = Simd::splat(MAX);
@@ -122,7 +122,7 @@ macro_rules! impl_trait {
 
             #[inline]
             fn wrapping_neg(self) -> Self {
-                use crate::simd::SimdInt;
+                use crate::simd::num::SimdInt;
                 (-self.cast::<$signed>()).cast()
             }
 

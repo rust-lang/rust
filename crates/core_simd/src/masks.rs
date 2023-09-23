@@ -15,7 +15,9 @@ mod mask_impl;
 mod to_bitmask;
 pub use to_bitmask::{ToBitMask, ToBitMaskArray};
 
-use crate::simd::{intrinsics, LaneCount, Simd, SimdElement, SimdPartialEq, SupportedLaneCount};
+use crate::simd::{
+    cmp::SimdPartialEq, intrinsics, LaneCount, Simd, SimdElement, SupportedLaneCount,
+};
 use core::cmp::Ordering;
 use core::{fmt, mem};
 

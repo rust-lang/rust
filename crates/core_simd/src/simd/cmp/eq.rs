@@ -1,5 +1,7 @@
 use crate::simd::{
-    intrinsics, LaneCount, Mask, Simd, SimdConstPtr, SimdElement, SimdMutPtr, SupportedLaneCount,
+    intrinsics,
+    ptr::{SimdConstPtr, SimdMutPtr},
+    LaneCount, Mask, Simd, SimdElement, SupportedLaneCount,
 };
 
 /// Parallel `PartialEq`.

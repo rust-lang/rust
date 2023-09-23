@@ -1,5 +1,8 @@
 use crate::simd::{
-    intrinsics, LaneCount, Mask, Simd, SimdConstPtr, SimdMutPtr, SimdPartialEq, SupportedLaneCount,
+    cmp::SimdPartialEq,
+    intrinsics,
+    ptr::{SimdConstPtr, SimdMutPtr},
+    LaneCount, Mask, Simd, SupportedLaneCount,
 };
 
 /// Parallel `PartialOrd`.

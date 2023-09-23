@@ -254,7 +254,7 @@ macro_rules! impl_common_integer_tests {
 macro_rules! impl_signed_tests {
     { $scalar:tt } => {
         mod $scalar {
-            use core_simd::simd::SimdInt;
+            use core_simd::simd::num::SimdInt;
             type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -306,7 +306,7 @@ macro_rules! impl_signed_tests {
                 }
 
                 fn simd_min<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                    use core_simd::simd::cmp::SimdOrd;
                     let a = Vector::<LANES>::splat(Scalar::MIN);
                     let b = Vector::<LANES>::splat(0);
                     assert_eq!(a.simd_min(b), a);
@@ -316,7 +316,7 @@ macro_rules! impl_signed_tests {
                 }
 
                 fn simd_max<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                    use core_simd::simd::cmp::SimdOrd;
                     let a = Vector::<LANES>::splat(Scalar::MIN);
                     let b = Vector::<LANES>::splat(0);
                     assert_eq!(a.simd_max(b), b);
@@ -326,7 +326,7 @@ macro_rules! impl_signed_tests {
                 }
 
                 fn simd_clamp<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                    use core_simd::simd::cmp::SimdOrd;
                     let min = Vector::<LANES>::splat(Scalar::MIN);
                     let max = Vector::<LANES>::splat(Scalar::MAX);
                     let zero = Vector::<LANES>::splat(0);
@@ -395,7 +395,7 @@ macro_rules! impl_signed_tests {
 macro_rules! impl_unsigned_tests {
     { $scalar:tt } => {
         mod $scalar {
-            use core_simd::simd::SimdUint;
+            use core_simd::simd::num::SimdUint;
             type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -440,7 +440,7 @@ macro_rules! impl_unsigned_tests {
 macro_rules! impl_float_tests {
     { $scalar:tt, $int_scalar:tt } => {
         mod $scalar {
-            use core_simd::simd::SimdFloat;
+            use core_simd::simd::num::SimdFloat;
             type Vector<const LANES: usize> = core_simd::simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 

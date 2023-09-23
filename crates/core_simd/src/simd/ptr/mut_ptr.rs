@@ -1,5 +1,7 @@
 use super::sealed::Sealed;
-use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdPartialEq, SimdUint, SupportedLaneCount};
+use crate::simd::{
+    cmp::SimdPartialEq, intrinsics, num::SimdUint, LaneCount, Mask, Simd, SupportedLaneCount,
+};
 
 /// Operations on SIMD vectors of mutable pointers.
 pub trait SimdMutPtr: Copy + Sealed {

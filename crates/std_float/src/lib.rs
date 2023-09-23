@@ -149,7 +149,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simd::*;
+    use simd::prelude::*;
 
     #[test]
     fn everything_works() {
