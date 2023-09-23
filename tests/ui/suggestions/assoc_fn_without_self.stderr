@@ -12,6 +12,9 @@ LL |         Self::foo();
 error[E0425]: cannot find function `bar` in this scope
   --> $DIR/assoc_fn_without_self.rs:17:9
    |
+LL |     fn bar(&self) {}
+   |        --- a method by that name is available on `Self` here
+...
 LL |         bar();
    |         ^^^ not found in this scope
 
