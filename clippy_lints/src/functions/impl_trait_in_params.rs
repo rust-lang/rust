@@ -6,7 +6,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, GenericParam, Generics, HirId, ImplItem, ImplItemKind, TraitItem, TraitItemKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 use super::IMPL_TRAIT_IN_PARAMS;
 
@@ -89,12 +89,16 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
 pub(super) fn check_trait_item(cx: &LateContext<'_>, trait_item: &TraitItem<'_>, avoid_breaking_exported_api: bool) {
     if_chain! {
         if !avoid_breaking_exported_api;
-        if let TraitItemKind::Fn(sig, _) = trait_item.kind;
+        if let TraitItemKind::Fn(_, _) = trait_item.kind;
+        if let hir::Node::Item(item) = cx.tcx.hir().get_parent(trait_item.hir_id());
+        // ^^ (Will always be a trait)
+        if !item.vis_span.is_empty(); // Is public
         if !is_in_test_function(cx.tcx, trait_item.hir_id());
         then {
             for param in trait_item.generics.params {
                 if param.is_impl_trait() {
-                    report(cx, param, &trait_item.ident, trait_item.generics, sig.decl.inputs[0].span);
+                    let sp = trait_item.ident.span.with_hi(trait_item.ident.span.hi() + BytePos(1));
+                    report(cx, param, &trait_item.ident, trait_item.generics, sp.shrink_to_hi());
                 }
             }
         }

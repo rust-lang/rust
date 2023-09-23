@@ -19,8 +19,14 @@ fn d(_: impl AnotherTrait<u32>) {}
 
 //------ IMPLS
 
-trait T {
-    // See test in ui-toml for a case where avoid-breaking-exported-api is set to true
+pub trait Public {
+    // See test in ui-toml for a case where avoid-breaking-exported-api is set to false
+    fn t(_: impl Trait);
+    fn tt<T: Trait>(_: T) {}
+}
+
+trait Private {
+    // This shouldn't lint
     fn t(_: impl Trait);
     fn tt<T: Trait>(_: T) {}
 }
@@ -34,7 +40,7 @@ impl S {
 }
 
 // Trying with traits
-impl T for S {
+impl Public for S {
     fn t(_: impl Trait) {}
 }
 

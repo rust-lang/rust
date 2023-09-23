@@ -23,7 +23,7 @@ LL | pub fn c<C: Trait, { /* Generic name */ }: Trait>(_: C, _: impl Trait) {}
    |                  +++++++++++++++++++++++++++++++
 
 error: `impl Trait` used as a function parameter
-  --> $DIR/impl_trait_in_params.rs:30:17
+  --> $DIR/impl_trait_in_params.rs:36:17
    |
 LL |     pub fn h(_: impl Trait) {}
    |                 ^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |     pub fn h<{ /* Generic name */ }: Trait>(_: impl Trait) {}
    |             +++++++++++++++++++++++++++++++
 
 error: `impl Trait` used as a function parameter
-  --> $DIR/impl_trait_in_params.rs:33:45
+  --> $DIR/impl_trait_in_params.rs:39:45
    |
 LL |     pub fn k<K: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
    |                                             ^^^^^^^^^^^^^^^^^^^^^^
