@@ -68,7 +68,10 @@
           _2 = const 2_u8;
           _3 = const 3_u8;
           StorageLive(_4);
+          StorageLive(_5);
+          _5 = const 3_u8;
           _4 = const 6_u8;
+          StorageDead(_5);
           StorageLive(_9);
           _9 = const "hello, world!";
           StorageLive(_14);

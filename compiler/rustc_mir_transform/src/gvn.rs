@@ -418,6 +418,35 @@ impl<'tcx> VnState<'_, 'tcx> {
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
         if let Value::Constant(const_) = *self.get(index) {
+            // Some constants may contain pointers. We need to preserve the provenance of these
+            // pointers, but not all constants guarantee this:
+            // - valtrees purposefully do not;
+            // - ConstValue::Slice does not either.
+            match const_ {
+                Const::Ty(c) => match c.kind() {
+                    ty::ConstKind::Value(valtree) => match valtree {
+                        // This is just an integer, keep it.
+                        ty::ValTree::Leaf(_) => {}
+                        ty::ValTree::Branch(_) => return None,
+                    },
+                    ty::ConstKind::Param(..)
+                    | ty::ConstKind::Unevaluated(..)
+                    | ty::ConstKind::Expr(..) => {}
+                    // Should not appear in runtime MIR.
+                    ty::ConstKind::Infer(..)
+                    | ty::ConstKind::Bound(..)
+                    | ty::ConstKind::Placeholder(..)
+                    | ty::ConstKind::Error(..) => bug!(),
+                },
+                Const::Unevaluated(..) => {}
+                // If the same slice appears twice in the MIR, we cannot guarantee that we will
+                // give the same `AllocId` to the data.
+                Const::Val(ConstValue::Slice { .. }, _) => return None,
+                Const::Val(
+                    ConstValue::ZeroSized | ConstValue::Scalar(_) | ConstValue::Indirect { .. },
+                    _,
+                ) => {}
+            }
             Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ })
         } else {
             None
@@ -447,6 +476,8 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
         self.super_statement(stmt, location);
         if let StatementKind::Assign(box (_, ref mut rvalue)) = stmt.kind
+            // Do not try to simplify a constant, it's already in canonical shape.
+            && !matches!(rvalue, Rvalue::Use(Operand::Constant(_)))
             && let Some(value) = self.simplify_rvalue(rvalue, location)
         {
             if let Some(const_) = self.try_as_constant(value) {

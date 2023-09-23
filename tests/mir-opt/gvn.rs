@@ -212,6 +212,17 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     opaque(s.0); // *s is not Copy, by (*s).0 is, so we can reuse.
 }
 
+fn slices() {
+    let s = "my favourite slice"; // This is a `Const::Slice` in MIR.
+    opaque(s);
+    let t = s; // This should be the same pointer, so cannot be a `Const::Slice`.
+    opaque(t);
+    assert_eq!(s.as_ptr(), t.as_ptr());
+    let u = unsafe { std::mem::transmute::<&str, &[u8]>(s) };
+    opaque(u);
+    assert_eq!(s.as_ptr(), u.as_ptr());
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -223,6 +234,7 @@ fn main() {
     multiple_branches(true, 5, 9);
     references(5);
     dereferences(&mut 5, &6, &S(7));
+    slices();
 }
 
 #[inline(never)]
@@ -238,3 +250,4 @@ fn opaque(_: impl Sized) {}
 // EMIT_MIR gvn.multiple_branches.GVN.diff
 // EMIT_MIR gvn.references.GVN.diff
 // EMIT_MIR gvn.dereferences.GVN.diff
+// EMIT_MIR gvn.slices.GVN.diff
