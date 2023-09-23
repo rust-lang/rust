@@ -1024,7 +1024,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 /// ```
 fn should_encode_mir(
     tcx: TyCtxt<'_>,
-    reachable_set: &LocalDefIdSet,
+    _reachable_set: &LocalDefIdSet,
     def_id: LocalDefId,
 ) -> (bool, bool) {
     match tcx.def_kind(def_id) {
@@ -1042,12 +1042,8 @@ fn should_encode_mir(
         | DefKind::Const => (true, false),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
-            let generics = tcx.generics_of(def_id);
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
-                || (tcx.sess.opts.output_types.should_codegen()
-                    && reachable_set.contains(&def_id)
-                    && (generics.requires_monomorphization(tcx)
-                        || tcx.codegen_fn_attrs(def_id).requests_inline()));
+                || tcx.sess.opts.output_types.should_codegen();
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
