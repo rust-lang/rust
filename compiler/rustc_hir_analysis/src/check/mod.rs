@@ -573,10 +573,7 @@ pub fn check_function_signature<'tcx>(
     let norm_cause = ObligationCause::misc(cause.span, local_id);
     let actual_sig = ocx.normalize(&norm_cause, param_env, actual_sig);
 
-    let expected_ty = Ty::new_fn_ptr(tcx, expected_sig);
-    let actual_ty = Ty::new_fn_ptr(tcx, actual_sig);
-
-    match ocx.eq(&cause, param_env, expected_ty, actual_ty) {
+    match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
         Ok(()) => {
             let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
@@ -595,9 +592,9 @@ pub fn check_function_signature<'tcx>(
                 &mut diag,
                 &cause,
                 None,
-                Some(infer::ValuePairs::Sigs(ExpectedFound {
-                    expected: tcx.liberate_late_bound_regions(fn_id, expected_sig),
-                    found: tcx.liberate_late_bound_regions(fn_id, actual_sig),
+                Some(infer::ValuePairs::PolySigs(ExpectedFound {
+                    expected: expected_sig,
+                    found: actual_sig,
                 })),
                 err,
                 false,

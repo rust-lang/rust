@@ -35,14 +35,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
             && let CompareImplItemObligation { trait_item_def_id, .. } = sub_trace.cause.code()
             && sub_trace.values == sup_trace.values
-            && let ValuePairs::Sigs(ExpectedFound { expected, found }) = sub_trace.values
+            && let ValuePairs::PolySigs(ExpectedFound { expected, found }) = sub_trace.values
         {
             // FIXME(compiler-errors): Don't like that this needs `Ty`s, but
             // all of the region highlighting machinery only deals with those.
             let guar = self.emit_err(
                 var_origin.span(),
-                Ty::new_fn_ptr(self.cx.tcx,ty::Binder::dummy(expected)),
-                Ty::new_fn_ptr(self.cx.tcx,ty::Binder::dummy(found)),
+                Ty::new_fn_ptr(self.cx.tcx, expected),
+                Ty::new_fn_ptr(self.cx.tcx, found),
                 *trait_item_def_id,
             );
             return Some(guar);
