@@ -16,11 +16,11 @@ pub fn target() -> Target {
             cpu: "generic-rv32".into(),
 
             // While the RiscV32IMC architecture does not natively support atomics, ESP-IDF does support
-            // the __atomic* and __sync* GCC builtins, so setting `max_atomic_width` to `Some(64)`
+            // the __atomic* and __sync* GCC builtins, so setting `max_atomic_width` to `Some(32)`
             // and `atomic_cas` to `true` will cause the compiler to emit libcalls to these builtins.
             //
             // Support for atomics is necessary for the Rust STD library, which is supported by the ESP-IDF framework.
-            max_atomic_width: Some(64),
+            max_atomic_width: Some(32),
             atomic_cas: true,
 
             features: "+m,+c".into(),

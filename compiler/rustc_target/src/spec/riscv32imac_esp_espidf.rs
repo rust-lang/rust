@@ -17,7 +17,7 @@ pub fn target() -> Target {
 
             // As RiscV32IMAC architecture does natively support atomics,
             // automatically enable the support for the Rust STD library.
-            max_atomic_width: Some(64),
+            max_atomic_width: Some(32),
             atomic_cas: true,
 
             features: "+m,+a,+c".into(),
