@@ -49,7 +49,17 @@ The last two variables will print the whole module directly before and after Enz
 When experimenting with flags please make sure that EnzymeStrictAliasing=0
 is not changed, since it is required for Enzyme to handle enums correctly.
 
+## Bug reporting
+Bugs are pretty much expected at this point of the development process.
+In order to help us please minimize the Rust code as far as possible.
+This tool might be a nicer helper: https://github.com/Nilstrieb/cargo-minimize
+If you have some knowledge of LLVM-IR we also greatly appreciate it if you could help
+us by compiling your minimized Rust code to LLVM-IR and reducing it further.
 
+The only exception to this strategy is error based on "Can not deduce type of X",
+where reducing your example will make it harder for us to understand the origin of the bug.
+In this case please just try to inline all dependencies into a single crate or even file,
+without deleting used code.
 
 
 
