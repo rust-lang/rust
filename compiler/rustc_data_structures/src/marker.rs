@@ -71,6 +71,7 @@ macro_rules! impl_dyn_send {
 }
 
 impl_dyn_send!(
+    [std::thread::JoinHandle<T> where T]
     [std::sync::atomic::AtomicPtr<T> where T]
     [std::sync::Mutex<T> where T: ?Sized+ DynSend]
     [std::sync::mpsc::Sender<T> where T: DynSend]
@@ -154,6 +155,7 @@ macro_rules! impl_dyn_sync {
 }
 
 impl_dyn_sync!(
+    [std::thread::JoinHandle<T> where T]
     [std::sync::atomic::AtomicPtr<T> where T]
     [std::sync::OnceLock<T> where T: DynSend + DynSync]
     [std::sync::Mutex<T> where T: ?Sized + DynSend]

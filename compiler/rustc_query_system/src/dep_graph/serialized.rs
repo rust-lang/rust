@@ -42,16 +42,18 @@
 use std::cell::RefCell;
 use std::cmp::max;
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use std::{iter, mem, u64};
+use std::sync::{Arc, OnceLock};
+use std::thread::JoinHandle;
+use std::{iter, mem, panic, thread, u64};
 
+use parking_lot::Mutex;
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal, broadcast};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::{jobserver, outline};
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
@@ -87,29 +89,56 @@ const DEP_NODE_WIDTH_BITS: usize = DEP_NODE_SIZE / 2;
 ///
 /// There may be unused indices with DEP_KIND_NULL in this graph due to batch allocation of
 /// indices to threads.
-#[derive(Debug, Default)]
-pub struct SerializedDepGraph {
+pub struct SerializedDepGraph<D> {
     /// The set of all DepNodes in the graph
     nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
+
     /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
     /// the DepNode at the same index in the nodes vector.
     fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint>,
+
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
     /// which holds the actual DepNodeIndices of the target nodes.
     edge_list_indices: IndexVec<SerializedDepNodeIndex, EdgeHeader>,
+
     /// A flattened list of all edge targets in the graph, stored in the same
     /// varint encoding that we use on disk. Edge sources are implicit in edge_list_indices.
     edge_list_data: Vec<u8>,
+
     /// Stores a map from fingerprints to nodes per dep node kind.
-    /// This is the reciprocal of `nodes`.
-    index: Vec<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
+    /// This is the reciprocal of `nodes`. This is computed on demand for each dep kind.
+    /// The entire index is also computed in a background thread.
+    index: Vec<OnceLock<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>>,
+
+    /// Stores the number of node for each dep node kind.
+    index_sizes: Vec<usize>,
+
     /// The number of previous compilation sessions. This is used to generate
     /// unique anon dep nodes per session.
     session_count: u64,
+
+    /// A profiler reference for used in the index prefetching thread.
+    prof: SelfProfilerRef,
+
+    /// A handle to the prefetcher thread.
+    handle: Mutex<Option<JoinHandle<()>>>,
+
+    phantom: PhantomData<D>,
 }
 
-impl SerializedDepGraph {
+impl<D> Drop for SerializedDepGraph<D> {
+    fn drop(&mut self) {
+        // Join the prefetcher thread if present to avoid leaking the jobserver token.
+        if let Some(handle) = self.handle.get_mut().take() {
+            if let Err(e) = handle.join() {
+                panic::resume_unwind(e);
+            }
+        }
+    }
+}
+
+impl<D: Deps> SerializedDepGraph<D> {
     #[inline]
     pub fn edge_targets_from(
         &self,
@@ -139,7 +168,14 @@ impl SerializedDepGraph {
 
     #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
-        self.index.get(dep_node.kind.as_usize())?.get(&dep_node.hash).cloned()
+        let index = self.index.get(dep_node.kind.as_usize())?;
+        let index = index.get().unwrap_or_else(|| {
+            outline(|| {
+                self.setup_index(dep_node.kind);
+                self.index[dep_node.kind.as_usize()].get().unwrap()
+            })
+        });
+        index.get(&dep_node.hash).cloned()
     }
 
     #[inline]
@@ -155,6 +191,92 @@ impl SerializedDepGraph {
     #[inline]
     pub fn session_count(&self) -> u64 {
         self.session_count
+    }
+
+    #[inline]
+    fn add_to_index(
+        &self,
+        index: &mut UnhashMap<PackedFingerprint, SerializedDepNodeIndex>,
+        node: &DepNode,
+        idx: SerializedDepNodeIndex,
+    ) {
+        if index.insert(node.hash, idx).is_some() {
+            // Empty nodes and side effect nodes can have duplicates
+            if node.kind != D::DEP_KIND_NULL && node.kind != D::DEP_KIND_SIDE_EFFECT {
+                let name = D::name(node.kind);
+                panic!(
+                "Error: A dep graph node ({name}) does not have an unique index. \
+                 Running a clean build on a nightly compiler with `-Z incremental-verify-ich` \
+                 can help narrow down the issue for reporting. A clean build may also work around the issue.\n
+                 DepNode: {node:?}"
+            )
+            }
+        }
+    }
+
+    /// This computes and sets up the index for just the specified `DepKind`.
+    fn setup_index(&self, dep_kind: DepKind) {
+        let _timer = self.prof.generic_activity("incr_comp_dep_graph_setup_index");
+
+        let mut index = UnhashMap::with_capacity_and_hasher(
+            self.index_sizes[dep_kind.as_usize()],
+            Default::default(),
+        );
+
+        for (idx, node) in self.nodes.iter_enumerated() {
+            if node.kind == dep_kind {
+                self.add_to_index(&mut index, node, idx);
+            }
+        }
+
+        // This may race with the prefetching thread, but that will set the same value.
+        self.index[dep_kind.as_usize()].set(index).ok();
+    }
+
+    fn prefetch(&self) {
+        let _timer = self.prof.generic_activity("incr_comp_prefetch_dep_graph_index");
+
+        let mut index: Vec<_> = self
+            .index_sizes
+            .iter()
+            .map(|&n| UnhashMap::with_capacity_and_hasher(n, Default::default()))
+            .collect();
+
+        // Use a single loop to build indices for all kinds, unlike `setup_index` which builds
+        // a single index for each loop over the nodes.
+        for (idx, node) in self.nodes.iter_enumerated() {
+            self.add_to_index(&mut index[node.kind.as_usize()], node, idx);
+        }
+
+        for (i, index) in index.into_iter().enumerate() {
+            // This may race with `setup_index`, but that will set the same value.
+            self.index[i].set(index).ok();
+        }
+    }
+
+    /// This spawns a thread that prefetches the index.
+    fn spawn_prefetch_thread(self: &Arc<Self>) -> Option<JoinHandle<()>> {
+        if !self.index.is_empty() {
+            let client = jobserver::client();
+            // This should ideally use `try_acquire` to avoid races on the tokens,
+            // but the jobserver crate doesn't support that operation.
+            if let Ok(tokens) = client.available()
+                && tokens > 0
+            {
+                let this = Arc::clone(self);
+                let handle = thread::spawn(move || {
+                    let _token = client.acquire();
+                    this.prefetch();
+                });
+                Some(handle)
+            } else {
+                // Prefetch the index on the current thread if we don't have a token available.
+                self.prefetch();
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
@@ -190,9 +312,24 @@ fn mask(bits: usize) -> usize {
     usize::MAX >> ((size_of::<usize>() * 8) - bits)
 }
 
-impl SerializedDepGraph {
-    #[instrument(level = "debug", skip(d))]
-    pub fn decode<D: Deps>(d: &mut MemDecoder<'_>) -> Arc<SerializedDepGraph> {
+impl<D: Deps> SerializedDepGraph<D> {
+    pub fn empty(sess: &Session) -> Self {
+        SerializedDepGraph {
+            nodes: Default::default(),
+            fingerprints: Default::default(),
+            edge_list_indices: Default::default(),
+            edge_list_data: Default::default(),
+            index: Default::default(),
+            index_sizes: Default::default(),
+            session_count: 0,
+            prof: sess.prof.clone(),
+            handle: Mutex::new(None),
+            phantom: PhantomData,
+        }
+    }
+
+    #[instrument(level = "debug", skip(d, sess))]
+    pub fn decode(d: &mut MemDecoder<'_>, sess: &Session) -> Arc<SerializedDepGraph<D>> {
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
 
@@ -269,36 +406,26 @@ impl SerializedDepGraph {
         // end of the array. This padding ensure it doesn't.
         edge_list_data.extend(&[0u8; DEP_NODE_PAD]);
 
-        // Read the number of each dep kind and use it to create an hash map with a suitable size.
-        let mut index: Vec<_> = (0..(D::DEP_KIND_MAX + 1))
-            .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
-            .collect();
+        // Read the number of nodes for each dep kind.
+        let index_sizes: Vec<_> =
+            (0..(D::DEP_KIND_MAX + 1)).map(|_| d.read_u32() as usize).collect();
 
         let session_count = d.read_u64();
 
-        for (idx, node) in nodes.iter_enumerated() {
-            if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
-                // Empty nodes and side effect nodes can have duplicates
-                if node.kind != D::DEP_KIND_NULL && node.kind != D::DEP_KIND_SIDE_EFFECT {
-                    let name = D::name(node.kind);
-                    panic!(
-                    "Error: A dep graph node ({name}) does not have an unique index. \
-                     Running a clean build on a nightly compiler with `-Z incremental-verify-ich` \
-                     can help narrow down the issue for reporting. A clean build may also work around the issue.\n
-                     DepNode: {node:?}"
-                )
-                }
-            }
-        }
-
-        Arc::new(SerializedDepGraph {
+        let result = Arc::new(SerializedDepGraph {
             nodes,
             fingerprints,
             edge_list_indices,
             edge_list_data,
-            index,
+            index: (0..index_sizes.len()).map(|_| OnceLock::new()).collect(),
+            index_sizes,
             session_count,
-        })
+            prof: sess.prof.clone(),
+            handle: Mutex::new(None),
+            phantom: PhantomData,
+        });
+        *result.handle.lock() = result.spawn_prefetch_thread();
+        result
     }
 }
 
@@ -487,7 +614,7 @@ impl NodeInfo {
         fingerprint: Fingerprint,
         prev_index: SerializedDepNodeIndex,
         colors: &DepNodeColorMap,
-        previous: &SerializedDepGraph,
+        previous: &SerializedDepGraph<D>,
     ) -> usize {
         let edges = previous.edge_targets_from(prev_index);
         let edge_count = edges.size_hint().0;
@@ -545,7 +672,7 @@ struct LocalEncoderResult {
 
 struct EncoderState<D: Deps> {
     next_node_index: AtomicU64,
-    previous: Arc<SerializedDepGraph>,
+    previous: Arc<SerializedDepGraph<D>>,
     file: Lock<Option<FileEncoder>>,
     local: WorkerLocal<RefCell<LocalEncoderState>>,
     stats: Option<Lock<FxHashMap<DepKind, Stat>>>,
@@ -553,7 +680,7 @@ struct EncoderState<D: Deps> {
 }
 
 impl<D: Deps> EncoderState<D> {
-    fn new(encoder: FileEncoder, record_stats: bool, previous: Arc<SerializedDepGraph>) -> Self {
+    fn new(encoder: FileEncoder, record_stats: bool, previous: Arc<SerializedDepGraph<D>>) -> Self {
         Self {
             previous,
             next_node_index: AtomicU64::new(0),
@@ -846,7 +973,7 @@ impl<D: Deps> GraphEncoder<D> {
         sess: &Session,
         encoder: FileEncoder,
         prev_node_count: usize,
-        previous: Arc<SerializedDepGraph>,
+        previous: Arc<SerializedDepGraph<D>>,
     ) -> Self {
         let record_graph = sess
             .opts

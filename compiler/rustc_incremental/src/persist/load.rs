@@ -35,9 +35,9 @@ pub enum LoadResult<T> {
     LoadDepGraph(PathBuf, std::io::Error),
 }
 
-impl<T: Default> LoadResult<T> {
+impl<T> LoadResult<T> {
     /// Accesses the data returned in [`LoadResult::Ok`].
-    pub fn open(self, sess: &Session) -> T {
+    pub fn open(self, sess: &Session, fallback: impl FnOnce() -> T) -> T {
         // Check for errors when using `-Zassert-incremental-state`
         match (sess.opts.assert_incr_state, &self) {
             (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
@@ -55,14 +55,14 @@ impl<T: Default> LoadResult<T> {
         match self {
             LoadResult::LoadDepGraph(path, err) => {
                 sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
-                Default::default()
+                fallback()
             }
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
                     sess.dcx()
                         .emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
                 }
-                Default::default()
+                fallback()
             }
             LoadResult::Ok { data } => data,
         }
@@ -91,12 +91,16 @@ fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
 
-fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
+fn load_dep_graph(
+    sess: &Session,
+) -> LoadResult<(Arc<SerializedDepGraph<DepsType>>, WorkProductMap)> {
     let prof = sess.prof.clone();
 
     if sess.opts.incremental.is_none() {
         // No incremental compilation.
-        return LoadResult::Ok { data: Default::default() };
+        return LoadResult::Ok {
+            data: (Arc::new(SerializedDepGraph::empty(sess)), Default::default()),
+        };
     }
 
     let _timer = sess.prof.generic_activity("incr_comp_prepare_load_dep_graph");
@@ -171,7 +175,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
                 return LoadResult::DataOutOfDate;
             }
 
-            let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder);
+            let dep_graph = SerializedDepGraph::decode(&mut decoder, sess);
 
             LoadResult::Ok { data: (dep_graph, prev_work_products) }
         }
@@ -228,7 +232,8 @@ pub fn setup_dep_graph(
     }
 
     res.and_then(|result| {
-        let (prev_graph, prev_work_products) = result.open(sess);
+        let (prev_graph, prev_work_products) =
+            result.open(sess, || (Arc::new(SerializedDepGraph::empty(sess)), Default::default()));
         build_dep_graph(sess, prev_graph, prev_work_products)
     })
     .unwrap_or_else(DepGraph::new_disabled)

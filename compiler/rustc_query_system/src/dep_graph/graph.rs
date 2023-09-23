@@ -91,7 +91,7 @@ pub(crate) struct DepGraphData<D: Deps> {
 
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
-    previous: Arc<SerializedDepGraph>,
+    previous: Arc<SerializedDepGraph<D>>,
 
     colors: DepNodeColorMap,
 
@@ -121,7 +121,7 @@ where
 impl<D: Deps> DepGraph<D> {
     pub fn new(
         session: &Session,
-        prev_graph: Arc<SerializedDepGraph>,
+        prev_graph: Arc<SerializedDepGraph<D>>,
         prev_work_products: WorkProductMap,
         encoder: FileEncoder,
     ) -> DepGraph<D> {
@@ -1192,7 +1192,7 @@ impl<D: Deps> CurrentDepGraph<D> {
         session: &Session,
         prev_graph_node_count: usize,
         encoder: FileEncoder,
-        previous: Arc<SerializedDepGraph>,
+        previous: Arc<SerializedDepGraph<D>>,
     ) -> Self {
         let mut stable_hasher = StableHasher::new();
         previous.session_count().hash(&mut stable_hasher);
@@ -1281,7 +1281,7 @@ impl<D: Deps> CurrentDepGraph<D> {
     #[inline]
     fn debug_assert_not_in_new_nodes(
         &self,
-        prev_graph: &SerializedDepGraph,
+        prev_graph: &SerializedDepGraph<D>,
         prev_index: SerializedDepNodeIndex,
     ) {
         if let Some(ref nodes_in_current_session) = self.nodes_in_current_session {
