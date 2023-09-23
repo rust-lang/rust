@@ -361,11 +361,16 @@ pub enum StatementKind<'tcx> {
     /// Disallowed after drop elaboration.
     AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
-    /// Marks the start of a "coverage region", injected with '-Cinstrument-coverage'. A
-    /// `Coverage` statement carries metadata about the coverage region, used to inject a coverage
-    /// map into the binary. If `Coverage::kind` is a `Counter`, the statement also generates
-    /// executable code, to increment a counter variable at runtime, each time the code region is
-    /// executed.
+    /// Carries control-flow-sensitive information injected by `-Cinstrument-coverage`,
+    /// such as where to generate physical coverage-counter-increments during codegen.
+    ///
+    /// Coverage statements are used in conjunction with the coverage mappings and other
+    /// information stored in the function's
+    /// [`mir::Body::function_coverage_info`](crate::mir::Body::function_coverage_info).
+    /// (For inlined MIR, take care to look up the *original function's* coverage info.)
+    ///
+    /// Interpreters and codegen backends that don't support coverage instrumentation
+    /// can usually treat this as a no-op.
     Coverage(Box<Coverage>),
 
     /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
