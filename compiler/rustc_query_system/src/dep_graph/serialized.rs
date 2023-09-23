@@ -41,6 +41,7 @@ use crate::dep_graph::edges::EdgesVec;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fingerprint::PackedFingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
@@ -49,6 +50,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixed
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::iter;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
@@ -94,7 +96,7 @@ impl SerializedDepGraph {
     pub fn edge_targets_from(
         &self,
         source: SerializedDepNodeIndex,
-    ) -> impl Iterator<Item = SerializedDepNodeIndex> + '_ {
+    ) -> impl Iterator<Item = SerializedDepNodeIndex> + Clone + '_ {
         let header = self.edge_list_indices[source];
         let mut raw = &self.edge_list_data[header.start()..];
         // Figure out where the edge list for `source` ends by getting the start index of the next
@@ -176,7 +178,7 @@ fn mask(bits: usize) -> usize {
 
 impl SerializedDepGraph {
     #[instrument(level = "debug", skip(d))]
-    pub fn decode<D: Deps>(d: &mut MemDecoder<'_>) -> SerializedDepGraph {
+    pub fn decode<D: Deps>(d: &mut MemDecoder<'_>) -> Arc<SerializedDepGraph> {
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
         let (node_count, edge_count, graph_size) =
@@ -254,7 +256,13 @@ impl SerializedDepGraph {
             index[node.kind.as_usize()].insert(node.hash, idx);
         }
 
-        SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data, index }
+        Arc::new(SerializedDepGraph {
+            nodes,
+            fingerprints,
+            edge_list_indices,
+            edge_list_data,
+            index,
+        })
     }
 }
 
@@ -299,21 +307,24 @@ impl<D: Deps> SerializedNodeHeader<D> {
     const MAX_INLINE_LEN: usize = (u16::MAX as usize >> (Self::TOTAL_BITS - Self::LEN_BITS)) - 1;
 
     #[inline]
-    fn new(node_info: &NodeInfo) -> Self {
+    fn new(
+        node: DepNode,
+        fingerprint: Fingerprint,
+        edge_max_index: u32,
+        edge_count: usize,
+    ) -> Self {
         debug_assert_eq!(Self::TOTAL_BITS, Self::LEN_BITS + Self::WIDTH_BITS + Self::KIND_BITS);
-
-        let NodeInfo { node, fingerprint, edges } = node_info;
 
         let mut head = node.kind.as_inner();
 
-        let free_bytes = edges.max_index().leading_zeros() as usize / 8;
+        let free_bytes = edge_max_index.leading_zeros() as usize / 8;
         let bytes_per_index = (DEP_NODE_SIZE - free_bytes).saturating_sub(1);
         head |= (bytes_per_index as u16) << Self::KIND_BITS;
 
         // Encode number of edges + 1 so that we can reserve 0 to indicate that the len doesn't fit
         // in this bitfield.
-        if edges.len() <= Self::MAX_INLINE_LEN {
-            head |= (edges.len() as u16 + 1) << (Self::KIND_BITS + Self::WIDTH_BITS);
+        if edge_count <= Self::MAX_INLINE_LEN {
+            head |= (edge_count as u16 + 1) << (Self::KIND_BITS + Self::WIDTH_BITS);
         }
 
         let hash: Fingerprint = node.hash.into();
@@ -327,10 +338,10 @@ impl<D: Deps> SerializedNodeHeader<D> {
         #[cfg(debug_assertions)]
         {
             let res = Self { bytes, _marker: PhantomData };
-            assert_eq!(node_info.fingerprint, res.fingerprint());
-            assert_eq!(node_info.node, res.node());
+            assert_eq!(fingerprint, res.fingerprint());
+            assert_eq!(node, res.node());
             if let Some(len) = res.len() {
-                assert_eq!(node_info.edges.len(), len);
+                assert_eq!(edge_count, len);
             }
         }
         Self { bytes, _marker: PhantomData }
@@ -393,20 +404,55 @@ struct NodeInfo {
 
 impl NodeInfo {
     fn encode<D: Deps>(&self, e: &mut FileEncoder) {
-        let header = SerializedNodeHeader::<D>::new(self);
+        let NodeInfo { node, fingerprint, ref edges } = *self;
+        let header =
+            SerializedNodeHeader::<D>::new(node, fingerprint, edges.max_index(), edges.len());
         e.write_array(header.bytes);
 
         if header.len().is_none() {
-            e.emit_usize(self.edges.len());
+            e.emit_usize(edges.len());
         }
 
         let bytes_per_index = header.bytes_per_index();
-        for node_index in self.edges.iter() {
+        for node_index in edges.iter() {
             e.write_with(|dest| {
                 *dest = node_index.as_u32().to_le_bytes();
                 bytes_per_index
             });
         }
+    }
+
+    #[inline]
+    fn encode_promoted<D: Deps>(
+        e: &mut FileEncoder,
+        node: DepNode,
+        fingerprint: Fingerprint,
+        prev_index: SerializedDepNodeIndex,
+        prev_index_to_index: &IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>,
+        previous: &SerializedDepGraph,
+    ) -> usize {
+        let edges = previous.edge_targets_from(prev_index);
+        let edge_count = edges.size_hint().0;
+        let edge_max =
+            edges.clone().map(|i| prev_index_to_index[i].unwrap().as_u32()).max().unwrap_or(0);
+
+        let header = SerializedNodeHeader::<D>::new(node, fingerprint, edge_max, edge_count);
+        e.write_array(header.bytes);
+
+        if header.len().is_none() {
+            e.emit_usize(edge_count);
+        }
+
+        let bytes_per_index = header.bytes_per_index();
+        for node_index in edges {
+            let node_index = prev_index_to_index[node_index].unwrap();
+            e.write_with(|dest| {
+                *dest = node_index.as_u32().to_le_bytes();
+                bytes_per_index
+            });
+        }
+
+        edge_count
     }
 }
 
@@ -417,6 +463,7 @@ struct Stat {
 }
 
 struct EncoderState<D: Deps> {
+    previous: Arc<SerializedDepGraph>,
     encoder: FileEncoder,
     total_node_count: usize,
     total_edge_count: usize,
@@ -428,8 +475,9 @@ struct EncoderState<D: Deps> {
 }
 
 impl<D: Deps> EncoderState<D> {
-    fn new(encoder: FileEncoder, record_stats: bool) -> Self {
+    fn new(encoder: FileEncoder, record_stats: bool, previous: Arc<SerializedDepGraph>) -> Self {
         Self {
+            previous,
             encoder,
             total_edge_count: 0,
             total_node_count: 0,
@@ -439,36 +487,88 @@ impl<D: Deps> EncoderState<D> {
         }
     }
 
+    #[inline]
+    fn record(
+        &mut self,
+        node: DepNode,
+        edge_count: usize,
+        edges: impl FnOnce(&mut Self) -> Vec<DepNodeIndex>,
+        record_graph: &Option<Lock<DepGraphQuery>>,
+    ) -> DepNodeIndex {
+        let index = DepNodeIndex::new(self.total_node_count);
+
+        self.total_node_count += 1;
+        self.kind_stats[node.kind.as_usize()] += 1;
+        self.total_edge_count += edge_count;
+
+        if let Some(record_graph) = &record_graph {
+            let edges = edges(self);
+            outline(move || {
+                // Do not ICE when a query is called from within `with_query`.
+                if let Some(record_graph) = &mut record_graph.try_lock() {
+                    record_graph.push(index, node, &edges);
+                }
+            });
+        }
+
+        if let Some(stats) = &mut self.stats {
+            let kind = node.kind;
+
+            outline(move || {
+                let stat =
+                    stats.entry(kind).or_insert(Stat { kind, node_counter: 0, edge_counter: 0 });
+                stat.node_counter += 1;
+                stat.edge_counter += edge_count as u64;
+            });
+        }
+
+        index
+    }
+
     fn encode_node(
         &mut self,
         node: &NodeInfo,
         record_graph: &Option<Lock<DepGraphQuery>>,
     ) -> DepNodeIndex {
-        let index = DepNodeIndex::new(self.total_node_count);
-        self.total_node_count += 1;
-        self.kind_stats[node.node.kind.as_usize()] += 1;
+        node.encode::<D>(&mut self.encoder);
+        self.record(
+            node.node,
+            node.edges.len(),
+            |_| node.edges[..].iter().copied().collect(),
+            record_graph,
+        )
+    }
 
-        let edge_count = node.edges.len();
-        self.total_edge_count += edge_count;
+    #[inline]
+    fn promote_node(
+        &mut self,
+        prev_index: SerializedDepNodeIndex,
+        record_graph: &Option<Lock<DepGraphQuery>>,
+        prev_index_to_index: &IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>,
+    ) -> DepNodeIndex {
+        let node = self.previous.index_to_node(prev_index);
 
-        if let Some(record_graph) = &record_graph {
-            // Do not ICE when a query is called from within `with_query`.
-            if let Some(record_graph) = &mut record_graph.try_lock() {
-                record_graph.push(index, node.node, &node.edges);
-            }
-        }
+        let fingerprint = self.previous.fingerprint_by_index(prev_index);
+        let edge_count = NodeInfo::encode_promoted::<D>(
+            &mut self.encoder,
+            node,
+            fingerprint,
+            prev_index,
+            prev_index_to_index,
+            &self.previous,
+        );
 
-        if let Some(stats) = &mut self.stats {
-            let kind = node.node.kind;
-
-            let stat = stats.entry(kind).or_insert(Stat { kind, node_counter: 0, edge_counter: 0 });
-            stat.node_counter += 1;
-            stat.edge_counter += edge_count as u64;
-        }
-
-        let encoder = &mut self.encoder;
-        node.encode::<D>(encoder);
-        index
+        self.record(
+            node,
+            edge_count,
+            |this| {
+                this.previous
+                    .edge_targets_from(prev_index)
+                    .map(|i| prev_index_to_index[i].unwrap())
+                    .collect()
+            },
+            record_graph,
+        )
     }
 
     fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
@@ -479,6 +579,7 @@ impl<D: Deps> EncoderState<D> {
             stats: _,
             kind_stats,
             marker: _,
+            previous: _,
         } = self;
 
         let node_count = total_node_count.try_into().unwrap();
@@ -520,9 +621,10 @@ impl<D: Deps> GraphEncoder<D> {
         record_graph: bool,
         record_stats: bool,
         profiler: &SelfProfilerRef,
+        previous: Arc<SerializedDepGraph>,
     ) -> Self {
         let record_graph = record_graph.then(|| Lock::new(DepGraphQuery::new(prev_node_count)));
-        let status = Lock::new(Some(EncoderState::new(encoder, record_stats)));
+        let status = Lock::new(Some(EncoderState::new(encoder, record_stats, previous)));
         GraphEncoder { status, record_graph, profiler: profiler.clone() }
     }
 
@@ -594,6 +696,20 @@ impl<D: Deps> GraphEncoder<D> {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
         self.status.lock().as_mut().unwrap().encode_node(&node, &self.record_graph)
+    }
+
+    #[inline]
+    pub(crate) fn promote(
+        &self,
+        prev_index: SerializedDepNodeIndex,
+        prev_index_to_index: &IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>,
+    ) -> DepNodeIndex {
+        let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
+        self.status.lock().as_mut().unwrap().promote_node(
+            prev_index,
+            &self.record_graph,
+            prev_index_to_index,
+        )
     }
 
     pub fn finish(&self) -> FileEncodeResult {
