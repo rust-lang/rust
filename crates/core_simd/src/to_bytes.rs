@@ -9,6 +9,7 @@ macro_rules! impl_to_bytes {
         {
             /// Return the memory representation of this integer as a byte array in native byte
             /// order.
+            #[inline]
             pub fn to_ne_bytes(self) -> crate::simd::Simd<u8, {{ $size * LANES }}> {
                 // Safety: transmuting between vectors is safe
                 unsafe { core::mem::transmute_copy(&self) }
@@ -16,6 +17,7 @@ macro_rules! impl_to_bytes {
 
             /// Return the memory representation of this integer as a byte array in big-endian
             /// (network) byte order.
+            #[inline]
             pub fn to_be_bytes(self) -> crate::simd::Simd<u8, {{ $size * LANES }}> {
                 let bytes = self.to_ne_bytes();
                 if cfg!(target_endian = "big") {
@@ -27,6 +29,7 @@ macro_rules! impl_to_bytes {
 
             /// Return the memory representation of this integer as a byte array in little-endian
             /// byte order.
+            #[inline]
             pub fn to_le_bytes(self) -> crate::simd::Simd<u8, {{ $size * LANES }}> {
                 let bytes = self.to_ne_bytes();
                 if cfg!(target_endian = "little") {
@@ -38,12 +41,14 @@ macro_rules! impl_to_bytes {
 
             /// Create a native endian integer value from its memory representation as a byte array
             /// in native endianness.
+            #[inline]
             pub fn from_ne_bytes(bytes: crate::simd::Simd<u8, {{ $size * LANES }}>) -> Self {
                 // Safety: transmuting between vectors is safe
                 unsafe { core::mem::transmute_copy(&bytes) }
             }
 
             /// Create an integer value from its representation as a byte array in big endian.
+            #[inline]
             pub fn from_be_bytes(bytes: crate::simd::Simd<u8, {{ $size * LANES }}>) -> Self {
                 let bytes = if cfg!(target_endian = "big") {
                     bytes
@@ -54,6 +59,7 @@ macro_rules! impl_to_bytes {
             }
 
             /// Create an integer value from its representation as a byte array in little endian.
+            #[inline]
             pub fn from_le_bytes(bytes: crate::simd::Simd<u8, {{ $size * LANES }}>) -> Self {
                 let bytes = if cfg!(target_endian = "little") {
                     bytes

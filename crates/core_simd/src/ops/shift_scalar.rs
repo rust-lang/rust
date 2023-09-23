@@ -10,6 +10,7 @@ macro_rules! impl_splatted_shifts {
             LaneCount<N>: SupportedLaneCount,
         {
             type Output = Self;
+            #[inline]
             fn $trait_fn(self, rhs: $ty) -> Self::Output {
                 self.$trait_fn(Simd::splat(rhs))
             }
@@ -20,6 +21,7 @@ macro_rules! impl_splatted_shifts {
             LaneCount<N>: SupportedLaneCount,
         {
             type Output = Self;
+            #[inline]
             fn $trait_fn(self, rhs: &$ty) -> Self::Output {
                 self.$trait_fn(Simd::splat(*rhs))
             }
@@ -30,6 +32,7 @@ macro_rules! impl_splatted_shifts {
             LaneCount<N>: SupportedLaneCount,
         {
             type Output = Simd<$ty, N>;
+            #[inline]
             fn $trait_fn(self, rhs: $ty) -> Self::Output {
                 self.$trait_fn(Simd::splat(rhs))
             }
@@ -40,6 +43,7 @@ macro_rules! impl_splatted_shifts {
             LaneCount<N>: SupportedLaneCount,
         {
             type Output = Simd<$ty, N>;
+            #[inline]
             fn $trait_fn(self, rhs: &$ty) -> Self::Output {
                 self.$trait_fn(Simd::splat(*rhs))
             }

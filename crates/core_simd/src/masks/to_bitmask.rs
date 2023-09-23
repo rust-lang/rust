@@ -74,6 +74,7 @@ impl_integer_intrinsic! {
 
 /// Returns the minimum number of bytes in a bitmask with `lanes` lanes.
 #[cfg(feature = "generic_const_exprs")]
+#[allow(clippy::missing_inline_in_public_items)]
 pub const fn bitmask_len(lanes: usize) -> usize {
     (lanes + 7) / 8
 }
