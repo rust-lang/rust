@@ -306,14 +306,14 @@ where
         &mut self,
         hash: u64,
         eq: impl FnMut(&T) -> bool,
-    ) -> Result<OccupiedEntry<'_, T, A>, &mut Self> {
+    ) -> Result<OccupiedEntry<'_, T, A>, AbsentEntry<'_, T, A>> {
         match self.raw.find(hash, eq) {
             Some(bucket) => Ok(OccupiedEntry {
                 hash,
                 bucket,
                 table: self,
             }),
-            None => Err(self),
+            None => Err(AbsentEntry { table: self }),
         }
     }
 
@@ -1757,6 +1757,70 @@ where
     }
 
     /// Converts the VacantEntry into a mutable reference to the underlying
+    /// table.
+    pub fn into_table(self) -> &'a mut HashTable<T, A> {
+        self.table
+    }
+}
+
+/// Type representing the absence of an entry, as returned by [`HashTable::find_entry`].
+///
+/// This type only exists due to [limitations] in Rust's NLL borrow checker. In
+/// the future, `find_entry` will return an `Option<OccupiedEntry>` and this
+/// type will be removed.
+///
+/// [limitations]: https://smallcultfollowing.com/babysteps/blog/2018/06/15/mir-based-borrow-check-nll-status-update/#polonius
+/// # Examples
+///
+/// ```
+/// # #[cfg(feature = "nightly")]
+/// # fn test() {
+/// use ahash::AHasher;
+/// use hashbrown::hash_table::{AbsentEntry, Entry, HashTable};
+/// use std::hash::{BuildHasher, BuildHasherDefault};
+///
+/// let mut table: HashTable<&str> = HashTable::new();
+/// let hasher = BuildHasherDefault::<AHasher>::default();
+/// let hasher = |val: &_| hasher.hash_one(val);
+///
+/// let entry_v: AbsentEntry<_, _> = table.find_entry(hasher(&"a"), |&x| x == "a").unwrap_err();
+/// entry_v
+///     .into_table()
+///     .insert_unchecked(hasher(&"a"), "a", hasher);
+/// assert!(table.find(hasher(&"a"), |&x| x == "a").is_some() && table.len() == 1);
+///
+/// // Nonexistent key (insert)
+/// match table.entry(hasher(&"b"), |&x| x == "b", hasher) {
+///     Entry::Vacant(view) => {
+///         view.insert("b");
+///     }
+///     Entry::Occupied(_) => unreachable!(),
+/// }
+/// assert!(table.find(hasher(&"b"), |&x| x == "b").is_some() && table.len() == 2);
+/// # }
+/// # fn main() {
+/// #     #[cfg(feature = "nightly")]
+/// #     test()
+/// # }
+/// ```
+pub struct AbsentEntry<'a, T, A = Global>
+where
+    A: Allocator,
+{
+    table: &'a mut HashTable<T, A>,
+}
+
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for AbsentEntry<'_, T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("AbsentEntry")
+    }
+}
+
+impl<'a, T, A> AbsentEntry<'a, T, A>
+where
+    A: Allocator,
+{
+    /// Converts the AbsentEntry into a mutable reference to the underlying
     /// table.
     pub fn into_table(self) -> &'a mut HashTable<T, A> {
         self.table
