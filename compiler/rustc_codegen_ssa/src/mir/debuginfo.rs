@@ -158,8 +158,7 @@ fn calculate_debuginfo_offset<
     L: DebugInfoOffsetLocation<'tcx, Bx>,
 >(
     bx: &mut Bx,
-    local: mir::Local,
-    var: &PerLocalVarDebugInfo<'tcx, Bx::DIVariable>,
+    projection: &[mir::PlaceElem<'tcx>],
     base: L,
 ) -> DebugInfoOffset<L> {
     let mut direct_offset = Size::ZERO;
@@ -167,7 +166,7 @@ fn calculate_debuginfo_offset<
     let mut indirect_offsets = vec![];
     let mut place = base;
 
-    for elem in &var.projection[..] {
+    for elem in projection {
         match *elem {
             mir::ProjectionElem::Deref => {
                 indirect_offsets.push(Size::ZERO);
@@ -188,11 +187,7 @@ fn calculate_debuginfo_offset<
             } => {
                 let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
                 let FieldsShape::Array { stride, count: _ } = place.layout().fields else {
-                    span_bug!(
-                        var.source_info.span,
-                        "ConstantIndex on non-array type {:?}",
-                        place.layout()
-                    )
+                    bug!("ConstantIndex on non-array type {:?}", place.layout())
                 };
                 *offset += stride * index;
                 place = place.project_constant_index(bx, index);
@@ -200,11 +195,7 @@ fn calculate_debuginfo_offset<
             _ => {
                 // Sanity check for `can_use_in_debuginfo`.
                 debug_assert!(!elem.can_use_in_debuginfo());
-                span_bug!(
-                    var.source_info.span,
-                    "unsupported var debuginfo place `{:?}`",
-                    mir::Place { local, projection: var.projection },
-                )
+                bug!("unsupported var debuginfo projection `{:?}`", projection)
             }
         }
     }
@@ -407,7 +398,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let Some(dbg_loc) = self.dbg_loc(var.source_info) else { return };
 
         let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
-            calculate_debuginfo_offset(bx, local, &var, base.layout);
+            calculate_debuginfo_offset(bx, &var.projection, base.layout);
 
         // When targeting MSVC, create extra allocas for arguments instead of pointing multiple
         // dbg_var_addr() calls into the same alloca with offsets. MSVC uses CodeView records
@@ -425,7 +416,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if should_create_individual_allocas {
             let DebugInfoOffset { direct_offset: _, indirect_offsets: _, result: place } =
-                calculate_debuginfo_offset(bx, local, &var, base);
+                calculate_debuginfo_offset(bx, &var.projection, base);
 
             // Create a variable which will be a pointer to the actual value
             let ptr_ty = Ty::new_ptr(
@@ -532,23 +523,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let fragment = if let Some(ref fragment) = var.composite {
                 let var_layout = self.cx.layout_of(var_ty);
 
-                let mut fragment_start = Size::ZERO;
-                let mut fragment_layout = var_layout;
-
-                for elem in &fragment.projection {
-                    match *elem {
-                        mir::ProjectionElem::Field(field, _) => {
-                            let i = field.index();
-                            fragment_start += fragment_layout.fields.offset(i);
-                            fragment_layout = fragment_layout.field(self.cx, i);
-                        }
-                        _ => span_bug!(
-                            var.source_info.span,
-                            "unsupported fragment projection `{:?}`",
-                            elem,
-                        ),
-                    }
-                }
+                let DebugInfoOffset { direct_offset, indirect_offsets, result: fragment_layout } =
+                    calculate_debuginfo_offset(bx, &fragment.projection, var_layout);
+                debug_assert!(indirect_offsets.is_empty());
 
                 if fragment_layout.size == Size::ZERO {
                     // Fragment is a ZST, so does not represent anything. Avoid generating anything
@@ -559,7 +536,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // DWARF is concerned, it's not really a fragment.
                     None
                 } else {
-                    Some(fragment_start..fragment_start + fragment_layout.size)
+                    Some(direct_offset..direct_offset + fragment_layout.size)
                 }
             } else {
                 None
