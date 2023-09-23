@@ -39,7 +39,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
             if asm.operands.iter().any(|(op, _op_sp)| match op {
                 hir::InlineAsmOperand::Const { anon_const }
-                | hir::InlineAsmOperand::SymFn { anon_const } => anon_const.hir_id == hir_id,
+                | hir::InlineAsmOperand::SymFnInGlobal { anon_const } => anon_const.hir_id == hir_id,
                 _ => false,
             }) =>
         {

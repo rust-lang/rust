@@ -653,12 +653,15 @@ impl<'tcx> Cx<'tcx> {
 
                             InlineAsmOperand::Const { value, span }
                         }
-                        hir::InlineAsmOperand::SymFn { ref anon_const } => {
+                        hir::InlineAsmOperand::SymFnInGlobal { ref anon_const } => {
                             let value =
                                 mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
-                            InlineAsmOperand::SymFn { value, span }
+                            InlineAsmOperand::SymFnInGlobal { value, span }
+                        }
+                        hir::InlineAsmOperand::SymFnInInline { expr } => {
+                            InlineAsmOperand::SymFnInInline { expr: self.mirror_expr(expr) }
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             InlineAsmOperand::SymStatic { def_id }

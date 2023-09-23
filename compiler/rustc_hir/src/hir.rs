@@ -2766,8 +2766,11 @@ pub enum InlineAsmOperand<'hir> {
     Const {
         anon_const: AnonConst,
     },
-    SymFn {
+    SymFnInGlobal {
         anon_const: AnonConst,
+    },
+    SymFnInInline {
+        expr: &'hir Expr<'hir>,
     },
     SymStatic {
         path: QPath<'hir>,
@@ -2782,7 +2785,10 @@ impl<'hir> InlineAsmOperand<'hir> {
             | Self::Out { reg, .. }
             | Self::InOut { reg, .. }
             | Self::SplitInOut { reg, .. } => Some(reg),
-            Self::Const { .. } | Self::SymFn { .. } | Self::SymStatic { .. } => None,
+            Self::Const { .. }
+            | Self::SymFnInGlobal { .. }
+            | Self::SymFnInInline { .. }
+            | Self::SymStatic { .. } => None,
         }
     }
 

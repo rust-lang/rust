@@ -11,7 +11,7 @@ use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass,
 pub struct InlineAsmCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    get_operand_ty: Box<dyn Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
+    get_expr_ty: Box<dyn Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
@@ -19,16 +19,16 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         InlineAsmCtxt {
             tcx,
             param_env: ty::ParamEnv::empty(),
-            get_operand_ty: Box::new(|e| bug!("asm operand in global asm: {e:?}")),
+            get_expr_ty: Box::new(|e| bug!("asm operand in global asm: {e:?}")),
         }
     }
 
     pub fn new_in_fn(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        get_operand_ty: impl Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
+        get_expr_ty: impl Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
     ) -> Self {
-        InlineAsmCtxt { tcx, param_env, get_operand_ty: Box::new(get_operand_ty) }
+        InlineAsmCtxt { tcx, param_env, get_expr_ty: Box::new(get_expr_ty) }
     }
 
     // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
@@ -124,7 +124,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
         target_features: &FxIndexSet<Symbol>,
     ) -> Option<InlineAsmType> {
-        let ty = (self.get_operand_ty)(expr);
+        let ty = (self.get_expr_ty)(expr);
         if ty.has_non_region_infer() {
             bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
         }
@@ -178,7 +178,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 let msg = "incompatible types for asm inout argument";
                 let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
 
-                let in_expr_ty = (self.get_operand_ty)(in_expr);
+                let in_expr_ty = (self.get_expr_ty)(in_expr);
                 err.span_label(in_expr.span, format!("type `{in_expr_ty}`"));
                 err.span_label(expr.span, format!("type `{ty}`"));
                 err.note(
@@ -437,7 +437,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymStatic { .. } => {}
                 // Check that sym actually points to a function. Later passes
                 // depend on this.
-                hir::InlineAsmOperand::SymFn { anon_const } => {
+                hir::InlineAsmOperand::SymFnInGlobal { anon_const } => {
                     let ty = self.tcx.type_of(anon_const.def_id).instantiate_identity();
                     match ty.kind() {
                         ty::Never | ty::Error(_) => {}
@@ -447,6 +447,23 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 self.tcx.sess.struct_span_err(*op_sp, "invalid `sym` operand");
                             err.span_label(
                                 self.tcx.def_span(anon_const.def_id),
+                                format!("is {} `{}`", ty.kind().article(), ty),
+                            );
+                            err.help("`sym` operands must refer to either a function or a static");
+                            err.emit();
+                        }
+                    };
+                }
+                hir::InlineAsmOperand::SymFnInInline { expr } => {
+                    let ty = (self.get_expr_ty)(expr);
+                    match ty.kind() {
+                        ty::Never | ty::Error(_) => {}
+                        ty::FnDef(..) => {}
+                        _ => {
+                            let mut err =
+                                self.tcx.sess.struct_span_err(*op_sp, "invalid `sym` operand");
+                            err.span_label(
+                                expr.span,
                                 format!("is {} `{}`", ty.kind().article(), ty),
                             );
                             err.help("`sym` operands must refer to either a function or a static");

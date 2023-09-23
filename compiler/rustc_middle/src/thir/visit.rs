@@ -154,9 +154,12 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                             visitor.visit_expr(&visitor.thir()[*out_expr]);
                         }
                     }
+                    SymFnInInline { expr } => {
+                        visitor.visit_expr(&visitor.thir()[*expr]);
+                    }
                     Out { expr: None, reg: _, late: _ }
                     | Const { value: _, span: _ }
-                    | SymFn { value: _, span: _ }
+                    | SymFnInGlobal { value: _, span: _ }
                     | SymStatic { def_id: _ } => {}
                 }
             }

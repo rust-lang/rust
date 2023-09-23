@@ -1219,7 +1219,12 @@ pub fn walk_inline_asm<'v, V: Visitor<'v>>(visitor: &mut V, asm: &'v InlineAsm<'
                 }
             }
             InlineAsmOperand::Const { anon_const, .. }
-            | InlineAsmOperand::SymFn { anon_const, .. } => visitor.visit_anon_const(anon_const),
+            | InlineAsmOperand::SymFnInGlobal { anon_const, .. } => {
+                visitor.visit_anon_const(anon_const)
+            }
+            InlineAsmOperand::SymFnInInline { expr } => {
+                visitor.visit_expr(expr);
+            }
             InlineAsmOperand::SymStatic { path, .. } => visitor.visit_qpath(path, id, *op_sp),
         }
     }

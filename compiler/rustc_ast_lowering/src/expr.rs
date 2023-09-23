@@ -283,7 +283,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Become(sub_expr)
                 }
                 ExprKind::InlineAsm(asm) => {
-                    hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
+                    hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm, false))
                 }
                 ExprKind::FormatArgs(fmt) => self.lower_format_args(e.span, fmt),
                 ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(

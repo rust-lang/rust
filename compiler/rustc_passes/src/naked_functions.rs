@@ -232,8 +232,11 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             .iter()
             .filter_map(|&(ref op, op_sp)| match op {
                 InlineAsmOperand::Const { .. }
-                | InlineAsmOperand::SymFn { .. }
+                | hir::InlineAsmOperand::SymFnInInline { .. }
                 | InlineAsmOperand::SymStatic { .. } => None,
+                hir::InlineAsmOperand::SymFnInGlobal { .. } => {
+                    bug!("SymFnInGlobal should never be in an inline `asm!`")
+                }
                 InlineAsmOperand::In { .. }
                 | InlineAsmOperand::Out { .. }
                 | InlineAsmOperand::InOut { .. }

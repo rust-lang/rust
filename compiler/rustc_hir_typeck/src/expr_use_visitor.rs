@@ -291,7 +291,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         }
                         hir::InlineAsmOperand::Out { expr: None, .. }
                         | hir::InlineAsmOperand::Const { .. }
-                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymFnInGlobal { .. }
+                        // `sym`, even in body, operates like a constant,
+                        // so no need to consume or mutate anything here.
+                        | hir::InlineAsmOperand::SymFnInInline { .. }
                         | hir::InlineAsmOperand::SymStatic { .. } => {}
                     }
                 }

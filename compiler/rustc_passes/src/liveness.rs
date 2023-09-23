@@ -1086,7 +1086,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     match op {
                         hir::InlineAsmOperand::In { .. }
                         | hir::InlineAsmOperand::Const { .. }
-                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymFnInGlobal { .. }
+                        | hir::InlineAsmOperand::SymFnInInline { .. }
                         | hir::InlineAsmOperand::SymStatic { .. } => {}
                         hir::InlineAsmOperand::Out { expr, .. } => {
                             if let Some(expr) = expr {
@@ -1125,7 +1126,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             succ = self.propagate_through_expr(in_expr, succ);
                         }
                         hir::InlineAsmOperand::Const { .. }
-                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymFnInGlobal { .. }
+                        | hir::InlineAsmOperand::SymFnInInline { .. }
                         | hir::InlineAsmOperand::SymStatic { .. } => {}
                     }
                 }

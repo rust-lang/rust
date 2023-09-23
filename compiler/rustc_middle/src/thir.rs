@@ -566,9 +566,12 @@ pub enum InlineAsmOperand<'tcx> {
         value: mir::Const<'tcx>,
         span: Span,
     },
-    SymFn {
+    SymFnInGlobal {
         value: mir::Const<'tcx>,
         span: Span,
+    },
+    SymFnInInline {
+        expr: ExprId,
     },
     SymStatic {
         def_id: DefId,

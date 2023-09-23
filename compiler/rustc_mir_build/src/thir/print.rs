@@ -897,10 +897,16 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            InlineAsmOperand::SymFn { value, span } => {
-                print_indented!(self, "InlineAsmOperand::SymFn {", depth_lvl);
+            InlineAsmOperand::SymFnInGlobal { value, span } => {
+                print_indented!(self, "InlineAsmOperand::SymFnInGlobal {", depth_lvl);
                 print_indented!(self, format!("value: {:?}", *value), depth_lvl + 1);
                 print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
+                print_indented!(self, "}", depth_lvl + 1);
+            }
+            InlineAsmOperand::SymFnInInline { expr } => {
+                print_indented!(self, "InlineAsmOperand::SymFnInGlobal {", depth_lvl);
+                print_indented!(self, "expr: ", depth_lvl + 1);
+                self.print_expr(*expr, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             InlineAsmOperand::SymStatic { def_id } => {

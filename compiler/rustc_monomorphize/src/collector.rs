@@ -429,10 +429,15 @@ fn collect_items_rec<'tcx>(
                             // are supported. Therefore the value should not
                             // depend on any other items.
                         }
-                        hir::InlineAsmOperand::SymFn { anon_const } => {
-                            let fn_ty =
-                                tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                        hir::InlineAsmOperand::SymFnInGlobal { anon_const } => {
+                            let fn_ty = tcx
+                                .type_of(anon_const.def_id)
+                                .no_bound_vars()
+                                .expect("`sym` in `global_asm!` should not have generics");
                             visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items, &[]);
+                        }
+                        hir::InlineAsmOperand::SymFnInInline { .. } => {
+                            bug!("should not encounter `SymFnInInline` in `global_asm!`");
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);

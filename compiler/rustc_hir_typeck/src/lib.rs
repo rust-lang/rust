@@ -223,7 +223,9 @@ fn typeck_with_fallback<'tcx>(
                             // Inline assembly constants must be integers.
                             Some(fcx.next_int_var())
                         }
-                        hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == id => {
+                        hir::InlineAsmOperand::SymFnInGlobal { anon_const }
+                            if anon_const.hir_id == id =>
+                        {
                             Some(fcx.next_ty_var(TypeVariableOrigin {
                                 kind: TypeVariableOriginKind::MiscVariable,
                                 span,

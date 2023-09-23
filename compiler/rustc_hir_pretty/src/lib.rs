@@ -1309,10 +1309,15 @@ impl<'a> State<'a> {
                     s.space();
                     s.print_anon_const(anon_const);
                 }
-                hir::InlineAsmOperand::SymFn { ref anon_const } => {
+                hir::InlineAsmOperand::SymFnInGlobal { ref anon_const } => {
                     s.word("sym_fn");
                     s.space();
                     s.print_anon_const(anon_const);
+                }
+                hir::InlineAsmOperand::SymFnInInline { ref expr } => {
+                    s.word("sym_fn");
+                    s.space();
+                    s.print_expr(expr);
                 }
                 hir::InlineAsmOperand::SymStatic { ref path, def_id: _ } => {
                     s.word("sym_static");

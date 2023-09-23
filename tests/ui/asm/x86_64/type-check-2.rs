@@ -24,17 +24,6 @@ fn main() {
         asm!("{}", out(reg) v[0]);
         asm!("{}", inout(reg) v[0]);
 
-        // Sym operands must point to a function or static
-
-        const C: i32 = 0;
-        static S: i32 = 0;
-        asm!("{}", sym S);
-        asm!("{}", sym main);
-        asm!("{}", sym C);
-        //~^ ERROR invalid `sym` operand
-        asm!("{}", sym x);
-        //~^ ERROR invalid `sym` operand
-
         // Register operands must be Copy
 
         asm!("{}", in(xmm_reg) SimdNonCopy(0.0, 0.0, 0.0, 0.0));
@@ -74,6 +63,25 @@ fn main() {
 
         let u: ! = unreachable!();
         asm!("{}", in(reg) u);
+    }
+}
+
+fn bad_sym() {
+    unsafe {
+        // Sym operands must point to a function or static
+        let x: u64;
+        const C: i32 = 0;
+        static S: i32 = 0;
+        asm!("{}", sym S);
+        asm!("{}", sym main);
+        asm!("{}", sym C);
+        //~^ ERROR invalid `sym` operand
+
+        // N.B. this error is emitted in the resolver, and will taint the
+        // whole typeck body causing other errors to be suppressed. That's
+        // why it's located in a different function.
+        asm!("{}", sym x);
+        //~^ ERROR invalid `sym` operand
     }
 }
 

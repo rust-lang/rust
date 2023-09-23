@@ -35,52 +35,55 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             MonoItem::GlobalAsm(item_id) => {
                 let item = cx.tcx().hir().item(item_id);
                 if let hir::ItemKind::GlobalAsm(ref asm) = item.kind {
-                    let operands: Vec<_> = asm
-                        .operands
-                        .iter()
-                        .map(|(op, op_sp)| match *op {
-                            hir::InlineAsmOperand::Const { ref anon_const } => {
-                                let const_value = cx
-                                    .tcx()
-                                    .const_eval_poly(anon_const.def_id.to_def_id())
-                                    .unwrap_or_else(|_| {
-                                        span_bug!(*op_sp, "asm const cannot be resolved")
-                                    });
-                                let ty = cx
-                                    .tcx()
-                                    .typeck_body(anon_const.body)
-                                    .node_type(anon_const.hir_id);
-                                let string = common::asm_const_to_str(
-                                    cx.tcx(),
-                                    *op_sp,
-                                    const_value,
-                                    cx.layout_of(ty),
-                                );
-                                GlobalAsmOperandRef::Const { string }
-                            }
-                            hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                                let ty = cx
-                                    .tcx()
-                                    .typeck_body(anon_const.body)
-                                    .node_type(anon_const.hir_id);
-                                let instance = match ty.kind() {
-                                    &ty::FnDef(def_id, args) => Instance::new(def_id, args),
-                                    _ => span_bug!(*op_sp, "asm sym is not a function"),
-                                };
+                    let operands: Vec<_> =
+                        asm.operands
+                            .iter()
+                            .map(|(op, op_sp)| match *op {
+                                hir::InlineAsmOperand::Const { ref anon_const } => {
+                                    let const_value = cx
+                                        .tcx()
+                                        .const_eval_poly(anon_const.def_id.to_def_id())
+                                        .unwrap_or_else(|_| {
+                                            span_bug!(*op_sp, "asm const cannot be resolved")
+                                        });
+                                    let ty = cx
+                                        .tcx()
+                                        .typeck_body(anon_const.body)
+                                        .node_type(anon_const.hir_id);
+                                    let string = common::asm_const_to_str(
+                                        cx.tcx(),
+                                        *op_sp,
+                                        const_value,
+                                        cx.layout_of(ty),
+                                    );
+                                    GlobalAsmOperandRef::Const { string }
+                                }
+                                hir::InlineAsmOperand::SymFnInGlobal { ref anon_const } => {
+                                    let fn_ty =
+                                        cx.tcx().type_of(anon_const.def_id).no_bound_vars().expect(
+                                            "`sym` in `global_asm!` should not have generics",
+                                        );
+                                    let instance = match fn_ty.kind() {
+                                        &ty::FnDef(def_id, args) => Instance::new(def_id, args),
+                                        _ => span_bug!(*op_sp, "asm sym is not a function"),
+                                    };
 
-                                GlobalAsmOperandRef::SymFn { instance }
-                            }
-                            hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
-                                GlobalAsmOperandRef::SymStatic { def_id }
-                            }
-                            hir::InlineAsmOperand::In { .. }
-                            | hir::InlineAsmOperand::Out { .. }
-                            | hir::InlineAsmOperand::InOut { .. }
-                            | hir::InlineAsmOperand::SplitInOut { .. } => {
-                                span_bug!(*op_sp, "invalid operand type for global_asm!")
-                            }
-                        })
-                        .collect();
+                                    GlobalAsmOperandRef::SymFn { instance }
+                                }
+                                hir::InlineAsmOperand::SymFnInInline { .. } => {
+                                    bug!("should not encounter `SymFnInInline` in `global_asm!`");
+                                }
+                                hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
+                                    GlobalAsmOperandRef::SymStatic { def_id }
+                                }
+                                hir::InlineAsmOperand::In { .. }
+                                | hir::InlineAsmOperand::Out { .. }
+                                | hir::InlineAsmOperand::InOut { .. }
+                                | hir::InlineAsmOperand::SplitInOut { .. } => {
+                                    span_bug!(*op_sp, "invalid operand type for global_asm!")
+                                }
+                            })
+                            .collect();
 
                     cx.codegen_global_asm(asm.template, &operands, asm.options, asm.line_spans);
                 } else {

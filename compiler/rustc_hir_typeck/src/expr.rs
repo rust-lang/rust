@@ -3113,10 +3113,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.check_expr_asm_operand(out_expr, false);
                     }
                 }
+                hir::InlineAsmOperand::SymFnInInline { expr } => {
+                    self.check_expr(expr);
+                }
                 // `AnonConst`s have their own body and is type-checked separately.
                 // As they don't flow into the type system we don't need them to
                 // be well-formed.
-                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymFn { .. } => {}
+                hir::InlineAsmOperand::Const { .. }
+                | hir::InlineAsmOperand::SymFnInGlobal { .. } => {}
                 hir::InlineAsmOperand::SymStatic { .. } => {}
             }
         }

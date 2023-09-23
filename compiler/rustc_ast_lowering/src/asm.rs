@@ -26,6 +26,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         sp: Span,
         asm: &InlineAsm,
+        is_global: bool,
     ) -> &'hir hir::InlineAsm<'hir> {
         // Rustdoc needs to support asm! from foreign architectures: don't try
         // lowering the register constraints in this case.
@@ -221,18 +222,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 tokens: None,
                             };
 
-                            // Wrap the expression in an AnonConst.
-                            let parent_def_id = self.current_hir_id_owner;
-                            let node_id = self.next_node_id();
-                            self.create_def(
-                                parent_def_id.def_id,
-                                node_id,
-                                DefPathData::AnonConst,
-                                *op_sp,
-                            );
-                            let anon_const = AnonConst { id: node_id, value: P(expr) };
-                            hir::InlineAsmOperand::SymFn {
-                                anon_const: self.lower_anon_const(&anon_const),
+                            if is_global {
+                                // Wrap the expression in an AnonConst.
+                                let parent_def_id = self.current_hir_id_owner;
+                                let node_id = self.next_node_id();
+                                self.create_def(
+                                    parent_def_id.def_id,
+                                    node_id,
+                                    DefPathData::AnonConst,
+                                    *op_sp,
+                                );
+                                let anon_const = AnonConst { id: node_id, value: P(expr) };
+                                hir::InlineAsmOperand::SymFnInGlobal {
+                                    anon_const: self.lower_anon_const(&anon_const),
+                                }
+                            } else {
+                                hir::InlineAsmOperand::SymFnInInline {
+                                    expr: self.lower_expr(&expr),
+                                }
                             }
                         }
                     }
@@ -288,7 +295,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             op_span: op_sp,
                         });
                     }
-                    hir::InlineAsmOperand::SymFn { .. }
+                    hir::InlineAsmOperand::SymFnInGlobal { .. }
+                    | hir::InlineAsmOperand::SymFnInInline { .. }
                     | hir::InlineAsmOperand::SymStatic { .. } => {
                         sess.emit_err(InvalidAsmTemplateModifierSym {
                             placeholder_span,
@@ -333,7 +341,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         | hir::InlineAsmOperand::SplitInOut { .. } => (true, true),
 
                         hir::InlineAsmOperand::Const { .. }
-                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymFnInGlobal { .. }
+                        | hir::InlineAsmOperand::SymFnInInline { .. }
                         | hir::InlineAsmOperand::SymStatic { .. } => {
                             unreachable!()
                         }
