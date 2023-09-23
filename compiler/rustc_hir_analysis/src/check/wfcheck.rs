@@ -1755,6 +1755,8 @@ fn check_variances_for_type_defn<'tcx>(
             .collect::<FxHashSet<_>>()
     });
 
+    let ty_generics = tcx.generics_of(item.owner_id);
+
     for (index, _) in variances.iter().enumerate() {
         let parameter = Parameter(index as u32);
 
@@ -1762,13 +1764,27 @@ fn check_variances_for_type_defn<'tcx>(
             continue;
         }
 
-        let param = &hir_generics.params[index];
+        let ty_param = &ty_generics.params[index];
+        let hir_param = &hir_generics.params[index];
 
-        match param.name {
+        if ty_param.def_id != hir_param.def_id.into() {
+            // valid programs always have lifetimes before types in the generic parameter list
+            // ty_generics are normalized to be in this required order, and variances are built
+            // from ty generics, not from hir generics. but we need hir generics to get
+            // a span out
+            //
+            // if they aren't in the same order, then the user has written invalid code, and already
+            // got an error about it (or I'm wrong about this)
+            tcx.sess
+                .delay_span_bug(hir_param.span, "hir generics and ty generics in different order");
+            continue;
+        }
+
+        match hir_param.name {
             hir::ParamName::Error => {}
             _ => {
                 let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
-                report_bivariance(tcx, param, has_explicit_bounds);
+                report_bivariance(tcx, hir_param, has_explicit_bounds);
             }
         }
     }
