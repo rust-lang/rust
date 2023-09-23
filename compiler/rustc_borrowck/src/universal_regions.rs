@@ -15,6 +15,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::BodyOwnerKind;
@@ -711,7 +712,17 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // For a constant body, there are no inputs, and one
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let ty = tcx.type_of(self.mir_def).instantiate_identity();
+                let mut ty = tcx.type_of(self.mir_def).instantiate_identity();
+                // `SymFn` in global asm may only reference `'static`, but those
+                // regions are erased as part of computing the type of the anon
+                // const. Put them back, since the `UniversalRegionsBuilder` is
+                // not setup to handle erased regions.
+                if tcx.def_kind(tcx.parent(def_id)) == DefKind::GlobalAsm {
+                    ty = tcx.fold_regions(ty, |re, _| {
+                        assert_eq!(re, tcx.lifetimes.re_erased);
+                        tcx.lifetimes.re_static
+                    });
+                }
                 let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
