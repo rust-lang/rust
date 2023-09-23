@@ -291,24 +291,30 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     .collect::<Option<Vec<_>>>()?;
                 let variant = if ty.is_enum() { Some(variant) } else { None };
                 let ty = self.ecx.layout_of(ty).ok()?;
-                let alloc_id = self
-                    .ecx
-                    .intern_with_temp_alloc(ty, |ecx, dest| {
-                        let variant_dest = if let Some(variant) = variant {
-                            ecx.project_downcast(dest, variant)?
-                        } else {
-                            dest.clone()
-                        };
-                        for (field_index, op) in fields.into_iter().enumerate() {
-                            let field_dest = ecx.project_field(&variant_dest, field_index)?;
-                            ecx.copy_op(op, &field_dest, /*allow_transmute*/ false)?;
-                        }
-                        ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), dest)
-                    })
-                    .ok()?;
-                let mplace =
-                    self.ecx.raw_const_to_mplace(ConstAlloc { alloc_id, ty: ty.ty }).ok()?;
-                mplace.into()
+                if ty.is_zst() {
+                    ImmTy::uninit(ty).into()
+                } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+                    let alloc_id = self
+                        .ecx
+                        .intern_with_temp_alloc(ty, |ecx, dest| {
+                            let variant_dest = if let Some(variant) = variant {
+                                ecx.project_downcast(dest, variant)?
+                            } else {
+                                dest.clone()
+                            };
+                            for (field_index, op) in fields.into_iter().enumerate() {
+                                let field_dest = ecx.project_field(&variant_dest, field_index)?;
+                                ecx.copy_op(op, &field_dest, /*allow_transmute*/ false)?;
+                            }
+                            ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), dest)
+                        })
+                        .ok()?;
+                    let mplace =
+                        self.ecx.raw_const_to_mplace(ConstAlloc { alloc_id, ty: ty.ty }).ok()?;
+                    mplace.into()
+                } else {
+                    return None;
+                }
             }
 
             Projection(base, elem) => {
