@@ -19,8 +19,9 @@
 // only-linux
 //
 // revisions:ASAN ASAN-FAT-LTO
-//[ASAN]          compile-flags: -Zsanitizer=address
-//[ASAN-FAT-LTO]  compile-flags: -Zsanitizer=address -Cprefer-dynamic=false -Clto=fat
+//                compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
+//[ASAN]          compile-flags:
+//[ASAN-FAT-LTO]  compile-flags: -Cprefer-dynamic=false -Clto=fat
 
 #![crate_type="staticlib"]
 

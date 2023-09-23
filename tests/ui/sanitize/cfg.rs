@@ -3,11 +3,12 @@
 
 // check-pass
 // revisions: address cfi kcfi leak memory thread
+//compile-flags: -Ctarget-feature=-crt-static
 //[address]needs-sanitizer-address
 //[address]compile-flags: -Zsanitizer=address --cfg address
 //[cfi]needs-sanitizer-cfi
 //[cfi]compile-flags:     -Zsanitizer=cfi     --cfg cfi
-//[cfi]compile-flags:     -Clto -Ccodegen-units=1 -Ctarget-feature=-crt-static
+//[cfi]compile-flags:     -Clto -Ccodegen-units=1
 //[kcfi]needs-llvm-components: x86
 //[kcfi]compile-flags:    -Zsanitizer=kcfi    --cfg kcfi --target x86_64-unknown-none
 //[leak]needs-sanitizer-leak
