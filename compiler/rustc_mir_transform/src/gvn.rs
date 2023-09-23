@@ -484,20 +484,23 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
-        self.super_statement(stmt, location);
         if let StatementKind::Assign(box (_, ref mut rvalue)) = stmt.kind
             // Do not try to simplify a constant, it's already in canonical shape.
             && !matches!(rvalue, Rvalue::Use(Operand::Constant(_)))
-            && let Some(value) = self.simplify_rvalue(rvalue, location)
         {
-            if let Some(const_) = self.try_as_constant(value) {
-                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-            } else if let Some(local) = self.try_as_local(value, location)
-                && *rvalue != Rvalue::Use(Operand::Move(local.into()))
+            if let Some(value) = self.simplify_rvalue(rvalue, location)
             {
-                *rvalue = Rvalue::Use(Operand::Copy(local.into()));
-                self.reused_locals.insert(local);
+                if let Some(const_) = self.try_as_constant(value) {
+                    *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
+                } else if let Some(local) = self.try_as_local(value, location)
+                    && *rvalue != Rvalue::Use(Operand::Move(local.into()))
+                {
+                    *rvalue = Rvalue::Use(Operand::Copy(local.into()));
+                    self.reused_locals.insert(local);
+                }
             }
+        } else {
+            self.super_statement(stmt, location);
         }
     }
 }
