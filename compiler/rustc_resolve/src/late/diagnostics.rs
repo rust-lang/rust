@@ -243,15 +243,20 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             ));
                             None
                         }
-                        AssocItemKind::Fn(fn_) => Some((
+                        AssocItemKind::Fn(fn_) if fn_.sig.decl.has_self() => Some((
                             sp,
-                            "consider using the associated function",
-                            if fn_.sig.decl.has_self() { "self." } else { "Self::" },
+                            "consider using the method on `Self`",
+                            "self.".to_string(),
+                        )),
+                        AssocItemKind::Fn(_) => Some((
+                            sp,
+                            "consider using the associated function on `Self`",
+                            "Self::".to_string(),
                         )),
                         AssocItemKind::Const(..) => Some((
                             sp,
-                            "consider using the associated constant",
-                            "Self::",
+                            "consider using the associated constant on `Self`",
+                            "Self::".to_string(),
                         )),
                         _ => None
                     }

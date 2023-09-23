@@ -4,7 +4,7 @@ error[E0425]: cannot find function `foo` in this scope
 LL |         foo();
    |         ^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the associated function on `Self`
    |
 LL |         Self::foo();
    |         ++++++
@@ -24,7 +24,7 @@ error[E0425]: cannot find function `baz` in this scope
 LL |         baz(2, 3);
    |         ^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the associated function on `Self`
    |
 LL |         Self::baz(2, 3);
    |         ++++++
@@ -41,7 +41,7 @@ error[E0425]: cannot find function `foo` in this scope
 LL |         foo();
    |         ^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the associated function on `Self`
    |
 LL |         Self::foo();
    |         ++++++
@@ -52,7 +52,7 @@ error[E0425]: cannot find function `bar` in this scope
 LL |         bar();
    |         ^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the method on `Self`
    |
 LL |         self.bar();
    |         +++++
@@ -63,7 +63,7 @@ error[E0425]: cannot find function `baz` in this scope
 LL |         baz(2, 3);
    |         ^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the associated function on `Self`
    |
 LL |         Self::baz(2, 3);
    |         ++++++
