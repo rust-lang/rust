@@ -118,7 +118,7 @@ impl CheckAttrVisitor<'_> {
                 sym::coverage => self.check_coverage(hir_id, attr, span, target),
                 sym::non_exhaustive => self.check_non_exhaustive(hir_id, attr, span, target),
                 sym::marker => self.check_marker(hir_id, attr, span, target),
-                sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
+                sym::target_feature => self.check_target_feature(hir_id, attr, span, target, attrs),
                 sym::thread_local => self.check_thread_local(attr, span, target),
                 sym::track_caller => {
                     self.check_track_caller(hir_id, attr.span, attrs, span, target)
@@ -591,10 +591,36 @@ impl CheckAttrVisitor<'_> {
         attr: &Attribute,
         span: Span,
         target: Target,
+        attrs: &[Attribute],
     ) -> bool {
         match target {
-            Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+            Target::Fn => {
+                // `#[target_feature]` is not allowed in language items.
+                if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
+                    // Calling functions with `#[target_feature]` is
+                    // not unsafe on WASM, see #84988
+                    && !self.tcx.sess.target.is_like_wasm
+                    && !self.tcx.sess.opts.actually_rustdoc
+                {
+                    let hir::Node::Item(item) = self.tcx.hir().get(hir_id) else {
+                        unreachable!();
+                    };
+                    let hir::ItemKind::Fn(sig, _, _) = item.kind else {
+                        // target is `Fn`
+                        unreachable!();
+                    };
+
+                    self.tcx.sess.emit_err(errors::LangItemWithTargetFeature {
+                        attr_span: attr.span,
+                        name: lang_item,
+                        sig_span: sig.span,
+                    });
+                    false
+                } else {
+                    true
+                }
+            }
+            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
             Target::Statement => {

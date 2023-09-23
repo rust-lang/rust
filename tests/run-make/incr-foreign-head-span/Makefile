@@ -15,7 +15,7 @@ INCR=$(TMPDIR)/incr
 all:
 	cp first_crate.rs second_crate.rs $(TMPDIR)
 	$(RUSTC) $(TMPDIR)/first_crate.rs  -C incremental=$(INCR) --target $(TARGET) --crate-type lib
-	$(RUSTC) $(TMPDIR)/second_crate.rs -C incremental=$(INCR) --target $(TARGET)  --extern first-crate=$(TMPDIR) --crate-type lib
+	$(RUSTC) $(TMPDIR)/second_crate.rs -C incremental=$(INCR) --target $(TARGET)  --extern first_crate=$(TMPDIR)/libfirst_crate.rlib --crate-type lib
 	rm $(TMPDIR)/first_crate.rs
 	$(RUSTC) $(TMPDIR)/second_crate.rs  -C incremental=$(INCR) --target $(TARGET) --cfg second_run --crate-type lib
 

@@ -5,7 +5,7 @@
 //! the [`Read`] and [`Write`] traits, which provide the
 //! most general interface for reading and writing input and output.
 //!
-//! # Read and Write
+//! ## Read and Write
 //!
 //! Because they are traits, [`Read`] and [`Write`] are implemented by a number
 //! of other types, and you can implement them for your types too. As such,
@@ -238,6 +238,47 @@
 //! contract. The implementation of many of these functions are subject to change over
 //! time and may call fewer or more syscalls/library functions.
 //!
+//! ## I/O Safety
+//!
+//! Rust follows an I/O safety discipline that is comparable to its memory safety discipline. This
+//! means that file descriptors can be *exclusively owned*. (Here, "file descriptor" is meant to
+//! subsume similar concepts that exist across a wide range of operating systems even if they might
+//! use a different name, such as "handle".) An exclusively owned file descriptor is one that no
+//! other code is allowed to access in any way, but the owner is allowed to access and even close
+//! it any time. A type that owns its file descriptor should usually close it in its `drop`
+//! function. Types like [`File`] own their file descriptor. Similarly, file descriptors
+//! can be *borrowed*, granting the temporary right to perform operations on this file descriptor.
+//! This indicates that the file descriptor will not be closed for the lifetime of the borrow, but
+//! it does *not* imply any right to close this file descriptor, since it will likely be owned by
+//! someone else.
+//!
+//! The platform-specific parts of the Rust standard library expose types that reflect these
+//! concepts, see [`os::unix`] and [`os::windows`].
+//!
+//! To uphold I/O safety, it is crucial that no code acts on file descriptors it does not own or
+//! borrow, and no code closes file descriptors it does not own. In other words, a safe function
+//! that takes a regular integer, treats it as a file descriptor, and acts on it, is *unsound*.
+//!
+//! Not upholding I/O safety and acting on a file descriptor without proof of ownership can lead to
+//! misbehavior and even Undefined Behavior in code that relies on ownership of its file
+//! descriptors: a closed file descriptor could be re-allocated, so the original owner of that file
+//! descriptor is now working on the wrong file. Some code might even rely on fully encapsulating
+//! its file descriptors with no operations being performed by any other part of the program.
+//!
+//! Note that exclusive ownership of a file descriptor does *not* imply exclusive ownership of the
+//! underlying kernel object that the file descriptor references (also called "file description" on
+//! some operating systems). File descriptors basically work like [`Arc`]: when you receive an owned
+//! file descriptor, you cannot know whether there are any other file descriptors that reference the
+//! same kernel object. However, when you create a new kernel object, you know that you are holding
+//! the only reference to it. Just be careful not to lend it to anyone, since they can obtain a
+//! clone and then you can no longer know what the reference count is! In that sense, [`OwnedFd`] is
+//! like `Arc` and [`BorrowedFd<'a>`] is like `&'a Arc` (and similar for the Windows types). In
+//! particular, given a `BorrowedFd<'a>`, you are not allowed to close the file descriptor -- just
+//! like how, given a `&'a Arc`, you are not allowed to decrement the reference count and
+//! potentially free the underlying object. There is no equivalent to `Box` for file descriptors in
+//! the standard library (that would be a type that guarantees that the reference count is `1`),
+//! however, it would be possible for a crate to define a type with those semantics.
+//!
 //! [`File`]: crate::fs::File
 //! [`TcpStream`]: crate::net::TcpStream
 //! [`io::stdout`]: stdout
@@ -245,6 +286,11 @@
 //! [`?` operator]: ../../book/appendix-02-operators.html
 //! [`Result`]: crate::result::Result
 //! [`.unwrap()`]: crate::result::Result::unwrap
+//! [`os::unix`]: ../os/unix/io/index.html
+//! [`os::windows`]: ../os/windows/io/index.html
+//! [`OwnedFd`]: ../os/fd/struct.OwnedFd.html
+//! [`BorrowedFd<'a>`]: ../os/fd/struct.BorrowedFd.html
+//! [`Arc`]: crate::sync::Arc
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

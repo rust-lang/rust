@@ -15,8 +15,9 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A borrowed file descriptor.
 ///
-/// This has a lifetime parameter to tie it to the lifetime of something that
-/// owns the file descriptor.
+/// This has a lifetime parameter to tie it to the lifetime of something that owns the file
+/// descriptor. For the duration of that lifetime, it is guaranteed that nobody will close the file
+/// descriptor.
 ///
 /// This uses `repr(transparent)` and has the representation of a host file
 /// descriptor, so it can be used in FFI in places where a file descriptor is
@@ -42,7 +43,8 @@ pub struct BorrowedFd<'fd> {
 
 /// An owned file descriptor.
 ///
-/// This closes the file descriptor on drop.
+/// This closes the file descriptor on drop. It is guaranteed that nobody else will close the file
+/// descriptor.
 ///
 /// This uses `repr(transparent)` and has the representation of a host file
 /// descriptor, so it can be used in FFI in places where a file descriptor is
@@ -155,7 +157,9 @@ impl FromRawFd for OwnedFd {
     /// # Safety
     ///
     /// The resource pointed to by `fd` must be open and suitable for assuming
-    /// ownership. The resource must not require any cleanup other than `close`.
+    /// [ownership][io-safety]. The resource must not require any cleanup other than `close`.
+    ///
+    /// [io-safety]: io#io-safety
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         assert_ne!(fd, u32::MAX as RawFd);

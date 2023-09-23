@@ -1,7 +1,7 @@
 use rustc_errors::StashKey;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Expr, ImplItem, Item, Node, TraitItem};
+use rustc_hir::{self as hir, def, Expr, ImplItem, Item, Node, TraitItem};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
@@ -74,9 +74,14 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
 
         hidden.ty
     } else {
+        let mut parent_def_id = def_id;
+        while tcx.def_kind(parent_def_id) == def::DefKind::OpaqueTy {
+            // Account for `type Alias = impl Trait<Foo = impl Trait>;` (#116031)
+            parent_def_id = tcx.local_parent(parent_def_id);
+        }
         let reported = tcx.sess.emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
-            name: tcx.item_name(tcx.local_parent(def_id).to_def_id()),
+            name: tcx.item_name(parent_def_id.to_def_id()),
             what: match tcx.hir().get(scope) {
                 _ if scope == hir::CRATE_HIR_ID => "module",
                 Node::Item(hir::Item { kind: hir::ItemKind::Mod(_), .. }) => "module",

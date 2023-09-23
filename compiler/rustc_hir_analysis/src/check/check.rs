@@ -18,7 +18,7 @@ use rustc_infer::traits::{Obligation, TraitEngineExt as _};
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::traits::DefiningAnchor;
+use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, IntTypeExt};
@@ -1626,6 +1626,25 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let obligation = Obligation::new(tcx, cause.clone(), param_env, *predicate);
         fulfillment_cx.register_predicate_obligation(&infcx, obligation);
     }
+
+    if (tcx.features().unsized_locals || tcx.features().unsized_fn_params)
+        && let Some(generator) = tcx.mir_generator_witnesses(def_id)
+    {
+        for field_ty in generator.field_tys.iter() {
+            fulfillment_cx.register_bound(
+                &infcx,
+                param_env,
+                field_ty.ty,
+                tcx.require_lang_item(hir::LangItem::Sized, Some(field_ty.source_info.span)),
+                ObligationCause::new(
+                    field_ty.source_info.span,
+                    def_id,
+                    ObligationCauseCode::SizedGeneratorInterior(def_id),
+                ),
+            );
+        }
+    }
+
     let errors = fulfillment_cx.select_all_or_error(&infcx);
     debug!(?errors);
     if !errors.is_empty() {

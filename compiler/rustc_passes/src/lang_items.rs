@@ -20,7 +20,8 @@ use rustc_hir::lang_items::{extract, GenericRequirement};
 use rustc_hir::{LangItem, LanguageItems, Target};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::ExternCrate;
-use rustc_span::{symbol::kw::Empty, Span};
+use rustc_span::symbol::kw::Empty;
+use rustc_span::{sym, Span};
 
 use rustc_middle::query::Providers;
 
@@ -157,7 +158,14 @@ impl<'tcx> LanguageItemCollector<'tcx> {
             self.tcx.hir().get_by_def_id(item_def_id)
         {
             let (actual_num, generics_span) = match kind.generics() {
-                Some(generics) => (generics.params.len(), generics.span),
+                Some(generics) => (
+                    generics
+                        .params
+                        .iter()
+                        .filter(|p| !self.tcx.has_attr(p.def_id, sym::rustc_host))
+                        .count(),
+                    generics.span,
+                ),
                 None => (0, *item_span),
             };
 

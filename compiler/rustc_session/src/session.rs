@@ -1726,6 +1726,15 @@ impl EarlyErrorHandler {
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
+    pub(crate) fn early_struct_error(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, !> {
+        self.handler.struct_fatal(msg)
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.handler.struct_warn(msg).emit()
     }

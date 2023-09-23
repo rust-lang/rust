@@ -3007,6 +3007,24 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::InlineAsmSized => {
                 err.note("all inline asm arguments must have a statically known size");
             }
+            ObligationCauseCode::SizedClosureCapture(closure_def_id) => {
+                err.note("all values captured by value by a closure must have a statically known size");
+                let hir::ExprKind::Closure(closure) = self.tcx.hir().get_by_def_id(closure_def_id).expect_expr().kind else {
+                    bug!("expected closure in SizedClosureCapture obligation");
+                };
+                if let hir::CaptureBy::Value = closure.capture_clause
+                    && let Some(span) = closure.fn_arg_span
+                {
+                    err.span_label(span, "this closure captures all values by move");
+                }
+            }
+            ObligationCauseCode::SizedGeneratorInterior(generator_def_id) => {
+                let what = match self.tcx.generator_kind(generator_def_id) {
+                    None | Some(hir::GeneratorKind::Gen) => "yield",
+                    Some(hir::GeneratorKind::Async(..)) => "await",
+                };
+                err.note(format!("all values live across `{what}` must have a statically known size"));
+            }
             ObligationCauseCode::ConstPatternStructural => {
                 err.note("constants used for pattern-matching must derive `PartialEq` and `Eq`");
             }

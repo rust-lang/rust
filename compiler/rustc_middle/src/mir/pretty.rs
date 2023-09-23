@@ -1001,11 +1001,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Closure(def_id, args) => ty::tls::with(|tcx| {
                         let name = if tcx.sess.opts.unstable_opts.span_free_formats {
                             let args = tcx.lift(args).unwrap();
-                            format!("[closure@{}]", tcx.def_path_str_with_args(def_id, args),)
+                            format!("{{closure@{}}}", tcx.def_path_str_with_args(def_id, args),)
                         } else {
                             let span = tcx.def_span(def_id);
                             format!(
-                                "[closure@{}]",
+                                "{{closure@{}}}",
                                 tcx.sess.source_map().span_to_diagnostic_string(span)
                             )
                         };
@@ -1029,7 +1029,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }),
 
                     AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
-                        let name = format!("[generator@{:?}]", tcx.def_span(def_id));
+                        let name = format!("{{generator@{:?}}}", tcx.def_span(def_id));
                         let mut struct_fmt = fmt.debug_struct(&name);
 
                         // FIXME(project-rfc-2229#48): This should be a list of capture names/places

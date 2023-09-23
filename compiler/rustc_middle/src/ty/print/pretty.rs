@@ -795,7 +795,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Str => p!("str"),
             ty::Generator(did, args, movability) => {
-                p!(write("["));
+                p!(write("{{"));
                 let generator_kind = self.tcx().generator_kind(did).unwrap();
                 let should_print_movability =
                     self.should_print_verbose() || generator_kind == hir::GeneratorKind::Gen;
@@ -836,13 +836,13 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
 
-                p!("]")
+                p!("}}")
             }
             ty::GeneratorWitness(types) => {
                 p!(in_binder(&types));
             }
             ty::GeneratorWitnessMIR(did, args) => {
-                p!(write("["));
+                p!(write("{{"));
                 if !self.tcx().sess.verbose() {
                     p!("generator witness");
                     // FIXME(eddyb) should use `def_span`.
@@ -861,10 +861,10 @@ pub trait PrettyPrinter<'tcx>:
                     p!(print_def_path(did, args));
                 }
 
-                p!("]")
+                p!("}}")
             }
             ty::Closure(did, args) => {
-                p!(write("["));
+                p!(write("{{"));
                 if !self.should_print_verbose() {
                     p!(write("closure"));
                     // FIXME(eddyb) should use `def_span`.
@@ -904,7 +904,7 @@ pub trait PrettyPrinter<'tcx>:
                         p!(")");
                     }
                 }
-                p!("]");
+                p!("}}");
             }
             ty::Array(ty, sz) => p!("[", print(ty), "; ", print(sz), "]"),
             ty::Slice(ty) => p!("[", print(ty), "]"),
@@ -1061,7 +1061,7 @@ pub trait PrettyPrinter<'tcx>:
                     }
 
                     for (assoc_item_def_id, term) in assoc_items {
-                        // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks,
+                        // Skip printing `<{generator@} as Generator<_>>::Return` from async blocks,
                         // unless we can find out what generator return type it comes from.
                         let term = if let Some(ty) = term.skip_binder().ty()
                             && let ty::Alias(ty::Projection, proj) = ty.kind()

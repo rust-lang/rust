@@ -54,7 +54,7 @@ LL | |         }
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `[generator@$DIR/issue-57017.rs:41:21: 41:28]`, the trait `Send` is not implemented for `copy::unsend::Client`
+   = help: within `{generator@$DIR/issue-57017.rs:41:21: 41:28}`, the trait `Send` is not implemented for `copy::unsend::Client`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:42:28
    |
@@ -136,7 +136,7 @@ LL | |         }
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `[generator@$DIR/issue-57017.rs:41:21: 41:28]`, the trait `Send` is not implemented for `derived_drop::unsend::Client`
+   = help: within `{generator@$DIR/issue-57017.rs:41:21: 41:28}`, the trait `Send` is not implemented for `derived_drop::unsend::Client`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:42:28
    |
@@ -218,7 +218,7 @@ LL | |         }
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `[generator@$DIR/issue-57017.rs:41:21: 41:28]`, the trait `Send` is not implemented for `significant_drop::unsend::Client`
+   = help: within `{generator@$DIR/issue-57017.rs:41:21: 41:28}`, the trait `Send` is not implemented for `significant_drop::unsend::Client`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57017.rs:42:28
    |

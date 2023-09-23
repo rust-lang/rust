@@ -41,6 +41,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{
     self, ClosureSizeProfileData, Ty, TyCtxt, TypeckResults, UpvarArgs, UpvarCapture,
 };
@@ -294,6 +295,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Equate the type variables for the upvars with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
         debug!(?closure_hir_id, ?args, ?final_upvar_tys);
+
+        if self.tcx.features().unsized_locals || self.tcx.features().unsized_fn_params {
+            for capture in
+                self.typeck_results.borrow().closure_min_captures_flattened(closure_def_id)
+            {
+                if let UpvarCapture::ByValue = capture.info.capture_kind {
+                    self.require_type_is_sized(
+                        capture.place.ty(),
+                        capture.get_path_span(self.tcx),
+                        ObligationCauseCode::SizedClosureCapture(closure_def_id),
+                    );
+                }
+            }
+        }
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:

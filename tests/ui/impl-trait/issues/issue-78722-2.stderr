@@ -7,7 +7,7 @@ LL |         let f: F = async { 1 };
    = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
    = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
 
-error[E0271]: expected `[async block@$DIR/issue-78722-2.rs:13:13: 13:21]` to be a future that resolves to `u8`, but it resolves to `()`
+error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:13:13: 13:21}` to be a future that resolves to `u8`, but it resolves to `()`
   --> $DIR/issue-78722-2.rs:11:30
    |
 LL |         fn concrete_use() -> F {
