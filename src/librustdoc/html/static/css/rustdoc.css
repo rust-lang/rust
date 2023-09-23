@@ -581,6 +581,11 @@ ul.block, .block li {
 	margin-top: calc( ( -16px + 0.57rem ) / 2 );
 }
 
+.sidebar-crate + .version {
+	margin-top: -1rem;
+	margin-bottom: 1rem;
+}
+
 .mobile-topbar {
 	display: none;
 }
