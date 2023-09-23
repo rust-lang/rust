@@ -7,7 +7,7 @@ LL |     let x: () = move || ();
    |            expected due to this
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/move-closure.rs:5:17: 5:24]`
+                found closure `{closure@$DIR/move-closure.rs:5:17: 5:24}`
 help: use parentheses to call this closure
    |
 LL |     let x: () = (move || ())();

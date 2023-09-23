@@ -10,7 +10,7 @@ LL | |         drop(a);
 LL | |     });
    | |_____^ generator is not `Sync`
    |
-   = help: within `[generator@$DIR/not-send-sync.rs:17:17: 17:19]`, the trait `Sync` is not implemented for `NotSync`
+   = help: within `{generator@$DIR/not-send-sync.rs:17:17: 17:19}`, the trait `Sync` is not implemented for `NotSync`
 note: generator is not `Sync` as this value is used across a yield
   --> $DIR/not-send-sync.rs:20:9
    |
@@ -39,7 +39,7 @@ LL | |         drop(a);
 LL | |     });
    | |_____^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/not-send-sync.rs:24:17: 24:19]`, the trait `Send` is not implemented for `NotSend`
+   = help: within `{generator@$DIR/not-send-sync.rs:24:17: 24:19}`, the trait `Send` is not implemented for `NotSend`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/not-send-sync.rs:27:9
    |

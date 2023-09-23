@@ -314,7 +314,10 @@ pub fn struct_lint_level(
             // Default allow lints trigger too often for testing.
             sess.opts.unstable_opts.future_incompat_test && lint.default_level != Level::Allow,
             |incompat| {
-                matches!(incompat.reason, FutureIncompatibilityReason::FutureReleaseErrorReportNow)
+                matches!(
+                    incompat.reason,
+                    FutureIncompatibilityReason::FutureReleaseErrorReportInDeps
+                )
             },
         );
 
@@ -404,8 +407,8 @@ pub fn struct_lint_level(
 
         if let Some(future_incompatible) = future_incompatible {
             let explanation = match future_incompatible.reason {
-                FutureIncompatibilityReason::FutureReleaseError
-                | FutureIncompatibilityReason::FutureReleaseErrorReportNow => {
+                FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+                | FutureIncompatibilityReason::FutureReleaseErrorReportInDeps => {
                     "this was previously accepted by the compiler but is being phased out; \
                          it will become a hard error in a future release!"
                         .to_owned()

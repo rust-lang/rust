@@ -5,7 +5,7 @@ LL |     vec!['a'].iter().map(|c| c)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `Map<Iter<'_, char>, ...>`
    |
    = note: expected unit type `()`
-                 found struct `Map<std::slice::Iter<'_, char>, [closure@$DIR/return_type_containing_closure.rs:3:26: 3:29]>`
+                 found struct `Map<std::slice::Iter<'_, char>, {closure@$DIR/return_type_containing_closure.rs:3:26: 3:29}>`
 help: consider using a semicolon here
    |
 LL |     vec!['a'].iter().map(|c| c);

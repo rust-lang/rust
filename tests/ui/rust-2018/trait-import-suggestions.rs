@@ -1,6 +1,6 @@
 // edition:2018
 // aux-build:trait-import-suggestions.rs
-// compile-flags:--extern trait-import-suggestions
+// compile-flags:--extern trait_import_suggestions
 
 mod foo {
     mod foobar {

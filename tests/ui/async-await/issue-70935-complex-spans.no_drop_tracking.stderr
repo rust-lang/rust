@@ -15,7 +15,7 @@ LL | |         }).await;
    | |         -  ^^^^^- the value is later dropped here
    | |         |  |
    | |_________|  await occurs here, with the value maybe used later
-   |           has type `[closure@$DIR/issue-70935-complex-spans.rs:22:13: 22:15]` which is not `Send`
+   |           has type `{closure@$DIR/issue-70935-complex-spans.rs:22:13: 22:15}` which is not `Send`
 
 error: aborting due to previous error
 

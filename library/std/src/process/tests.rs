@@ -537,7 +537,7 @@ fn env_empty() {
 #[test]
 #[cfg(not(windows))]
 #[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
-fn main() {
+fn debug_print() {
     const PIDFD: &'static str =
         if cfg!(target_os = "linux") { "    create_pidfd: false,\n" } else { "" };
 
@@ -623,6 +623,51 @@ fn main() {
     cwd: Some(
         "/some/path",
     ),
+{PIDFD}}}"#
+        )
+    );
+
+    let mut command_with_removed_env = Command::new("boring-name");
+    command_with_removed_env.env_remove("FOO").env_remove("BAR");
+    assert_eq!(format!("{command_with_removed_env:?}"), r#"env -u BAR -u FOO "boring-name""#);
+    assert_eq!(
+        format!("{command_with_removed_env:#?}"),
+        format!(
+            r#"Command {{
+    program: "boring-name",
+    args: [
+        "boring-name",
+    ],
+    env: CommandEnv {{
+        clear: false,
+        vars: {{
+            "BAR": None,
+            "FOO": None,
+        }},
+    }},
+{PIDFD}}}"#
+        )
+    );
+
+    let mut command_with_cleared_env = Command::new("boring-name");
+    command_with_cleared_env.env_clear().env("BAR", "val").env_remove("FOO");
+    assert_eq!(format!("{command_with_cleared_env:?}"), r#"env -i BAR="val" "boring-name""#);
+    assert_eq!(
+        format!("{command_with_cleared_env:#?}"),
+        format!(
+            r#"Command {{
+    program: "boring-name",
+    args: [
+        "boring-name",
+    ],
+    env: CommandEnv {{
+        clear: true,
+        vars: {{
+            "BAR": Some(
+                "val",
+            ),
+        }},
+    }},
 {PIDFD}}}"#
         )
     );

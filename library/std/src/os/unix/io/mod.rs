@@ -6,7 +6,7 @@
 //!
 //! This module provides three types for representing file descriptors,
 //! with different ownership properties: raw, borrowed, and owned, which are
-//! analogous to types used for representing pointers:
+//! analogous to types used for representing pointers. These types reflect the Unix version of [I/O safety].
 //!
 //! | Type               | Analogous to |
 //! | ------------------ | ------------ |
@@ -65,15 +65,16 @@
 //! to be opened and read from or written must be `unsafe`. Rust's safety guarantees
 //! only cover what the program itself can do, and not what entities outside
 //! the program can do to it. `/proc/self/mem` is considered to be such an
-//! external entity, along with debugging interfaces, and people with physical access to
-//! the hardware. This is true even in cases where the program is controlling
-//! the external entity.
+//! external entity, along with `/proc/self/fd/*`, debugging interfaces, and people with physical
+//! access to the hardware. This is true even in cases where the program is controlling the external
+//! entity.
 //!
 //! If you desire to comprehensively prevent programs from reaching out and
 //! causing external entities to reach back in and violate memory safety, it's
 //! necessary to use *sandboxing*, which is outside the scope of `std`.
 //!
 //! [`BorrowedFd<'a>`]: crate::os::unix::io::BorrowedFd
+//! [I/O safety]: crate::io#io-safety
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

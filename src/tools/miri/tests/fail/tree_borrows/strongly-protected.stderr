@@ -28,7 +28,7 @@ note: inside closure
    |
 LL |         drop(unsafe { Box::from_raw(raw) });
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: inside `<[closure@$DIR/strongly-protected.rs:LL:CC] as std::ops::FnOnce<(&mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
+   = note: inside `<{closure@$DIR/strongly-protected.rs:LL:CC} as std::ops::FnOnce<(&mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
 note: inside `inner`
   --> $DIR/strongly-protected.rs:LL:CC
    |

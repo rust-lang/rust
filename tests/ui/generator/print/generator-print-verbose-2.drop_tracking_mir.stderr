@@ -4,7 +4,7 @@ error: generator cannot be shared between threads safely
 LL |     assert_sync(|| {
    |     ^^^^^^^^^^^ generator is not `Sync`
    |
-   = help: within `[main::{closure#0} upvar_tys=() [main::{closure#0}]]`, the trait `Sync` is not implemented for `NotSync`
+   = help: within `{main::{closure#0} upvar_tys=() {main::{closure#0}}}`, the trait `Sync` is not implemented for `NotSync`
 note: generator is not `Sync` as this value is used across a yield
   --> $DIR/generator-print-verbose-2.rs:23:9
    |
@@ -24,7 +24,7 @@ error: generator cannot be sent between threads safely
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ generator is not `Send`
    |
-   = help: within `[main::{closure#1} upvar_tys=() [main::{closure#1}]]`, the trait `Send` is not implemented for `NotSend`
+   = help: within `{main::{closure#1} upvar_tys=() {main::{closure#1}}}`, the trait `Send` is not implemented for `NotSend`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/generator-print-verbose-2.rs:30:9
    |

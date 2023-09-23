@@ -4,8 +4,8 @@ fn foo(_1: T, _2: i32) -> i32 {
     debug _t => _1;
     debug q => _2;
     let mut _0: i32;
-    let _3: [closure@foo<T>::{closure#0}];
-    let mut _4: &[closure@foo<T>::{closure#0}];
+    let _3: {closure@foo<T>::{closure#0}};
+    let mut _4: &{closure@foo<T>::{closure#0}};
     let mut _5: (i32, i32);
     let mut _6: i32;
     let mut _7: i32;
@@ -21,7 +21,7 @@ fn foo(_1: T, _2: i32) -> i32 {
 
     bb0: {
         StorageLive(_3);
-        _3 = [closure@foo::<T>::{closure#0}];
+        _3 = {closure@foo::<T>::{closure#0}};
         StorageLive(_4);
         _4 = &_3;
         StorageLive(_5);

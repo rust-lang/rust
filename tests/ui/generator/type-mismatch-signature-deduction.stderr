@@ -18,7 +18,7 @@ LL |         Ok(5)
 LL |         Err(5)
    |         ++++ +
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:7:5: 7:7] as Generator>::Return == i32`
+error[E0271]: type mismatch resolving `<{generator@$DIR/type-mismatch-signature-deduction.rs:7:5: 7:7} as Generator>::Return == i32`
   --> $DIR/type-mismatch-signature-deduction.rs:5:13
    |
 LL | fn foo() -> impl Generator<Return = i32> {
