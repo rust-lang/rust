@@ -80,7 +80,7 @@ use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMes
 use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::query::Providers;
+use rustc_middle::util::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;

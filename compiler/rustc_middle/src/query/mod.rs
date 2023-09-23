@@ -1100,16 +1100,6 @@ rustc_queries! {
         desc { "destructuring type level constant"}
     }
 
-    /// Tries to destructure an `mir::Const` ADT or array into its variant index
-    /// and its field values. This should only be used for pretty printing.
-    query try_destructure_mir_constant_for_diagnostics(
-        key: (mir::ConstValue<'tcx>, Ty<'tcx>)
-    ) -> Option<mir::DestructuredConstant<'tcx>> {
-        desc { "destructuring MIR constant"}
-        no_hash
-        eval_always
-    }
-
     query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> mir::ConstValue<'tcx> {
         desc { "getting a &core::panic::Location referring to a span" }
     }

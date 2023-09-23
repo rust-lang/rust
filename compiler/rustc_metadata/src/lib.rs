@@ -26,7 +26,7 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
-pub use rmeta::{provide, provide_extern};
+pub use rmeta::provide;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 
