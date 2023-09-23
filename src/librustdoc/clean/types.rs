@@ -1651,6 +1651,13 @@ impl Type {
         }
     }
 
+    pub(crate) fn generic_args(&self) -> Option<&GenericArgs> {
+        match self {
+            Type::Path { path, .. } => path.generic_args(),
+            _ => None,
+        }
+    }
+
     pub(crate) fn generics(&self) -> Option<Vec<&Type>> {
         match self {
             Type::Path { path, .. } => path.generics(),
@@ -2191,6 +2198,10 @@ impl Path {
         }
     }
 
+    pub(crate) fn generic_args(&self) -> Option<&GenericArgs> {
+        self.segments.last().map(|seg| &seg.args)
+    }
+
     pub(crate) fn generics(&self) -> Option<Vec<&Type>> {
         self.segments.last().and_then(|seg| {
             if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
@@ -2230,6 +2241,39 @@ impl GenericArgs {
                 args.is_empty() && bindings.is_empty()
             }
             GenericArgs::Parenthesized { inputs, output } => inputs.is_empty() && output.is_none(),
+        }
+    }
+    pub(crate) fn bindings<'a>(&'a self) -> Box<dyn Iterator<Item = TypeBinding> + 'a> {
+        match self {
+            &GenericArgs::AngleBracketed { ref bindings, .. } => Box::new(bindings.iter().cloned()),
+            &GenericArgs::Parenthesized { ref output, .. } => Box::new(
+                output
+                    .as_ref()
+                    .map(|ty| TypeBinding {
+                        assoc: PathSegment {
+                            name: sym::Output,
+                            args: GenericArgs::AngleBracketed {
+                                args: Vec::new().into_boxed_slice(),
+                                bindings: ThinVec::new(),
+                            },
+                        },
+                        kind: TypeBindingKind::Equality { term: Term::Type((**ty).clone()) },
+                    })
+                    .into_iter(),
+            ),
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a GenericArgs {
+    type IntoIter = Box<dyn Iterator<Item = GenericArg> + 'a>;
+    type Item = GenericArg;
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            &GenericArgs::AngleBracketed { ref args, .. } => Box::new(args.iter().cloned()),
+            &GenericArgs::Parenthesized { ref inputs, .. } => {
+                Box::new(inputs.iter().cloned().map(GenericArg::Type))
+            }
         }
     }
 }
