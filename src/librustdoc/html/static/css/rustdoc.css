@@ -523,7 +523,7 @@ ul.block, .block li {
 	justify-content: center;
 	/* there's a 10px padding at the top of <main>, and a 4px margin at the
 		top of the search form. To line them up, add them. */
-	margin: 14px 32px 0;
+	margin: 14px 32px 1rem;
 	row-gap: 10px;
 	column-gap: 32px;
 	flex-wrap: wrap;

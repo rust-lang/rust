@@ -42,6 +42,8 @@
     <script defer src="{{page.root_path|safe}}src-files{{page.resource_suffix}}.js"></script> {# #}
     {% else if !page.css_class.contains("mod") %}
     <script defer src="sidebar-items{{page.resource_suffix}}.js"></script> {# #}
+    {% else if !page.css_class.contains("sys") %}
+    <script defer src="../sidebar-items{{page.resource_suffix}}.js"></script> {# #}
     {% endif %}
     <script defer src="{{static_root_path|safe}}{{files.main_js}}"></script> {# #}
     {% if layout.scrape_examples_extension %}

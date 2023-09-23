@@ -336,7 +336,7 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
                 title: "Index of crates",
-                css_class: "mod",
+                css_class: "mod sys",
                 root_path: "./",
                 static_root_path: shared.static_root_path.as_deref(),
                 description: "List of crates",

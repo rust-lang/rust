@@ -457,22 +457,27 @@ function preLoadCss(cssUrl) {
                 return;
             }
 
+            const modpath = hasClass(document.body, "mod") ? "../" : "";
+
             const h3 = document.createElement("h3");
-            h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
+            h3.innerHTML = `<a href="${modpath}index.html#${id}">${longty}</a>`;
             const ul = document.createElement("ul");
             ul.className = "block " + shortty;
 
             for (const name of filtered) {
                 let path;
                 if (shortty === "mod") {
-                    path = name + "/index.html";
+                    path = `${modpath}${name}/index.html`;
                 } else {
-                    path = shortty + "." + name + ".html";
+                    path = `${modpath}${shortty}.${name}.html`;
                 }
-                const current_page = document.location.href.split("/").pop();
+                let current_page = document.location.href.toString();
+                if (current_page.endsWith("/")) {
+                    current_page += "index.html";
+                }
                 const link = document.createElement("a");
                 link.href = path;
-                if (path === current_page) {
+                if (link.href === current_page) {
                     link.className = "current";
                 }
                 link.textContent = name;

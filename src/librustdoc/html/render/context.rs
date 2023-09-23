@@ -662,7 +662,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let shared = Rc::clone(&self.shared);
         let mut page = layout::Page {
             title: "List of all items in this crate",
-            css_class: "mod",
+            css_class: "mod sys",
             root_path: "../",
             static_root_path: shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
@@ -677,6 +677,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             title_prefix: "",
             title: "",
             is_crate: false,
+            is_mod: false,
             blocks: vec![blocks],
             path: String::new(),
         };
