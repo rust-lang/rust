@@ -1756,7 +1756,7 @@ where
         }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the underlying
+    /// Converts the VacantEntry into a mutable reference to the underlying
     /// table.
     pub fn into_table(self) -> &'a mut HashTable<T, A> {
         self.table
