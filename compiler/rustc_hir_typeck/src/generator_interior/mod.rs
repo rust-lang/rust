@@ -9,12 +9,13 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, DelayDm};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
 use rustc_infer::infer::{DefineOpaqueTypes, RegionVariableOrigin};
 use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
@@ -188,6 +189,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 pub fn resolve_interior<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     def_id: DefId,
+    generator_def_id: LocalDefId,
     body_id: hir::BodyId,
     interior: Ty<'tcx>,
     kind: hir::GeneratorKind,
@@ -213,6 +215,16 @@ pub fn resolve_interior<'a, 'tcx>(
 
     // The types are already kept in insertion order.
     let types = visitor.types;
+
+    if fcx.tcx.features().unsized_locals || fcx.tcx.features().unsized_fn_params {
+        for interior_ty in &types {
+            fcx.require_type_is_sized(
+                interior_ty.ty,
+                interior_ty.span,
+                ObligationCauseCode::SizedGeneratorInterior(generator_def_id),
+            );
+        }
+    }
 
     // The types in the generator interior contain lifetimes local to the generator itself,
     // which should not be exposed outside of the generator. Therefore, we replace these
