@@ -299,6 +299,8 @@ pub enum ObligationCauseCode<'tcx> {
     SizedYieldType,
     /// Inline asm operand type must be `Sized`.
     InlineAsmSized,
+    /// Captured closure type type must be `Sized`.
+    SizedClosureCapture(LocalDefId),
     /// `[expr; N]` requires `type_of(expr): Copy`.
     RepeatElementCopy {
         /// If element is a `const fn` we display a help message suggesting to move the
