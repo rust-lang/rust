@@ -252,9 +252,10 @@ fn never_loop_expr<'tcx>(
                 local_labels,
                 main_loop_id,
             ),
-            InlineAsmOperand::Const { .. } | InlineAsmOperand::SymFn { .. } | InlineAsmOperand::SymStatic { .. } => {
-                NeverLoopResult::Normal
-            },
+            InlineAsmOperand::Const { .. }
+            | InlineAsmOperand::SymFnInGlobal { .. }
+            | InlineAsmOperand::SymFnInInline { .. }
+            | InlineAsmOperand::SymStatic { .. } => NeverLoopResult::Normal,
         })),
         ExprKind::OffsetOf(_, _)
         | ExprKind::Yield(_, _)
