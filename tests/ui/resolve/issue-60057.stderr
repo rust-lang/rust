@@ -1,8 +1,11 @@
 error[E0425]: cannot find value `banana` in this scope
   --> $DIR/issue-60057.rs:8:21
    |
+LL |     banana: u8,
+   |     ---------- a field by that name exists in `Self`
+...
 LL |             banana: banana
-   |                     ^^^^^^ a field by this name exists in `Self`
+   |                     ^^^^^^
 
 error[E0425]: cannot find value `banana` in this scope
   --> $DIR/issue-60057.rs:14:21

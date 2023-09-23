@@ -41,7 +41,7 @@ type Res = def::Res<ast::NodeId>;
 
 /// A field or associated item from self type suggested in case of resolution failure.
 enum AssocSuggestion {
-    Field,
+    Field(Span),
     MethodWithSelf { called: bool },
     AssocFn { called: bool },
     AssocType,
@@ -51,7 +51,7 @@ enum AssocSuggestion {
 impl AssocSuggestion {
     fn action(&self) -> &'static str {
         match self {
-            AssocSuggestion::Field => "use the available field",
+            AssocSuggestion::Field(_) => "use the available field",
             AssocSuggestion::MethodWithSelf { called: true } => {
                 "call the method with the fully-qualified path"
             }
@@ -670,7 +670,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     _ => String::new(),
                 };
                 match candidate {
-                    AssocSuggestion::Field => {
+                    AssocSuggestion::Field(field_span) => {
                         if self_is_available {
                             err.span_suggestion_verbose(
                                 span.shrink_to_lo(),
@@ -679,7 +679,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 Applicability::MachineApplicable,
                             );
                         } else {
-                            err.span_label(span, "a field by this name exists in `Self`");
+                            err.span_label(field_span, "a field by that name exists in `Self`");
                         }
                     }
                     AssocSuggestion::MethodWithSelf { called } if self_is_available => {
@@ -1715,11 +1715,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         resolution.full_res()
                     {
                         if let Some(field_ids) = self.r.field_def_ids(did) {
-                            if field_ids
+                            if let Some(field_id) = field_ids
                                 .iter()
-                                .any(|&field_id| ident.name == self.r.tcx.item_name(field_id))
+                                .find(|&&field_id| ident.name == self.r.tcx.item_name(field_id))
                             {
-                                return Some(AssocSuggestion::Field);
+                                return Some(AssocSuggestion::Field(self.r.def_span(*field_id)));
                             }
                         }
                     }

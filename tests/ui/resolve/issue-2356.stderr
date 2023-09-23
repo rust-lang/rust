@@ -1,8 +1,11 @@
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:39:5
    |
+LL |   whiskers: isize,
+   |   --------------- a field by that name exists in `Self`
+...
 LL |     whiskers -= other;
-   |     ^^^^^^^^ a field by this name exists in `Self`
+   |     ^^^^^^^^
 
 error[E0424]: expected value, found module `self`
   --> $DIR/issue-2356.rs:65:8
@@ -31,8 +34,11 @@ LL |     self.whiskers = 0;
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:84:5
    |
+LL |   whiskers: isize,
+   |   --------------- a field by that name exists in `Self`
+...
 LL |     whiskers = 4;
-   |     ^^^^^^^^ a field by this name exists in `Self`
+   |     ^^^^^^^^
 
 error[E0424]: expected value, found module `self`
   --> $DIR/issue-2356.rs:92:5
