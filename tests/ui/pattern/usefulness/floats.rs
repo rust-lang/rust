@@ -1,4 +1,3 @@
-#![allow(illegal_floating_point_literal_pattern)]
 #![deny(unreachable_patterns)]
 
 fn main() {

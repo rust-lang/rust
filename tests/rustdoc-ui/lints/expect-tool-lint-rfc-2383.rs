@@ -24,10 +24,9 @@ mod rustc_ok {
     pub fn rustc_lints() {
         let x = 42.0;
 
-        #[expect(illegal_floating_point_literal_pattern)]
+        #[expect(invalid_nan_comparisons)]
         match x {
-            5.0 => {}
-            6.0 => {}
+            f32::NAN => {}
             _ => {}
         }
     }
@@ -40,7 +39,7 @@ mod rustc_warn {
     pub fn rustc_lints() {
         let x = 42;
 
-        #[expect(illegal_floating_point_literal_pattern)]
+        #[expect(invalid_nan_comparisons)]
         match x {
             5 => {}
             6 => {}

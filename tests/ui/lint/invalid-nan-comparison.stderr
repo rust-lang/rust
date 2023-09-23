@@ -1,10 +1,22 @@
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/invalid-nan-comparison.rs:30:17
+   |
+LL |     matches!(x, f32::NAN);
+   |                 ^^^^^^^^
+   |
+   = note: `#[warn(invalid_nan_comparisons)]` on by default
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/invalid-nan-comparison.rs:53:17
+   |
+LL |     matches!(x, f64::NAN);
+   |                 ^^^^^^^^
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
   --> $DIR/invalid-nan-comparison.rs:8:20
    |
 LL | const TEST: bool = 5f32 == f32::NAN;
    |                    ^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(invalid_nan_comparisons)]` on by default
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
   --> $DIR/invalid-nan-comparison.rs:14:5
@@ -79,7 +91,7 @@ LL +     !number!().is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison.rs:35:5
+  --> $DIR/invalid-nan-comparison.rs:37:5
    |
 LL |     x == f64::NAN;
    |     ^^^^^^^^^^^^^
@@ -91,7 +103,7 @@ LL +     x.is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison.rs:37:5
+  --> $DIR/invalid-nan-comparison.rs:39:5
    |
 LL |     x != f64::NAN;
    |     ^^^^^^^^^^^^^
@@ -103,31 +115,31 @@ LL +     !x.is_nan();
    |
 
 warning: incorrect NaN comparison, NaN is not orderable
-  --> $DIR/invalid-nan-comparison.rs:39:5
+  --> $DIR/invalid-nan-comparison.rs:41:5
    |
 LL |     x < f64::NAN;
    |     ^^^^^^^^^^^^
 
 warning: incorrect NaN comparison, NaN is not orderable
-  --> $DIR/invalid-nan-comparison.rs:41:5
+  --> $DIR/invalid-nan-comparison.rs:43:5
    |
 LL |     x > f64::NAN;
    |     ^^^^^^^^^^^^
 
 warning: incorrect NaN comparison, NaN is not orderable
-  --> $DIR/invalid-nan-comparison.rs:43:5
+  --> $DIR/invalid-nan-comparison.rs:45:5
    |
 LL |     x <= f64::NAN;
    |     ^^^^^^^^^^^^^
 
 warning: incorrect NaN comparison, NaN is not orderable
-  --> $DIR/invalid-nan-comparison.rs:45:5
+  --> $DIR/invalid-nan-comparison.rs:47:5
    |
 LL |     x >= f64::NAN;
    |     ^^^^^^^^^^^^^
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison.rs:47:5
+  --> $DIR/invalid-nan-comparison.rs:49:5
    |
 LL |     number!() == f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -139,7 +151,7 @@ LL +     number!().is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison.rs:49:5
+  --> $DIR/invalid-nan-comparison.rs:51:5
    |
 LL |     f64::NAN != number!();
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -150,5 +162,5 @@ LL -     f64::NAN != number!();
 LL +     !number!().is_nan();
    |
 
-warning: 17 warnings emitted
+warning: 19 warnings emitted
 

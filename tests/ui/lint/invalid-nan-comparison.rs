@@ -27,6 +27,8 @@ fn f32() {
     //~^ WARN incorrect NaN comparison
     f32::NAN != number!();
     //~^ WARN incorrect NaN comparison
+    matches!(x, f32::NAN);
+    //~^ WARN incorrect NaN comparison
 }
 
 fn f64() {
@@ -47,5 +49,7 @@ fn f64() {
     number!() == f64::NAN;
     //~^ WARN incorrect NaN comparison
     f64::NAN != number!();
+    //~^ WARN incorrect NaN comparison
+    matches!(x, f64::NAN);
     //~^ WARN incorrect NaN comparison
 }

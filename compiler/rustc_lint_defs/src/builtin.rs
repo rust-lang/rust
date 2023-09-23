@@ -1755,55 +1755,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `illegal_floating_point_literal_pattern` lint detects
-    /// floating-point literals used in patterns.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// let x = 42.0;
-    ///
-    /// match x {
-    ///     5.0 => {}
-    ///     _ => {}
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of the compiler accepted floating-point literals in
-    /// patterns, but it was later determined this was a mistake. The
-    /// semantics of comparing floating-point values may not be clear in a
-    /// pattern when contrasted with "structural equality". Typically you can
-    /// work around this by using a [match guard], such as:
-    ///
-    /// ```rust
-    /// # let x = 42.0;
-    ///
-    /// match x {
-    ///     y if y == 5.0 => {}
-    ///     _ => {}
-    /// }
-    /// ```
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard
-    /// error in the future. See [issue #41620] for more details.
-    ///
-    /// [issue #41620]: https://github.com/rust-lang/rust/issues/41620
-    /// [match guard]: https://doc.rust-lang.org/reference/expressions/match-expr.html#match-guards
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-    Warn,
-    "floating-point literals cannot be used in patterns",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
-    };
-}
-
-declare_lint! {
     /// The `unstable_name_collisions` lint detects that you have used a name
     /// that the standard library plans to add in the future.
     ///
@@ -3334,6 +3285,31 @@ declare_lint! {
     "name introduced by a private item shadows a name introduced by a public glob re-export",
 }
 
+declare_lint! {
+    /// The `invalid_nan_comparisons` lint checks comparison with `f32::NAN` or `f64::NAN`
+    /// as one of the operand.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let a = 2.3f32;
+    /// if a == f32::NAN {}
+    /// if matches!(a, f32::NAN) {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// NaN does not compare meaningfully to anything – not
+    /// even itself – so those comparisons are always false.
+    pub INVALID_NAN_COMPARISONS,
+    Warn,
+    "detects invalid floating point NaN comparisons"
+}
+
+// When removing any lint here, remember to add a call to `register_removed` in `fn
+// register_builtins` in the `rustc_lints` crate.
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -3371,7 +3347,6 @@ declare_lint_pass! {
         FUZZY_PROVENANCE_CASTS,
         HIDDEN_GLOB_REEXPORTS,
         ILL_FORMED_ATTRIBUTE_INPUT,
-        ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
         IMPLIED_BOUNDS_ENTAILMENT,
         INCOMPLETE_INCLUDE,
         INDIRECT_STRUCTURAL_MATCH,

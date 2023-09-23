@@ -16,8 +16,8 @@ use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    FloatPattern, IndirectStructuralMatch, InvalidPattern, NontrivialStructuralMatch,
-    PointerPattern, TypeNotStructural, UnionPattern, UnsizedPattern,
+    IndirectStructuralMatch, InvalidPattern, NaNPattern, NontrivialStructuralMatch, PointerPattern,
+    TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
@@ -291,16 +291,6 @@ impl<'tcx> ConstToPat<'tcx> {
         let param_env = self.param_env;
 
         let kind = match ty.kind() {
-            ty::Float(_) => {
-                self.saw_const_match_lint.set(true);
-                tcx.emit_spanned_lint(
-                    lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-                    id,
-                    span,
-                    FloatPattern,
-                );
-                return Err(FallbackToConstRef);
-            }
             // If the type is not structurally comparable, just emit the constant directly,
             // causing the pattern match code to treat it opaquely.
             // FIXME: This code doesn't emit errors itself, the caller emits the errors.
@@ -445,6 +435,25 @@ impl<'tcx> ConstToPat<'tcx> {
                     }
                 }
             },
+            ty::Float(fty) => {
+                // FIXME: Can this be done in a separate lint pass, rather than in the middle of
+                // const-to-pat conversion?
+                let val = cv.unwrap_leaf();
+                let is_nan = match fty {
+                    // FIXME: Do this without host floats.
+                    ty::FloatTy::F32 => f32::from_bits(val.try_to_u32().unwrap()).is_nan(),
+                    ty::FloatTy::F64 => f64::from_bits(val.try_to_u64().unwrap()).is_nan(),
+                };
+                if is_nan {
+                    tcx.emit_spanned_lint(
+                        lint::builtin::INVALID_NAN_COMPARISONS,
+                        id,
+                        span,
+                        NaNPattern,
+                    );
+                }
+                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
+            }
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => {
                 PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
             }

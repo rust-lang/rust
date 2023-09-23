@@ -21,6 +21,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{
     self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
+use rustc_session::lint::builtin;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
@@ -114,35 +115,13 @@ declare_lint! {
     "detects enums with widely varying variant sizes"
 }
 
-declare_lint! {
-    /// The `invalid_nan_comparisons` lint checks comparison with `f32::NAN` or `f64::NAN`
-    /// as one of the operand.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// let a = 2.3f32;
-    /// if a == f32::NAN {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// NaN does not compare meaningfully to anything – not
-    /// even itself – so those comparisons are always false.
-    INVALID_NAN_COMPARISONS,
-    Warn,
-    "detects invalid floating point NaN comparisons"
-}
-
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: Option<hir::HirId>,
 }
 
-impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS, INVALID_NAN_COMPARISONS]);
+impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS, builtin::INVALID_NAN_COMPARISONS]);
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
@@ -615,7 +594,7 @@ fn lint_nan<'tcx>(
         _ => return,
     };
 
-    cx.emit_spanned_lint(INVALID_NAN_COMPARISONS, e.span, lint);
+    cx.emit_spanned_lint(builtin::INVALID_NAN_COMPARISONS, e.span, lint);
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {

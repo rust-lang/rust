@@ -725,8 +725,8 @@ pub struct UnsizedPattern<'tcx> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_float_pattern)]
-pub struct FloatPattern;
+#[diag(mir_build_nan_pattern)]
+pub struct NaNPattern;
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_pointer_pattern)]

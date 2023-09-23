@@ -505,6 +505,10 @@ fn register_builtins(store: &mut LintStore) {
         "replaced with another group of lints, see RFC \
          <https://rust-lang.github.io/rfcs/2145-type-privacy.html> for more information",
     );
+    store.register_removed(
+        "illegal_floating_point_literal_pattern",
+        "no longer a warning, float patterns behave the same as `==`",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
