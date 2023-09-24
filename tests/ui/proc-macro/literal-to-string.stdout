@@ -1,0 +1,107 @@
+TokenStream [
+    Literal {
+        kind: Integer,
+        symbol: "1",
+        suffix: None,
+        span: #0 bytes(172..173),
+    },
+    Literal {
+        kind: Integer,
+        symbol: "17",
+        suffix: Some("u8"),
+        span: #0 bytes(182..186),
+    },
+    Literal {
+        kind: Float,
+        symbol: "42.",
+        suffix: None,
+        span: #0 bytes(195..198),
+    },
+    Literal {
+        kind: Float,
+        symbol: "3.14",
+        suffix: Some("f32"),
+        span: #0 bytes(207..214),
+    },
+    Literal {
+        kind: Byte,
+        symbol: "a",
+        suffix: None,
+        span: #0 bytes(223..227),
+    },
+    Literal {
+        kind: Byte,
+        symbol: "\xFF",
+        suffix: None,
+        span: #0 bytes(236..243),
+    },
+    Literal {
+        kind: Char,
+        symbol: "c",
+        suffix: None,
+        span: #0 bytes(252..255),
+    },
+    Literal {
+        kind: Char,
+        symbol: "\x32",
+        suffix: None,
+        span: #0 bytes(264..270),
+    },
+    Literal {
+        kind: Str,
+        symbol: "\\"str\\"",
+        suffix: None,
+        span: #0 bytes(279..288),
+    },
+    Literal {
+        kind: StrRaw(1),
+        symbol: "\"raw\" str",
+        suffix: None,
+        span: #0 bytes(297..311),
+    },
+    Literal {
+        kind: StrRaw(3),
+        symbol: "very ##\"raw\"## str",
+        suffix: None,
+        span: #0 bytes(320..347),
+    },
+    Literal {
+        kind: ByteStr,
+        symbol: "\\"byte\\" str",
+        suffix: None,
+        span: #0 bytes(356..371),
+    },
+    Literal {
+        kind: ByteStrRaw(1),
+        symbol: "\"raw\" \"byte\" str",
+        suffix: None,
+        span: #0 bytes(380..402),
+    },
+    Literal {
+        kind: CStr,
+        symbol: "\\"c\\" str",
+        suffix: None,
+        span: #0 bytes(411..423),
+    },
+    Literal {
+        kind: CStrRaw(1),
+        symbol: "\"raw\" \"c\" str",
+        suffix: None,
+        span: #0 bytes(432..451),
+    },
+]
+1
+17u8
+42.
+3.14f32
+b'a'
+b'\xFF'
+'c'
+'\x32'
+"\"str\""
+r#""raw" str"#
+r###"very ##"raw"## str"###
+b"\"byte\" str"
+br#""raw" "byte" str"#
+c"\"c\" str"
+cr#""raw" "c" str"#
