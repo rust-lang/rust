@@ -5,22 +5,11 @@ LL |     test()?;
    |     ^^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = ()>`
    |
    = help: the trait `Try` is not implemented for `impl Future<Output = ()>`
-
-error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/issue-84841.rs:9:11
+help: consider `await`ing on the `Future`
    |
-LL |   async fn foo() {
-   |  ________________-
-LL | |     // Adding an .await here avoids the ICE
-LL | |     test()?;
-   | |           ^ cannot use the `?` operator in an async function that returns `()`
-LL | |
-LL | |
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
-   |
-   = help: the trait `FromResidual<_>` is not implemented for `()`
+LL |     test().await?;
+   |           ++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

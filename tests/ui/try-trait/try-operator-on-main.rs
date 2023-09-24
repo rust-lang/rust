@@ -7,16 +7,15 @@ fn main() {
     std::fs::File::open("foo")?; //~ ERROR the `?` operator can only
 
     // a non-`Try` type on a non-`Try` fn
-    ()?; //~ ERROR the `?` operator can only be applied to
-    //~^ ERROR the `?` operator can only be used in a function that
+    0i32?; //~ ERROR the `?` operator can only be applied to
 
     // an unrelated use of `Try`
-    try_trait_generic::<()>(); //~ ERROR the trait bound
+    try_trait_generic::<i32>(); //~ ERROR the trait bound
 }
 
 fn try_trait_generic<T: Try>() -> T {
     // and a non-`Try` object on a `Try` fn.
-    ()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
+    0i32?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
 
     loop {}
 }

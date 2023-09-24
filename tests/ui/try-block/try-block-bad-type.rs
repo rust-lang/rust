@@ -14,8 +14,5 @@ pub fn main() {
 
     let res: Result<i32, i32> = try { }; //~ ERROR type mismatch
 
-    let res: () = try { };
-    //~^ ERROR a `try` block must return `Result` or `Option`
-
     let res: i32 = try { 5 }; //~ ERROR a `try` block must return `Result` or `Option`
 }
