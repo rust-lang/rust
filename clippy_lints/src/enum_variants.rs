@@ -167,7 +167,7 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         return;
     }
 
-    let first = match &def.variants.get(0) {
+    let first = match def.variants.first() {
         Some(variant) => variant.ident.name.as_str(),
         None => return,
     };
