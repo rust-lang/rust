@@ -10,7 +10,6 @@
 +         let mut _3: &std::option::Option<T>;
 +         let mut _4: isize;
 +         let mut _5: bool;
-+         let mut _6: bool;
 +         scope 2 {
 +             debug val => _0;
 +         }
@@ -37,14 +36,10 @@
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         StorageLive(_5);
-+         StorageLive(_6);
 +         _4 = discriminant(_2);
-+         _5 = Ne(_4, const 0_isize);
++         _5 = Eq(_4, const 1_isize);
 +         assume(move _5);
-+         _6 = Eq(_4, const 1_isize);
-+         assume(move _6);
 +         _0 = move ((_2 as Some).0: T);
-+         StorageDead(_6);
 +         StorageDead(_5);
 +         StorageDead(_4);
 +         StorageDead(_3);

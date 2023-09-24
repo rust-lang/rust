@@ -116,22 +116,21 @@ fn remove_successors_from_switch<'tcx>(
         patch.add_statement(location, StatementKind::Intrinsic(Box::new(assume)));
     };
 
+    let otherwise = targets.otherwise();
+    let otherwise_unreachable = is_unreachable(otherwise);
+
     let reachable_iter = targets.iter().filter(|&(value, bb)| {
         let is_unreachable = is_unreachable(bb);
-        if is_unreachable {
-            // We remove this target from the switch, so record the inequality using `Assume`.
+        // We remove this target from the switch, so record the inequality using `Assume`.
+        if is_unreachable && !otherwise_unreachable {
             add_assumption(BinOp::Ne, value);
-            false
-        } else {
-            true
         }
+        !is_unreachable
     });
 
-    let otherwise = targets.otherwise();
     let new_targets = SwitchTargets::new(reachable_iter, otherwise);
 
     let num_targets = new_targets.all_targets().len();
-    let otherwise_unreachable = is_unreachable(otherwise);
     let fully_unreachable = num_targets == 1 && otherwise_unreachable;
 
     let terminator = match (num_targets, otherwise_unreachable) {
