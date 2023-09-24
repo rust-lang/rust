@@ -18,6 +18,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0/MIT",
     "ISC",
     "MIT / Apache-2.0",
+    "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
     "MIT OR Apache-2.0",
     "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
@@ -217,6 +218,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "pulldown-cmark",
     "punycode",
     "quote",
+    "r-efi",
+    "r-efi-alloc",
     "rand",
     "rand_chacha",
     "rand_core",
