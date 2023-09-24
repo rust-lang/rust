@@ -10,6 +10,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
+use rustc_middle::mir;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
@@ -351,17 +352,47 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
     let codegenned_def_ids = tcx.codegened_and_inlined_items(());
 
-    for non_codegenned_def_id in
-        eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))
-    {
+    // For each `DefId` that should have coverage instrumentation but wasn't
+    // codegenned, add it to the function coverage map as an unused function.
+    for def_id in eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id)) {
         // Skip any function that didn't have coverage data added to it by the
         // coverage instrumentor.
-        let body = tcx.instance_mir(ty::InstanceDef::Item(non_codegenned_def_id));
+        let body = tcx.instance_mir(ty::InstanceDef::Item(def_id));
         let Some(function_coverage_info) = body.function_coverage_info.as_deref() else {
             continue;
         };
 
-        debug!("generating unused fn: {:?}", non_codegenned_def_id);
-        cx.define_unused_fn(non_codegenned_def_id, function_coverage_info);
+        debug!("generating unused fn: {def_id:?}");
+        let instance = declare_unused_fn(tcx, def_id);
+        add_unused_function_coverage(cx, instance, function_coverage_info);
+    }
+}
+
+fn declare_unused_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::Instance<'tcx> {
+    ty::Instance::new(
+        def_id,
+        ty::GenericArgs::for_item(tcx, def_id, |param, _| {
+            if let ty::GenericParamDefKind::Lifetime = param.kind {
+                tcx.lifetimes.re_erased.into()
+            } else {
+                tcx.mk_param_from_def(param)
+            }
+        }),
+    )
+}
+
+fn add_unused_function_coverage<'tcx>(
+    cx: &CodegenCx<'_, 'tcx>,
+    instance: ty::Instance<'tcx>,
+    function_coverage_info: &'tcx mir::coverage::FunctionCoverageInfo,
+) {
+    // An unused function's mappings will automatically be rewritten to map to
+    // zero, because none of its counters/expressions are marked as seen.
+    let function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
+
+    if let Some(coverage_context) = cx.coverage_context() {
+        coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);
+    } else {
+        bug!("Could not get the `coverage_context`");
     }
 }
