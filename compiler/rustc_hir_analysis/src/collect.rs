@@ -253,7 +253,7 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
         hir::ItemKind::Union(_, generics)
         | hir::ItemKind::Enum(_, generics)
         | hir::ItemKind::TraitAlias(generics, _)
-        | hir::ItemKind::Trait(_, _, generics, ..)
+        | hir::ItemKind::Trait(_, generics, ..)
         | hir::ItemKind::Impl(hir::Impl { generics, .. })
         | hir::ItemKind::Struct(_, generics) => (generics, true),
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. })
@@ -894,11 +894,9 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir().expect_item(def_id);
 
-    let (is_auto, unsafety, items) = match item.kind {
-        hir::ItemKind::Trait(is_auto, unsafety, .., items) => {
-            (is_auto == hir::IsAuto::Yes, unsafety, items)
-        }
-        hir::ItemKind::TraitAlias(..) => (false, hir::Unsafety::Normal, &[][..]),
+    let (unsafety, items) = match item.kind {
+        hir::ItemKind::Trait(unsafety, .., items) => (unsafety, items),
+        hir::ItemKind::TraitAlias(..) => (hir::Unsafety::Normal, &[][..]),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -908,7 +906,8 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
-    let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
+    let is_auto = tcx.has_attr(def_id, sym::rustc_auto_trait);
+    let is_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
     let skip_array_during_method_dispatch =
         tcx.has_attr(def_id, sym::rustc_skip_array_during_method_dispatch);
     let specialization_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
@@ -1043,7 +1042,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         paren_sugar,
         has_auto_impl: is_auto,
         is_marker,
-        is_coinductive: rustc_coinductive || is_auto,
+        is_coinductive: is_coinductive || is_auto,
         skip_array_during_method_dispatch,
         specialization_kind,
         must_implement_one_of,

@@ -996,7 +996,7 @@ impl<'hir> Map<'hir> {
             }) => until_within(*outer_span, ty.span),
             // With generics and bounds.
             Node::Item(Item {
-                kind: ItemKind::Trait(_, _, generics, bounds, _),
+                kind: ItemKind::Trait(_, generics, bounds, _),
                 span: outer_span,
                 ..
             })

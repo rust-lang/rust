@@ -143,7 +143,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             | ItemKind::Struct(_, generics)
             | ItemKind::Union(_, generics) => generics,
 
-            ItemKind::Trait(_, _, generics, self_bounds, ..)
+            ItemKind::Trait(_, generics, self_bounds, ..)
             | ItemKind::TraitAlias(generics, self_bounds) => {
                 is_trait = Some(self_bounds);
                 generics
@@ -703,7 +703,7 @@ pub(super) fn type_param_predicates(
                 | ItemKind::Enum(_, generics)
                 | ItemKind::Struct(_, generics)
                 | ItemKind::Union(_, generics) => generics,
-                ItemKind::Trait(_, _, generics, ..) => {
+                ItemKind::Trait(_, generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref =

@@ -149,7 +149,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
                 hir::ItemKind::Impl(impl_) => {
                     lctx.is_in_trait_impl = impl_.of_trait.is_some();
                 }
-                hir::ItemKind::Trait(_, _, generics, _, _) if lctx.tcx.features().effects => {
+                hir::ItemKind::Trait(_, generics, _, _) if lctx.tcx.features().effects => {
                     lctx.host_param_id = generics
                         .params
                         .iter()
@@ -445,13 +445,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             // We intentionally ignore `is_auto` since `auto` is now meaningless.
             ItemKind::Trait(box Trait { is_auto: _, unsafety, generics, bounds, items }) => {
-                let is_auto =
-                    if attrs.unwrap_or(&[]).iter().any(|attr| attr.has_name(sym::rustc_auto_trait))
-                    {
-                        IsAuto::Yes
-                    } else {
-                        IsAuto::No
-                    };
                 // FIXME(const_trait_impl, effects, fee1-dead) this should be simplified if possible
                 let constness = attrs
                     .unwrap_or(&[])
@@ -475,7 +468,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (unsafety, items, bounds)
                     },
                 );
-                hir::ItemKind::Trait(is_auto, unsafety, generics, bounds, items)
+                hir::ItemKind::Trait(unsafety, generics, bounds, items)
             }
             ItemKind::TraitAlias(generics, bounds) => {
                 let (generics, bounds) = self.lower_generics(

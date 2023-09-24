@@ -673,8 +673,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             true,
             td.as_local().and_then(|tld| match hir_map.find_by_def_id(tld) {
                 Some(Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, _, _, items),
-                    ..
+                    kind: hir::ItemKind::Trait(_, _, _, items), ..
                 })) => {
                     let mut f_in_trait_opt = None;
                     for hir::TraitItemRef { id: fi, kind: k, .. } in *items {

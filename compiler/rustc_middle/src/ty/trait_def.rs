@@ -31,8 +31,8 @@ pub struct TraitDef {
     /// and thus `impl`s of it are allowed to overlap.
     pub is_marker: bool,
 
-    /// If `true`, then this trait has to `#[rustc_coinductive]` attribute or
-    /// is an auto trait. This indicates that trait solver cycles involving an
+    /// If `true`, then this trait has the `#[rustc_auto_trait]` or `#[rustc_coinductive]`
+    /// attribute. This indicates that trait solver cycles involving an
     /// `X: ThisTrait` goal are accepted.
     ///
     /// In the future all traits should be coinductive, but we need a better

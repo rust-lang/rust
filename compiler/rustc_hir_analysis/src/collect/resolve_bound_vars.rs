@@ -589,7 +589,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Enum(_, generics)
             | hir::ItemKind::Struct(_, generics)
             | hir::ItemKind::Union(_, generics)
-            | hir::ItemKind::Trait(_, _, generics, ..)
+            | hir::ItemKind::Trait(_, generics, ..)
             | hir::ItemKind::TraitAlias(generics, ..)
             | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.

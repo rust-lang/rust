@@ -2422,8 +2422,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.trait_def(trait_def_id).has_auto_impl
     }
 
-    /// Returns `true` if this is coinductive, either because it is
-    /// an auto trait or because it has the `#[rustc_coinductive]` attribute.
+    /// Returns `true` if this is coinductive, because it has the
+    /// `#[rustc_auto_trait]` or `#[rustc_coinductive]` attribute.
     pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).is_coinductive
     }

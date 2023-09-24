@@ -663,9 +663,8 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::Trait(is_auto, unsafety, generics, bounds, trait_items) => {
+            hir::ItemKind::Trait(unsafety, generics, bounds, trait_items) => {
                 self.head("");
-                self.print_is_auto(is_auto);
                 self.print_unsafety(unsafety);
                 self.word_nbsp("trait");
                 self.print_ident(item.ident);
@@ -2328,13 +2327,6 @@ impl<'a> State<'a> {
         match s {
             hir::Unsafety::Normal => {}
             hir::Unsafety::Unsafe => self.word_nbsp("unsafe"),
-        }
-    }
-
-    pub fn print_is_auto(&mut self, s: hir::IsAuto) {
-        match s {
-            hir::IsAuto::Yes => self.word_nbsp("auto"),
-            hir::IsAuto::No => {}
         }
     }
 }

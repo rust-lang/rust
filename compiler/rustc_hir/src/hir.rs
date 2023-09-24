@@ -7,7 +7,7 @@ use crate::LangItem;
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
-pub use rustc_ast::{BindingAnnotation, BorrowKind, ByRef, ImplPolarity, IsAuto};
+pub use rustc_ast::{BindingAnnotation, BorrowKind, ByRef, ImplPolarity};
 pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -3216,11 +3216,11 @@ impl<'hir> Item<'hir> {
     #[track_caller]
     pub fn expect_trait(
         self,
-    ) -> (IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]) {
-        let ItemKind::Trait(is_auto, unsafety, gen, bounds, items) = self.kind else {
+    ) -> (Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]) {
+        let ItemKind::Trait(unsafety, gen, bounds, items) = self.kind else {
             self.expect_failed("a trait")
         };
-        (is_auto, unsafety, gen, bounds, items)
+        (unsafety, gen, bounds, items)
     }
 
     /// Expect an [`ItemKind::TraitAlias`] or panic.
@@ -3347,7 +3347,7 @@ pub enum ItemKind<'hir> {
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     Union(VariantData<'hir>, &'hir Generics<'hir>),
     /// A trait definition.
-    Trait(IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+    Trait(Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
     /// A trait alias.
     TraitAlias(&'hir Generics<'hir>, GenericBounds<'hir>),
 
@@ -3382,7 +3382,7 @@ impl ItemKind<'_> {
             | ItemKind::Enum(_, ref generics)
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
-            | ItemKind::Trait(_, _, ref generics, _, _)
+            | ItemKind::Trait(_, ref generics, _, _)
             | ItemKind::TraitAlias(ref generics, _)
             | ItemKind::Impl(Impl { ref generics, .. }) => generics,
             _ => return None,

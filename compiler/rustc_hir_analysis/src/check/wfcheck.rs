@@ -1114,7 +1114,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     });
 
     // Only check traits, don't check trait aliases
-    if let hir::ItemKind::Trait(_, _, _, _, items) = item.kind {
+    if let hir::ItemKind::Trait(_, _, _, items) = item.kind {
         check_gat_where_clauses(tcx, items);
     }
 }

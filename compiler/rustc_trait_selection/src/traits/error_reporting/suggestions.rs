@@ -511,7 +511,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             match node {
                 hir::Node::Item(hir::Item {
                     ident,
-                    kind: hir::ItemKind::Trait(_, _, generics, bounds, _),
+                    kind: hir::ItemKind::Trait(_, generics, bounds, _),
                     ..
                 }) if self_ty == self.tcx.types.self_param => {
                     assert!(param_ty);
@@ -573,7 +573,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Trait(_, _, generics, ..)
+                        hir::ItemKind::Trait(_, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. }),
                     ..
                 }) if projection.is_some() => {
@@ -597,7 +597,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         hir::ItemKind::Struct(_, generics)
                         | hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Union(_, generics)
-                        | hir::ItemKind::Trait(_, _, generics, ..)
+                        | hir::ItemKind::Trait(_, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn(_, generics, _)
                         | hir::ItemKind::TyAlias(_, generics)
@@ -663,7 +663,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         hir::ItemKind::Struct(_, generics)
                         | hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Union(_, generics)
-                        | hir::ItemKind::Trait(_, _, generics, ..)
+                        | hir::ItemKind::Trait(_, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn(_, generics, _)
                         | hir::ItemKind::TyAlias(_, generics)
@@ -3006,13 +3006,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let mut is_auto_trait = false;
                 match self.tcx.hir().get_if_local(data.impl_or_alias_def_id) {
                     Some(Node::Item(hir::Item {
-                        kind: hir::ItemKind::Trait(is_auto, ..),
+                        kind: hir::ItemKind::Trait(..),
                         ident,
                         ..
                     })) => {
                         // FIXME: we should do something else so that it works even on crate foreign
                         // auto traits.
-                        is_auto_trait = matches!(is_auto, hir::IsAuto::Yes);
+                        is_auto_trait = tcx.has_attr(data.impl_or_alias_def_id, sym::rustc_auto_trait);
                         err.span_note(ident.span, msg);
                     }
                     Some(Node::Item(hir::Item {

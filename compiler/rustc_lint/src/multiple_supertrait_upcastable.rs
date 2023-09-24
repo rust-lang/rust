@@ -39,7 +39,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
         let def_id = item.owner_id.to_def_id();
         // NOTE(nbdd0121): use `object_safety_violations` instead of `check_is_object_safe` because
         // the latter will report `where_clause_object_safety` lint.
-        if let hir::ItemKind::Trait(_, _, _, _, _) = item.kind
+        if let hir::ItemKind::Trait(_, _, _, _) = item.kind
             && cx.tcx.object_safety_violations(def_id).is_empty()
         {
             let direct_super_traits_iter = cx.tcx

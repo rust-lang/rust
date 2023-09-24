@@ -805,20 +805,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         entry.1.insert((self_ty.span, ""));
                     }
                     Some(Node::Item(hir::Item {
-                        kind: hir::ItemKind::Trait(rustc_ast::ast::IsAuto::Yes, ..),
+                        ident,
+                        kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
                         span: item_span,
                         ..
                     })) => {
-                        tcx.sess.delay_span_bug(
-                            *item_span,
-                            "auto trait is invoked with no method error, but no error reported?",
-                        );
-                    }
-                    Some(Node::Item(hir::Item {
-                        ident,
-                        kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
-                        ..
-                    })) => {
+                        if tcx.has_attr(item_def_id, sym::rustc_auto_trait) {
+                            tcx.sess.delay_span_bug(
+                                *item_span,
+                                "auto trait is invoked with no method error, but no error reported?",
+                            );
+                            continue;
+                        }
+
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
                         let entry = entry.or_insert_with(|| {
