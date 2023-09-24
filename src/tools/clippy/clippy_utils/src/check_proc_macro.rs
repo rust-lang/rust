@@ -18,7 +18,7 @@ use rustc_ast::AttrStyle;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId, Impl, ImplItem,
-    ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem, TraitItemKind, Ty,
+    ImplItemKind, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem, TraitItemKind, Ty,
     TyKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
@@ -205,12 +205,11 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Struct(VariantData::Struct(..), _) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
-        ItemKind::Trait(_, Unsafety::Unsafe, ..)
+        ItemKind::Trait(Unsafety::Unsafe, ..)
         | ItemKind::Impl(Impl {
             unsafety: Unsafety::Unsafe,
             ..
         }) => (Pat::Str("unsafe"), Pat::Str("}")),
-        ItemKind::Trait(IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
         ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
         ItemKind::Impl(_) => (Pat::Str("impl"), Pat::Str("}")),
         _ => return (Pat::Str(""), Pat::Str("")),

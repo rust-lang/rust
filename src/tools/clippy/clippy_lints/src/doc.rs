@@ -314,7 +314,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             hir::ItemKind::Impl(impl_) => {
                 self.in_trait_impl = impl_.of_trait.is_some();
             },
-            hir::ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+            hir::ItemKind::Trait(unsafety, ..) => match (headers.safety, unsafety) {
                 (false, hir::Unsafety::Unsafe) => span_lint(
                     cx,
                     MISSING_SAFETY_DOC,

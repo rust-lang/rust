@@ -125,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             return;
         }
 
-        if let ItemKind::Trait(_, _, _, _, trait_items) = item.kind {
+        if let ItemKind::Trait(_, _, _, trait_items) = item.kind {
             check_trait_items(cx, item, trait_items);
         }
     }

@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         // special handling for self trait bounds as these are not considered generics
         // ie. trait Foo: Display {}
         if let Item {
-            kind: ItemKind::Trait(_, _, _, bounds, ..),
+            kind: ItemKind::Trait(_, _, bounds, ..),
             ..
         } = item
         {
@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                 if let Some(
                     Node::Item(
                         Item {
-                            kind: ItemKind::Trait(_, _, _, self_bounds, _),
+                            kind: ItemKind::Trait(_, _, self_bounds, _),
                             .. }
                         )
                     ) = cx.tcx.hir().get_if_local(*def_id);
