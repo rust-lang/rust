@@ -83,6 +83,7 @@ mod passes;
 mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
+mod span_use_eq_ctxt;
 mod traits;
 mod types;
 mod unused;
