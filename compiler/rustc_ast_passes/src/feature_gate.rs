@@ -592,6 +592,9 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
     gate_all_legacy_dont_use!(associated_type_bounds, "associated type bounds are unstable");
+    // Despite being a new feature, `where T: Trait<Assoc(): Sized>`, which is RTN syntax now,
+    // used to be gated under associated_type_bounds, which are right above, so RTN needs to
+    // be too.
     gate_all_legacy_dont_use!(return_type_notation, "return type notation is experimental");
     gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
     gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
