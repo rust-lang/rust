@@ -280,7 +280,7 @@ impl ProjectionId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Place {
     pub local: LocalId,
     pub projection: ProjectionId,
@@ -1007,7 +1007,7 @@ pub enum Rvalue {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum StatementKind {
     Assign(Place, Rvalue),
-    //FakeRead(Box<(FakeReadCause, Place)>),
+    FakeRead(Place),
     //SetDiscriminant {
     //    place: Box<Place>,
     //    variant_index: VariantIdx,
@@ -1109,7 +1109,9 @@ impl MirBody {
                             }
                         }
                     }
-                    StatementKind::Deinit(p) => f(p, &mut self.projection_store),
+                    StatementKind::FakeRead(p) | StatementKind::Deinit(p) => {
+                        f(p, &mut self.projection_store)
+                    }
                     StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
                     | StatementKind::Nop => (),

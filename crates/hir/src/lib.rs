@@ -98,7 +98,7 @@ pub use crate::{
         ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
         UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
         UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
-        UnresolvedProcMacro, UnusedMut,
+        UnresolvedProcMacro, UnusedMut, UnusedVariable,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1697,9 +1697,20 @@ impl DefWithBody {
                         // Skip synthetic bindings
                         continue;
                     }
-                    let need_mut = &mol[local];
+                    let mut need_mut = &mol[local];
+                    if body[binding_id].name.as_str() == Some("self")
+                        && need_mut == &mir::MutabilityReason::Unused
+                    {
+                        need_mut = &mir::MutabilityReason::Not;
+                    }
                     let local = Local { parent: self.into(), binding_id };
                     match (need_mut, local.is_mut(db)) {
+                        (mir::MutabilityReason::Unused, _) => {
+                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
+                            if !should_ignore {
+                                acc.push(UnusedVariable { local }.into())
+                            }
+                        }
                         (mir::MutabilityReason::Mut { .. }, true)
                         | (mir::MutabilityReason::Not, false) => (),
                         (mir::MutabilityReason::Mut { spans }, false) => {
