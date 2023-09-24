@@ -115,8 +115,8 @@ impl<'a> IntoIterator for &'a CfgOptions {
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CfgDiff {
     // Invariants: No duplicates, no atom that's both in `enable` and `disable`.
-    enable: Vec<CfgAtom>,
-    disable: Vec<CfgAtom>,
+    pub enable: Vec<CfgAtom>,
+    pub disable: Vec<CfgAtom>,
 }
 
 impl CfgDiff {

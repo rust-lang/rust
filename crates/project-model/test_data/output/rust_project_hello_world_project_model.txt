@@ -28,6 +28,7 @@
                 name: CrateName(
                     "core",
                 ),
+                kind: Normal,
                 prelude: true,
             },
         ],
@@ -168,6 +169,7 @@
                 name: CrateName(
                     "std",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -175,6 +177,7 @@
                 name: CrateName(
                     "core",
                 ),
+                kind: Normal,
                 prelude: true,
             },
         ],
@@ -249,6 +252,7 @@
                 name: CrateName(
                     "alloc",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -256,6 +260,7 @@
                 name: CrateName(
                     "panic_unwind",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -263,6 +268,7 @@
                 name: CrateName(
                     "panic_abort",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -270,6 +276,7 @@
                 name: CrateName(
                     "core",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -277,6 +284,7 @@
                 name: CrateName(
                     "profiler_builtins",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -284,6 +292,7 @@
                 name: CrateName(
                     "unwind",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -291,6 +300,7 @@
                 name: CrateName(
                     "std_detect",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -298,6 +308,7 @@
                 name: CrateName(
                     "test",
                 ),
+                kind: Normal,
                 prelude: true,
             },
         ],
@@ -438,6 +449,7 @@
                 name: CrateName(
                     "core",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -445,6 +457,7 @@
                 name: CrateName(
                     "alloc",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -452,6 +465,7 @@
                 name: CrateName(
                     "std",
                 ),
+                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -459,6 +473,7 @@
                 name: CrateName(
                     "test",
                 ),
+                kind: Normal,
                 prelude: false,
             },
             Dependency {
@@ -466,6 +481,7 @@
                 name: CrateName(
                     "proc_macro",
                 ),
+                kind: Normal,
                 prelude: false,
             },
         ],
