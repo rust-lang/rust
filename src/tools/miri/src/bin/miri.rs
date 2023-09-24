@@ -28,9 +28,9 @@ use rustc_middle::{
     middle::exported_symbols::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
-    query::{LocalCrate},
-    util::Providers,
+    query::LocalCrate,
     ty::TyCtxt,
+    util::Providers,
 };
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
