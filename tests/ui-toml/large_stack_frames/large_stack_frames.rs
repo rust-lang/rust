@@ -7,11 +7,11 @@ fn create_array<const N: usize>() -> [u8; N] {
 }
 
 fn f() {
-    let _x = create_array::<4294967296>();
+    let _x = create_array::<1000>();
 }
 fn f2() {
     //~^ ERROR: this function allocates a large amount of stack space
-    let _x = create_array::<4294967297>();
+    let _x = create_array::<1001>();
 }
 
 fn main() {}

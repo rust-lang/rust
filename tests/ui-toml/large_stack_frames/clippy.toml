@@ -1,1 +1,1 @@
-stack-size-threshold = 4294967296
+stack-size-threshold = 1000

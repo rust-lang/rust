@@ -3,7 +3,7 @@ error: this function allocates a large amount of stack space
    |
 LL | / fn f2() {
 LL | |
-LL | |     let _x = create_array::<4294967297>();
+LL | |     let _x = create_array::<1001>();
 LL | | }
    | |_^
    |
