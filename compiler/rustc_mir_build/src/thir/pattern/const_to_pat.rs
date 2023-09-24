@@ -179,7 +179,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
 
             if let Some(non_sm_ty) = structural {
-                if !self.type_may_have_partial_eq_impl(cv.ty()) {
+                if !self.type_has_partial_eq_impl(cv.ty()) {
                     if let ty::Adt(def, ..) = non_sm_ty.kind() {
                         if def.is_union() {
                             let err = UnionPattern { span: self.span };
@@ -244,7 +244,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
             // Always check for `PartialEq`, even if we emitted other lints. (But not if there were
             // any errors.) This ensures it shows up in cargo's future-compat reports as well.
-            if !self.type_may_have_partial_eq_impl(cv.ty()) {
+            if !self.type_has_partial_eq_impl(cv.ty()) {
                 self.tcx().emit_spanned_lint(
                     lint::builtin::MATCH_WITHOUT_PARTIAL_EQ,
                     self.id,
@@ -258,7 +258,7 @@ impl<'tcx> ConstToPat<'tcx> {
     }
 
     #[instrument(level = "trace", skip(self), ret)]
-    fn type_may_have_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
+    fn type_has_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
         // double-check there even *is* a semantic `PartialEq` to dispatch to.
         //
         // (If there isn't, then we can safely issue a hard
@@ -273,8 +273,13 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::TraitRef::new(self.tcx(), partial_eq_trait_id, [ty, ty]),
         );
 
-        // FIXME: should this call a `predicate_must_hold` variant instead?
-        self.infcx.predicate_may_hold(&partial_eq_obligation)
+        // This *could* accept a type that isn't actually `PartialEq`, because region bounds get
+        // ignored. However that should be pretty much impossible since consts that do not depend on
+        // generics can only mention the `'static` lifetime, and how would one have a type that's
+        // `PartialEq` for some lifetime but *not* for `'static`? If this ever becomes a problem
+        // we'll need to leave some sort of trace of this requirement in the MIR so that borrowck
+        // can ensure that the type really implements `PartialEq`.
+        self.infcx.predicate_must_hold_modulo_regions(&partial_eq_obligation)
     }
 
     fn field_pats(
