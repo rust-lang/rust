@@ -4,7 +4,7 @@ use crate::coverageinfo::ffi::CounterMappingRegion;
 use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::llvm;
 
-use rustc_codegen_ssa::traits::ConstMethods;
+use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -94,8 +94,14 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
     let cov_data_val = generate_coverage_map(cx, version, filenames_size, filenames_val);
 
+    let mut unused_function_names = Vec::new();
+
     let covfun_section_name = coverageinfo::covfun_section_name(cx);
     for (mangled_function_name, source_hash, is_used, coverage_mapping_buffer) in function_data {
+        if !is_used {
+            unused_function_names.push(mangled_function_name);
+        }
+
         save_function_record(
             cx,
             &covfun_section_name,
@@ -105,6 +111,25 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
             coverage_mapping_buffer,
             is_used,
         );
+    }
+
+    // For unused functions, we need to take their mangled names and store them
+    // in a specially-named global array. LLVM's `InstrProfiling` pass will
+    // detect this global and include those names in its `__llvm_prf_names`
+    // section. (See `llvm/lib/Transforms/Instrumentation/InstrProfiling.cpp`.)
+    if !unused_function_names.is_empty() {
+        assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
+
+        let name_globals = unused_function_names
+            .into_iter()
+            .map(|mangled_function_name| cx.const_str(mangled_function_name).0)
+            .collect::<Vec<_>>();
+        let initializer = cx.const_array(cx.type_ptr(), &name_globals);
+
+        let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), "__llvm_coverage_names");
+        llvm::set_global_constant(array, true);
+        llvm::set_linkage(array, llvm::Linkage::InternalLinkage);
+        llvm::set_initializer(array, initializer);
     }
 
     // Save the coverage data value to LLVM IR
@@ -290,10 +315,10 @@ fn save_function_record(
 /// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`tcx` query
 /// `codegened_and_inlined_items`).
 ///
-/// These unused functions are then codegen'd in one of the CGUs which is marked as the
-/// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
-/// code regions for the same function more than once which can lead to linker errors regarding
-/// duplicate symbols.
+/// These unused functions don't need to be codegenned, but we do need to add them to the function
+/// coverage map (in a single designated CGU) so that we still emit coverage mappings for them.
+/// We also end up adding their symbol names to a special global array that LLVM will include in
+/// its embedded coverage data.
 fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
