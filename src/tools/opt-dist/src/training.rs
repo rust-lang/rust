@@ -111,11 +111,11 @@ fn log_profile_stats(
     Ok(())
 }
 
-pub fn llvm_benchmarks(env: &dyn Environment) -> CmdBuilder {
+pub fn llvm_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full"], LLVM_PGO_CRATES)
 }
 
-pub fn rustc_benchmarks(env: &dyn Environment) -> CmdBuilder {
+pub fn rustc_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["All"], RUSTC_PGO_CRATES)
 }
 
@@ -186,6 +186,7 @@ pub fn gather_bolt_profiles(
     env: &Environment,
     name: &str,
     benchmarks: CmdBuilder,
+    profile_prefix: &Utf8Path,
 ) -> anyhow::Result<BoltProfile> {
     log::info!("Running benchmarks with BOLT instrumented {name}");
 
@@ -194,11 +195,10 @@ pub fn gather_bolt_profiles(
     })?;
 
     let merged_profile = env.artifact_dir().join(format!("{name}-bolt.profdata"));
-    let profile_root = Utf8PathBuf::from("/tmp/prof.fdata");
-    log::info!("Merging {name} BOLT profiles to {merged_profile}");
+    log::info!("Merging {name} BOLT profiles from {profile_prefix} to {merged_profile}");
 
     let profiles: Vec<_> =
-        glob::glob(&format!("{profile_root}*"))?.collect::<Result<Vec<_>, _>>()?;
+        glob::glob(&format!("{profile_prefix}*"))?.collect::<Result<Vec<_>, _>>()?;
 
     let mut merge_args = vec!["merge-fdata"];
     merge_args.extend(profiles.iter().map(|p| p.to_str().unwrap()));
@@ -222,11 +222,11 @@ pub fn gather_bolt_profiles(
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
         .sum::<u64>();
-    log::info!("{profile_root}: {}", humansize::format_size(size, BINARY));
+    log::info!("{profile_prefix}: {}", humansize::format_size(size, BINARY));
     log::info!("Profile file count: {}", profiles.len());
 
     // Delete the gathered profiles
-    for profile in glob::glob(&format!("{profile_root}*"))?.into_iter() {
+    for profile in glob::glob(&format!("{profile_prefix}*"))?.into_iter() {
         if let Ok(profile) = profile {
             if let Err(error) = std::fs::remove_file(&profile) {
                 log::error!("Cannot delete BOLT profile {}: {error:?}", profile.display());
