@@ -71,7 +71,8 @@ fn do_orphan_check_impl<'tcx>(
     //
     // ```
     // // Crate A
-    // auto trait Foo { }
+    // #[rustc_auto_trait]
+    // trait Foo { }
     // fn two_foos<A:Foo,B:Foo>(..) {
     //     one_foo::<(A,B)>(..)
     // }
@@ -127,7 +128,8 @@ fn do_orphan_check_impl<'tcx>(
         // This is necessary in order for autotrait bounds on methods of trait
         // objects to be sound.
         //
-        //     auto trait AutoTrait {}
+        //     #[rustc_auto_trait]
+        //     trait AutoTrait {}
         //
         //     trait ObjectSafeTrait {
         //         fn f(&self) where Self: AutoTrait;

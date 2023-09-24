@@ -561,7 +561,8 @@ fn virtual_call_violation_for_method<'tcx>(
 
         // dyn Trait is okay:
         //
-        //     auto trait AutoTrait {}
+        //     #[rustc_auto_trait]
+        //     trait AutoTrait {}
         //
         //     trait Trait {
         //         fn f(&self) where Self: AutoTrait;
@@ -580,7 +581,7 @@ fn virtual_call_violation_for_method<'tcx>(
             && tcx.trait_is_auto(pred_trait_ref.def_id)
         {
             // Consider bounds like `Self: Bound<Self>`. Auto traits are not
-            // allowed to have generic parameters so `auto trait Bound<T> {}`
+            // allowed to have generic parameters so `#[rustc_auto_trait] trait Bound<T> {}`
             // would already have reported an error at the definition of the
             // auto trait.
             if pred_trait_ref.args.len() != 1 {

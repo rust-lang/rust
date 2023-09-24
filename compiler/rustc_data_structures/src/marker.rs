@@ -1,28 +1,57 @@
 cfg_if!(
     if #[cfg(not(parallel_compiler))] {
+        #[cfg(bootstrap)]
         pub auto trait DynSend {}
+
+        #[cfg(not(bootstrap))]
+        #[rustc_auto_trait]
+        pub trait DynSend {}
+
+        #[cfg(bootstrap)]
         pub auto trait DynSync {}
+
+        #[cfg(not(bootstrap))]
+        #[rustc_auto_trait]
+        pub trait DynSync {}
 
         impl<T> DynSend for T {}
         impl<T> DynSync for T {}
     } else {
+        #[cfg(bootstrap)]
         #[rustc_on_unimplemented(
             message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`"
         )]
+        pub unsafe auto trait DynSend {}
+
+        #[cfg(not(bootstrap))]
+        #[rustc_on_unimplemented(
+            message = "`{Self}` doesn't implement `DynSend`. \
+            Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`"
+        )]
+        #[rustc_auto_trait]
         // This is an auto trait for types which can be sent across threads if `sync::is_dyn_thread_safe()`
         // is true. These types can be wrapped in a `FromDyn` to get a `Send` type. Wrapping a
         // `Send` type in `IntoDynSyncSend` will create a `DynSend` type.
-        pub unsafe auto trait DynSend {}
+        pub unsafe trait DynSend {}
 
+        #[cfg(bootstrap)]
         #[rustc_on_unimplemented(
             message = "`{Self}` doesn't implement `DynSync`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Sync`"
         )]
+        pub unsafe auto trait DynSync {}
+
+        #[cfg(not(bootstrap))]
+        #[rustc_on_unimplemented(
+            message = "`{Self}` doesn't implement `DynSync`. \
+            Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Sync`"
+        )]
+        #[rustc_auto_trait]
         // This is an auto trait for types which can be shared across threads if `sync::is_dyn_thread_safe()`
         // is true. These types can be wrapped in a `FromDyn` to get a `Sync` type. Wrapping a
         // `Sync` type in `IntoDynSyncSend` will create a `DynSync` type.
-        pub unsafe auto trait DynSync {}
+        pub unsafe trait DynSync {}
 
         // Same with `Sync` and `Send`.
         unsafe impl<T: DynSync + ?Sized> DynSend for &T {}

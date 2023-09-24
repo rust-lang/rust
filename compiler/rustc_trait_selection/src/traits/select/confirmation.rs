@@ -354,7 +354,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(fully_flattened)
     }
 
-    /// This handles the case where an `auto trait Foo` impl is being used.
+    /// This handles the case where an auto trait `Foo` impl is being used.
     /// The idea is that the impl applies to `X : Foo` if the following conditions are met:
     ///
     /// 1. For each constituent type `Y` in `X`, `Y : Foo` holds

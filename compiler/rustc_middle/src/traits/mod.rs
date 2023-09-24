@@ -160,21 +160,17 @@ impl<'tcx> ObligationCause<'tcx> {
         self.code = f(std::mem::take(&mut self.code)).into();
     }
 
+    /// Creates a cause for obligations that are derived from `obligation` by a recursive search.
+    ///
+    /// E.g., for a builtin bound, or eventually a `#[rustc_auto_trait] trait Foo`.
+    /// If `obligation` is itself a derived obligation, this is just a clone, but
+    /// otherwise we create a "derived obligation" cause so as to keep track of the
+    /// original root obligation for error reporting.
     pub fn derived_cause(
         mut self,
         parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
         variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        /*!
-         * Creates a cause for obligations that are derived from
-         * `obligation` by a recursive search (e.g., for a builtin
-         * bound, or eventually a `auto trait Foo`). If `obligation`
-         * is itself a derived obligation, this is just a clone, but
-         * otherwise we create a "derived obligation" cause so as to
-         * keep track of the original root obligation for error
-         * reporting.
-         */
-
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose or just a CLI argument.

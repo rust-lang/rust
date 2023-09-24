@@ -114,8 +114,17 @@ cfg_if! {
         use std::ops::Add;
         use std::cell::Cell;
 
+        #[cfg(bootstrap)]
         pub unsafe auto trait Send {}
+        #[cfg(not(bootstrap))]
+        #[rustc_auto_trait]
+        pub unsafe trait Send {}
+
+        #[cfg(bootstrap)]
         pub unsafe auto trait Sync {}
+        #[cfg(not(bootstrap))]
+        #[rustc_auto_trait]
+        pub unsafe trait Sync {}
 
         unsafe impl<T> Send for T {}
         unsafe impl<T> Sync for T {}

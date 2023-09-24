@@ -2993,7 +2993,7 @@ pub enum ItemKind {
     Union(VariantData, Generics),
     /// A trait declaration (`trait`).
     ///
-    /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
+    /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }`.
     Trait(Box<Trait>),
     /// Trait alias
     ///
