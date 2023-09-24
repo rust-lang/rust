@@ -1774,13 +1774,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         }
                     }
                 }
-                hir_def::hir::Statement::Expr { expr, has_semi: _ } => {
+                &hir_def::hir::Statement::Expr { expr, has_semi: _ } => {
                     let scope2 = self.push_drop_scope();
-                    let Some((_, c)) = self.lower_expr_as_place(current, *expr, true)? else {
+                    let Some((p, c)) = self.lower_expr_as_place(current, expr, true)? else {
                         scope2.pop_assume_dropped(self);
                         scope.pop_assume_dropped(self);
                         return Ok(None);
                     };
+                    self.push_fake_read(c, p, expr.into());
                     current = scope2.pop_and_drop(self, c);
                 }
             }

@@ -205,7 +205,7 @@ fn main() {
     test(123);
        //^^^ 💡 error: expected &i32, found i32
 }
-fn test(arg: &i32) {}
+fn test(_arg: &i32) {}
 "#,
         );
     }
@@ -217,13 +217,13 @@ fn test(arg: &i32) {}
 fn main() {
     test(123$0);
 }
-fn test(arg: &i32) {}
+fn test(_arg: &i32) {}
             "#,
             r#"
 fn main() {
     test(&123);
 }
-fn test(arg: &i32) {}
+fn test(_arg: &i32) {}
             "#,
         );
     }
@@ -235,13 +235,13 @@ fn test(arg: &i32) {}
 fn main() {
     test($0123);
 }
-fn test(arg: &mut i32) {}
+fn test(_arg: &mut i32) {}
             "#,
             r#"
 fn main() {
     test(&mut 123);
 }
-fn test(arg: &mut i32) {}
+fn test(_arg: &mut i32) {}
             "#,
         );
     }
@@ -254,13 +254,13 @@ fn test(arg: &mut i32) {}
 fn main() {
     test($0[1, 2, 3]);
 }
-fn test(arg: &[i32]) {}
+fn test(_arg: &[i32]) {}
             "#,
             r#"
 fn main() {
     test(&[1, 2, 3]);
 }
-fn test(arg: &[i32]) {}
+fn test(_arg: &[i32]) {}
             "#,
         );
     }
@@ -279,7 +279,7 @@ impl core::ops::Deref for Foo {
 fn main() {
     test($0Foo);
 }
-fn test(arg: &Bar) {}
+fn test(_arg: &Bar) {}
             "#,
             r#"
 struct Foo;
@@ -291,7 +291,7 @@ impl core::ops::Deref for Foo {
 fn main() {
     test(&Foo);
 }
-fn test(arg: &Bar) {}
+fn test(_arg: &Bar) {}
             "#,
         );
     }
@@ -305,7 +305,7 @@ fn main() {
 }
 struct Test;
 impl Test {
-    fn call_by_ref(&self, arg: &i32) {}
+    fn call_by_ref(&self, _arg: &i32) {}
 }
             "#,
             r#"
@@ -314,7 +314,7 @@ fn main() {
 }
 struct Test;
 impl Test {
-    fn call_by_ref(&self, arg: &i32) {}
+    fn call_by_ref(&self, _arg: &i32) {}
 }
             "#,
         );
@@ -345,7 +345,7 @@ macro_rules! thousand {
         1000_u64
     };
 }
-fn test(foo: &u64) {}
+fn test(_foo: &u64) {}
 fn main() {
     test($0thousand!());
 }
@@ -356,7 +356,7 @@ macro_rules! thousand {
         1000_u64
     };
 }
-fn test(foo: &u64) {}
+fn test(_foo: &u64) {}
 fn main() {
     test(&thousand!());
 }
@@ -369,12 +369,12 @@ fn main() {
         check_fix(
             r#"
 fn main() {
-    let test: &mut i32 = $0123;
+    let _test: &mut i32 = $0123;
 }
             "#,
             r#"
 fn main() {
-    let test: &mut i32 = &mut 123;
+    let _test: &mut i32 = &mut 123;
 }
             "#,
         );
@@ -411,7 +411,7 @@ fn div(x: i32, y: i32) -> Option<i32> {
             fn f<const N: u64>() -> Rate<N> { // FIXME: add some error
                 loop {}
             }
-            fn run(t: Rate<5>) {
+            fn run(_t: Rate<5>) {
             }
             fn main() {
                 run(f()) // FIXME: remove this error
@@ -426,7 +426,7 @@ fn div(x: i32, y: i32) -> Option<i32> {
         check_diagnostics(
             r#"
             pub struct Rate<T, const NOM: u32, const DENOM: u32>(T);
-            fn run(t: Rate<u32, 1, 1>) {
+            fn run(_t: Rate<u32, 1, 1>) {
             }
             fn main() {
                 run(Rate::<_, _, _>(5));
@@ -650,7 +650,7 @@ fn h() {
             r#"
 struct X<T>(T);
 
-fn foo(x: X<Unknown>) {}
+fn foo(_x: X<Unknown>) {}
 fn test1() {
     // Unknown might be `i32`, so we should not emit type mismatch here.
     foo(X(42));
