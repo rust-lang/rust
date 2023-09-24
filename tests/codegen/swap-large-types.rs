@@ -16,7 +16,9 @@ type KeccakBuffer = [[u64; 5]; 5];
 // CHECK-LABEL: @swap_basic
 #[no_mangle]
 pub fn swap_basic(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
-// CHECK: alloca [5 x [5 x i64]]
+// CHECK-NOT: alloca [5 x [5 x i64]]
+// CHECK: tail call void @llvm.memcpy
+// CHECK-NOT: tail call void @llvm.memcpy
 
     // SAFETY: exclusive references are always valid to read/write,
     // are non-overlapping, and nothing here panics so it's drop-safe.
