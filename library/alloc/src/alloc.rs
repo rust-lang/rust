@@ -425,8 +425,6 @@ pub(crate) trait WriteCloneIntoRaw: Sized {
 impl<T: Clone> WriteCloneIntoRaw for T {
     #[inline]
     default unsafe fn write_clone_into_raw(&self, target: *mut Self) {
-        // Having allocated *first* may allow the optimizer to create
-        // the cloned value in-place, skipping the local and move.
         unsafe { target.write(self.clone()) };
     }
 }
