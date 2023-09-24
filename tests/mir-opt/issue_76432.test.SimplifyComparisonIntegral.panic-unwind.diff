@@ -40,11 +40,8 @@
   
       bb2: {
           StorageLive(_7);
-          _7 = &(*_2)[0 of 3];
           StorageLive(_8);
-          _8 = &(*_2)[1 of 3];
           StorageLive(_9);
-          _9 = &(*_2)[2 of 3];
           StorageDead(_9);
           StorageDead(_8);
           StorageDead(_7);
