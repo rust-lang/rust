@@ -1,0 +1,3 @@
+enum Actions {}
+
+fn main() {}
