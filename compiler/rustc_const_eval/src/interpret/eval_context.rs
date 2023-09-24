@@ -752,9 +752,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if M::POST_MONO_CHECKS {
             // `ctfe_query` does some error message decoration that we want to be in effect here.
             self.ctfe_query(None, |tcx| {
-                body.post_mono_checks(*tcx, self.param_env, |c| {
-                    self.subst_from_current_frame_and_normalize_erasing_regions(c)
-                })
+                body.post_mono_checks(
+                    *tcx,
+                    self.param_env,
+                    |c| self.subst_from_current_frame_and_normalize_erasing_regions(c),
+                    |ty| self.subst_from_current_frame_and_normalize_erasing_regions(ty),
+                )
             })?;
         }
 

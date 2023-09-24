@@ -666,9 +666,9 @@ pub enum TerminatorKind<'tcx> {
         /// The function that’s being called.
         func: Operand<'tcx>,
         /// Arguments the function is called with.
-        /// These are owned by the callee, which is free to modify them.
-        /// This allows the memory occupied by "by-value" arguments to be
-        /// reused across function calls without duplicating the contents.
+        /// Any `Move` operands in this list are owned by the callee, which is free to modify them.
+        /// This allows the memory occupied by "by-value" arguments to be reused across function
+        /// calls without duplicating the contents.
         args: Vec<Operand<'tcx>>,
         /// Where the returned value will be written
         destination: Place<'tcx>,

@@ -2,6 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
+use crate::error::{DynUnsizedLocal, DynUnsizedParam};
 use crate::mir::interpret::{AllocRange, ConstAllocation, ErrorHandled, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -586,12 +587,68 @@ impl<'tcx> Body<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         normalize_const: impl Fn(Const<'tcx>) -> Result<Const<'tcx>, ErrorHandled>,
+        normalize_ty: impl Fn(Ty<'tcx>) -> Result<Ty<'tcx>, ErrorHandled>,
     ) -> Result<(), ErrorHandled> {
-        // For now, the only thing we have to check is is to ensure that all the constants used in
+        // The main thing we have to check is is to ensure that all the constants used in
         // the body successfully evaluate.
         for &const_ in &self.required_consts {
             let c = normalize_const(const_.const_)?;
             c.eval(tcx, param_env, Some(const_.span))?;
+        }
+
+        // The second thing we do is guard against unsized locals/arguments that do not have a dynamically computable size.
+        // Due to a lack of an appropriate trait, we currently have to hack this in
+        // as a post-mono check.
+        let mut guaranteed = None; // `Some` if any error was emitted
+        // First check all locals (including the arguments).
+        for (idx, local) in self.local_decls.iter_enumerated() {
+            let ty = local.ty;
+            // We get invoked in generic code, so we cannot force normalization.
+            let tail =
+                tcx.struct_tail_with_normalize(ty, |ty| normalize_ty(ty).unwrap_or(ty), || {});
+            // If the unsized tail is an `extern type`, emit error.
+            if matches!(tail.kind(), ty::Foreign(_)) {
+                assert!(idx.as_u32() > 0); // cannot be the return local
+                let is_arg = (1..=self.arg_count).contains(&idx.as_usize());
+                guaranteed = Some(tcx.sess.emit_err(DynUnsizedLocal {
+                    span: local.source_info.span,
+                    ty,
+                    is_arg,
+                }));
+            }
+        }
+        // The above check covers the callee side. We also need to check the caller.
+        // For that we check all function calls.
+        for bb in self.basic_blocks.iter() {
+            let terminator = bb.terminator();
+            if let TerminatorKind::Call { args, .. } = &terminator.kind {
+                for arg in args {
+                    if let Operand::Move(place) = arg {
+                        if place.is_indirect_first_projection() {
+                            // Found an argument of the shape `Move(*arg)`. Make sure
+                            // its size can be determined dynamically.
+                            let ty = place.ty(&self.local_decls, tcx).ty;
+                            let tail = tcx.struct_tail_with_normalize(
+                                ty,
+                                |ty| normalize_ty(ty).unwrap_or(ty),
+                                || {},
+                            );
+                            // If the unsized tail is an `extern type`, emit error.
+                            if matches!(tail.kind(), ty::Foreign(_)) {
+                                guaranteed = Some(tcx.sess.emit_err(DynUnsizedParam {
+                                    span: terminator.source_info.span,
+                                    ty,
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Above we made sure to report *all* errors by continuing even after reporting something.
+        // Here we make sure we return `Err` if there was any error.
+        if let Some(guaranteed) = guaranteed {
+            return Err(ErrorHandled::Reported(guaranteed.into(), DUMMY_SP));
         }
 
         Ok(())

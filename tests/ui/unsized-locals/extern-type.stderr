@@ -1,0 +1,18 @@
+error: function argument does not have a dynamically computable size
+  --> $DIR/extern-type.rs:10:9
+   |
+LL | fn test(e: E) {}
+   |         ^
+   |
+   = note: `E` contains an `extern type`, which is not allowed in function arguments
+
+error: function parameter does not have a dynamically computable size
+  --> $DIR/extern-type.rs:13:5
+   |
+LL |     test(*e)
+   |     ^^^^^^^^
+   |
+   = note: `E` contains an `extern type`, which is not allowed in function parameters
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,10 @@
+error: function parameter does not have a dynamically computable size
+  --> $DIR/unsized-extern-type-arg.rs:LL:CC
+   |
+LL |     test(*e)
+   |     ^^^^^^^^
+   |
+   = note: `E` contains an `extern type`, which is not allowed in function parameters
+
+error: aborting due to previous error
+

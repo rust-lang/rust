@@ -393,8 +393,27 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     // alignment, so this respects ABI compatibility.
                     let ptr_ty = Ty::new_mut_ptr(cx.tcx, arg.layout.ty);
                     let ptr_layout = cx.layout_of(ptr_ty);
-                    llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 0, true));
-                    llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));
+                    if matches!(ptr_layout.abi, abi::Abi::ScalarPair(..)) {
+                        llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 0, true));
+                        llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));
+                    } else {
+                        // If this is not a ScalarPair, something went wrong. But this is possible
+                        // e.g. with unsized locals of `extern` type, which can only be detected
+                        // post-monomorphization. So we fill in some fake data (crucially, we add
+                        // the right number of argument types). and rely on someone else showing a
+                        // nice error.
+                        assert!(ptr_layout.abi.is_scalar());
+                        let llvm_ty = ptr_layout.immediate_llvm_type(cx);
+                        llargument_tys.push(llvm_ty);
+                        llargument_tys.push(llvm_ty);
+                        cx.tcx.sess.delay_span_bug(
+                            rustc_span::DUMMY_SP,
+                            format!(
+                                "function argument with invalid unsized type {}",
+                                arg.layout.ty
+                            ),
+                        );
+                    }
                     continue;
                 }
                 PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {

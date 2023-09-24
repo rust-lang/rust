@@ -54,6 +54,25 @@ pub struct LimitInvalid<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(middle_dyn_unsized_local)]
+#[note]
+pub struct DynUnsizedLocal<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub is_arg: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_dyn_unsized_param)]
+#[note]
+pub struct DynUnsizedParam<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
 #[diag(middle_recursion_limit_reached)]
 #[help]
 pub struct RecursionLimitReached<'tcx> {
