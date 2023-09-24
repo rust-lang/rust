@@ -11,13 +11,12 @@ use rustc_codegen_ssa::traits::{
     StaticMethods,
 };
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo};
+use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::Coverage;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::{self, GenericArgs, Instance, TyCtxt};
+use rustc_middle::ty::Instance;
 
 use std::cell::RefCell;
 
@@ -68,11 +67,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         } else {
             bug!("Could not get the `coverage_context`");
         }
-    }
-
-    fn define_unused_fn(&self, def_id: DefId, function_coverage_info: &'tcx FunctionCoverageInfo) {
-        let instance = declare_unused_fn(self.tcx, def_id);
-        add_unused_function_coverage(self, instance, function_coverage_info);
     }
 }
 
@@ -135,35 +129,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 func_coverage.mark_expression_id_seen(id);
             }
         }
-    }
-}
-
-fn declare_unused_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
-    Instance::new(
-        def_id,
-        GenericArgs::for_item(tcx, def_id, |param, _| {
-            if let ty::GenericParamDefKind::Lifetime = param.kind {
-                tcx.lifetimes.re_erased.into()
-            } else {
-                tcx.mk_param_from_def(param)
-            }
-        }),
-    )
-}
-
-fn add_unused_function_coverage<'tcx>(
-    cx: &CodegenCx<'_, 'tcx>,
-    instance: Instance<'tcx>,
-    function_coverage_info: &'tcx FunctionCoverageInfo,
-) {
-    // An unused function's mappings will automatically be rewritten to map to
-    // zero, because none of its counters/expressions are marked as seen.
-    let function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
-
-    if let Some(coverage_context) = cx.coverage_context() {
-        coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);
-    } else {
-        bug!("Could not get the `coverage_context`");
     }
 }
 
