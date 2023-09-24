@@ -942,6 +942,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
         body,
         saved_locals: saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
+        eligible_storage_live: BitSet::new_empty(body.local_decls.len()),
     };
 
     requires_storage.visit_reachable_with(body, &mut visitor);
@@ -978,6 +979,8 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for coroutines.
     local_conflicts: BitMatrix<Local, Local>,
+    // We keep this bitset as a buffer to avoid reallocating memory.
+    eligible_storage_live: BitSet<Local>,
 }
 
 impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
@@ -1009,19 +1012,19 @@ impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
 impl StorageConflictVisitor<'_, '_, '_> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
-        if self.body.basic_blocks[loc.block].terminator().kind == TerminatorKind::Unreachable {
+        if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
             return;
         }
 
-        let mut eligible_storage_live = flow_state.clone();
-        eligible_storage_live.intersect(&**self.saved_locals);
+        self.eligible_storage_live.clone_from(flow_state);
+        self.eligible_storage_live.intersect(&**self.saved_locals);
 
-        for local in eligible_storage_live.iter() {
-            self.local_conflicts.union_row_with(&eligible_storage_live, local);
+        for local in self.eligible_storage_live.iter() {
+            self.local_conflicts.union_row_with(&self.eligible_storage_live, local);
         }
 
-        if eligible_storage_live.count() > 1 {
-            trace!("at {:?}, eligible_storage_live={:?}", loc, eligible_storage_live);
+        if self.eligible_storage_live.count() > 1 {
+            trace!("at {:?}, eligible_storage_live={:?}", loc, self.eligible_storage_live);
         }
     }
 }
