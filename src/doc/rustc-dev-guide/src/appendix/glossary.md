@@ -5,6 +5,7 @@ Term                                                  | Meaning
 ------------------------------------------------------|--------
 <span id="arena">arena/arena allocation</span> &nbsp; |  An _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _arena allocation_. See [this chapter](../memory.md) for more info.
 <span id="ast">AST</span>                      &nbsp; |  The abstract syntax tree produced by the `rustc_ast` crate; reflects user syntax very closely.
+<span id="APIT">APIT</span>                    &nbsp; |  An argument-position `impl Trait`. Also known as an anonymous type parameter. ([see the reference](https://doc.rust-lang.org/reference/types/impl-trait.html#anonymous-type-parameters)).
 <span id="binder">binder</span>                &nbsp; |  A "binder" is a place where a variable or type is declared; for example, the `<T>` is a binder for the generic type parameter `T` in `fn foo<T>(..)`, and \|`a`\|` ...` is a binder for the parameter `a`. See [the background chapter for more](./background.md#free-vs-bound).
 <span id="body-id">BodyId</span>               &nbsp; |  An identifier that refers to a specific body (definition of a function or constant) in the crate. See [the HIR chapter for more](../hir.md#identifiers-in-the-hir).
 <span id="bound-var">bound variable</span>     &nbsp; |  A "bound variable" is one that is declared within an expression/term. For example, the variable `a` is bound within the closure expression \|`a`\|` a * 2`. See [the background chapter for more](./background.md#free-vs-bound)
@@ -67,6 +68,8 @@ Term                                                  | Meaning
 <span id="recovery">recovery</span>            &nbsp; |  Recovery refers to handling invalid syntax during parsing (e.g. a missing comma) and continuing to parse the AST. This avoid showing spurious errors to the user (e.g. showing 'missing field' errors when the struct definition contains errors).
 <span id="region">region</span>                &nbsp; |  Another term for "lifetime" often used in the literature and in the borrow checker.
 <span id="rib">rib</span>                      &nbsp; |  A data structure in the name resolver that keeps track of a single scope for names. ([see more](../name-resolution.md))
+<span id="rpit">RPIT</span>                    &nbsp; |  A return-position `impl Trait`. ([see the reference](https://doc.rust-lang.org/reference/types/impl-trait.html#abstract-return-types)).
+<span id="rpitit">RPITIT</span>                &nbsp; |  A return-position `impl Trait` *in trait*. Unlike RPIT, this is desugared to a generic associated type (GAT). Introduced in [RFC 3425](https://rust-lang.github.io/rfcs/3425-return-position-impl-trait-in-traits.html). ([see more](../return-position-impl-trait-in-trait.md))
 <span id="scrutinee">scrutinee</div>           &nbsp; |  A scrutinee is the expression that is matched on in `match` expressions and similar pattern matching constructs. For example, in `match x { A => 1, B => 2 }`, the expression `x` is the scrutinee.
 <span id="sess">sess</span>                    &nbsp; |  The compiler session, which stores global data used throughout compilation
 <span id="side-tables">side tables</span>      &nbsp; |  Because the AST and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
@@ -76,6 +79,7 @@ Term                                                  | Meaning
 <span id="substs">substs</span>                &nbsp; |  The substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`).
 <span id="sysroot">sysroot</span>              &nbsp; |  The directory for build artifacts that are loaded by the compiler at runtime. ([see more](../building/bootstrapping.html#what-is-a-sysroot))
 <span id="tag">tag</span>                      &nbsp; |  The "tag" of an enum/generator encodes the [discriminant](#discriminant) of the active variant/state.  Tags can either be "direct" (simply storing the discriminant in a field) or use a ["niche"](#niche).
+<span id="tait">TAIT</span>                    &nbsp; |  A type-alias `impl Trait`. Introduced in [RFC 2515](https://rust-lang.github.io/rfcs/2515-type_alias_impl_trait.html).
 <span id="tcx">`tcx`</span>                    &nbsp; |  Standard variable name for the "typing context" (`TyCtxt`), main data structure of the compiler. ([see more](../ty.md))
 <span id="lifetime-tcx">`'tcx`</span>          &nbsp; |  The lifetime of the allocation arenas used by `TyCtxt`. Most data interned during a compilation session will use this lifetime with the exception of HIR data which uses the `'hir` lifetime. ([see more](../ty.md))
 <span id="token">token</span>                  &nbsp; |  The smallest unit of parsing. Tokens are produced after lexing ([see more](../the-parser.md)).
