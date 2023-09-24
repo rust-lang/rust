@@ -2939,6 +2939,13 @@ define_print_and_forward_display! {
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
+            ty::PredicateKind::Uninhabited(ty, None) => p!(print(ty), "is uninhabited"),
+            ty::PredicateKind::Uninhabited(ty, Some(module)) => p!(
+                print(ty),
+                "is visibly uninhabited in module `",
+                print_def_path(module, &[]),
+                "`"
+            ),
         }
     }
 

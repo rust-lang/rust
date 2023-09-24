@@ -141,7 +141,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
 /// Ping me on zulip if you want to use this method and need help with finding
 /// an appropriate replacement.
 #[instrument(level = "debug", skip(infcx, param_env, pred), ret)]
-fn pred_known_to_hold_modulo_regions<'tcx>(
+pub fn pred_known_to_hold_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     pred: impl ToPredicate<'tcx>,

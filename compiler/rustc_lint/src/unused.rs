@@ -269,10 +269,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             span: Span,
         ) -> Option<MustUsePath> {
             if ty.is_unit()
-                || !ty.is_inhabited_from(
+                || ty.is_uninhabited_from(
                     cx.tcx,
-                    cx.tcx.parent_module(expr.hir_id).to_def_id(),
                     cx.param_env,
+                    cx.tcx.parent_module(expr.hir_id).to_def_id(),
                 )
             {
                 return Some(MustUsePath::Suppressed);

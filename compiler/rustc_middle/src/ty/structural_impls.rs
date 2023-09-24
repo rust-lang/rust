@@ -232,6 +232,9 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::AliasRelate(t1, t2, dir) => {
                 write!(f, "AliasRelate({t1:?}, {dir:?}, {t2:?})")
             }
+            ty::PredicateKind::Uninhabited(ty, module) => {
+                write!(f, "Uninhabited({ty:?}, {module:?})")
+            }
         }
     }
 }

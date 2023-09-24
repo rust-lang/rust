@@ -444,7 +444,7 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
         }
 
         if let ty::Ref(_, sub_ty, _) = self.ty.kind() {
-            if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.param_env) {
+            if sub_ty.is_uninhabited_from(self.cx.tcx, self.cx.param_env, self.cx.module) {
                 diag.note(fluent::mir_build_reference_note);
             }
         }

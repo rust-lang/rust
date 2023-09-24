@@ -1038,8 +1038,115 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         Err(_) => Ok(EvaluatedToErr),
                     }
                 }
+                ty::PredicateKind::Uninhabited(ty, module) => {
+                    self.evaluate_uninhabited_predicate(previous_stack, &obligation, ty, module)
+                }
             }
         })
+    }
+
+    #[instrument(level = "debug", skip(self, previous_stack, obligation), ret)]
+    fn evaluate_uninhabited_predicate(
+        &mut self,
+        previous_stack: TraitObligationStackList<'_, 'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+        ty: Ty<'tcx>,
+        module: Option<DefId>,
+    ) -> Result<EvaluationResult, OverflowError> {
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
+        match ty.kind() {
+            ty::Never => Ok(EvaluatedToOk),
+            ty::Tuple(tys) => {
+                self.evaluate_uninhabited_predicate_fields(previous_stack, obligation, module, tys.into_iter())
+            }
+            ty::Adt(adt, args) => {
+                // For now, unions are always considered inhabited
+                if adt.is_union() {
+                    return Ok(EvaluatedToErr);
+                }
+
+                // Non-exhaustive ADTs from other crates are always considered inhabited
+                if adt.is_variant_list_non_exhaustive() && !adt.did().is_local() {
+                    return Ok(EvaluatedToErr);
+                }
+
+                // The ADT is uninhabited if all its variants are uninhabited.
+                for variant in adt.variants() {
+                    if variant.is_field_list_non_exhaustive() && !variant.def_id.is_local() {
+                        // Non-exhaustive variants from other crates are always considered inhabited.
+                        return Ok(EvaluatedToErr);
+                    }
+                    // This variant is uninhabited is any of its fields is uninhabited.
+                    let field_tys = variant.fields.iter().filter_map(|field| {
+                        let ty = tcx.type_of(field.did).instantiate(tcx, args);
+                        match (field.vis, module) {
+                            // The field is public or we do not care for visibility.
+                            (ty::Visibility::Public, _) | (_, None) => Some(ty),
+                            (ty::Visibility::Restricted(from), Some(module)) => {
+                                if tcx.is_descendant_of(module, from) {
+                                    Some(ty)
+                                } else {
+                                    // From `module`, this field may be privately uninhabited.
+                                    // Do not consider it as uninhabited.
+                                    None
+                                }
+                            }
+                        }
+                    });
+                    match self.evaluate_uninhabited_predicate_fields(previous_stack, obligation, module, field_tys)? {
+                        EvaluatedToOk | EvaluatedToOkModuloRegions => {}
+                        EvaluatedToOkModuloOpaqueTypes | EvaluatedToAmbig => return Ok(EvaluatedToAmbig),
+                        EvaluatedToUnknown => return Ok(EvaluatedToUnknown),
+                        EvaluatedToRecur => return Ok(EvaluatedToRecur),
+                        EvaluatedToErr => return Ok(EvaluatedToErr),
+                    }
+                }
+                Ok(EvaluatedToOk)
+            }
+            ty::Array(ty, len) => match len.try_eval_target_usize(tcx, obligation.param_env) {
+                None | Some(0) => Ok(EvaluatedToErr),
+                Some(1..) => {
+                    self.evaluate_predicates_recursively(previous_stack, [
+                        obligation.with(tcx, ty::PredicateKind::Uninhabited(*ty, module)),
+                    ])
+                }
+            },
+            ty::Alias(ty::Opaque, _) |
+            // FIXME
+            ty::Alias(ty::Projection | ty::Inherent, _) |
+            // use a query for more complex cases
+            // references and other types are inhabited
+            _ => Ok(EvaluatedToErr),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self, previous_stack, obligation, tys), ret)]
+    fn evaluate_uninhabited_predicate_fields(
+        &mut self,
+        previous_stack: TraitObligationStackList<'_, 'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+        module: Option<DefId>,
+        tys: impl Iterator<Item = Ty<'tcx>>,
+    ) -> Result<EvaluationResult, OverflowError> {
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
+        for ty in tys {
+            let response = infcx.probe(|_| {
+                self.evaluate_predicates_recursively(
+                    previous_stack,
+                    [obligation.with(tcx, ty::PredicateKind::Uninhabited(ty, module))],
+                )
+            })?;
+            match response {
+                EvaluatedToOk | EvaluatedToOkModuloRegions => return Ok(EvaluatedToOk),
+                EvaluatedToOkModuloOpaqueTypes | EvaluatedToAmbig => return Ok(EvaluatedToAmbig),
+                EvaluatedToUnknown => return Ok(EvaluatedToUnknown),
+                EvaluatedToRecur => return Ok(EvaluatedToRecur),
+                EvaluatedToErr => {}
+            }
+        }
+        Ok(EvaluatedToErr)
     }
 
     #[instrument(skip(self, previous_stack), level = "debug", ret)]

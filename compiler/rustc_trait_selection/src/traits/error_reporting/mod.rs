@@ -1124,6 +1124,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         );
                         diag
                     }
+
+                    ty::PredicateKind::Uninhabited(..) => span_bug!(span,
+                        "Uninhabited predicate should never be the predicate cause of a SelectionError"
+                    ),
                 }
             }
 

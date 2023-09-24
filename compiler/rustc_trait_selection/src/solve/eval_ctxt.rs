@@ -495,6 +495,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                         param_env,
                         predicate: (lhs, rhs, direction),
                     }),
+                ty::PredicateKind::Uninhabited(ty, module) => {
+                    self.compute_uninhabited_goal(Goal { param_env, predicate: (ty, module) })
+                }
                 ty::PredicateKind::Ambiguous => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }

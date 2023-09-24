@@ -10,9 +10,7 @@ use rustc_errors::{
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{
-    inhabitedness::InhabitedPredicate, Clause, PolyExistentialTraitRef, Ty, TyCtxt,
-};
+use rustc_middle::ty::{Clause, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::parse::ParseSess;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
@@ -432,6 +430,7 @@ pub struct BuiltinUnpermittedTypeInit<'a> {
     pub label: Span,
     pub sub: BuiltinUnpermittedTypeInitSub,
     pub tcx: TyCtxt<'a>,
+    pub param_env: ParamEnv<'a>,
 }
 
 impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
@@ -441,7 +440,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
     ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
         diag.set_arg("ty", self.ty);
         diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
-        if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
+        if !self.ty.is_privately_uninhabited(self.tcx, self.param_env) {
             // Only suggest late `MaybeUninit::assume_init` initialization if the type is inhabited.
             diag.span_label(
                 self.label,

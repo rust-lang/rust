@@ -184,6 +184,7 @@ pub fn predicate_obligations<'tcx>(
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
+        | ty::PredicateKind::Uninhabited(..)
         | ty::PredicateKind::AliasRelate(..) => {
             bug!("We should only wf check where clauses, unexpected predicate: {predicate:?}")
         }

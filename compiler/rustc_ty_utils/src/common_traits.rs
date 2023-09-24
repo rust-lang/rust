@@ -4,6 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits;
 
 fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
@@ -33,6 +34,26 @@ fn is_item_raw<'tcx>(
     traits::type_known_to_meet_bound_modulo_regions(&infcx, param_env, ty, trait_def_id)
 }
 
+fn type_is_uninhabited_from_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, (Ty<'tcx>, Option<DefId>)>,
+) -> bool {
+    let (param_env, (ty, module)) = query.into_parts();
+    let infcx = tcx.infer_ctxt().build();
+    traits::pred_known_to_hold_modulo_regions(
+        &infcx,
+        param_env,
+        ty::PredicateKind::Uninhabited(ty, module),
+    )
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { is_copy_raw, is_sized_raw, is_freeze_raw, is_unpin_raw, ..*providers };
+    *providers = Providers {
+        is_copy_raw,
+        is_sized_raw,
+        is_freeze_raw,
+        is_unpin_raw,
+        type_is_uninhabited_from_raw,
+        ..*providers
+    };
 }

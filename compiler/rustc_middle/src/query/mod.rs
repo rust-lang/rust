@@ -1362,6 +1362,14 @@ rustc_queries! {
     query has_significant_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` has a significant drop", env.value }
     }
+    /// Query backing `Ty::is_uninhabited*`.
+    query type_is_uninhabited_from_raw(key: ty::ParamEnvAnd<'tcx, (Ty<'tcx>, Option<DefId>)>) -> bool {
+        desc { |tcx|
+            "computing whether `{}` is uninhabited{}",
+            key.value.0,
+            key.value.1.map_or(String::new(), |module| tcx.def_path_str(module))
+        }
+    }
 
     /// Query backing `Ty::is_structural_eq_shallow`.
     ///
@@ -1710,15 +1718,6 @@ rustc_queries! {
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
         feedable
-    }
-
-    query inhabited_predicate_adt(key: DefId) -> ty::inhabitedness::InhabitedPredicate<'tcx> {
-        desc { "computing the uninhabited predicate of `{:?}`", key }
-    }
-
-    /// Do not call this query directly: invoke `Ty::inhabited_predicate` instead.
-    query inhabited_predicate_type(key: Ty<'tcx>) -> ty::inhabitedness::InhabitedPredicate<'tcx> {
-        desc { "computing the uninhabited predicate of `{}`", key }
     }
 
     query dep_kind(_: CrateNum) -> CrateDepKind {

@@ -13,7 +13,10 @@ pub(super) fn sanity_check_layout<'tcx>(
 ) {
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
     if layout.ty.is_privately_uninhabited(cx.tcx, cx.param_env) {
-        assert!(layout.abi.is_uninhabited());
+        assert!(
+            layout.abi.is_uninhabited(),
+            "{layout:?} has inhabited layout but solver says uninhabited."
+        );
     }
 
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
