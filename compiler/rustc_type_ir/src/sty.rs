@@ -531,22 +531,18 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             }
             Never => write!(f, "!"),
             Tuple(t) => {
-                let mut iter = t.clone().into_iter();
-
                 write!(f, "(")?;
-
-                match iter.next() {
-                    None => return write!(f, ")"),
-                    Some(ty) => write!(f, "{:?}", &this.wrap(ty))?,
-                };
-
-                match iter.next() {
-                    None => return write!(f, ",)"),
-                    Some(ty) => write!(f, "{:?})", &this.wrap(ty))?,
+                let mut count = 0;
+                for ty in t.clone() {
+                    if count > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{:?}", &this.wrap(ty))?;
+                    count += 1;
                 }
-
-                for ty in iter {
-                    write!(f, ", {:?}", &this.wrap(ty))?;
+                // unary tuples need a trailing comma
+                if count == 1 {
+                    write!(f, ",")?;
                 }
                 write!(f, ")")
             }
