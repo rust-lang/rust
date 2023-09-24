@@ -1,7 +1,6 @@
 // only-x86_64
 
 #![feature(start)]
-#![feature(target_feature_11)]
 
 #[start]
 #[target_feature(enable = "avx2")]

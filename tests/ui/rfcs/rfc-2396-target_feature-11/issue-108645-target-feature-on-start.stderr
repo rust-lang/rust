@@ -1,5 +1,5 @@
 error: `#[start]` function is not allowed to have `#[target_feature]`
-  --> $DIR/issue-108645-target-feature-on-start.rs:7:1
+  --> $DIR/issue-108645-target-feature-on-start.rs:6:1
    |
 LL | #[target_feature(enable = "avx2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

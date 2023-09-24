@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/fn-ptr.rs:11:21
+  --> $DIR/fn-ptr.rs:9:21
    |
 LL | #[target_feature(enable = "sse2")]
    | ---------------------------------- `#[target_feature]` added here
