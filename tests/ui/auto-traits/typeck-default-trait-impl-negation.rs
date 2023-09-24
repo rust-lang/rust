@@ -1,9 +1,11 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-auto trait MyTrait {}
+#[rustc_auto_trait]
+trait MyTrait {}
 
-unsafe auto trait MyUnsafeTrait {}
+#[rustc_auto_trait]
+unsafe trait MyUnsafeTrait {}
 
 struct ThisImplsTrait;
 

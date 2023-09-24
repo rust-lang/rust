@@ -1,11 +1,12 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 // edition:2018
 
 // This tests the unspecialized async-await-specific error when futures don't implement an
 // auto trait (which is not Send or Sync) due to some type that was captured.
 
-auto trait Qux {}
+#[rustc_auto_trait]
+trait Qux {}
 
 struct Foo;
 

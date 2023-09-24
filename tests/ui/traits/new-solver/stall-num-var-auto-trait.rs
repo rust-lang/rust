@@ -5,9 +5,10 @@
 // Tests that we stall the `{integer}: Foo` obligation until after we
 // constrain the int type (or fallback occurs).
 
-#![feature(negative_impls, auto_traits)]
+#![feature(negative_impls, rustc_attrs)]
 
-auto trait Foo {}
+#[rustc_auto_trait]
+trait Foo {}
 
 impl !Foo for i32 {}
 

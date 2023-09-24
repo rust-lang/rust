@@ -1,10 +1,12 @@
 // run-pass
 #![allow(unused_doc_comments)]
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-auto trait Auto {}
-unsafe auto trait AutoUnsafe {}
+#[rustc_auto_trait]
+trait Auto {}
+#[rustc_auto_trait]
+unsafe trait AutoUnsafe {}
 
 impl !Auto for bool {}
 impl !AutoUnsafe for bool {}
@@ -19,8 +21,10 @@ fn take_auto_unsafe<T: AutoUnsafe>(_: T) {}
 
 fn main() {
     // Parse inside functions.
-    auto trait AutoInner {}
-    unsafe auto trait AutoUnsafeInner {}
+    #[rustc_auto_trait]
+    trait AutoInner {}
+    #[rustc_auto_trait]
+    unsafe trait AutoUnsafeInner {}
 
     take_auto(0);
     take_auto(AutoBool(true));

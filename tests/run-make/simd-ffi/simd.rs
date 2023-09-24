@@ -2,9 +2,8 @@
 #![crate_type = "lib"]
 // we can compile to a variety of platforms, because we don't need
 // cross-compiled standard libraries.
-#![feature(no_core, auto_traits)]
+#![feature(no_core, repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, rustc_attrs)]
 #![no_core]
-#![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, rustc_attrs)]
 
 #[derive(Copy)]
 #[repr(simd)]
@@ -68,7 +67,8 @@ pub mod marker {
 }
 
 #[lang = "freeze"]
-auto trait Freeze {}
+#[rustc_auto_trait]
+trait Freeze {}
 
 #[macro_export]
 #[rustc_builtin_macro]

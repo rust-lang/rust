@@ -1,8 +1,8 @@
 error[E0380]: auto traits cannot have associated items
-  --> $DIR/issue-23080.rs:5:8
+  --> $DIR/issue-23080.rs:6:8
    |
-LL |   unsafe auto trait Trait {
-   |                     ----- auto traits cannot have associated items
+LL |   unsafe trait Trait {
+   |                ----- auto traits cannot have associated items
 LL |       fn method(&self) {
    |  _____-  ^^^^^^
 LL | |         println!("Hello");

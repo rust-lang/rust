@@ -22,11 +22,12 @@
 //    println!("{:?} {:?}", a, b);
 // }
 
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-auto trait Magic: Copy {} //~ ERROR E0568
-impl<T:Magic> Magic for T {}
+#[rustc_auto_trait]
+trait Magic: Copy {} //~ ERROR E0568
+impl<T: Magic> Magic for T {}
 
 fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
 

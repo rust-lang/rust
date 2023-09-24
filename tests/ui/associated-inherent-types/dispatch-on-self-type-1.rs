@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(inherent_associated_types, auto_traits, negative_impls)]
+#![feature(inherent_associated_types, rustc_attrs, negative_impls)]
 #![allow(incomplete_features)]
 
 use std::cmp::Ordering;
@@ -36,4 +36,5 @@ enum Special {}
 
 impl !Ordinary for Special {}
 
-auto trait Ordinary {}
+#[rustc_auto_trait]
+trait Ordinary {}

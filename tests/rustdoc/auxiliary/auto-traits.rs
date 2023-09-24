@@ -1,3 +1,4 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
-pub unsafe auto trait Bar {}
+#[rustc_auto_trait]
+pub unsafe trait Bar {}

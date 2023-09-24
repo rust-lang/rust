@@ -1,7 +1,8 @@
 #![feature(negative_impls)]
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
-pub auto trait AnAutoTrait {}
+#[rustc_auto_trait]
+pub trait AnAutoTrait {}
 
 pub struct Foo<T> { field: T }
 

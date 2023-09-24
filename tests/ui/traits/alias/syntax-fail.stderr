@@ -1,26 +1,38 @@
-error: trait aliases cannot be `auto`
-  --> $DIR/syntax-fail.rs:4:1
-   |
-LL | auto trait A = Foo;
-   | ^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `auto`
-
 error: trait aliases cannot be `unsafe`
-  --> $DIR/syntax-fail.rs:5:1
+  --> $DIR/syntax-fail.rs:8:1
    |
 LL | unsafe trait B = Foo;
    | ^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `unsafe`
 
 error: bounds are not allowed on trait aliases
-  --> $DIR/syntax-fail.rs:7:8
+  --> $DIR/syntax-fail.rs:10:8
    |
 LL | trait C: Ord = Eq;
    |        ^^^^^
 
 error: bounds are not allowed on trait aliases
-  --> $DIR/syntax-fail.rs:8:8
+  --> $DIR/syntax-fail.rs:11:8
    |
 LL | trait D: = Eq;
    |        ^
 
-error: aborting due to 4 previous errors
+error[E0658]: `#[rustc_auto_trait]` is used to mark auto traits, only intended to be used in `core`
+  --> $DIR/syntax-fail.rs:4:1
+   |
+LL | #[rustc_auto_trait]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
+error: attribute should be applied to a trait
+  --> $DIR/syntax-fail.rs:4:1
+   |
+LL | #[rustc_auto_trait]
+   | ^^^^^^^^^^^^^^^^^^^
+...
+LL | trait A = Foo;
+   | -------------- not a trait
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

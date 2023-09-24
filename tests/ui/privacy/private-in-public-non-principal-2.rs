@@ -1,10 +1,11 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
 #[allow(private_interfaces)]
 mod m {
     pub trait PubPrincipal {}
-    auto trait PrivNonPrincipal {}
+    #[rustc_auto_trait]
+    trait PrivNonPrincipal {}
     pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> { loop {} }
 }
 

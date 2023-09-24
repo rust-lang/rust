@@ -1,14 +1,16 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-auto trait MySafeTrait {}
+#[rustc_auto_trait]
+trait MySafeTrait {}
 
 struct Foo;
 
 unsafe impl MySafeTrait for Foo {}
 //~^ ERROR E0199
 
-unsafe auto trait MyUnsafeTrait {}
+#[rustc_auto_trait]
+unsafe trait MyUnsafeTrait {}
 
 impl MyUnsafeTrait for Foo {}
 //~^ ERROR E0200

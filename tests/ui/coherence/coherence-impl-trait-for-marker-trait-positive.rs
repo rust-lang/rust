@@ -1,4 +1,4 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
 // Test for issue #56934 - that it is impossible to redundantly
@@ -6,8 +6,10 @@
 
 // Positive impl variant.
 
-auto trait Marker1 {}
-auto trait Marker2 {}
+#[rustc_auto_trait]
+trait Marker1 {}
+#[rustc_auto_trait]
+trait Marker2 {}
 
 trait Object: Marker1 {}
 
@@ -28,10 +30,12 @@ unsafe impl Send for dyn Object {} //~ ERROR E0321
 unsafe impl Send for dyn Object + Marker2 {} //~ ERROR E0321
 
 // Blanket impl that applies to dyn Object is equally problematic.
-auto trait Marker3 {}
+#[rustc_auto_trait]
+trait Marker3 {}
 impl<T: ?Sized> Marker3 for T {} //~ ERROR E0321
 
-auto trait Marker4 {}
+#[rustc_auto_trait]
+trait Marker4 {}
 impl<T> Marker4 for T {} // okay
 
 fn main() {}

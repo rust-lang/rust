@@ -1,8 +1,9 @@
 // check-pass
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-auto trait NotSame {}
+#[rustc_auto_trait]
+trait NotSame {}
 
 impl<A> !NotSame for (A, A) {}
 

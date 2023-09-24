@@ -1,13 +1,18 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
 // run-rustfix
 
-auto trait Generic<T> {}
+#[rustc_auto_trait]
+trait Generic<T> {}
 //~^ auto traits cannot have generic parameters [E0567]
-auto trait Bound : Copy {}
+#[rustc_auto_trait]
+trait Bound : Copy {}
 //~^ auto traits cannot have super traits or lifetime bounds [E0568]
-auto trait LifetimeBound : 'static {}
+#[rustc_auto_trait]
+trait LifetimeBound : 'static {}
 //~^ auto traits cannot have super traits or lifetime bounds [E0568]
-auto trait MyTrait { fn foo() {} }
+#[rustc_auto_trait]
+trait MyTrait { fn foo() {} }
 //~^ auto traits cannot have associated items [E0380]
+
 fn main() {}

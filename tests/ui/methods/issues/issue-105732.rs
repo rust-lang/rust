@@ -1,6 +1,7 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
-auto trait Foo {
+#[rustc_auto_trait]
+trait Foo {
     fn g(&self); //~ ERROR auto traits cannot have associated items
 }
 

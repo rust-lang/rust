@@ -1,9 +1,10 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
 pub mod bar {
     use std::marker;
 
-    pub auto trait Bar {}
+    #[rustc_auto_trait]
+    pub trait Bar {}
 
     pub trait Foo {
         fn foo(&self) {}

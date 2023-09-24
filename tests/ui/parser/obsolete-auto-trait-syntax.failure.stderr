@@ -1,0 +1,18 @@
+error: `impl Trait for .. {}` is an obsolete syntax for auto traits
+  --> $DIR/obsolete-auto-trait-syntax.rs:7:1
+   |
+LL | impl Trait1 for .. {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `#[rustc_auto_trait] trait Trait {}` instead
+
+error: `auto trait Trait {}` is an obsolete syntax for auto traits
+  --> $DIR/obsolete-auto-trait-syntax.rs:10:1
+   |
+LL | auto trait Trait2 {}
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `#[rustc_auto_trait] trait Trait {}` instead
+
+error: aborting due to 2 previous errors
+

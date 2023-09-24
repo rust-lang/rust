@@ -1,11 +1,12 @@
 // Ensure that auto trait checks `T` when it encounters a `PhantomData<T>` field, instead of
 // checking the `PhantomData<T>` type itself (which almost always implements an auto trait).
 
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
 use std::marker::{PhantomData};
 
-unsafe auto trait Zen {}
+#[rustc_auto_trait]
+unsafe trait Zen {}
 
 unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
 

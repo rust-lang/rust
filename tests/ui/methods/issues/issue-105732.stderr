@@ -1,13 +1,13 @@
 error[E0380]: auto traits cannot have associated items
-  --> $DIR/issue-105732.rs:4:8
+  --> $DIR/issue-105732.rs:5:8
    |
-LL | auto trait Foo {
-   |            --- auto traits cannot have associated items
+LL | trait Foo {
+   |       --- auto traits cannot have associated items
 LL |     fn g(&self);
    |     ---^-------- help: remove these associated items
 
 error[E0599]: no method named `g` found for reference `&Self` in the current scope
-  --> $DIR/issue-105732.rs:10:14
+  --> $DIR/issue-105732.rs:11:14
    |
 LL |         self.g();
    |              ^ help: there is a method with a similar name: `f`

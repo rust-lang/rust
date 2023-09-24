@@ -1,8 +1,9 @@
 #![feature(generators)]
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-auto trait Foo {}
+#[rustc_auto_trait]
+trait Foo {}
 
 struct No;
 

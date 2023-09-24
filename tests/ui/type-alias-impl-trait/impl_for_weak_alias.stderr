@@ -1,5 +1,5 @@
 error[E0321]: traits with a default impl, like `Trait`, cannot be implemented for type alias `Alias`
-  --> $DIR/impl_for_weak_alias.rs:7:1
+  --> $DIR/impl_for_weak_alias.rs:8:1
    |
 LL | impl Trait for Alias {}
    | ^^^^^^^^^^^^^^^^^^^^

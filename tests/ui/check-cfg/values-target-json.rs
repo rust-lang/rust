@@ -4,7 +4,7 @@
 // needs-llvm-components: x86
 // compile-flags: --crate-type=lib --check-cfg=values() --target={{src-base}}/check-cfg/my-awesome-platform.json -Z unstable-options
 
-#![feature(lang_items, no_core, auto_traits)]
+#![feature(lang_items, no_core, rustc_attrs)]
 #![no_core]
 
 #[lang = "sized"]

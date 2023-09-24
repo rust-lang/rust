@@ -1,6 +1,7 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
-auto trait Trait1<'a> {}
+#[rustc_auto_trait]
+trait Trait1<'a> {}
 //~^ ERROR auto traits cannot have generic parameters
 
 fn f<'a>(x: &dyn Trait1<'a>)

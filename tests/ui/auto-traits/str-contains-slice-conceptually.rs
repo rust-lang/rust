@@ -1,7 +1,8 @@
 #![feature(negative_impls)]
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
-auto trait AutoTrait {}
+#[rustc_auto_trait]
+trait AutoTrait {}
 
 impl<T> !AutoTrait for [T] {}
 

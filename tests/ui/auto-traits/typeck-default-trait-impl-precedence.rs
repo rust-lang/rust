@@ -3,10 +3,11 @@
 // other words, the auto impl only applies if there are no existing
 // impls whose types unify.
 
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-auto trait Defaulted { }
+#[rustc_auto_trait]
+trait Defaulted { }
 impl<'a,T:Signed> Defaulted for &'a T { }
 impl<'a,T:Signed> Defaulted for &'a mut T { }
 fn is_defaulted<T:Defaulted>() { }

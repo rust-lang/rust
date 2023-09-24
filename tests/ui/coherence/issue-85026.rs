@@ -1,5 +1,7 @@
-#![feature(auto_traits)]
-auto trait AutoTrait {}
+#![feature(rustc_attrs)]
+
+#[rustc_auto_trait]
+trait AutoTrait {}
 
 // You cannot impl your own `dyn AutoTrait`.
 impl dyn AutoTrait {} //~ERROR E0785

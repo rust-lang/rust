@@ -4,7 +4,7 @@
 //   status: 0
 //   stdout: 5
 
-#![feature(arbitrary_self_types, auto_traits, lang_items, no_core, start, intrinsics)]
+#![feature(arbitrary_self_types, rustc_attrs, lang_items, no_core, start, intrinsics)]
 
 #![no_std]
 #![no_core]
@@ -31,7 +31,8 @@ trait Receiver {
 }
 
 #[lang = "freeze"]
-pub(crate) unsafe auto trait Freeze {}
+#[rustc_auto_trait]
+pub(crate) unsafe trait Freeze {}
 
 mod libc {
     #[link(name = "c")]

@@ -1,4 +1,4 @@
-#![feature(lang_items, no_core, auto_traits)]
+#![feature(lang_items, no_core, rustc_attrs)]
 #![no_core]
 
 #[lang = "copy"]
@@ -8,7 +8,8 @@ trait Copy {}
 trait Sized {}
 
 #[lang = "freeze"]
-auto trait Freeze {}
+#[rustc_auto_trait]
+trait Freeze {}
 
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {

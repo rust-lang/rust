@@ -7,7 +7,6 @@
     decl_macro,
     rustc_attrs,
     transparent_unions,
-    auto_traits,
     thread_local
 )]
 #![no_core]
@@ -93,7 +92,8 @@ unsafe impl<'a, T: ?Sized> Sync for &'a T {}
 unsafe impl Sync for [u8; 16] {}
 
 #[lang = "freeze"]
-unsafe auto trait Freeze {}
+#[rustc_auto_trait]
+unsafe trait Freeze {}
 
 unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
 unsafe impl<T: ?Sized> Freeze for *const T {}
@@ -503,7 +503,8 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 }
 
 #[lang = "unpin"]
-pub auto trait Unpin {}
+#[rustc_auto_trait]
+pub trait Unpin {}
 
 #[lang = "deref"]
 pub trait Deref {

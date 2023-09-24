@@ -1,9 +1,10 @@
 // check-fail
 
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![deny(where_clauses_object_safety)]
 
-auto trait AutoTrait {}
+#[rustc_auto_trait]
+trait AutoTrait {}
 
 trait Trait {
     fn static_lifetime_bound(&self) where Self: 'static {}

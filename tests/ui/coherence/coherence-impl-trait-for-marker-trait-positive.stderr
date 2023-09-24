@@ -1,11 +1,11 @@
 error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker1`
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:15:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:17:1
    |
 LL | impl Marker1 for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker1`
 
 error[E0321]: traits with a default impl, like `Marker1`, cannot be implemented for trait object `(dyn Object + Marker2 + 'static)`
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:15:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:17:1
    |
 LL | impl Marker1 for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,13 +13,13 @@ LL | impl Marker1 for dyn Object + Marker2 {}
    = note: a trait object implements `Marker1` if and only if `Marker1` is one of the trait object's trait bounds
 
 error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker2`
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:18:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:20:1
    |
 LL | impl Marker2 for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker2`
 
 error[E0321]: traits with a default impl, like `Marker2`, cannot be implemented for trait object `(dyn Object + Marker2 + 'static)`
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:18:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:20:1
    |
 LL | impl Marker2 for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL | impl Marker2 for dyn Object + Marker2 {}
    = note: a trait object implements `Marker2` if and only if `Marker2` is one of the trait object's trait bounds
 
 error[E0321]: traits with a default impl, like `Marker2`, cannot be implemented for trait object `(dyn Object + 'static)`
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:26:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:28:1
    |
 LL | impl Marker2 for dyn Object {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL | impl Marker2 for dyn Object {}
    = note: a trait object implements `Marker2` if and only if `Marker2` is one of the trait object's trait bounds
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:22:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:24:1
    |
 LL | unsafe impl Send for dyn Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^-----------
@@ -46,19 +46,19 @@ LL | unsafe impl Send for dyn Marker2 {}
    = note: define and implement a trait or new type instead
 
 error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `(dyn Object + 'static)`
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:27:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:29:1
    |
 LL | unsafe impl Send for dyn Object {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
 error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `(dyn Object + Marker2 + 'static)`
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:28:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:30:1
    |
 LL | unsafe impl Send for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
 error[E0321]: traits with a default impl, like `Marker3`, cannot be implemented for generic type `T`
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:32:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:35:1
    |
 LL | impl<T: ?Sized> Marker3 for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

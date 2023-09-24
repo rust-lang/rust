@@ -1,9 +1,10 @@
 #![feature(type_alias_impl_trait)]
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
 type Alias = (impl Sized, u8);
 
-auto trait Trait {}
+#[rustc_auto_trait]
+trait Trait {}
 impl Trait for Alias {}
 //~^ ERROR traits with a default impl, like `Trait`, cannot be implemented for type alias `Alias`
 

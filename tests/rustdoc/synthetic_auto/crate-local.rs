@@ -1,6 +1,7 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
-pub auto trait Banana {}
+#[rustc_auto_trait]
+pub trait Banana {}
 
 // @has crate_local/struct.Peach.html
 // @has - '//h3[@class="code-header"]' 'impl Banana for Peach'

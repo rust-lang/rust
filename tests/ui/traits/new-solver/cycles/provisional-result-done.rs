@@ -3,8 +3,10 @@
 
 // This tests checks that we update results in the provisional cache when
 // we pop a goal from the stack.
-#![feature(auto_traits)]
-auto trait Coinductive {}
+#![feature(rustc_attrs)]
+
+#[rustc_auto_trait]
+trait Coinductive {}
 struct Foo<T>(T);
 struct Bar<T>(T);
 

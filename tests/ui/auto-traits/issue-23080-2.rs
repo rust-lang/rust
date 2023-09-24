@@ -1,10 +1,11 @@
 // revisions: current next
 //[next] compile-flags: -Ztrait-solver=next
 
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-unsafe auto trait Trait {
+#[rustc_auto_trait]
+unsafe trait Trait {
     type Output; //~ ERROR E0380
 }
 

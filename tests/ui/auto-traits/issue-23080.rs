@@ -1,7 +1,8 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-unsafe auto trait Trait {
+#[rustc_auto_trait]
+unsafe trait Trait {
     fn method(&self) { //~ ERROR E0380
         println!("Hello");
     }

@@ -1,8 +1,9 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
 pub trait PubPrincipal {}
-auto trait PrivNonPrincipal {}
+#[rustc_auto_trait]
+trait PrivNonPrincipal {}
 
 pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> { loop {} }
 //~^ WARN trait `PrivNonPrincipal` is more private than the item `leak_dyn_nonprincipal`

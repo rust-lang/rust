@@ -1,6 +1,7 @@
-#![feature(auto_traits, core)]
+#![feature(rustc_attrs, core)]
 #![crate_type = "rlib"]
 
-pub auto trait DefaultedTrait { }
+#[rustc_auto_trait]
+pub trait DefaultedTrait { }
 
 pub struct Something<T> { t: T }

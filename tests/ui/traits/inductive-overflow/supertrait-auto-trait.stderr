@@ -1,13 +1,13 @@
 error[E0568]: auto traits cannot have super traits or lifetime bounds
-  --> $DIR/supertrait-auto-trait.rs:8:17
+  --> $DIR/supertrait-auto-trait.rs:9:12
    |
-LL | auto trait Magic: Copy {}
-   |            -----^^^^^^ help: remove the super traits or lifetime bounds
-   |            |
-   |            auto traits cannot have super traits or lifetime bounds
+LL | trait Magic: Copy {}
+   |       -----^^^^^^ help: remove the super traits or lifetime bounds
+   |       |
+   |       auto traits cannot have super traits or lifetime bounds
 
 error[E0277]: the trait bound `NoClone: Copy` is not satisfied
-  --> $DIR/supertrait-auto-trait.rs:16:23
+  --> $DIR/supertrait-auto-trait.rs:17:23
    |
 LL |     let (a, b) = copy(NoClone);
    |                  ---- ^^^^^^^ the trait `Copy` is not implemented for `NoClone`
@@ -15,12 +15,12 @@ LL |     let (a, b) = copy(NoClone);
    |                  required by a bound introduced by this call
    |
 note: required for `NoClone` to implement `Magic`
-  --> $DIR/supertrait-auto-trait.rs:8:12
+  --> $DIR/supertrait-auto-trait.rs:9:7
    |
-LL | auto trait Magic: Copy {}
-   |            ^^^^^
+LL | trait Magic: Copy {}
+   |       ^^^^^
 note: required by a bound in `copy`
-  --> $DIR/supertrait-auto-trait.rs:10:12
+  --> $DIR/supertrait-auto-trait.rs:11:12
    |
 LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
    |            ^^^^^ required by this bound in `copy`

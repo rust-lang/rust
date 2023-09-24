@@ -1,3 +1,4 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
-pub auto trait AnAutoTrait {}
+#[rustc_auto_trait]
+pub trait AnAutoTrait {}

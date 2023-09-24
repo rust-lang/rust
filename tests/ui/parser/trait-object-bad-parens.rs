@@ -1,8 +1,9 @@
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 #![allow(bare_trait_objects)]
 
-auto trait Auto {}
+#[rustc_auto_trait]
+trait Auto {}
 
 fn main() {
     let _: Box<((Auto)) + Auto>;

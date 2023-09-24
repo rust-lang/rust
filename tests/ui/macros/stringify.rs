@@ -569,19 +569,13 @@ fn test_item() {
     // ItemKind::Trait
     assert_eq!(
         stringify_item!(
-            pub unsafe auto trait Send {}
-        ),
-        "pub unsafe auto trait Send {}",
-    );
-    assert_eq!(
-        stringify_item!(
-            trait Trait<'a>: Sized
+            pub unsafe trait Trait<'a>: Sized
             where
                 Self: 'a,
             {
             }
         ),
-        "trait Trait<'a>: Sized where Self: 'a {}",
+        "pub unsafe trait Trait<'a>: Sized where Self: 'a {}",
     );
 
     // ItemKind::TraitAlias

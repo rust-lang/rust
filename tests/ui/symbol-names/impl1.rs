@@ -4,7 +4,7 @@
     //[v0]compile-flags: -C symbol-mangling-version=v0
 //[legacy]normalize-stderr-test: "h[\w]{16}E?\)" -> "<SYMBOL_HASH>)"
 
-#![feature(auto_traits, rustc_attrs)]
+#![feature(rustc_attrs)]
 #![allow(dead_code)]
 
 mod foo {
@@ -47,7 +47,8 @@ trait Foo {
     type Assoc;
 }
 
-auto trait AutoTrait {}
+#[rustc_auto_trait]
+trait AutoTrait {}
 
 fn main() {
     // Test closure mangling, and disambiguators.

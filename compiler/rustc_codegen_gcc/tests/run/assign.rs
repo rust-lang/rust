@@ -6,7 +6,7 @@
 //     10
 
 #![allow(unused_attributes)]
-#![feature(auto_traits, lang_items, no_core, start, intrinsics, track_caller)]
+#![feature(rustc_attrs, lang_items, no_core, start, intrinsics, track_caller)]
 
 #![no_std]
 #![no_core]
@@ -35,7 +35,8 @@ trait Receiver {
 }
 
 #[lang = "freeze"]
-pub(crate) unsafe auto trait Freeze {}
+#[rustc_auto_trait]
+pub(crate) unsafe trait Freeze {}
 
 #[lang = "panic_location"]
 struct PanicLocation {

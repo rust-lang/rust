@@ -2,10 +2,11 @@
 // a simple auto trait `..` impl alone still doesn't allow arbitrary bounds
 // to be synthesized.
 
-#![feature(auto_traits)]
+#![feature(rustc_attrs)]
 #![feature(negative_impls)]
 
-auto trait Magic: Copy {} //~ ERROR E0568
+#[rustc_auto_trait]
+trait Magic: Copy {} //~ ERROR E0568
 
 fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
 
