@@ -14,14 +14,6 @@
       }
   
       bb0: {
-          goto -> bb1;
-      }
-  
-      bb1: {
-          goto -> bb2;
-      }
-  
-      bb2: {
           return;
       }
   }

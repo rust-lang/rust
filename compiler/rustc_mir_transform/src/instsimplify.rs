@@ -2,7 +2,6 @@
 
 use crate::simplify::simplify_duplicate_switch_targets;
 use rustc_hir::def::DefKind;
-use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
@@ -332,7 +331,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         let kind = AggregateKind::Adt(adt_def.did(), variant_index, generics, None, None);
 
         let args = std::mem::take(args);
-        let fields = IndexVec::from_raw(args);
+        let fields = args.into_iter().map(|n| n.node).collect();
 
         let statement = Statement {
             kind: StatementKind::Assign(Box::new((

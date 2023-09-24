@@ -597,6 +597,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &instsimplify::InstSimplify,
+            &o1(simplify::SimplifyCfg::AfterGVN),
             // Turn non-aliasing places into locals.
             // Helps `DeadStoreElimination` to remove them and `CopyProp` to merge them.
             &simplify::SimplifyLocals::BeforeSROA,
@@ -604,11 +605,11 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Compute `Len` when it comes from an unsizing cast.
             &normalize_array_len::NormalizeArrayLen,
             // Perform a first round of constant propagation.
-            &o1(simplify::SimplifyCfg::BeforeConstProp),
             &simplify::SimplifyLocals::BeforeConstProp,
             // Turn `SwitchInt(Eq(x, constant))` into `SwitchInt(x)`.
             // Runs after ConstProp to increase probability to have constants.
             &simplify_comparison_integral::SimplifyComparisonIntegral,
+            &o1(simplify::SimplifyCfg::AfterConstProp),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             // Merge locals that just copy each another.
             &copy_prop::CopyProp,
@@ -624,7 +625,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &gvn::GVN::Final,
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::Final),
-            &simplify::SimplifyLocals::AfterGVN,
+            &simplify::SimplifyLocals::BeforeDestProp,
             &dest_prop::DestinationPropagation,
             // Attempt to promote call operands from copies to moves.
             &dead_store_elimination::DeadStoreElimination::Final,

@@ -39,6 +39,8 @@ pub enum SimplifyCfg {
     RemoveFalseEdges,
     EarlyOpt,
     ElaborateDrops,
+    AfterGVN,
+    AfterConstProp,
     Final,
     MakeShim,
     AfterUninhabitedEnumBranching,
@@ -53,6 +55,8 @@ impl SimplifyCfg {
             SimplifyCfg::RemoveFalseEdges => "SimplifyCfg-remove-false-edges",
             SimplifyCfg::EarlyOpt => "SimplifyCfg-early-opt",
             SimplifyCfg::ElaborateDrops => "SimplifyCfg-elaborate-drops",
+            SimplifyCfg::AfterGVN => "SimplifyCfg-after-gvn",
+            SimplifyCfg::AfterConstProp => "SimplifyCfg-after-const-prop",
             SimplifyCfg::Final => "SimplifyCfg-final",
             SimplifyCfg::MakeShim => "SimplifyCfg-make_shim",
             SimplifyCfg::AfterUninhabitedEnumBranching => {
@@ -350,6 +354,7 @@ pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
 pub enum SimplifyLocals {
     BeforeSROA,
     BeforeConstProp,
+    BeforeDestProp,
     AfterGVN,
     Final,
 }
@@ -359,6 +364,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
         match &self {
             SimplifyLocals::BeforeSROA => "SimplifyLocals-before-sroa",
             SimplifyLocals::BeforeConstProp => "SimplifyLocals-before-const-prop",
+            SimplifyLocals::BeforeDestProp => "SimplifyLocals-before-dest-prop",
             SimplifyLocals::AfterGVN => "SimplifyLocals-after-value-numbering",
             SimplifyLocals::Final => "SimplifyLocals-final",
         }
