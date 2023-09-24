@@ -478,7 +478,28 @@ impl<'tcx> ToTrace<'tcx> for ty::FnSig<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Sigs(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: PolySigs(ExpectedFound::new(
+                a_is_expected,
+                ty::Binder::dummy(a),
+                ty::Binder::dummy(b),
+            )),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::PolyFnSig<'tcx> {
+    fn to_trace(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: PolySigs(ExpectedFound::new(a_is_expected, a, b)),
+        }
     }
 }
 
