@@ -100,19 +100,15 @@
       }
   
       bb6: {
-          _5 = move ((_6 as Ok).0: std::ptr::NonNull<[u8]>);
+          nop;
           StorageDead(_12);
           StorageDead(_6);
--         StorageLive(_17);
-+         nop;
-          _17 = (_5.0: *const [u8]);
--         _4 = move _17 as *mut [u8] (PtrToPtr);
--         StorageDead(_17);
-+         _4 = _17 as *mut [u8] (PtrToPtr);
-+         nop;
+          StorageLive(_17);
+          nop;
+          nop;
+          StorageDead(_17);
           StorageDead(_5);
--         _3 = move _4 as *mut u8 (PtrToPtr);
-+         _3 = _17 as *mut u8 (PtrToPtr);
+          nop;
           StorageDead(_4);
           StorageDead(_3);
 -         StorageDead(_1);

@@ -12,6 +12,7 @@
 //!     will still not cause any further changes.
 //!
 
+use crate::simplify::preserve_debug_even_if_never_generated;
 use crate::util::is_within_packed;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
@@ -32,10 +33,16 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // If the user requests complete debuginfo, mark the locals that appear in it as live, so
     // we don't remove assignements to them.
-    let mut always_live = debuginfo_locals(body);
-    always_live.union(&borrowed_locals);
+    let mut always_live;
+    let always_live = if preserve_debug_even_if_never_generated(tcx) {
+        always_live = debuginfo_locals(body);
+        always_live.union(&borrowed_locals);
+        &always_live
+    } else {
+        &borrowed_locals
+    };
 
-    let mut live = MaybeTransitiveLiveLocals::new(&always_live)
+    let mut live = MaybeTransitiveLiveLocals::new(always_live)
         .into_engine(tcx, body)
         .iterate_to_fixpoint()
         .into_results_cursor(body);

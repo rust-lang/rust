@@ -1,4 +1,5 @@
 //@ known-bug: #101962
+//@ compile-flags: -Cdebuginfo=2
 
 #![feature(core_intrinsics)]
 
