@@ -2781,7 +2781,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
-                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) | ty::BrEnv => {
+                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon | ty::BrEnv => {
                     "an anonymous lifetime".to_string()
                 }
                 ty::BrNamed(_, name) => format!("lifetime `{name}`"),
@@ -2789,7 +2789,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let mut err = generate_err(&br_name);
 
-            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) = *br {
+            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon = *br {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is
                 // if it only appears in "associated types" in the

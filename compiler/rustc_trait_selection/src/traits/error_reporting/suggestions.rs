@@ -49,7 +49,7 @@ use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 #[derive(Debug)]
 pub enum GeneratorInteriorOrUpvar {
     // span of interior type
-    Interior(Span, Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>),
+    Interior(Span, Option<(Span, Option<Span>)>),
     // span of upvar
     Upvar(Span),
 }
@@ -249,7 +249,6 @@ pub trait TypeErrCtxtExt<'tcx> {
         outer_generator: Option<DefId>,
         trait_pred: ty::TraitPredicate<'tcx>,
         target_ty: Ty<'tcx>,
-        typeck_results: &ty::TypeckResults<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     );
@@ -2316,7 +2315,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if ty_matches(ty::Binder::dummy(decl.ty)) && !decl.ignore_for_traits {
                         interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(
                             decl.source_info.span,
-                            Some((None, source_info.span, None, from_awaited_ty)),
+                            Some((source_info.span, from_awaited_ty)),
                         ));
                         break 'find_source;
                     }
@@ -2336,7 +2335,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         debug!(?interior_or_upvar_span);
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
             let is_async = self.tcx.generator_is_async(generator_did);
-            let typeck_results = generator_data.0;
             self.note_obligation_cause_for_async_await(
                 err,
                 interior_or_upvar_span,
@@ -2344,7 +2342,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 outer_generator,
                 trait_ref,
                 target_ty,
-                typeck_results,
                 obligation,
                 next_code,
             );
@@ -2365,7 +2362,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         outer_generator: Option<DefId>,
         trait_pred: ty::TraitPredicate<'tcx>,
         target_ty: Ty<'tcx>,
-        typeck_results: &ty::TypeckResults<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     ) {
@@ -2423,9 +2419,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             format!("does not implement `{}`", trait_pred.print_modifiers_and_trait_path())
         };
 
-        let mut explain_yield = |interior_span: Span,
-                                 yield_span: Span,
-                                 scope_span: Option<Span>| {
+        let mut explain_yield = |interior_span: Span, yield_span: Span| {
             let mut span = MultiSpan::from_span(yield_span);
             let snippet = match source_map.span_to_snippet(interior_span) {
                 // #70935: If snippet contains newlines, display "the value" instead
@@ -2457,22 +2451,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 interior_span,
                 format!("has type `{target_ty}` which {trait_explanation}"),
             );
-            if let Some(scope_span) = scope_span {
-                let scope_span = source_map.end_point(scope_span);
-
-                let msg = format!("{snippet} is later dropped here");
-                span.push_span_label(scope_span, msg);
-            }
             err.span_note(
-                    span,
-                    format!(
-                        "{future_or_generator} {trait_explanation} as this value is used across {an_await_or_yield}"
-                    ),
-                );
+                span,
+                format!("{future_or_generator} {trait_explanation} as this value is used across {an_await_or_yield}"),
+            );
         };
         match interior_or_upvar_span {
             GeneratorInteriorOrUpvar::Interior(interior_span, interior_extra_info) => {
-                if let Some((scope_span, yield_span, expr, from_awaited_ty)) = interior_extra_info {
+                if let Some((yield_span, from_awaited_ty)) = interior_extra_info {
                     if let Some(await_span) = from_awaited_ty {
                         // The type causing this obligation is one being awaited at await_span.
                         let mut span = MultiSpan::from_span(await_span);
@@ -2490,51 +2476,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         );
                     } else {
                         // Look at the last interior type to get a span for the `.await`.
-                        explain_yield(interior_span, yield_span, scope_span);
-                    }
-
-                    if let Some(expr_id) = expr {
-                        let expr = hir.expect_expr(expr_id);
-                        debug!("target_ty evaluated from {:?}", expr);
-
-                        let parent = hir.parent_id(expr_id);
-                        if let Some(hir::Node::Expr(e)) = hir.find(parent) {
-                            let parent_span = hir.span(parent);
-                            let parent_did = parent.owner.to_def_id();
-                            // ```rust
-                            // impl T {
-                            //     fn foo(&self) -> i32 {}
-                            // }
-                            // T.foo();
-                            // ^^^^^^^ a temporary `&T` created inside this method call due to `&self`
-                            // ```
-                            //
-                            let is_region_borrow = typeck_results
-                                .expr_adjustments(expr)
-                                .iter()
-                                .any(|adj| adj.is_region_borrow());
-
-                            // ```rust
-                            // struct Foo(*const u8);
-                            // bar(Foo(std::ptr::null())).await;
-                            //     ^^^^^^^^^^^^^^^^^^^^^ raw-ptr `*T` created inside this struct ctor.
-                            // ```
-                            debug!(parent_def_kind = ?self.tcx.def_kind(parent_did));
-                            let is_raw_borrow_inside_fn_like_call =
-                                match self.tcx.def_kind(parent_did) {
-                                    DefKind::Fn | DefKind::Ctor(..) => target_ty.is_unsafe_ptr(),
-                                    _ => false,
-                                };
-                            if (typeck_results.is_method_call(e) && is_region_borrow)
-                                || is_raw_borrow_inside_fn_like_call
-                            {
-                                err.span_help(
-                                    parent_span,
-                                    "consider moving this into a `let` \
-                        binding to create a shorter lived borrow",
-                                );
-                            }
-                        }
+                        explain_yield(interior_span, yield_span);
                     }
                 }
             }
