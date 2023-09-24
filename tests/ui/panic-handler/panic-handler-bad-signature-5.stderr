@@ -4,8 +4,8 @@ error[E0308]: `#[panic_handler]` function has wrong type
 LL | fn panic(info: &PanicInfo<'static>) -> !
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-   = note: expected fn pointer `for<'a, 'b> fn(&'a PanicInfo<'b>) -> _`
-              found fn pointer `for<'a> fn(&'a PanicInfo<'static>) -> _`
+   = note: expected signature `for<'a, 'b> fn(&'a PanicInfo<'b>) -> _`
+              found signature `for<'a> fn(&'a PanicInfo<'static>) -> _`
 
 error: aborting due to previous error
 

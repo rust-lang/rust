@@ -4,7 +4,7 @@ error[E0308]: `#[panic_handler]` function has wrong type
 LL | fn panic() -> ! {
    | ^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: expected signature `fn(&PanicInfo<'_>) -> _`
+   = note: expected signature `for<'a, 'b> fn(&'a PanicInfo<'b>) -> _`
               found signature `fn() -> _`
 
 error: aborting due to previous error

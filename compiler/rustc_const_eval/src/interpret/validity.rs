@@ -583,7 +583,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Bound(..)
             | ty::Param(..)
             | ty::Alias(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::GeneratorWitness(..) => bug!("Encountered invalid type {:?}", ty),
         }
     }

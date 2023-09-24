@@ -157,7 +157,6 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {

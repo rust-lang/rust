@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*x` as mutable more than once at a time
-  --> $DIR/issue-110929-generator-conflict-error-ice.rs:9:9
+  --> $DIR/issue-110929-generator-conflict-error-ice.rs:8:9
    |
 LL |         let _c = || yield *&mut *x;
    |                  --             -- first borrow occurs due to use of `*x` in generator

@@ -306,6 +306,7 @@ declare_lint! {
     /// pub async fn uhoh() {
     ///     let guard = SyncThing {};
     ///     yield_now().await;
+    ///     let _guard = guard;
     /// }
     /// ```
     ///

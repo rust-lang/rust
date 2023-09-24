@@ -838,10 +838,7 @@ pub trait PrettyPrinter<'tcx>:
 
                 p!("}}")
             }
-            ty::GeneratorWitness(types) => {
-                p!(in_binder(&types));
-            }
-            ty::GeneratorWitnessMIR(did, args) => {
+            ty::GeneratorWitness(did, args) => {
                 p!(write("{{"));
                 if !self.tcx().sess.verbose() {
                     p!("generator witness");

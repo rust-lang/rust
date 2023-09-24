@@ -18,8 +18,8 @@ use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintSto
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, abi_test, hir_stats, layout_test};
@@ -675,13 +675,6 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock::new(|| {
-    let mut extern_providers = ExternProviders::default();
-    rustc_metadata::provide_extern(&mut extern_providers);
-    rustc_codegen_ssa::provide_extern(&mut extern_providers);
-    extern_providers
-});
-
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     crate_types: Vec<CrateType>,
@@ -702,14 +695,11 @@ pub fn create_global_ctxt<'tcx>(
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
-    let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
-    codegen_backend.provide(&mut local_providers);
-
-    let mut extern_providers = *DEFAULT_EXTERN_QUERY_PROVIDERS;
-    codegen_backend.provide_extern(&mut extern_providers);
+    let mut providers = *DEFAULT_QUERY_PROVIDERS;
+    codegen_backend.provide(&mut providers);
 
     if let Some(callback) = compiler.override_queries {
-        callback(sess, &mut local_providers, &mut extern_providers);
+        callback(sess, &mut providers);
     }
 
     let incremental = dep_graph.is_fully_enabled();
@@ -727,11 +717,12 @@ pub fn create_global_ctxt<'tcx>(
                 dep_graph,
                 rustc_query_impl::query_callbacks(arena),
                 rustc_query_impl::query_system(
-                    local_providers,
-                    extern_providers,
+                    providers.queries,
+                    providers.extern_queries,
                     query_result_on_disk_cache,
                     incremental,
                 ),
+                providers.hooks,
             )
         })
     })
@@ -807,14 +798,12 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         }
     });
 
-    if tcx.sess.opts.unstable_opts.drop_tracking_mir {
-        tcx.hir().par_body_owners(|def_id| {
-            if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
-                tcx.ensure().mir_generator_witnesses(def_id);
-                tcx.ensure().check_generator_obligations(def_id);
-            }
-        });
-    }
+    tcx.hir().par_body_owners(|def_id| {
+        if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
+            tcx.ensure().mir_generator_witnesses(def_id);
+            tcx.ensure().check_generator_obligations(def_id);
+        }
+    });
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));

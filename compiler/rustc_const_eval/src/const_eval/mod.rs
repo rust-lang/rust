@@ -4,6 +4,7 @@ use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::{intern_const_alloc_recursive, InternKind, InterpCx, Scalar};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
@@ -86,17 +87,17 @@ pub(crate) fn eval_to_valtree<'tcx>(
 
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxtAt<'tcx>,
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
     let param_env = ty::ParamEnv::reveal_all();
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
+    let ecx = mk_eval_cx(tcx.tcx, tcx.span, param_env, CanAccessStatics::No);
     let op = ecx.const_val_to_op(val, ty, None).ok()?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match ty.kind() {
-        ty::Array(_, len) => (len.eval_target_usize(tcx, param_env) as usize, None, op),
+        ty::Array(_, len) => (len.eval_target_usize(tcx.tcx, param_env) as usize, None, op),
         ty::Adt(def, _) if def.variants().is_empty() => {
             return None;
         }

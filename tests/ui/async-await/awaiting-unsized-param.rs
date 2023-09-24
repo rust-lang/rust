@@ -1,6 +1,4 @@
 // edition: 2021
-// revisions: no_drop_tracking drop_tracking_mir
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 
 #![feature(unsized_fn_params, unsized_locals)]
 //~^ WARN the feature `unsized_locals` is incomplete

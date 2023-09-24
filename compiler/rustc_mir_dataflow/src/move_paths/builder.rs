@@ -144,8 +144,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     | ty::Dynamic(_, _, _)
                     | ty::Closure(_, _)
                     | ty::Generator(_, _, _)
-                    | ty::GeneratorWitness(_)
-                    | ty::GeneratorWitnessMIR(_, _)
+                    | ty::GeneratorWitness(..)
                     | ty::Never
                     | ty::Tuple(_)
                     | ty::Alias(_, _)
@@ -184,8 +183,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     | ty::FnDef(_, _)
                     | ty::FnPtr(_)
                     | ty::Dynamic(_, _, _)
-                    | ty::GeneratorWitness(_)
-                    | ty::GeneratorWitnessMIR(_, _)
+                    | ty::GeneratorWitness(..)
                     | ty::Never
                     | ty::Alias(_, _)
                     | ty::Param(_)

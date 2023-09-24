@@ -388,7 +388,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
                 | ty::Generator(..)
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Never
                 | ty::Foreign(..) => tcx.types.unit,
 
@@ -556,7 +555,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Foreign(..)
             | ty::Adt(_, _)
