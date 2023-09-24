@@ -1,6 +1,6 @@
 // edition: 2021
 // build-fail
-//~^^ ERROR overflow evaluating the requirement `<() as Recur>::Recur == _`
+//~^^ ERROR cycle detected when computing layout of
 
 #![feature(impl_trait_in_assoc_type)]
 

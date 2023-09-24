@@ -879,8 +879,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(_, _)
+            | ty::GeneratorWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Adt(_, _)

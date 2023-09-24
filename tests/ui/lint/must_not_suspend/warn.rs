@@ -1,6 +1,3 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 // edition:2018
 // run-pass
 #![feature(must_not_suspend)]
@@ -21,9 +18,9 @@ fn bar() -> Umm {
 async fn other() {}
 
 pub async fn uhoh() {
-    let _guard = bar(); //~ WARNING `Umm` held across
+    let guard = bar(); //~ WARNING `Umm` held across
     other().await;
-    drop(_guard);
+    drop(guard);
 }
 
 fn main() {

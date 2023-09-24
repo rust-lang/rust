@@ -44,7 +44,6 @@ use crate::traits::{
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
 use crate::ty::util::AlwaysRequiresDrop;
-use crate::ty::GeneratorDiagnosticData;
 use crate::ty::TyCtxtFeed;
 use crate::ty::{
     self, print::describe_as_module, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt,
@@ -1100,16 +1099,6 @@ rustc_queries! {
         desc { "destructuring type level constant"}
     }
 
-    /// Tries to destructure an `mir::Const` ADT or array into its variant index
-    /// and its field values. This should only be used for pretty printing.
-    query try_destructure_mir_constant_for_diagnostics(
-        key: (mir::ConstValue<'tcx>, Ty<'tcx>)
-    ) -> Option<mir::DestructuredConstant<'tcx>> {
-        desc { "destructuring MIR constant"}
-        no_hash
-        eval_always
-    }
-
     query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> mir::ConstValue<'tcx> {
         desc { "getting a &core::panic::Location referring to a span" }
     }
@@ -2157,12 +2146,6 @@ rustc_queries! {
         arena_cache
         eval_always
         desc { "computing the backend features for CLI flags" }
-    }
-
-    query generator_diagnostic_data(key: DefId) -> &'tcx Option<GeneratorDiagnosticData<'tcx>> {
-        arena_cache
-        desc { |tcx| "looking up generator diagnostic data of `{}`", tcx.def_path_str(key) }
-        separate_provide_extern
     }
 
     query check_validity_requirement(key: (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>)) -> Result<bool, &'tcx ty::layout::LayoutError<'tcx>> {

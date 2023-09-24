@@ -1,0 +1,12 @@
+error[E0658]: use of unstable library feature 'proc_macro_byte_character'
+  --> $DIR/feature-gate-proc_macro_byte_character.rs:9:5
+   |
+LL |     Literal::byte_character(b'a');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #115268 <https://github.com/rust-lang/rust/issues/115268> for more information
+   = help: add `#![feature(proc_macro_byte_character)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

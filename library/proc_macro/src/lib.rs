@@ -1337,6 +1337,13 @@ impl Literal {
         Literal::new(bridge::LitKind::Char, symbol, None)
     }
 
+    /// Byte character literal.
+    #[unstable(feature = "proc_macro_byte_character", issue = "115268")]
+    pub fn byte_character(byte: u8) -> Literal {
+        let string = [byte].escape_ascii().to_string();
+        Literal::new(bridge::LitKind::Byte, &string, None)
+    }
+
     /// Byte string literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn byte_string(bytes: &[u8]) -> Literal {

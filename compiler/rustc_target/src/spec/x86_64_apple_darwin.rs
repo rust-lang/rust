@@ -5,7 +5,7 @@ use crate::spec::{StackProbeType, Target, TargetOptions};
 pub fn target() -> Target {
     let arch = Arch::X86_64;
     let mut base = opts("macos", arch);
-    base.max_atomic_width = Some(128); // core2 supports cmpxchg16b
+    base.max_atomic_width = Some(128); // penryn+ supports cmpxchg16b
     base.frame_pointer = FramePointer::Always;
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"]);
     base.stack_probes = StackProbeType::X86;

@@ -4,7 +4,9 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::{AssertKind, UnsafetyViolationDetails};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
+use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
 #[derive(LintDiagnostic)]
@@ -237,18 +239,36 @@ pub(crate) struct FnItemRef {
     pub ident: String,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(mir_transform_must_not_suspend)]
-pub(crate) struct MustNotSupend<'a> {
-    #[label]
+pub(crate) struct MustNotSupend<'tcx, 'a> {
+    pub tcx: TyCtxt<'tcx>,
     pub yield_sp: Span,
-    #[subdiagnostic]
     pub reason: Option<MustNotSuspendReason>,
-    #[help]
     pub src_sp: Span,
     pub pre: &'a str,
-    pub def_path: String,
+    pub def_id: DefId,
     pub post: &'a str,
+}
+
+// Needed for def_path_str
+impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.span_label(self.yield_sp, crate::fluent_generated::_subdiag::label);
+        if let Some(reason) = self.reason {
+            diag.subdiagnostic(reason);
+        }
+        diag.span_help(self.src_sp, crate::fluent_generated::_subdiag::help);
+        diag.set_arg("pre", self.pre);
+        diag.set_arg("def_path", self.tcx.def_path_str(self.def_id));
+        diag.set_arg("post", self.post);
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        crate::fluent_generated::mir_transform_must_not_suspend
+    }
 }
 
 #[derive(Subdiagnostic)]

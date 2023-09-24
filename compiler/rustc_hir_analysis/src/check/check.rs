@@ -1579,13 +1579,7 @@ fn opaque_type_cycle_error(
                         label_match(capture.place.ty(), capture.get_path_span(tcx));
                     }
                     // Label any generator locals that capture the opaque
-                    for interior_ty in
-                        typeck_results.generator_interior_types.as_ref().skip_binder()
-                    {
-                        label_match(interior_ty.ty, interior_ty.span);
-                    }
-                    if tcx.sess.opts.unstable_opts.drop_tracking_mir
-                        && let DefKind::Generator = tcx.def_kind(closure_def_id)
+                    if let DefKind::Generator = tcx.def_kind(closure_def_id)
                         && let Some(generator_layout) = tcx.mir_generator_witnesses(closure_def_id)
                     {
                         for interior_ty in &generator_layout.field_tys {
@@ -1603,7 +1597,6 @@ fn opaque_type_cycle_error(
 }
 
 pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    debug_assert!(tcx.sess.opts.unstable_opts.drop_tracking_mir);
     debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Generator));
 
     let typeck = tcx.typeck(def_id);

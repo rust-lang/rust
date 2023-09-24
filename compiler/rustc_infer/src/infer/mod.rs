@@ -383,7 +383,7 @@ pub enum ValuePairs<'tcx> {
     Aliases(ExpectedFound<ty::AliasTy<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
-    Sigs(ExpectedFound<ty::FnSig<'tcx>>),
+    PolySigs(ExpectedFound<ty::PolyFnSig<'tcx>>),
     ExistentialTraitRef(ExpectedFound<ty::PolyExistentialTraitRef<'tcx>>),
     ExistentialProjection(ExpectedFound<ty::PolyExistentialProjection<'tcx>>),
 }

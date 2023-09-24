@@ -157,9 +157,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                 Ty::new_generator(self.tcx, def_id, args, movability)
             }
 
-            ty::GeneratorWitnessMIR(def_id, args) => {
+            ty::GeneratorWitness(def_id, args) => {
                 let args = self.fold_closure_args(def_id, args);
-                Ty::new_generator_witness_mir(self.tcx, def_id, args)
+                Ty::new_generator_witness(self.tcx, def_id, args)
             }
 
             ty::Param(param) => {

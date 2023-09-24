@@ -2165,18 +2165,10 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_generator_witness(
         tcx: TyCtxt<'tcx>,
-        types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>,
-    ) -> Ty<'tcx> {
-        Ty::new(tcx, GeneratorWitness(types))
-    }
-
-    #[inline]
-    pub fn new_generator_witness_mir(
-        tcx: TyCtxt<'tcx>,
         id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        Ty::new(tcx, GeneratorWitnessMIR(id, args))
+        Ty::new(tcx, GeneratorWitness(id, args))
     }
 
     // misc
@@ -2706,7 +2698,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_)
@@ -2742,7 +2733,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2831,7 +2821,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2894,7 +2883,7 @@ impl<'tcx> Ty<'tcx> {
             // anything with custom metadata it might be more complicated.
             ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
 
-            ty::Generator(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => false,
+            ty::Generator(..) | ty::GeneratorWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
             ty::Adt(..) | ty::Closure(..) => false,
@@ -2970,8 +2959,7 @@ impl<'tcx> Ty<'tcx> {
             | Dynamic(_, _, _)
             | Closure(_, _)
             | Generator(_, _, _)
-            | GeneratorWitness(_)
-            | GeneratorWitnessMIR(_, _)
+            | GeneratorWitness(..)
             | Never
             | Tuple(_) => true,
             Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,

@@ -127,11 +127,7 @@ impl FlagComputation {
                 self.add_ty(args.tupled_upvars_ty());
             }
 
-            &ty::GeneratorWitness(ts) => {
-                self.bound_computation(ts, |flags, ts| flags.add_tys(ts));
-            }
-
-            ty::GeneratorWitnessMIR(_, args) => {
+            ty::GeneratorWitness(_, args) => {
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 self.add_args(args);

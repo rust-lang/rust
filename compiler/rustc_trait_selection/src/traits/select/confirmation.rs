@@ -1238,10 +1238,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let generator = args.as_generator();
                     stack.extend([generator.tupled_upvars_ty(), generator.witness()]);
                 }
-                ty::GeneratorWitness(tys) => {
-                    stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
-                }
-                ty::GeneratorWitnessMIR(def_id, args) => {
+                ty::GeneratorWitness(def_id, args) => {
                     let tcx = self.tcx();
                     stack.extend(tcx.generator_hidden_types(def_id).map(|bty| {
                         let ty = bty.instantiate(tcx, args);

@@ -59,6 +59,7 @@ where
 {
     let rt = &t;
     async { true }.await;
+    let _ = rt;
     t
 }
 

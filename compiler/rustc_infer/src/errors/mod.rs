@@ -14,8 +14,7 @@ use rustc_span::{symbol::Ident, BytePos, Span};
 
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::{
-    need_type_info::{GeneratorKindAsDiagArg, UnderspecifiedArgKind},
-    nice_region_error::placeholder_error::Highlighted,
+    need_type_info::UnderspecifiedArgKind, nice_region_error::placeholder_error::Highlighted,
     ObligationCauseAsDiagArg,
 };
 
@@ -84,16 +83,6 @@ pub struct AmbiguousReturn<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
-}
-
-#[derive(Diagnostic)]
-#[diag(infer_need_type_info_in_generator, code = "E0698")]
-pub struct NeedTypeInfoInGenerator<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub generator_kind: GeneratorKindAsDiagArg,
-    #[subdiagnostic]
-    pub bad_label: InferenceBadError<'a>,
 }
 
 // Used when a better one isn't available
