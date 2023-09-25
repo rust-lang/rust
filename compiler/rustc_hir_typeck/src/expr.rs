@@ -670,14 +670,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let error = Some(Sorts(ExpectedFound { expected: ty, found: e_ty }));
                             self.annotate_loop_expected_due_to_inference(&mut err, expr, error);
                             if let Some(val) = ty_kind_suggestion(ty) {
-                                let label = destination
-                                    .label
-                                    .map(|l| format!(" {}", l.ident))
-                                    .unwrap_or_else(String::new);
-                                err.span_suggestion(
-                                    expr.span,
+                                err.span_suggestion_verbose(
+                                    expr.span.shrink_to_hi(),
                                     "give it a value of the expected type",
-                                    format!("break{label} {val}"),
+                                    format!(" {val}"),
                                     Applicability::HasPlaceholders,
                                 );
                             }
@@ -722,7 +718,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ... except when we try to 'break rust;'.
                 // ICE this expression in particular (see #43162).
                 if let ExprKind::Path(QPath::Resolved(_, path)) = e.kind {
-                    if path.segments.len() == 1 && path.segments[0].ident.name == sym::rust {
+                    if let [segment] = path.segments && segment.ident.name == sym::rust {
                         fatally_break_rust(self.tcx);
                     }
                 }
