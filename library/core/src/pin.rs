@@ -784,7 +784,7 @@
 //! [Rc]: ../../std/rc/struct.Rc.html "rc::Rc"
 //! [`Vec<T>`]: ../../std/vec/struct.Vec.html
 //! [Vec]: ../../std/vec/struct.Vec.html "Vec"
-//! [`Vec`]: ../../std/vec/struct/Vec.html "Vec"
+//! [`Vec`]: ../../std/vec/struct.Vec.html "Vec"
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len "Vec::set_len"
 //! [Vec::pop]: ../../std/vec/struct.Vec.html#method.pop "Vec::pop"
 //! [Vec::push]: ../../std/vec/struct.Vec.html#method.push "Vec::push"
