@@ -225,7 +225,7 @@ mod test_par_table {
         let hasher = DefaultHashBuilder::default();
         let mut a = HashTable::new();
         for i in 0..32 {
-            a.insert_unchecked(make_hash(&hasher, &i), i, |x| make_hash(&hasher, x));
+            a.insert_unique(make_hash(&hasher, &i), i, |x| make_hash(&hasher, x));
         }
         let observed = AtomicUsize::new(0);
         a.par_iter().for_each(|k| {
@@ -240,8 +240,8 @@ mod test_par_table {
         let hs = {
             let mut hs = HashTable::new();
 
-            hs.insert_unchecked(make_hash(&hasher, &'a'), 'a', |x| make_hash(&hasher, x));
-            hs.insert_unchecked(make_hash(&hasher, &'b'), 'b', |x| make_hash(&hasher, x));
+            hs.insert_unique(make_hash(&hasher, &'a'), 'a', |x| make_hash(&hasher, x));
+            hs.insert_unique(make_hash(&hasher, &'b'), 'b', |x| make_hash(&hasher, x));
 
             hs
         };

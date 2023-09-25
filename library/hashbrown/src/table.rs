@@ -120,7 +120,7 @@ where
     /// assert_eq!(table.capacity(), 0);
     ///
     /// // Now we insert element inside created HashTable
-    /// table.insert_unchecked(hasher(&"One"), "One", hasher);
+    /// table.insert_unique(hasher(&"One"), "One", hasher);
     /// // We can see that the HashTable holds 1 element
     /// assert_eq!(table.len(), 1);
     /// // And it also allocates some capacity
@@ -164,11 +164,11 @@ where
     /// assert!(empty_map_capacity >= 5);
     ///
     /// // Now we insert some 5 elements inside created HashTable
-    /// table.insert_unchecked(hasher(&"One"), "One", hasher);
-    /// table.insert_unchecked(hasher(&"Two"), "Two", hasher);
-    /// table.insert_unchecked(hasher(&"Three"), "Three", hasher);
-    /// table.insert_unchecked(hasher(&"Four"), "Four", hasher);
-    /// table.insert_unchecked(hasher(&"Five"), "Five", hasher);
+    /// table.insert_unique(hasher(&"One"), "One", hasher);
+    /// table.insert_unique(hasher(&"Two"), "Two", hasher);
+    /// table.insert_unique(hasher(&"Three"), "Three", hasher);
+    /// table.insert_unique(hasher(&"Four"), "Four", hasher);
+    /// table.insert_unique(hasher(&"Five"), "Five", hasher);
     ///
     /// // We can see that the HashTable holds 5 elements
     /// assert_eq!(table.len(), 5);
@@ -210,9 +210,9 @@ where
     /// let mut table = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&1), 1, hasher);
-    /// table.insert_unchecked(hasher(&2), 2, hasher);
-    /// table.insert_unchecked(hasher(&3), 3, hasher);
+    /// table.insert_unique(hasher(&1), 1, hasher);
+    /// table.insert_unique(hasher(&2), 2, hasher);
+    /// table.insert_unique(hasher(&3), 3, hasher);
     /// assert_eq!(table.find(hasher(&2), |&val| val == 2), Some(&2));
     /// assert_eq!(table.find(hasher(&4), |&val| val == 4), None);
     /// # }
@@ -250,7 +250,7 @@ where
     /// let mut table = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&1), (1, "a"), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&1), (1, "a"), |val| hasher(&val.0));
     /// if let Some(val) = table.find_mut(hasher(&1), |val| val.0 == 1) {
     ///     val.1 = "b";
     /// }
@@ -291,7 +291,7 @@ where
     /// let mut table = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&1), (1, "a"), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&1), (1, "a"), |val| hasher(&val.0));
     /// if let Ok(entry) = table.find_entry(hasher(&1), |val| val.0 == 1) {
     ///     entry.remove();
     /// }
@@ -346,7 +346,7 @@ where
     /// let mut table = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&1), (1, "a"), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&1), (1, "a"), |val| hasher(&val.0));
     /// if let Entry::Occupied(entry) = table.entry(hasher(&1), |val| val.0 == 1, |val| hasher(&val.0))
     /// {
     ///     entry.remove();
@@ -386,11 +386,29 @@ where
     /// without checking whether an equivalent element already exists within the
     /// table.
     ///
-    /// This is
-    ///
     /// `hasher` is called if entries need to be moved or copied to a new table.
     /// This must return the same hash value that each entry was inserted with.
-    pub fn insert_unchecked(
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use ahash::AHasher;
+    /// use hashbrown::HashTable;
+    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    ///
+    /// let mut v = HashTable::new();
+    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// v.insert_unique(hasher(&1), 1, hasher);
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn insert_unique(
         &mut self,
         hash: u64,
         value: T,
@@ -418,7 +436,7 @@ where
     /// let mut v = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// v.insert_unchecked(hasher(&1), 1, hasher);
+    /// v.insert_unique(hasher(&1), 1, hasher);
     /// v.clear();
     /// assert!(v.is_empty());
     /// # }
@@ -450,8 +468,8 @@ where
     /// let mut table = HashTable::with_capacity(100);
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&1), 1, hasher);
-    /// table.insert_unchecked(hasher(&2), 2, hasher);
+    /// table.insert_unique(hasher(&1), 1, hasher);
+    /// table.insert_unique(hasher(&2), 2, hasher);
     /// assert!(table.capacity() >= 100);
     /// table.shrink_to_fit(hasher);
     /// assert!(table.capacity() >= 2);
@@ -487,8 +505,8 @@ where
     /// let mut table = HashTable::with_capacity(100);
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&1), 1, hasher);
-    /// table.insert_unchecked(hasher(&2), 2, hasher);
+    /// table.insert_unique(hasher(&1), 1, hasher);
+    /// table.insert_unique(hasher(&2), 2, hasher);
     /// assert!(table.capacity() >= 100);
     /// table.shrink_to(10, hasher);
     /// assert!(table.capacity() >= 10);
@@ -613,7 +631,7 @@ where
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// let mut v = HashTable::new();
     /// assert_eq!(v.len(), 0);
-    /// v.insert_unchecked(hasher(&1), 1, hasher);
+    /// v.insert_unique(hasher(&1), 1, hasher);
     /// assert_eq!(v.len(), 1);
     /// # }
     /// # fn main() {
@@ -640,7 +658,7 @@ where
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// let mut v = HashTable::new();
     /// assert!(v.is_empty());
-    /// v.insert_unchecked(hasher(&1), 1, hasher);
+    /// v.insert_unique(hasher(&1), 1, hasher);
     /// assert!(!v.is_empty());
     /// # }
     /// # fn main() {
@@ -667,8 +685,8 @@ where
     /// let mut table = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&"a"), "b", hasher);
-    /// table.insert_unchecked(hasher(&"b"), "b", hasher);
+    /// table.insert_unique(hasher(&"a"), "b", hasher);
+    /// table.insert_unique(hasher(&"b"), "b", hasher);
     ///
     /// // Will print in an arbitrary order.
     /// for x in table.iter() {
@@ -703,9 +721,9 @@ where
     /// let mut table = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&1), 1, hasher);
-    /// table.insert_unchecked(hasher(&2), 2, hasher);
-    /// table.insert_unchecked(hasher(&3), 3, hasher);
+    /// table.insert_unique(hasher(&1), 1, hasher);
+    /// table.insert_unique(hasher(&2), 2, hasher);
+    /// table.insert_unique(hasher(&3), 3, hasher);
     ///
     /// // Update all values
     /// for val in table.iter_mut() {
@@ -756,7 +774,7 @@ where
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for x in 1..=6 {
-    ///     table.insert_unchecked(hasher(&x), x, hasher);
+    ///     table.insert_unique(hasher(&x), x, hasher);
     /// }
     /// table.retain(|&mut x| x % 2 == 0);
     /// assert_eq!(table.len(), 3);
@@ -792,7 +810,7 @@ where
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for x in 1..=3 {
-    ///     table.insert_unchecked(hasher(&x), x, hasher);
+    ///     table.insert_unique(hasher(&x), x, hasher);
     /// }
     /// assert!(!table.is_empty());
     ///
@@ -837,7 +855,7 @@ where
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for x in 0..8 {
-    ///     table.insert_unchecked(hasher(&x), x, hasher);
+    ///     table.insert_unique(hasher(&x), x, hasher);
     /// }
     /// let drained: Vec<i32> = table.extract_if(|&mut v| v % 2 == 0).collect();
     ///
@@ -895,7 +913,7 @@ where
     ///     ("Herzogin-Anna-Amalia-Bibliothek", 1691),
     ///     ("Library of Congress", 1800),
     /// ] {
-    ///     libraries.insert_unchecked(hasher(&k), (k, v), |(k, _)| hasher(&k));
+    ///     libraries.insert_unique(hasher(&k), (k, v), |(k, _)| hasher(&k));
     /// }
     ///
     /// let keys = ["Athenæum", "Library of Congress"];
@@ -965,7 +983,7 @@ where
     ///     ("Herzogin-Anna-Amalia-Bibliothek", 1691),
     ///     ("Library of Congress", 1800),
     /// ] {
-    ///     libraries.insert_unchecked(hasher(&k), (k, v), |(k, _)| hasher(&k));
+    ///     libraries.insert_unique(hasher(&k), (k, v), |(k, _)| hasher(&k));
     /// }
     ///
     /// let keys = ["Athenæum", "Library of Congress"];
@@ -1090,7 +1108,7 @@ where
 /// let hasher = BuildHasherDefault::<AHasher>::default();
 /// let hasher = |val: &_| hasher.hash_one(val);
 /// for x in ["a", "b", "c"] {
-///     table.insert_unchecked(hasher(&x), x, hasher);
+///     table.insert_unique(hasher(&x), x, hasher);
 /// }
 /// assert_eq!(table.len(), 3);
 ///
@@ -1142,7 +1160,7 @@ where
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for x in ["a", "b"] {
-    ///     table.insert_unchecked(hasher(&x), x, hasher);
+    ///     table.insert_unique(hasher(&x), x, hasher);
     /// }
     ///
     /// match table.entry(hasher(&"a"), |&x| x == "a", hasher) {
@@ -1394,7 +1412,7 @@ where
 /// let hasher = BuildHasherDefault::<AHasher>::default();
 /// let hasher = |val: &_| hasher.hash_one(val);
 /// for x in ["a", "b", "c"] {
-///     table.insert_unchecked(hasher(&x), x, hasher);
+///     table.insert_unique(hasher(&x), x, hasher);
 /// }
 /// assert_eq!(table.len(), 3);
 ///
@@ -1480,7 +1498,7 @@ where
     /// // The table is empty
     /// assert!(table.is_empty() && table.capacity() == 0);
     ///
-    /// table.insert_unchecked(hasher(&"poneyland"), "poneyland", hasher);
+    /// table.insert_unique(hasher(&"poneyland"), "poneyland", hasher);
     /// let capacity_before_remove = table.capacity();
     ///
     /// if let Entry::Occupied(o) = table.entry(hasher(&"poneyland"), |&x| x == "poneyland", hasher) {
@@ -1525,7 +1543,7 @@ where
     /// let mut table: HashTable<&str> = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&"poneyland"), "poneyland", hasher);
+    /// table.insert_unique(hasher(&"poneyland"), "poneyland", hasher);
     ///
     /// match table.entry(hasher(&"poneyland"), |&x| x == "poneyland", hasher) {
     ///     Entry::Vacant(_) => panic!(),
@@ -1561,7 +1579,7 @@ where
     /// let mut table: HashTable<(&str, u32)> = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&"poneyland"), ("poneyland", 12), |(k, _)| hasher(&k));
+    /// table.insert_unique(hasher(&"poneyland"), ("poneyland", 12), |(k, _)| hasher(&k));
     ///
     /// assert_eq!(
     ///     table.find(hasher(&"poneyland"), |&(x, _)| x == "poneyland",),
@@ -1614,7 +1632,7 @@ where
     /// let mut table: HashTable<(&str, u32)> = HashTable::new();
     /// let hasher = BuildHasherDefault::<AHasher>::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unchecked(hasher(&"poneyland"), ("poneyland", 12), |(k, _)| hasher(&k));
+    /// table.insert_unique(hasher(&"poneyland"), ("poneyland", 12), |(k, _)| hasher(&k));
     ///
     /// assert_eq!(
     ///     table.find(hasher(&"poneyland"), |&(x, _)| x == "poneyland",),
@@ -1786,7 +1804,7 @@ where
 /// let entry_v: AbsentEntry<_, _> = table.find_entry(hasher(&"a"), |&x| x == "a").unwrap_err();
 /// entry_v
 ///     .into_table()
-///     .insert_unchecked(hasher(&"a"), "a", hasher);
+///     .insert_unique(hasher(&"a"), "a", hasher);
 /// assert!(table.find(hasher(&"a"), |&x| x == "a").is_some() && table.len() == 1);
 ///
 /// // Nonexistent key (insert)
