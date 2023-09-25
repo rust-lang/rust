@@ -939,6 +939,7 @@ impl<T, A: Allocator> Arc<T, A> {
             ))
         }
     }
+
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
     /// Otherwise, an [`Err`] is returned with the same `Arc` that was
