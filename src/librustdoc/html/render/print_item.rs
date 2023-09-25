@@ -1467,9 +1467,15 @@ fn render_enum_fields<'a>(
             match *v.kind {
                 // FIXME(#101337): Show discriminant
                 clean::VariantItem(ref var) => match var.kind {
-                    clean::VariantKind::CLike => w.write_str(name.as_str()),
+                    clean::VariantKind::CLike => {
+                        if let Some(ref value) = var.discriminant {
+                            write!(w, "{} = {}", name.as_str(), value.value(cx.tcx(), true));
+                        } else {
+                            w.write_str(name.as_str());
+                        }
+                    }
                     clean::VariantKind::Tuple(ref s) => {
-                        write!(w, "{name}({})", print_tuple_struct_fields(cx, s),);
+                        write!(w, "{name}({})", print_tuple_struct_fields(cx, s));
                     }
                     clean::VariantKind::Struct(ref s) => {
                         render_struct(w, v, None, None, &s.fields, TAB, false, cx);
@@ -1523,6 +1529,12 @@ fn item_variants<'a>(
             " rightside",
         );
         write!(w, "<h3 class=\"code-header\">{name}", name = variant.name.unwrap());
+        if let clean::VariantItem(ref var) = *variant.kind &&
+            let clean::VariantKind::CLike = var.kind &&
+            let Some(ref value) = var.discriminant
+        {
+            write!(w, " = {}", value.value(cx.tcx(), true));
+        }
 
         let clean::VariantItem(variant_data) = &*variant.kind else { unreachable!() };
 
