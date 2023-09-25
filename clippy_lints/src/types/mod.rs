@@ -315,7 +315,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(
         &mut self,
         cx: &LateContext<'_>,
-        _: FnKind<'_>,
+        fn_kind: FnKind<'_>,
         decl: &FnDecl<'_>,
         _: &Body<'_>,
         _: Span,
@@ -340,6 +340,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             CheckTyContext {
                 is_in_trait_impl,
                 is_exported,
+                in_body: matches!(fn_kind, FnKind::Closure),
                 ..CheckTyContext::default()
             },
         );
@@ -427,7 +428,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
                 cx,
                 ty,
                 CheckTyContext {
-                    is_local: true,
+                    in_body: true,
                     ..CheckTyContext::default()
                 },
             );
@@ -481,7 +482,7 @@ impl Types {
         }
 
         match hir_ty.kind {
-            TyKind::Path(ref qpath) if !context.is_local => {
+            TyKind::Path(ref qpath) if !context.in_body => {
                 let hir_id = hir_ty.hir_id;
                 let res = cx.qpath_res(qpath, hir_id);
                 if let Some(def_id) = res.opt_def_id() {
@@ -581,8 +582,8 @@ impl Types {
 #[derive(Clone, Copy, Default)]
 struct CheckTyContext {
     is_in_trait_impl: bool,
-    /// `true` for types on local variables.
-    is_local: bool,
+    /// `true` for types on local variables and in closure signatures.
+    in_body: bool,
     /// `true` for types that are part of the public API.
     is_exported: bool,
     is_nested_call: bool,

@@ -4,7 +4,7 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, match_def_path, path_res, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, ItemKind, LangItem, Node, UnOp};
+use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, LangItem, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::EarlyBinder;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -122,9 +122,6 @@ impl LateLintPass<'_> for NonCanonicalImpls {
         if cx.tcx.is_automatically_derived(item.owner_id.to_def_id()) {
             return;
         }
-        let ItemKind::Impl(_) = item.kind else {
-            return;
-        };
         let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir().impl_item(impl_item.impl_item_id()).kind else {
             return;
         };
@@ -180,17 +177,8 @@ impl LateLintPass<'_> for NonCanonicalImpls {
 
         if cx.tcx.is_diagnostic_item(sym::PartialOrd, trait_impl.def_id)
             && impl_item.ident.name == sym::partial_cmp
-            && let Some(ord_def_id) = cx
-                .tcx
-                .diagnostic_items(trait_impl.def_id.krate)
-                .name_to_id
-                .get(&sym::Ord)
-            && implements_trait(
-                    cx,
-                    trait_impl.self_ty(),
-                    *ord_def_id,
-                    &[],
-                )
+            && let Some(ord_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
+            && implements_trait(cx, trait_impl.self_ty(), ord_def_id, &[])
         {
             // If the `cmp` call likely needs to be fully qualified in the suggestion
             // (like `std::cmp::Ord::cmp`). It's unfortunate we must put this here but we can't

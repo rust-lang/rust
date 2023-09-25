@@ -18,7 +18,6 @@ use test_utils::IS_RUSTC_TEST_SUITE;
 // in the depinfo file (otherwise cargo thinks they are unused)
 extern crate clippy_lints;
 extern crate clippy_utils;
-extern crate derive_new;
 extern crate futures;
 extern crate if_chain;
 extern crate itertools;
@@ -33,7 +32,6 @@ mod test_utils;
 static TEST_DEPENDENCIES: &[&str] = &[
     "clippy_lints",
     "clippy_utils",
-    "derive_new",
     "futures",
     "if_chain",
     "itertools",

@@ -1,7 +1,8 @@
 use rustc_hir::{Expr, HirId};
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, Body, InlineAsmOperand, Local, Location, Place, StatementKind, TerminatorKind, START_BLOCK,
+    traversal, BasicBlock, Body, InlineAsmOperand, Local, Location, Place, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::TyCtxt;
 
@@ -79,8 +80,32 @@ impl<'a, 'tcx> Visitor<'tcx> for V<'a> {
     }
 }
 
+/// Checks if the block is part of a cycle
+pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
+    let mut seen = BitSet::new_empty(body.basic_blocks.len());
+    let mut to_visit = Vec::with_capacity(body.basic_blocks.len() / 2);
+
+    seen.insert(block);
+    let mut next = block;
+    loop {
+        for succ in body.basic_blocks[next].terminator().successors() {
+            if seen.insert(succ) {
+                to_visit.push(succ);
+            } else if succ == block {
+                return true;
+            }
+        }
+
+        if let Some(x) = to_visit.pop() {
+            next = x;
+        } else {
+            return false;
+        }
+    }
+}
+
 /// Convenience wrapper around `visit_local_usage`.
-pub fn used_exactly_once(mir: &rustc_middle::mir::Body<'_>, local: rustc_middle::mir::Local) -> Option<bool> {
+pub fn used_exactly_once(mir: &Body<'_>, local: rustc_middle::mir::Local) -> Option<bool> {
     visit_local_usage(
         &[local],
         mir,
@@ -91,11 +116,14 @@ pub fn used_exactly_once(mir: &rustc_middle::mir::Body<'_>, local: rustc_middle:
     )
     .map(|mut vec| {
         let LocalUsage { local_use_locs, .. } = vec.remove(0);
-        local_use_locs
+        let mut locations = local_use_locs
             .into_iter()
-            .filter(|location| !is_local_assignment(mir, local, *location))
-            .count()
-            == 1
+            .filter(|&location| !is_local_assignment(mir, local, location));
+        if let Some(location) = locations.next() {
+            locations.next().is_none() && !block_in_cycle(mir, location.block)
+        } else {
+            false
+        }
     })
 }
 

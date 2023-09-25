@@ -1,4 +1,7 @@
 //@aux-build:../../ui/auxiliary/proc_macro_unsafe.rs
+//@revisions: default disabled
+//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/undocumented_unsafe_blocks/default
+//@[disabled] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/undocumented_unsafe_blocks/disabled
 
 #![warn(clippy::undocumented_unsafe_blocks, clippy::unnecessary_safety_comment)]
 #![allow(deref_nullptr, clippy::let_unit_value, clippy::missing_safety_doc)]
@@ -491,7 +494,7 @@ unsafe impl CrateRoot for () {}
 // SAFETY: ok
 unsafe impl CrateRoot for (i32) {}
 
-fn issue_9142() {
+fn nested_block_separation_issue_9142() {
     // SAFETY: ok
     let _ =
         // we need this comment to avoid rustfmt putting
@@ -518,49 +521,50 @@ pub const unsafe fn a_const_function_with_a_very_long_name_to_break_the_line() -
     2
 }
 
-fn issue_10832() {
-    // Safety: A safety comment
+fn separate_line_from_let_issue_10832() {
+    // SAFETY: fail ONLY if `accept-comment-above-statement = false`
     let _some_variable_with_a_very_long_name_to_break_the_line =
         unsafe { a_function_with_a_very_long_name_to_break_the_line() };
 
-    // Safety: Another safety comment
+    // SAFETY: fail ONLY if `accept-comment-above-statement = false`
     const _SOME_CONST_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
 
-    // Safety: Yet another safety comment
+    // SAFETY: fail ONLY if `accept-comment-above-statement = false`
     static _SOME_STATIC_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
 }
 
-fn issue_8679<T: Copy>() {
-    // SAFETY:
+fn above_expr_attribute_issue_8679<T: Copy>() {
+    // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[allow(unsafe_code)]
     unsafe {}
 
-    // SAFETY:
+    // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[expect(unsafe_code, reason = "totally safe")]
     unsafe {
         *std::ptr::null::<T>()
     };
 
-    // Safety: A safety comment
+    // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[allow(unsafe_code)]
     let _some_variable_with_a_very_long_name_to_break_the_line =
         unsafe { a_function_with_a_very_long_name_to_break_the_line() };
 
-    // Safety: Another safety comment
+    // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[allow(unsafe_code)]
     const _SOME_CONST_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
 
-    // Safety: Yet another safety comment
+    // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[allow(unsafe_code)]
-    static _SOME_STATIC_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
+    #[allow(non_upper_case_globals)]
+    static _some_static_with_a_very_long_name_to_break_the_line: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
 
     // SAFETY:
     #[allow(unsafe_code)]
-    // This also works I guess
+    // This shouldn't work either
     unsafe {}
 }
 

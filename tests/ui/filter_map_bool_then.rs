@@ -55,3 +55,27 @@ fn main() {
 fn issue11309<'a>(iter: impl Iterator<Item = (&'a str, &'a str)>) -> Vec<&'a str> {
     iter.filter_map(|(_, s): (&str, _)| Some(s)).collect()
 }
+
+fn issue11503() {
+    let bools: &[bool] = &[true, false, false, true];
+    let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+
+    // Need to insert multiple derefs if there is more than one layer of references
+    let bools: &[&&bool] = &[&&true, &&false, &&false, &&true];
+    let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+
+    // Should also suggest derefs when going through a mutable reference
+    let bools: &[&mut bool] = &[&mut true];
+    let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+
+    // Should also suggest derefs when going through a custom deref
+    struct DerefToBool;
+    impl std::ops::Deref for DerefToBool {
+        type Target = bool;
+        fn deref(&self) -> &Self::Target {
+            &true
+        }
+    }
+    let bools: &[&&DerefToBool] = &[&&DerefToBool];
+    let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+}

@@ -74,9 +74,11 @@ mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
 mod path_buf_push_overwrite;
+mod path_ends_with_ext;
 mod range_zip_with_len;
 mod read_line_without_trim;
 mod readonly_write_lock;
+mod redundant_as_str;
 mod repeat_once;
 mod search_is_some;
 mod seek_from_current;
@@ -120,9 +122,10 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 use if_chain::if_chain;
+pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
@@ -3563,11 +3566,77 @@ declare_clippy_lint! {
     "calls to `.take()` or `.skip()` that are out of bounds"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for calls to `Path::ends_with` calls where the argument looks like a file extension.
+    ///
+    /// By default, Clippy has a short list of known filenames that start with a dot
+    /// but aren't necessarily file extensions (e.g. the `.git` folder), which are allowed by default.
+    /// The `allowed-dotfiles` configuration can be used to allow additional
+    /// file extensions that Clippy should not lint.
+    ///
+    /// ### Why is this bad?
+    /// This doesn't actually compare file extensions. Rather, `ends_with` compares the given argument
+    /// to the last **component** of the path and checks if it matches exactly.
+    ///
+    /// ### Known issues
+    /// File extensions are often at most three characters long, so this only lints in those cases
+    /// in an attempt to avoid false positives.
+    /// Any extension names longer than that are assumed to likely be real path components and are
+    /// therefore ignored.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::path::Path;
+    /// fn is_markdown(path: &Path) -> bool {
+    ///     path.ends_with(".md")
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::path::Path;
+    /// fn is_markdown(path: &Path) -> bool {
+    ///     path.extension().is_some_and(|ext| ext == "md")
+    /// }
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub PATH_ENDS_WITH_EXT,
+    suspicious,
+    "attempting to compare file extensions using `Path::ends_with`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `as_str()` on a `String`` chained with a method available on the `String` itself.
+    ///
+    /// ### Why is this bad?
+    /// The `as_str()` conversion is pointless and can be removed for simplicity and cleanliness.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # #![allow(unused)]
+    /// let owned_string = "This is a string".to_owned();
+    /// owned_string.as_str().as_bytes();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # #![allow(unused)]
+    /// let owned_string = "This is a string".to_owned();
+    /// owned_string.as_bytes();
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub REDUNDANT_AS_STR,
+    complexity,
+    "`as_str` used to call a method on `str` that is also available on `String`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
+    allowed_dotfiles: FxHashSet<String>,
 }
 
 impl Methods {
@@ -3577,12 +3646,14 @@ impl Methods {
         msrv: Msrv,
         allow_expect_in_tests: bool,
         allow_unwrap_in_tests: bool,
+        allowed_dotfiles: FxHashSet<String>,
     ) -> Self {
         Self {
             avoid_breaking_exported_api,
             msrv,
             allow_expect_in_tests,
             allow_unwrap_in_tests,
+            allowed_dotfiles,
         }
     }
 }
@@ -3703,6 +3774,8 @@ impl_lint_pass!(Methods => [
     FILTER_MAP_BOOL_THEN,
     READONLY_WRITE_LOCK,
     ITER_OUT_OF_BOUNDS,
+    PATH_ENDS_WITH_EXT,
+    REDUNDANT_AS_STR,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3852,18 +3925,20 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if_chain! {
             if let TraitItemKind::Fn(ref sig, _) = item.kind;
             if sig.decl.implicit_self.has_implicit_self();
-            if let Some(first_arg_ty) = sig.decl.inputs.iter().next();
-
+            if let Some(first_arg_hir_ty) = sig.decl.inputs.first();
+            if let Some(&first_arg_ty) = cx.tcx.fn_sig(item.owner_id)
+                .instantiate_identity()
+                .inputs()
+                .skip_binder()
+                .first();
             then {
-                let first_arg_span = first_arg_ty.span;
-                let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
                 let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
                 wrong_self_convention::check(
                     cx,
                     item.ident.name.as_str(),
                     self_ty,
                     first_arg_ty,
-                    first_arg_span,
+                    first_arg_hir_ty.span,
                     false,
                     true,
                 );
@@ -3929,6 +4004,7 @@ impl Methods {
                 ("as_deref" | "as_deref_mut", []) => {
                     needless_option_as_deref::check(cx, expr, recv, name);
                 },
+                ("as_bytes" | "is_empty", []) => if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) { redundant_as_str::check(cx, expr, recv, as_str_span, span); },
                 ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
                 ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
                 ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
@@ -3978,6 +4054,7 @@ impl Methods {
                     if let ExprKind::MethodCall(.., span) = expr.kind {
                         case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
                     }
+                    path_ends_with_ext::check(cx, recv, arg, expr, &self.msrv, &self.allowed_dotfiles);
                 },
                 ("expect", [_]) => {
                     match method_call(recv) {
