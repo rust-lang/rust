@@ -230,6 +230,7 @@ mod mutex_atomic;
 mod needless_arbitrary_self_type;
 mod needless_bool;
 mod needless_borrowed_ref;
+mod needless_borrows_for_generic_args;
 mod needless_continue;
 mod needless_else;
 mod needless_for_each;
@@ -331,6 +332,7 @@ mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
 mod unnecessary_box_returns;
+mod unnecessary_map_on_constructor;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
 mod unnecessary_struct_initialization;
@@ -610,7 +612,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
                 .collect(),
         ))
     });
-    store.register_early_pass(|| Box::new(utils::format_args_collector::FormatArgsCollector));
+    store.register_early_pass(|| Box::<utils::format_args_collector::FormatArgsCollector>::default());
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|_| Box::new(utils::author::Author));
     let await_holding_invalid_types = conf.await_holding_invalid_types.clone();
@@ -637,7 +639,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(needless_bool::NeedlessBool));
     store.register_late_pass(|_| Box::new(needless_bool::BoolComparison));
     store.register_late_pass(|_| Box::new(needless_for_each::NeedlessForEach));
-    store.register_late_pass(|_| Box::<misc::LintPass>::default());
+    store.register_late_pass(|_| Box::new(misc::LintPass));
     store.register_late_pass(|_| Box::new(eta_reduction::EtaReduction));
     store.register_late_pass(|_| Box::new(mut_mut::MutMut));
     store.register_late_pass(|_| Box::new(mut_reference::UnnecessaryMutPassed));
@@ -663,12 +665,19 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let allow_unwrap_in_tests = conf.allow_unwrap_in_tests;
     let suppress_restriction_lint_in_const = conf.suppress_restriction_lint_in_const;
     store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(msrv())));
+    let allowed_dotfiles = conf
+        .allowed_dotfiles
+        .iter()
+        .cloned()
+        .chain(methods::DEFAULT_ALLOWED_DOTFILES.iter().copied().map(ToOwned::to_owned))
+        .collect::<FxHashSet<_>>();
     store.register_late_pass(move |_| {
         Box::new(methods::Methods::new(
             avoid_breaking_exported_api,
             msrv(),
             allow_expect_in_tests,
             allow_unwrap_in_tests,
+            allowed_dotfiles.clone(),
         ))
     });
     store.register_late_pass(move |_| Box::new(matches::Matches::new(msrv())));
@@ -881,7 +890,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports)));
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
     store.register_late_pass(|_| Box::new(unnamed_address::UnnamedAddress));
-    store.register_late_pass(move |_| Box::new(dereference::Dereferencing::new(msrv())));
+    store.register_late_pass(|_| Box::<dereference::Dereferencing<'_>>::default());
     store.register_late_pass(|_| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|_| Box::new(future_not_send::FutureNotSend));
     let future_size_threshold = conf.future_size_threshold;
@@ -1104,6 +1113,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::<reserve_after_initialization::ReserveAfterInitialization>::default());
     store.register_late_pass(|_| Box::new(implied_bounds_in_impls::ImpliedBoundsInImpls));
     store.register_late_pass(|_| Box::new(missing_asserts_for_indexing::MissingAssertsForIndexing));
+    store.register_late_pass(|_| Box::new(unnecessary_map_on_constructor::UnnecessaryMapOnConstructor));
+    store.register_late_pass(move |_| {
+        Box::new(needless_borrows_for_generic_args::NeedlessBorrowsForGenericArgs::new(
+            msrv(),
+        ))
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

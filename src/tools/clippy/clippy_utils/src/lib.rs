@@ -1785,6 +1785,33 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
     None
 }
 
+/// Returns `true` if the lint is `#[allow]`ed or `#[expect]`ed at any of the `ids`, fulfilling all
+/// of the expectations in `ids`
+///
+/// This should only be used when the lint would otherwise be emitted, for a way to check if a lint
+/// is allowed early to skip work see [`is_lint_allowed`]
+///
+/// To emit at a lint at a different context than the one current see
+/// [`span_lint_hir`](diagnostics::span_lint_hir) or
+/// [`span_lint_hir_and_then`](diagnostics::span_lint_hir_and_then)
+pub fn fulfill_or_allowed(cx: &LateContext<'_>, lint: &'static Lint, ids: impl IntoIterator<Item = HirId>) -> bool {
+    let mut suppress_lint = false;
+
+    for id in ids {
+        let (level, _) = cx.tcx.lint_level_at_node(lint, id);
+        if let Some(expectation) = level.get_expectation_id() {
+            cx.fulfill_expectation(expectation);
+        }
+
+        match level {
+            Level::Allow | Level::Expect(_) => suppress_lint = true,
+            Level::Warn | Level::ForceWarn(_) | Level::Deny | Level::Forbid => {},
+        }
+    }
+
+    suppress_lint
+}
+
 /// Returns `true` if the lint is allowed in the current context. This is useful for
 /// skipping long running code when it's unnecessary
 ///
@@ -1958,7 +1985,7 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 /// Checks if the given function kind is an async function.
 pub fn is_async_fn(kind: FnKind<'_>) -> bool {
     match kind {
-        FnKind::ItemFn(_, _, header) => header.asyncness .is_async(),
+        FnKind::ItemFn(_, _, header) => header.asyncness.is_async(),
         FnKind::Method(_, sig) => sig.header.asyncness.is_async(),
         FnKind::Closure => false,
     }
