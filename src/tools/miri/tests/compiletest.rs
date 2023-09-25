@@ -179,8 +179,6 @@ regexes! {
     r" +at (.*\.rs)"                 => " at $1",
     // erase generics in backtraces
     "([0-9]+: .*)::<.*>"             => "$1",
-    // erase addresses in backtraces
-    "([0-9]+: ) +0x[0-9a-f]+ - (.*)" => "$1$2",
     // erase long hexadecimals
     r"0x[0-9a-fA-F]+[0-9a-fA-F]{2,2}" => "$$HEX",
     // erase specific alignments
@@ -192,7 +190,7 @@ regexes! {
     // Windows file paths
     r"\\"                           => "/",
     // erase Rust stdlib path
-    "[^ `]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
+    "[^ \n`]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
     // erase platform file paths
     "sys/[a-z]+/"                    => "sys/PLATFORM/",
     // erase paths into the crate registry
