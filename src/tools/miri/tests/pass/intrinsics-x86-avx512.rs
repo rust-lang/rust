@@ -1,5 +1,6 @@
 // Ignore everything except x86 and x86_64
 // Any additional target are added to CI should be ignored here
+// (We cannot use `cfg`-based tricks here since the `target-feature` flags below only work on x86.)
 //@ignore-target-aarch64
 //@ignore-target-arm
 //@ignore-target-avr
