@@ -6,37 +6,14 @@ use std::env;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
-const CARGO_CLIPPY_HELP: &str = "Checks a package to catch common mistakes and improve your Rust code.
+use anstream::println;
 
-Usage:
-    cargo clippy [options] [--] [<opts>...]
-
-Common options:
-    --no-deps                Run Clippy only on the given crate, without linting the dependencies
-    --fix                    Automatically apply lint suggestions. This flag implies `--no-deps` and `--all-targets`
-    -h, --help               Print this message
-    -V, --version            Print version info and exit
-    --explain LINT           Print the documentation for a given lint
-
-For the other options see `cargo check --help`.
-
-To allow or deny a lint from the command line you can use `cargo clippy --`
-with:
-
-    -W --warn OPT       Set lint warnings
-    -A --allow OPT      Set lint allowed
-    -D --deny OPT       Set lint denied
-    -F --forbid OPT     Set lint forbidden
-
-You can use tool lints to allow or deny lints from your code, e.g.:
-
-    #[allow(clippy::needless_lifetimes)]
-";
-
+#[allow(clippy::ignored_unit_patterns)]
 fn show_help() {
-    println!("{CARGO_CLIPPY_HELP}");
+    println!("{}", help_message());
 }
 
+#[allow(clippy::ignored_unit_patterns)]
 fn show_version() {
     let version_info = rustc_tools_util::get_version_info!();
     println!("{version_info}");
@@ -168,6 +145,38 @@ where
     }
 }
 
+#[must_use]
+pub fn help_message() -> &'static str {
+    color_print::cstr!(
+"Checks a package to catch common mistakes and improve your Rust code.
+
+<green,bold>Usage</>:
+    <cyan,bold>cargo clippy</> <cyan>[OPTIONS] [--] [<<ARGS>>...]</>
+
+<green,bold>Common options:</>
+    <cyan,bold>--no-deps</>                Run Clippy only on the given crate, without linting the dependencies
+    <cyan,bold>--fix</>                    Automatically apply lint suggestions. This flag implies <cyan>--no-deps</> and <cyan>--all-targets</>
+    <cyan,bold>-h</>, <cyan,bold>--help</>               Print this message
+    <cyan,bold>-V</>, <cyan,bold>--version</>            Print version info and exit
+    <cyan,bold>--explain [LINT]</>         Print the documentation for a given lint
+
+See all options with <cyan,bold>cargo check --help</>.
+
+<green,bold>Allowing / Denying lints</>
+
+To allow or deny a lint from the command line you can use <cyan,bold>cargo clippy --</> with:
+
+    <cyan,bold>-W</> / <cyan,bold>--warn</> <cyan>[LINT]</>       Set lint warnings
+    <cyan,bold>-A</> / <cyan,bold>--allow</> <cyan>[LINT]</>      Set lint allowed
+    <cyan,bold>-D</> / <cyan,bold>--deny</> <cyan>[LINT]</>       Set lint denied
+    <cyan,bold>-F</> / <cyan,bold>--forbid</> <cyan>[LINT]</>     Set lint forbidden
+
+You can use tool lints to allow or deny lints from your code, e.g.:
+
+    <yellow,bold>#[allow(clippy::needless_lifetimes)]</>
+"
+    )
+}
 #[cfg(test)]
 mod tests {
     use super::ClippyCmd;
