@@ -10,7 +10,9 @@ use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
+    crate::MiriInterpCxExt<'mir, 'tcx>
+{
     fn emulate_x86_sse_intrinsic(
         &mut self,
         link_name: Symbol,
