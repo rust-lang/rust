@@ -416,6 +416,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool RelaxELFRelocations,
     bool UseInitArray,
     const char *SplitDwarfFile,
+    const char *OutputObjFile,
     const char *DebugInfoCompression,
     bool ForceEmulatedTls,
     const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
@@ -447,6 +448,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.MCOptions.ABIName = ABIStr;
   if (SplitDwarfFile) {
       Options.MCOptions.SplitDwarfFile = SplitDwarfFile;
+  }
+  if (OutputObjFile) {
+      Options.ObjectFilenameForDebug = OutputObjFile;
   }
 #if LLVM_VERSION_GE(16, 0)
   if (!strcmp("zlib", DebugInfoCompression) && llvm::compression::zlib::isAvailable()) {

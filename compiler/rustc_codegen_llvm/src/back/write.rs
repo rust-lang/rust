@@ -100,7 +100,7 @@ pub fn write_output_file<'ll>(
 }
 
 pub fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
-    let config = TargetMachineFactoryConfig { split_dwarf_file: None };
+    let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
     let features = llvm_util::global_llvm_features(sess, false);
@@ -118,7 +118,11 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMach
     } else {
         None
     };
-    let config = TargetMachineFactoryConfig { split_dwarf_file };
+
+    let output_obj_file =
+        Some(tcx.output_filenames(()).temp_path(OutputType::Object, Some(mod_name)));
+    let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
+
     target_machine_factory(
         &tcx.sess,
         tcx.backend_optimization_level(()),
@@ -256,9 +260,13 @@ pub fn target_machine_factory(
     let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
     Arc::new(move |config: TargetMachineFactoryConfig| {
-        let split_dwarf_file =
-            path_mapping.map_prefix(config.split_dwarf_file.unwrap_or_default()).0;
-        let split_dwarf_file = CString::new(split_dwarf_file.to_str().unwrap()).unwrap();
+        let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
+            let path = path_mapping.map_prefix(path.unwrap_or_default()).0;
+            CString::new(path.to_str().unwrap()).unwrap()
+        };
+
+        let split_dwarf_file = path_to_cstring_helper(config.split_dwarf_file);
+        let output_obj_file = path_to_cstring_helper(config.output_obj_file);
 
         OwnedTargetMachine::new(
             &triple,
@@ -279,6 +287,7 @@ pub fn target_machine_factory(
             relax_elf_relocations,
             use_init_array,
             &split_dwarf_file,
+            &output_obj_file,
             &debuginfo_compression,
             force_emulated_tls,
             &args_cstr_buff,
