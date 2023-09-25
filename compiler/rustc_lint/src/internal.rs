@@ -3,14 +3,14 @@
 
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
-    QueryInstability, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
+    QueryInstability, SpanUseEqCtxtDiag, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
     UntranslatableDiagnosticTrivial,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_hir::def::Res;
 use rustc_hir::{def_id::DefId, Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
-use rustc_hir::{HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
+use rustc_hir::{BinOp, BinOpKind, HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -535,5 +535,46 @@ impl LateLintPass<'_> for BadOptAccess {
                 );
             }
         }
+    }
+}
+
+// some things i'm not sure about:
+//   * is Warn the right level?
+//   * the way i verify that the right method is being called (path + diag item check)
+
+declare_tool_lint! {
+    pub rustc::SPAN_USE_EQ_CTXT,
+    Warn, // is this the right level?
+    "Use of `==` with `Span::ctxt` rather than `Span::eq_ctxt`",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(SpanUseEqCtxt => [SPAN_USE_EQ_CTXT]);
+
+impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        if let ExprKind::Binary(BinOp { node: BinOpKind::Eq, .. }, lhs, rhs) = expr.kind {
+            if is_span_ctxt_call(cx, lhs) && is_span_ctxt_call(cx, rhs) {
+                cx.emit_spanned_lint(
+                    SPAN_USE_EQ_CTXT,
+                    expr.span,
+                    SpanUseEqCtxtDiag { msg: "fail" },
+                );
+            }
+        }
+    }
+}
+
+fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match &expr.kind {
+        ExprKind::MethodCall(path, receiver, _, _) => {
+            path.ident.name.as_str() == "ctxt"
+                && cx
+                    .typeck_results()
+                    .type_dependent_def_id(receiver.hir_id)
+                    .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::Span, did))
+        }
+
+        _ => false,
     }
 }

@@ -901,6 +901,12 @@ pub struct QueryInstability {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_span_use_eq_ctxt)]
+pub struct SpanUseEqCtxtDiag<'a> {
+    pub msg: &'a str,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_tykind_kind)]
 pub struct TykindKind {
     #[suggestion(code = "ty", applicability = "maybe-incorrect")]

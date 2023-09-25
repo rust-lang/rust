@@ -75,6 +75,7 @@ use rustc_data_structures::fx::FxIndexSet;
 /// the dependency to the parent definition's span. This is performed
 /// using the callback `SPAN_TRACK` to access the query engine.
 ///
+#[cfg_attr(not(test), rustc_diagnostic_item = "Span")]
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 #[rustc_pass_by_value]
 pub struct Span {
@@ -212,7 +213,6 @@ impl Span {
 
     /// This function is used as a fast path when decoding the full `SpanData` is not necessary.
     /// It's a cut-down version of `data_untracked`.
-    #[rustc_diagnostic_item = "SpanCtxt"]
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
         if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {

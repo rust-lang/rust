@@ -303,7 +303,7 @@ symbols! {
         SliceIndex,
         SliceIter,
         Some,
-        SpanCtxt,
+        Span,
         String,
         StructuralEq,
         StructuralPartialEq,
