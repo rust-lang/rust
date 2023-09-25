@@ -89,11 +89,20 @@ impl EarlyLintPass for RawStrings {
                         let r_pos = expr.span.lo() + BytePos::from_usize(prefix.len() - 1);
                         let start = start.with_lo(r_pos);
 
-                        diag.multipart_suggestion(
-                            "try",
-                            vec![(start, String::new()), (end, String::new())],
-                            Applicability::MachineApplicable,
-                        );
+                        if end.is_empty() {
+                            diag.span_suggestion(
+                                start,
+                                "use a string literal instead",
+                                format!("\"{str}\""),
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            diag.multipart_suggestion(
+                                "try",
+                                vec![(start, String::new()), (end, String::new())],
+                                Applicability::MachineApplicable,
+                            );
+                        }
                     },
                 );
                 if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS), rustc_lint::Allow) {

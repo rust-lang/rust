@@ -483,20 +483,18 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
             && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
-            return unsafe_line.sf.lines(|lines| {
-                if comment_start_line.line >= unsafe_line.line {
-                    HasSafetyComment::No
-                } else {
-                    match text_has_safety_comment(
-                        src,
-                        &lines[comment_start_line.line + 1..=unsafe_line.line],
-                        unsafe_line.sf.start_pos,
-                    ) {
-                        Some(b) => HasSafetyComment::Yes(b),
-                        None => HasSafetyComment::No,
-                    }
+            return if comment_start_line.line >= unsafe_line.line {
+                HasSafetyComment::No
+            } else {
+                match text_has_safety_comment(
+                    src,
+                    &unsafe_line.sf.lines()[comment_start_line.line + 1..=unsafe_line.line],
+                    unsafe_line.sf.start_pos,
+                ) {
+                    Some(b) => HasSafetyComment::Yes(b),
+                    None => HasSafetyComment::No,
                 }
-            });
+            };
         }
     }
     HasSafetyComment::Maybe
@@ -527,20 +525,18 @@ fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> H
             && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
-            return unsafe_line.sf.lines(|lines| {
-                if comment_start_line.line >= unsafe_line.line {
-                    HasSafetyComment::No
-                } else {
-                    match text_has_safety_comment(
-                        src,
-                        &lines[comment_start_line.line + 1..=unsafe_line.line],
-                        unsafe_line.sf.start_pos,
-                    ) {
-                        Some(b) => HasSafetyComment::Yes(b),
-                        None => HasSafetyComment::No,
-                    }
+            return if comment_start_line.line >= unsafe_line.line {
+                HasSafetyComment::No
+            } else {
+                match text_has_safety_comment(
+                    src,
+                    &unsafe_line.sf.lines()[comment_start_line.line + 1..=unsafe_line.line],
+                    unsafe_line.sf.start_pos,
+                ) {
+                    Some(b) => HasSafetyComment::Yes(b),
+                    None => HasSafetyComment::No,
                 }
-            });
+            };
         }
     }
     HasSafetyComment::Maybe
@@ -590,20 +586,18 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
             && Lrc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
-            unsafe_line.sf.lines(|lines| {
-                if macro_line.line < unsafe_line.line {
-                    match text_has_safety_comment(
-                        src,
-                        &lines[macro_line.line + 1..=unsafe_line.line],
-                        unsafe_line.sf.start_pos,
-                    ) {
-                        Some(b) => HasSafetyComment::Yes(b),
-                        None => HasSafetyComment::No,
-                    }
-                } else {
-                    HasSafetyComment::No
+            if macro_line.line < unsafe_line.line {
+                match text_has_safety_comment(
+                    src,
+                    &unsafe_line.sf.lines()[macro_line.line + 1..=unsafe_line.line],
+                    unsafe_line.sf.start_pos,
+                ) {
+                    Some(b) => HasSafetyComment::Yes(b),
+                    None => HasSafetyComment::No,
                 }
-            })
+            } else {
+                HasSafetyComment::No
+            }
         } else {
             // Problem getting source text. Pretend a comment was found.
             HasSafetyComment::Maybe
@@ -654,13 +648,11 @@ fn span_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
             // Get the text from the start of function body to the unsafe block.
             //     fn foo() { some_stuff; unsafe { stuff }; other_stuff; }
             //              ^-------------^
-            unsafe_line.sf.lines(|lines| {
-                body_line.line < unsafe_line.line && text_has_safety_comment(
-                    src,
-                    &lines[body_line.line + 1..=unsafe_line.line],
-                    unsafe_line.sf.start_pos,
-                ).is_some()
-            })
+            body_line.line < unsafe_line.line && text_has_safety_comment(
+                src,
+                &unsafe_line.sf.lines()[body_line.line + 1..=unsafe_line.line],
+                unsafe_line.sf.start_pos,
+            ).is_some()
         } else {
             // Problem getting source text. Pretend a comment was found.
             true

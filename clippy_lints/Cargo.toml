@@ -15,7 +15,6 @@ clippy_utils = { path = "../clippy_utils" }
 declare_clippy_lint = { path = "../declare_clippy_lint" }
 if_chain = "1.0"
 itertools = "0.10.1"
-pulldown-cmark = { version = "0.9", default-features = false }
 quine-mc_cluskey = "0.2"
 regex-syntax = "0.7"
 serde = { version = "1.0", features = ["derive"] }

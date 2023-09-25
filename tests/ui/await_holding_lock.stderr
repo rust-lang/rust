@@ -6,13 +6,10 @@ LL |         let guard = x.lock().unwrap();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:9:9
+  --> $DIR/await_holding_lock.rs:11:15
    |
-LL | /         let guard = x.lock().unwrap();
-LL | |
-LL | |         baz().await
-LL | |     }
-   | |_____^
+LL |         baz().await
+   |               ^^^^^
    = note: `-D clippy::await-holding-lock` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::await_holding_lock)]`
 
@@ -24,13 +21,10 @@ LL |         let guard = x.read().unwrap();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:25:9
+  --> $DIR/await_holding_lock.rs:27:15
    |
-LL | /         let guard = x.read().unwrap();
-LL | |
-LL | |         baz().await
-LL | |     }
-   | |_____^
+LL |         baz().await
+   |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:31:13
@@ -40,13 +34,10 @@ LL |         let mut guard = x.write().unwrap();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:31:9
+  --> $DIR/await_holding_lock.rs:33:15
    |
-LL | /         let mut guard = x.write().unwrap();
-LL | |
-LL | |         baz().await
-LL | |     }
-   | |_____^
+LL |         baz().await
+   |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:53:13
@@ -56,16 +47,13 @@ LL |         let guard = x.lock().unwrap();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:53:9
+  --> $DIR/await_holding_lock.rs:56:28
    |
-LL | /         let guard = x.lock().unwrap();
-LL | |
-LL | |
-LL | |         let second = baz().await;
-...  |
-LL | |         first + second + third
-LL | |     }
-   | |_____^
+LL |         let second = baz().await;
+   |                            ^^^^^
+LL |
+LL |         let third = baz().await;
+   |                           ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:67:17
@@ -75,13 +63,10 @@ LL |             let guard = x.lock().unwrap();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:67:13
+  --> $DIR/await_holding_lock.rs:69:19
    |
-LL | /             let guard = x.lock().unwrap();
-LL | |
-LL | |             baz().await
-LL | |         };
-   | |_________^
+LL |             baz().await
+   |                   ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:80:17
@@ -91,13 +76,10 @@ LL |             let guard = x.lock().unwrap();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:80:13
+  --> $DIR/await_holding_lock.rs:82:19
    |
-LL | /             let guard = x.lock().unwrap();
-LL | |
-LL | |             baz().await
-LL | |         }
-   | |_________^
+LL |             baz().await
+   |                   ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:93:13
@@ -107,13 +89,10 @@ LL |         let guard = x.lock();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:93:9
+  --> $DIR/await_holding_lock.rs:95:15
    |
-LL | /         let guard = x.lock();
-LL | |
-LL | |         baz().await
-LL | |     }
-   | |_____^
+LL |         baz().await
+   |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:109:13
@@ -123,13 +102,10 @@ LL |         let guard = x.read();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:109:9
+  --> $DIR/await_holding_lock.rs:111:15
    |
-LL | /         let guard = x.read();
-LL | |
-LL | |         baz().await
-LL | |     }
-   | |_____^
+LL |         baz().await
+   |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:115:13
@@ -139,13 +115,10 @@ LL |         let mut guard = x.write();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:115:9
+  --> $DIR/await_holding_lock.rs:117:15
    |
-LL | /         let mut guard = x.write();
-LL | |
-LL | |         baz().await
-LL | |     }
-   | |_____^
+LL |         baz().await
+   |               ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:137:13
@@ -155,16 +128,13 @@ LL |         let guard = x.lock();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:137:9
+  --> $DIR/await_holding_lock.rs:140:28
    |
-LL | /         let guard = x.lock();
-LL | |
-LL | |
-LL | |         let second = baz().await;
-...  |
-LL | |         first + second + third
-LL | |     }
-   | |_____^
+LL |         let second = baz().await;
+   |                            ^^^^^
+LL |
+LL |         let third = baz().await;
+   |                           ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:151:17
@@ -174,13 +144,10 @@ LL |             let guard = x.lock();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:151:13
+  --> $DIR/await_holding_lock.rs:153:19
    |
-LL | /             let guard = x.lock();
-LL | |
-LL | |             baz().await
-LL | |         };
-   | |_________^
+LL |             baz().await
+   |                   ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:164:17
@@ -190,13 +157,10 @@ LL |             let guard = x.lock();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:164:13
+  --> $DIR/await_holding_lock.rs:166:19
    |
-LL | /             let guard = x.lock();
-LL | |
-LL | |             baz().await
-LL | |         }
-   | |_________^
+LL |             baz().await
+   |                   ^^^^^
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:185:9
@@ -206,15 +170,10 @@ LL |     let mut guard = x.lock().unwrap();
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
-  --> $DIR/await_holding_lock.rs:185:5
+  --> $DIR/await_holding_lock.rs:189:11
    |
-LL | /     let mut guard = x.lock().unwrap();
-LL | |
-LL | |     *guard += 1;
-LL | |     drop(guard);
-LL | |     baz().await;
-LL | | }
-   | |_^
+LL |     baz().await;
+   |           ^^^^^
 
 error: aborting due to 13 previous errors
 

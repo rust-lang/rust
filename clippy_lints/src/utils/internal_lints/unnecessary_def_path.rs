@@ -10,7 +10,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, Local, Mutability, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::interpret::{Allocation, ConstValue, GlobalAlloc};
+use rustc_middle::mir::interpret::{Allocation, GlobalAlloc};
+use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
@@ -232,7 +233,8 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
                 cx.tcx.type_of(def_id).instantiate_identity(),
             ),
             Res::Def(DefKind::Const, def_id) => match cx.tcx.const_eval_poly(def_id).ok()? {
-                ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => {
+                ConstValue::Indirect { alloc_id, offset } if offset.bytes() == 0 => {
+                    let alloc = cx.tcx.global_alloc(alloc_id).unwrap_memory();
                     read_mir_alloc_def_path(cx, alloc.inner(), cx.tcx.type_of(def_id).instantiate_identity())
                 },
                 _ => None,

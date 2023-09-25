@@ -29,8 +29,9 @@
 /// 
 /// This one too.
 /// ```no_run
-/// fn main() {
+/// // the fn is not always the first line
 //~^ ERROR: needless `fn main` in doctest
+/// fn main() {
 ///     unimplemented!();
 /// }
 /// ```

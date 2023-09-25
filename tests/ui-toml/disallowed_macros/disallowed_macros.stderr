@@ -69,6 +69,14 @@ error: use of a disallowed macro `macros::binop`
 LL |     let _ = macros::binop!(1);
    |             ^^^^^^^^^^^^^^^^^
 
+error: use of a disallowed macro `macros::attr`
+  --> $DIR/disallowed_macros.rs:28:1
+   |
+LL | / macros::attr! {
+LL | |     struct S;
+LL | | }
+   | |_^
+
 error: use of a disallowed macro `macros::item`
   --> $DIR/disallowed_macros.rs:33:5
    |
@@ -86,14 +94,6 @@ error: use of a disallowed macro `macros::item`
    |
 LL |     macros::item!();
    |     ^^^^^^^^^^^^^^^
-
-error: use of a disallowed macro `macros::attr`
-  --> $DIR/disallowed_macros.rs:28:1
-   |
-LL | / macros::attr! {
-LL | |     struct S;
-LL | | }
-   | |_^
 
 error: aborting due to 15 previous errors
 
