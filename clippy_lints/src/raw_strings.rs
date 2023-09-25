@@ -93,7 +93,7 @@ impl EarlyLintPass for RawStrings {
                             diag.span_suggestion(
                                 start,
                                 "use a string literal instead",
-                                format!("\"{}\"", str),
+                                format!("\"{str}\""),
                                 Applicability::MachineApplicable,
                             );
                         } else {

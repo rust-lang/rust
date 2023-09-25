@@ -207,7 +207,7 @@ fn path_segment_certainty(
             // Checking `res_generics_def_id(..)` before calling `generics_of` avoids an ICE.
             if cx.tcx.res_generics_def_id(path_segment.res).is_some() {
                 let generics = cx.tcx.generics_of(def_id);
-                let count = generics.params.len() - generics.host_effect_index.is_some() as usize;
+                let count = generics.params.len() - usize::from(generics.host_effect_index.is_some());
                 let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && count == 0 {
                     Certainty::Certain(None)
                 } else {
