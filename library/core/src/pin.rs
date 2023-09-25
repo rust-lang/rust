@@ -26,7 +26,7 @@
 //! * [Examples of types with address-sensitive states][address-sensitive-examples]
 //!   * [Self-referential struct][self-ref]
 //!   * [Intrusive, doubly-linked list][linked-list]
-//! * [Subtle Details][subtle-details]
+//! * [Subtle details and the `Drop` guarantee][subtle-details]
 //!
 //! # What is "*moving*"?
 //! [what-is-moving]: self#what-is-moving
@@ -156,7 +156,7 @@
 //!
 //! In order to pin a value, we wrap a *pointer to that value* (of some type `Ptr`) in a
 //! [`Pin<Ptr>`]. [`Pin<Ptr>`] can wrap any pointer type, forming a promise that the **pointee**
-//! will not be *moved* or [otherwise invalidated][self#subtle-details].
+//! will not be *moved* or [otherwise invalidated][subtle-details].
 //!
 //! We call such a [`Pin`]-wrapped pointer a **pinning pointer,** (or pinning reference, or pinning
 //! `Box`, etc.) because its existince is the thing that is pinning the underlying pointee in place:
@@ -376,7 +376,7 @@
 //! // std::mem::swap(&mut *still_unmoved, &mut *new_unmoved);
 //! ```
 //!
-//! ## Intrusive, doubly-linked list
+//! ## An intrusive, doubly-linked list
 //! [linked-list]: #an-intrusive-doubly-linked-list
 //!
 //! In an intrusive doubly-linked list, the collection does not actually allocate the memory for the
@@ -384,21 +384,26 @@
 //! that lives shorter than the collection does provided the nodes are removed from the
 //! collection before returning.
 //!
-//! To make this work, every element has pointers to its predecessor and successor in
-//! the list. Elements can only be added when they are pinned, because moving the elements
-//! around would invalidate the pointers. Moreover, the [`Drop`][Drop] implementation of a linked
-//! list element will patch the pointers of its predecessor and successor to remove itself
-//! from the list.
+//! The full implementation details of such a data structure are outside the scope of this
+//! documentation, but we will discuss how [`Pin`] can help to do so.
 //!
-//! Crucially, we have to be able to rely on [`drop`] being called before an element is invalidated.
-//! If an element could be deallocated or otherwise invalidated without calling [`drop`], the
-//! pointers into it from its neighboring elements would become invalid, which would break the data
-//! structure.
+//! To make such an intrusive data structure work, every element stores pointers to its predecessor
+//! and successor within its own data, rather than having the list structure itself manage those
+//! pointers. Elements can only be added when they are pinned, because moving the elements
+//! around would invalidate the pointers to it which are contained in the element ahead and behind
+//! it. Moreover, the [`Drop`][Drop] implementation of the element types themselves will in some
+//! way patch the pointers of its predecessor and successor elements to remove itself from the list.
 //!
-//! Therefore, we rely on [the `Drop` guarantee][drop-guarantee] which comes with pinning data.
+//! Crucially, this means we have to be able to rely on [`drop`] always being called before that
+//! element is invalidated. If an element could be deallocated or otherwise invalidated without
+//! calling [`drop`], the pointers into it which are stored in its neighboring elements would
+//! become invalid, which would break the data structure.
 //!
-//! # Subtle details
-//! [subtle-details]: #subtle-details
+//! Therefore, we rely on [the `Drop` guarantee][drop-guarantee] which comes with pinning data,
+//!
+//! # Subtle details and the `Drop` guarantee
+//! [subtle-details]: self#subtle-details-and-the-drop-guarantee
+//! [drop-guarantee]: self#subtle-details-and-the-drop-guarantee
 //!
 //! The purpose of pinning is not *just* to prevent a value from being *moved*, but rather more
 //! generally to be able to rely on the pinned value *remaining valid **at a specific place*** in
@@ -425,7 +430,6 @@
 //! This point is subtle but required for intrusive data structures to be implemented soundly.
 //!
 //! ## `Drop` guarantee
-//! [drop-guarantee]: self#drop-guarantee
 //!
 //! There needs to be a way for a pinned value to notify any code that is relying on its pinned
 //! status that it is about to be destroyed, so that such code can remove its address from their
@@ -482,7 +486,7 @@
 //! address-sensitive types, which are different from merely using [`Pin<P>`] in a generic
 //! way.
 //!
-//! ## Implementing [`Drop`] for types with address-sensitive state
+//! ## Implementing [`Drop`] for types with address-sensitive states
 //! [drop-impl]: self#implementing-drop-for-types-with-address-sensitive-states
 //!
 //! The [`drop`] function takes [`&mut self`], but this is called *even if that `self` has been
@@ -817,7 +821,7 @@ use crate::{
 ///
 /// In order to pin a value, we wrap a *pointer to that value* (of some type `Ptr`) in a
 /// [`Pin<Ptr>`]. [`Pin<Ptr>`] can wrap any pointer type, forming a promise that the **pointee**
-/// will not be *moved* or [otherwise invalidated][self#subtle-details].
+/// will not be *moved* or [otherwise invalidated][subtle-details].
 ///
 /// We call such a [`Pin`]-wrapped pointer a **pinning pointer,** (or pinning ref, or pinning
 /// [`Box`], etc.) because its existince is the thing that is pinning the underlying pointee in
@@ -833,6 +837,7 @@ use crate::{
 ///
 /// [`pin` module]: self
 /// [`Box`]: ../../std/boxed/struct.Box.html
+/// [subtle-details]: self#subtle-details-and-the-drop-guarantee
 //
 // Note: the `Clone` derive below causes unsoundness as it's possible to implement
 // `Clone` for mutable references.
@@ -1171,7 +1176,7 @@ impl<P: DerefMut> Pin<P> {
     ///
     /// This overwrites pinned data, but that is okay: the original pinned value's destructor gets
     /// run before being overwritten and the new value is also a valid value of the same type, so
-    /// no pinning invariant is violated. See [the `pin` module documentation][self#subtle-details]
+    /// no pinning invariant is violated. See [the `pin` module documentation][subtle-details]
     /// for more information on how this upholds the pinning invariants.
     ///
     /// # Example
@@ -1185,6 +1190,8 @@ impl<P: DerefMut> Pin<P> {
     /// pinned.set(10);
     /// println!("{}", pinned); // 10
     /// ```
+    ///
+    /// [subtle-details]: self#subtle-details-and-the-drop-guarantee
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn set(&mut self, value: P::Target)
