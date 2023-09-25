@@ -44,7 +44,7 @@ LL |     let _ = RangeToInclusive { end: end };
    |                                ^^^^^^^^ help: replace it with: `end`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:81:25
+  --> $DIR/redundant_field_names.rs:88:25
    |
 LL |     let _ = RangeFrom { start: start };
    |                         ^^^^^^^^^^^^ help: replace it with: `start`

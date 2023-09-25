@@ -361,3 +361,7 @@ fn avoid_subtract_overflow(q: u32) {
     //~^ ERROR: casting `u32` to `u8` may truncate the value
     c as usize;
 }
+
+fn issue11426() {
+    (&42u8 >> 0xa9008fb6c9d81e42_0e25730562a601c8_u128) as usize;
+}

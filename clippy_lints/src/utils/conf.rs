@@ -542,11 +542,11 @@ define_Conf! {
     /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
     ///
     /// Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
-    (accept_comment_above_statement: bool = false),
+    (accept_comment_above_statement: bool = true),
     /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
     ///
     /// Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
-    (accept_comment_above_attributes: bool = false),
+    (accept_comment_above_attributes: bool = true),
     /// Lint: UNNECESSARY_RAW_STRING_HASHES.
     ///
     /// Whether to allow `r#""#` when `r""` can be used
@@ -560,6 +560,11 @@ define_Conf! {
     ///
     /// Which crates to allow absolute paths from
     (absolute_paths_allowed_crates: rustc_data_structures::fx::FxHashSet<String> =
+        rustc_data_structures::fx::FxHashSet::default()),
+    /// Lint: PATH_ENDS_WITH_EXT.
+    ///
+    /// Additional dotfiles (files or directories starting with a dot) to allow
+    (allowed_dotfiles: rustc_data_structures::fx::FxHashSet<String> =
         rustc_data_structures::fx::FxHashSet::default()),
     /// Lint: EXPLICIT_ITER_LOOP
     ///

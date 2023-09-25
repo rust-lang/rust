@@ -20,6 +20,7 @@ mod ptr_as_ptr;
 mod ptr_cast_constness;
 mod unnecessary_cast;
 mod utils;
+mod zero_ptr;
 
 use clippy_utils::is_hir_ty_cfg_dependant;
 use clippy_utils::msrvs::{self, Msrv};
@@ -665,6 +666,29 @@ declare_clippy_lint! {
     "casting a known floating-point NaN into an integer"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Catch casts from `0` to some pointer type
+    ///
+    /// ### Why is this bad?
+    /// This generally means `null` and is better expressed as
+    /// {`std`, `core`}`::ptr::`{`null`, `null_mut`}.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let a = 0 as *const u32;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let a = std::ptr::null::<u32>();
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ZERO_PTR,
+    style,
+    "using `0 as *{const, mut} T`"
+}
+
 pub struct Casts {
     msrv: Msrv,
 }
@@ -699,6 +723,7 @@ impl_lint_pass!(Casts => [
     CAST_SLICE_FROM_RAW_PARTS,
     AS_PTR_CAST_MUT,
     CAST_NAN_TO_INT,
+    ZERO_PTR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -729,6 +754,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
+            zero_ptr::check(cx, expr, cast_expr, cast_to_hir);
 
             if cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
                 cast_possible_truncation::check(cx, expr, cast_expr, cast_from, cast_to, cast_to_hir.span);

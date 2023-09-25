@@ -105,8 +105,9 @@ impl EarlyLintPass for RawStrings {
                         }
                     },
                 );
-
-                return;
+                if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS), rustc_lint::Allow) {
+                    return;
+                }
             }
 
             let req = {

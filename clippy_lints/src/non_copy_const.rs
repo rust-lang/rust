@@ -13,7 +13,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::adjustment::Adjust;
@@ -297,8 +296,8 @@ declare_lint_pass!(NonCopyConst => [DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTER
 
 impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
-        if let ItemKind::Const(hir_ty, _generics, body_id) = it.kind {
-            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+        if let ItemKind::Const(.., body_id) = it.kind {
+            let ty = cx.tcx.type_of(it.owner_id).instantiate_identity();
             if !ignored_macro(cx, it) && is_unfrozen(cx, ty) && is_value_unfrozen_poly(cx, body_id, ty) {
                 lint(cx, Source::Item { item: it.span });
             }
@@ -306,8 +305,8 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Const(hir_ty, body_id_opt) = &trait_item.kind {
-            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+        if let TraitItemKind::Const(_, body_id_opt) = &trait_item.kind {
+            let ty = cx.tcx.type_of(trait_item.owner_id).instantiate_identity();
 
             // Normalize assoc types because ones originated from generic params
             // bounded other traits could have their bound.
@@ -333,7 +332,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
-        if let ImplItemKind::Const(hir_ty, body_id) = &impl_item.kind {
+        if let ImplItemKind::Const(_, body_id) = &impl_item.kind {
             let item_def_id = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
             let item = cx.tcx.hir().expect_item(item_def_id);
 
@@ -366,7 +365,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                             // we should use here as a frozen variant is a potential to be frozen
                             // similar to unknown layouts.
                             // e.g. `layout_of(...).is_err() || has_frozen_variant(...);`
-                        let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+                        let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity();
                         let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
                         if is_unfrozen(cx, normalized);
                         if is_value_unfrozen_poly(cx, *body_id, normalized);
@@ -381,7 +380,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                     }
                 },
                 ItemKind::Impl(Impl { of_trait: None, .. }) => {
-                    let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+                    let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity();
                     // Normalize assoc types originated from generic params.
                     let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
 

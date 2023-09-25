@@ -115,5 +115,17 @@ error: casting `u8` to `u16` may become silently lossy if you later change the t
 LL |     let _ = (1u8 + 1u8) as u16;
    |             ^^^^^^^^^^^^^^^^^^ help: try: `u16::from(1u8 + 1u8)`
 
-error: aborting due to 19 previous errors
+error: casting `i8` to `i32` may become silently lossy if you later change the type
+  --> $DIR/cast_lossless_integer.rs:60:13
+   |
+LL |     let _ = sign_cast!(x, u8, i8) as i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::from(sign_cast!(x, u8, i8))`
+
+error: casting `i8` to `i32` may become silently lossy if you later change the type
+  --> $DIR/cast_lossless_integer.rs:61:13
+   |
+LL |     let _ = (sign_cast!(x, u8, i8) + 1) as i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::from(sign_cast!(x, u8, i8) + 1)`
+
+error: aborting due to 21 previous errors
 

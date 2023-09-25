@@ -37,5 +37,29 @@ error: usage of `bool::then` in `filter_map`
 LL |     v.clone().iter().filter_map(|i| (i == &NonCopy).then(|| i));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i == &NonCopy)).map(|i| i)`
 
-error: aborting due to 6 previous errors
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:61:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| *b).map(|(i, b)| i)`
+
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:65:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| ***b).map(|(i, b)| i)`
+
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:69:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| **b).map(|(i, b)| i)`
+
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:80:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| ****b).map(|(i, b)| i)`
+
+error: aborting due to 10 previous errors
 

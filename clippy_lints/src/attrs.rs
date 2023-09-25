@@ -616,7 +616,7 @@ fn check_should_panic_reason(cx: &LateContext<'_>, attr: &Attribute) {
             attr.span,
             "#[should_panic] attribute without a reason",
             "consider specifying the expected panic",
-            r#"#[should_panic(expected = /* panic message */)]"#.into(),
+            "#[should_panic(expected = /* panic message */)]".into(),
             Applicability::HasPlaceholders,
         );
     }
