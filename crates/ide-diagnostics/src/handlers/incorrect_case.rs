@@ -175,10 +175,10 @@ fn NonSnakeCaseName() {}
     fn incorrect_function_params() {
         check_diagnostics(
             r#"
-fn foo(SomeParam: u8) {}
+fn foo(SomeParam: u8) { _ = SomeParam; }
     // ^^^^^^^^^ 💡 warn: Parameter `SomeParam` should have snake_case name, e.g. `some_param`
 
-fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
+fn foo2(ok_param: &str, CAPS_PARAM: u8) { _ = (ok_param, CAPS_PARAM); }
                      // ^^^^^^^^^^ 💡 warn: Parameter `CAPS_PARAM` should have snake_case name, e.g. `caps_param`
 "#,
         );
@@ -188,6 +188,7 @@ fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
     fn incorrect_variable_names() {
         check_diagnostics(
             r#"
+#[allow(unused)]
 fn foo() {
     let SOME_VALUE = 10;
      // ^^^^^^^^^^ 💡 warn: Variable `SOME_VALUE` should have snake_case name, e.g. `some_value`
@@ -294,6 +295,7 @@ impl someStruct {
     // ^^^^^^^^ 💡 warn: Function `SomeFunc` should have snake_case name, e.g. `some_func`
         let WHY_VAR_IS_CAPS = 10;
          // ^^^^^^^^^^^^^^^ 💡 warn: Variable `WHY_VAR_IS_CAPS` should have snake_case name, e.g. `why_var_is_caps`
+        _ = WHY_VAR_IS_CAPS;
     }
 }
 "#,
@@ -306,6 +308,7 @@ impl someStruct {
             r#"
 enum Option { Some, None }
 
+#[allow(unused)]
 fn main() {
     match Option::None {
         None => (),
@@ -322,6 +325,7 @@ fn main() {
             r#"
 enum Option { Some, None }
 
+#[allow(unused)]
 fn main() {
     match Option::None {
         SOME_VAR @ None => (),
@@ -349,7 +353,9 @@ enum E {
 }
 
 mod F {
-    fn CheckItWorksWithCrateAttr(BAD_NAME_HI: u8) {}
+    fn CheckItWorksWithCrateAttr(BAD_NAME_HI: u8) {
+        _ = BAD_NAME_HI;
+    }
 }
     "#,
         );
@@ -395,7 +401,7 @@ fn qualify() {
 
     #[test] // Issue #8809.
     fn parenthesized_parameter() {
-        check_diagnostics(r#"fn f((O): _) {}"#)
+        check_diagnostics(r#"fn f((O): _) { _ = O; }"#)
     }
 
     #[test]
@@ -472,7 +478,9 @@ mod CheckBadStyle {
 
 mod F {
     #![allow(non_snake_case)]
-    fn CheckItWorksWithModAttr(BAD_NAME_HI: u8) {}
+    fn CheckItWorksWithModAttr(BAD_NAME_HI: u8) {
+        _ = BAD_NAME_HI;
+    }
 }
 
 #[allow(non_snake_case, non_camel_case_types)]

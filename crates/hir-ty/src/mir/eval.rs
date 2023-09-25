@@ -842,6 +842,7 @@ impl Evaluator<'_> {
                             }
                             StatementKind::Deinit(_) => not_supported!("de-init statement"),
                             StatementKind::StorageLive(_)
+                            | StatementKind::FakeRead(_)
                             | StatementKind::StorageDead(_)
                             | StatementKind::Nop => (),
                         }

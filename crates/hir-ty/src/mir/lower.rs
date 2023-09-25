@@ -529,6 +529,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 else {
                     return Ok(None);
                 };
+                self.push_fake_read(current, cond_place, expr_id.into());
                 let (then_target, else_target) =
                     self.pattern_match(current, None, cond_place, *pat)?;
                 self.write_bytes_to_place(
@@ -668,6 +669,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 else {
                     return Ok(None);
                 };
+                self.push_fake_read(current, cond_place, expr_id.into());
                 let mut end = None;
                 for MatchArm { pat, guard, expr } in arms.iter() {
                     let (then, mut otherwise) =
@@ -1299,6 +1301,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             return Ok(None);
         };
         if matches!(&self.body.exprs[lhs], Expr::Underscore) {
+            self.push_fake_read_for_operand(current, rhs_op, span);
             return Ok(Some(current));
         }
         if matches!(
@@ -1575,6 +1578,16 @@ impl<'ctx> MirLowerCtx<'ctx> {
         self.result.basic_blocks[block].statements.push(statement);
     }
 
+    fn push_fake_read(&mut self, block: BasicBlockId, p: Place, span: MirSpan) {
+        self.push_statement(block, StatementKind::FakeRead(p).with_span(span));
+    }
+
+    fn push_fake_read_for_operand(&mut self, block: BasicBlockId, operand: Operand, span: MirSpan) {
+        if let Operand::Move(p) | Operand::Copy(p) = operand {
+            self.push_fake_read(block, p, span);
+        }
+    }
+
     fn push_assignment(
         &mut self,
         block: BasicBlockId,
@@ -1733,6 +1746,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             return Ok(None);
                         };
                         current = c;
+                        self.push_fake_read(current, init_place, span);
                         (current, else_block) =
                             self.pattern_match(current, None, init_place, *pat)?;
                         match (else_block, else_branch) {
@@ -1760,13 +1774,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         }
                     }
                 }
-                hir_def::hir::Statement::Expr { expr, has_semi: _ } => {
+                &hir_def::hir::Statement::Expr { expr, has_semi: _ } => {
                     let scope2 = self.push_drop_scope();
-                    let Some((_, c)) = self.lower_expr_as_place(current, *expr, true)? else {
+                    let Some((p, c)) = self.lower_expr_as_place(current, expr, true)? else {
                         scope2.pop_assume_dropped(self);
                         scope.pop_assume_dropped(self);
                         return Ok(None);
                     };
+                    self.push_fake_read(c, p, expr.into());
                     current = scope2.pop_and_drop(self, c);
                 }
             }

@@ -324,6 +324,7 @@ fn main() {
     let x_own = 2;
     let ref mut x_ref = x_own;
       //^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x_own`
+    _ = x_ref;
 }
 "#,
         );
@@ -331,7 +332,7 @@ fn main() {
             r#"
 struct Foo;
 impl Foo {
-    fn method(&mut self, x: i32) {}
+    fn method(&mut self, _x: i32) {}
 }
 fn main() {
     let x = Foo;
@@ -391,6 +392,7 @@ fn main() {
           //^^^^^ 💡 warn: variable does not need to be mutable
             x = 7;
           //^^^^^ 💡 error: cannot mutate immutable variable `x`
+            _ = y;
         }
     }
 }
@@ -404,12 +406,14 @@ fn main() {
         // there would be no mutability error for locals in dead code. Rustc tries to
         // not emit `unused_mut` in this case, but since it works without `mut`, and
         // special casing it is not trivial, we emit it.
+
+        // Update: now MIR based `unused-variable` is taking over `unused-mut` for the same reason.
         check_diagnostics(
             r#"
 fn main() {
     return;
     let mut x = 2;
-      //^^^^^ 💡 warn: variable does not need to be mutable
+      //^^^^^ warn: unused variable
     &mut x;
 }
 "#,
@@ -419,7 +423,7 @@ fn main() {
 fn main() {
     loop {}
     let mut x = 2;
-      //^^^^^ 💡 warn: variable does not need to be mutable
+      //^^^^^ warn: unused variable
     &mut x;
 }
 "#,
@@ -440,7 +444,7 @@ fn main(b: bool) {
         g();
     }
     let mut x = 2;
-      //^^^^^ 💡 warn: variable does not need to be mutable
+      //^^^^^ warn: unused variable
     &mut x;
 }
 "#,
@@ -454,7 +458,7 @@ fn main(b: bool) {
         return;
     }
     let mut x = 2;
-      //^^^^^ 💡 warn: variable does not need to be mutable
+      //^^^^^ warn: unused variable
     &mut x;
 }
 "#,
@@ -536,6 +540,7 @@ fn main() {
             (k @ 5, ref mut t) if { continue; } => {
                   //^^^^^^^^^ 💡 error: cannot mutate immutable variable `z`
                 *t = 5;
+                _ = k;
             }
             _ => {
                 let y = (1, 2);
@@ -588,6 +593,7 @@ fn main() {
         b = 1;
         c = (2, 3);
         d = 3;
+        _ = (c, b, d);
     }
 }
 "#,
@@ -600,6 +606,7 @@ fn main() {
             r#"
 fn f(mut x: i32) {
    //^^^^^ 💡 warn: variable does not need to be mutable
+   f(x + 2);
 }
 "#,
         );
@@ -615,8 +622,11 @@ fn f(x: i32) {
             r#"
 fn f((x, y): (i32, i32)) {
     let t = [0; 2];
-   x = 5;
- //^^^^^ 💡 error: cannot mutate immutable variable `x`
+    x = 5;
+  //^^^^^ 💡 error: cannot mutate immutable variable `x`
+    _ = x;
+    _ = y;
+    _ = t;
 }
 "#,
         );
@@ -645,6 +655,7 @@ fn f(x: [(i32, u8); 10]) {
           //^^^^^ 💡 warn: variable does not need to be mutable
         a = 2;
       //^^^^^ 💡 error: cannot mutate immutable variable `a`
+        _ = b;
     }
 }
 "#,
@@ -666,6 +677,7 @@ fn f(x: [(i32, u8); 10]) {
           //^^^^^ 💡 error: cannot mutate immutable variable `a`
             c = 2;
           //^^^^^ 💡 error: cannot mutate immutable variable `c`
+            _ = (b, d);
         }
     }
 }
@@ -696,18 +708,18 @@ fn f() {
     fn overloaded_index() {
         check_diagnostics(
             r#"
-//- minicore: index
+//- minicore: index, copy
 use core::ops::{Index, IndexMut};
 
 struct Foo;
 impl Index<usize> for Foo {
     type Output = (i32, u8);
-    fn index(&self, index: usize) -> &(i32, u8) {
+    fn index(&self, _index: usize) -> &(i32, u8) {
         &(5, 2)
     }
 }
 impl IndexMut<usize> for Foo {
-    fn index_mut(&mut self, index: usize) -> &mut (i32, u8) {
+    fn index_mut(&mut self, _index: usize) -> &mut (i32, u8) {
         &mut (5, 2)
     }
 }
@@ -715,26 +727,32 @@ fn f() {
     let mut x = Foo;
       //^^^^^ 💡 warn: variable does not need to be mutable
     let y = &x[2];
+    _ = (x, y);
     let x = Foo;
     let y = &mut x[2];
                //^💡 error: cannot mutate immutable variable `x`
+    _ = (x, y);
     let mut x = &mut Foo;
       //^^^^^ 💡 warn: variable does not need to be mutable
     let y: &mut (i32, u8) = &mut x[2];
+    _ = (x, y);
     let x = Foo;
     let ref mut y = x[7];
                   //^ 💡 error: cannot mutate immutable variable `x`
+    _ = (x, y);
     let (ref mut y, _) = x[3];
                        //^ 💡 error: cannot mutate immutable variable `x`
+    _ = y;
     match x[10] {
         //^ 💡 error: cannot mutate immutable variable `x`
-        (ref y, _) => (),
-        (_, ref mut y) => (),
+        (ref y, 5) => _ = y,
+        (_, ref mut y) => _ = y,
     }
     let mut x = Foo;
     let mut i = 5;
       //^^^^^ 💡 warn: variable does not need to be mutable
     let y = &mut x[i];
+    _ = y;
 }
 "#,
         );
@@ -744,7 +762,7 @@ fn f() {
     fn overloaded_deref() {
         check_diagnostics(
             r#"
-//- minicore: deref_mut
+//- minicore: deref_mut, copy
 use core::ops::{Deref, DerefMut};
 
 struct Foo;
@@ -763,21 +781,27 @@ fn f() {
     let mut x = Foo;
       //^^^^^ 💡 warn: variable does not need to be mutable
     let y = &*x;
+    _ = (x, y);
     let x = Foo;
     let y = &mut *x;
                //^^ 💡 error: cannot mutate immutable variable `x`
+    _ = (x, y);
     let x = Foo;
+      //^ warn: unused variable
     let x = Foo;
     let y: &mut (i32, u8) = &mut x;
                           //^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    _ = (x, y);
     let ref mut y = *x;
                   //^^ 💡 error: cannot mutate immutable variable `x`
+    _ = y;
     let (ref mut y, _) = *x;
                        //^^ 💡 error: cannot mutate immutable variable `x`
+    _ = y;
     match *x {
         //^^ 💡 error: cannot mutate immutable variable `x`
-        (ref y, _) => (),
-        (_, ref mut y) => (),
+        (ref y, 5) => _ = y,
+        (_, ref mut y) => _ = y,
     }
 }
 "#,
@@ -866,6 +890,7 @@ pub fn test() {
             data: 0
         }
     );
+    _ = tree;
 }
 "#,
         );
@@ -925,6 +950,7 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
             let x = X;
             let closure4 = || { x.mutate(); };
                               //^ 💡 error: cannot mutate immutable variable `x`
+            _ = (closure2, closure3, closure4);
         }
                     "#,
         );
@@ -941,7 +967,9 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
                 z = 3;
                 let mut k = z;
                   //^^^^^ 💡 warn: variable does not need to be mutable
+                _ = k;
             };
+            _ = (x, closure);
         }
                     "#,
         );
@@ -958,6 +986,7 @@ fn f() {
             }
         }
     };
+    _ = closure;
 }
             "#,
         );
@@ -972,7 +1001,8 @@ fn f() {
     let mut x = X;
     let c2 = || { x = X; x };
     let mut x = X;
-    let c2 = move || { x = X; };
+    let c3 = move || { x = X; };
+    _ = (c1, c2, c3);
 }
             "#,
         );
@@ -1023,7 +1053,7 @@ fn x(t: &[u8]) {
 
             a = 2;
           //^^^^^ 💡 error: cannot mutate immutable variable `a`
-
+            _ = b;
         }
         _ => {}
     }
@@ -1079,6 +1109,7 @@ fn f() {
     let x = Box::new(5);
     let closure = || *x = 2;
                     //^ 💡 error: cannot mutate immutable variable `x`
+    _ = closure;
 }
 "#,
         );
@@ -1156,6 +1187,7 @@ macro_rules! mac {
 fn main2() {
     let mut x = mac![];
       //^^^^^ 💡 warn: variable does not need to be mutable
+    _ = x;
 }
         "#,
         );

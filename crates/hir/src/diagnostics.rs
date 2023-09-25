@@ -66,6 +66,7 @@ diagnostics![
     UnresolvedModule,
     UnresolvedProcMacro,
     UnusedMut,
+    UnusedVariable,
 ];
 
 #[derive(Debug)]
@@ -267,6 +268,11 @@ pub struct NeedMut {
 
 #[derive(Debug)]
 pub struct UnusedMut {
+    pub local: Local,
+}
+
+#[derive(Debug)]
+pub struct UnusedVariable {
     pub local: Local,
 }
 

@@ -290,6 +290,7 @@ fn x(a: S) {
 struct S { s: u32 }
 fn x(a: S) {
     let S { ref s } = a;
+    _ = s;
 }
 ",
         )
@@ -626,7 +627,7 @@ struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
     let one = 1;
-    let s = TestStruct{ one, two: 2 };
+    let _s = TestStruct{ one, two: 2 };
 }
         "#,
         );
