@@ -316,7 +316,10 @@ where
     {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
-            OpaqueCast(ty) => base.transmute(self.layout_of(ty)?, self)?,
+            OpaqueCast(ty) => base.transmute(
+                self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(ty)?)?,
+                self,
+            )?,
             Field(field, _) => self.project_field(base, field.index())?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(&base.to_op(self)?)?.into(),

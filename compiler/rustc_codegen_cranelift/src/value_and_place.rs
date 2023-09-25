@@ -679,7 +679,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         ty: Ty<'tcx>,
     ) -> CPlace<'tcx> {
-        CPlace { inner: self.inner, layout: fx.layout_of(ty) }
+        CPlace { inner: self.inner, layout: fx.layout_of(fx.monomorphize(ty)) }
     }
 
     pub(crate) fn place_field(
