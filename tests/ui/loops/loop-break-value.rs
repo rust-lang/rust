@@ -107,6 +107,7 @@ fn main() {
         }
         break; //~ ERROR mismatched types
     };
+
     let _ = 'a: loop {
         loop {
             break; // This doesn't affect the expected break type of the 'a loop
@@ -117,6 +118,41 @@ fn main() {
             }
         }
         break 'a; //~ ERROR mismatched types
+    };
+
+    loop {
+        break;
+        let _ = loop {
+            break 2;
+            loop {
+                break;
+            }
+        };
+        break 2; //~ ERROR mismatched types
+    }
+
+    'a: loop {
+        break;
+        let _ = 'a: loop {
+            //~^ WARNING label name `'a` shadows a label name that is already in scope
+            break 2;
+            loop {
+                break 'a; //~ ERROR mismatched types
+            }
+        };
+        break 2; //~ ERROR mismatched types
+    }
+
+    'a: loop {
+        break;
+        let _ = 'a: loop {
+            //~^ WARNING label name `'a` shadows a label name that is already in scope
+            break 'a 2;
+            loop {
+                break 'a; //~ ERROR mismatched types
+            }
+        };
+        break 2; //~ ERROR mismatched types
     };
 
     loop { // point at the return type

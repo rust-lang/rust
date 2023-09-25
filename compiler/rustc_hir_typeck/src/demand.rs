@@ -583,7 +583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // loop, so we need to account for that.
                     direct = !direct;
                 }
-                if let hir::ExprKind::Loop(_, label, _, span) = parent.kind
+                if let hir::ExprKind::Loop(block, label, _, span) = parent.kind
                     && (destination.label == label || direct)
                 {
                     if let Some((reason_span, message)) =
@@ -594,25 +594,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             format!("this loop is expected to be of type `{expected}`"),
                         );
+                        break 'outer;
                     } else {
                         // Locate all other `break` statements within the same `loop` that might
                         // have affected inference.
                         struct FindBreaks<'tcx> {
                             label: Option<rustc_ast::Label>,
                             uses: Vec<&'tcx hir::Expr<'tcx>>,
+                            nest_depth: usize,
                         }
                         impl<'tcx> Visitor<'tcx> for FindBreaks<'tcx> {
                             fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+                                let nest_depth = self.nest_depth;
+                                if let hir::ExprKind::Loop(_, label, _, _) = ex.kind {
+                                    if label == self.label {
+                                        // Account for `'a: loop { 'a: loop {...} }`.
+                                        return;
+                                    }
+                                    self.nest_depth += 1;
+                                }
                                 if let hir::ExprKind::Break(destination, _) = ex.kind
-                                    && self.label == destination.label
+                                    && (self.label == destination.label
+                                        // Account for `loop { 'a: loop { loop { break; } } }`.
+                                        || destination.label.is_none() && self.nest_depth == 0)
                                 {
                                     self.uses.push(ex);
                                 }
                                 hir::intravisit::walk_expr(self, ex);
+                                self.nest_depth = nest_depth;
                             }
                         }
-                        let mut expr_finder = FindBreaks { label, uses: vec![] };
-                        expr_finder.visit_expr(parent);
+                        let mut expr_finder = FindBreaks { label, uses: vec![], nest_depth: 0 };
+                        expr_finder.visit_block(block);
+                        let mut exit = false;
                         for ex in expr_finder.uses {
                             let hir::ExprKind::Break(_, val) = ex.kind else {
                                 continue;
@@ -631,10 +645,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ex.span,
                                     format!("expected because of this `break`"),
                                 );
+                                exit = true;
                             }
                         }
+                        if exit {
+                            break 'outer;
+                        }
                     }
-                    break 'outer;
                 }
             }
         }

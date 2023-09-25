@@ -1,3 +1,21 @@
+warning: label name `'a` shadows a label name that is already in scope
+  --> $DIR/loop-break-value.rs:136:17
+   |
+LL |     'a: loop {
+   |     -- first declared here
+LL |         break;
+LL |         let _ = 'a: loop {
+   |                 ^^ label `'a` already in scope
+
+warning: label name `'a` shadows a label name that is already in scope
+  --> $DIR/loop-break-value.rs:148:17
+   |
+LL |     'a: loop {
+   |     -- first declared here
+LL |         break;
+LL |         let _ = 'a: loop {
+   |                 ^^ label `'a` already in scope
+
 error[E0425]: cannot find value `LOOP` in this scope
   --> $DIR/loop-break-value.rs:95:15
    |
@@ -164,12 +182,19 @@ LL |         break "asdf";
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:21:31
    |
+LL |     let _: i32 = 'outer_loop: loop {
+   |         -                     ---- this loop is expected to be of type `i32`
+   |         |
+   |         expected because of this assignment
+LL |         loop {
 LL |             break 'outer_loop "nope";
    |                               ^^^^^^ expected `i32`, found `&str`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:73:26
    |
+LL |                 break;
+   |                 ----- expected because of this `break`
 LL |                 break 'c 123;
    |                          ^^^ expected `()`, found integer
 
@@ -218,7 +243,7 @@ LL |         break;
    |         help: give it a value of the expected type: `break value`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:119:9
+  --> $DIR/loop-break-value.rs:120:9
    |
 LL |                     break 'a 1;
    |                     ---------- expected because of this `break`
@@ -230,7 +255,58 @@ LL |         break 'a;
    |         help: give it a value of the expected type: `break 'a value`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:123:15
+  --> $DIR/loop-break-value.rs:131:15
+   |
+LL |         break;
+   |         ----- expected because of this `break`
+...
+LL |         break 2;
+   |               ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:140:17
+   |
+LL |             break 2;
+   |             ------- expected because of this `break`
+LL |             loop {
+LL |                 break 'a;
+   |                 ^^^^^^^^
+   |                 |
+   |                 expected integer, found `()`
+   |                 help: give it a value of the expected type: `break 'a value`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:143:15
+   |
+LL |         break;
+   |         ----- expected because of this `break`
+...
+LL |         break 2;
+   |               ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:152:17
+   |
+LL |             break 'a 2;
+   |             ---------- expected because of this `break`
+LL |             loop {
+LL |                 break 'a;
+   |                 ^^^^^^^^
+   |                 |
+   |                 expected integer, found `()`
+   |                 help: give it a value of the expected type: `break 'a value`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:155:15
+   |
+LL |         break;
+   |         ----- expected because of this `break`
+...
+LL |         break 2;
+   |               ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:159:15
    |
 LL | fn main() {
    |           - expected `()` because of this return type
@@ -240,7 +316,7 @@ LL |     loop { // point at the return type
 LL |         break 2;
    |               ^ expected `()`, found integer
 
-error: aborting due to 20 previous errors; 1 warning emitted
+error: aborting due to 25 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0308, E0425, E0571.
 For more information about an error, try `rustc --explain E0308`.
