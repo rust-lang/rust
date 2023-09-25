@@ -1,7 +1,7 @@
 // run-pass
 // ignore-wasm32-bare seems not important to test here
 
-#![feature(intrinsics)]
+#![feature(intrinsics, rustc_attrs)]
 
 mod rusti {
     extern "rust-intrinsic" {

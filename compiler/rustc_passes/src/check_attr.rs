@@ -195,6 +195,9 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
                 sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
                 sym::rustc_confusables => self.check_confusables(&attr, target),
+                sym::rustc_safe_intrinsic => {
+                    self.check_rustc_safe_intrinsic(hir_id, attr, span, target)
+                }
                 _ => true,
             };
 
@@ -2040,6 +2043,29 @@ impl CheckAttrVisitor<'_> {
                 false
             }
         }
+    }
+
+    fn check_rustc_safe_intrinsic(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        let hir = self.tcx.hir();
+
+        if let Target::ForeignFn = target
+            && let Some(parent) = hir.opt_parent_id(hir_id)
+            && let hir::Node::Item(Item {
+                kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic | Abi::PlatformIntrinsic, .. },
+                ..
+            }) = hir.get(parent)
+        {
+            return true;
+        }
+
+        self.tcx.sess.emit_err(errors::RustcSafeIntrinsic { attr_span: attr.span, span });
+        false
     }
 
     fn check_rustc_std_internal_symbol(
