@@ -683,7 +683,7 @@ where
 {
     // This function should be only called with `Impl`, `Trait`, or `Function`, for which it's
     // infallible to get source ast.
-    let node = ctx.sema.source(def).unwrap().value;
+    let node = ctx.sema.source(def).expect("definition's source couldn't be found").value;
     let generic_params = node.generic_param_list().into_iter().flat_map(|it| it.generic_params());
     let where_clauses = node.where_clause().into_iter().flat_map(|it| it.predicates());
     (generic_params, where_clauses)
