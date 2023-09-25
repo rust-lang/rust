@@ -610,6 +610,8 @@ class StdRcSyntheticProvider:
 
         self.value_builder = ValueBuilder(valobj)
 
+        self.is_atomic = is_atomic
+
         self.update()
 
     def num_children(self):
@@ -641,7 +643,16 @@ class StdRcSyntheticProvider:
     def update(self):
         # type: () -> None
         self.strong_count = self.strong.GetValueAsUnsigned()
-        self.weak_count = self.weak.GetValueAsUnsigned() - 1
+        self.weak_count = self.weak.GetValueAsUnsigned()
+        if self.is_atomic:
+            if self.weak_count % 2 == 1:
+                self.weak_count = 0
+            elif self.weak_count > 0:
+                self.weak_count >>= 1
+                self.weak_count -= 1
+            self.strong_count >>= 2
+        else:
+            self.weak_count -= 1
 
     def has_children(self):
         # type: () -> bool

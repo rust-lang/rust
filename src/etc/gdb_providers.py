@@ -168,7 +168,16 @@ class StdRcProvider:
         self.ptr = unwrap_unique_or_non_null(valobj["ptr"])
         self.value = self.ptr["data" if is_atomic else "value"]
         self.strong = self.ptr["strong"]["v" if is_atomic else "value"]["value"]
-        self.weak = self.ptr["weak"]["v" if is_atomic else "value"]["value"] - 1
+        self.weak = self.ptr["weak"]["v" if is_atomic else "value"]["value"]
+        if is_atomic:
+            if self.weak % 2 == 1:
+                self.weak = 0
+            elif self.weak > 0:
+                self.weak >>= 1
+                self.weak -= 1
+            self.strong >>= 2
+        else:
+            self.weak -= 1
 
     def to_string(self):
         if self.is_atomic:
