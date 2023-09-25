@@ -856,22 +856,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         let scope = Scope::TraitRefBoundary { s: self.scope };
         self.with(scope, |this| {
             walk_list!(this, visit_generic_param, generics.params);
-            for param in generics.params {
-                match param.kind {
-                    GenericParamKind::Lifetime { .. } => {}
-                    GenericParamKind::Type { default, .. } => {
-                        if let Some(ty) = default {
-                            this.visit_ty(ty);
-                        }
-                    }
-                    GenericParamKind::Const { ty, default } => {
-                        this.visit_ty(ty);
-                        if let Some(default) = default {
-                            this.visit_body(this.tcx.hir().body(default.body));
-                        }
-                    }
-                }
-            }
             walk_list!(this, visit_where_predicate, generics.predicates);
         })
     }
@@ -998,6 +982,21 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             GenericParamKind::Lifetime { .. } => {
                 // No need to resolve lifetime params, we don't use them for things
                 // like implicit `?Sized` or const-param-has-ty predicates.
+            }
+        }
+
+        match p.kind {
+            GenericParamKind::Lifetime { .. } => {}
+            GenericParamKind::Type { default, .. } => {
+                if let Some(ty) = default {
+                    self.visit_ty(ty);
+                }
+            }
+            GenericParamKind::Const { ty, default } => {
+                self.visit_ty(ty);
+                if let Some(default) = default {
+                    self.visit_body(self.tcx.hir().body(default.body));
+                }
             }
         }
     }
