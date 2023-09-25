@@ -347,15 +347,37 @@ impl<T: ?Sized> fmt::Debug for Weak<T> {
 // inner types.
 #[repr(C)]
 struct ArcInner<T: ?Sized> {
+    // The strong counter, shifted two bits to the left.
+    // The lower two bits are
+    //  bit 0: whether the data is dropped.
+    //         If this bit is set, there are no Arcs left and
+    //         Weak pointers can no longer be upgraded.
+    //  bit 1: whether there have ever been any Weak pointers.
+    //         If this bit is not set, the concept of weak pointers can be ignored.
+    //         Once set, this bit stays set until the data is dropped.
     strong: atomic::AtomicUsize,
 
-    // the value usize::MAX acts as a sentinel for temporarily "locking" the
-    // ability to upgrade weak pointers or downgrade strong ones; this is used
-    // to avoid races in `make_mut` and `get_mut`.
+    // The weak counter, shifted one bit to the left.
+    // The lowest bit is used by `get_mut` to lock the weak counter
+    // to be able to check both the weak and strong counter at the same time.
+    // When this bit is set, `downgrade` will spin-loop until the bit is cleared again.
     weak: atomic::AtomicUsize,
 
     data: T,
 }
+
+const STRONG_SHIFT: usize = 2;
+const NO_STRONG: usize = 0;
+const ONE_STRONG: usize = 1 << STRONG_SHIFT;
+const STRONG_DROPPED: usize = 1;
+const WITH_WEAK: usize = 2;
+const NO_STRONG_WITH_WEAK: usize = NO_STRONG + WITH_WEAK;
+const ONE_STRONG_WITH_WEAK: usize = ONE_STRONG + WITH_WEAK;
+
+const WEAK_SHIFT: usize = 1;
+const NO_WEAK: usize = 0;
+const ONE_WEAK: usize = 1 << WEAK_SHIFT;
+const WEAK_LOCKED: usize = 1;
 
 /// Calculate layout for `ArcInner<T>` using the inner value's layout
 fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
@@ -383,11 +405,9 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(data: T) -> Arc<T> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x: Box<_> = Box::new(ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
+            strong: atomic::AtomicUsize::new(ONE_STRONG),
+            weak: atomic::AtomicUsize::new(NO_WEAK),
             data,
         });
         unsafe { Self::from_inner(Box::leak(x).into()) }
@@ -454,8 +474,8 @@ impl<T> Arc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(Box::new(ArcInner {
-            strong: atomic::AtomicUsize::new(0),
-            weak: atomic::AtomicUsize::new(1),
+            strong: atomic::AtomicUsize::new(STRONG_DROPPED), // non-upgradable state.
+            weak: atomic::AtomicUsize::new(ONE_WEAK),
             data: mem::MaybeUninit::<T>::uninit(),
         }))
         .into();
@@ -489,8 +509,12 @@ impl<T> Arc<T> {
             //
             // These side effects do not impact us in any way, and no other side effects are
             // possible with safe code alone.
-            let prev_value = (*inner).strong.fetch_add(1, Release);
-            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+            debug_assert_eq!(
+                (*inner).strong.load(Relaxed),
+                1,
+                "No prior strong references should exist"
+            );
+            (*inner).strong.store(ONE_STRONG_WITH_WEAK, Release);
 
             Arc::from_inner(init_ptr)
         };
@@ -598,11 +622,9 @@ impl<T> Arc<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x: Box<_> = Box::try_new(ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
+            strong: atomic::AtomicUsize::new(ONE_STRONG),
+            weak: atomic::AtomicUsize::new(NO_WEAK),
             data,
         })?;
         unsafe { Ok(Self::from_inner(Box::leak(x).into())) }
@@ -702,12 +724,10 @@ impl<T, A: Allocator> Arc<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(data: T, alloc: A) -> Arc<T, A> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x = Box::new_in(
             ArcInner {
-                strong: atomic::AtomicUsize::new(1),
-                weak: atomic::AtomicUsize::new(1),
+                strong: atomic::AtomicUsize::new(ONE_STRONG),
+                weak: atomic::AtomicUsize::new(NO_WEAK),
                 data,
             },
             alloc,
@@ -829,12 +849,10 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new_in(data: T, alloc: A) -> Result<Arc<T, A>, AllocError> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x = Box::try_new_in(
             ArcInner {
-                strong: atomic::AtomicUsize::new(1),
-                weak: atomic::AtomicUsize::new(1),
+                strong: atomic::AtomicUsize::new(ONE_STRONG),
+                weak: atomic::AtomicUsize::new(NO_WEAK),
                 data,
             },
             alloc,
@@ -954,21 +972,30 @@ impl<T, A: Allocator> Arc<T, A> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        if this.inner().strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
-            return Err(this);
-        }
-
-        acquire!(this.inner().strong);
-
-        unsafe {
-            let elem = ptr::read(&this.ptr.as_ref().data);
-            let alloc = ptr::read(&this.alloc); // copy the allocator
-
-            // Make a weak pointer to clean up the implicit strong-weak reference
-            let _weak = Weak { ptr: this.ptr, alloc };
-            mem::forget(this);
-
-            Ok(elem)
+        match this.inner().strong.compare_exchange(ONE_STRONG, NO_STRONG, Acquire, Relaxed) {
+            Ok(_) => {
+                // The strong count was one, without any weak pointers.
+                let this = mem::ManuallyDrop::new(this);
+                let value = unsafe { ptr::read(&this.ptr.as_ref().data) };
+                unsafe { this.deallocate() };
+                drop(unsafe { ptr::read(&this.alloc) });
+                Ok(value)
+            }
+            Err(ONE_STRONG_WITH_WEAK)
+                if this
+                    .inner()
+                    .strong
+                    .compare_exchange(ONE_STRONG_WITH_WEAK, STRONG_DROPPED, Acquire, Relaxed)
+                    .is_ok() =>
+            {
+                // The strong count was one, without any weak pointers.
+                let mut this = mem::ManuallyDrop::new(this);
+                let value = unsafe { ptr::read(Self::get_mut_unchecked(&mut this)) };
+                let alloc = unsafe { ptr::read(&this.alloc) };
+                drop(Weak { ptr: this.ptr, alloc });
+                Ok(value)
+            }
+            _ => Err(this),
         }
     }
 
@@ -1065,30 +1092,28 @@ impl<T, A: Allocator> Arc<T, A> {
     #[inline]
     #[stable(feature = "arc_into_inner", since = "1.70.0")]
     pub fn into_inner(this: Self) -> Option<T> {
-        // Make sure that the ordinary `Drop` implementation isn’t called as well
         let mut this = mem::ManuallyDrop::new(this);
-
-        // Following the implementation of `drop` and `drop_slow`
-        if this.inner().strong.fetch_sub(1, Release) != 1 {
-            return None;
-        }
-
-        acquire!(this.inner().strong);
-
-        // SAFETY: This mirrors the line
-        //
-        //     unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
-        //
-        // in `drop_slow`. Instead of dropping the value behind the pointer,
-        // it is read and eventually returned; `ptr::read` has the same
-        // safety conditions as `ptr::drop_in_place`.
-
-        let inner = unsafe { ptr::read(Self::get_mut_unchecked(&mut this)) };
         let alloc = unsafe { ptr::read(&this.alloc) };
-
-        drop(Weak { ptr: this.ptr, alloc });
-
-        Some(inner)
+        match this.inner().strong.fetch_sub(ONE_STRONG, Release) {
+            ONE_STRONG => {
+                acquire!(this.inner().strong);
+                let value = unsafe { ptr::read(Self::get_mut_unchecked(&mut this)) };
+                unsafe { this.deallocate() };
+                Some(value)
+            }
+            ONE_STRONG_WITH_WEAK
+                if this
+                    .inner()
+                    .strong
+                    .compare_exchange(NO_STRONG_WITH_WEAK, STRONG_DROPPED, Acquire, Relaxed)
+                    .is_ok() =>
+            {
+                let value = unsafe { ptr::read(Self::get_mut_unchecked(&mut this)) };
+                drop(Weak { ptr: this.ptr, alloc });
+                Some(value)
+            }
+            _ => None,
+        }
     }
 }
 
@@ -1561,35 +1586,27 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     where
         A: Clone,
     {
-        // This Relaxed is OK because we're checking the value in the CAS
-        // below.
-        let mut cur = this.inner().weak.load(Relaxed);
-
         loop {
-            // check if the weak counter is currently "locked"; if so, spin.
-            if cur == usize::MAX {
-                hint::spin_loop();
-                cur = this.inner().weak.load(Relaxed);
-                continue;
-            }
+            let prev = this.inner().weak.fetch_add(ONE_WEAK, Acquire);
 
-            // We can't allow the refcount to increase much past `MAX_REFCOUNT`.
-            assert!(cur <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
+            if prev & WEAK_LOCKED == 0 {
+                // Not locked.
 
-            // NOTE: this code currently ignores the possibility of overflow
-            // into usize::MAX; in general both Rc and Arc need to be adjusted
-            // to deal with overflow.
+                // We can't allow the refcount to increase much past `MAX_REFCOUNT`.
+                assert!(prev <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
 
-            // Unlike with Clone(), we need this to be an Acquire read to
-            // synchronize with the write coming from `is_unique`, so that the
-            // events prior to that write happen before this read.
-            match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
-                Ok(_) => {
-                    // Make sure we do not create a dangling Weak
-                    debug_assert!(!is_dangling(this.ptr.as_ptr()));
-                    return Weak { ptr: this.ptr, alloc: this.alloc.clone() };
+                if prev == 0 {
+                    // This is the first weak pointer, so we set the 'there are weak pointers' flag
+                    // in the strong counter, and also add the implicit weak pointer to the weak
+                    // pointer counter.
+                    this.inner().weak.fetch_add(ONE_WEAK, Relaxed);
+                    this.inner().strong.fetch_or(NO_STRONG_WITH_WEAK, Relaxed);
                 }
-                Err(old) => cur = old,
+
+                return Weak { ptr: this.ptr, alloc: this.alloc.clone() };
+            } else {
+                // The weak counter is currently locked, so we spin.
+                hint::spin_loop();
             }
         }
     }
@@ -1618,10 +1635,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        let cnt = this.inner().weak.load(Acquire);
-        // If the weak count is currently locked, the value of the
-        // count was 0 just before taking the lock.
-        if cnt == usize::MAX { 0 } else { cnt - 1 }
+        // Subtract the implicit weak pointer.
+        (this.inner().weak.load(Acquire) >> WEAK_SHIFT).saturating_sub(1)
     }
 
     /// Gets the number of strong (`Arc`) pointers to this allocation.
@@ -1648,7 +1663,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
-        this.inner().strong.load(Acquire)
+        this.inner().strong.load(Acquire) >> STRONG_SHIFT
     }
 
     /// Increments the strong reference count on the `Arc<T>` associated with the
@@ -1745,16 +1760,46 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 
     // Non-inlined part of `drop`.
     #[inline(never)]
-    unsafe fn drop_slow(&mut self) {
-        // Destroy the data at this time, even though we must not free the box
-        // allocation itself (there might still be weak pointers lying around).
-        unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
+    unsafe fn drop_slow(&mut self, old_strong: usize) {
+        debug_assert!(
+            old_strong == ONE_STRONG || old_strong == ONE_STRONG_WITH_WEAK,
+            "strong counter has invalid state in drop_slow"
+        );
+        match old_strong {
+            ONE_STRONG => {
+                // There were never any weak pointers.
+                acquire!(self.inner().strong);
+                unsafe {
+                    ptr::drop_in_place(Self::get_mut_unchecked(self));
+                    self.deallocate();
+                }
+            }
+            ONE_STRONG_WITH_WEAK => {
+                // There might still be weak pointers.
+                if self
+                    .inner()
+                    .strong
+                    .compare_exchange(NO_STRONG_WITH_WEAK, STRONG_DROPPED, Acquire, Relaxed)
+                    .is_ok()
+                {
+                    // Destroy the data at this time, even though we must not free the box
+                    // allocation itself (there might still be weak pointers lying around).
+                    unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
+                }
+                // Drop the weak ref collectively held by all strong references
+                // Take a reference to `self.alloc` instead of cloning because 1. it'll
+                // last long enough, and 2. you should be able to drop `Arc`s with
+                // unclonable allocators
+                drop(Weak { ptr: self.ptr, alloc: &self.alloc });
+            }
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        }
+    }
 
-        // Drop the weak ref collectively held by all strong references
-        // Take a reference to `self.alloc` instead of cloning because 1. it'll
-        // last long enough, and 2. you should be able to drop `Arc`s with
-        // unclonable allocators
-        drop(Weak { ptr: self.ptr, alloc: &self.alloc });
+    unsafe fn deallocate(&self) {
+        unsafe {
+            self.alloc.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
+        }
     }
 
     /// Returns `true` if the two `Arc`s point to the same allocation in a vein similar to
@@ -1830,8 +1875,8 @@ impl<T: ?Sized> Arc<T> {
         debug_assert_eq!(unsafe { Layout::for_value(&*inner) }, layout);
 
         unsafe {
-            ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
-            ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
+            ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(ONE_STRONG));
+            ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(NO_WEAK));
         }
 
         inner
@@ -2019,7 +2064,7 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Arc<T, A> {
         // another must already provide any required synchronization.
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        let old_size = self.inner().strong.fetch_add(1, Relaxed);
+        let old_size = self.inner().strong.fetch_add(ONE_STRONG, Relaxed);
 
         // However we need to guard against massive refcounts in case someone is `mem::forget`ing
         // Arcs. If we don't do this the count can overflow and users will use-after free. This
@@ -2112,55 +2157,48 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
-        // Note that we hold both a strong reference and a weak reference.
-        // Thus, releasing our strong reference only will not, by itself, cause
-        // the memory to be deallocated.
-        //
-        // Use Acquire to ensure that we see any writes to `weak` that happen
-        // before release writes (i.e., decrements) to `strong`. Since we hold a
-        // weak count, there's no chance the ArcInner itself could be
-        // deallocated.
-        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
-            // Another strong pointer exists, so we must clone.
-            // Pre-allocate memory to allow writing the cloned value directly.
-            let mut arc = Self::new_uninit_in(this.alloc.clone());
-            unsafe {
-                let data = Arc::get_mut_unchecked(&mut arc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
-                *this = arc.assume_init();
+        match this.inner().strong.load(Relaxed) {
+            ONE_STRONG => {
+                // This is the only Arc, and no Weak pointers exist.
+                acquire!(self.inner().strong);
             }
-        } else if this.inner().weak.load(Relaxed) != 1 {
-            // Relaxed suffices in the above because this is fundamentally an
-            // optimization: we are always racing with weak pointers being
-            // dropped. Worst case, we end up allocated a new Arc unnecessarily.
-
-            // We removed the last strong ref, but there are additional weak
-            // refs remaining. We'll move the contents to a new Arc, and
-            // invalidate the other weak refs.
-
-            // Note that it is not possible for the read of `weak` to yield
-            // usize::MAX (i.e., locked), since the weak count can only be
-            // locked by a thread with a strong reference.
-
-            // Materialize our own implicit weak pointer, so that it can clean
-            // up the ArcInner as needed.
-            let _weak = Weak { ptr: this.ptr, alloc: this.alloc.clone() };
-
-            // Can just steal the data, all that's left is Weaks
-            let mut arc = Self::new_uninit_in(this.alloc.clone());
-            unsafe {
-                let data = Arc::get_mut_unchecked(&mut arc);
-                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
-                ptr::write(this, arc.assume_init());
+            ONE_STRONG_WITH_WEAK
+                if this
+                    .inner()
+                    .strong
+                    .compare_exchange(ONE_STRONG_WITH_WEAK, STRONG_DROPPED, Acquire, Relaxed)
+                    .is_ok() =>
+            {
+                // This is the only Arc, but other Weak pointers might exist.
+                // Weak pointers can no longer upgrade at this point, though.
+                if this.inner().weak.load(Relaxed) == ONE_WEAK {
+                    // No Weak pointers exist.
+                    this.inner().strong.store(ONE_STRONG_WITH_WEAK, Release); // Restore the strong count for this Arc.
+                } else {
+                    // Weak pointers exist.
+                    // So we can just steal the data, but need a new allocation.
+                    let mut arc = Self::new_uninit_in(this.alloc.clone());
+                    unsafe {
+                        Arc::get_mut_unchecked(&mut arc)
+                            .as_mut_ptr()
+                            .copy_from_nonoverlapping(&**this, 1);
+                        let old_arc = mem::ManuallyDrop::new(mem::replace(this, arc.assume_init()));
+                        let alloc = ptr::read(&old_arc.alloc);
+                        drop(Weak { ptr: old_arc.ptr, alloc });
+                    }
+                }
             }
-        } else {
-            // We were the sole reference of either kind; bump back up the
-            // strong ref count.
-            this.inner().strong.store(1, Release);
+            _ => {
+                // Another Arcs exist, so we must clone.
+                // Pre-allocate memory to allow writing the cloned value directly.
+                let mut arc = Self::new_uninit_in(this.alloc.clone());
+                unsafe {
+                    let data = Arc::get_mut_unchecked(&mut arc);
+                    (**this).write_clone_into_raw(data.as_mut_ptr());
+                    *this = arc.assume_init();
+                }
+            }
         }
-
-        // As with `get_mut()`, the unsafety is ok because our reference was
-        // either unique to begin with, or became one upon cloning the contents.
         unsafe { Self::get_mut_unchecked(this) }
     }
 
@@ -2313,26 +2351,23 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// Note that this requires locking the weak ref count.
     fn is_unique(&mut self) -> bool {
-        // lock the weak pointer count if we appear to be the sole weak pointer
-        // holder.
-        //
-        // The acquire label here ensures a happens-before relationship with any
-        // writes to `strong` (in particular in `Weak::upgrade`) prior to decrements
-        // of the `weak` count (via `Weak::drop`, which uses release). If the upgraded
-        // weak ref was never dropped, the CAS here will fail so we do not care to synchronize.
-        if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
-            // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
-            // counter in `drop` -- the only access that happens when any but the last reference
-            // is being dropped.
-            let unique = self.inner().strong.load(Acquire) == 1;
-
-            // The release write here synchronizes with a read in `downgrade`,
-            // effectively preventing the above read of `strong` from happening
-            // after the write.
-            self.inner().weak.store(1, Release); // release the lock
-            unique
-        } else {
-            false
+        match self.inner().strong.load(Relaxed) {
+            ONE_STRONG => true, // This is the only Arc, and no Weak pointers exist.
+            ONE_STRONG_WITH_WEAK
+                if self
+                    .inner()
+                    .weak
+                    .compare_exchange(NO_STRONG_WITH_WEAK, STRONG_DROPPED, Acquire, Relaxed)
+                    .is_ok() =>
+            {
+                // This was the only Arc when we looked at the strong pointer,
+                // there are no Weak pointers, and we locked the Weak counter.
+                // Check the strong counter again now that we have locked the weak pointer.
+                let unique = self.inner().strong.load(Acquire) >> STRONG_SHIFT == 1;
+                self.inner().weak.store(ONE_WEAK, Release); // release the lock
+                unique
+            }
+            _ => false, // Another Arcs or Weaks exist.
         }
     }
 }
@@ -2369,42 +2404,9 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
-        if self.inner().strong.fetch_sub(1, Release) != 1 {
-            return;
-        }
-
-        // This fence is needed to prevent reordering of use of the data and
-        // deletion of the data. Because it is marked `Release`, the decreasing
-        // of the reference count synchronizes with this `Acquire` fence. This
-        // means that use of the data happens before decreasing the reference
-        // count, which happens before this fence, which happens before the
-        // deletion of the data.
-        //
-        // As explained in the [Boost documentation][1],
-        //
-        // > It is important to enforce any possible access to the object in one
-        // > thread (through an existing reference) to *happen before* deleting
-        // > the object in a different thread. This is achieved by a "release"
-        // > operation after dropping a reference (any access to the object
-        // > through this reference must obviously happened before), and an
-        // > "acquire" operation before deleting the object.
-        //
-        // In particular, while the contents of an Arc are usually immutable, it's
-        // possible to have interior writes to something like a Mutex<T>. Since a
-        // Mutex is not acquired when it is deleted, we can't rely on its
-        // synchronization logic to make writes in thread A visible to a destructor
-        // running in thread B.
-        //
-        // Also note that the Acquire fence here could probably be replaced with an
-        // Acquire load, which could improve performance in highly-contended
-        // situations. See [2].
-        //
-        // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        // [2]: (https://github.com/rust-lang/rust/pull/41714)
-        acquire!(self.inner().strong);
-
-        unsafe {
-            self.drop_slow();
+        let old = self.inner().strong.fetch_sub(ONE_STRONG, Release);
+        if old >> STRONG_SHIFT <= 1 {
+            unsafe { self.drop_slow(old) };
         }
     }
 }
@@ -2770,31 +2772,19 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     where
         A: Clone,
     {
-        #[inline]
-        fn checked_increment(n: usize) -> Option<usize> {
-            // Any write of 0 we can observe leaves the field in permanently zero state.
-            if n == 0 {
-                return None;
-            }
-            // See comments in `Arc::clone` for why we do this (for `mem::forget`).
-            assert!(n <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
-            Some(n + 1)
+        let old = self.inner()?.strong.fetch_add(ONE_STRONG, Relaxed);
+
+        if old & STRONG_DROPPED != 0 {
+            return None;
         }
 
-        // We use a CAS loop to increment the strong count instead of a
-        // fetch_add as this function should never take the reference count
-        // from zero to one.
-        //
-        // Relaxed is fine for the failure case because we don't have any expectations about the new state.
-        // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
-        // value can be initialized after `Weak` references have already been created. In that case, we
-        // expect to observe the fully initialized value.
-        if self.inner()?.strong.fetch_update(Acquire, Relaxed, checked_increment).is_ok() {
-            // SAFETY: pointer is not null, verified in checked_increment
-            unsafe { Some(Arc::from_inner_in(self.ptr, self.alloc.clone())) }
-        } else {
-            None
+        if old == NO_STRONG_WITH_WEAK {
+            // The last Arc just dropped the implicit Weak pointer but didn't drop the value yet.
+            // We interrupted it just in time. Restore the implicit Weak pointer.
+            mem::forget(self.clone());
         }
+
+        Some(unsafe { Arc::from_inner_in(self.ptr, self.alloc.clone()) })
     }
 
     /// Gets the number of strong (`Arc`) pointers pointing to this allocation.
@@ -2803,7 +2793,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong.load(Acquire) } else { 0 }
+        if let Some(inner) = self.inner() { inner.strong.load(Acquire) >> STRONG_SHIFT } else { 0 }
     }
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this
@@ -2821,9 +2811,8 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn weak_count(&self) -> usize {
         if let Some(inner) = self.inner() {
-            let weak = inner.weak.load(Acquire);
-            let strong = inner.strong.load(Acquire);
-            if strong == 0 {
+            if inner.strong.load(Relaxed) & STRONG_DROPPED != 0 {
+                // There are no strong pointers left.
                 0
             } else {
                 // Since we observed that there was at least one strong pointer
@@ -2831,7 +2820,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
                 // reference (present whenever any strong references are alive)
                 // was still around when we observed the weak count, and can
                 // therefore safely subtract it.
-                weak - 1
+                (inner.weak.load(Relaxed) >> WEAK_SHIFT) - 1
             }
         } else {
             0
@@ -2928,7 +2917,7 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Weak<T, A> {
         // fetch_add (ignoring the lock) because the weak count is only locked
         // where are *no other* weak pointers in existence. (So we can't be
         // running this code in that case).
-        let old_size = inner.weak.fetch_add(1, Relaxed);
+        let old_size = inner.weak.fetch_add(ONE_WEAK, Relaxed);
 
         // See comments in Arc::clone() for why we do this (for mem::forget).
         if old_size > MAX_REFCOUNT {
@@ -2997,7 +2986,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Weak<T, A> {
         // ref, which can only happen after the lock is released.
         let inner = if let Some(inner) = self.inner() { inner } else { return };
 
-        if inner.weak.fetch_sub(1, Release) == 1 {
+        if inner.weak.fetch_sub(ONE_WEAK, Release) == ONE_WEAK {
             acquire!(inner.weak);
             unsafe {
                 self.alloc.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()))
