@@ -246,7 +246,7 @@ impl<'tcx> ConstToPat<'tcx> {
             // any errors.) This ensures it shows up in cargo's future-compat reports as well.
             if !self.type_has_partial_eq_impl(cv.ty()) {
                 self.tcx().emit_spanned_lint(
-                    lint::builtin::MATCH_WITHOUT_PARTIAL_EQ,
+                    lint::builtin::CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
                     self.id,
                     self.span,
                     NonPartialEqMatch { non_peq_ty: cv.ty() },

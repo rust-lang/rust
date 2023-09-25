@@ -5,8 +5,8 @@ LL |         CONST_SET => { /* ok */ }
    |         ^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #X <https://github.com/rust-lang/rust/issues/X>
-   = note: `#[warn(match_without_partial_eq)]` on by default
+   = note: for more information, see issue #116122 <https://github.com/rust-lang/rust/issues/116122>
+   = note: `#[warn(const_patterns_without_partial_eq)]` on by default
 
 warning: 1 warning emitted
 
@@ -18,6 +18,6 @@ LL |         CONST_SET => { /* ok */ }
    |         ^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #X <https://github.com/rust-lang/rust/issues/X>
-   = note: `#[warn(match_without_partial_eq)]` on by default
+   = note: for more information, see issue #116122 <https://github.com/rust-lang/rust/issues/116122>
+   = note: `#[warn(const_patterns_without_partial_eq)]` on by default
 

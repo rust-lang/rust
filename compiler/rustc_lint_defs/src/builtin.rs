@@ -2311,13 +2311,13 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `match_without_partial_eq` lint detects constants that are used in patterns,
+    /// The `const_patterns_without_partial_eq` lint detects constants that are used in patterns,
     /// whose type does not implement `PartialEq`.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(match_without_partial_eq)]
+    /// #![deny(const_patterns_without_partial_eq)]
     ///
     /// trait EnumSetType {
     ///    type Repr;
@@ -2352,12 +2352,12 @@ declare_lint! {
     /// field-by-field. In the future we'd like to ensure that pattern matching always
     /// follows `PartialEq` semantics, so that trait bound will become a requirement for
     /// matching on constants.
-    pub MATCH_WITHOUT_PARTIAL_EQ,
+    pub CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
     Warn,
     "constant in pattern does not implement `PartialEq`",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #X <https://github.com/rust-lang/rust/issues/X>",
+        reference: "issue #116122 <https://github.com/rust-lang/rust/issues/116122>",
     };
 }
 
@@ -3407,6 +3407,7 @@ declare_lint_pass! {
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
+        CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
         DEAD_CODE,
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
@@ -3440,7 +3441,6 @@ declare_lint_pass! {
         LOSSY_PROVENANCE_CASTS,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         MACRO_USE_EXTERN_CRATE,
-        MATCH_WITHOUT_PARTIAL_EQ,
         META_VARIABLE_MISUSE,
         MISSING_ABI,
         MISSING_FRAGMENT_SPECIFIER,
