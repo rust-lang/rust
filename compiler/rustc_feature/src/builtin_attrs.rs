@@ -537,7 +537,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
-    ungated!(rustc_safe_intrinsic, Normal, template!(Word), DuplicatesOk),
     rustc_attr!(rustc_allowed_through_unstable_modules, Normal, template!(Word), WarnFollowing,
     "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
     through unstable paths"),
@@ -738,6 +737,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_host, AttributeType::Normal, template!(Word), ErrorFollowing,
         "#[rustc_host] annotates const generic parameters as the `host` effect param, \
         and it is only intended for internal use and as a desugaring."
+    ),
+
+    rustc_attr!(
+        rustc_safe_intrinsic, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[rustc_safe_intrinsics] declares intrinsics that are safe to use, tying it to the internal \
+        intrinsic mechanisms."
     ),
 
     BuiltinAttribute {
