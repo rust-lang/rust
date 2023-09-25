@@ -128,6 +128,8 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
     }
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
+        // Only run one test suite. In the future we can add all test suites to one `Vec` and run
+        // them all at once, making best use of systems with high parallelism.
         vec![config],
         // The files we're actually interested in (all `.rs` files).
         ui_test::default_file_filter,
