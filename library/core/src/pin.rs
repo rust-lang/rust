@@ -296,7 +296,7 @@
 //! # Examples of address-sensitive types
 //! [address-sensitive-examples]: #examples-of-address-sensitive-types
 //!
-//! ## Self-referential struct
+//! ## A self-referential struct
 //! [self-ref]: #a-self-referential-struct
 //! [`Unmovable`]: #a-self-referential-struct
 //!
@@ -425,7 +425,7 @@
 //! This point is subtle but required for intrusive data structures to be implemented soundly.
 //!
 //! ## `Drop` guarantee
-//! [drop-guarantee]: #notice-of-destruction
+//! [drop-guarantee]: self#drop-guarantee
 //!
 //! There needs to be a way for a pinned value to notify any code that is relying on its pinned
 //! status that it is about to be destroyed, so that such code can remove its address from their
