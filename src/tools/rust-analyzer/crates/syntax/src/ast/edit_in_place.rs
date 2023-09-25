@@ -224,7 +224,7 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
             let after_attrs_and_comments = node
                 .children_with_tokens()
                 .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
-                .map_or(Position::first_child_of(node), |it| Position::before(it));
+                .map_or(Position::first_child_of(node), Position::before);
 
             ted::insert_all(
                 after_attrs_and_comments,
@@ -433,7 +433,9 @@ impl ast::UseTree {
         if &path == prefix && self.use_tree_list().is_none() {
             if self.star_token().is_some() {
                 // path$0::* -> *
-                self.coloncolon_token().map(ted::remove);
+                if let Some(a) = self.coloncolon_token() {
+                    ted::remove(a)
+                }
                 ted::remove(prefix.syntax());
             } else {
                 // path$0 -> self
@@ -460,7 +462,9 @@ impl ast::UseTree {
             for p in successors(parent.parent_path(), |it| it.parent_path()) {
                 p.segment()?;
             }
-            prefix.parent_path().and_then(|p| p.coloncolon_token()).map(ted::remove);
+            if let Some(a) = prefix.parent_path().and_then(|p| p.coloncolon_token()) {
+                ted::remove(a)
+            }
             ted::remove(prefix.syntax());
             Some(())
         }
@@ -976,7 +980,9 @@ enum Foo {
 
     fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
         let enum_ = ast_mut_from_text::<ast::Enum>(before);
-        enum_.variant_list().map(|it| it.add_variant(variant));
+        if let Some(it) = enum_.variant_list() {
+            it.add_variant(variant)
+        }
         let after = enum_.to_string();
         assert_eq_text!(&trim_indent(expected.trim()), &trim_indent(after.trim()));
     }

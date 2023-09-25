@@ -23,17 +23,17 @@ oorandom = "11.1.3"
 tracing = "0.1.35"
 rustc-hash = "1.1.0"
 scoped-tls = "1.0.0"
-chalk-solve = { version = "0.92.0", default-features = false }
-chalk-ir = "0.92.0"
-chalk-recursive = { version = "0.92.0", default-features = false }
-chalk-derive = "0.92.0"
+chalk-solve = { version = "0.93.0", default-features = false }
+chalk-ir = "0.93.0"
+chalk-recursive = { version = "0.93.0", default-features = false }
+chalk-derive = "0.93.0"
 la-arena.workspace = true
 once_cell = "1.17.0"
 triomphe.workspace = true
 nohash-hasher.workspace = true
 typed-arena = "2.0.1"
 
-rustc_index.workspace = true
+rustc-dependencies.workspace = true
 
 # local deps
 stdx.workspace = true
@@ -56,3 +56,6 @@ project-model = { path = "../project-model" }
 
 # local deps
 test-utils.workspace = true
+
+[features]
+in-rust-tree = ["rustc-dependencies/in-rust-tree"]

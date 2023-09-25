@@ -281,6 +281,34 @@ fn some_function(x: i32) {
 }
 
 #[test]
+fn doctest_bool_to_enum() {
+    check_doc_test(
+        "bool_to_enum",
+        r#####"
+fn main() {
+    let $0bool = true;
+
+    if bool {
+        println!("foo");
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    #[derive(PartialEq, Eq)]
+    enum Bool { True, False }
+
+    let bool = Bool::True;
+
+    if bool == Bool::True {
+        println!("foo");
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_change_visibility() {
     check_doc_test(
         "change_visibility",

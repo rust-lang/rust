@@ -34,7 +34,7 @@ mod target;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RustcEnumVariantIdx(pub LocalEnumVariantId);
 
-impl rustc_index::vec::Idx for RustcEnumVariantIdx {
+impl rustc_dependencies::index::vec::Idx for RustcEnumVariantIdx {
     fn new(idx: usize) -> Self {
         RustcEnumVariantIdx(Idx::from_raw(RawIdx::from(idx as u32)))
     }

@@ -5,7 +5,7 @@
 mod block;
 
 use rowan::Direction;
-use rustc_lexer::unescape::{self, unescape_literal, Mode};
+use rustc_dependencies::lexer::unescape::{self, unescape_literal, Mode};
 
 use crate::{
     algo,

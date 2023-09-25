@@ -134,6 +134,7 @@ fn integrated_completion_benchmark() {
             enable_imports_on_the_fly: true,
             enable_self_on_the_fly: true,
             enable_private_editable: true,
+            full_function_signatures: false,
             callable: Some(CallableSnippets::FillArguments),
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
@@ -173,6 +174,7 @@ fn integrated_completion_benchmark() {
             enable_imports_on_the_fly: true,
             enable_self_on_the_fly: true,
             enable_private_editable: true,
+            full_function_signatures: false,
             callable: Some(CallableSnippets::FillArguments),
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {

@@ -115,6 +115,7 @@ mod handlers {
     mod apply_demorgan;
     mod auto_import;
     mod bind_unused_param;
+    mod bool_to_enum;
     mod change_visibility;
     mod convert_bool_then;
     mod convert_comment_block;
@@ -227,6 +228,7 @@ mod handlers {
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
             bind_unused_param::bind_unused_param,
+            bool_to_enum::bool_to_enum,
             change_visibility::change_visibility,
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,

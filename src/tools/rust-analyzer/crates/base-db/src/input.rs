@@ -257,6 +257,7 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
     ) -> Result<Subtree, ProcMacroExpansionError>;
 }
 
+#[derive(Debug)]
 pub enum ProcMacroExpansionError {
     Panic(String),
     /// Things like "proc macro server was killed by OOM".

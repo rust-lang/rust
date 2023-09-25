@@ -177,9 +177,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.92.0"
+version = "0.93.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff5053a8a42dbff5279a82423946fc56dc1253b76cf211b2b3c14b3aad4e1281"
+checksum = "264726159011fc7f22c23eb51f49021ece6e71bc358b96e7f2e842db0b14162b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -189,9 +189,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.92.0"
+version = "0.93.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a56de2146a8ed0fcd54f4bd50db852f1de4eac9e1efe568494f106c21b77d2a"
+checksum = "d65c17407d4c756b8f7f84344acb0fb96364d0298822743219bb25769b6d00df"
 dependencies = [
  "bitflags 1.3.2",
  "chalk-derive",
@@ -200,9 +200,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.92.0"
+version = "0.93.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cc09e6e9531f3544989ef89b189e80fbc7ad9e2f73f1c5e03ddc9ffb0527463"
+checksum = "80e2cf7b70bedaaf3a8cf3c93b6120c2bb65be89389124028e724d19e209686e"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -213,9 +213,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.92.0"
+version = "0.93.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b392e02b4c81ec76d3748da839fc70a5539b83d27c9030668463d34d5110b860"
+checksum = "afc67c548d3854f64e97e67dc5b7c88513425c5bfa347cff96b7992ae6379288"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -531,8 +531,6 @@ dependencies = [
  "fst",
  "hashbrown 0.12.3",
  "hir-expand",
- "hkalbasi-rustc-ap-rustc_abi",
- "hkalbasi-rustc-ap-rustc_index",
  "indexmap 2.0.0",
  "intern",
  "itertools",
@@ -541,7 +539,7 @@ dependencies = [
  "mbe",
  "once_cell",
  "profile",
- "ra-ap-rustc_parse_format",
+ "rustc-dependencies",
  "rustc-hash",
  "smallvec",
  "stdx",
@@ -594,7 +592,6 @@ dependencies = [
  "expect-test",
  "hir-def",
  "hir-expand",
- "hkalbasi-rustc-ap-rustc_index",
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -604,6 +601,7 @@ dependencies = [
  "oorandom",
  "profile",
  "project-model",
+ "rustc-dependencies",
  "rustc-hash",
  "scoped-tls",
  "smallvec",
@@ -1277,7 +1275,7 @@ dependencies = [
  "drop_bomb",
  "expect-test",
  "limit",
- "ra-ap-rustc_lexer",
+ "rustc-dependencies",
  "sourcegen",
  "stdx",
 ]
@@ -1594,10 +1592,12 @@ dependencies = [
  "oorandom",
  "parking_lot 0.12.1",
  "parking_lot_core 0.9.6",
+ "parser",
  "proc-macro-api",
  "profile",
  "project-model",
  "rayon",
+ "rustc-dependencies",
  "rustc-hash",
  "scip",
  "serde",
@@ -1625,6 +1625,16 @@ name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d626bb9dae77e28219937af045c257c28bfd3f69333c512553507f5f9798cb76"
+
+[[package]]
+name = "rustc-dependencies"
+version = "0.0.0"
+dependencies = [
+ "hkalbasi-rustc-ap-rustc_abi",
+ "hkalbasi-rustc-ap-rustc_index",
+ "ra-ap-rustc_lexer",
+ "ra-ap-rustc_parse_format",
+]
 
 [[package]]
 name = "rustc-hash"
@@ -1853,9 +1863,9 @@ dependencies = [
  "proc-macro2",
  "profile",
  "quote",
- "ra-ap-rustc_lexer",
  "rayon",
  "rowan",
+ "rustc-dependencies",
  "rustc-hash",
  "smol_str",
  "sourcegen",
