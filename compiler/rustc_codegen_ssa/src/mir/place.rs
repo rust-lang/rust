@@ -463,7 +463,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::Field(ref field, _) => {
                     cg_base.project_field(bx, field.index())
                 }
-                mir::ProjectionElem::OpaqueCast(ty) => cg_base.project_type(bx, ty),
+                mir::ProjectionElem::OpaqueCast(_) => {
+                    bug!("OpaqueCast should be unreachable here!")
+                }
                 mir::ProjectionElem::Index(index) => {
                     let index = &mir::Operand::Copy(mir::Place::from(index));
                     let index = self.codegen_operand(bx, index);
