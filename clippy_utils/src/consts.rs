@@ -403,7 +403,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     && adt_def.is_struct()
                     && let Some(desired_field) = field_of_struct(*adt_def, self.lcx, *constant, field)
                 {
-                    miri_to_const(self.lcx, desired_field)
+                    mir_to_const(self.lcx, desired_field)
                 }
                 else {
                     result
@@ -483,7 +483,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), None)
                     .ok()
                     .map(|val| rustc_middle::mir::Const::from_value(val, ty))?;
-                let result = miri_to_const(self.lcx, result)?;
+                let result = mir_to_const(self.lcx, result)?;
                 self.source = ConstantSource::Constant;
                 Some(result)
             },
@@ -655,7 +655,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     }
 }
 
-pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> Option<Constant<'tcx>> {
+pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> Option<Constant<'tcx>> {
     use rustc_middle::mir::ConstValue;
     match result {
         mir::Const::Val(ConstValue::Scalar(Scalar::Int(int)), _) => match result.ty().kind() {

@@ -113,7 +113,7 @@ use rustc_span::{sym, Span};
 use rustc_target::abi::Integer;
 use visitors::Visitable;
 
-use crate::consts::{constant, miri_to_const, Constant};
+use crate::consts::{constant, mir_to_const, Constant};
 use crate::higher::Range;
 use crate::ty::{
     adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type,
@@ -1511,7 +1511,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
                 && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, min_val.to_valtree()))
                 && let min_const_kind = Const::from_value(const_val, bnd_ty)
-                && let Some(min_const) = miri_to_const(cx, min_const_kind)
+                && let Some(min_const) = mir_to_const(cx, min_const_kind)
                 && let Some(start_const) = constant(cx, cx.typeck_results(), start)
             {
                 start_const == min_const
@@ -1527,7 +1527,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                         && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
                         && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, max_val.to_valtree()))
                         && let max_const_kind = Const::from_value(const_val, bnd_ty)
-                        && let Some(max_const) = miri_to_const(cx, max_const_kind)
+                        && let Some(max_const) = mir_to_const(cx, max_const_kind)
                         && let Some(end_const) = constant(cx, cx.typeck_results(), end)
                     {
                         end_const == max_const
