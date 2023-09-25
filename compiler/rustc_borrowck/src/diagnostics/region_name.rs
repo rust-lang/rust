@@ -27,7 +27,7 @@ pub(crate) struct RegionName {
 /// This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone)]
 pub(crate) enum RegionNameSource {
-    /// A bound (not free) region that was substituted at the def site (not an HRTB).
+    /// A bound (not free) region that was instantiated at the def site (not an HRTB).
     NamedEarlyBoundRegion(Span),
     /// A free region that the user has a name (`'a`) for.
     NamedFreeRegion(Span),
@@ -619,7 +619,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     // programs, so we need to use delay_span_bug here. See #82126.
                     self.infcx.tcx.sess.delay_span_bug(
                         hir_arg.span(),
-                        format!("unmatched subst and hir arg: found {kind:?} vs {hir_arg:?}"),
+                        format!("unmatched arg and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );
                 }
             }

@@ -427,7 +427,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             let bound_vars = tcx.late_bound_vars(binding.hir_id);
             ty::Binder::bind_with_vars(subst_output, bound_vars)
         } else {
-            // Include substitutions for generic parameters of associated types
+            // Append the generic arguments of the associated type to the `trait_ref`.
             candidate.map_bound(|trait_ref| {
                 let ident = Ident::new(assoc_item.name, binding.item_name.span);
                 let item_segment = hir::PathSegment {

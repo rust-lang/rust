@@ -529,7 +529,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             if let Some(impl_def_id) = cx.tcx.impl_of_method(instance.def_id()) {
                 // If the method does *not* belong to a trait, proceed
                 if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
-                    let impl_self_ty = cx.tcx.subst_and_normalize_erasing_regions(
+                    let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
                         instance.args,
                         ty::ParamEnv::reveal_all(),
                         cx.tcx.type_of(impl_def_id),

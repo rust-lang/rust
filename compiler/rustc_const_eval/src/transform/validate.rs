@@ -558,8 +558,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
     }
 }
 
-/// A faster version of the validation pass that only checks those things which may break when apply
-/// generic substitutions.
+/// A faster version of the validation pass that only checks those things which may break when
+/// instantiating any generic parameters.
 pub fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,

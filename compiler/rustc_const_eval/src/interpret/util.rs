@@ -4,7 +4,7 @@ use rustc_middle::ty::{
 };
 use std::ops::ControlFlow;
 
-/// Checks whether a type contains generic parameters which require substitution.
+/// Checks whether a type contains generic parameters which must be instantiated.
 ///
 /// In case it does, returns a `TooGeneric` const eval error. Note that due to polymorphization
 /// types may be "concrete enough" even though they still contain generic parameters in
@@ -43,7 +43,8 @@ where
                             .try_into()
                             .expect("more generic parameters than can fit into a `u32`");
                         // Only recurse when generic parameters in fns, closures and generators
-                        // are used and require substitution.
+                        // are used and have to be instantiated.
+                        //
                         // Just in case there are closures or generators within this subst,
                         // recurse.
                         if unused_params.is_used(index) && subst.has_param() {

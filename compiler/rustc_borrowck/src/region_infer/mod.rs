@@ -2250,7 +2250,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         // Query canonicalization can create local superuniverses (for example in
-        // `InferCtx::query_response_substitution_guess`), but they don't have an associated
+        // `InferCtx::query_response_instantiation_guess`), but they don't have an associated
         // `UniverseInfo` explaining why they were created.
         // This can cause ICEs if these causes are accessed in diagnostics, for example in issue
         // #114907 where this happens via liveness and dropck outlives results.
