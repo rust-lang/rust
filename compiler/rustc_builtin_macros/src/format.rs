@@ -8,11 +8,11 @@ use rustc_ast::{
     FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_errors::{Applicability, MultiSpan, PResult, SingleLabelManySpans};
+use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{BytePos, InnerSpan, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
 
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
@@ -615,56 +615,8 @@ fn report_missing_placeholders(
         })
         .collect::<Vec<_>>();
 
-    let mut args_spans = vec![];
-    let mut fmt_spans = FxIndexSet::default();
-
-    for (i, unnamed_arg) in args.unnamed_args().iter().enumerate().rev() {
-        let Some(ty) = unnamed_arg.expr.to_ty() else { continue };
-        let Some(argument_binding) = ty.kind.is_simple_path() else { continue };
-        let argument_binding = argument_binding.as_str();
-
-        if used[i] {
-            continue;
-        }
-
-        let matching_placeholders = placeholders
-            .iter()
-            .filter(|(_, inline_binding)| argument_binding == *inline_binding)
-            .collect::<Vec<_>>();
-
-        if !matching_placeholders.is_empty() {
-            args_spans.push(unnamed_arg.expr.span);
-            for placeholder in &matching_placeholders {
-                fmt_spans.insert(*placeholder);
-            }
-        }
-    }
-
-    if !args_spans.is_empty() {
-        let mut multispan = MultiSpan::from(args_spans.clone());
-
-        let msg = if fmt_spans.len() > 1 {
-            "the formatting strings already captures the bindings \
-            directly, they don't need to be included in the argument list"
-        } else {
-            "the formatting string already captures the binding \
-            directly, it doesn't need to be included in the argument list"
-        };
-
-        for (span, binding) in fmt_spans {
-            multispan.push_span_label(
-                *span,
-                format!("this formatting specifier is referencing the `{binding}` binding"),
-            );
-        }
-
-        for span in &args_spans {
-            multispan.push_span_label(*span, "this can be removed");
-        }
-
-        diag.span_help(multispan, msg);
-        diag.emit();
-        return;
+    if !placeholders.is_empty() {
+        report_redundant_placeholders(&mut diag, &args, used, placeholders);
     }
 
     // Used to ensure we only report translations for *one* kind of foreign format.
@@ -752,6 +704,64 @@ fn report_missing_placeholders(
     }
 
     diag.emit();
+}
+
+fn report_redundant_placeholders(
+    diag: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+    args: &FormatArguments,
+    used: &[bool],
+    placeholders: Vec<(Span, &str)>,
+) {
+    let mut args_spans = vec![];
+    let mut fmt_spans = FxIndexSet::default();
+
+    for (i, unnamed_arg) in args.unnamed_args().iter().enumerate().rev() {
+        let Some(ty) = unnamed_arg.expr.to_ty() else { continue };
+        let Some(argument_binding) = ty.kind.is_simple_path() else { continue };
+        let argument_binding = argument_binding.as_str();
+
+        if used[i] {
+            continue;
+        }
+
+        let matching_placeholders = placeholders
+            .iter()
+            .filter(|(_, inline_binding)| argument_binding == *inline_binding)
+            .collect::<Vec<_>>();
+
+        if !matching_placeholders.is_empty() {
+            args_spans.push(unnamed_arg.expr.span);
+            for placeholder in &matching_placeholders {
+                fmt_spans.insert(*placeholder);
+            }
+        }
+    }
+
+    if !args_spans.is_empty() {
+        let mut multispan = MultiSpan::from(args_spans.clone());
+
+        let msg = if fmt_spans.len() > 1 {
+            "the formatting strings already captures the bindings \
+            directly, they don't need to be included in the argument list"
+        } else {
+            "the formatting string already captures the binding \
+            directly, it doesn't need to be included in the argument list"
+        };
+
+        for (span, binding) in fmt_spans {
+            multispan.push_span_label(
+                *span,
+                format!("this formatting specifier is referencing the `{binding}` binding"),
+            );
+        }
+
+        for span in &args_spans {
+            multispan.push_span_label(*span, "this can be removed");
+        }
+
+        diag.span_help(multispan, msg);
+        diag.emit();
+    }
 }
 
 /// Handle invalid references to positional arguments. Output different
