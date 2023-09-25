@@ -95,6 +95,30 @@ fn main() {
         break LOOP;
         //~^ ERROR cannot find value `LOOP` in this scope
     }
+
+    let _ = 'a: loop {
+        loop {
+            break; // This doesn't affect the expected break type of the 'a loop
+            loop {
+                loop {
+                    break 'a 1;
+                }
+            }
+        }
+        break; //~ ERROR mismatched types
+    };
+    let _ = 'a: loop {
+        loop {
+            break; // This doesn't affect the expected break type of the 'a loop
+            loop {
+                loop {
+                    break 'a 1;
+                }
+            }
+        }
+        break 'a; //~ ERROR mismatched types
+    };
+
     loop { // point at the return type
         break 2; //~ ERROR mismatched types
     }

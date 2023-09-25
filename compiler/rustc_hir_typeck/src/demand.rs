@@ -541,17 +541,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let mut parent_id = self.tcx.hir().parent_id(expr.hir_id);
         let mut parent;
-        loop {
+        'outer: loop {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
-            let Some(hir::Node::Expr(p)) = self.tcx.hir().find(parent_id) else {
+            let Some(
+                hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
+                | hir::Node::Expr(&ref p),
+            ) = self.tcx.hir().find(parent_id)
+            else {
                 break;
             };
             parent = p;
-            parent_id = self.tcx.hir().parent_id(parent.hir_id);
+            parent_id = self.tcx.hir().parent_id(parent_id);
             let hir::ExprKind::Break(destination, _) = parent.kind else {
                 continue;
             };
-            let mut parent_id = parent.hir_id;
+            let mut parent_id = parent_id;
+            let mut direct = false;
             loop {
                 // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
                 let parent = match self.tcx.hir().find(parent_id) {
@@ -567,14 +572,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         parent_id = self.tcx.hir().parent_id(*hir_id);
                         parent
                     }
-                    Some(hir::Node::Block(hir::Block { .. })) => {
+                    Some(hir::Node::Block(_)) => {
                         parent_id = self.tcx.hir().parent_id(parent_id);
                         parent
                     }
                     _ => break,
                 };
+                if let hir::ExprKind::Loop(..) = parent.kind {
+                    // When you have `'a: loop { break; }`, the `break` corresponds to the labeled
+                    // loop, so we need to account for that.
+                    direct = !direct;
+                }
                 if let hir::ExprKind::Loop(_, label, _, span) = parent.kind
-                    && destination.label == label
+                    && (destination.label == label || direct)
                 {
                     if let Some((reason_span, message)) =
                         self.maybe_get_coercion_reason(parent_id, parent.span)
@@ -588,20 +598,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Locate all other `break` statements within the same `loop` that might
                         // have affected inference.
                         struct FindBreaks<'tcx> {
-                            destination: hir::Destination,
+                            label: Option<rustc_ast::Label>,
                             uses: Vec<&'tcx hir::Expr<'tcx>>,
                         }
                         impl<'tcx> Visitor<'tcx> for FindBreaks<'tcx> {
                             fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
                                 if let hir::ExprKind::Break(destination, _) = ex.kind
-                                    && self.destination.label == destination.label
+                                    && self.label == destination.label
                                 {
                                     self.uses.push(ex);
                                 }
                                 hir::intravisit::walk_expr(self, ex);
                             }
                         }
-                        let mut expr_finder = FindBreaks { destination, uses: vec![] };
+                        let mut expr_finder = FindBreaks { label, uses: vec![] };
                         expr_finder.visit_expr(parent);
                         for ex in expr_finder.uses {
                             let hir::ExprKind::Break(_, val) = ex.kind else {
@@ -624,7 +634,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    break;
+                    break 'outer;
                 }
             }
         }

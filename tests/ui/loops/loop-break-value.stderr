@@ -164,11 +164,6 @@ LL |         break "asdf";
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:21:31
    |
-LL |     let _: i32 = 'outer_loop: loop {
-   |         -                     ---- this loop is expected to be of type `i32`
-   |         |
-   |         expected because of this assignment
-LL |         loop {
 LL |             break 'outer_loop "nope";
    |                               ^^^^^^ expected `i32`, found `&str`
 
@@ -202,6 +197,8 @@ LL |         break 2;
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:90:9
    |
+LL |         break 2;
+   |         ------- expected because of this `break`
 LL |         break;
    |         ^^^^^
    |         |
@@ -209,7 +206,31 @@ LL |         break;
    |         help: give it a value of the expected type: `break value`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:99:15
+  --> $DIR/loop-break-value.rs:108:9
+   |
+LL |                     break 'a 1;
+   |                     ---------- expected because of this `break`
+...
+LL |         break;
+   |         ^^^^^
+   |         |
+   |         expected integer, found `()`
+   |         help: give it a value of the expected type: `break value`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:119:9
+   |
+LL |                     break 'a 1;
+   |                     ---------- expected because of this `break`
+...
+LL |         break 'a;
+   |         ^^^^^^^^
+   |         |
+   |         expected integer, found `()`
+   |         help: give it a value of the expected type: `break 'a value`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-break-value.rs:123:15
    |
 LL | fn main() {
    |           - expected `()` because of this return type
@@ -219,7 +240,7 @@ LL |     loop { // point at the return type
 LL |         break 2;
    |               ^ expected `()`, found integer
 
-error: aborting due to 18 previous errors; 1 warning emitted
+error: aborting due to 20 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0308, E0425, E0571.
 For more information about an error, try `rustc --explain E0308`.
