@@ -28,9 +28,9 @@ use rustc_middle::{
     middle::exported_symbols::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
-    query::{LocalCrate},
-    util::Providers,
+    query::LocalCrate,
     ty::TyCtxt,
+    util::Providers,
 };
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
@@ -359,6 +359,10 @@ fn main() {
                         since it is now enabled by default"
             );
         } else if arg == "-Zmiri-disable-abi-check" {
+            eprintln!(
+                "WARNING: the flag `-Zmiri-disable-abi-check` is deprecated and planned to be removed.\n\
+                If you have a use-case for it, please file an issue."
+            );
             miri_config.check_abi = false;
         } else if arg == "-Zmiri-disable-isolation" {
             if matches!(isolation_enabled, Some(true)) {

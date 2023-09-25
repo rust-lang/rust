@@ -10,5 +10,6 @@ allow-unauthenticated = [
 # Gives us the commands 'ready', 'author', 'blocked'
 [shortcut]
 
-[no-merges]
-exclude_labels = ["rollup", "subtree-sync"]
+# disabled until https://github.com/rust-lang/triagebot/pull/1720 lands
+#[no-merges]
+#exclude_titles = ["Rollup of", "sync from rustc"]

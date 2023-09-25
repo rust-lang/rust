@@ -13,7 +13,9 @@ use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
+    crate::MiriInterpCxExt<'mir, 'tcx>
+{
     fn emulate_x86_sse2_intrinsic(
         &mut self,
         link_name: Symbol,
@@ -61,11 +63,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right = this.int_to_int_or_float(&right, twice_wide)?;
 
                     // Calculate left + right + 1
-                    let added = this.wrapping_binary_op(
-                        mir::BinOp::Add,
-                        &left,
-                        &right,
-                    )?;
+                    let added = this.wrapping_binary_op(mir::BinOp::Add, &left, &right)?;
                     let added = this.wrapping_binary_op(
                         mir::BinOp::Add,
                         &added,
@@ -80,10 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     )?;
 
                     // Narrow back to the original type
-                    let res = this.int_to_int_or_float(
-                        &divided,
-                        dest.layout,
-                    )?;
+                    let res = this.int_to_int_or_float(&divided, dest.layout)?;
                     this.write_immediate(*res, &dest)?;
                 }
             }
@@ -110,11 +105,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right = this.int_to_int_or_float(&right, twice_wide)?;
 
                     // Multiply
-                    let multiplied = this.wrapping_binary_op(
-                        mir::BinOp::Mul,
-                        &left,
-                        &right,
-                    )?;
+                    let multiplied = this.wrapping_binary_op(mir::BinOp::Mul, &left, &right)?;
                     // Keep the high half
                     let high = this.wrapping_binary_op(
                         mir::BinOp::Shr,
@@ -123,10 +114,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     )?;
 
                     // Narrow back to the original type
-                    let res = this.int_to_int_or_float(
-                        &high,
-                        dest.layout,
-                    )?;
+                    let res = this.int_to_int_or_float(&high, dest.layout)?;
                     this.write_immediate(*res, &dest)?;
                 }
             }
@@ -424,8 +412,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right_res =
                         i8::try_from(right).unwrap_or(if right < 0 { i8::MIN } else { i8::MAX });
 
-                    this.write_scalar(Scalar::from_i8(left_res.try_into().unwrap()), &left_dest)?;
-                    this.write_scalar(Scalar::from_i8(right_res.try_into().unwrap()), &right_dest)?;
+                    this.write_scalar(Scalar::from_i8(left_res), &left_dest)?;
+                    this.write_scalar(Scalar::from_i8(right_res), &right_dest)?;
                 }
             }
             // Used to implement the _mm_packus_epi16 function.
@@ -485,11 +473,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let right_res =
                         i16::try_from(right).unwrap_or(if right < 0 { i16::MIN } else { i16::MAX });
 
-                    this.write_scalar(Scalar::from_i16(left_res.try_into().unwrap()), &left_dest)?;
-                    this.write_scalar(
-                        Scalar::from_i16(right_res.try_into().unwrap()),
-                        &right_dest,
-                    )?;
+                    this.write_scalar(Scalar::from_i16(left_res), &left_dest)?;
+                    this.write_scalar(Scalar::from_i16(right_res), &right_dest)?;
                 }
             }
             // Used to implement _mm_min_sd and _mm_max_sd functions.
@@ -769,6 +754,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
 
                 this.write_scalar(Scalar::from_u32(res.try_into().unwrap()), dest)?;
+            }
+            // Used to implement the `_mm_pause` function.
+            // The intrinsic is used to hint the processor that the code is in a spin-loop.
+            "pause" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.yield_active_thread();
             }
             _ => return Ok(EmulateByNameResult::NotSupported),
         }

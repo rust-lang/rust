@@ -1,5 +1,3 @@
-pub mod convert;
-
 use std::cmp;
 use std::iter;
 use std::num::NonZeroUsize;
@@ -1033,7 +1031,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ) {
                     // Floating point value is NaN (flagged with INVALID_OP) or outside the range
                     // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-                    return None
+                    return None;
                 } else {
                     // Floating point value can be represented by the integer type after rounding.
                     // The INEXACT flag is ignored on purpose to allow rounding.
@@ -1051,7 +1049,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ) {
                     // Floating point value is NaN (flagged with INVALID_OP) or outside the range
                     // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-                    return None
+                    return None;
                 } else {
                     // Floating point value can be represented by the integer type after rounding.
                     // The INEXACT flag is ignored on purpose to allow rounding.

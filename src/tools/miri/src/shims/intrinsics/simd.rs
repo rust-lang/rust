@@ -458,7 +458,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                         dest.layout.ty
                                     )
                                 })?
-                                .into()
                         }
                         (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
                             let f = op.to_scalar().to_f64()?;
@@ -469,7 +468,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                         dest.layout.ty
                                     )
                                 })?
-                                .into()
                         }
                         // Ptr-to-ptr cast
                         (ty::RawPtr(..), ty::RawPtr(..)) if ptr_cast =>

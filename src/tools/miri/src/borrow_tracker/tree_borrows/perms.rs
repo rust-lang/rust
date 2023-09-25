@@ -6,7 +6,7 @@ use crate::borrow_tracker::tree_borrows::tree::AccessRelatedness;
 use crate::borrow_tracker::AccessKind;
 
 /// The activation states of a pointer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum PermissionPriv {
     /// represents: a local reference that has not yet been written to;
     /// allows: child reads, foreign reads, foreign writes if type is freeze;
@@ -48,6 +48,13 @@ impl PartialOrd for PermissionPriv {
     }
 }
 
+impl PermissionPriv {
+    /// Check if `self` can be the initial state of a pointer.
+    fn is_initial(&self) -> bool {
+        matches!(self, Reserved { ty_is_freeze: _ } | Frozen)
+    }
+}
+
 /// This module controls how each permission individually reacts to an access.
 /// Although these functions take `protected` as an argument, this is NOT because
 /// we check protector violations here, but because some permissions behave differently
@@ -66,7 +73,6 @@ mod transition {
 
     /// A non-child node was read-accessed: noop on non-protected Reserved, advance to Frozen otherwise.
     fn foreign_read(state: PermissionPriv, protected: bool) -> Option<PermissionPriv> {
-        use Option::*;
         Some(match state {
             // Non-writeable states just ignore foreign reads.
             non_writeable @ (Frozen | Disabled) => non_writeable,
@@ -134,7 +140,7 @@ mod transition {
 
 /// Public interface to the state machine that controls read-write permissions.
 /// This is the "private `enum`" pattern.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
 pub struct Permission {
     inner: PermissionPriv,
 }
@@ -147,6 +153,11 @@ pub struct PermTransition {
 }
 
 impl Permission {
+    /// Check if `self` can be the initial state of a pointer.
+    pub fn is_initial(&self) -> bool {
+        self.inner.is_initial()
+    }
+
     /// Default initial permission of the root of a new tree.
     pub fn new_active() -> Self {
         Self { inner: Active }
@@ -166,12 +177,22 @@ impl Permission {
         matches!(self.inner, Active)
     }
 
-    pub fn is_reserved(self) -> bool {
-        matches!(self.inner, Reserved { .. })
+    // Leave `interior_mut` as `None` if interior mutability
+    // is irrelevant.
+    pub fn is_reserved(self, interior_mut: Option<bool>) -> bool {
+        match (interior_mut, self.inner) {
+            (None, Reserved { .. }) => true,
+            (Some(b1), Reserved { ty_is_freeze: b2 }) => b1 == b2,
+            _ => false,
+        }
     }
 
     pub fn is_frozen(self) -> bool {
         matches!(self.inner, Frozen)
+    }
+
+    pub fn is_disabled(self) -> bool {
+        matches!(self.inner, Disabled)
     }
 
     /// Apply the transition to the inner PermissionPriv.
@@ -229,7 +250,8 @@ pub mod diagnostics {
                 f,
                 "{}",
                 match self {
-                    Reserved { .. } => "Reserved",
+                    Reserved { ty_is_freeze: true } => "Reserved",
+                    Reserved { ty_is_freeze: false } => "Reserved (interior mutable)",
                     Active => "Active",
                     Frozen => "Frozen",
                     Disabled => "Disabled",
@@ -397,43 +419,35 @@ pub mod diagnostics {
 #[cfg(test)]
 mod propagation_optimization_checks {
     pub use super::*;
+    use crate::borrow_tracker::tree_borrows::exhaustive::{precondition, Exhaustive};
 
-    mod util {
-        pub use super::*;
-        impl PermissionPriv {
-            /// Enumerate all states
-            pub fn all() -> impl Iterator<Item = Self> {
-                vec![
-                    Active,
-                    Reserved { ty_is_freeze: true },
-                    Reserved { ty_is_freeze: false },
-                    Frozen,
-                    Disabled,
-                ]
-                .into_iter()
-            }
+    impl Exhaustive for PermissionPriv {
+        fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
+            Box::new(
+                vec![Active, Frozen, Disabled]
+                    .into_iter()
+                    .chain(bool::exhaustive().map(|ty_is_freeze| Reserved { ty_is_freeze })),
+            )
         }
+    }
 
-        impl Permission {
-            pub fn all() -> impl Iterator<Item = Self> {
-                PermissionPriv::all().map(|inner| Self { inner })
-            }
+    impl Exhaustive for Permission {
+        fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
+            Box::new(PermissionPriv::exhaustive().map(|inner| Self { inner }))
         }
+    }
 
-        impl AccessKind {
-            /// Enumerate all AccessKind.
-            pub fn all() -> impl Iterator<Item = Self> {
-                use AccessKind::*;
-                [Read, Write].into_iter()
-            }
+    impl Exhaustive for AccessKind {
+        fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
+            use AccessKind::*;
+            Box::new(vec![Read, Write].into_iter())
         }
+    }
 
-        impl AccessRelatedness {
-            /// Enumerate all relative positions
-            pub fn all() -> impl Iterator<Item = Self> {
-                use AccessRelatedness::*;
-                [This, StrictChildAccess, AncestorAccess, DistantAccess].into_iter()
-            }
+    impl Exhaustive for AccessRelatedness {
+        fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
+            use AccessRelatedness::*;
+            Box::new(vec![This, StrictChildAccess, AncestorAccess, DistantAccess].into_iter())
         }
     }
 
@@ -442,16 +456,22 @@ mod propagation_optimization_checks {
     // Even if the protector has disappeared.
     fn all_transitions_idempotent() {
         use transition::*;
-        for old in PermissionPriv::all() {
-            for (old_protected, new_protected) in [(true, true), (true, false), (false, false)] {
-                for access in AccessKind::all() {
-                    for rel_pos in AccessRelatedness::all() {
-                        if let Some(new) = perform_access(access, rel_pos, old, old_protected) {
-                            assert_eq!(
-                                new,
-                                perform_access(access, rel_pos, new, new_protected).unwrap()
-                            );
-                        }
+        for old in PermissionPriv::exhaustive() {
+            for (old_protected, new_protected) in <(bool, bool)>::exhaustive() {
+                // Protector can't appear out of nowhere: either the permission was
+                // created with a protector (`old_protected = true`) and it then may
+                // or may not lose it (`new_protected = false`, resp. `new_protected = true`),
+                // or it didn't have one upon creation and never will
+                // (`old_protected = new_protected = false`).
+                // We thus eliminate from this test and all other tests
+                // the case where the tag is initially unprotected and later becomes protected.
+                precondition!(old_protected || !new_protected);
+                for (access, rel_pos) in <(AccessKind, AccessRelatedness)>::exhaustive() {
+                    if let Some(new) = perform_access(access, rel_pos, old, old_protected) {
+                        assert_eq!(
+                            new,
+                            perform_access(access, rel_pos, new, new_protected).unwrap()
+                        );
                     }
                 }
             }
@@ -459,13 +479,16 @@ mod propagation_optimization_checks {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn foreign_read_is_noop_after_foreign_write() {
         use transition::*;
         let old_access = AccessKind::Write;
         let new_access = AccessKind::Read;
-        for old in PermissionPriv::all() {
-            for (old_protected, new_protected) in [(true, true), (true, false), (false, false)] {
-                for rel_pos in AccessRelatedness::all().filter(|rel| rel.is_foreign()) {
+        for old in PermissionPriv::exhaustive() {
+            for [old_protected, new_protected] in <[bool; 2]>::exhaustive() {
+                precondition!(old_protected || !new_protected);
+                for rel_pos in AccessRelatedness::exhaustive() {
+                    precondition!(rel_pos.is_foreign());
                     if let Some(new) = perform_access(old_access, rel_pos, old, old_protected) {
                         assert_eq!(
                             new,
@@ -480,18 +503,44 @@ mod propagation_optimization_checks {
     #[test]
     // Check that all transitions are consistent with the order on PermissionPriv,
     // i.e. Reserved -> Active -> Frozen -> Disabled
-    fn access_transitions_progress_increasing() {
-        use transition::*;
-        for old in PermissionPriv::all() {
-            for protected in [true, false] {
-                for access in AccessKind::all() {
-                    for rel_pos in AccessRelatedness::all() {
-                        if let Some(new) = perform_access(access, rel_pos, old, protected) {
-                            assert!(old <= new);
+    fn permissionpriv_partialord_is_reachability() {
+        let reach = {
+            let mut reach = rustc_data_structures::fx::FxHashSet::default();
+            // One-step transitions + reflexivity
+            for start in PermissionPriv::exhaustive() {
+                reach.insert((start, start));
+                for (access, rel) in <(AccessKind, AccessRelatedness)>::exhaustive() {
+                    for prot in bool::exhaustive() {
+                        if let Some(end) = transition::perform_access(access, rel, start, prot) {
+                            reach.insert((start, end));
                         }
                     }
                 }
             }
+            // Transitive closure
+            let mut finished = false;
+            while !finished {
+                finished = true;
+                for [start, mid, end] in <[PermissionPriv; 3]>::exhaustive() {
+                    if reach.contains(&(start, mid))
+                        && reach.contains(&(mid, end))
+                        && !reach.contains(&(start, end))
+                    {
+                        finished = false;
+                        reach.insert((start, end));
+                    }
+                }
+            }
+            reach
+        };
+        // Check that it matches `<`
+        for [p1, p2] in <[PermissionPriv; 2]>::exhaustive() {
+            let le12 = p1 <= p2;
+            let reach12 = reach.contains(&(p1, p2));
+            assert!(
+                le12 == reach12,
+                "`{p1} reach {p2}` ({reach12}) does not match `{p1} <= {p2}` ({le12})"
+            );
         }
     }
 }

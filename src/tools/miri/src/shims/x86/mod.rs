@@ -1,11 +1,98 @@
 use rustc_middle::mir;
+use rustc_span::Symbol;
 use rustc_target::abi::Size;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use helpers::bool_to_simd_element;
+use shims::foreign_items::EmulateByNameResult;
 
-pub(super) mod sse;
-pub(super) mod sse2;
+mod sse;
+mod sse2;
+
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
+    crate::MiriInterpCxExt<'mir, 'tcx>
+{
+    fn emulate_x86_intrinsic(
+        &mut self,
+        link_name: Symbol,
+        abi: Abi,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
+        let this = self.eval_context_mut();
+        // Prefix should have already been checked.
+        let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
+        match unprefixed_name {
+            // Used to implement the `_addcarry_u32` and `_addcarry_u64` functions.
+            // Computes a + b with input and output carry. The input carry is an 8-bit
+            // value, which is interpreted as 1 if it is non-zero. The output carry is
+            // an 8-bit value that will be 0 or 1.
+            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarry-u32-addcarry-u64.html
+            "addcarry.32" | "addcarry.64" => {
+                if unprefixed_name == "addcarry.64" && this.tcx.sess.target.arch != "x86_64" {
+                    return Ok(EmulateByNameResult::NotSupported);
+                }
+
+                let [c_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let c_in = this.read_scalar(c_in)?.to_u8()? != 0;
+                let a = this.read_immediate(a)?;
+                let b = this.read_immediate(b)?;
+
+                let (sum, overflow1) = this.overflowing_binary_op(mir::BinOp::Add, &a, &b)?;
+                let (sum, overflow2) = this.overflowing_binary_op(
+                    mir::BinOp::Add,
+                    &sum,
+                    &ImmTy::from_uint(c_in, a.layout),
+                )?;
+                let c_out = overflow1 | overflow2;
+
+                this.write_scalar(Scalar::from_u8(c_out.into()), &this.project_field(dest, 0)?)?;
+                this.write_immediate(*sum, &this.project_field(dest, 1)?)?;
+            }
+            // Used to implement the `_subborrow_u32` and `_subborrow_u64` functions.
+            // Computes a - b with input and output borrow. The input borrow is an 8-bit
+            // value, which is interpreted as 1 if it is non-zero. The output borrow is
+            // an 8-bit value that will be 0 or 1.
+            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
+            "subborrow.32" | "subborrow.64" => {
+                if unprefixed_name == "subborrow.64" && this.tcx.sess.target.arch != "x86_64" {
+                    return Ok(EmulateByNameResult::NotSupported);
+                }
+
+                let [b_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let b_in = this.read_scalar(b_in)?.to_u8()? != 0;
+                let a = this.read_immediate(a)?;
+                let b = this.read_immediate(b)?;
+
+                let (sub, overflow1) = this.overflowing_binary_op(mir::BinOp::Sub, &a, &b)?;
+                let (sub, overflow2) = this.overflowing_binary_op(
+                    mir::BinOp::Sub,
+                    &sub,
+                    &ImmTy::from_uint(b_in, a.layout),
+                )?;
+                let b_out = overflow1 | overflow2;
+
+                this.write_scalar(Scalar::from_u8(b_out.into()), &this.project_field(dest, 0)?)?;
+                this.write_immediate(*sub, &this.project_field(dest, 1)?)?;
+            }
+
+            name if name.starts_with("sse.") => {
+                return sse::EvalContextExt::emulate_x86_sse_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("sse2.") => {
+                return sse2::EvalContextExt::emulate_x86_sse2_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            _ => return Ok(EmulateByNameResult::NotSupported),
+        }
+        Ok(EmulateByNameResult::NeedsJumping)
+    }
+}
 
 /// Floating point comparison operation
 ///
