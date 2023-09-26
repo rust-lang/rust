@@ -375,7 +375,7 @@ library, as an equivalent command-line argument is provided to `rustc` when buil
 This feature allows you to generate an index-page with a given markdown file. A good example of it
 is the [rust documentation index](https://doc.rust-lang.org/nightly/index.html).
 
-With this, you'll have a page which you can custom as much as you want at the top of your crates.
+With this, you'll have a page which you can customize as much as you want at the top of your crates.
 
 Using `index-page` option enables `enable-index-page` option as well.
 
