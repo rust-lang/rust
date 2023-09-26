@@ -1273,6 +1273,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
     searchState.setup();
 }());
 
+// This section handles sidebar resizing
 (function() {
     const sidebarButton = document.getElementById("sidebar-button");
     if (sidebarButton) {
@@ -1283,8 +1284,8 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
         });
     }
     let currentPointerId = null;
-    const resizer = document.getElementsByClassName("sidebar-resizer")[0];
-    const sidebar = document.getElementsByClassName("sidebar")[0];
+    const resizer = document.querySelector(".sidebar-resizer");
+    const sidebar = document.querySelector(".sidebar");
     if (!resizer || !sidebar) {
         return;
     }
@@ -1379,6 +1380,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
     resizer.addEventListener("pointerdown", initResize, false);
 }());
 
+// This section handles the copy button that appears next to the path breadcrumbs
 (function() {
     let reset_button_timeout = null;
 

@@ -71,17 +71,22 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     return hasFoundFile;
 }
 
+let toggleLabel;
+
+function getToggleLabel() {
+    toggleLabel = toggleLabel || document.querySelector("#src-sidebar-toggle button");
+    return toggleLabel;
+}
+
 window.rustdocCloseSourceSidebar = () => {
-    const toggleLabel = document.querySelector("#src-sidebar-toggle button");
     removeClass(document.documentElement, "src-sidebar-expanded");
-    toggleLabel.innerText = ">";
+    getToggleLabel().innerText = ">";
     updateLocalStorage("source-sidebar-show", "false");
 };
 
 window.rustdocShowSourceSidebar = () => {
-    const toggleLabel = document.querySelector("#src-sidebar-toggle button");
     addClass(document.documentElement, "src-sidebar-expanded");
-    toggleLabel.innerText = "<";
+    getToggleLabel().innerText = "<";
     updateLocalStorage("source-sidebar-show", "true");
 };
 
