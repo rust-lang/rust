@@ -28,6 +28,9 @@ semver = "1.0"
 rustc-semver = "1.1"
 url = "2.2"
 
+[dev-dependencies]
+walkdir = "2.3"
+
 [features]
 deny-warnings = ["clippy_utils/deny-warnings"]
 # build clippy with internal lints enabled, off by default

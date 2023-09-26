@@ -744,3 +744,44 @@ fn calculate_dimensions(fields: &[&str]) -> (usize, Vec<usize>) {
 
     (rows, column_widths)
 }
+
+#[cfg(test)]
+mod tests {
+    use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+    use serde::de::IgnoredAny;
+    use std::fs;
+    use walkdir::WalkDir;
+
+    #[test]
+    fn configs_are_tested() {
+        let mut names: FxHashSet<String> = super::metadata::get_configuration_metadata()
+            .into_iter()
+            .map(|meta| meta.name.replace('_', "-"))
+            .collect();
+
+        let toml_files = WalkDir::new("../tests")
+            .into_iter()
+            .map(Result::unwrap)
+            .filter(|entry| entry.file_name() == "clippy.toml");
+
+        for entry in toml_files {
+            let file = fs::read_to_string(entry.path()).unwrap();
+            #[allow(clippy::zero_sized_map_values)]
+            if let Ok(map) = toml::from_str::<FxHashMap<String, IgnoredAny>>(&file) {
+                for name in map.keys() {
+                    names.remove(name.as_str());
+                }
+            }
+        }
+
+        assert!(
+            names.remove("allow-one-hash-in-raw-strings"),
+            "remove this when #11481 is fixed"
+        );
+
+        assert!(
+            names.is_empty(),
+            "Configuration variable lacks test: {names:?}\nAdd a test to `tests/ui-toml`"
+        );
+    }
+}
