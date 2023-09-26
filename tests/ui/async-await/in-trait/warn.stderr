@@ -1,0 +1,20 @@
+error: usage of `async fn` in trait is discouraged because they do not automatically have auto trait bounds
+  --> $DIR/warn.rs:7:5
+   |
+LL |     async fn not_send();
+   |     ^^^^^
+   |
+   = note: you can suppress this lint if you plan to use the trait locally, for concrete types, or do not care about auto traits like `Send` on the future
+note: the lint level is defined here
+  --> $DIR/warn.rs:4:9
+   |
+LL | #![deny(async_fn_in_trait)]
+   |         ^^^^^^^^^^^^^^^^^
+help: you can alternatively desugar the `async fn` and any add additional traits such as `Send` to the signature
+   |
+LL -     async fn not_send();
+LL +     fn not_send() -> impl std::future::Future<Output = ()> + Send;
+   |
+
+error: aborting due to previous error
+

@@ -5,6 +5,10 @@ lint_array_into_iter =
     .use_explicit_into_iter_suggestion =
         or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
 
+lint_async_fn_in_trait = usage of `async fn` in trait is discouraged because they do not automatically have auto trait bounds
+    .note = you can suppress this lint if you plan to use the trait locally, for concrete types, or do not care about auto traits like `Send` on the future
+    .suggestion = you can alternatively desugar the `async fn` and any add additional traits such as `Send` to the signature
+
 lint_atomic_ordering_fence = memory fences cannot have `Relaxed` ordering
     .help = consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`
 
