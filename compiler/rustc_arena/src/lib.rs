@@ -37,9 +37,10 @@ use std::ptr::{self, NonNull};
 use std::slice;
 use std::{cmp, intrinsics};
 
+/// This calls the passed function while ensuring it won't be inlined into the caller.
 #[inline(never)]
 #[cold]
-fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
+fn outline<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
 
@@ -600,7 +601,7 @@ impl DroplessArena {
                 unsafe { self.write_from_iter(iter, len, mem) }
             }
             (_, _) => {
-                cold_path(move || -> &mut [T] {
+                outline(move || -> &mut [T] {
                     let mut vec: SmallVec<[_; 8]> = iter.collect();
                     if vec.is_empty() {
                         return &mut [];
