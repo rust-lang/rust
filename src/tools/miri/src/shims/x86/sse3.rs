@@ -3,6 +3,7 @@ use rustc_span::Symbol;
 use rustc_target::abi::Align;
 use rustc_target::spec::abi::Abi;
 
+use super::horizontal_bin_op;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 
@@ -55,43 +56,13 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-                assert_eq!(dest_len % 2, 0);
-
-                let op = match unprefixed_name {
+                let which = match unprefixed_name {
                     "hadd.ps" | "hadd.pd" => mir::BinOp::Add,
                     "hsub.ps" | "hsub.pd" => mir::BinOp::Sub,
                     _ => unreachable!(),
                 };
 
-                let middle = dest_len / 2;
-                for i in 0..dest_len {
-                    let (lhs, rhs) = if i < middle {
-                        let base_i = i.checked_mul(2).unwrap();
-                        (
-                            this.read_immediate(&this.project_index(&left, base_i)?)?,
-                            this.read_immediate(
-                                &this.project_index(&left, base_i.checked_add(1).unwrap())?,
-                            )?,
-                        )
-                    } else {
-                        let base_i = i.checked_sub(middle).unwrap().checked_mul(2).unwrap();
-                        (
-                            this.read_immediate(&this.project_index(&right, base_i)?)?,
-                            this.read_immediate(
-                                &this.project_index(&right, base_i.checked_add(1).unwrap())?,
-                            )?,
-                        )
-                    };
-                    let (res, _overflow) = this.overflowing_binary_op(op, &lhs, &rhs)?;
-
-                    this.write_immediate(*res, &this.project_index(&dest, i)?)?;
-                }
+                horizontal_bin_op(this, which, /*saturating*/ false, left, right, dest)?;
             }
             // Used to implement the _mm_lddqu_si128 function.
             // Reads a 128-bit vector from an unaligned pointer. This intrinsic
