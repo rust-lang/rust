@@ -9,6 +9,7 @@ use shims::foreign_items::EmulateByNameResult;
 
 mod sse;
 mod sse2;
+mod sse3;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
@@ -85,6 +86,11 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             }
             name if name.starts_with("sse2.") => {
                 return sse2::EvalContextExt::emulate_x86_sse2_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("sse3.") => {
+                return sse3::EvalContextExt::emulate_x86_sse3_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
