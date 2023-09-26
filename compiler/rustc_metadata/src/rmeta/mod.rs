@@ -383,6 +383,7 @@ define_tables! {
     is_intrinsic: Table<DefIndex, bool>,
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,
+    type_alias_is_lazy: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
     def_path_hashes: Table<DefIndex, DefPathHash>,
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,

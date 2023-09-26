@@ -448,7 +448,7 @@ impl<'tcx> AdtDef<'tcx> {
             Res::Def(DefKind::Ctor(..), cid) => self.variant_with_ctor_id(cid),
             Res::Def(DefKind::Struct, _)
             | Res::Def(DefKind::Union, _)
-            | Res::Def(DefKind::TyAlias { .. }, _)
+            | Res::Def(DefKind::TyAlias, _)
             | Res::Def(DefKind::AssocTy, _)
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. }

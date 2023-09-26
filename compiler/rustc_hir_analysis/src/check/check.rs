@@ -640,7 +640,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                 check_opaque(tcx, id);
             }
         }
-        DefKind::TyAlias { .. } => {
+        DefKind::TyAlias => {
             let pty_ty = tcx.type_of(id.owner_id).instantiate_identity();
             let generics = tcx.generics_of(id.owner_id);
             check_type_params_are_used(tcx, &generics, pty_ty);

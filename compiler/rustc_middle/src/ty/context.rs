@@ -1114,7 +1114,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir().fn_decl_by_hir_id(hir_id)
             && let hir::TyKind::Path(hir::QPath::Resolved(
                 None,
-                hir::Path { res: hir::def::Res::Def(DefKind::TyAlias { .. }, def_id), .. }, )) = hir_output.kind
+                hir::Path { res: hir::def::Res::Def(DefKind::TyAlias, def_id), .. }, )) = hir_output.kind
             && let Some(local_id) = def_id.as_local()
             && let Some(alias_ty) = self.hir().get_by_def_id(local_id).alias_ty() // it is type alias
             && let Some(alias_generics) = self.hir().get_by_def_id(local_id).generics()

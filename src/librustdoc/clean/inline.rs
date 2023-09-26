@@ -80,7 +80,7 @@ pub(crate) fn try_inline(
             build_impls(cx, did, attrs_without_docs, &mut ret);
             clean::UnionItem(build_union(cx, did))
         }
-        Res::Def(DefKind::TyAlias { .. }, did) => {
+        Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, ItemType::TypeAlias);
             build_impls(cx, did, attrs_without_docs, &mut ret);
             clean::TypeAliasItem(build_type_alias(cx, did))

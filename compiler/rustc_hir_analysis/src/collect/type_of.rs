@@ -623,3 +623,25 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
         .emit();
     }
 }
+
+pub fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+    use hir::intravisit::Visitor;
+    if tcx.features().lazy_type_alias {
+        return true;
+    }
+    struct HasTait {
+        has_type_alias_impl_trait: bool,
+    }
+    impl<'tcx> Visitor<'tcx> for HasTait {
+        fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+            if let hir::TyKind::OpaqueDef(..) = t.kind {
+                self.has_type_alias_impl_trait = true;
+            } else {
+                hir::intravisit::walk_ty(self, t);
+            }
+        }
+    }
+    let mut has_tait = HasTait { has_type_alias_impl_trait: false };
+    has_tait.visit_ty(tcx.hir().expect_item(def_id).expect_ty_alias().0);
+    has_tait.has_type_alias_impl_trait
+}

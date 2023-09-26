@@ -1370,10 +1370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => bug!("unexpected type: {:?}", ty.normalized),
             },
-            Res::Def(
-                DefKind::Struct | DefKind::Union | DefKind::TyAlias { .. } | DefKind::AssocTy,
-                _,
-            )
+            Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. } => match ty.normalized.ty_adt_def() {
                 Some(adt) if !adt.is_enum() => {
