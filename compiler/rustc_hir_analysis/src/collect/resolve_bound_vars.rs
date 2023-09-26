@@ -126,6 +126,7 @@ enum Scope<'a> {
         /// fn foo(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
         /// ```
         where_bound_origin: Option<hir::PredicateOrigin>,
+        in_where_predict: bool,
     },
 
     /// Lifetimes introduced by a fn are scoped to the call-site for that fn,
@@ -195,7 +196,7 @@ struct TruncatedScopeDebug<'a>(&'a Scope<'a>);
 impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Scope::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
+            Scope::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _, .. } => f
                 .debug_struct("Binder")
                 .field("bound_vars", bound_vars)
                 .field("scope_type", scope_type)
@@ -394,6 +395,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             s: self.scope,
             scope_type,
             where_bound_origin: None,
+            in_where_predict: false,
         };
         self.with(scope, |this| {
             walk_list!(this, visit_generic_param, trait_ref.bound_generic_params);
@@ -478,7 +480,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .unzip();
 
             deny_non_region_late_bound(self.tcx, &mut bound_vars, "closures");
-
             self.record_late_bound_vars(e.hir_id, binders);
             let scope = Scope::Binder {
                 hir_id: e.hir_id,
@@ -486,6 +487,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 s: self.scope,
                 scope_type: BinderScopeType::Normal,
                 where_bound_origin: None,
+                in_where_predict: false,
             };
 
             self.with(scope, |this| {
@@ -577,6 +579,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         s: this.scope,
                         scope_type: BinderScopeType::Normal,
                         where_bound_origin: None,
+                        in_where_predict: false,
                     };
                     this.with(scope, |this| {
                         let scope = Scope::TraitRefBoundary { s: this.scope };
@@ -630,7 +633,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .unzip();
 
                 deny_non_region_late_bound(self.tcx, &mut bound_vars, "function pointer types");
-
                 self.record_late_bound_vars(ty.hir_id, binders);
                 let scope = Scope::Binder {
                     hir_id: ty.hir_id,
@@ -638,6 +640,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     s: self.scope,
                     scope_type: BinderScopeType::Normal,
                     where_bound_origin: None,
+                    in_where_predict: false,
                 };
                 self.with(scope, |this| {
                     // a bare fn has no bounds, so everything
@@ -907,6 +910,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     s: self.scope,
                     scope_type: BinderScopeType::Normal,
                     where_bound_origin: Some(origin),
+                    in_where_predict: true,
                 };
                 self.with(scope, |this| {
                     walk_list!(this, visit_generic_param, bound_generic_params);
@@ -963,7 +967,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // of "if there isn't a Binder scope above us, add one", but I
                 // imagine there's a better way to go about this.
                 let (binders, scope_type) = self.poly_trait_ref_binder_info();
-
                 self.record_late_bound_vars(*hir_id, binders);
                 let scope = Scope::Binder {
                     hir_id: *hir_id,
@@ -971,6 +974,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     s: self.scope,
                     scope_type,
                     where_bound_origin: None,
+                    in_where_predict: false,
                 };
                 self.with(scope, |this| {
                     intravisit::walk_param_bound(this, bound);
@@ -992,6 +996,26 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
     fn visit_generic_param(&mut self, p: &'tcx GenericParam<'tcx>) {
         match p.kind {
+            GenericParamKind::Const { ty, default: Some(default) } => {
+                self.resolve_type_ref(p.def_id, p.hir_id);
+
+                // For expr in default of Const expr in where predict.
+                // We may get unexpected bound var resolution when converts a hir id
+                // corresponding to a type parameter to a early-bound `ty::Param` or late-bound `ty::Bound`
+                // fn foo<T>() where for<const N: u8 = { T::<0>::A as u8 }> T: Default {}
+                //        ^ generic param ty
+                //                                       ^^^^^^ hir_id
+                //                                     ^^^^^^^^^^^^^^^^^^^ default
+                //    ^^^ parent_id after twice iterations
+                //        ^ generics of parent
+                if let Scope::Binder {in_where_predict, .. } = self.scope && *in_where_predict {
+                    let BoundVarContext { tcx, map, .. } = self;
+                    let wrap_scope = Scope::LateBoundary { s: self.scope, what: "constant" };
+                    let mut this = BoundVarContext { tcx: *tcx, map, scope: &wrap_scope };
+                    this.visit_id(default.hir_id);
+                    this.visit_nested_body(default.body);
+                }
+            }
             GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                 self.resolve_type_ref(p.def_id, p.hir_id);
             }
@@ -1144,6 +1168,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             s: self.scope,
             scope_type: BinderScopeType::Normal,
             where_bound_origin: None,
+            in_where_predict: false,
         };
         self.with(scope, walk);
     }
@@ -1160,6 +1185,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             s: self.scope,
             scope_type: BinderScopeType::Normal,
             where_bound_origin: None,
+            in_where_predict: false,
         };
         self.with(scope, |this| {
             let scope = Scope::TraitRefBoundary { s: this.scope };
@@ -1369,7 +1395,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let mut late_depth = 0;
         let mut scope = self.scope;
         let mut crossed_late_boundary = None;
-
         let result = loop {
             match *scope {
                 Scope::Body { s, .. } => {

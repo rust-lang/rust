@@ -1,0 +1,43 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-115497.rs:1:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-115497.rs:3:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+
+error[E0109]: const arguments are not allowed on type parameter `T`
+  --> $DIR/issue-115497.rs:6:43
+   |
+LL | fn foo<T>() where for<const N: u8 = { T::<0>::A as u8 }> T: Default {}
+   |                                       -   ^ const argument not allowed
+   |                                       |
+   |                                       not allowed on type parameter `T`
+   |
+note: type parameter `T` defined here
+  --> $DIR/issue-115497.rs:6:8
+   |
+LL | fn foo<T>() where for<const N: u8 = { T::<0>::A as u8 }> T: Default {}
+   |        ^
+
+error[E0599]: no associated item named `A` found for type parameter `T` in the current scope
+  --> $DIR/issue-115497.rs:6:47
+   |
+LL | fn foo<T>() where for<const N: u8 = { T::<0>::A as u8 }> T: Default {}
+   |        -                                      ^ associated item not found in `T`
+   |        |
+   |        associated item `A` not found for this type parameter
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0109, E0599.
+For more information about an error, try `rustc --explain E0109`.

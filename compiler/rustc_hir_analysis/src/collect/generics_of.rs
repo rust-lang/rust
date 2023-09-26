@@ -65,7 +65,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // struct Foo<const N: usize = { .. }>;
                     //        ^^^       ^          ^^^^^^ def id of this anon const
                     //        ^         ^ param_id
-                    //        ^ parent_def_id
+                    //        ^ parent_def_id after
                     //
                     // then we only want to return generics for params to the left of `N`. If we don't do that we
                     // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
@@ -85,6 +85,48 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // This has some implications for how we get the predicates available to the anon const
                     // see `explicit_predicates_of` for more information on this
                     let generics = tcx.generics_of(parent_def_id.to_def_id());
+                    let parent_node = tcx.hir().get_parent(hir_id);
+
+                    // For expr in where predict.
+                    // Will panic If we directly obtain GenericParamDef from the generics params based on the index.
+                    // fn foo<T>() where for<const N: u8 = { T::<0>::A as u8 }> T: Default {}
+                    //                                     ^^^^^^^^^^^^^^^^^^^ hir_id
+                    //                             ^ param_id
+                    //    ^^^ parent_id after twice iterations
+                    //        ^ generics of parent
+                    // Push GenericParamDef of 'N' in above example into params.
+                    if let hir::Node::GenericParam(
+                        GenericParam{
+                            hir_id: parent_hir_id,
+                            kind: GenericParamKind::Const {
+                                ty: ty_info,
+                                default: Some(anon_const) },
+                            name,
+                            def_id,
+                            pure_wrt_drop,  ..}) = parent_node
+                        && !generics.param_def_id_to_index.contains_key(&param_id.to_def_id())
+                        && anon_const.hir_id == hir_id {
+                        let mut params = generics.params.to_vec();
+                        params.push(ty::GenericParamDef {
+                            name: name.ident().name,
+                            index: (params.len() + 1) as u32,
+                            def_id: def_id.to_def_id(),
+                            pure_wrt_drop: *pure_wrt_drop,
+                            kind: ty::GenericParamDefKind::Lifetime,
+                        });
+                        let param_def_id_to_index =
+                            params.iter().map(|param| (param.def_id, param.index)).collect();
+
+                        return ty::Generics {
+                            parent: generics.parent,
+                            parent_count: generics.parent_count,
+                            params,
+                            param_def_id_to_index,
+                            has_self: generics.has_self,
+                            has_late_bound_regions: generics.has_late_bound_regions,
+                            host_effect_index: None,
+                        };
+                    }
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
                     let params = generics.params_to(param_def_idx as usize, tcx).to_owned();
