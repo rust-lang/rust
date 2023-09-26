@@ -294,10 +294,10 @@ fn main() {
 }
 "#####,
         r#####"
-fn main() {
-    #[derive(PartialEq, Eq)]
-    enum Bool { True, False }
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
 
+fn main() {
     let bool = Bool::True;
 
     if bool == Bool::True {
