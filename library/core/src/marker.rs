@@ -899,25 +899,28 @@ marker_impls! {
         {T: ?Sized} &mut T,
 }
 
-/// Types that can be safely moved after being pinned.
+/// Types that do not need to follow the rules of pinning.
 ///
-/// Rust itself has no notion of immovable types, and considers moves (e.g.,
-/// through assignment or [`mem::replace`]) to always be safe.
+/// For information on what "pinning" is, see the [`pin` module] documentation.
 ///
-/// The [`Pin`][Pin] type is used instead to prevent moves through the type
-/// system. Pointers `P<T>` wrapped in the [`Pin<P<T>>`][Pin] wrapper can't be
-/// moved out of. See the [`pin` module] documentation for more information on
-/// pinning.
+/// Implementing the `Unpin` trait for `T` lifts the restrictions of pinning off that type.
+/// This means that, if `T: Unpin`, it cannot be assumed that a value of type `T` will be bound
+/// by the invariants that pinning infers, *even* when "pinned" by a [`Pin<Ptr>`] pointing at it.
+/// When a value of type `T` is pointed at by a [`Pin<Ptr>`], [`Pin`] will not restrict access
+/// to the pointee value like it normally would, thus allowing the user to do anything that they
+/// normally could with a non-[`Pin`]-wrapped `Ptr` to that value.
 ///
-/// Implementing the `Unpin` trait for `T` lifts the restrictions of pinning off
-/// the type, which then allows moving `T` out of [`Pin<P<T>>`][Pin] with
-/// functions such as [`mem::replace`].
+/// For more discussion on the consequences of [`Unpin`] within the wider scope of the pinning
+/// system, see [the section about `Unpin`] in the [`pin` module].
 ///
-/// `Unpin` has no consequence at all for non-pinned data. In particular,
-/// [`mem::replace`] happily moves `!Unpin` data (it works for any `&mut T`, not
-/// just when `T: Unpin`). However, you cannot use [`mem::replace`] on data
-/// wrapped inside a [`Pin<P<T>>`][Pin] because you cannot get the `&mut T` you
-/// need for that, and *that* is what makes this system work.
+/// `Unpin` has no consequence at all for non-pinned data. In particular, [`mem::replace`] happily
+/// moves `!Unpin` data, which would be immovable when pinned ([`mem::replace`] works for any
+/// `&mut T`, not just when `T: Unpin`).
+///
+/// *However*, you cannot use [`mem::replace`] on `!Unpin` data which is *pinned* by being wrapped
+/// inside a [`Pin<Ptr>`] pointing at it. This is because you cannot (safely) use a
+/// [`Pin<Ptr>`] to get an `&mut T` to its pointee value, which you would need to call
+/// [`mem::replace`], and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
@@ -935,11 +938,20 @@ marker_impls! {
 /// mem::replace(&mut *pinned_string, "other".to_string());
 /// ```
 ///
-/// This trait is automatically implemented for almost every type.
+/// This trait is automatically implemented for almost every type. The compiler (and you!) is free
+/// to take the conservative stance of marking types as [`Unpin`] by default. This is because if a
+/// type implements [`Unpin`], then it is unsound for [`unsafe`] code to assume that type is truly
+/// pinned, *even* when viewed through a "pinning" pointer! It is the responsibility of the
+/// implementor of [`unsafe`] code that relies upon pinning for soundness to ensure that all the
+/// types it expects to be truly pinned do not implement [`Unpin`]. For more details, see the
+/// [`pin` module] docs!
 ///
-/// [`mem::replace`]: crate::mem::replace
-/// [Pin]: crate::pin::Pin
-/// [`pin` module]: crate::pin
+/// [`mem::replace`]: crate::mem::replace "mem replace"
+/// [`Pin`]: crate::pin::Pin "Pin"
+/// [`Pin<Ptr>`]: crate::pin::Pin "Pin"
+/// [`pin` module]: crate::pin "pin module"
+/// [section about `Unpin`]: crate::pin#unpin "pin module docs about unpin"
+/// [`unsafe`]: ../../std/keyword.unsafe.html "keyword unsafe"
 #[stable(feature = "pin", since = "1.33.0")]
 #[diagnostic::on_unimplemented(
     note = "consider using the `pin!` macro\nconsider using `Box::pin` if you need to access the pinned value outside of the current scope",

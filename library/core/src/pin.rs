@@ -1,28 +1,53 @@
 //! Types that pin data to a location in memory.
 //!
 //! It is sometimes useful to be able to rely upon a certain value not being able to *move*,
-//! in the sense that its address in memory cannot change. This is useful specifically when there
-//! are one or more *pointers* pointing at that value. The ability to rely on this guarantee that
-//! the value a pointer is pointing at (its **pointee**) will
+//! in the sense that its address in memory cannot change. This is useful especially when there
+//! are one or more [*pointers*][pointer] pointing at that value. The ability to rely on this
+//! guarantee that the value a [pointer] is pointing at (its **pointee**) will
 //!
 //! 1. Not be *moved* out of its memory location
 //! 2. More generally, remain *valid* at that same memory location
 //!
-//! is necessary to implement things like self-referential structs and intrusive data structures.
+//! is called "pinning." We would say that a value which satisfies these guarantees has been
+//! "pinned," in that it has been permanently (until the end of its lifetime) attached to its
+//! location in memory. Pinning a value is incredibly useful in that it provides the necessary
+//! guarantees[^guarantees] for [`unsafe`] code to be able to dereference raw pointers to the pinned
+//! value for the duration it is pinned (which, [as we'll see later][drop-guarantee], is necessarily
+//! from the time the value is first pinned until the end of its lifetime). This concept of
+//! "pinning" is necessary to implement safe interfaces on top of things like self-referential types
+//! and intrusive data structures which cannot currently be modeled in fully safe Rust using only
+//! borrow-checked [references][reference].
 //!
-//! "Pinning" allows us to put a value *which is being pointed at* by some pointer `Ptr` into a
-//! state that prevents safe code from *moving* or otherwise invalidating the *pointee* value at
-//! its location in memory (unless the pointee type implements [`Unpin`], which we'll
-//! [discuss more below][self#unpin]). In this way, we can allow [`unsafe`] code to rely on the
-//! pointer to be valid to dereference.
+//! "Pinning" allows us to put a *value* which exists at some location in memory into a state where
+//! safe code cannot *move* that value to a different location in memory or otherwise invalidate it
+//! at its current location (unless it implements [`Unpin`], which we will
+//! [talk about below][unpin]). Anything that wants to interact with the pinned value in a way that
+//! has the potential to violate these guarantees must promise that it will not actually violate
+//! them, using the [`unsafe`] keyword to mark that such a promise is upheld by the user and not
+//! the compiler. In this way, we can allow other [`unsafe`] code to rely on any pointers that
+//! point to the pinned value to be valid to dereference while it is pinned.
+//!
+//! [^guarantees]: Pinning on its own does not provide *all* the invariants necessary here. However,
+//! in order to validly pin a value in the first place, it must already satisfy the other invariants
+//! for it to be valid to dereference a pointer to that value while it is pinned, and using the
+//! [`Drop` guarantee][drop-guarantee], we can ensure that any interested parties are notified
+//! before the value becomes no longer pinned, i.e. when the value goes out of scope and is
+//! invalidated.
+//!
+//! Note that as long as you don't use [`unsafe`], it's impossible to create or misuse a pinned
+//! value in a way that will produce unsoundness. See the documentation of [`Pin<Ptr>`] for more
+//! information on the practicalities of how to pin a value and how to use that pinned value from a
+//! user's perspective without using [`unsafe`].
 //!
 //! The rest of this documentation is intended to be the source of truth for users of [`Pin<Ptr>`]
-//! in unsafe code; users of [`Pin<Ptr>`] in safe code do not need to read it in detail.
+//! that are implementing the [`unsafe`] pieces of an interface that relies on pinning for validity;
+//! users of [`Pin<Ptr>`] in safe code do not need to read it in detail.
 //!
 //! There are several sections to this documentation:
 //!
 //! * [What is "*moving*"?][what-is-moving]
 //! * [What is "pinning"?][what-is-pinning]
+//! * [Address sensitivity, AKA "when do we need pinning?"][address-sensitive-values]
 //! * [Examples of types with address-sensitive states][address-sensitive-examples]
 //!   * [Self-referential struct][self-ref]
 //!   * [Intrusive, doubly-linked list][linked-list]
@@ -90,8 +115,8 @@
 //! to remain *valid* and *located at the same place in memory* from the time it is pinned until its
 //! [`drop`] is called.
 //!
-//! ## Address-sensitive values, AKA "why we need pinning"
-//! [address-sensitive-values]: self#address-sensitive-values
+//! ## Address-sensitive values, AKA "when we need pinning"
+//! [address-sensitive-values]: self#address-sensitive-values-aka-when-we-need-pinning
 //!
 //! Most values in Rust are entirely okay with being *moved* around at-will.
 //! Types for which it is *always* the case that *any* value of that type can be
@@ -105,9 +130,9 @@
 //!
 //! As a motivating example of a type which may become address-sensitive, consider a type which
 //! contains a pointer to another piece of its own data, *i.e.* a "self-referential" type. In order
-//! such a type to be implemented soundly, the pointer which points into `self`'s data must be
+//! for such a type to be implemented soundly, the pointer which points into `self`'s data must be
 //! proven valid whenever it is accessed. But if that value is *moved*, the pointer will still
-//! point to the old location that the value was located and not into the new location of `self`,
+//! point to the old address where the value was located and not into the new location of `self`,
 //! thus becoming invalid. A key example of such self-referrential types are the state machines
 //! generated by the compiler to implement [`Future`] for `async fn`s.
 //!
@@ -122,7 +147,7 @@
 //! assume that the address of the value is stable
 //!     * e.g. subsequent calls to [`poll`]
 //! 4. Before the value is invalidated (e.g. deallocated), it is *dropped*, giving it a chance to
-//! "unregister"/clear outstanding pointers to itself
+//! notify anything with pointers to itself that those pointers will be invalidated
 //!     * e.g. [`drop`]ping the [`Future`]
 //!
 //! There are two possible ways to ensure the invariants required for 2. and 3. above (which
@@ -229,8 +254,9 @@
 //! #[derive(Default)]
 //! struct AddrTracker {
 //!     prev_addr: Option<usize>,
-//!     // remove auto-implemented Unpin bound to mark this type as having some
-//!     // address-sensitive state. This is discussed more below.
+//!     // remove auto-implemented `Unpin` bound to mark this type as having some
+//!     // address-sensitive state. This is essential for our expected pinning
+//!     // guarantees to work, and is discussed more below.
 //!     _pin: PhantomPinned,
 //! }
 //!
@@ -273,25 +299,52 @@
 //!
 //! The vast majority of Rust types have no address-sensitive states; these types
 //! implement the [`Unpin`] auto-trait, which cancels the restrictive effects of
-//! [`Pin<P>`]. When [`T: Unpin`][Unpin], <code>[Pin]<[Box]\<T>></code> and
-//! [`Box<T>`] function identically, as do <code>[Pin]<[&mut] T></code> and
-//! [`&mut T`].
+//! [`Pin`] when the *pointee* type `T` is [`Unpin`]. When [`T: Unpin`][Unpin],
+//! <code>[Pin]<[Box]\<T>></code> functions identically to a non-pinning [`Box<T>`]; similarly,
+//! <code>[Pin]<[&mut] T></code> would impose no additional restrictions above a regular [`&mut T`].
 //!
-//! This includes all of the primitive types, like [`bool`], [`i32`], and <code>[&]T</code>,
-//! as well as any other type consisting only of those types.
+//! Note that the interaction between a [`Pin<Ptr>`] and [`Unpin`] is through the type of the
+//! **pointee** value, [`<Ptr as Deref>::Target`][Target]. Whether the `Ptr` type itself
+//! implements [`Unpin`] does not affect the behavior of a [`Pin<Ptr>`]. For example, whether or not
+//! [`Box`] is [`Unpin`] has no effect on the behavior of <code>[Pin]<[Box]\<T>></code>, because
+//! `T` is the type of the pointee value, not [`Box`]. So, whether `T` implements [`Unpin`] is
+//! the thing that will affect the behavior of the <code>[Pin]<[Box]\<T>></code>.
+//!
+//! Builtin types that are [`Unpin`] include all of the primitive types, like [`bool`], [`i32`],
+//! and [`f32`], references (<code>[&]T</code> and <code>[&mut] T</code>), etc., as well as many
+//! core and standard library types like [`Box<T>`], [`String`], and more.
+//! These types are marked [`Unpin`] because they do not have an ddress-sensitive state like the
+//! ones we discussed above. If they did have such a state, those parts of their interface would be
+//! unsound without being expressed through pinning, and they would then need to not
+//! implement [`Unpin`].
+//!
+//! The compiler (and users!) is free to take the conservative stance of marking types as [`Unpin`]
+//! by default. This is because if a type implements [`Unpin`], then it is unsound for [`unsafe`]
+//! code to assume that type is truly pinned, *even* when viewed through a "pinning" pointer! It is
+//! the responsibility of *the implementor of [`unsafe`] code that relies upon pinning for
+//! soundness* (you, in this case!) to ensure that all the types which that code expects to be truly
+//! pinned do not implement [`Unpin`].
 //!
 //! Like other auto-traits, the compiler will automatically determine that a type implements
-//! [`Unpin`] if all its fields also implement [`Unpin`]. If you are building a type which is built
+//! [`Unpin`] if all its fields also implement [`Unpin`]. If you are building a type which consists
 //! of only [`Unpin`] types but has an address-sensistive state and thus should not itself
-//! implement [`Unpin`], you can opt out of [`Unpin`] via adding a field with the
-//! [`PhantomPinned`] marker type, as we did with our latest `AddrTracker` example above.
+//! implement [`Unpin`], you must opt out of [`Unpin`] via adding a field with the
+//! [`PhantomPinned`] marker type, as we did with our latest `AddrTracker` example above. Without
+//! doing this, you must not rely on the pinning guarantees to apply to your type!
 //!
-//! Note that the interaction between a [`Pin<Ptr>`] and [`Unpin`] is through the **pointee type**
-//! of the value behind the `Ptr`, [`<Ptr as Deref>::Target`][Target]. Whether the `Ptr` type itself
-//! implements [`Unpin`] does not affect the behavior of a [`Pin<Ptr>`]. For example, whether or not
-//! [`Box<T>`] is [`Unpin`] has no effect on the behavior of <code>[Pin]<[Box]\<T>></code> because
-//! `T` is the type of the pointee value, not [`Box<T>`]. So, whether `T` implements [`Unpin`] is
-//! the thing that will affect the behavior of the <code>[Pin]<[Box]\<T>></code>.
+//! If you have reason to pin a value of a type that implements [`Unpin`] such that pinning-related
+//! guarantees actually are respected, you'll need to create your own wrapper type which itself
+//! opts out of implementing [`Unpin`] and contains a sub-field with the [`Unpin`] type that you
+//! want to pin.
+//!
+//! Exposing access to the inner field which you want to remain pinned must then be carefully
+//! considered as well! Remember, exposing a method that gives access to a
+//! <code>[Pin]<[&mut] InnerT>></code> where `InnerT: [Unpin]` would allow safe code to trivially
+//! move the inner value out of that pinning pointer, which is precisely what you're seeking to
+//! prevent! Exposing a field of a pinned value through a pinning pointer is called "projecting"
+//! a pin, and the more general case of deciding in which cases a pin should be able to be
+//! projected or not is called "structural pinning." We will go into more detail about this
+//! [below][structural-pinning].
 //!
 //! # Examples of address-sensitive types
 //! [address-sensitive-examples]: #examples-of-address-sensitive-types
@@ -308,7 +361,7 @@
 //! we could imagine being used to track a sliding window of `data` in parser
 //! code.
 //!
-//! As mentioned before, this pattern is used extensively by compiler-generated
+//! As mentioned before, this pattern is also used extensively by compiler-generated
 //! [`Future`]s.
 //!
 //! ```rust
@@ -379,27 +432,39 @@
 //! ## An intrusive, doubly-linked list
 //! [linked-list]: #an-intrusive-doubly-linked-list
 //!
-//! In an intrusive doubly-linked list, the collection does not actually allocate the memory for the
-//! nodes itself. Allocation is controlled by the clients, and nodes can live on a stack frame
-//! that lives shorter than the collection does provided the nodes are removed from the
-//! collection before returning.
+//! In an intrusive doubly-linked list, the collection itself does not own the memory in which
+//! each of its elements is stored. Instead, each client is free to allocate space for elements it
+//! adds to the list in whichever manner it likes, including on the stack! Elements can live on a
+//! stack frame that lives shorter than the collection does provided the elements that live in a
+//! given stack frame are removed from the list before going out of scope.
+//!
+//! To make such an intrusive data structure work, every element stores pointers to its predecessor
+//! and successor within its own data, rather than having the list structure itself managing those
+//! pointers. It is in this sense that the structure is "intrusive": the details of how an
+//! element is stored within the larger structure "intrudes" on the implementation of the element
+//! type itself!
 //!
 //! The full implementation details of such a data structure are outside the scope of this
 //! documentation, but we will discuss how [`Pin`] can help to do so.
 //!
-//! To make such an intrusive data structure work, every element stores pointers to its predecessor
-//! and successor within its own data, rather than having the list structure itself manage those
-//! pointers. Elements can only be added when they are pinned, because moving the elements
-//! around would invalidate the pointers to it which are contained in the element ahead and behind
-//! it. Moreover, the [`Drop`][Drop] implementation of the element types themselves will in some
-//! way patch the pointers of its predecessor and successor elements to remove itself from the list.
+//! Using such an intrusive pattern, elements may only be added when they are pinned. If we think
+//! about the consequences of adding non-pinned values to such a list, this becomes clear:
 //!
-//! Crucially, this means we have to be able to rely on [`drop`] always being called before that
+//! *Moving* or otherwise invalidating an element's data would invalidate the pointers back to it
+//! which are stored in the elements ahead and behind it. Thus, in order to soundly dereference
+//! the pointers stored to the next and previous elements, we must satisfy the guarantee that
+//! nothing has invalidated those pointers (which point to data which we do not own).
+//!
+//! Moreover, the [`Drop`][Drop] implementation of each element must in some way notify its
+//! predecessor and successor elements that it should be removed from the list before it is fully
+//! destroyed, otherwise the pointers back to it would again become invalidated.
+//!
+//! Crucially, this means we have to be able to rely on [`drop`] always being called before an
 //! element is invalidated. If an element could be deallocated or otherwise invalidated without
-//! calling [`drop`], the pointers into it which are stored in its neighboring elements would
+//! calling [`drop`], the pointers to it which are stored in its neighboring elements would
 //! become invalid, which would break the data structure.
 //!
-//! Therefore, we rely on [the `Drop` guarantee][drop-guarantee] which comes with pinning data,
+//! Therefore, pinning data also comes with [the "`Drop` guarantee"][drop-guarantee].
 //!
 //! # Subtle details and the `Drop` guarantee
 //! [subtle-details]: self#subtle-details-and-the-drop-guarantee
@@ -586,6 +651,7 @@
 //! the new value.
 //!
 //! ## Projections and Structural Pinning
+//! [structural-pinning]: self#projections-and-structural-pinning
 //!
 //! With ordinary structs, it is natural that we want to add *projection* methods
 //! that select one of the fields:
