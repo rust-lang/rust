@@ -1,9 +1,8 @@
-pub mod query;
-
 mod counters;
 mod graph;
+pub mod query;
+pub(crate) mod repair;
 mod spans;
-
 #[cfg(test)]
 mod tests;
 
