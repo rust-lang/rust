@@ -289,7 +289,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
-    /// returns an appropriate set of substitutions for this particular reference to `I`.
+    /// returns an appropriate set of generic arguments for this particular reference to `I`.
     pub fn ast_path_args_for_ty(
         &self,
         span: Span,
@@ -315,7 +315,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Given the type/lifetime/const arguments provided to some path (along with
     /// an implicit `Self`, if this is a trait reference), returns the complete
-    /// set of substitutions. This may involve applying defaulted type parameters.
+    /// set of generic arguments. This may involve applying defaulted type parameters.
     /// Constraints on associated types are created from `create_assoc_bindings_for_generic_args`.
     ///
     /// Example:

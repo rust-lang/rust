@@ -1007,7 +1007,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     pub(super) fn register_predefined_opaques_in_new_solver(&mut self) {
-        // OK to use the identity substitutions for each opaque type key, since
+        // OK to use the identity arguments for each opaque type key, since
         // we remap opaques from HIR typeck back to their definition params.
         let opaques: Vec<_> = self
             .infcx
