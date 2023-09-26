@@ -785,6 +785,13 @@ impl<T: ?Sized> *mut T {
     /// except that it has a lot more opportunities for UB, in exchange for the compiler
     /// better understanding what you are doing.
     ///
+    /// The primary motivation of this method is for computing the `len` of an array/slice
+    /// of `T` that you are currently representing as a "start" and "end" pointer
+    /// (and "end" is "one past the end" of the array).
+    /// In that case, `end.offset_from(start)` gets you the length of the array.
+    ///
+    /// All of the following safety requirements are trivially satisfied for this usecase.
+    ///
     /// [`offset`]: pointer#method.offset-1
     ///
     /// # Safety
