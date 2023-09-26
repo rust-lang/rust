@@ -2358,7 +2358,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
                 if self
                     .inner()
                     .weak
-                    .compare_exchange(NO_STRONG_WITH_WEAK, STRONG_DROPPED, Acquire, Relaxed)
+                    .compare_exchange(ONE_WEAK, WEAK_LOCKED, Acquire, Relaxed)
                     .is_ok() =>
             {
                 // This was the only Arc when we looked at the strong pointer,
