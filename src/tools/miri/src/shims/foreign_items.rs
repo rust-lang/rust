@@ -807,9 +807,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.mem_copy(
                     ptr_src,
-                    Align::ONE,
                     ptr_dest,
-                    Align::ONE,
                     Size::from_bytes(n),
                     true,
                 )?;
@@ -830,9 +828,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let n = this.read_c_str(ptr_src)?.len().checked_add(1).unwrap();
                 this.mem_copy(
                     ptr_src,
-                    Align::ONE,
                     ptr_dest,
-                    Align::ONE,
                     Size::from_bytes(n),
                     true,
                 )?;

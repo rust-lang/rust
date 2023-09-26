@@ -13,7 +13,7 @@ use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Align, Primitive, Size};
+use rustc_target::abi::{Abi, Primitive, Size};
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
@@ -349,10 +349,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Check that the range between them is dereferenceable ("in-bounds or one past the
                 // end of the same allocation"). This is like the check in ptr_offset_inbounds.
                 let min_ptr = if dist >= 0 { b } else { a };
-                self.check_ptr_access_align(
+                self.check_ptr_access(
                     min_ptr,
                     Size::from_bytes(dist.unsigned_abs()),
-                    Align::ONE,
                     CheckInAllocMsg::OffsetFromTest,
                 )?;
 
@@ -581,10 +580,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // pointers to be properly aligned (unlike a read/write operation).
         let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
         // This call handles checking for integer/null pointers.
-        self.check_ptr_access_align(
+        self.check_ptr_access(
             min_ptr,
             Size::from_bytes(offset_bytes.unsigned_abs()),
-            Align::ONE,
             CheckInAllocMsg::PointerArithmeticTest,
         )?;
         Ok(offset_ptr)
@@ -613,7 +611,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let src = self.read_pointer(src)?;
         let dst = self.read_pointer(dst)?;
 
-        self.mem_copy(src, align, dst, align, size, nonoverlapping)
+        self.check_ptr_align(src, align)?;
+        self.check_ptr_align(dst, align)?;
+
+        self.mem_copy(src, dst, size, nonoverlapping)
     }
 
     pub(crate) fn write_bytes_intrinsic(
@@ -669,7 +670,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                          size|
          -> InterpResult<'tcx, &[u8]> {
             let ptr = this.read_pointer(op)?;
-            let Some(alloc_ref) = self.get_ptr_alloc(ptr, size, Align::ONE)? else {
+            let Some(alloc_ref) = self.get_ptr_alloc(ptr, size)? else {
                 // zero-sized access
                 return Ok(&[]);
             };

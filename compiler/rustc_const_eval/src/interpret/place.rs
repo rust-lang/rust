@@ -460,7 +460,7 @@ where
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
-        let a = self.get_ptr_alloc(mplace.ptr(), size, Align::ONE)?;
+        let a = self.get_ptr_alloc(mplace.ptr(), size)?;
         self.check_misalign(mplace.mplace.misaligned, CheckAlignMsg::BasedOn)?;
         Ok(a)
     }
@@ -478,7 +478,7 @@ where
         // If an access is both OOB and misaligned, we want to see the bounds error.
         // However we have to call `check_misalign` first to make the borrow checker happy.
         let misalign_err = self.check_misalign(mplace.mplace.misaligned, CheckAlignMsg::BasedOn);
-        let a = self.get_ptr_alloc_mut(mplace.ptr(), size, Align::ONE)?;
+        let a = self.get_ptr_alloc_mut(mplace.ptr(), size)?;
         misalign_err?;
         Ok(a)
     }
@@ -873,14 +873,7 @@ where
         // non-overlapping.)
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
-        self.mem_copy(
-            src.ptr(),
-            Align::ONE,
-            dest.ptr(),
-            Align::ONE,
-            dest_size,
-            /*nonoverlapping*/ true,
-        )?;
+        self.mem_copy(src.ptr(), dest.ptr(), dest_size, /*nonoverlapping*/ true)?;
         self.check_misalign(src.mplace.misaligned, CheckAlignMsg::BasedOn)?;
         self.check_misalign(dest.mplace.misaligned, CheckAlignMsg::BasedOn)?;
         Ok(())

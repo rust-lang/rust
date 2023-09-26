@@ -20,7 +20,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
-    Abi, Align, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
+    Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
 
 use std::hash::Hash;
@@ -378,18 +378,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
         // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
         try_validation!(
-            self.ecx.check_ptr_access_align(
+            self.ecx.check_ptr_access(
                 place.ptr(),
                 size,
-                align,
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            Ub(AlignmentCheckFailed(Misalignment { required, has }, _msg)) => UnalignedPtr {
-                ptr_kind,
-                required_bytes: required.bytes(),
-                found_bytes: has.bytes()
-            },
             Ub(DanglingIntPointer(0, _)) => NullPtr { ptr_kind },
             Ub(DanglingIntPointer(i, _)) => DanglingPtrNoProvenance {
                 ptr_kind,
@@ -403,6 +397,18 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // dangling pointers), but it can happen in Miri.
             Ub(PointerUseAfterFree(..)) => DanglingPtrUseAfterFree {
                 ptr_kind,
+            },
+        );
+        try_validation!(
+            self.ecx.check_ptr_align(
+                place.ptr(),
+                align,
+            ),
+            self.path,
+            Ub(AlignmentCheckFailed(Misalignment { required, has }, _msg)) => UnalignedPtr {
+                ptr_kind,
+                required_bytes: required.bytes(),
+                found_bytes: has.bytes()
             },
         );
         // Do not allow pointers to uninhabited types.
@@ -782,7 +788,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
                 // No need for an alignment check here, this is not an actual memory access.
-                let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size, Align::ONE)?.expect("we already excluded size 0");
+                let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size)?.expect("we already excluded size 0");
 
                 match alloc.get_bytes_strip_provenance() {
                     // In the happy case, we needn't check anything else.

@@ -7,7 +7,6 @@ use either::Either;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_target::abi::Align;
 
 use super::{ImmTy, InterpCx, Machine, Projectable};
 use crate::util;
@@ -210,9 +209,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // No alignment requirement since `copy_op` above already checked it.
                     self.mem_copy_repeatedly(
                         first_ptr,
-                        Align::ONE,
                         rest_ptr,
-                        Align::ONE,
                         elem_size,
                         length - 1,
                         /*nonoverlapping:*/ true,
