@@ -251,15 +251,25 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
     }
 
-    /// Represent the *value* which would be read from `place`.
+    /// Represent the *value* which would be read from `place`, and point `place` to a preexisting
+    /// place with the same value (if that already exists).
     #[instrument(level = "trace", skip(self), ret)]
-    fn simplify_place(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
-        // Another place that holds the same value.
+    fn simplify_place_value(
+        &mut self,
+        place: &mut Place<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
+        // Invariant: `place` and `place_ref` point to the same value, even if they point to
+        // different memory locations.
         let mut place_ref = place.as_ref();
-        let mut value = self.locals[place.local]?;
 
+        // Invariant: `value` holds the value up-to the `index`th projection excluded.
+        let mut value = self.locals[place.local]?;
         for (index, proj) in place.projection.iter().enumerate() {
             if let Some(local) = self.try_as_local(value, location) {
+                // Both `local` and `Place { local: place.local, projection: projection[..index] }`
+                // hold the same value. Therefore, following place holds the value in the original
+                // `place`.
                 place_ref = PlaceRef { local, projection: &place.projection[index..] };
             }
 
@@ -301,7 +311,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         if let Some(local) = self.try_as_local(value, location)
-            && local != place.local
+            && local != place.local // in case we had no projection to begin with.
         {
             *place = local.into();
             self.reused_locals.insert(local);
@@ -309,6 +319,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         } else if place_ref.local != place.local
             || place_ref.projection.len() < place.projection.len()
         {
+            // By the invariant on `place_ref`.
             *place = place_ref.project_deeper(&[], self.tcx);
             self.reused_locals.insert(place_ref.local);
             self.any_replacement = true;
@@ -326,7 +337,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         match *operand {
             Operand::Constant(ref constant) => Some(self.insert(Value::Constant(constant.const_))),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
-                let value = self.simplify_place(place, location)?;
+                let value = self.simplify_place_value(place, location)?;
                 if let Some(const_) = self.try_as_constant(value) {
                     *operand = Operand::Constant(Box::new(const_));
                     self.any_replacement = true;
@@ -379,7 +390,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             // Operations.
             Rvalue::Len(ref mut place) => {
-                let place = self.simplify_place(place, location)?;
+                let place = self.simplify_place_value(place, location)?;
                 Value::Len(place)
             }
             Rvalue::Cast(kind, ref mut value, to) => {
@@ -402,7 +413,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 Value::UnaryOp(op, arg)
             }
             Rvalue::Discriminant(ref mut place) => {
-                let place = self.simplify_place(place, location)?;
+                let place = self.simplify_place_value(place, location)?;
                 Value::Discriminant(place)
             }
 
