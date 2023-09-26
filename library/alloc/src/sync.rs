@@ -989,7 +989,7 @@ impl<T, A: Allocator> Arc<T, A> {
                     .compare_exchange(ONE_STRONG_WITH_WEAK, STRONG_DROPPED, Acquire, Relaxed)
                     .is_ok() =>
             {
-                // The strong count was one, without any weak pointers.
+                // The strong count was one, potentially with weak pointers.
                 let mut this = mem::ManuallyDrop::new(this);
                 let value = unsafe { ptr::read(Self::get_mut_unchecked(&mut this)) };
                 let alloc = unsafe { ptr::read(&this.alloc) };
