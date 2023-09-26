@@ -299,6 +299,23 @@ macro_rules! int_module {
                 assert_eq!((2 as $T).isqrt(), 1 as $T);
                 assert_eq!((99 as $T).isqrt(), 9 as $T);
                 assert_eq!((100 as $T).isqrt(), 10 as $T);
+
+                let n_max: $T = (1024 * 1024).min($T::MAX as u128) as $T;
+                for n in 0..=n_max {
+                    let isqrt: $T = n.isqrt();
+
+                    assert!(isqrt.pow(2) <= n);
+                    let (square, overflow) = (isqrt + 1).overflowing_pow(2);
+                    assert!(overflow || square > n);
+                }
+
+                for n in ($T::MAX - 127)..=$T::MAX {
+                    let isqrt: $T = n.isqrt();
+
+                    assert!(isqrt.pow(2) <= n);
+                    let (square, overflow) = (isqrt + 1).overflowing_pow(2);
+                    assert!(overflow || square > n);
+                }
             }
 
             #[test]
