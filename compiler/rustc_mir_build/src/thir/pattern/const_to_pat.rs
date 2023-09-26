@@ -16,8 +16,8 @@ use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    FloatPattern, IndirectStructuralMatch, InvalidPattern, NontrivialStructuralMatch,
-    PointerPattern, TypeNotStructural, UnionPattern, UnsizedPattern,
+    FloatPattern, IndirectStructuralMatch, InvalidPattern, NonPartialEqMatch,
+    NontrivialStructuralMatch, PointerPattern, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
@@ -155,8 +155,9 @@ impl<'tcx> ConstToPat<'tcx> {
         };
 
         if !self.saw_const_match_error.get() {
-            // If we were able to successfully convert the const to some pat,
-            // double-check that all types in the const implement `Structural`.
+            // If we were able to successfully convert the const to some pat (possibly with some
+            // lints, but no errors), double-check that all types in the const implement
+            // `Structural` and `PartialEq`.
 
             let structural =
                 traits::search_for_structural_match_violation(self.span, self.tcx(), cv.ty());
@@ -178,7 +179,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
 
             if let Some(non_sm_ty) = structural {
-                if !self.type_may_have_partial_eq_impl(cv.ty()) {
+                if !self.type_has_partial_eq_impl(cv.ty()) {
                     if let ty::Adt(def, ..) = non_sm_ty.kind() {
                         if def.is_union() {
                             let err = UnionPattern { span: self.span };
@@ -192,8 +193,10 @@ impl<'tcx> ConstToPat<'tcx> {
                     } else {
                         let err = InvalidPattern { span: self.span, non_sm_ty };
                         self.tcx().sess.emit_err(err);
-                        return Box::new(Pat { span: self.span, ty: cv.ty(), kind: PatKind::Wild });
                     }
+                    // All branches above emitted an error. Don't print any more lints.
+                    // The pattern we return is irrelevant since we errored.
+                    return Box::new(Pat { span: self.span, ty: cv.ty(), kind: PatKind::Wild });
                 } else if !self.saw_const_match_lint.get() {
                     if let Some(mir_structural_match_violation) = mir_structural_match_violation {
                         match non_sm_ty.kind() {
@@ -238,13 +241,24 @@ impl<'tcx> ConstToPat<'tcx> {
                     _ => {}
                 }
             }
+
+            // Always check for `PartialEq`, even if we emitted other lints. (But not if there were
+            // any errors.) This ensures it shows up in cargo's future-compat reports as well.
+            if !self.type_has_partial_eq_impl(cv.ty()) {
+                self.tcx().emit_spanned_lint(
+                    lint::builtin::CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
+                    self.id,
+                    self.span,
+                    NonPartialEqMatch { non_peq_ty: cv.ty() },
+                );
+            }
         }
 
         inlined_const_as_pat
     }
 
     #[instrument(level = "trace", skip(self), ret)]
-    fn type_may_have_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
+    fn type_has_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
         // double-check there even *is* a semantic `PartialEq` to dispatch to.
         //
         // (If there isn't, then we can safely issue a hard
@@ -259,8 +273,13 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::TraitRef::new(self.tcx(), partial_eq_trait_id, [ty, ty]),
         );
 
-        // FIXME: should this call a `predicate_must_hold` variant instead?
-        self.infcx.predicate_may_hold(&partial_eq_obligation)
+        // This *could* accept a type that isn't actually `PartialEq`, because region bounds get
+        // ignored. However that should be pretty much impossible since consts that do not depend on
+        // generics can only mention the `'static` lifetime, and how would one have a type that's
+        // `PartialEq` for some lifetime but *not* for `'static`? If this ever becomes a problem
+        // we'll need to leave some sort of trace of this requirement in the MIR so that borrowck
+        // can ensure that the type really implements `PartialEq`.
+        self.infcx.predicate_must_hold_modulo_regions(&partial_eq_obligation)
     }
 
     fn field_pats(

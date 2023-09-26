@@ -17,7 +17,8 @@ const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };
 
 fn main() {
     match CONST_SET {
-        CONST_SET => { /* ok */ }
+        CONST_SET => { /* ok */ } //~WARN: must implement `PartialEq`
+        //~| previously accepted
         _ => panic!("match fell through?"),
     }
 }
