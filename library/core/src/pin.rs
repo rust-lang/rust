@@ -900,14 +900,17 @@ use crate::{
 /// A pointer which pins its pointee in place.
 ///
 /// [`Pin`] is a wrapper around some kind of pointer `Ptr` which makes that pointer "pin" its
-/// pointee value in place, thus preventing the value referenced by that pointer from being moved or
-/// otherwise invalidated at that place in memory unless it implements [`Unpin`].
+/// pointee value in place, thus preventing the value referenced by that pointer from being moved
+/// or otherwise invalidated at that place in memory unless it implements [`Unpin`].
+///
+/// *See the [`pin` module] documentation for a more thorough exploration of pinning.*
 ///
 /// ## Pinning values with [`Pin<Ptr>`]
 ///
 /// In order to pin a value, we wrap a *pointer to that value* (of some type `Ptr`) in a
 /// [`Pin<Ptr>`]. [`Pin<Ptr>`] can wrap any pointer type, forming a promise that the **pointee**
-/// will not be *moved* or [otherwise invalidated][subtle-details].
+/// will not be *moved* or [otherwise invalidated][subtle-details]. Note that it is impossible
+/// to create or misuse a [`Pin<Ptr>`] which can violate this promise without using [`unsafe`].
 ///
 /// We call such a [`Pin`]-wrapped pointer a **pinning pointer,** (or pinning ref, or pinning
 /// [`Box`], etc.) because its existince is the thing that is pinning the underlying pointee in
@@ -917,13 +920,91 @@ use crate::{
 /// itself, but rather a pointer to that value! A [`Pin<Ptr>`] does not pin the `Ptr` but rather
 /// the pointer's ***pointee** value*.
 ///
-/// `Pin<P>` is guaranteed to have the same memory layout and ABI as `P`.
+/// For the vast majoriy of Rust types, pinning a value of that type will actually have no effect.
+/// This is because the vast majority of types implement the [`Unpin`] trait, which entirely opts
+/// all values of that type out of pinning-related guarantees. The most common exception
+/// to this is the compiler-generated types that implement [`Future`] for the return value
+/// of `async fn`s. These compiler-generated [`Future`]s do not implement [`Unpin`] for reasons
+/// explained more in the [`pin` module] docs, but suffice it to say they require the guarantees
+/// provided by pinning to be implemented soundly.
 ///
-/// *See the [`pin` module] documentation for a more thorough exploration of pinning.*
+/// This requirement in the implementation of `async fn`s means that the [`Future`] trait requires
+/// any [`Future`] to be pinned in order to call [`poll`] on it. Therefore, when manually polling
+/// a future, you will need to pin it first.
 ///
-/// [`pin` module]: self
-/// [`Box`]: ../../std/boxed/struct.Box.html
-/// [subtle-details]: self#subtle-details-and-the-drop-guarantee
+/// ### Pinning a value inside a [`Box`]
+///
+/// The simplest and most flexible way to pin a value is to put that value inside a [`Box`] and
+/// then turn that [`Box`] into a "pinning [`Box`]" by wrapping it in a [`Pin`].
+/// You can do both of these in a single step using [`Box::pin`]. Let's see an example of using
+/// this flow to pin a [`Future`] returned from calling an `async fn`, a common use case
+/// as described above.
+///
+/// ```
+/// use std::pin::Pin;
+///
+/// async fn add_one(x: u32) -> u32 {
+///     x + 1
+/// }
+///
+/// // Call the async function to get a future back
+/// let fut = add_one(42);
+///
+/// // Pin the future inside a pinning box
+/// let pinned_fut: Pin<Box<_>> = Box::pin(fut);
+/// ```
+///
+/// If you have a value which is already boxed, for example a [`Box<dyn Future>`][Box], you can pin
+/// that value in-place at its current memory address using [`Box::into_pin`].
+///
+/// ```
+/// use std::pin::Pin;
+/// use std::future::Future;
+///
+/// async fn add_one(x: u32) -> u32 {
+///     x + 1
+/// }
+///
+/// fn boxed_add_one(x: u32) -> Box<dyn Future<Output = u32>> {
+///     Box::new(add_one(x))
+/// }
+///
+/// let boxed_fut = boxed_add_one(42);
+///
+/// // Pin the future inside the existing box
+/// let pinned_fut: Pin<Box<_>> = Box::into_pin(boxed_fut);
+/// ```
+///
+/// There are similar pinning methods offered on the other standard library smart pointer types
+/// as well, like [`Rc`] and [`Arc`].
+///
+/// ### Pinning a value on the stack using [`pin!`]
+///
+/// There are some situations where it is desirable or even required (for example, in a `#[no_std]`
+/// context where you don't have access to the standard library or allocation in general) to
+/// pin a value to its location on the stack. Doing so is possible using the [`pin!`] macro. See
+/// its documentation for more.
+///
+/// ## Layout and ABI
+///
+/// [`Pin<Ptr>`] is guaranteed to have the same memory layout and ABI[^noalias] as `Ptr`.
+///
+/// [^noalias]: There is a bit of nuance here that is still being decided about whether the
+/// aliasing semantics of `Pin<&mut T>` should be different than `&mut T`, but this is true as of
+/// today.
+///
+/// [`pin!`]: crate::pin::pin "pin!"
+/// [`Future`]: crate::future::Future "Future"
+/// [`poll`]: crate::future::Future::poll "Future::poll"
+/// [`pin` module]: self "pin module"
+/// [`Rc`]: ../../std/rc/struct.Rc.html "Rc"
+/// [`Arc`]: ../../std/sync/struct.Arc.html "Arc"
+/// [Box]: ../../std/boxed/struct.Box.html "Box"
+/// [`Box`]: ../../std/boxed/struct.Box.html "Box"
+/// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin "Box::pin"
+/// [`Box::into_pin`]: ../../std/boxed/struct.Box.html#method.into_pin "Box::into_pin"
+/// [subtle-details]: self#subtle-details-and-the-drop-guarantee "pin subtle details"
+/// [`unsafe`]: ../../std/keyword.unsafe.html "keyword unsafe"
 //
 // Note: the `Clone` derive below causes unsoundness as it's possible to implement
 // `Clone` for mutable references.
