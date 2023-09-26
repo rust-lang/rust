@@ -497,6 +497,11 @@ impl<T> Arc<T> {
             let inner = init_ptr.as_ptr();
             ptr::write(ptr::addr_of_mut!((*inner).data), data);
 
+            debug_assert!(
+                (*inner).strong.load(Relaxed) & STRONG_DROPPED != 0,
+                "No prior strong references should exist"
+            );
+
             // The above write to the data field must be visible to any threads which
             // observe a non-zero strong count. Therefore we need at least "Release" ordering
             // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
@@ -509,11 +514,6 @@ impl<T> Arc<T> {
             //
             // These side effects do not impact us in any way, and no other side effects are
             // possible with safe code alone.
-            debug_assert_eq!(
-                (*inner).strong.load(Relaxed),
-                1,
-                "No prior strong references should exist"
-            );
             (*inner).strong.store(ONE_STRONG_WITH_WEAK, Release);
 
             Arc::from_inner(init_ptr)
