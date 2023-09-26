@@ -177,3 +177,5 @@ fn attributes() {
 async fn issue10433() {
     let _pending: () = std::future::pending().await;
 }
+
+pub async fn issue11502(a: ()) {}

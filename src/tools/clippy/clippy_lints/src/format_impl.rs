@@ -170,30 +170,29 @@ fn check_self_in_format_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>,
     if let Some(outer_macro) = root_macro_call_first_node(cx, expr)
         && let macro_def_id = outer_macro.def_id
         && is_format_macro(cx, macro_def_id)
+        && let Some(format_args) = find_format_args(cx, expr, outer_macro.expn)
     {
-        find_format_args(cx, expr, outer_macro.expn, |format_args| {
-            for piece in &format_args.template {
-                if let FormatArgsPiece::Placeholder(placeholder) = piece
-                    && let trait_name = match placeholder.format_trait {
-                        FormatTrait::Display => sym::Display,
-                        FormatTrait::Debug => sym::Debug,
-                        FormatTrait::LowerExp => sym!(LowerExp),
-                        FormatTrait::UpperExp => sym!(UpperExp),
-                        FormatTrait::Octal => sym!(Octal),
-                        FormatTrait::Pointer => sym::Pointer,
-                        FormatTrait::Binary => sym!(Binary),
-                        FormatTrait::LowerHex => sym!(LowerHex),
-                        FormatTrait::UpperHex => sym!(UpperHex),
-                    }
-                    && trait_name == impl_trait.name
-                    && let Ok(index) = placeholder.argument.index
-                    && let Some(arg) = format_args.arguments.all_args().get(index)
-                    && let Ok(arg_expr) = find_format_arg_expr(expr, arg)
-                {
-                    check_format_arg_self(cx, expr.span, arg_expr, impl_trait);
+        for piece in &format_args.template {
+            if let FormatArgsPiece::Placeholder(placeholder) = piece
+                && let trait_name = match placeholder.format_trait {
+                    FormatTrait::Display => sym::Display,
+                    FormatTrait::Debug => sym::Debug,
+                    FormatTrait::LowerExp => sym!(LowerExp),
+                    FormatTrait::UpperExp => sym!(UpperExp),
+                    FormatTrait::Octal => sym!(Octal),
+                    FormatTrait::Pointer => sym::Pointer,
+                    FormatTrait::Binary => sym!(Binary),
+                    FormatTrait::LowerHex => sym!(LowerHex),
+                    FormatTrait::UpperHex => sym!(UpperHex),
                 }
+                && trait_name == impl_trait.name
+                && let Ok(index) = placeholder.argument.index
+                && let Some(arg) = format_args.arguments.all_args().get(index)
+                && let Ok(arg_expr) = find_format_arg_expr(expr, arg)
+            {
+                check_format_arg_self(cx, expr.span, arg_expr, impl_trait);
             }
-        });
+        }
     }
 }
 

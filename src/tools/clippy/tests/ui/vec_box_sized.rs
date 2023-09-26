@@ -49,4 +49,9 @@ mod inner_mod {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/11417
+fn in_closure() {
+    let _ = |_: Vec<Box<dyn ToString>>| {};
+}
+
 fn main() {}

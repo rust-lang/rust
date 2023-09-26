@@ -1,6 +1,5 @@
 //@aux-build:proc_macro_derive.rs
-#![feature(rustc_private)]
-#![warn(clippy::all)]
+#![feature(rustc_private, lint_reasons)]
 #![warn(clippy::used_underscore_binding)]
 #![allow(clippy::disallowed_names, clippy::eq_op, clippy::uninlined_format_args)]
 
@@ -105,6 +104,31 @@ async fn await_desugaring() {
         foo()
     })
     .await
+}
+
+struct PhantomField<T> {
+    _marker: std::marker::PhantomData<T>,
+}
+
+impl<T> std::fmt::Debug for PhantomField<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("PhantomField").field("_marker", &self._marker).finish()
+    }
+}
+
+struct AllowedField {
+    #[allow(clippy::used_underscore_binding)]
+    _allowed: usize,
+}
+
+struct ExpectedField {
+    #[expect(clippy::used_underscore_binding)]
+    _expected: usize,
+}
+
+fn lint_levels(allowed: AllowedField, expected: ExpectedField) {
+    let _ = allowed._allowed;
+    let _ = expected._expected;
 }
 
 fn main() {

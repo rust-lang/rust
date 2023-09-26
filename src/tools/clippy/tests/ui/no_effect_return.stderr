@@ -54,15 +54,13 @@ LL |         ControlFlow::Break::<()>(());
    |         help: did you mean to return it?: `return`
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:79:9
+  --> $DIR/no_effect_return.rs:80:9
    |
 LL |         ();
-   |         -^^
-   |         |
-   |         help: did you mean to return it?: `return`
+   |         ^^^
 
 error: statement with no effect
-  --> $DIR/no_effect_return.rs:88:9
+  --> $DIR/no_effect_return.rs:89:9
    |
 LL |         ();
    |         ^^^

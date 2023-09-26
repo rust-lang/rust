@@ -459,7 +459,7 @@ struct Fragments<'a> {
 
 impl Fragments<'_> {
     fn span(self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
-        source_span_for_markdown_range(cx.tcx, &self.doc, &range, &self.fragments)
+        source_span_for_markdown_range(cx.tcx, self.doc, &range, self.fragments)
     }
 }
 
@@ -513,6 +513,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
 const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
 
+#[allow(clippy::too_many_lines)] // Only a big match statement
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
     cx: &LateContext<'_>,
     valid_idents: &FxHashSet<String>,

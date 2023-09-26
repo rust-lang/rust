@@ -703,7 +703,7 @@ Minimum chars an ident can have, anything below or equal to this will be linted.
 ## `accept-comment-above-statement`
 Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
 
-**Default Value:** `false` (`bool`)
+**Default Value:** `true` (`bool`)
 
 ---
 **Affected lints:**
@@ -713,7 +713,7 @@ Whether to accept a safety comment to be placed above the statement containing t
 ## `accept-comment-above-attributes`
 Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
 
-**Default Value:** `false` (`bool`)
+**Default Value:** `true` (`bool`)
 
 ---
 **Affected lints:**
@@ -749,6 +749,16 @@ Which crates to allow absolute paths from
 ---
 **Affected lints:**
 * [`absolute_paths`](https://rust-lang.github.io/rust-clippy/master/index.html#absolute_paths)
+
+
+## `allowed-dotfiles`
+Additional dotfiles (files or directories starting with a dot) to allow
+
+**Default Value:** `{}` (`rustc_data_structures::fx::FxHashSet<String>`)
+
+---
+**Affected lints:**
+* [`path_ends_with_ext`](https://rust-lang.github.io/rust-clippy/master/index.html#path_ends_with_ext)
 
 
 ## `enforce-iter-loop-reborrow`
