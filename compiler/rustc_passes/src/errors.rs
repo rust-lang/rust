@@ -621,6 +621,15 @@ pub struct RustcAllowConstFnUnstable {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_safe_intrinsic)]
+pub struct RustcSafeIntrinsic {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_rustc_std_internal_symbol)]
 pub struct RustcStdInternalSymbol {
     #[primary_span]
