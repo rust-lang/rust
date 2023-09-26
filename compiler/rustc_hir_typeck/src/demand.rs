@@ -530,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // When encountering a type error on the value of a `break`, try to point at the reason for the
     // expected type.
-    fn annotate_loop_expected_due_to_inference(
+    pub fn annotate_loop_expected_due_to_inference(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
@@ -540,16 +540,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         let mut parent_id = self.tcx.hir().parent_id(expr.hir_id);
-        loop {
+        let mut parent;
+        'outer: loop {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
-            let Some(hir::Node::Expr(parent)) = self.tcx.hir().find(parent_id) else {
+            let Some(
+                hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
+                | hir::Node::Expr(&ref p),
+            ) = self.tcx.hir().find(parent_id)
+            else {
                 break;
             };
-            parent_id = self.tcx.hir().parent_id(parent.hir_id);
+            parent = p;
+            parent_id = self.tcx.hir().parent_id(parent_id);
             let hir::ExprKind::Break(destination, _) = parent.kind else {
                 continue;
             };
-            let mut parent_id = parent.hir_id;
+            let mut parent_id = parent_id;
+            let mut direct = false;
             loop {
                 // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
                 let parent = match self.tcx.hir().find(parent_id) {
@@ -565,14 +572,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         parent_id = self.tcx.hir().parent_id(*hir_id);
                         parent
                     }
-                    Some(hir::Node::Block(hir::Block { .. })) => {
+                    Some(hir::Node::Block(_)) => {
                         parent_id = self.tcx.hir().parent_id(parent_id);
                         parent
                     }
                     _ => break,
                 };
-                if let hir::ExprKind::Loop(_, label, _, span) = parent.kind
-                    && destination.label == label
+                if let hir::ExprKind::Loop(..) = parent.kind {
+                    // When you have `'a: loop { break; }`, the `break` corresponds to the labeled
+                    // loop, so we need to account for that.
+                    direct = !direct;
+                }
+                if let hir::ExprKind::Loop(block, label, _, span) = parent.kind
+                    && (destination.label == label || direct)
                 {
                     if let Some((reason_span, message)) =
                         self.maybe_get_coercion_reason(parent_id, parent.span)
@@ -582,8 +594,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             format!("this loop is expected to be of type `{expected}`"),
                         );
+                        break 'outer;
+                    } else {
+                        // Locate all other `break` statements within the same `loop` that might
+                        // have affected inference.
+                        struct FindBreaks<'tcx> {
+                            label: Option<rustc_ast::Label>,
+                            uses: Vec<&'tcx hir::Expr<'tcx>>,
+                            nest_depth: usize,
+                        }
+                        impl<'tcx> Visitor<'tcx> for FindBreaks<'tcx> {
+                            fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+                                let nest_depth = self.nest_depth;
+                                if let hir::ExprKind::Loop(_, label, _, _) = ex.kind {
+                                    if label == self.label {
+                                        // Account for `'a: loop { 'a: loop {...} }`.
+                                        return;
+                                    }
+                                    self.nest_depth += 1;
+                                }
+                                if let hir::ExprKind::Break(destination, _) = ex.kind
+                                    && (self.label == destination.label
+                                        // Account for `loop { 'a: loop { loop { break; } } }`.
+                                        || destination.label.is_none() && self.nest_depth == 0)
+                                {
+                                    self.uses.push(ex);
+                                }
+                                hir::intravisit::walk_expr(self, ex);
+                                self.nest_depth = nest_depth;
+                            }
+                        }
+                        let mut expr_finder = FindBreaks { label, uses: vec![], nest_depth: 0 };
+                        expr_finder.visit_block(block);
+                        let mut exit = false;
+                        for ex in expr_finder.uses {
+                            let hir::ExprKind::Break(_, val) = ex.kind else {
+                                continue;
+                            };
+                            let ty = match val {
+                                Some(val) => {
+                                    match self.typeck_results.borrow().expr_ty_adjusted_opt(val) {
+                                        None => continue,
+                                        Some(ty) => ty,
+                                    }
+                                }
+                                None => self.tcx.types.unit,
+                            };
+                            if self.can_eq(self.param_env, ty, expected) {
+                                err.span_label(
+                                    ex.span,
+                                    format!("expected because of this `break`"),
+                                );
+                                exit = true;
+                            }
+                        }
+                        if exit {
+                            break 'outer;
+                        }
                     }
-                    break;
                 }
             }
         }
