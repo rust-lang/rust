@@ -1249,19 +1249,18 @@ impl<'tcx> Ty<'tcx> {
     /// Primitive types (`u32`, `str`) have structural equality by definition. For composite data
     /// types, equality for the type as a whole is structural when it is the same as equality
     /// between all components (fields, array elements, etc.) of that type. For ADTs, structural
-    /// equality is indicated by an implementation of `PartialStructuralEq` and `StructuralEq` for
-    /// that type.
+    /// equality is indicated by an implementation of `StructuralPartialEq` for that type.
     ///
     /// This function is "shallow" because it may return `true` for a composite type whose fields
-    /// are not `StructuralEq`. For example, `[T; 4]` has structural equality regardless of `T`
+    /// are not `StructuralPartialEq`. For example, `[T; 4]` has structural equality regardless of `T`
     /// because equality for arrays is determined by the equality of each array element. If you
     /// want to know whether a given call to `PartialEq::eq` will proceed structurally all the way
     /// down, you will need to use a type visitor.
     #[inline]
     pub fn is_structural_eq_shallow(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
-            // Look for an impl of both `PartialStructuralEq` and `StructuralEq`.
-            ty::Adt(..) => tcx.has_structural_eq_impls(self),
+            // Look for an impl of `StructuralPartialEq`.
+            ty::Adt(..) => tcx.has_structural_eq_impl(self),
 
             // Primitive types that satisfy `Eq`.
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::Never => true,

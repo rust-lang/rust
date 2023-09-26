@@ -2,7 +2,7 @@
 
 use crate::cmp::Ordering::{self, *};
 use crate::marker::ConstParamTy;
-use crate::marker::{StructuralEq, StructuralPartialEq};
+use crate::marker::StructuralPartialEq;
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //
@@ -64,7 +64,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[unstable(feature = "structural_match", issue = "31434")]
-            impl<$($T),+> StructuralEq for ($($T,)+)
+            #[cfg(bootstrap)]
+            impl<$($T),+> crate::marker::StructuralEq for ($($T,)+)
             {}
         }
 
