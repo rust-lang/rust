@@ -65,7 +65,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // struct Foo<const N: usize = { .. }>;
                     //        ^^^       ^          ^^^^^^ def id of this anon const
                     //        ^         ^ param_id
-                    //        ^ parent_def_id after
+                    //        ^ parent_def_id
                     //
                     // then we only want to return generics for params to the left of `N`. If we don't do that we
                     // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
