@@ -12,10 +12,15 @@ use crate::thread::Result;
 
 /// A struct providing information about a panic.
 ///
-/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook`]
-/// function.
+/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook`] function.
 ///
 /// [`set_hook`]: ../../std/panic/fn.set_hook.html
+///
+/// There two `PanicInfo` types:
+/// - [`core::panic::PanicInfo`], which is used as an argument to a `#[panic_handler]` in `#![no_std]` programs.
+/// - `std::panic::PanicInfo`, which is used as an argument to a panic hook set by [`std::panic::set_hook`].
+///
+/// This is the second one.
 ///
 /// # Examples
 ///
@@ -28,6 +33,8 @@ use crate::thread::Result;
 ///
 /// panic!("critical system failure");
 /// ```
+///
+/// [`core::panic::PanicInfo`]: ../../core/panic/struct.PanicInfo.html
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {

@@ -4,6 +4,15 @@ use crate::panic::Location;
 /// A struct providing information about a panic.
 ///
 /// A `PanicInfo` structure is passed to the panic handler defined by `#[panic_handler]`.
+///
+/// There two `PanicInfo` types:
+/// - `core::panic::PanicInfo`, which is used as an argument to a `#[panic_handler]` in `#![no_std]` programs.
+/// - [`std::panic::PanicInfo`], which is used as an argument to a panic hook set by [`std::panic::set_hook`].
+///
+/// This is the first one.
+///
+/// [`std::panic::set_hook`]: ../../std/panic/fn.set_hook.html
+/// [`std::panic::PanicInfo`]: ../../std/panic/struct.PanicInfo.html
 #[lang = "panic_info"]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
