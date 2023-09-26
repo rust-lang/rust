@@ -274,6 +274,11 @@ fn replace_usages(
                 {
                     edit.replace(ty_annotation.syntax().text_range(), "Bool");
                     replace_bool_expr(edit, initializer);
+                } else if let Some(receiver) = find_method_call_expr_usage(&new_name) {
+                    edit.replace(
+                        receiver.syntax().text_range(),
+                        format!("({} == Bool::True)", receiver),
+                    );
                 } else if new_name.syntax().ancestors().find_map(ast::UseTree::cast).is_none() {
                     // for any other usage in an expression, replace it with a check that it is the true variant
                     if let Some((record_field, expr)) = new_name
@@ -424,6 +429,17 @@ fn find_assoc_const_usage(name: &ast::NameLike) -> Option<(ast::Type, ast::Expr)
     }
 
     Some((const_.ty()?, const_.body()?))
+}
+
+fn find_method_call_expr_usage(name: &ast::NameLike) -> Option<ast::Expr> {
+    let method_call = name.syntax().ancestors().find_map(ast::MethodCallExpr::cast)?;
+    let receiver = method_call.receiver()?;
+
+    if !receiver.syntax().descendants().contains(name.syntax()) {
+        return None;
+    }
+
+    Some(receiver)
 }
 
 /// Adds the definition of the new enum before the target node.
@@ -1282,6 +1298,38 @@ struct Bar {
 fn main() {
     let foo = Foo { foo: Bool::True };
     let bar = Bar { bar: foo.foo == Bool::True };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn field_method_chain_usage() {
+        check_assist(
+            bool_to_enum,
+            r#"
+struct Foo {
+    $0bool: bool,
+}
+
+fn main() {
+    let foo = Foo { bool: true };
+
+    foo.bool.then(|| 2);
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+struct Foo {
+    bool: Bool,
+}
+
+fn main() {
+    let foo = Foo { bool: Bool::True };
+
+    (foo.bool == Bool::True).then(|| 2);
 }
 "#,
         )
