@@ -190,6 +190,7 @@ mod manual_async_fn;
 mod manual_bits;
 mod manual_clamp;
 mod manual_float_methods;
+mod manual_hash_one;
 mod manual_is_ascii_check;
 mod manual_let_else;
 mod manual_main_separator_str;
@@ -1119,6 +1120,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             msrv(),
         ))
     });
+    store.register_late_pass(move |_| Box::new(manual_hash_one::ManualHashOne::new(msrv())));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
