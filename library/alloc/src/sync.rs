@@ -2174,7 +2174,7 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
                 // Weak pointers can no longer upgrade at this point, though.
                 if this.inner().weak.load(Relaxed) == ONE_WEAK {
                     // No Weak pointers exist.
-                    this.inner().strong.store(ONE_STRONG_WITH_WEAK, Release); // Restore the strong count for this Arc.
+                    this.inner().strong.store(ONE_STRONG, Release); // Restore the strong count for this Arc.
                 } else {
                     // Weak pointers exist.
                     // So we can just steal the data, but need a new allocation.
