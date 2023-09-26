@@ -335,6 +335,11 @@ jobs:
               ENABLE_GCC_CODEGEN: "1"
             <<: *job-linux-16c
 
+          - name: x86_64-gnu-llvm-16
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-8c
+
           - name: x86_64-gnu-tools
             <<: *job-linux-16c
 
