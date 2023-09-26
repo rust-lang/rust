@@ -6,7 +6,7 @@ use std::ptr;
 use std::sync::Arc;
 
 #[cfg(parallel_compiler)]
-use {crate::cold_path, crate::sync::CacheAligned};
+use {crate::outline, crate::sync::CacheAligned};
 
 /// A pointer to the `RegistryData` which uniquely identifies a registry.
 /// This identifier can be reused if the registry gets freed.
@@ -25,11 +25,7 @@ impl RegistryId {
     fn verify(self) -> usize {
         let (id, index) = THREAD_DATA.with(|data| (data.registry_id.get(), data.index.get()));
 
-        if id == self {
-            index
-        } else {
-            cold_path(|| panic!("Unable to verify registry association"))
-        }
+        if id == self { index } else { outline(|| panic!("Unable to verify registry association")) }
     }
 }
 

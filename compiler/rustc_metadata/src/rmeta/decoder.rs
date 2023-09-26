@@ -24,7 +24,6 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::GeneratorDiagnosticData;
 use rustc_middle::ty::{self, ParameterizedOverTcx, Ty, TyCtxt, Visibility};
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
@@ -44,7 +43,6 @@ use std::sync::atomic::Ordering;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
-pub use cstore_impl::provide_extern;
 use rustc_span::hygiene::HygieneDecodeContext;
 
 mod cstore_impl;
@@ -1749,24 +1747,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 }
             })
             .clone()
-    }
-
-    fn get_generator_diagnostic_data(
-        self,
-        tcx: TyCtxt<'tcx>,
-        id: DefIndex,
-    ) -> Option<GeneratorDiagnosticData<'tcx>> {
-        self.root
-            .tables
-            .generator_diagnostic_data
-            .get(self, id)
-            .map(|param| param.decode((self, tcx)))
-            .map(|generator_data| GeneratorDiagnosticData {
-                generator_interior_types: generator_data.generator_interior_types,
-                hir_owner: generator_data.hir_owner,
-                nodes_types: generator_data.nodes_types,
-                adjustments: generator_data.adjustments,
-            })
     }
 
     fn get_attr_flags(self, index: DefIndex) -> AttrFlags {

@@ -21,12 +21,16 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
 
-hir_analysis_cannot_capture_late_bound_const_in_anon_const =
-    cannot capture late-bound const parameter in a constant
+hir_analysis_cannot_capture_late_bound_const =
+    cannot capture late-bound const parameter in {$what}
     .label = parameter defined here
 
-hir_analysis_cannot_capture_late_bound_ty_in_anon_const =
-    cannot capture late-bound type parameter in a constant
+hir_analysis_cannot_capture_late_bound_lifetime =
+    cannot capture late-bound lifetime in {$what}
+    .label = lifetime defined here
+
+hir_analysis_cannot_capture_late_bound_ty =
+    cannot capture late-bound type parameter in {$what}
     .label = parameter defined here
 
 hir_analysis_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
@@ -266,20 +270,20 @@ hir_analysis_simd_ffi_highly_experimental = use of SIMD type{$snip} in FFI is hi
 hir_analysis_specialization_trait = implementing `rustc_specialization_trait` traits is unstable
     .help = add `#![feature(min_specialization)]` to the crate attributes to enable
 
-hir_analysis_start_function_parameters = start function is not allowed to have type parameters
-    .label = start function cannot have type parameters
+hir_analysis_start_function_parameters = `#[start]` function is not allowed to have type parameters
+    .label = `#[start]` function cannot have type parameters
 
-hir_analysis_start_function_where = start function is not allowed to have a `where` clause
-    .label = start function cannot have a `where` clause
+hir_analysis_start_function_where = `#[start]` function is not allowed to have a `where` clause
+    .label = `#[start]` function cannot have a `where` clause
 
-hir_analysis_start_not_async = `start` is not allowed to be `async`
-    .label = `start` is not allowed to be `async`
+hir_analysis_start_not_async = `#[start]` function is not allowed to be `async`
+    .label = `#[start]` is not allowed to be `async`
 
-hir_analysis_start_not_target_feature = `start` is not allowed to have `#[target_feature]`
-    .label = `start` is not allowed to have `#[target_feature]`
+hir_analysis_start_not_target_feature = `#[start]` function is not allowed to have `#[target_feature]`
+    .label = `#[start]` function is not allowed to have `#[target_feature]`
 
-hir_analysis_start_not_track_caller = `start` is not allowed to be `#[track_caller]`
-    .label = `start` is not allowed to be `#[track_caller]`
+hir_analysis_start_not_track_caller = `#[start]` function is not allowed to be `#[track_caller]`
+    .label = `#[start]` function is not allowed to be `#[track_caller]`
 
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 

@@ -1,9 +1,10 @@
 // Not in interpret to make sure we do not use private implementation details
 
 use crate::errors::MaxNumNodesInConstErr;
-use crate::interpret::{intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, Scalar};
+use crate::interpret::{intern_const_alloc_recursive, InternKind, InterpCx, Scalar};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
@@ -22,7 +23,7 @@ pub(crate) use valtrees::{const_to_valtree_inner, valtree_to_const_value};
 pub(crate) fn const_caller_location(
     tcx: TyCtxt<'_>,
     (file, line, col): (Symbol, u32, u32),
-) -> ConstValue<'_> {
+) -> mir::ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
 
@@ -30,7 +31,7 @@ pub(crate) fn const_caller_location(
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
         bug!("intern_const_alloc_recursive should not error in this case")
     }
-    ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx))
+    mir::ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx))
 }
 
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
@@ -86,17 +87,17 @@ pub(crate) fn eval_to_valtree<'tcx>(
 
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    val: ConstValue<'tcx>,
+    tcx: TyCtxtAt<'tcx>,
+    val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
     let param_env = ty::ParamEnv::reveal_all();
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
+    let ecx = mk_eval_cx(tcx.tcx, tcx.span, param_env, CanAccessStatics::No);
     let op = ecx.const_val_to_op(val, ty, None).ok()?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match ty.kind() {
-        ty::Array(_, len) => (len.eval_target_usize(tcx, param_env) as usize, None, op),
+        ty::Array(_, len) => (len.eval_target_usize(tcx.tcx, param_env) as usize, None, op),
         ty::Adt(def, _) if def.variants().is_empty() => {
             return None;
         }

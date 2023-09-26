@@ -39,9 +39,14 @@ use libc::{c_int, mode_t};
     all(target_os = "linux", target_env = "gnu")
 ))]
 use libc::c_char;
-#[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "emscripten",
+    target_os = "android",
+    target_os = "hurd",
+))]
 use libc::dirfd;
-#[cfg(any(target_os = "linux", target_os = "emscripten"))]
+#[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "hurd"))]
 use libc::fstatat64;
 #[cfg(any(
     target_os = "android",
@@ -53,7 +58,7 @@ use libc::fstatat64;
     target_os = "vita",
 ))]
 use libc::readdir as readdir64;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "hurd"))]
 use libc::readdir64;
 #[cfg(any(target_os = "emscripten", target_os = "l4re"))]
 use libc::readdir64_r;
@@ -68,6 +73,7 @@ use libc::readdir64_r;
     target_os = "redox",
     target_os = "nto",
     target_os = "vita",
+    target_os = "hurd",
 )))]
 use libc::readdir_r as readdir64_r;
 #[cfg(target_os = "android")]
@@ -79,13 +85,19 @@ use libc::{
     target_os = "linux",
     target_os = "emscripten",
     target_os = "l4re",
-    target_os = "android"
+    target_os = "android",
+    target_os = "hurd",
 )))]
 use libc::{
     dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
     lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
 };
-#[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "emscripten",
+    target_os = "l4re",
+    target_os = "hurd"
+))]
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
 pub use crate::sys_common::fs::try_exists;
@@ -277,7 +289,8 @@ unsafe impl Sync for Dir {}
     target_os = "fuchsia",
     target_os = "redox",
     target_os = "nto",
-    target_os = "vita"
+    target_os = "vita",
+    target_os = "hurd",
 ))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -300,6 +313,7 @@ pub struct DirEntry {
     target_os = "redox",
     target_os = "nto",
     target_os = "vita",
+    target_os = "hurd",
 ))]
 struct dirent64_min {
     d_ino: u64,
@@ -321,6 +335,7 @@ struct dirent64_min {
     target_os = "redox",
     target_os = "nto",
     target_os = "vita",
+    target_os = "hurd",
 )))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -455,7 +470,8 @@ impl FileAttr {
         target_os = "vxworks",
         target_os = "espidf",
         target_os = "horizon",
-        target_os = "vita"
+        target_os = "vita",
+        target_os = "hurd",
     )))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -473,7 +489,7 @@ impl FileAttr {
         Ok(SystemTime::new(self.stat.st_mtime as i64, 0))
     }
 
-    #[cfg(target_os = "horizon")]
+    #[cfg(any(target_os = "horizon", target_os = "hurd"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(self.stat.st_mtim))
     }
@@ -482,7 +498,8 @@ impl FileAttr {
         target_os = "vxworks",
         target_os = "espidf",
         target_os = "horizon",
-        target_os = "vita"
+        target_os = "vita",
+        target_os = "hurd",
     )))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -500,7 +517,7 @@ impl FileAttr {
         Ok(SystemTime::new(self.stat.st_atime as i64, 0))
     }
 
-    #[cfg(target_os = "horizon")]
+    #[cfg(any(target_os = "horizon", target_os = "hurd"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(self.stat.st_atim))
     }
@@ -656,6 +673,7 @@ impl Iterator for ReadDir {
         target_os = "illumos",
         target_os = "nto",
         target_os = "vita",
+        target_os = "hurd",
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
@@ -756,6 +774,7 @@ impl Iterator for ReadDir {
         target_os = "illumos",
         target_os = "nto",
         target_os = "vita",
+        target_os = "hurd",
     )))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
@@ -809,7 +828,12 @@ impl DirEntry {
     }
 
     #[cfg(all(
-        any(target_os = "linux", target_os = "emscripten", target_os = "android"),
+        any(
+            target_os = "linux",
+            target_os = "emscripten",
+            target_os = "android",
+            target_os = "hurd",
+        ),
         not(miri)
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -833,7 +857,12 @@ impl DirEntry {
     }
 
     #[cfg(any(
-        not(any(target_os = "linux", target_os = "emscripten", target_os = "android")),
+        not(any(
+            target_os = "linux",
+            target_os = "emscripten",
+            target_os = "android",
+            target_os = "hurd",
+        )),
         miri
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -892,6 +921,7 @@ impl DirEntry {
         target_os = "horizon",
         target_os = "vita",
         target_os = "nto",
+        target_os = "hurd",
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -949,6 +979,7 @@ impl DirEntry {
         target_os = "redox",
         target_os = "nto",
         target_os = "vita",
+        target_os = "hurd",
     )))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
@@ -962,6 +993,7 @@ impl DirEntry {
         target_os = "redox",
         target_os = "nto",
         target_os = "vita",
+        target_os = "hurd",
     ))]
     fn name_cstr(&self) -> &CStr {
         &self.name
@@ -1131,6 +1163,7 @@ impl File {
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "nto",
+            target_os = "hurd",
         ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fdatasync(fd)
@@ -1146,6 +1179,7 @@ impl File {
             target_os = "openbsd",
             target_os = "watchos",
             target_os = "nto",
+            target_os = "hurd",
         )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
@@ -1456,6 +1490,7 @@ impl fmt::Debug for File {
             target_os = "linux",
             target_os = "macos",
             target_os = "freebsd",
+            target_os = "hurd",
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "vxworks"
@@ -1477,6 +1512,7 @@ impl fmt::Debug for File {
             target_os = "linux",
             target_os = "macos",
             target_os = "freebsd",
+            target_os = "hurd",
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "vxworks"

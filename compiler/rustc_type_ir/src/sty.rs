@@ -146,31 +146,6 @@ pub enum TyKind<I: Interner> {
     /// A type representing the types stored inside a generator.
     /// This should only appear as part of the `GeneratorArgs`.
     ///
-    /// Note that the captured variables for generators are stored separately
-    /// using a tuple in the same way as for closures.
-    ///
-    /// Unlike upvars, the witness can reference lifetimes from
-    /// inside of the generator itself. To deal with them in
-    /// the type of the generator, we convert them to higher ranked
-    /// lifetimes bound by the witness itself.
-    ///
-    /// Looking at the following example, the witness for this generator
-    /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
-    ///
-    /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
-    /// #![feature(generators)]
-    /// |a| {
-    ///     let x = &vec![3];
-    ///     yield a;
-    ///     yield x[0];
-    /// }
-    /// # ;
-    /// ```
-    GeneratorWitness(I::BinderListTy),
-
-    /// A type representing the types stored inside a generator.
-    /// This should only appear as part of the `GeneratorArgs`.
-    ///
     /// Unlike upvars, the witness can reference lifetimes from
     /// inside of the generator itself. To deal with them in
     /// the type of the generator, we convert them to higher ranked
@@ -192,7 +167,7 @@ pub enum TyKind<I: Interner> {
     /// }
     /// # ;
     /// ```
-    GeneratorWitnessMIR(I::DefId, I::GenericArgsRef),
+    GeneratorWitness(I::DefId, I::GenericArgsRef),
 
     /// The never type `!`.
     Never,
@@ -278,7 +253,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Dynamic(..) => 14,
         Closure(_, _) => 15,
         Generator(_, _, _) => 16,
-        GeneratorWitness(_) => 17,
+        GeneratorWitness(_, _) => 17,
         Never => 18,
         Tuple(_) => 19,
         Alias(_, _) => 20,
@@ -287,7 +262,6 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Placeholder(_) => 23,
         Infer(_) => 24,
         Error(_) => 25,
-        GeneratorWitnessMIR(_, _) => 26,
     }
 }
 
@@ -312,8 +286,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Dynamic(p, r, repr) => Dynamic(p.clone(), r.clone(), *repr),
             Closure(d, s) => Closure(d.clone(), s.clone()),
             Generator(d, s, m) => Generator(d.clone(), s.clone(), m.clone()),
-            GeneratorWitness(g) => GeneratorWitness(g.clone()),
-            GeneratorWitnessMIR(d, s) => GeneratorWitnessMIR(d.clone(), s.clone()),
+            GeneratorWitness(d, s) => GeneratorWitness(d.clone(), s.clone()),
             Never => Never,
             Tuple(t) => Tuple(t.clone()),
             Alias(k, p) => Alias(*k, p.clone()),
@@ -355,10 +328,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
                 a_d == b_d && a_s == b_s && a_m == b_m
             }
-            (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g == b_g,
-            (GeneratorWitnessMIR(a_d, a_s), GeneratorWitnessMIR(b_d, b_s)) => {
-                a_d == b_d && a_s == b_s
-            }
+            (GeneratorWitness(a_d, a_s), GeneratorWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
             (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
             (Param(a_p), Param(b_p)) => a_p == b_p,
@@ -415,10 +385,9 @@ impl<I: Interner> Ord for TyKind<I> {
                 (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
                     a_d.cmp(b_d).then_with(|| a_s.cmp(b_s).then_with(|| a_m.cmp(b_m)))
                 }
-                (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g.cmp(b_g),
                 (
-                    GeneratorWitnessMIR(a_d, a_s),
-                    GeneratorWitnessMIR(b_d, b_s),
+                    GeneratorWitness(a_d, a_s),
+                    GeneratorWitness(b_d, b_s),
                 ) => match Ord::cmp(a_d, b_d) {
                     Ordering::Equal => Ord::cmp(a_s, b_s),
                     cmp => cmp,
@@ -483,8 +452,7 @@ impl<I: Interner> hash::Hash for TyKind<I> {
                 s.hash(state);
                 m.hash(state)
             }
-            GeneratorWitness(g) => g.hash(state),
-            GeneratorWitnessMIR(d, s) => {
+            GeneratorWitness(d, s) => {
                 d.hash(state);
                 s.hash(state);
             }
@@ -558,28 +526,23 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             },
             Closure(d, s) => f.debug_tuple_field2_finish("Closure", d, &this.wrap(s)),
             Generator(d, s, m) => f.debug_tuple_field3_finish("Generator", d, &this.wrap(s), m),
-            GeneratorWitness(g) => f.debug_tuple_field1_finish("GeneratorWitness", &this.wrap(g)),
-            GeneratorWitnessMIR(d, s) => {
-                f.debug_tuple_field2_finish("GeneratorWitnessMIR", d, &this.wrap(s))
+            GeneratorWitness(d, s) => {
+                f.debug_tuple_field2_finish("GeneratorWitness", d, &this.wrap(s))
             }
             Never => write!(f, "!"),
             Tuple(t) => {
-                let mut iter = t.clone().into_iter();
-
                 write!(f, "(")?;
-
-                match iter.next() {
-                    None => return write!(f, ")"),
-                    Some(ty) => write!(f, "{:?}", &this.wrap(ty))?,
-                };
-
-                match iter.next() {
-                    None => return write!(f, ",)"),
-                    Some(ty) => write!(f, "{:?})", &this.wrap(ty))?,
+                let mut count = 0;
+                for ty in t.clone() {
+                    if count > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{:?}", &this.wrap(ty))?;
+                    count += 1;
                 }
-
-                for ty in iter {
-                    write!(f, ", {:?}", &this.wrap(ty))?;
+                // unary tuples need a trailing comma
+                if count == 1 {
+                    write!(f, ",")?;
                 }
                 write!(f, ")")
             }
@@ -682,10 +645,7 @@ where
                 args.encode(e);
                 m.encode(e);
             }),
-            GeneratorWitness(b) => e.emit_enum_variant(disc, |e| {
-                b.encode(e);
-            }),
-            GeneratorWitnessMIR(def_id, args) => e.emit_enum_variant(disc, |e| {
+            GeneratorWitness(def_id, args) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
                 args.encode(e);
             }),
@@ -762,7 +722,7 @@ where
             14 => Dynamic(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             15 => Closure(Decodable::decode(d), Decodable::decode(d)),
             16 => Generator(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
-            17 => GeneratorWitness(Decodable::decode(d)),
+            17 => GeneratorWitness(Decodable::decode(d), Decodable::decode(d)),
             18 => Never,
             19 => Tuple(Decodable::decode(d)),
             20 => Alias(Decodable::decode(d), Decodable::decode(d)),
@@ -771,12 +731,11 @@ where
             23 => Placeholder(Decodable::decode(d)),
             24 => Infer(Decodable::decode(d)),
             25 => Error(Decodable::decode(d)),
-            26 => GeneratorWitnessMIR(Decodable::decode(d), Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
                     "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "TyKind", 27,
+                    "TyKind", 26,
                 )
             ),
         }
@@ -870,10 +829,7 @@ where
                 args.hash_stable(__hcx, __hasher);
                 m.hash_stable(__hcx, __hasher);
             }
-            GeneratorWitness(b) => {
-                b.hash_stable(__hcx, __hasher);
-            }
-            GeneratorWitnessMIR(def_id, args) => {
+            GeneratorWitness(def_id, args) => {
                 def_id.hash_stable(__hcx, __hasher);
                 args.hash_stable(__hcx, __hasher);
             }

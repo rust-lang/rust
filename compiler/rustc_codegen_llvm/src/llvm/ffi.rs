@@ -2112,6 +2112,8 @@ extern "C" {
     );
 
     pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
+
+    // This function makes copies of pointed to data, so the data's lifetime may end after this function returns
     pub fn LLVMRustCreateTargetMachine(
         Triple: *const c_char,
         CPU: *const c_char,
@@ -2131,13 +2133,14 @@ extern "C" {
         RelaxELFRelocations: bool,
         UseInitArray: bool,
         SplitDwarfFile: *const c_char,
+        OutputObjFile: *const c_char,
         DebugInfoCompression: *const c_char,
         ForceEmulatedTls: bool,
         ArgsCstrBuff: *const c_char,
         ArgsCstrBuffLen: usize,
-    ) -> Option<&'static mut TargetMachine>;
+    ) -> *mut TargetMachine;
 
-    pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
+    pub fn LLVMRustDisposeTargetMachine(T: *mut TargetMachine);
     pub fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,
         M: &'a Module,

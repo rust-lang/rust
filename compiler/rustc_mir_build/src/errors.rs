@@ -749,6 +749,12 @@ pub struct NontrivialStructuralMatch<'tcx> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(mir_build_non_partial_eq_match)]
+pub struct NonPartialEqMatch<'tcx> {
+    pub non_peq_ty: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(mir_build_overlapping_range_endpoints)]
 #[note]
 pub struct OverlappingRangeEndpoints<'tcx> {

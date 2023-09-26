@@ -1,5 +1,5 @@
 error[E0559]: variant `Option<_>::None` has no field named `value`
-  --> $DIR/drop-track-bad-field-in-fru.rs:7:12
+  --> $DIR/drop-track-bad-field-in-fru.rs:6:12
    |
 LL |     None { value: (), ..Default::default() }.await;
    |            ^^^^^ `Option<_>::None` does not have this field
@@ -7,7 +7,7 @@ LL |     None { value: (), ..Default::default() }.await;
    = note: all struct fields are already assigned
 
 error[E0277]: `Option<_>` is not a future
-  --> $DIR/drop-track-bad-field-in-fru.rs:7:46
+  --> $DIR/drop-track-bad-field-in-fru.rs:6:46
    |
 LL |     None { value: (), ..Default::default() }.await;
    |                                             -^^^^^

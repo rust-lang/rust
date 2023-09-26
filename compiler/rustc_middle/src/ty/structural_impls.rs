@@ -68,7 +68,7 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon(span) => write!(f, "BrAnon({span:?})"),
+            ty::BrAnon => write!(f, "BrAnon"),
             ty::BrNamed(did, name) => {
                 if did.is_crate_root() {
                     write!(f, "BrNamed({name})")
@@ -457,6 +457,7 @@ TrivialLiftImpls! {
      (),
      bool,
      usize,
+     u64,
 }
 
 // For some things about which the type library does not know, or does not
@@ -478,7 +479,6 @@ TrivialTypeTraversalImpls! {
     ::rustc_target::asm::InlineAsmRegOrRegClass,
     crate::mir::coverage::CounterId,
     crate::mir::coverage::ExpressionId,
-    crate::mir::coverage::MappedExpressionIndex,
     crate::mir::Local,
     crate::mir::Promoted,
     crate::traits::Reveal,
@@ -657,9 +657,8 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Generator(did, args, movability) => {
                 ty::Generator(did, args.try_fold_with(folder)?, movability)
             }
-            ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
-            ty::GeneratorWitnessMIR(did, args) => {
-                ty::GeneratorWitnessMIR(did, args.try_fold_with(folder)?)
+            ty::GeneratorWitness(did, args) => {
+                ty::GeneratorWitness(did, args.try_fold_with(folder)?)
             }
             ty::Closure(did, args) => ty::Closure(did, args.try_fold_with(folder)?),
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
@@ -708,8 +707,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 ty.visit_with(visitor)
             }
             ty::Generator(_did, ref args, _) => args.visit_with(visitor),
-            ty::GeneratorWitness(ref types) => types.visit_with(visitor),
-            ty::GeneratorWitnessMIR(_did, ref args) => args.visit_with(visitor),
+            ty::GeneratorWitness(_did, ref args) => args.visit_with(visitor),
             ty::Closure(_did, ref args) => args.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
 

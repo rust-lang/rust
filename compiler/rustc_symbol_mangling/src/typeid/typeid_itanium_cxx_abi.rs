@@ -118,7 +118,7 @@ fn encode_const<'tcx>(
             // bool value false is encoded as 0 and true as 1.
             match c.ty().kind() {
                 ty::Int(ity) => {
-                    let bits = c.eval_bits(tcx, ty::ParamEnv::reveal_all(), c.ty());
+                    let bits = c.eval_bits(tcx, ty::ParamEnv::reveal_all());
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
                         s.push('n');
@@ -126,7 +126,7 @@ fn encode_const<'tcx>(
                     let _ = write!(s, "{val}");
                 }
                 ty::Uint(_) => {
-                    let val = c.eval_bits(tcx, ty::ParamEnv::reveal_all(), c.ty());
+                    let val = c.eval_bits(tcx, ty::ParamEnv::reveal_all());
                     let _ = write!(s, "{val}");
                 }
                 ty::Bool => {
@@ -720,7 +720,6 @@ fn encode_ty<'tcx>(
         | ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
@@ -973,12 +972,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             );
         }
 
-        ty::Bound(..)
-        | ty::Error(..)
-        | ty::GeneratorWitnessMIR(..)
-        | ty::Infer(..)
-        | ty::Param(..)
-        | ty::Placeholder(..) => {
+        ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }

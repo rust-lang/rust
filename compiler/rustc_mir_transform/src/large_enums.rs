@@ -149,11 +149,11 @@ impl EnumSizeOpt {
                     };
 
                     let place = Place::from(size_array_local);
-                    let constant_vals = Constant {
+                    let constant_vals = ConstOperand {
                         span,
                         user_ty: None,
-                        literal: ConstantKind::Val(
-                            interpret::ConstValue::Indirect { alloc_id, offset: Size::ZERO },
+                        const_: Const::Val(
+                            ConstValue::Indirect { alloc_id, offset: Size::ZERO },
                             tmp_ty,
                         ),
                     };

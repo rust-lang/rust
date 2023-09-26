@@ -25,7 +25,7 @@ pub(super) fn check(
     // The suggestion is to use a function call, so if the original expression
     // has parens on the outside, they are no longer needed.
     let mut applicability = Applicability::MachineApplicable;
-    let opt = snippet_opt(cx, cast_op.span);
+    let opt = snippet_opt(cx, cast_op.span.source_callsite());
     let sugg = opt.as_ref().map_or_else(
         || {
             applicability = Applicability::HasPlaceholders;

@@ -92,7 +92,7 @@ where
     }
 
     #[inline(always)]
-    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<Self::Key, DepKind>
+    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<Self::Key>
     where
         QueryCtxt<'tcx>: 'a,
     {
@@ -145,7 +145,7 @@ where
     fn value_from_cycle_error(
         self,
         tcx: TyCtxt<'tcx>,
-        cycle: &[QueryInfo<DepKind>],
+        cycle: &[QueryInfo],
         guar: ErrorGuaranteed,
     ) -> Self::Value {
         (self.dynamic.value_from_cycle_error)(tcx, cycle, guar)
@@ -197,6 +197,8 @@ where
 trait QueryConfigRestored<'tcx> {
     type RestoredValue;
     type Config: QueryConfig<QueryCtxt<'tcx>>;
+
+    const NAME: &'static &'static str;
 
     fn config(tcx: TyCtxt<'tcx>) -> Self::Config;
     fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value)

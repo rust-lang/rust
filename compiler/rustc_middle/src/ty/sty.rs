@@ -69,7 +69,7 @@ pub struct FreeRegion {
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(Option<Span>),
+    BrAnon,
 
     /// Named region parameters for functions (a in &'a T)
     ///
@@ -725,7 +725,7 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
                 self.rebind(tr).with_self_ty(tcx, self_ty).to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
-                self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
+                ty::Clause::from_projection_clause(tcx, self.rebind(p.with_self_ty(tcx, self_ty)))
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let generics = tcx.generics_of(did);
@@ -1465,7 +1465,7 @@ impl<'tcx> Region<'tcx> {
         bound_region: ty::BoundRegion,
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BrAnon(None) } = bound_region
+        if let ty::BoundRegion { var, kind: ty::BrAnon } = bound_region
             && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
@@ -2165,18 +2165,10 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_generator_witness(
         tcx: TyCtxt<'tcx>,
-        types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>,
-    ) -> Ty<'tcx> {
-        Ty::new(tcx, GeneratorWitness(types))
-    }
-
-    #[inline]
-    pub fn new_generator_witness_mir(
-        tcx: TyCtxt<'tcx>,
         id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        Ty::new(tcx, GeneratorWitnessMIR(id, args))
+        Ty::new(tcx, GeneratorWitness(id, args))
     }
 
     // misc
@@ -2550,7 +2542,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Checks whether a type recursively contains any closure
     ///
-    /// Example: `Option<[closure@file.rs:4:20]>` returns true
+    /// Example: `Option<{closure@file.rs:4:20}>` returns true
     pub fn contains_closure(self) -> bool {
         struct ContainsClosureVisitor;
 
@@ -2706,7 +2698,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_)
@@ -2742,7 +2733,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2831,7 +2821,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2894,7 +2883,7 @@ impl<'tcx> Ty<'tcx> {
             // anything with custom metadata it might be more complicated.
             ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
 
-            ty::Generator(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => false,
+            ty::Generator(..) | ty::GeneratorWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
             ty::Adt(..) | ty::Closure(..) => false,
@@ -2946,6 +2935,11 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Returns `true` when the outermost type cannot be further normalized,
+    /// resolved, or substituted. This includes all primitive types, but also
+    /// things like ADTs and trait objects, sice even if their arguments or
+    /// nested types may be further simplified, the outermost [`TyKind`] or
+    /// type constructor remains the same.
     pub fn is_known_rigid(self) -> bool {
         match self.kind() {
             Bool
@@ -2965,8 +2959,7 @@ impl<'tcx> Ty<'tcx> {
             | Dynamic(_, _, _)
             | Closure(_, _)
             | Generator(_, _, _)
-            | GeneratorWitness(_)
-            | GeneratorWitnessMIR(_, _)
+            | GeneratorWitness(..)
             | Never
             | Tuple(_) => true,
             Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
@@ -3017,7 +3010,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(RegionKind<'_>, 28);
+    static_assert_size!(RegionKind<'_>, 24);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
 }

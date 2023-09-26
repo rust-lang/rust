@@ -7,7 +7,7 @@ use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_session::Limit;
-use rustc_span::{sym, DUMMY_SP};
+use rustc_span::sym;
 
 use crate::errors::NeedsDropOverflow;
 
@@ -133,7 +133,7 @@ where
                     // The information required to determine whether a generator has drop is
                     // computed on MIR, while this very method is used to build MIR.
                     // To avoid cycles, we consider that generators always require drop.
-                    ty::Generator(..) if tcx.sess.opts.unstable_opts.drop_tracking_mir => {
+                    ty::Generator(..) => {
                         return Some(Err(AlwaysRequiresDrop));
                     }
 
@@ -142,29 +142,6 @@ where
                     ty::Closure(_, args) => {
                         for upvar in args.as_closure().upvar_tys() {
                             queue_type(self, upvar);
-                        }
-                    }
-
-                    ty::Generator(def_id, args, _) => {
-                        let args = args.as_generator();
-                        for upvar in args.upvar_tys() {
-                            queue_type(self, upvar);
-                        }
-
-                        let witness = args.witness();
-                        let interior_tys = match witness.kind() {
-                            &ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
-                            _ => {
-                                tcx.sess.delay_span_bug(
-                                    tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP),
-                                    format!("unexpected generator witness type {witness:?}"),
-                                );
-                                return Some(Err(AlwaysRequiresDrop));
-                            }
-                        };
-
-                        for interior_ty in interior_tys {
-                            queue_type(self, interior_ty);
                         }
                     }
 
@@ -215,7 +192,6 @@ where
                     | ty::Tuple(_)
                     | ty::Bound(..)
                     | ty::GeneratorWitness(..)
-                    | ty::GeneratorWitnessMIR(..)
                     | ty::Never
                     | ty::Infer(_)
                     | ty::Error(_) => {

@@ -621,6 +621,15 @@ pub struct RustcAllowConstFnUnstable {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_safe_intrinsic)]
+pub struct RustcSafeIntrinsic {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_rustc_std_internal_symbol)]
 pub struct RustcStdInternalSymbol {
     #[primary_span]
@@ -806,6 +815,16 @@ pub struct MissingPanicHandler;
 #[help]
 pub struct MissingLangItem {
     pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_lang_item_fn_with_target_feature)]
+pub struct LangItemWithTargetFeature {
+    #[primary_span]
+    pub attr_span: Span,
+    pub name: Symbol,
+    #[label]
+    pub sig_span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -1,5 +1,3 @@
-// compile-flags: -Zdrop-tracking
-
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;

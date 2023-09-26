@@ -5,7 +5,7 @@ fn check(_: impl std::marker::ConstParamTy) {}
 
 fn main() {
     check(main);               //~ error: `fn() {main}` can't be used as a const parameter type
-    check(|| {});              //~ error: `[closure@$DIR/const_param_ty_bad.rs:8:11: 8:13]` can't be used as a const parameter type
+    check(|| {});              //~ error: `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}` can't be used as a const parameter type
     check(main as fn());       //~ error: `fn()` can't be used as a const parameter type
     check(&mut ());            //~ error: `&mut ()` can't be used as a const parameter type
     check(&mut () as *mut ()); //~ error: `*mut ()` can't be used as a const parameter type

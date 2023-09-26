@@ -96,6 +96,7 @@
 #![feature(const_option_ext)]
 #![feature(const_result)]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+#![cfg_attr(test, feature(cfg_match))]
 #![feature(int_roundings)]
 #![feature(slice_group_by)]
 #![feature(split_array)]
@@ -139,6 +140,7 @@ mod hash;
 mod intrinsics;
 mod iter;
 mod lazy;
+#[cfg(test)]
 mod macros;
 mod manually_drop;
 mod mem;

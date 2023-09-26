@@ -6,9 +6,15 @@
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::InferOk;
+use crate::solve::inspect;
+use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::traits::engine::TraitEngineExt;
 use crate::traits::outlives_bounds::InferCtxtExt as _;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::{IntercrateAmbiguityCause, TreatInductiveCycleAs};
+use crate::traits::structural_normalize::StructurallyNormalizeExt;
 use crate::traits::util::impl_subject_and_oblig;
+use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
     self, Obligation, ObligationCause, ObligationCtxt, PredicateObligation, PredicateObligations,
@@ -18,10 +24,13 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::util;
+use rustc_infer::traits::{util, TraitEngine};
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::solve::{Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_session::lint::builtin::COINDUCTIVE_OVERLAP_IN_COHERENCE;
@@ -30,9 +39,6 @@ use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
 use std::iter;
 use std::ops::ControlFlow;
-
-use super::query::evaluate_obligation::InferCtxtExt;
-use super::NormalizeExt;
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -205,19 +211,19 @@ fn overlap<'tcx>(
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
-    let equate_obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
+    let mut obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
+
+    obligations.extend(
+        [&impl1_header.predicates, &impl2_header.predicates].into_iter().flatten().map(
+            |&predicate| Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate),
+        ),
+    );
 
     if overlap_mode.use_implicit_negative() {
         for mode in [TreatInductiveCycleAs::Ambig, TreatInductiveCycleAs::Recur] {
             if let Some(failing_obligation) = selcx.with_treat_inductive_cycle_as(mode, |selcx| {
-                impl_intersection_has_impossible_obligation(
-                    selcx,
-                    param_env,
-                    &impl1_header,
-                    &impl2_header,
-                    &equate_obligations,
-                )
+                impl_intersection_has_impossible_obligation(selcx, &obligations)
             }) {
                 if matches!(mode, TreatInductiveCycleAs::Recur) {
                     let first_local_impl = impl1_header
@@ -281,7 +287,14 @@ fn overlap<'tcx>(
         return None;
     }
 
-    let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
+    let intercrate_ambiguity_causes = if !overlap_mode.use_implicit_negative() {
+        Default::default()
+    } else if infcx.next_trait_solver() {
+        compute_intercrate_ambiguity_causes(&infcx, &obligations)
+    } else {
+        selcx.take_intercrate_ambiguity_causes()
+    };
+
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
     let involves_placeholder = infcx
         .inner
@@ -335,34 +348,24 @@ fn equate_impl_headers<'tcx>(
 /// of the two impls above to be empty.
 ///
 /// Importantly, this works even if there isn't a `impl !Error for MyLocalType`.
-fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
+fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl1_header: &ty::ImplHeader<'tcx>,
-    impl2_header: &ty::ImplHeader<'tcx>,
-    obligations: &PredicateObligations<'tcx>,
-) -> Option<PredicateObligation<'tcx>> {
+    obligations: &'a [PredicateObligation<'tcx>],
+) -> Option<&'a PredicateObligation<'tcx>> {
     let infcx = selcx.infcx;
 
-    [&impl1_header.predicates, &impl2_header.predicates]
-        .into_iter()
-        .flatten()
-        .map(|&predicate| {
-            Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate)
-        })
-        .chain(obligations.into_iter().cloned())
-        .find(|obligation: &PredicateObligation<'tcx>| {
-            if infcx.next_trait_solver() {
-                infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
-            } else {
-                // We use `evaluate_root_obligation` to correctly track intercrate
-                // ambiguity clauses. We cannot use this in the new solver.
-                selcx.evaluate_root_obligation(obligation).map_or(
-                    false, // Overflow has occurred, and treat the obligation as possibly holding.
-                    |result| !result.may_apply(),
-                )
-            }
-        })
+    obligations.iter().find(|obligation| {
+        if infcx.next_trait_solver() {
+            infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
+        } else {
+            // We use `evaluate_root_obligation` to correctly track intercrate
+            // ambiguity clauses. We cannot use this in the new solver.
+            selcx.evaluate_root_obligation(obligation).map_or(
+                false, // Overflow has occurred, and treat the obligation as possibly holding.
+                |result| !result.may_apply(),
+            )
+        }
+    })
 }
 
 /// Check if both impls can be satisfied by a common type by considering whether
@@ -824,9 +827,7 @@ where
             // This should only be created when checking whether we have to check whether some
             // auto trait impl applies. There will never be multiple impls, so we can just
             // act as if it were a local type here.
-            ty::GeneratorWitness(_) | ty::GeneratorWitnessMIR(..) => {
-                ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
-            }
+            ty::GeneratorWitness(..) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
             ty::Alias(ty::Opaque, ..) => {
                 // This merits some explanation.
                 // Normally, opaque types are not involved when performing
@@ -881,4 +882,145 @@ where
     fn visit_const(&mut self, _c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         ControlFlow::Continue(())
     }
+}
+
+/// Compute the `intercrate_ambiguity_causes` for the new solver using
+/// "proof trees".
+///
+/// This is a bit scuffed but seems to be good enough, at least
+/// when looking at UI tests. Given that it is only used to improve
+/// diagnostics this is good enough. We can always improve it once there
+/// are test cases where it is currently not enough.
+fn compute_intercrate_ambiguity_causes<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligations: &[PredicateObligation<'tcx>],
+) -> FxIndexSet<IntercrateAmbiguityCause> {
+    let mut causes: FxIndexSet<IntercrateAmbiguityCause> = Default::default();
+
+    for obligation in obligations {
+        search_ambiguity_causes(infcx, obligation.clone().into(), &mut causes);
+    }
+
+    causes
+}
+
+struct AmbiguityCausesVisitor<'a> {
+    causes: &'a mut FxIndexSet<IntercrateAmbiguityCause>,
+}
+
+impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
+    type BreakTy = !;
+    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy> {
+        let infcx = goal.infcx();
+        for cand in goal.candidates() {
+            cand.visit_nested(self)?;
+        }
+        // When searching for intercrate ambiguity causes, we only need to look
+        // at ambiguous goals, as for others the coherence unknowable candidate
+        // was irrelevant.
+        match goal.result() {
+            Ok(Certainty::Maybe(_)) => {}
+            Ok(Certainty::Yes) | Err(NoSolution) => return ControlFlow::Continue(()),
+        }
+
+        let Goal { param_env, predicate } = goal.goal();
+
+        // For bound predicates we simply call `infcx.replace_bound_vars_with_placeholders`
+        // and then prove the resulting predicate as a nested goal.
+        let trait_ref = match predicate.kind().no_bound_vars() {
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))) => {
+                proj.projection_ty.trait_ref(infcx.tcx)
+            }
+            _ => return ControlFlow::Continue(()),
+        };
+
+        let mut ambiguity_cause = None;
+        for cand in goal.candidates() {
+            // FIXME: boiiii, using string comparisions here sure is scuffed.
+            if let inspect::ProbeKind::MiscCandidate { name: "coherence unknowable", result: _ } =
+                cand.kind()
+            {
+                let lazily_normalize_ty = |ty: Ty<'tcx>| {
+                    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx);
+                    if matches!(ty.kind(), ty::Alias(..)) {
+                        // FIXME(-Ztrait-solver=next-coherence): we currently don't
+                        // normalize opaque types here, resulting in diverging behavior
+                        // for TAITs.
+                        match infcx
+                            .at(&ObligationCause::dummy(), param_env)
+                            .structurally_normalize(ty, &mut *fulfill_cx)
+                        {
+                            Ok(ty) => Ok(ty),
+                            Err(_errs) => Err(()),
+                        }
+                    } else {
+                        Ok(ty)
+                    }
+                };
+
+                infcx.probe(|_| {
+                    match trait_ref_is_knowable(infcx.tcx, trait_ref, lazily_normalize_ty) {
+                        Err(()) => {}
+                        Ok(Ok(())) => warn!("expected an unknowable trait ref: {trait_ref:?}"),
+                        Ok(Err(conflict)) => {
+                            if !trait_ref.references_error() {
+                                let self_ty = trait_ref.self_ty();
+                                let (trait_desc, self_desc) = with_no_trimmed_paths!({
+                                    let trait_desc = trait_ref.print_only_trait_path().to_string();
+                                    let self_desc = self_ty
+                                        .has_concrete_skeleton()
+                                        .then(|| self_ty.to_string());
+                                    (trait_desc, self_desc)
+                                });
+                                ambiguity_cause = Some(match conflict {
+                                    Conflict::Upstream => {
+                                        IntercrateAmbiguityCause::UpstreamCrateUpdate {
+                                            trait_desc,
+                                            self_desc,
+                                        }
+                                    }
+                                    Conflict::Downstream => {
+                                        IntercrateAmbiguityCause::DownstreamCrate {
+                                            trait_desc,
+                                            self_desc,
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                })
+            } else {
+                match cand.result() {
+                    // We only add an ambiguity cause if the goal would otherwise
+                    // result in an error.
+                    //
+                    // FIXME: While this matches the behavior of the
+                    // old solver, it is not the only way in which the unknowable
+                    // candidates *weaken* coherence, they can also force otherwise
+                    // sucessful normalization to be ambiguous.
+                    Ok(Certainty::Maybe(_) | Certainty::Yes) => {
+                        ambiguity_cause = None;
+                        break;
+                    }
+                    Err(NoSolution) => continue,
+                }
+            }
+        }
+
+        if let Some(ambiguity_cause) = ambiguity_cause {
+            self.causes.insert(ambiguity_cause);
+        }
+
+        ControlFlow::Continue(())
+    }
+}
+
+fn search_ambiguity_causes<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    causes: &mut FxIndexSet<IntercrateAmbiguityCause>,
+) {
+    infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor { causes });
 }

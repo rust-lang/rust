@@ -11,7 +11,6 @@ use Arch::*;
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
 pub enum Arch {
-    Armv7,
     Armv7k,
     Armv7s,
     Arm64,
@@ -29,7 +28,6 @@ pub enum Arch {
 impl Arch {
     pub fn target_name(self) -> &'static str {
         match self {
-            Armv7 => "armv7",
             Armv7k => "armv7k",
             Armv7s => "armv7s",
             Arm64 | Arm64_macabi | Arm64_sim => "arm64",
@@ -43,7 +41,7 @@ impl Arch {
 
     pub fn target_arch(self) -> Cow<'static, str> {
         Cow::Borrowed(match self {
-            Armv7 | Armv7k | Armv7s => "arm",
+            Armv7k | Armv7s => "arm",
             Arm64 | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
             I386 | I686 => "x86",
             X86_64 | X86_64_sim | X86_64_macabi | X86_64h => "x86_64",
@@ -52,7 +50,7 @@ impl Arch {
 
     fn target_abi(self) -> &'static str {
         match self {
-            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
+            Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
             X86_64_macabi | Arm64_macabi => "macabi",
             // x86_64-apple-ios is a simulator target, even though it isn't
             // declared that way in the target like the other ones...
@@ -62,18 +60,20 @@ impl Arch {
 
     fn target_cpu(self) -> &'static str {
         match self {
-            Armv7 => "cortex-a8", // iOS7 is supported on iPhone 4 and higher
             Armv7k => "cortex-a8",
-            Armv7s => "cortex-a9",
+            Armv7s => "swift", // iOS 10 is only supported on iPhone 5 or higher.
             Arm64 => "apple-a7",
             Arm64_32 => "apple-s4",
-            I386 | I686 => "yonah",
-            X86_64 | X86_64_sim => "core2",
+            // Only macOS 10.12+ is supported, which means
+            // all x86_64/x86 CPUs must be running at least penryn
+            // https://github.com/llvm/llvm-project/blob/01f924d0e37a5deae51df0d77e10a15b63aa0c0f/clang/lib/Driver/ToolChains/Arch/X86.cpp#L79-L82
+            I386 | I686 => "penryn",
+            X86_64 | X86_64_sim => "penryn",
+            X86_64_macabi => "penryn",
             // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
             // comments (and disabled features) in `x86_64h_apple_darwin` for
-            // details.
+            // details. It is a higher baseline then `penryn` however.
             X86_64h => "core-avx2",
-            X86_64_macabi => "core2",
             Arm64_macabi => "apple-a12",
             Arm64_sim => "apple-a12",
         }
@@ -115,21 +115,6 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
 }
 
 pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
-    // Static TLS is only available in macOS 10.7+. If you try to compile for 10.6
-    // either the linker will complain if it is used or the binary will end up
-    // segfaulting at runtime when run on 10.6. Rust by default supports macOS
-    // 10.7+, but there is a standard environment variable,
-    // MACOSX_DEPLOYMENT_TARGET, which is used to signal targeting older
-    // versions of macOS. For example compiling on 10.10 with
-    // MACOSX_DEPLOYMENT_TARGET set to 10.6 will cause the linker to generate
-    // warnings about the usage of static TLS.
-    //
-    // Here we detect what version is being requested, defaulting to 10.7. Static
-    // TLS is flagged as enabled if it looks to be supported. The architecture
-    // only matters for default deployment target which is 11.0 for ARM64 and
-    // 10.7 for everything else.
-    let has_thread_local = os == "macos" && macos_deployment_target(Arch::X86_64) >= (10, 7);
-
     let abi = arch.target_abi();
 
     TargetOptions {
@@ -145,12 +130,17 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
         pre_link_args: pre_link_args(os, arch, abi),
         families: cvs!["unix"],
         is_like_osx: true,
-        default_dwarf_version: 2,
+        // LLVM notes that macOS 10.11+ and iOS 9+ default
+        // to v4, so we do the same.
+        // https://github.com/llvm/llvm-project/blob/378778a0d10c2f8d5df8ceff81f95b6002984a4b/clang/lib/Driver/ToolChains/Darwin.cpp#L1203
+        default_dwarf_version: 4,
         frame_pointer: FramePointer::Always,
         has_rpath: true,
         dll_suffix: ".dylib".into(),
         archive_format: "darwin".into(),
-        has_thread_local,
+        // Thread locals became available with iOS 8 and macOS 10.7,
+        // and both are far below our minimum.
+        has_thread_local: true,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         eh_frame_header: false,
@@ -239,9 +229,7 @@ fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
     match arch {
         // Note: Arm64_sim is not included since macOS has no simulator.
         Arm64 | Arm64_macabi => (11, 0),
-        // x86_64h-apple-darwin only supports macOS 10.8 and later
-        X86_64h => (10, 8),
-        _ => (10, 7),
+        _ => (10, 12),
     }
 }
 
@@ -292,8 +280,8 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         // Otherwise if cross-compiling for a different OS/SDK, remove any part
         // of the linking environment that's wrong and reversed.
         match arch {
-            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
-            | X86_64h | Arm64_sim => {
+            Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim | X86_64h
+            | Arm64_sim => {
                 cvs!["MACOSX_DEPLOYMENT_TARGET"]
             }
             X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
@@ -303,7 +291,7 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
 
 fn ios_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
+    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
 }
 
 fn mac_catalyst_deployment_target() -> (u32, u32) {
@@ -334,7 +322,7 @@ pub fn ios_sim_llvm_target(arch: Arch) -> String {
 
 fn tvos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
+    from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
 }
 
 fn tvos_lld_platform_version() -> String {

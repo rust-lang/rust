@@ -9,42 +9,36 @@ type NotCapturedEarly<'a> = impl Sized; //~ [o]
 
 type CapturedEarly<'a> = impl Sized + Captures<'a>; //~ [o]
 
+// TAIT does *not* capture `'b`
 type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>; //~ [o]
 
-type CapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'b>>; //~ [o]
-
-type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a> + Captures<'b>>; //~ [o]
+// TAIT does *not* capture `'b`
+type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>; //~ [o]
 
 type Bar<'a, 'b: 'b, T> = impl Sized; //~ ERROR [o, o, o]
 
 trait Foo<'i> {
-    type ImplicitCapturedEarly<'a>;
+    type ImplicitCapture<'a>;
 
-    type ExplicitCaptureEarly<'a>;
+    type ExplicitCaptureFromHeader<'a>;
 
-    type ImplicitCaptureLate<'a>;
-
-    type ExplicitCaptureLate<'a>;
+    type ExplicitCaptureFromGat<'a>;
 }
 
 impl<'i> Foo<'i> for &'i () {
-    type ImplicitCapturedEarly<'a> = impl Sized; //~ [o, o]
+    type ImplicitCapture<'a> = impl Sized; //~ [o, o]
 
-    type ExplicitCaptureEarly<'a> = impl Sized + Captures<'i>; //~ [o, o]
+    type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>; //~ [o, o]
 
-    type ImplicitCaptureLate<'a> = impl Sized; //~ [o, o]
-
-    type ExplicitCaptureLate<'a> = impl Sized + Captures<'a>; //~ [o, o]
+    type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>; //~ [o, o]
 }
 
 impl<'i> Foo<'i> for () {
-    type ImplicitCapturedEarly<'a> = impl Sized; //~ [o, o]
+    type ImplicitCapture<'a> = impl Sized; //~ [o, o]
 
-    type ExplicitCaptureEarly<'a> = impl Sized + Captures<'i>; //~ [o, o]
+    type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>; //~ [o, o]
 
-    type ImplicitCaptureLate<'a> = impl Sized; //~ [o, o]
-
-    type ExplicitCaptureLate<'a> = impl Sized + Captures<'a>; //~ [o, o]
+    type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>; //~ [o, o]
 }
 
 fn main() {}

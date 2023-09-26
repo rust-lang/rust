@@ -442,9 +442,10 @@ impl<'hir> Map<'hir> {
     /// Panics if `LocalDefId` does not have an associated body.
     pub fn body_owner_kind(self, def_id: LocalDefId) -> BodyOwnerKind {
         match self.tcx.def_kind(def_id) {
-            DefKind::Const | DefKind::AssocConst | DefKind::InlineConst | DefKind::AnonConst => {
-                BodyOwnerKind::Const
+            DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
+                BodyOwnerKind::Const { inline: false }
             }
+            DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure | DefKind::Generator => BodyOwnerKind::Closure,
             DefKind::Static(mt) => BodyOwnerKind::Static(mt),
@@ -461,7 +462,7 @@ impl<'hir> Map<'hir> {
     /// just that it has to be checked as if it were.
     pub fn body_const_context(self, def_id: LocalDefId) -> Option<ConstContext> {
         let ccx = match self.body_owner_kind(def_id) {
-            BodyOwnerKind::Const => ConstContext::Const,
+            BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
             BodyOwnerKind::Static(mt) => ConstContext::Static(mt),
 
             BodyOwnerKind::Fn if self.tcx.is_constructor(def_id.to_def_id()) => return None,

@@ -158,13 +158,14 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
-    /// Disallows capturing non-lifetime binders from parent scopes.
+    /// Disallows capturing late-bound vars from parent scopes.
     ///
     /// This is necessary for something like `for<T> [(); { /* references T */ }]:`,
     /// since we don't do something more correct like replacing any captured
     /// late-bound vars with early-bound params in the const's own generics.
-    AnonConstBoundary {
+    LateBoundary {
         s: ScopeRef<'a>,
+        what: &'static str,
     },
 
     Root {
@@ -216,7 +217,9 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("s", &"..")
                 .finish(),
             Scope::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
-            Scope::AnonConstBoundary { s: _ } => f.debug_struct("AnonConstBoundary").finish(),
+            Scope::LateBoundary { s: _, what } => {
+                f.debug_struct("LateBoundary").field("what", what).finish()
+            }
             Scope::Root { opt_parent_item } => {
                 f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
             }
@@ -318,7 +321,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     break (vec![], BinderScopeType::Normal);
                 }
 
-                Scope::ObjectLifetimeDefault { s, .. } | Scope::AnonConstBoundary { s } => {
+                Scope::ObjectLifetimeDefault { s, .. } | Scope::LateBoundary { s, .. } => {
                     scope = s;
                 }
 
@@ -697,9 +700,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }) => {
                         intravisit::walk_ty(self, ty);
 
-                        // Elided lifetimes are not allowed in non-return
-                        // position impl Trait
-                        let scope = Scope::TraitRefBoundary { s: self.scope };
+                        // Elided lifetimes and late-bound lifetimes (from the parent)
+                        // are not allowed in non-return position impl Trait
+                        let scope = Scope::LateBoundary {
+                            s: &Scope::TraitRefBoundary { s: self.scope },
+                            what: "type alias impl trait",
+                        };
                         self.with(scope, |this| intravisit::walk_item(this, opaque_ty));
 
                         return;
@@ -850,22 +856,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         let scope = Scope::TraitRefBoundary { s: self.scope };
         self.with(scope, |this| {
             walk_list!(this, visit_generic_param, generics.params);
-            for param in generics.params {
-                match param.kind {
-                    GenericParamKind::Lifetime { .. } => {}
-                    GenericParamKind::Type { default, .. } => {
-                        if let Some(ty) = default {
-                            this.visit_ty(ty);
-                        }
-                    }
-                    GenericParamKind::Const { ty, default } => {
-                        this.visit_ty(ty);
-                        if let Some(default) = default {
-                            this.visit_body(this.tcx.hir().body(default.body));
-                        }
-                    }
-                }
-            }
             walk_list!(this, visit_where_predicate, generics.predicates);
         })
     }
@@ -979,7 +969,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
-        self.with(Scope::AnonConstBoundary { s: self.scope }, |this| {
+        self.with(Scope::LateBoundary { s: self.scope, what: "constant" }, |this| {
             intravisit::walk_anon_const(this, c);
         });
     }
@@ -992,6 +982,21 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             GenericParamKind::Lifetime { .. } => {
                 // No need to resolve lifetime params, we don't use them for things
                 // like implicit `?Sized` or const-param-has-ty predicates.
+            }
+        }
+
+        match p.kind {
+            GenericParamKind::Lifetime { .. } => {}
+            GenericParamKind::Type { default, .. } => {
+                if let Some(ty) = default {
+                    self.visit_ty(ty);
+                }
+            }
+            GenericParamKind::Const { ty, default } => {
+                self.visit_ty(ty);
+                if let Some(default) = default {
+                    self.visit_body(self.tcx.hir().body(default.body));
+                }
             }
         }
     }
@@ -1174,6 +1179,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let mut late_depth = 0;
         let mut scope = self.scope;
         let mut outermost_body = None;
+        let mut crossed_late_boundary = None;
         let result = loop {
             match *scope {
                 Scope::Body { id, s } => {
@@ -1206,7 +1212,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && let Some(generics) = self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
                         && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
                         && param.is_elided_lifetime()
-                        && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id)
+                        && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
                         let mut diag =  rustc_session::parse::feature_err(
@@ -1258,8 +1264,12 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
                 Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. }
-                | Scope::AnonConstBoundary { s } => {
+                | Scope::TraitRefBoundary { s, .. } => {
+                    scope = s;
+                }
+
+                Scope::LateBoundary { s, what } => {
+                    crossed_late_boundary = Some(what);
                     scope = s;
                 }
             }
@@ -1268,6 +1278,22 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         if let Some(mut def) = result {
             if let ResolvedArg::EarlyBound(..) = def {
                 // Do not free early-bound regions, only late-bound ones.
+            } else if let ResolvedArg::LateBound(_, _, param_def_id) = def
+                && let Some(what) = crossed_late_boundary
+            {
+                let use_span = lifetime_ref.ident.span;
+                let def_span = self.tcx.def_span(param_def_id);
+                let guar = match self.tcx.def_kind(param_def_id) {
+                    DefKind::LifetimeParam => {
+                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Lifetime {
+                            use_span,
+                            def_span,
+                            what,
+                        })
+                    }
+                    _ => unreachable!(),
+                };
+                def = ResolvedArg::Error(guar);
             } else if let Some(body_id) = outermost_body {
                 let fn_id = self.tcx.hir().body_owner(body_id);
                 match self.tcx.hir().get(fn_id) {
@@ -1322,7 +1348,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. }
-                | Scope::AnonConstBoundary { s } => {
+                | Scope::LateBoundary { s, .. } => {
                     scope = s;
                 }
             }
@@ -1341,7 +1367,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // search.
         let mut late_depth = 0;
         let mut scope = self.scope;
-        let mut crossed_anon_const = false;
+        let mut crossed_late_boundary = None;
 
         let result = loop {
             match *scope {
@@ -1376,28 +1402,32 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::AnonConstBoundary { s } => {
-                    crossed_anon_const = true;
+                Scope::LateBoundary { s, what } => {
+                    crossed_late_boundary = Some(what);
                     scope = s;
                 }
             }
         };
 
         if let Some(def) = result {
-            if let ResolvedArg::LateBound(..) = def && crossed_anon_const {
+            if let ResolvedArg::LateBound(..) = def
+                && let Some(what) = crossed_late_boundary
+            {
                 let use_span = self.tcx.hir().span(hir_id);
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::ConstParam => {
-                        self.tcx.sess.emit_err(errors::CannotCaptureLateBoundInAnonConst::Const {
+                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Const {
                             use_span,
                             def_span,
+                            what,
                         })
                     }
                     DefKind::TyParam => {
-                        self.tcx.sess.emit_err(errors::CannotCaptureLateBoundInAnonConst::Type {
+                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Type {
                             use_span,
                             def_span,
+                            what,
                         })
                     }
                     _ => unreachable!(),
@@ -1446,7 +1476,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. }
-                | Scope::AnonConstBoundary { s } => {
+                | Scope::LateBoundary { s, .. } => {
                     scope = s;
                 }
             }
@@ -1526,7 +1556,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         | Scope::ObjectLifetimeDefault { s, .. }
                         | Scope::Supertrait { s, .. }
                         | Scope::TraitRefBoundary { s, .. }
-                        | Scope::AnonConstBoundary { s } => {
+                        | Scope::LateBoundary { s, .. } => {
                             scope = s;
                         }
                     }
@@ -1831,7 +1861,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
                 Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. }
-                | Scope::AnonConstBoundary { s } => {
+                | Scope::LateBoundary { s, .. } => {
                     scope = s;
                 }
             }

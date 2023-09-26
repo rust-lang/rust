@@ -73,7 +73,7 @@ error[E0425]: cannot find function `static_method` in this scope
 LL |         static_method();
    |         ^^^^^^^^^^^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the associated function on `Self`
    |
 LL |         Self::static_method();
    |         ++++++
@@ -102,7 +102,7 @@ error[E0425]: cannot find function `grow_older` in this scope
 LL |     grow_older();
    |     ^^^^^^^^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the associated function on `Self`
    |
 LL |     Self::grow_older();
    |     ++++++

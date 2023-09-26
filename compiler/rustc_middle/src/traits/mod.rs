@@ -299,6 +299,10 @@ pub enum ObligationCauseCode<'tcx> {
     SizedYieldType,
     /// Inline asm operand type must be `Sized`.
     InlineAsmSized,
+    /// Captured closure type must be `Sized`.
+    SizedClosureCapture(LocalDefId),
+    /// Types live across generator yields must be `Sized`.
+    SizedGeneratorInterior(LocalDefId),
     /// `[expr; N]` requires `type_of(expr): Copy`.
     RepeatElementCopy {
         /// If element is a `const fn` we display a help message suggesting to move the
@@ -377,6 +381,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// `start` has wrong type
     StartFunctionType,
+
+    /// language function has wrong type
+    LangFunctionType(Symbol),
 
     /// Intrinsic has wrong type
     IntrinsicType,

@@ -147,7 +147,7 @@ fn encode_query_cache(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult
 /// execution, the new dependency information is not kept in memory but directly
 /// output to this file. `save_dep_graph` then finalizes the staging dep-graph
 /// and moves it to the permanent dep-graph path
-pub fn build_dep_graph(
+pub(crate) fn build_dep_graph(
     sess: &Session,
     prev_graph: SerializedDepGraph,
     prev_work_products: WorkProductMap,

@@ -329,7 +329,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             // Late-bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReLateBound(debruijn, ty::BoundRegion { var, kind: ty::BrAnon(_) }) => {
+            ty::ReLateBound(debruijn, ty::BoundRegion { var, kind: ty::BrAnon }) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + var.as_u32();
 
@@ -484,8 +484,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             ty::Alias(ty::Inherent, _) => bug!("symbol_names: unexpected inherent projection"),
             ty::Alias(ty::Weak, _) => bug!("symbol_names: unexpected weak projection"),
-            ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
-            ty::GeneratorWitnessMIR(..) => bug!("symbol_names: unexpected `GeneratorWitnessMIR`"),
+            ty::GeneratorWitness(..) => bug!("symbol_names: unexpected `GeneratorWitness`"),
         }
 
         // Only cache types that do not refer to an enclosing
@@ -594,7 +593,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
                 self = ty.print(self)?;
 
-                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ty);
+                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all());
 
                 // Negative integer values are mangled using `n` as a "sign prefix".
                 if let ty::Int(ity) = ty.kind() {

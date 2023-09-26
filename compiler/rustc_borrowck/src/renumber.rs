@@ -4,11 +4,10 @@ use crate::BorrowckInferCtxt;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
-use rustc_middle::mir::Constant;
-use rustc_middle::mir::{Body, Location, Promoted};
+use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_span::{Span, Symbol};
+use rustc_span::Symbol;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
@@ -30,20 +29,14 @@ pub fn renumber_mir<'tcx>(
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum BoundRegionInfo {
-    Name(Symbol),
-    Span(Span),
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum RegionCtxt {
     Location(Location),
     TyContext(TyContext),
     Free(Symbol),
-    Bound(BoundRegionInfo),
-    LateBound(BoundRegionInfo),
+    Bound(Symbol),
+    LateBound(Symbol),
     Existential(Option<Symbol>),
-    Placeholder(BoundRegionInfo),
+    Placeholder(Symbol),
     Unknown,
 }
 
@@ -117,9 +110,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
-        let literal = constant.literal;
-        constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(location));
+    fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, location: Location) {
+        let const_ = constant.const_;
+        constant.const_ = self.renumber_regions(const_, || RegionCtxt::Location(location));
         debug!("constant: {:#?}", constant);
     }
 }

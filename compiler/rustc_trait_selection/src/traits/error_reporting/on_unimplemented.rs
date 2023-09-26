@@ -104,7 +104,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) => {
                 self.describe_generator(*body_id).or_else(|| {
                     Some(match sig.header {
-                        hir::FnHeader { asyncness: hir::IsAsync::Async, .. } => "an async function",
+                        hir::FnHeader { asyncness: hir::IsAsync::Async(_), .. } => {
+                            "an async function"
+                        }
                         _ => "a function",
                     })
                 })
@@ -118,7 +120,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ..
             }) => self.describe_generator(*body_id).or_else(|| {
                 Some(match sig.header {
-                    hir::FnHeader { asyncness: hir::IsAsync::Async, .. } => "an async method",
+                    hir::FnHeader { asyncness: hir::IsAsync::Async(_), .. } => "an async method",
                     _ => "a method",
                 })
             }),

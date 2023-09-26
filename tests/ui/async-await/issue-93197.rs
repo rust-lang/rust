@@ -1,7 +1,6 @@
 // Regression test for #93197
 // check-pass
 // edition:2021
-// compile-flags: -Zdrop-tracking
 
 #![feature(try_blocks)]
 

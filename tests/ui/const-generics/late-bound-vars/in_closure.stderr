@@ -1,10 +1,20 @@
-#0 [mir_borrowck] borrow-checking `test::{closure#0}::{constant#1}`
-#1 [mir_drops_elaborated_and_const_checked] elaborating drops for `test::{closure#0}::{constant#1}`
-#2 [mir_for_ctfe] caching mir of `test::{closure#0}::{constant#1}` for CTFE
-#3 [eval_to_allocation_raw] const-evaluating + checking `test::{closure#0}::{constant#1}`
-#4 [eval_to_allocation_raw] const-evaluating + checking `test::{closure#0}::{constant#1}`
-#5 [eval_to_valtree] evaluating type-level constant
-#6 [typeck] type-checking `test`
-#7 [analysis] running analysis passes on this crate
-end of query stack
-error: aborting due to previous error
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/in_closure.rs:16:29
+   |
+LL | fn test<'a>() {
+   |         -- lifetime defined here
+LL |     let _ = || {
+LL |         let _: [u8; inner::<'a>()];
+   |                             ^^
+
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/in_closure.rs:17:29
+   |
+LL | fn test<'a>() {
+   |         -- lifetime defined here
+...
+LL |         let _ = [0; inner::<'a>()];
+   |                             ^^
+
+error: aborting due to 2 previous errors
+

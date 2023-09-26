@@ -1,7 +1,7 @@
 // run-pass
 // ignore-wasm32-bare seems not important to test here
 
-#![feature(intrinsics)]
+#![feature(intrinsics, rustc_attrs)]
 
 mod rusti {
     extern "rust-intrinsic" {
@@ -16,6 +16,7 @@ mod rusti {
           target_os = "emscripten",
           target_os = "freebsd",
           target_os = "fuchsia",
+          target_os = "hurd",
           target_os = "illumos",
           target_os = "linux",
           target_os = "macos",

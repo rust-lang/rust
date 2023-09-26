@@ -118,7 +118,7 @@ impl CheckAttrVisitor<'_> {
                 sym::coverage => self.check_coverage(hir_id, attr, span, target),
                 sym::non_exhaustive => self.check_non_exhaustive(hir_id, attr, span, target),
                 sym::marker => self.check_marker(hir_id, attr, span, target),
-                sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
+                sym::target_feature => self.check_target_feature(hir_id, attr, span, target, attrs),
                 sym::thread_local => self.check_thread_local(attr, span, target),
                 sym::track_caller => {
                     self.check_track_caller(hir_id, attr.span, attrs, span, target)
@@ -195,6 +195,9 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
                 sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
                 sym::rustc_confusables => self.check_confusables(&attr, target),
+                sym::rustc_safe_intrinsic => {
+                    self.check_rustc_safe_intrinsic(hir_id, attr, span, target)
+                }
                 _ => true,
             };
 
@@ -591,10 +594,36 @@ impl CheckAttrVisitor<'_> {
         attr: &Attribute,
         span: Span,
         target: Target,
+        attrs: &[Attribute],
     ) -> bool {
         match target {
-            Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+            Target::Fn => {
+                // `#[target_feature]` is not allowed in language items.
+                if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
+                    // Calling functions with `#[target_feature]` is
+                    // not unsafe on WASM, see #84988
+                    && !self.tcx.sess.target.is_like_wasm
+                    && !self.tcx.sess.opts.actually_rustdoc
+                {
+                    let hir::Node::Item(item) = self.tcx.hir().get(hir_id) else {
+                        unreachable!();
+                    };
+                    let hir::ItemKind::Fn(sig, _, _) = item.kind else {
+                        // target is `Fn`
+                        unreachable!();
+                    };
+
+                    self.tcx.sess.emit_err(errors::LangItemWithTargetFeature {
+                        attr_span: attr.span,
+                        name: lang_item,
+                        sig_span: sig.span,
+                    });
+                    false
+                } else {
+                    true
+                }
+            }
+            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
             Target::Statement => {
@@ -2016,6 +2045,29 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
+    fn check_rustc_safe_intrinsic(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        let hir = self.tcx.hir();
+
+        if let Target::ForeignFn = target
+            && let Some(parent) = hir.opt_parent_id(hir_id)
+            && let hir::Node::Item(Item {
+                kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic | Abi::PlatformIntrinsic, .. },
+                ..
+            }) = hir.get(parent)
+        {
+            return true;
+        }
+
+        self.tcx.sess.emit_err(errors::RustcSafeIntrinsic { attr_span: attr.span, span });
+        false
+    }
+
     fn check_rustc_std_internal_symbol(
         &self,
         attr: &Attribute,
@@ -2307,7 +2359,10 @@ impl CheckAttrVisitor<'_> {
                 &mut diag,
                 &cause,
                 None,
-                Some(ValuePairs::Sigs(ExpectedFound { expected: expected_sig, found: sig })),
+                Some(ValuePairs::PolySigs(ExpectedFound {
+                    expected: ty::Binder::dummy(expected_sig),
+                    found: ty::Binder::dummy(sig),
+                })),
                 terr,
                 false,
                 false,

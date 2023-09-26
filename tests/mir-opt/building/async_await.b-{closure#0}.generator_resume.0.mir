@@ -45,7 +45,7 @@
     },
 } */
 
-fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>, _2: &mut Context<'_>) -> Poll<()> {
+fn b::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:14:18: 17:2}>, _2: &mut Context<'_>) -> Poll<()> {
     debug _task_context => _38;
     let mut _0: std::task::Poll<()>;
     let _3: ();
@@ -84,7 +84,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
     let mut _38: &mut std::task::Context<'_>;
     let mut _39: u32;
     scope 1 {
-        debug __awaitee => (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#3).0: impl std::future::Future<Output = ()>);
+        debug __awaitee => (((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})) as variant#3).0: impl std::future::Future<Output = ()>);
         let _17: ();
         scope 2 {
         }
@@ -93,7 +93,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         }
     }
     scope 4 {
-        debug __awaitee => (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#4).0: impl std::future::Future<Output = ()>);
+        debug __awaitee => (((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})) as variant#4).0: impl std::future::Future<Output = ()>);
         let _33: ();
         scope 5 {
         }
@@ -103,8 +103,8 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
     }
 
     bb0: {
-        _39 = discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])));
-        switchInt(move _39) -> [0: bb1, 1: bb28, 3: bb26, 4: bb27, otherwise: bb29];
+        _39 = discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})));
+        switchInt(move _39) -> [0: bb1, 1: bb29, 3: bb27, 4: bb28, otherwise: bb30];
     }
 
     bb1: {
@@ -122,7 +122,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
     bb3: {
         StorageDead(_5);
         nop;
-        (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#3).0: impl std::future::Future<Output = ()>) = move _4;
+        (((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})) as variant#3).0: impl std::future::Future<Output = ()>) = move _4;
         goto -> bb4;
     }
 
@@ -132,7 +132,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageLive(_10);
         StorageLive(_11);
         StorageLive(_12);
-        _12 = &mut (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#3).0: impl std::future::Future<Output = ()>);
+        _12 = &mut (((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})) as variant#3).0: impl std::future::Future<Output = ()>);
         _11 = &mut (*_12);
         _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _11) -> [return: bb5, unwind unreachable];
     }
@@ -170,7 +170,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageLive(_20);
         _20 = ();
         _0 = Poll::<()>::Pending;
-        discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 3;
+        discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2}))) = 3;
         return;
     }
 
@@ -187,7 +187,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageDead(_12);
         StorageDead(_9);
         StorageDead(_8);
-        goto -> bb12;
+        drop((((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})) as variant#3).0: impl std::future::Future<Output = ()>)) -> [return: bb12, unwind unreachable];
     }
 
     bb11: {
@@ -218,7 +218,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
     bb15: {
         StorageDead(_22);
         nop;
-        (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#4).0: impl std::future::Future<Output = ()>) = move _21;
+        (((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})) as variant#4).0: impl std::future::Future<Output = ()>) = move _21;
         goto -> bb16;
     }
 
@@ -228,7 +228,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageLive(_26);
         StorageLive(_27);
         StorageLive(_28);
-        _28 = &mut (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#4).0: impl std::future::Future<Output = ()>);
+        _28 = &mut (((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})) as variant#4).0: impl std::future::Future<Output = ()>);
         _27 = &mut (*_28);
         _26 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _27) -> [return: bb17, unwind unreachable];
     }
@@ -266,7 +266,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageLive(_36);
         _36 = ();
         _0 = Poll::<()>::Pending;
-        discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 4;
+        discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2}))) = 4;
         return;
     }
 
@@ -279,7 +279,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageDead(_28);
         StorageDead(_25);
         StorageDead(_24);
-        goto -> bb23;
+        drop((((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2})) as variant#4).0: impl std::future::Future<Output = ()>)) -> [return: bb23, unwind unreachable];
     }
 
     bb22: {
@@ -297,16 +297,20 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
 
     bb24: {
         StorageDead(_21);
-        goto -> bb25;
+        goto -> bb26;
     }
 
     bb25: {
         _0 = Poll::<()>::Ready(move _37);
-        discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 1;
+        discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:14:18: 17:2}))) = 1;
         return;
     }
 
     bb26: {
+        goto -> bb25;
+    }
+
+    bb27: {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_19);
@@ -315,7 +319,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         goto -> bb11;
     }
 
-    bb27: {
+    bb28: {
         StorageLive(_21);
         StorageLive(_35);
         StorageLive(_36);
@@ -323,11 +327,11 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         goto -> bb22;
     }
 
-    bb28: {
-        assert(const false, "`async fn` resumed after completion") -> [success: bb28, unwind unreachable];
+    bb29: {
+        assert(const false, "`async fn` resumed after completion") -> [success: bb29, unwind unreachable];
     }
 
-    bb29: {
+    bb30: {
         unreachable;
     }
 }

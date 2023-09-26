@@ -31,15 +31,22 @@ pub trait FromRawFd {
     /// Constructs a new instance of `Self` from the given raw file
     /// descriptor and metadata.
     ///
-    /// This function **consumes ownership** of the specified file
-    /// descriptor. The returned object will take responsibility for closing
-    /// it when the object goes out of scope.
+    /// This function is typically used to **consume ownership** of the
+    /// specified file descriptor. When used in this way, the returned object
+    /// will take responsibility for closing it when the object goes out of
+    /// scope.
     ///
-    /// This function is also unsafe as the primitives currently returned
-    /// have the contract that they are the sole owner of the file
-    /// descriptor they are wrapping. Usage of this function could
-    /// accidentally allow violating this contract which can cause memory
-    /// unsafety in code that relies on it being true.
+    /// However, consuming ownership is not strictly required. Use a
+    /// [`From<OwnedFd>::from`] implementation for an API which strictly
+    /// consumes ownership.
+    ///
+    /// # Safety
+    ///
+    /// The `fd` passed in must be an [owned file descriptor][io-safety];
+    /// in particular, it must be open.
+    // FIXME: say something about `metadata`.
+    ///
+    /// [io-safety]: io#io-safety
     #[unstable(feature = "sgx_platform", issue = "56975")]
     unsafe fn from_raw_fd(fd: RawFd, metadata: Self::Metadata) -> Self;
 }

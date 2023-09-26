@@ -83,16 +83,6 @@ hir_typeck_int_to_fat_label_nightly = consider casting this expression to `*cons
 
 hir_typeck_invalid_callee = expected function, found {$ty}
 
-hir_typeck_lang_start_expected_sig_note = the `start` lang item should have the signature `fn(fn() -> T, isize, *const *const u8, u8) -> isize`
-hir_typeck_lang_start_incorrect_number_params = incorrect number of parameters for the `start` lang item
-hir_typeck_lang_start_incorrect_number_params_note_expected_count = the `start` lang item should have four parameters, but found {$found_param_count}
-
-hir_typeck_lang_start_incorrect_param = parameter {$param_num} of the `start` lang item is incorrect
-    .suggestion = change the type from `{$found_ty}` to `{$expected_ty}`
-
-hir_typeck_lang_start_incorrect_ret_ty = the return type of the `start` lang item is incorrect
-    .suggestion = change the type from `{$found_ty}` to `{$expected_ty}`
-
 hir_typeck_lossy_provenance_int2ptr =
     strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`
     .suggestion = use `.with_addr()` to adjust a valid pointer in the same allocation, to this address

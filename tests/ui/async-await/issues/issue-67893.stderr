@@ -1,18 +1,27 @@
-error: future cannot be sent between threads safely
+error[E0277]: `MutexGuard<'_, ()>` cannot be sent between threads safely
   --> $DIR/issue-67893.rs:9:7
    |
 LL |     g(issue_67893::run())
-   |       ^^^^^^^^^^^^^^^^^^ future is not `Send`
+   |     - ^^^^^^^^^^^^^^^^^^ `MutexGuard<'_, ()>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+  ::: $DIR/auxiliary/issue_67893.rs:9:20
+   |
+LL | pub async fn run() {
+   |                    - within this `impl Future<Output = ()>`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
-note: future is not `Send` as this value is used across an await
-  --> $DIR/auxiliary/issue_67893.rs:12:27
+   = note: required because it captures the following types: `Arc<Mutex<()>>`, `MutexGuard<'_, ()>`, `impl Future<Output = ()>`
+note: required because it's used within this `async fn` body
+  --> $DIR/auxiliary/issue_67893.rs:9:20
    |
-LL |     f(*x.lock().unwrap()).await;
-   |        -----------------  ^^^^^- `x.lock().unwrap()` is later dropped here
-   |        |                  |
-   |        |                  await occurs here, with `x.lock().unwrap()` maybe used later
-   |        has type `MutexGuard<'_, ()>` which is not `Send`
+LL |   pub async fn run() {
+   |  ____________________^
+LL | |     let x: Arc<Mutex<()>> = make_arc();
+LL | |     f(*x.lock().unwrap()).await;
+LL | | }
+   | |_^
 note: required by a bound in `g`
   --> $DIR/issue-67893.rs:6:14
    |
@@ -21,3 +30,4 @@ LL | fn g(_: impl Send) {}
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.

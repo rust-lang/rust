@@ -104,7 +104,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
 
     fn try_eval_bool(&self, a: &Operand<'_>) -> Option<bool> {
         let a = a.constant()?;
-        if a.literal.ty().is_bool() { a.literal.try_to_bool() } else { None }
+        if a.const_.ty().is_bool() { a.const_.try_to_bool() } else { None }
     }
 
     /// Transform "&(*a)" ==> "a".
@@ -136,8 +136,8 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     return;
                 }
 
-                let literal = ConstantKind::from_ty_const(len, self.tcx);
-                let constant = Constant { span: source_info.span, literal, user_ty: None };
+                let const_ = Const::from_ty_const(len, self.tcx);
+                let constant = ConstOperand { span: source_info.span, const_, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
         }

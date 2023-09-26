@@ -2,8 +2,8 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
-use crate::dep_graph::{DepGraphData, HasDepContext};
+use crate::dep_graph::DepGraphData;
+use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 #[cfg(parallel_compiler)]
@@ -18,7 +18,7 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
-use rustc_data_structures::{cold_path, sync};
+use rustc_data_structures::{outline, sync};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
@@ -30,24 +30,23 @@ use thin_vec::ThinVec;
 
 use super::QueryConfig;
 
-pub struct QueryState<K, D: DepKind> {
-    active: Sharded<FxHashMap<K, QueryResult<D>>>,
+pub struct QueryState<K> {
+    active: Sharded<FxHashMap<K, QueryResult>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
-enum QueryResult<D: DepKind> {
+enum QueryResult {
     /// An already executing query. The query job can be used to await for its completion.
-    Started(QueryJob<D>),
+    Started(QueryJob),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
     /// silently panic.
     Poisoned,
 }
 
-impl<K, D> QueryState<K, D>
+impl<K> QueryState<K>
 where
     K: Eq + Hash + Copy + Debug,
-    D: DepKind,
 {
     pub fn all_inactive(&self) -> bool {
         self.active.lock_shards().all(|shard| shard.is_empty())
@@ -56,8 +55,8 @@ where
     pub fn try_collect_active_jobs<Qcx: Copy>(
         &self,
         qcx: Qcx,
-        make_query: fn(Qcx, K) -> QueryStackFrame<D>,
-        jobs: &mut QueryMap<D>,
+        make_query: fn(Qcx, K) -> QueryStackFrame,
+        jobs: &mut QueryMap,
     ) -> Option<()> {
         let mut active = Vec::new();
 
@@ -82,25 +81,25 @@ where
     }
 }
 
-impl<K, D: DepKind> Default for QueryState<K, D> {
-    fn default() -> QueryState<K, D> {
+impl<K> Default for QueryState<K> {
+    fn default() -> QueryState<K> {
         QueryState { active: Default::default() }
     }
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-struct JobOwner<'tcx, K, D: DepKind>
+struct JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
-    state: &'tcx QueryState<K, D>,
+    state: &'tcx QueryState<K>,
     key: K,
 }
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Q, Qcx>(query: Q, qcx: Qcx, cycle_error: CycleError<Qcx::DepKind>) -> Q::Value
+fn mk_cycle<Q, Qcx>(query: Q, qcx: Qcx, cycle_error: CycleError) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
@@ -112,7 +111,7 @@ where
 fn handle_cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
-    cycle_error: &CycleError<Qcx::DepKind>,
+    cycle_error: &CycleError,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
 ) -> Q::Value
 where
@@ -137,7 +136,7 @@ where
     }
 }
 
-impl<'tcx, K, D: DepKind> JobOwner<'tcx, K, D>
+impl<'tcx, K> JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
@@ -169,10 +168,9 @@ where
     }
 }
 
-impl<'tcx, K, D> Drop for JobOwner<'tcx, K, D>
+impl<'tcx, K> Drop for JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
-    D: DepKind,
 {
     #[inline(never)]
     #[cold]
@@ -195,10 +193,10 @@ where
 }
 
 #[derive(Clone)]
-pub(crate) struct CycleError<D: DepKind> {
+pub(crate) struct CycleError {
     /// The query and related span that uses the cycle.
-    pub usage: Option<(Span, QueryStackFrame<D>)>,
-    pub cycle: Vec<QueryInfo<D>>,
+    pub usage: Option<(Span, QueryStackFrame)>,
+    pub cycle: Vec<QueryInfo>,
 }
 
 /// Checks if the query is already computed and in the cache.
@@ -248,7 +246,7 @@ fn wait_for_query<Q, Qcx>(
     qcx: Qcx,
     span: Span,
     key: Q::Key,
-    latch: QueryLatch<Qcx::DepKind>,
+    latch: QueryLatch,
     current: Option<QueryJobId>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
@@ -267,7 +265,7 @@ where
     match result {
         Ok(()) => {
             let Some((v, index)) = query.query_cache(qcx).lookup(&key) else {
-                cold_path(|| {
+                outline(|| {
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
                     let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();
@@ -296,7 +294,7 @@ fn try_execute_query<Q, Qcx, const INCR: bool>(
     qcx: Qcx,
     span: Span,
     key: Q::Key,
-    dep_node: Option<DepNode<Qcx::DepKind>>,
+    dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
     Q: QueryConfig<Qcx>,
@@ -364,10 +362,10 @@ where
 fn execute_job<Q, Qcx, const INCR: bool>(
     query: Q,
     qcx: Qcx,
-    state: &QueryState<Q::Key, Qcx::DepKind>,
+    state: &QueryState<Q::Key>,
     key: Q::Key,
     id: QueryJobId,
-    dep_node: Option<DepNode<Qcx::DepKind>>,
+    dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
     Q: QueryConfig<Qcx>,
@@ -474,9 +472,9 @@ where
 fn execute_job_incr<Q, Qcx>(
     query: Q,
     qcx: Qcx,
-    dep_graph_data: &DepGraphData<Qcx::DepKind>,
+    dep_graph_data: &DepGraphData<Qcx::Deps>,
     key: Q::Key,
-    mut dep_node_opt: Option<DepNode<Qcx::DepKind>>,
+    mut dep_node_opt: Option<DepNode>,
     job_id: QueryJobId,
 ) -> (Q::Value, DepNodeIndex)
 where
@@ -540,10 +538,10 @@ where
 #[inline(always)]
 fn try_load_from_disk_and_cache_in_memory<Q, Qcx>(
     query: Q,
-    dep_graph_data: &DepGraphData<Qcx::DepKind>,
+    dep_graph_data: &DepGraphData<Qcx::Deps>,
     qcx: Qcx,
     key: &Q::Key,
-    dep_node: &DepNode<Qcx::DepKind>,
+    dep_node: &DepNode,
 ) -> Option<(Q::Value, DepNodeIndex)>
 where
     Q: QueryConfig<Qcx>,
@@ -637,7 +635,7 @@ where
 #[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
 pub(crate) fn incremental_verify_ich<Tcx, V>(
     tcx: Tcx,
-    dep_graph_data: &DepGraphData<Tcx::DepKind>,
+    dep_graph_data: &DepGraphData<Tcx::Deps>,
     result: &V,
     prev_index: SerializedDepNodeIndex,
     hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
@@ -730,7 +728,7 @@ fn ensure_must_run<Q, Qcx>(
     qcx: Qcx,
     key: &Q::Key,
     check_cache: bool,
-) -> (bool, Option<DepNode<Qcx::DepKind>>)
+) -> (bool, Option<DepNode>)
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
@@ -821,12 +819,8 @@ where
     Some(result)
 }
 
-pub fn force_query<Q, Qcx>(
-    query: Q,
-    qcx: Qcx,
-    key: Q::Key,
-    dep_node: DepNode<<Qcx as HasDepContext>::DepKind>,
-) where
+pub fn force_query<Q, Qcx>(query: Q, qcx: Qcx, key: Q::Key, dep_node: DepNode)
+where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {

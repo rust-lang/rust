@@ -436,4 +436,27 @@ impl DifferingErrors {
     }
 }
 
+// Issue #11165
+pub struct Aliased1;
+pub type Alias1 = Aliased1;
+
+impl Alias1 {
+    pub fn len(&self) -> usize {
+        todo!()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        todo!()
+    }
+}
+
+pub struct Aliased2;
+pub type Alias2 = Aliased2;
+impl Alias2 {
+    pub fn len(&self) -> usize {
+        //~^ ERROR: type `Alias2` has a public `len` method, but no `is_empty` method
+        todo!()
+    }
+}
+
 fn main() {}

@@ -8,7 +8,7 @@ use cache::ProvisionalCache;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::Idx;
 use rustc_index::IndexVec;
-use rustc_middle::dep_graph::DepKind;
+use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::traits::solve::inspect::CacheHit;
 use rustc_middle::traits::solve::CacheData;
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, EvaluationCache, QueryResult};
@@ -287,7 +287,7 @@ impl<'tcx> SearchGraph<'tcx> {
         // Everything that affects the `result` should be performed within this
         // `with_anon_task` closure.
         let ((final_entry, result), dep_node) =
-            tcx.dep_graph.with_anon_task(tcx, DepKind::TraitSelect, || {
+            tcx.dep_graph.with_anon_task(tcx, dep_kinds::TraitSelect, || {
                 // When we encounter a coinductive cycle, we have to fetch the
                 // result of that cycle while we are still computing it. Because
                 // of this we continuously recompute the cycle until the result

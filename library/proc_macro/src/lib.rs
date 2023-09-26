@@ -1337,6 +1337,13 @@ impl Literal {
         Literal::new(bridge::LitKind::Char, symbol, None)
     }
 
+    /// Byte character literal.
+    #[unstable(feature = "proc_macro_byte_character", issue = "115268")]
+    pub fn byte_character(byte: u8) -> Literal {
+        let string = [byte].escape_ascii().to_string();
+        Literal::new(bridge::LitKind::Byte, &string, None)
+    }
+
     /// Byte string literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn byte_string(bytes: &[u8]) -> Literal {
@@ -1411,7 +1418,15 @@ impl Literal {
                 let hashes = get_hashes_str(n);
                 f(&["br", hashes, "\"", symbol, "\"", hashes, suffix])
             }
-            _ => f(&[symbol, suffix]),
+            bridge::LitKind::CStr => f(&["c\"", symbol, "\"", suffix]),
+            bridge::LitKind::CStrRaw(n) => {
+                let hashes = get_hashes_str(n);
+                f(&["cr", hashes, "\"", symbol, "\"", hashes, suffix])
+            }
+
+            bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::Err => {
+                f(&[symbol, suffix])
+            }
         })
     }
 }

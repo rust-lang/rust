@@ -2,6 +2,7 @@ use crate::coercion::{AsCoercionSite, CoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, Needs};
 use rustc_errors::Diagnostic;
 use rustc_hir::{self as hir, ExprKind};
+use rustc_hir_pretty::ty_to_string;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, Ty};
@@ -252,7 +253,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
-        let ret_reason = self.maybe_get_coercion_reason(then_expr.hir_id, span);
+        let hir_id = self.tcx.hir().parent_id(self.tcx.hir().parent_id(then_expr.hir_id));
+        let ret_reason = self.maybe_get_coercion_reason(hir_id, span);
         let cause = self.cause(span, ObligationCauseCode::IfExpressionWithNoElse);
         let mut error = false;
         coercion.coerce_forced_unit(
@@ -275,11 +277,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error
     }
 
-    fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
-        let node = {
-            let rslt = self.tcx.hir().parent_id(self.tcx.hir().parent_id(hir_id));
-            self.tcx.hir().get(rslt)
-        };
+    pub fn maybe_get_coercion_reason(
+        &self,
+        hir_id: hir::HirId,
+        sp: Span,
+    ) -> Option<(Span, String)> {
+        let node = self.tcx.hir().get(hir_id);
         if let hir::Node::Block(block) = node {
             // check that the body's parent is an fn
             let parent = self.tcx.hir().get_parent(self.tcx.hir().parent_id(block.hir_id));
@@ -289,9 +292,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // check that the `if` expr without `else` is the fn body's expr
                 if expr.span == sp {
                     return self.get_fn_decl(hir_id).and_then(|(_, fn_decl, _)| {
-                        let span = fn_decl.output.span();
-                        let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
-                        Some((span, format!("expected `{snippet}` because of this return type")))
+                        let (ty, span) = match fn_decl.output {
+                            hir::FnRetTy::DefaultReturn(span) => ("()".to_string(), span),
+                            hir::FnRetTy::Return(ty) => (ty_to_string(ty), ty.span),
+                        };
+                        Some((span, format!("expected `{ty}` because of this return type")))
                     });
                 }
             }

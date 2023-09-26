@@ -22,6 +22,7 @@ extern crate rustc_macros;
 #[macro_use]
 extern crate tracing;
 
+use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 
 use errors::ParseTargetMachineConfig;
@@ -39,8 +40,8 @@ use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, FatalError, Handler, Subd
 use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -52,6 +53,7 @@ use std::io::Write;
 mod back {
     pub mod archive;
     pub mod lto;
+    pub mod owned_target_machine;
     mod profiling;
     pub mod write;
 }
@@ -162,7 +164,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
 impl WriteBackendMethods for LlvmCodegenBackend {
     type Module = ModuleLlvm;
     type ModuleBuffer = back::lto::ModuleBuffer;
-    type TargetMachine = &'static mut llvm::TargetMachine;
+    type TargetMachine = OwnedTargetMachine;
     type TargetMachineError = crate::errors::LlvmError<'static>;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
@@ -401,7 +403,9 @@ impl CodegenBackend for LlvmCodegenBackend {
 pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
-    tm: &'static mut llvm::TargetMachine,
+
+    // independent from llcx and llmod_raw, resources get disposed by drop impl
+    tm: OwnedTargetMachine,
 }
 
 unsafe impl Send for ModuleLlvm {}
@@ -453,7 +457,6 @@ impl ModuleLlvm {
 impl Drop for ModuleLlvm {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMRustDisposeTargetMachine(&mut *(self.tm as *mut _));
             llvm::LLVMContextDispose(&mut *(self.llcx as *mut _));
         }
     }

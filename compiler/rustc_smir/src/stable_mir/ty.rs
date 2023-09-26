@@ -286,7 +286,7 @@ pub enum BoundTyKind {
 
 #[derive(Clone, Debug)]
 pub enum BoundRegionKind {
-    BrAnon(Option<Span>),
+    BrAnon,
     BrNamed(BrNamedDef, String),
     BrEnv,
 }

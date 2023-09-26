@@ -519,7 +519,7 @@ pub struct HandlerFlags {
     /// If false, warning-level lints are suppressed.
     /// (rustc: see `--allow warnings` and `--cap-lints`)
     pub can_emit_warnings: bool,
-    /// If true, error-level diagnostics are upgraded to bug-level.
+    /// If Some, the Nth error-level diagnostic is upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: Option<NonZeroUsize>,
     /// If true, immediately emit diagnostics that would otherwise be buffered.
@@ -1719,19 +1719,17 @@ impl HandlerInner {
             match (
                 self.err_count() + self.lint_err_count,
                 self.delayed_bug_count(),
-                self.flags.treat_err_as_bug.map(|c| c.get()).unwrap_or(0),
+                self.flags.treat_err_as_bug.map(|c| c.get()).unwrap(),
             ) {
                 (1, 0, 1) => panic!("aborting due to `-Z treat-err-as-bug=1`"),
                 (0, 1, 1) => panic!("aborting due delayed bug with `-Z treat-err-as-bug=1`"),
-                (count, delayed_count, as_bug) => {
+                (count, delayed_count, val) => {
                     if delayed_count > 0 {
                         panic!(
-                            "aborting after {count} errors and {delayed_count} delayed bugs due to `-Z treat-err-as-bug={as_bug}`",
+                            "aborting after {count} errors and {delayed_count} delayed bugs due to `-Z treat-err-as-bug={val}`",
                         )
                     } else {
-                        panic!(
-                            "aborting after {count} errors due to `-Z treat-err-as-bug={as_bug}`",
-                        )
+                        panic!("aborting after {count} errors due to `-Z treat-err-as-bug={val}`")
                     }
                 }
             }

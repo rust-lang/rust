@@ -1,5 +1,5 @@
 use crate::errors::{
-    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError, NeedTypeInfoInGenerator,
+    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
 use crate::infer::error_reporting::TypeErrCtxt;
@@ -592,39 +592,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
-    }
-}
-
-impl<'tcx> InferCtxt<'tcx> {
-    pub fn need_type_info_err_in_generator(
-        &self,
-        kind: hir::GeneratorKind,
-        span: Span,
-        ty: ty::Term<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let ty = self.resolve_vars_if_possible(ty);
-        let data = self.extract_inference_diagnostics_data(ty.into(), None);
-
-        NeedTypeInfoInGenerator {
-            bad_label: data.make_bad_error(span),
-            span,
-            generator_kind: GeneratorKindAsDiagArg(kind),
-        }
-        .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
-    }
-}
-
-pub struct GeneratorKindAsDiagArg(pub hir::GeneratorKind);
-
-impl IntoDiagnosticArg for GeneratorKindAsDiagArg {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
-        let kind = match self.0 {
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) => "async_block",
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) => "async_closure",
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) => "async_fn",
-            hir::GeneratorKind::Gen => "generator",
-        };
-        rustc_errors::DiagnosticArgValue::Str(kind.into())
     }
 }
 

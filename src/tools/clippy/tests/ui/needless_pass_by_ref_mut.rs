@@ -1,4 +1,4 @@
-#![allow(clippy::if_same_then_else, clippy::no_effect)]
+#![allow(clippy::if_same_then_else, clippy::no_effect, clippy::redundant_closure_call)]
 #![feature(lint_reasons)]
 //@no-rustfix
 use std::ptr::NonNull;
@@ -229,6 +229,44 @@ async fn async_vec(b: &mut Vec<bool>) {
 // Should not warn.
 async fn async_vec2(b: &mut Vec<bool>) {
     b.push(true);
+}
+fn non_mut(n: &str) {}
+//Should warn
+pub async fn call_in_closure1(n: &mut str) {
+    (|| non_mut(n))()
+}
+fn str_mut(str: &mut String) -> bool {
+    str.pop().is_some()
+}
+//Should not warn
+pub async fn call_in_closure2(str: &mut String) {
+    (|| str_mut(str))();
+}
+
+// Should not warn.
+pub async fn closure(n: &mut usize) -> impl '_ + FnMut() {
+    || {
+        *n += 1;
+    }
+}
+
+// Should warn.
+pub fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
+    //~^ ERROR: this argument is a mutable reference, but not used mutably
+    || *n + 1
+}
+
+// Should not warn.
+pub async fn closure3(n: &mut usize) {
+    (|| *n += 1)();
+}
+
+// Should warn.
+pub async fn closure4(n: &mut usize) {
+    //~^ ERROR: this argument is a mutable reference, but not used mutably
+    (|| {
+        let _x = *n + 1;
+    })();
 }
 
 fn main() {

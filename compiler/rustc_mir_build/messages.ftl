@@ -229,6 +229,9 @@ mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type
     .suggestion = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
     .help = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
 
+mir_build_non_partial_eq_match =
+    to use a constant of type `{$non_peq_ty}` in a pattern, the type must implement `PartialEq`
+
 mir_build_nontrivial_structural_match =
     to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
 

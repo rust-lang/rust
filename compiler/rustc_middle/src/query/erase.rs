@@ -116,21 +116,16 @@ impl EraseType for Result<ty::Const<'_>, mir::interpret::LitToConstError> {
     type Result = [u8; size_of::<Result<ty::Const<'static>, mir::interpret::LitToConstError>>()];
 }
 
-impl EraseType for Result<mir::ConstantKind<'_>, mir::interpret::LitToConstError> {
-    type Result =
-        [u8; size_of::<Result<mir::ConstantKind<'static>, mir::interpret::LitToConstError>>()];
+impl EraseType for Result<mir::Const<'_>, mir::interpret::LitToConstError> {
+    type Result = [u8; size_of::<Result<mir::Const<'static>, mir::interpret::LitToConstError>>()];
 }
 
-impl EraseType for Result<mir::interpret::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
-    type Result = [u8; size_of::<
-        Result<mir::interpret::ConstAlloc<'static>, mir::interpret::ErrorHandled>,
-    >()];
+impl EraseType for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
+    type Result = [u8; size_of::<Result<mir::ConstAlloc<'static>, mir::interpret::ErrorHandled>>()];
 }
 
-impl EraseType for Result<mir::interpret::ConstValue<'_>, mir::interpret::ErrorHandled> {
-    type Result = [u8; size_of::<
-        Result<mir::interpret::ConstValue<'static>, mir::interpret::ErrorHandled>,
-    >()];
+impl EraseType for Result<mir::ConstValue<'_>, mir::interpret::ErrorHandled> {
+    type Result = [u8; size_of::<Result<mir::ConstValue<'static>, mir::interpret::ErrorHandled>>()];
 }
 
 impl EraseType for Result<Option<ty::ValTree<'_>>, mir::interpret::ErrorHandled> {
@@ -270,6 +265,7 @@ trivial! {
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::AssocItem,
     rustc_middle::ty::AssocItemContainer,
+    rustc_middle::ty::Asyncness,
     rustc_middle::ty::BoundVariableKind,
     rustc_middle::ty::DeducedParamAttrs,
     rustc_middle::ty::Destructor,
@@ -315,10 +311,10 @@ macro_rules! tcx_lifetime {
 tcx_lifetime! {
     rustc_middle::hir::Owner,
     rustc_middle::middle::exported_symbols::ExportedSymbol,
-    rustc_middle::mir::ConstantKind,
+    rustc_middle::mir::Const,
     rustc_middle::mir::DestructuredConstant,
-    rustc_middle::mir::interpret::ConstAlloc,
-    rustc_middle::mir::interpret::ConstValue,
+    rustc_middle::mir::ConstAlloc,
+    rustc_middle::mir::ConstValue,
     rustc_middle::mir::interpret::GlobalId,
     rustc_middle::mir::interpret::LitToConstInput,
     rustc_middle::traits::query::MethodAutoderefStepsResult,

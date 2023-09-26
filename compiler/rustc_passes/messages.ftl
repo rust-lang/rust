@@ -407,6 +407,10 @@ passes_invalid_stability =
     .label = invalid stability version
     .item = the stability attribute annotates this item
 
+passes_lang_item_fn_with_target_feature =
+    `{$name}` language item function is not allowed to have `#[target_feature]`
+    .label = `{$name}` language item function is not allowed to have `#[target_feature]`
+
 passes_lang_item_on_incorrect_target =
     `{$name}` language item must be applied to a {$expected_target}
     .label = attribute should be applied to a {$expected_target}, not a {$actual_target}
@@ -643,6 +647,10 @@ passes_rustc_lint_opt_deny_field_access =
 passes_rustc_lint_opt_ty =
     `#[rustc_lint_opt_ty]` should be applied to a struct
     .label = not a struct
+
+passes_rustc_safe_intrinsic =
+    attribute should be applied to intrinsic functions
+    .label = not an intrinsic function
 
 passes_rustc_std_internal_symbol =
     attribute should be applied to functions or statics

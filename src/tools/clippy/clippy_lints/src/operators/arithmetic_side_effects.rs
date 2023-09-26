@@ -315,7 +315,7 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
         let body_owner_def_id = cx.tcx.hir().body_owner_def_id(body.id());
 
         let body_owner_kind = cx.tcx.hir().body_owner_kind(body_owner_def_id);
-        if let hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) = body_owner_kind {
+        if let hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) = body_owner_kind {
             let body_span = cx.tcx.hir().span_with_body(body_owner);
             if let Some(span) = self.const_span && span.contains(body_span) {
                 return;

@@ -129,7 +129,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Float(_)
             | ty::Array(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::RawPtr(_)
             | ty::Ref(..)
             | ty::FnDef(..)
@@ -725,6 +724,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             },
                             // array-ptr-cast
                             Ptr(mt) => {
+                                if !fcx.type_is_sized_modulo_regions(fcx.param_env, mt.ty) {
+                                    return Err(CastError::IllegalCast);
+                                }
                                 self.check_ref_cast(fcx, TypeAndMut { mutbl, ty: inner_ty }, mt)
                             }
                             _ => Err(CastError::NonScalar),
@@ -735,7 +737,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             _ => return Err(CastError::NonScalar),
         };
-
         if let ty::Adt(adt_def, _) = *self.expr_ty.kind() {
             if adt_def.did().krate != LOCAL_CRATE {
                 if adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive) {
@@ -743,7 +744,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 }
             }
         }
-
         match (t_from, t_cast) {
             // These types have invariants! can't cast into them.
             (_, Int(CEnum) | FnPtr) => Err(CastError::NonScalar),

@@ -795,7 +795,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Str => p!("str"),
             ty::Generator(did, args, movability) => {
-                p!(write("["));
+                p!(write("{{"));
                 let generator_kind = self.tcx().generator_kind(did).unwrap();
                 let should_print_movability =
                     self.should_print_verbose() || generator_kind == hir::GeneratorKind::Gen;
@@ -836,13 +836,10 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
 
-                p!("]")
+                p!("}}")
             }
-            ty::GeneratorWitness(types) => {
-                p!(in_binder(&types));
-            }
-            ty::GeneratorWitnessMIR(did, args) => {
-                p!(write("["));
+            ty::GeneratorWitness(did, args) => {
+                p!(write("{{"));
                 if !self.tcx().sess.verbose() {
                     p!("generator witness");
                     // FIXME(eddyb) should use `def_span`.
@@ -861,10 +858,10 @@ pub trait PrettyPrinter<'tcx>:
                     p!(print_def_path(did, args));
                 }
 
-                p!("]")
+                p!("}}")
             }
             ty::Closure(did, args) => {
-                p!(write("["));
+                p!(write("{{"));
                 if !self.should_print_verbose() {
                     p!(write("closure"));
                     // FIXME(eddyb) should use `def_span`.
@@ -904,7 +901,7 @@ pub trait PrettyPrinter<'tcx>:
                         p!(")");
                     }
                 }
-                p!("]");
+                p!("}}");
             }
             ty::Array(ty, sz) => p!("[", print(ty), "; ", print(sz), "]"),
             ty::Slice(ty) => p!("[", print(ty), "]"),
@@ -1061,7 +1058,7 @@ pub trait PrettyPrinter<'tcx>:
                     }
 
                     for (assoc_item_def_id, term) in assoc_items {
-                        // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks,
+                        // Skip printing `<{generator@} as Generator<_>>::Return` from async blocks,
                         // unless we can find out what generator return type it comes from.
                         let term = if let Some(ty) = term.skip_binder().ty()
                             && let ty::Alias(ty::Projection, proj) = ty.kind()
@@ -1713,6 +1710,21 @@ pub trait PrettyPrinter<'tcx>:
     }
 }
 
+pub(crate) fn pretty_print_const<'tcx>(
+    c: ty::Const<'tcx>,
+    fmt: &mut fmt::Formatter<'_>,
+    print_types: bool,
+) -> fmt::Result {
+    ty::tls::with(|tcx| {
+        let literal = tcx.lift(c).unwrap();
+        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+        cx.print_alloc_ids = true;
+        let cx = cx.pretty_print_const(literal, print_types)?;
+        fmt.write_str(&cx.into_buffer())?;
+        Ok(())
+    })
+}
+
 // HACK(eddyb) boxed to avoid moving around a large struct by-value.
 pub struct FmtPrinter<'a, 'tcx>(Box<FmtPrinterData<'a, 'tcx>>);
 
@@ -2318,7 +2330,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
                 match kind {
-                    ty::BrAnon(..) | ty::BrEnv => r,
+                    ty::BrAnon | ty::BrEnv => r,
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
@@ -2439,7 +2451,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
                 let (name, kind) = match br.kind {
-                    ty::BrAnon(..) | ty::BrEnv => {
+                    ty::BrAnon | ty::BrEnv => {
                         let name = next_name(&self);
 
                         if let Some(lt_idx) = lifetime_idx {

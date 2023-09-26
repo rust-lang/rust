@@ -93,7 +93,7 @@ impl EarlyLintPass for RawStrings {
                             diag.span_suggestion(
                                 start,
                                 "use a string literal instead",
-                                format!("\"{}\"", str),
+                                format!("\"{str}\""),
                                 Applicability::MachineApplicable,
                             );
                         } else {
@@ -105,8 +105,9 @@ impl EarlyLintPass for RawStrings {
                         }
                     },
                 );
-
-                return;
+                if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS), rustc_lint::Allow) {
+                    return;
+                }
             }
 
             let req = {

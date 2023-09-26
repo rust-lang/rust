@@ -21,4 +21,7 @@ fn main() {
         multiline
         string
     ";
+
+    r"rust";
+    r"hello world";
 }

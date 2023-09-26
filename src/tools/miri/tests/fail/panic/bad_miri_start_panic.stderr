@@ -1,3 +1,5 @@
+WARNING: the flag `-Zmiri-disable-abi-check` is deprecated and planned to be removed.
+If you have a use-case for it, please file an issue.
 error: Undefined Behavior: unwinding past a stack frame that does not allow unwinding
   --> $DIR/bad_miri_start_panic.rs:LL:CC
    |

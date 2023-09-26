@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:36:23: 36:30]`
-  --> $DIR/clone-impl.rs:42:16
+error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `{generator@$DIR/clone-impl.rs:36:23: 36:30}`
+  --> $DIR/clone-impl.rs:42:5
    |
 LL |     let gen_clone_0 = move || {
-   |                       ------- within this `[generator@$DIR/clone-impl.rs:36:23: 36:30]`
+   |                       ------- within this `{generator@$DIR/clone-impl.rs:36:23: 36:30}`
 ...
 LL |     check_copy(&gen_clone_0);
-   |                ^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:36:23: 36:30]`, the trait `Copy` is not implemented for `Vec<u32>`
+   |     ^^^^^^^^^^ within `{generator@$DIR/clone-impl.rs:36:23: 36:30}`, the trait `Copy` is not implemented for `Vec<u32>`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:40:14
@@ -18,14 +18,14 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:36:23: 36:30]`
-  --> $DIR/clone-impl.rs:42:16
+error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `{generator@$DIR/clone-impl.rs:36:23: 36:30}`
+  --> $DIR/clone-impl.rs:42:5
    |
 LL |     let gen_clone_0 = move || {
-   |                       ------- within this `[generator@$DIR/clone-impl.rs:36:23: 36:30]`
+   |                       ------- within this `{generator@$DIR/clone-impl.rs:36:23: 36:30}`
 ...
 LL |     check_copy(&gen_clone_0);
-   |                ^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:36:23: 36:30]`, the trait `Copy` is not implemented for `Vec<char>`
+   |     ^^^^^^^^^^ within `{generator@$DIR/clone-impl.rs:36:23: 36:30}`, the trait `Copy` is not implemented for `Vec<char>`
    |
 note: generator does not implement `Copy` as this value is used across a yield
   --> $DIR/clone-impl.rs:38:9
@@ -34,23 +34,20 @@ LL |         let v = vec!['a'];
    |             - has type `Vec<char>` which does not implement `Copy`
 LL |         yield;
    |         ^^^^^ yield occurs here, with `v` maybe used later
-...
-LL |     };
-   |     - `v` is later dropped here
 note: required by a bound in `check_copy`
   --> $DIR/clone-impl.rs:72:18
    |
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:46:23: 46:30]`
-  --> $DIR/clone-impl.rs:58:16
+error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `{generator@$DIR/clone-impl.rs:46:23: 46:30}`
+  --> $DIR/clone-impl.rs:58:5
    |
 LL |     let gen_clone_1 = move || {
-   |                       ------- within this `[generator@$DIR/clone-impl.rs:46:23: 46:30]`
+   |                       ------- within this `{generator@$DIR/clone-impl.rs:46:23: 46:30}`
 ...
 LL |     check_copy(&gen_clone_1);
-   |                ^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:46:23: 46:30]`, the trait `Copy` is not implemented for `Vec<u32>`
+   |     ^^^^^^^^^^ within `{generator@$DIR/clone-impl.rs:46:23: 46:30}`, the trait `Copy` is not implemented for `Vec<u32>`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:56:14
@@ -63,14 +60,14 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:46:23: 46:30]`
-  --> $DIR/clone-impl.rs:58:16
+error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `{generator@$DIR/clone-impl.rs:46:23: 46:30}`
+  --> $DIR/clone-impl.rs:58:5
    |
 LL |     let gen_clone_1 = move || {
-   |                       ------- within this `[generator@$DIR/clone-impl.rs:46:23: 46:30]`
+   |                       ------- within this `{generator@$DIR/clone-impl.rs:46:23: 46:30}`
 ...
 LL |     check_copy(&gen_clone_1);
-   |                ^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:46:23: 46:30]`, the trait `Copy` is not implemented for `Vec<char>`
+   |     ^^^^^^^^^^ within `{generator@$DIR/clone-impl.rs:46:23: 46:30}`, the trait `Copy` is not implemented for `Vec<char>`
    |
 note: generator does not implement `Copy` as this value is used across a yield
   --> $DIR/clone-impl.rs:52:9
@@ -80,23 +77,20 @@ LL |         let v = vec!['a'];
 ...
 LL |         yield;
    |         ^^^^^ yield occurs here, with `v` maybe used later
-...
-LL |     };
-   |     - `v` is later dropped here
 note: required by a bound in `check_copy`
   --> $DIR/clone-impl.rs:72:18
    |
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `NonClone: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
-  --> $DIR/clone-impl.rs:66:16
+error[E0277]: the trait bound `NonClone: Copy` is not satisfied in `{generator@$DIR/clone-impl.rs:62:25: 62:32}`
+  --> $DIR/clone-impl.rs:66:5
    |
 LL |     let gen_non_clone = move || {
-   |                         ------- within this `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
+   |                         ------- within this `{generator@$DIR/clone-impl.rs:62:25: 62:32}`
 ...
 LL |     check_copy(&gen_non_clone);
-   |                ^^^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:62:25: 62:32]`, the trait `Copy` is not implemented for `NonClone`
+   |     ^^^^^^^^^^ within `{generator@$DIR/clone-impl.rs:62:25: 62:32}`, the trait `Copy` is not implemented for `NonClone`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:64:14
@@ -114,14 +108,14 @@ LL + #[derive(Copy)]
 LL | struct NonClone;
    |
 
-error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
-  --> $DIR/clone-impl.rs:68:17
+error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `{generator@$DIR/clone-impl.rs:62:25: 62:32}`
+  --> $DIR/clone-impl.rs:68:5
    |
 LL |     let gen_non_clone = move || {
-   |                         ------- within this `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
+   |                         ------- within this `{generator@$DIR/clone-impl.rs:62:25: 62:32}`
 ...
 LL |     check_clone(&gen_non_clone);
-   |                 ^^^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:62:25: 62:32]`, the trait `Clone` is not implemented for `NonClone`
+   |     ^^^^^^^^^^^ within `{generator@$DIR/clone-impl.rs:62:25: 62:32}`, the trait `Clone` is not implemented for `NonClone`
    |
 note: captured value does not implement `Clone`
   --> $DIR/clone-impl.rs:64:14

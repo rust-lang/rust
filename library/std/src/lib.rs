@@ -637,9 +637,6 @@ pub mod alloc;
 // Private support modules
 mod panicking;
 
-#[unstable(feature = "ice_to_disk", issue = "none")]
-pub use panicking::panic_hook_with_disk_dump;
-
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]
 mod backtrace_rs;
@@ -667,6 +664,9 @@ pub use core::{
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 pub use core::concat_bytes;
+
+#[unstable(feature = "cfg_match", issue = "115585")]
+pub use core::cfg_match;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;

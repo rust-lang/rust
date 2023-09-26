@@ -1,7 +1,7 @@
-use super::{AllocId, AllocRange, ConstAlloc, Pointer, Scalar};
+use super::{AllocId, AllocRange, Pointer, Scalar};
 
 use crate::error;
-use crate::mir::interpret::ConstValue;
+use crate::mir::{ConstAlloc, ConstValue};
 use crate::query::TyCtxtAt;
 use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
 

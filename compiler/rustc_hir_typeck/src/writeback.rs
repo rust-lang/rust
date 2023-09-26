@@ -46,7 +46,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_def_id) {
-            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
+            hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) => {
                 let item_hir_id = self.tcx.hir().local_def_id_to_hir_id(item_def_id);
                 wbcx.visit_node_id(body.value.span, item_hir_id);
             }
@@ -63,7 +63,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_coercion_casts();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
-        wbcx.visit_generator_interior_types();
+        wbcx.visit_generator_interior();
         wbcx.visit_offset_of_container_types();
 
         wbcx.typeck_results.rvalue_scopes =
@@ -538,11 +538,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         );
     }
 
-    fn visit_generator_interior_types(&mut self) {
+    fn visit_generator_interior(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        self.typeck_results.generator_interior_types =
-            fcx_typeck_results.generator_interior_types.clone();
         self.tcx().with_stable_hashing_context(move |ref hcx| {
             for (&expr_def_id, predicates) in
                 fcx_typeck_results.generator_interior_predicates.to_sorted(hcx, false).into_iter()

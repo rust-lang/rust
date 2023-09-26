@@ -65,6 +65,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         self.suggest_missing_semicolon(err, expr, expected, false);
         let mut pointing_at_return_type = false;
+        if let hir::ExprKind::Break(..) = expr.kind {
+            // `break` type mismatches provide better context for tail `loop` expressions.
+            return false;
+        }
         if let Some((fn_id, fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type = self.suggest_missing_return_type(
                 err,
@@ -987,10 +991,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let bound_vars = self.tcx.late_bound_vars(fn_id);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = match self.tcx.asyncness(fn_id.owner) {
-                hir::IsAsync::Async => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                ty::Asyncness::Yes => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
                     span_bug!(fn_decl.output.span(), "failed to get output type of async function")
                 }),
-                hir::IsAsync::NotAsync => ty,
+                ty::Asyncness::No => ty,
             };
             let ty = self.normalize(expr.span, ty);
             if self.can_coerce(found, ty) {

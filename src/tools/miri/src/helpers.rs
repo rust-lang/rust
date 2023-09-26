@@ -1,5 +1,3 @@
-pub mod convert;
-
 use std::cmp;
 use std::iter;
 use std::num::NonZeroUsize;
@@ -14,7 +12,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{
     self,
     layout::{IntegerExt as _, LayoutOf, TyAndLayout},
-    Ty, TyCtxt,
+    IntTy, Ty, TyCtxt, UintTy,
 };
 use rustc_span::{def_id::CrateNum, sym, Span, Symbol};
 use rustc_target::abi::{Align, FieldIdx, FieldsShape, Integer, Size, Variants};
@@ -1013,15 +1011,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn float_to_int_checked<F>(
         &self,
         f: F,
-        dest_ty: Ty<'tcx>,
+        cast_to: TyAndLayout<'tcx>,
         round: rustc_apfloat::Round,
-    ) -> Option<Scalar<Provenance>>
+    ) -> Option<ImmTy<'tcx, Provenance>>
     where
         F: rustc_apfloat::Float + Into<Scalar<Provenance>>,
     {
         let this = self.eval_context_ref();
 
-        match dest_ty.kind() {
+        let val = match cast_to.ty.kind() {
             // Unsigned
             ty::Uint(t) => {
                 let size = Integer::from_uint_ty(this, *t).size();
@@ -1033,11 +1031,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ) {
                     // Floating point value is NaN (flagged with INVALID_OP) or outside the range
                     // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-                    None
+                    return None;
                 } else {
                     // Floating point value can be represented by the integer type after rounding.
                     // The INEXACT flag is ignored on purpose to allow rounding.
-                    Some(Scalar::from_uint(res.value, size))
+                    Scalar::from_uint(res.value, size)
                 }
             }
             // Signed
@@ -1051,19 +1049,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ) {
                     // Floating point value is NaN (flagged with INVALID_OP) or outside the range
                     // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-                    None
+                    return None;
                 } else {
                     // Floating point value can be represented by the integer type after rounding.
                     // The INEXACT flag is ignored on purpose to allow rounding.
-                    Some(Scalar::from_int(res.value, size))
+                    Scalar::from_int(res.value, size)
                 }
             }
             // Nothing else
             _ =>
                 span_bug!(
                     this.cur_span(),
-                    "attempted float-to-int conversion with non-int output type {dest_ty:?}"
+                    "attempted float-to-int conversion with non-int output type {}",
+                    cast_to.ty,
                 ),
+        };
+        Some(ImmTy::from_scalar(val, cast_to))
+    }
+
+    /// Returns an integer type that is twice wide as `ty`
+    fn get_twice_wide_int_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let this = self.eval_context_ref();
+        match ty.kind() {
+            // Unsigned
+            ty::Uint(UintTy::U8) => this.tcx.types.u16,
+            ty::Uint(UintTy::U16) => this.tcx.types.u32,
+            ty::Uint(UintTy::U32) => this.tcx.types.u64,
+            ty::Uint(UintTy::U64) => this.tcx.types.u128,
+            // Signed
+            ty::Int(IntTy::I8) => this.tcx.types.i16,
+            ty::Int(IntTy::I16) => this.tcx.types.i32,
+            ty::Int(IntTy::I32) => this.tcx.types.i64,
+            ty::Int(IntTy::I64) => this.tcx.types.i128,
+            _ => span_bug!(this.cur_span(), "unexpected type: {ty:?}"),
         }
     }
 }
@@ -1150,4 +1168,21 @@ pub fn get_local_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
 /// `target_os` is a supported UNIX OS.
 pub fn target_os_is_unix(target_os: &str) -> bool {
     matches!(target_os, "linux" | "macos" | "freebsd" | "android")
+}
+
+pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Provenance> {
+    // SIMD uses all-1 as pattern for "true". In two's complement,
+    // -1 has all its bits set to one and `from_int` will truncate or
+    // sign-extend it to `size` as required.
+    let val = if b { -1 } else { 0 };
+    Scalar::from_int(val, size)
+}
+
+pub(crate) fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<'_, bool> {
+    let val = elem.to_scalar().to_int(elem.layout.size)?;
+    Ok(match val {
+        0 => false,
+        -1 => true,
+        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
+    })
 }

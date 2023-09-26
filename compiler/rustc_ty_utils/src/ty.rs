@@ -4,7 +4,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, EarlyBinder, ToPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::DUMMY_SP;
@@ -21,13 +21,7 @@ fn sized_constraint_for_ty<'tcx>(
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)
         | FnPtr(_) | Array(..) | Closure(..) | Generator(..) | Never => vec![],
 
-        Str
-        | Dynamic(..)
-        | Slice(_)
-        | Foreign(..)
-        | Error(_)
-        | GeneratorWitness(..)
-        | GeneratorWitnessMIR(..) => {
+        Str | Dynamic(..) | Slice(_) | Foreign(..) | Error(_) | GeneratorWitness(..) => {
             // these are never sized - return the target type
             vec![ty]
         }
@@ -220,13 +214,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // strategy, then just reinterpret the associated type like an opaque :^)
             let default_ty = self.tcx.type_of(shifted_alias_ty.def_id).instantiate(self.tcx, shifted_alias_ty.args);
 
-            self.predicates.push(
-                ty::Binder::bind_with_vars(
-                    ty::ProjectionPredicate { projection_ty: shifted_alias_ty, term: default_ty.into() },
-                    self.bound_vars,
-                )
-                .to_predicate(self.tcx),
-            );
+            self.predicates.push(ty::Clause::from_projection_clause(self.tcx, ty::Binder::bind_with_vars(
+                ty::ProjectionPredicate { projection_ty: shifted_alias_ty, term: default_ty.into() },
+                self.bound_vars,
+            )));
 
             // We walk the *un-shifted* alias ty, because we're tracking the de bruijn
             // binder depth, and if we were to walk `shifted_alias_ty` instead, we'd
@@ -299,9 +290,12 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 }
 
 /// Check if a function is async.
-fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::IsAsync {
+fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
     let node = tcx.hir().get_by_def_id(def_id);
-    node.fn_sig().map_or(hir::IsAsync::NotAsync, |sig| sig.header.asyncness)
+    node.fn_sig().map_or(ty::Asyncness::No, |sig| match sig.header.asyncness {
+        hir::IsAsync::Async(_) => ty::Asyncness::Yes,
+        hir::IsAsync::NotAsync => ty::Asyncness::No,
+    })
 }
 
 fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {

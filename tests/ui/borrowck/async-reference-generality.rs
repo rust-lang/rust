@@ -1,5 +1,4 @@
-// check-fail
-// known-bug: #99492
+// check-pass
 // edition: 2021
 
 use std::marker::PhantomData;

@@ -385,7 +385,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let kind = entry
-                    .or_insert_with(|| ty::BoundVariableKind::Region(ty::BrAnon(None)))
+                    .or_insert_with(|| ty::BoundVariableKind::Region(ty::BrAnon))
                     .expect_region();
                 let br = ty::BoundRegion { var, kind };
                 ty::Region::new_late_bound(self.tcx, ty::INNERMOST, br)

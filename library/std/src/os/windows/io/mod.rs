@@ -6,7 +6,8 @@
 //!
 //! This module provides three types for representing raw handles and sockets
 //! with different ownership properties: raw, borrowed, and owned, which are
-//! analogous to types used for representing pointers:
+//! analogous to types used for representing pointers. These types reflect concepts of [I/O
+//! safety][io-safety] on Windows.
 //!
 //! | Type                   | Analogous to |
 //! | ---------------------- | ------------ |
@@ -23,8 +24,8 @@
 //! And in new code, they should be considered unsafe to do I/O on (analogous
 //! to dereferencing them). Rust did not always provide this guidance, so
 //! existing code in the Rust ecosystem often doesn't mark `RawHandle` and
-//! `RawSocket` usage as unsafe. Once the `io_safety` feature is stable,
-//! libraries will be encouraged to migrate, either by adding `unsafe` to APIs
+//! `RawSocket` usage as unsafe.
+//! Libraries are encouraged to migrate, either by adding `unsafe` to APIs
 //! that dereference `RawHandle` and `RawSocket` values, or by using to
 //! `BorrowedHandle`, `BorrowedSocket`, `OwnedHandle`, or `OwnedSocket`.
 //!
@@ -45,8 +46,11 @@
 //! Like boxes, `OwnedHandle` and `OwnedSocket` values conceptually own the
 //! resource they point to, and free (close) it when they are dropped.
 //!
+//! See the [`io` module docs][io-safety] for a general explanation of I/O safety.
+//!
 //! [`BorrowedHandle<'a>`]: crate::os::windows::io::BorrowedHandle
 //! [`BorrowedSocket<'a>`]: crate::os::windows::io::BorrowedSocket
+//! [io-safety]: crate::io#io-safety
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

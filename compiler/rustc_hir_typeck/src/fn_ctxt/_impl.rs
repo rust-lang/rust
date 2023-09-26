@@ -509,21 +509,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         typeck_results.rvalue_scopes = rvalue_scopes;
     }
 
-    pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
-        if self.tcx.sess.opts.unstable_opts.drop_tracking_mir {
-            self.save_generator_interior_predicates(def_id);
-            return;
-        }
-
-        self.select_obligations_where_possible(|_| {});
-
-        let mut generators = self.deferred_generator_interiors.borrow_mut();
-        for (_, body_id, interior, kind) in generators.drain(..) {
-            crate::generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
-            self.select_obligations_where_possible(|_| {});
-        }
-    }
-
     /// Unify the inference variables corresponding to generator witnesses, and save all the
     /// predicates that were stalled on those inference variables.
     ///
@@ -533,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// We must not attempt to select obligations after this method has run, or risk query cycle
     /// ICE.
     #[instrument(level = "debug", skip(self))]
-    fn save_generator_interior_predicates(&self, def_id: DefId) {
+    pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
         // Try selecting all obligations that are not blocked on inference variables.
         // Once we start unifying generator witnesses, trying to select obligations on them will
         // trigger query cycle ICEs, as doing so requires MIR.
@@ -550,7 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
             );
-            let witness = Ty::new_generator_witness_mir(self.tcx, expr_def_id.to_def_id(), args);
+            let witness = Ty::new_generator_witness(self.tcx, expr_def_id.to_def_id(), args);
 
             // Unify `interior` with `witness` and collect all the resulting obligations.
             let span = self.tcx.hir().body(body_id).value.span;

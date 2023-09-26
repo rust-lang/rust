@@ -1,10 +1,10 @@
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
-use rustc_target::abi::{Endian, HasDataLayout, Size};
+use rustc_target::abi::{Endian, HasDataLayout};
 
 use crate::*;
-use helpers::check_arg_count;
+use helpers::{bool_to_simd_element, check_arg_count, simd_element_to_bool};
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -60,7 +60,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     let dest = this.project_index(&dest, i)?;
                     let val = match which {
-                        Op::MirOp(mir_op) => this.unary_op(mir_op, &op)?.to_scalar(),
+                        Op::MirOp(mir_op) => this.wrapping_unary_op(mir_op, &op)?.to_scalar(),
                         Op::Abs => {
                             // Works for f32 and f64.
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
@@ -177,7 +177,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i)?;
                     let val = match which {
                         Op::MirOp(mir_op) => {
-                            let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
+                            let (val, overflowed) = this.overflowing_binary_op(mir_op, &left, &right)?;
                             if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
                                 // Shifts have extra UB as SIMD operations that the MIR binop does not have.
                                 // See <https://github.com/rust-lang/rust/issues/91237>.
@@ -188,13 +188,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             }
                             if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
                                 // Special handling for boolean-returning operations
-                                assert_eq!(ty, this.tcx.types.bool);
-                                let val = val.to_bool().unwrap();
+                                assert_eq!(val.layout.ty, this.tcx.types.bool);
+                                let val = val.to_scalar().to_bool().unwrap();
                                 bool_to_simd_element(val, dest.layout.size)
                             } else {
-                                assert_ne!(ty, this.tcx.types.bool);
-                                assert_eq!(ty, dest.layout.ty);
-                                val
+                                assert_ne!(val.layout.ty, this.tcx.types.bool);
+                                assert_eq!(val.layout.ty, dest.layout.ty);
+                                val.to_scalar()
                             }
                         }
                         Op::SaturatingOp(mir_op) => {
@@ -304,18 +304,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     res = match which {
                         Op::MirOp(mir_op) => {
-                            this.binary_op(mir_op, &res, &op)?
+                            this.wrapping_binary_op(mir_op, &res, &op)?
                         }
                         Op::MirOpBool(mir_op) => {
                             let op = imm_from_bool(simd_element_to_bool(op)?);
-                            this.binary_op(mir_op, &res, &op)?
+                            this.wrapping_binary_op(mir_op, &res, &op)?
                         }
                         Op::Max => {
                             if matches!(res.layout.ty.kind(), ty::Float(_)) {
                                 ImmTy::from_scalar(fmax_op(&res, &op)?, res.layout)
                             } else {
                                 // Just boring integers, so NaNs to worry about
-                                if this.binary_op(BinOp::Ge, &res, &op)?.to_scalar().to_bool()? {
+                                if this.wrapping_binary_op(BinOp::Ge, &res, &op)?.to_scalar().to_bool()? {
                                     res
                                 } else {
                                     op
@@ -327,7 +327,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 ImmTy::from_scalar(fmin_op(&res, &op)?, res.layout)
                             } else {
                                 // Just boring integers, so NaNs to worry about
-                                if this.binary_op(BinOp::Le, &res, &op)?.to_scalar().to_bool()? {
+                                if this.wrapping_binary_op(BinOp::Le, &res, &op)?.to_scalar().to_bool()? {
                                     res
                                 } else {
                                     op
@@ -356,7 +356,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let mut res = init;
                 for i in 0..op_len {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    res = this.binary_op(mir_op, &res, &op)?;
+                    res = this.wrapping_binary_op(mir_op, &res, &op)?;
                 }
                 this.write_immediate(*res, dest)?;
             }
@@ -441,44 +441,42 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         // Int-to-(int|float): always safe
                         (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_))
                             if safe_cast || unsafe_cast =>
-                            this.int_to_int_or_float(&op, dest.layout.ty)?,
+                            this.int_to_int_or_float(&op, dest.layout)?,
                         // Float-to-float: always safe
                         (ty::Float(_), ty::Float(_)) if safe_cast || unsafe_cast =>
-                            this.float_to_float_or_int(&op, dest.layout.ty)?,
+                            this.float_to_float_or_int(&op, dest.layout)?,
                         // Float-to-int in safe mode
                         (ty::Float(_), ty::Int(_) | ty::Uint(_)) if safe_cast =>
-                            this.float_to_float_or_int(&op, dest.layout.ty)?,
+                            this.float_to_float_or_int(&op, dest.layout)?,
                         // Float-to-int in unchecked mode
                         (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
                             let f = op.to_scalar().to_f32()?;
-                            this.float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            this.float_to_int_checked(f, dest.layout, Round::TowardZero)
                                 .ok_or_else(|| {
                                     err_ub_format!(
                                         "`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`",
                                         dest.layout.ty
                                     )
                                 })?
-                                .into()
                         }
                         (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
                             let f = op.to_scalar().to_f64()?;
-                            this.float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            this.float_to_int_checked(f, dest.layout, Round::TowardZero)
                                 .ok_or_else(|| {
                                     err_ub_format!(
                                         "`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`",
                                         dest.layout.ty
                                     )
                                 })?
-                                .into()
                         }
                         // Ptr-to-ptr cast
                         (ty::RawPtr(..), ty::RawPtr(..)) if ptr_cast =>
-                            this.ptr_to_ptr(&op, dest.layout.ty)?,
+                            this.ptr_to_ptr(&op, dest.layout)?,
                         // Ptr/Int casts
                         (ty::RawPtr(..), ty::Int(_) | ty::Uint(_)) if expose_cast =>
-                            this.pointer_expose_address_cast(&op, dest.layout.ty)?,
+                            this.pointer_expose_address_cast(&op, dest.layout)?,
                         (ty::Int(_) | ty::Uint(_), ty::RawPtr(..)) if from_exposed_cast =>
-                            this.pointer_from_exposed_address_cast(&op, dest.layout.ty)?,
+                            this.pointer_from_exposed_address_cast(&op, dest.layout)?,
                         // Error otherwise
                         _ =>
                             throw_unsup_format!(
@@ -487,7 +485,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 to_ty = dest.layout.ty,
                             ),
                     };
-                    this.write_immediate(val, &dest)?;
+                    this.write_immediate(*val, &dest)?;
                 }
             }
             "shuffle" => {
@@ -610,21 +608,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         Ok(())
     }
-}
-
-fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Provenance> {
-    // SIMD uses all-1 as pattern for "true"
-    let val = if b { -1 } else { 0 };
-    Scalar::from_int(val, size)
-}
-
-fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<'_, bool> {
-    let val = elem.to_scalar().to_int(elem.layout.size)?;
-    Ok(match val {
-        0 => false,
-        -1 => true,
-        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
-    })
 }
 
 fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {

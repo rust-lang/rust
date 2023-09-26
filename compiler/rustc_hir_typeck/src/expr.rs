@@ -43,7 +43,10 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
-use rustc_middle::ty::error::TypeError::FieldMisMatch;
+use rustc_middle::ty::error::{
+    ExpectedFound,
+    TypeError::{FieldMisMatch, Sorts},
+};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitableExt};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -525,8 +528,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
 
-        if let ty::FnDef(did, ..) = *ty.kind() {
+        if let ty::FnDef(did, callee_args) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
+
+            // HACK: whenever we get a FnDef in a non-const context, enforce effects to get the
+            // default `host = true` to avoid inference errors later.
+            if tcx.hir().body_const_context(self.body_id).is_none() {
+                self.enforce_context_effects(expr.hir_id, qpath.span(), did, callee_args);
+            }
             if tcx.fn_sig(did).skip_binder().abi() == RustIntrinsic
                 && tcx.item_name(did) == sym::transmute
             {
@@ -658,15 +667,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.suggest_mismatched_types_on_tail(
                                 &mut err, expr, ty, e_ty, target_id,
                             );
+                            let error = Some(Sorts(ExpectedFound { expected: ty, found: e_ty }));
+                            self.annotate_loop_expected_due_to_inference(&mut err, expr, error);
                             if let Some(val) = ty_kind_suggestion(ty) {
-                                let label = destination
-                                    .label
-                                    .map(|l| format!(" {}", l.ident))
-                                    .unwrap_or_else(String::new);
-                                err.span_suggestion(
-                                    expr.span,
+                                err.span_suggestion_verbose(
+                                    expr.span.shrink_to_hi(),
                                     "give it a value of the expected type",
-                                    format!("break{label} {val}"),
+                                    format!(" {val}"),
                                     Applicability::HasPlaceholders,
                                 );
                             }
@@ -711,7 +718,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ... except when we try to 'break rust;'.
                 // ICE this expression in particular (see #43162).
                 if let ExprKind::Path(QPath::Resolved(_, path)) = e.kind {
-                    if path.segments.len() == 1 && path.segments[0].ident.name == sym::rust {
+                    if let [segment] = path.segments && segment.ident.name == sym::rust {
                         fatally_break_rust(self.tcx);
                     }
                 }

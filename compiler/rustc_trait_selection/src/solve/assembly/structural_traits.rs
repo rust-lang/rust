@@ -61,9 +61,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             Ok(vec![generator_args.tupled_upvars_ty(), generator_args.witness()])
         }
 
-        ty::GeneratorWitness(types) => Ok(ecx.instantiate_binder_with_placeholders(types).to_vec()),
-
-        ty::GeneratorWitnessMIR(def_id, args) => Ok(ecx
+        ty::GeneratorWitness(def_id, args) => Ok(ecx
             .tcx()
             .generator_hidden_types(def_id)
             .map(|bty| {
@@ -96,8 +94,7 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     let mut counter = 0;
     let ty = tcx.fold_regions(ty, |r, current_depth| match r.kind() {
         ty::ReErased => {
-            let br =
-                ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon(None) };
+            let br = ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon };
             counter += 1;
             ty::Region::new_late_bound(tcx, current_depth, br)
         }
@@ -105,7 +102,7 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
         r => bug!("unexpected region: {r:?}"),
     });
     let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-        (0..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon(None))),
+        (0..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon)),
     );
     ty::Binder::bind_with_vars(ty, bound_vars)
 }
@@ -127,7 +124,6 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Ref(..)
         | ty::Generator(..)
         | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
         | ty::Array(..)
         | ty::Closure(..)
         | ty::Never
@@ -204,9 +200,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
             }
         }
 
-        ty::GeneratorWitness(types) => Ok(ecx.instantiate_binder_with_placeholders(types).to_vec()),
-
-        ty::GeneratorWitnessMIR(def_id, args) => Ok(ecx
+        ty::GeneratorWitness(def_id, args) => Ok(ecx
             .tcx()
             .generator_hidden_types(def_id)
             .map(|bty| {
@@ -282,8 +276,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Ref(_, _, _)
         | ty::Dynamic(_, _, _)
         | ty::Generator(_, _, _)
-        | ty::GeneratorWitness(_)
-        | ty::GeneratorWitnessMIR(..)
+        | ty::GeneratorWitness(..)
         | ty::Never
         | ty::Tuple(_)
         | ty::Alias(_, _)

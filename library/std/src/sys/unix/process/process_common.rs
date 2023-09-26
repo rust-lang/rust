@@ -586,6 +586,23 @@ impl fmt::Debug for Command {
             if let Some(ref cwd) = self.cwd {
                 write!(f, "cd {cwd:?} && ")?;
             }
+            if self.env.does_clear() {
+                write!(f, "env -i ")?;
+                // Altered env vars will be printed next, that should exactly work as expected.
+            } else {
+                // Removed env vars need the command to be wrapped in `env`.
+                let mut any_removed = false;
+                for (key, value_opt) in self.get_envs() {
+                    if value_opt.is_none() {
+                        if !any_removed {
+                            write!(f, "env ")?;
+                            any_removed = true;
+                        }
+                        write!(f, "-u {} ", key.to_string_lossy())?;
+                    }
+                }
+            }
+            // Altered env vars can just be added in front of the program.
             for (key, value_opt) in self.get_envs() {
                 if let Some(value) = value_opt {
                     write!(f, "{}={value:?} ", key.to_string_lossy())?;
