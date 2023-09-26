@@ -1,10 +1,15 @@
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, ExitStatus, Output};
 
-fn get_command_inner(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Command {
+fn get_command_inner(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+    env: Option<&HashMap<String, String>>,
+) -> Command {
     let (cmd, args) = match input {
         [] => panic!("empty command"),
         [cmd, args @ ..] => (cmd, args),
@@ -13,6 +18,9 @@ fn get_command_inner(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Command
     command.args(args);
     if let Some(cwd) = cwd {
         command.current_dir(cwd);
+    }
+    if let Some(env) = env {
+        command.envs(env.iter().map(|(k, v)| (k.as_str(), v.as_str())));
     }
     command
 }
@@ -27,7 +35,8 @@ fn check_exit_status(
     } else {
         Err(format!(
             "Command `{}`{} exited with status {:?}",
-            input.iter()
+            input
+                .iter()
                 .map(|s| s.as_ref().to_str().unwrap())
                 .collect::<Vec<_>>()
                 .join(" "),
@@ -41,21 +50,27 @@ fn check_exit_status(
 fn command_error<D: Debug>(input: &[&dyn AsRef<OsStr>], cwd: &Option<&Path>, error: D) -> String {
     format!(
         "Command `{}`{} failed to run: {error:?}",
-        input.iter()
+        input
+            .iter()
             .map(|s| s.as_ref().to_str().unwrap())
             .collect::<Vec<_>>()
             .join(" "),
         cwd.as_ref()
-            .map(|cwd| format!(
-                " (running in folder `{}`)",
-                cwd.display(),
-            ))
+            .map(|cwd| format!(" (running in folder `{}`)", cwd.display(),))
             .unwrap_or_default(),
     )
 }
 
 pub fn run_command(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Result<Output, String> {
-    let output = get_command_inner(input, cwd)
+    run_command_with_env(input, cwd, None)
+}
+
+pub fn run_command_with_env(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+    env: Option<&HashMap<String, String>>,
+) -> Result<Output, String> {
+    let output = get_command_inner(input, cwd, env)
         .output()
         .map_err(|e| command_error(input, &cwd, e))?;
     check_exit_status(input, cwd, output.status)?;
@@ -65,8 +80,10 @@ pub fn run_command(input: &[&dyn AsRef<OsStr>], cwd: Option<&Path>) -> Result<Ou
 pub fn run_command_with_output(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
+    env: Option<&HashMap<String, String>>,
 ) -> Result<(), String> {
-    let exit_status = get_command_inner(input, cwd).spawn()
+    let exit_status = get_command_inner(input, cwd, env)
+        .spawn()
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
@@ -94,10 +111,67 @@ pub fn cargo_install(to_install: &str) -> Result<(), String> {
         return Ok(());
     }
     // We voluntarily ignore this error.
-    if run_command_with_output(&[&"cargo", &"install", &to_install], None).is_err() {
+    if run_command_with_output(&[&"cargo", &"install", &to_install], None, None).is_err() {
         println!("Skipping installation of `{to_install}`");
     }
     Ok(())
+}
+
+pub fn get_os_name() -> Result<String, String> {
+    let output = run_command(&[&"uname"], None)?;
+    let name = std::str::from_utf8(&output.stdout)
+        .unwrap_or("")
+        .trim()
+        .to_owned();
+    if !name.is_empty() {
+        Ok(name)
+    } else {
+        Err(format!("Failed to retrieve the OS name"))
+    }
+}
+
+pub fn get_rustc_host_triple() -> Result<String, String> {
+    let output = run_command(&[&"rustc", &"-vV"], None)?;
+    let content = std::str::from_utf8(&output.stdout).unwrap_or("");
+
+    for line in content.split('\n').map(|line| line.trim()) {
+        if !line.starts_with("host:") {
+            continue;
+        }
+        return Ok(line.split(':').nth(1).unwrap().trim().to_owned());
+    }
+    Err("Cannot find host triple".to_owned())
+}
+
+pub fn get_gcc_path() -> Result<String, String> {
+    let content = match fs::read_to_string("gcc_path") {
+        Ok(c) => c,
+        Err(_) => {
+            return Err(
+                "Please put the path to your custom build of libgccjit in the file \
+                   `gcc_path`, see Readme.md for details"
+                    .into(),
+            )
+        }
+    };
+    match content
+        .split('\n')
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .next()
+    {
+        Some(gcc_path) => {
+            let path = Path::new(gcc_path);
+            if !path.exists() {
+                Err(format!(
+                    "Path `{gcc_path}` contained in the `gcc_path` file doesn't exist"
+                ))
+            } else {
+                Ok(gcc_path.into())
+            }
+        }
+        None => Err("No path found in `gcc_path` file".into()),
+    }
 }
 
 pub struct CloneResult {
@@ -116,11 +190,17 @@ pub fn git_clone(to_clone: &str, dest: Option<&Path>) -> Result<CloneResult, Str
         .map(|dest| dest.join(&repo_name))
         .unwrap_or_else(|| Path::new(&repo_name).into());
     if dest.is_dir() {
-        return Ok(CloneResult { ran_clone: false, repo_name });
+        return Ok(CloneResult {
+            ran_clone: false,
+            repo_name,
+        });
     }
 
-    run_command_with_output(&[&"git", &"clone", &to_clone, &dest], None)?;
-    Ok(CloneResult { ran_clone: true, repo_name })
+    run_command_with_output(&[&"git", &"clone", &to_clone, &dest], None, None)?;
+    Ok(CloneResult {
+        ran_clone: true,
+        repo_name,
+    })
 }
 
 pub fn walk_dir<P, D, F>(dir: P, mut dir_cb: D, mut file_cb: F) -> Result<(), String>
@@ -130,8 +210,11 @@ where
     F: FnMut(&Path) -> Result<(), String>,
 {
     let dir = dir.as_ref();
-    for entry in fs::read_dir(dir).map_err(|e| format!("Failed to read dir `{}`: {e:?}", dir.display()))? {
-        let entry = entry.map_err(|e| format!("Failed to read entry in `{}`: {e:?}", dir.display()))?;
+    for entry in
+        fs::read_dir(dir).map_err(|e| format!("Failed to read dir `{}`: {e:?}", dir.display()))?
+    {
+        let entry =
+            entry.map_err(|e| format!("Failed to read entry in `{}`: {e:?}", dir.display()))?;
         let entry_path = entry.path();
         if entry_path.is_dir() {
             dir_cb(&entry_path)?;
