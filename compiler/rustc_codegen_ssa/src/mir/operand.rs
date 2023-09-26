@@ -135,15 +135,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         assert_eq!(alloc_align, layout.align.abi);
 
         let read_scalar = |start, size, s: abi::Scalar, ty| {
-            let val = alloc
-                .0
-                .read_scalar(
-                    bx,
-                    alloc_range(start, size),
-                    /*read_provenance*/ matches!(s.primitive(), abi::Pointer(_)),
-                )
-                .unwrap();
-            bx.scalar_to_backend(val, s, ty)
+            match alloc.0.read_scalar(
+                bx,
+                alloc_range(start, size),
+                /*read_provenance*/ matches!(s.primitive(), abi::Pointer(_)),
+            ) {
+                Ok(val) => bx.scalar_to_backend(val, s, ty),
+                Err(_) => bx.const_poison(ty),
+            }
         };
 
         // It may seem like all types with `Scalar` or `ScalarPair` ABI are fair game at this point.
@@ -156,7 +155,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             Abi::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                let val = read_scalar(Size::ZERO, size, s, bx.type_ptr());
+                let val = read_scalar(offset, size, s, bx.backend_type(layout));
                 OperandRef { val: OperandValue::Immediate(val), layout }
             }
             Abi::ScalarPair(
@@ -164,10 +163,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 b @ abi::Scalar::Initialized { .. },
             ) => {
                 let (a_size, b_size) = (a.size(bx), b.size(bx));
-                let b_offset = a_size.align_to(b.align(bx).abi);
+                let b_offset = (offset + a_size).align_to(b.align(bx).abi);
                 assert!(b_offset.bytes() > 0);
                 let a_val = read_scalar(
-                    Size::ZERO,
+                    offset,
                     a_size,
                     a,
                     bx.scalar_pair_element_backend_type(layout, 0, true),
