@@ -1,6 +1,6 @@
 //@no-rustfix: overlapping suggestions
 #![allow(unused_must_use)]
-#![warn(clippy::needless_raw_strings, clippy::write_literal)]
+#![warn(clippy::write_literal)]
 
 use std::io::Write;
 
@@ -11,9 +11,7 @@ fn main() {
     //~^ ERROR: literal with an empty format string
     //~| NOTE: `-D clippy::write-literal` implied by `-D warnings`
     writeln!(v, r"{}", r"{hello}");
-    //~^ ERROR: unnecessary raw string literal
-    //~| NOTE: `-D clippy::needless-raw-strings` implied by `-D warnings`
-    //~| ERROR: literal with an empty format string
+    //~^ ERROR: literal with an empty format string
     writeln!(v, "{}", '\'');
     //~^ ERROR: literal with an empty format string
     writeln!(v, "{}", '"');
@@ -26,8 +24,8 @@ fn main() {
         v,
         "some {}",
         "hello \
-        //~^ ERROR: literal with an empty format string
-        world!"
+        world!",
+        //~^^ ERROR: literal with an empty format string
     );
     writeln!(
         v,
