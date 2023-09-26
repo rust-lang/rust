@@ -220,7 +220,7 @@ fn path_segment_certainty(
                 // See the comment preceding `qpath_certainty`. `def_id` could refer to a type or a value.
                 let certainty = lhs.join_clearing_def_ids(rhs);
                 if resolves_to_type {
-                    if let DefKind::TyAlias { .. } = cx.tcx.def_kind(def_id) {
+                    if let DefKind::TyAlias = cx.tcx.def_kind(def_id) {
                         adt_def_id(cx.tcx.type_of(def_id).instantiate_identity())
                             .map_or(certainty, |def_id| certainty.with_def_id(def_id))
                     } else {
