@@ -856,12 +856,6 @@ impl Step for RustdocTheme {
         if let Some(linker) = builder.linker(self.compiler.host) {
             cmd.env("RUSTDOC_LINKER", linker);
         }
-        if builder.is_fuse_ld_lld(self.compiler.host) {
-            cmd.env(
-                "RUSTDOC_LLD_NO_THREADS",
-                util::lld_flag_no_threads(self.compiler.host.contains("windows")),
-            );
-        }
         builder.run_delaying_failure(&mut cmd);
     }
 }
@@ -1637,14 +1631,12 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
-        hostflags.extend(builder.lld_flags(compiler.host));
         for flag in hostflags {
             cmd.arg("--host-rustcflags").arg(flag);
         }
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-        targetflags.extend(builder.lld_flags(target));
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
         }

@@ -53,10 +53,6 @@ fn main() {
         arg.push(&linker);
         cmd.arg(arg);
     }
-    if let Ok(no_threads) = env::var("RUSTDOC_LLD_NO_THREADS") {
-        cmd.arg("-Clink-arg=-fuse-ld=lld");
-        cmd.arg(format!("-Clink-arg=-Wl,{no_threads}"));
-    }
     // Cargo doesn't pass RUSTDOCFLAGS to proc_macros:
     // https://github.com/rust-lang/cargo/issues/4423
     // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.

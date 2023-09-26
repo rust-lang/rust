@@ -193,7 +193,6 @@ pub struct Config {
     pub llvm_from_ci: bool,
     pub llvm_build_config: HashMap<String, String>,
 
-    pub use_lld: bool,
     pub lld_enabled: bool,
     pub llvm_tools_enabled: bool,
 
@@ -989,7 +988,6 @@ define_config! {
         save_toolstates: Option<String> = "save-toolstates",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
         lld: Option<bool> = "lld",
-        use_lld: Option<bool> = "use-lld",
         llvm_tools: Option<bool> = "llvm-tools",
         deny_warnings: Option<bool> = "deny-warnings",
         backtrace_on_ice: Option<bool> = "backtrace-on-ice",
@@ -1407,7 +1405,6 @@ impl Config {
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }
-            set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
             config.rustc_parallel = rust.parallel_compiler.unwrap_or(false);

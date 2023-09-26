@@ -229,7 +229,6 @@ pub struct Build {
 
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
-    initial_lld: PathBuf,
     initial_libdir: PathBuf,
     initial_sysroot: PathBuf,
 
@@ -392,7 +391,6 @@ impl Build {
             )
         };
         let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
-        let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
         let initial_sysroot = if config.dry_run() {
             "/dummy".to_string()
@@ -435,7 +433,6 @@ impl Build {
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
-            initial_lld,
             initial_libdir,
             initial_sysroot: initial_sysroot.into(),
             local_rebuild: config.local_rebuild,
@@ -1254,32 +1251,9 @@ impl Build {
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if self.config.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
-            Some(self.initial_lld.clone())
         } else {
             None
         }
-    }
-
-    // LLD is used through `-fuse-ld=lld` rather than directly.
-    // Only MSVC targets use LLD directly at the moment.
-    fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
-        self.config.use_lld && !target.contains("msvc")
-    }
-
-    fn lld_flags(&self, target: TargetSelection) -> impl Iterator<Item = String> {
-        let mut options = [None, None];
-
-        if self.config.use_lld {
-            if self.is_fuse_ld_lld(target) {
-                options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
-            }
-
-            let no_threads = util::lld_flag_no_threads(target.contains("windows"));
-            options[1] = Some(format!("-Clink-arg=-Wl,{no_threads}"));
-        }
-
-        IntoIterator::into_iter(options).flatten()
     }
 
     /// Returns if this target should statically link the C runtime, if specified

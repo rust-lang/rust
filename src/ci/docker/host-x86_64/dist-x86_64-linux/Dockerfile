@@ -83,7 +83,6 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set rust.jemalloc \
-      --set rust.use-lld=true \
       --set rust.lto=thin
 
 ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \

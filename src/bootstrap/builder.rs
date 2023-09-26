@@ -1174,9 +1174,6 @@ impl<'a> Builder<'a> {
         if let Some(linker) = self.linker(compiler.host) {
             cmd.env("RUSTDOC_LINKER", linker);
         }
-        if self.is_fuse_ld_lld(compiler.host) {
-            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
-        }
         cmd
     }
 
@@ -1657,21 +1654,11 @@ impl<'a> Builder<'a> {
         if let Some(host_linker) = self.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
-        if self.is_fuse_ld_lld(compiler.host) {
-            cargo.env("RUSTC_HOST_FUSE_LD_LLD", "1");
-            cargo.env("RUSTDOC_FUSE_LD_LLD", "1");
-        }
 
         if let Some(target_linker) = self.linker(target) {
             let target = crate::envify(&target.triple);
             cargo.env(&format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
-        if self.is_fuse_ld_lld(target) {
-            rustflags.arg("-Clink-args=-fuse-ld=lld");
-        }
-        self.lld_flags(target).for_each(|flag| {
-            rustdocflags.arg(&flag);
-        });
 
         if !(["build", "check", "clippy", "fix", "rustc"].contains(&cmd)) && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
