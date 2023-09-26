@@ -75,7 +75,7 @@ pub use smol_str::SmolStr;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Parse<T> {
     green: GreenNode,
-    errors: Arc<Vec<SyntaxError>>,
+    errors: Arc<[SyntaxError]>,
     _ty: PhantomData<fn() -> T>,
 }
 
@@ -87,7 +87,7 @@ impl<T> Clone for Parse<T> {
 
 impl<T> Parse<T> {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> Parse<T> {
-        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
+        Parse { green, errors: errors.into(), _ty: PhantomData }
     }
 
     pub fn syntax_node(&self) -> SyntaxNode {
@@ -107,7 +107,7 @@ impl<T: AstNode> Parse<T> {
         T::cast(self.syntax_node()).unwrap()
     }
 
-    pub fn ok(self) -> Result<T, Arc<Vec<SyntaxError>>> {
+    pub fn ok(self) -> Result<T, Arc<[SyntaxError]>> {
         if self.errors.is_empty() {
             Ok(self.tree())
         } else {
@@ -144,7 +144,7 @@ impl Parse<SourceFile> {
         parsing::incremental_reparse(self.tree().syntax(), indel, self.errors.to_vec()).map(
             |(green_node, errors, _reparsed_range)| Parse {
                 green: green_node,
-                errors: Arc::new(errors),
+                errors: errors.into(),
                 _ty: PhantomData,
             },
         )
@@ -168,7 +168,7 @@ impl SourceFile {
         errors.extend(validation::validate(&root));
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
+        Parse { green, errors: errors.into(), _ty: PhantomData }
     }
 }
 
@@ -275,7 +275,7 @@ impl ast::TokenTree {
 
         let (green, errors) = builder.finish_raw();
 
-        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
+        Parse { green, errors: errors.into(), _ty: PhantomData }
     }
 }
 
