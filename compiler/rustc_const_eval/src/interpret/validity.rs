@@ -385,7 +385,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            Ub(AlignmentCheckFailed(Misalignment { required, has })) => UnalignedPtr {
+            Ub(AlignmentCheckFailed(Misalignment { required, has }, _msg)) => UnalignedPtr {
                 ptr_kind,
                 required_bytes: required.bytes(),
                 found_bytes: has.bytes()

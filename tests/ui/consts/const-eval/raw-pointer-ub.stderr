@@ -2,13 +2,13 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/raw-pointer-ub.rs:9:16
    |
 LL |     let _val = *ptr;
-   |                ^^^^ accessing memory with alignment 1, but alignment 4 is required
+   |                ^^^^ accessing memory based on pointer with alignment 1, but alignment 4 is required
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/raw-pointer-ub.rs:16:5
    |
 LL |     *ptr = 0;
-   |     ^^^^^^^^ accessing memory with alignment 1, but alignment 4 is required
+   |     ^^^^^^^^ accessing memory based on pointer with alignment 1, but alignment 4 is required
 
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
@@ -29,7 +29,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/raw-pointer-ub.rs:36:16
    |
 LL |     let _val = (*ptr).0;
-   |                ^^^^^^^^ accessing memory with alignment 4, but alignment 16 is required
+   |                ^^^^^^^^ accessing memory based on pointer with alignment 4, but alignment 16 is required
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/raw-pointer-ub.rs:43:16

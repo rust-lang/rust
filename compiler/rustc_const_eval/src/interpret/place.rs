@@ -15,9 +15,9 @@ use rustc_middle::ty::Ty;
 use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
-    alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, ImmTy, Immediate,
-    InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer,
-    PointerArithmetic, Projectable, Provenance, Readable, Scalar,
+    alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckAlignMsg, ImmTy,
+    Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
+    Operand, Pointer, PointerArithmetic, Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -461,7 +461,7 @@ where
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
         let a = self.get_ptr_alloc(mplace.ptr(), size, Align::ONE)?;
-        self.check_misalign(mplace.mplace.misaligned)?;
+        self.check_misalign(mplace.mplace.misaligned, CheckAlignMsg::BasedOn)?;
         Ok(a)
     }
 
@@ -477,7 +477,7 @@ where
         // We check alignment separately, and raise that error *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
         // However we have to call `check_misalign` first to make the borrow checker happy.
-        let misalign_err = self.check_misalign(mplace.mplace.misaligned);
+        let misalign_err = self.check_misalign(mplace.mplace.misaligned, CheckAlignMsg::BasedOn);
         let a = self.get_ptr_alloc_mut(mplace.ptr(), size, Align::ONE)?;
         misalign_err?;
         Ok(a)
@@ -881,8 +881,8 @@ where
             dest_size,
             /*nonoverlapping*/ true,
         )?;
-        self.check_misalign(src.mplace.misaligned)?;
-        self.check_misalign(dest.mplace.misaligned)?;
+        self.check_misalign(src.mplace.misaligned, CheckAlignMsg::BasedOn)?;
+        self.check_misalign(dest.mplace.misaligned, CheckAlignMsg::BasedOn)?;
         Ok(())
     }
 

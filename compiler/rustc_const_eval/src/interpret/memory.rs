@@ -21,8 +21,8 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use crate::fluent_generated as fluent;
 
 use super::{
-    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg,
-    GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
+    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg,
+    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
     PointerArithmetic, Provenance, Scalar,
 };
 
@@ -425,7 +425,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 // Must be aligned.
                 if M::enforce_alignment(self) && align.bytes() > 1 {
-                    self.check_misalign(Self::offset_misalignment(addr, align))?;
+                    self.check_misalign(
+                        Self::offset_misalignment(addr, align),
+                        CheckAlignMsg::AccessedPtr,
+                    )?;
                 }
                 None
             }
@@ -449,7 +452,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if M::enforce_alignment(self) && align.bytes() > 1 {
-                    self.check_misalign(self.alloc_misalignment(ptr, offset, align, alloc_align))?;
+                    self.check_misalign(
+                        self.alloc_misalignment(ptr, offset, align, alloc_align),
+                        CheckAlignMsg::AccessedPtr,
+                    )?;
                 }
 
                 // We can still be zero-sized in this branch, in which case we have to
@@ -460,9 +466,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub(super) fn check_misalign(&self, misaligned: Option<Misalignment>) -> InterpResult<'tcx> {
+    pub(super) fn check_misalign(
+        &self,
+        misaligned: Option<Misalignment>,
+        msg: CheckAlignMsg,
+    ) -> InterpResult<'tcx> {
         if let Some(misaligned) = misaligned {
-            throw_ub!(AlignmentCheckFailed(misaligned))
+            throw_ub!(AlignmentCheckFailed(misaligned, msg))
         }
         Ok(())
     }

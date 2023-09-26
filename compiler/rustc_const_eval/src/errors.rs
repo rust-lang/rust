@@ -390,15 +390,6 @@ pub struct LiveDrop<'tcx> {
     pub dropped_at: Option<Span>,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(const_eval_align_check_failed)]
-pub struct AlignmentCheckFailed {
-    pub has: u64,
-    pub required: u64,
-    #[subdiagnostic]
-    pub frames: Vec<FrameNote>,
-}
-
 #[derive(Diagnostic)]
 #[diag(const_eval_error, code = "E0080")]
 pub struct ConstEvalError {
@@ -568,9 +559,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
 
                 builder.set_arg("bad_pointer_message", bad_pointer_message(msg, handler));
             }
-            AlignmentCheckFailed(Misalignment { required, has }) => {
+            AlignmentCheckFailed(Misalignment { required, has }, msg) => {
                 builder.set_arg("required", required.bytes());
                 builder.set_arg("has", has.bytes());
+                builder.set_arg("msg", format!("{msg:?}"));
             }
             WriteToReadOnly(alloc) | DerefFunctionPointer(alloc) | DerefVTablePointer(alloc) => {
                 builder.set_arg("allocation", alloc);

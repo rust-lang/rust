@@ -216,7 +216,7 @@ pub enum InvalidProgramInfo<'tcx> {
 }
 
 /// Details of why a pointer had to be in-bounds.
-#[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Debug, Copy, Clone)]
 pub enum CheckInAllocMsg {
     /// We are access memory.
     MemoryAccessTest,
@@ -228,7 +228,16 @@ pub enum CheckInAllocMsg {
     InboundsTest,
 }
 
-#[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+/// Details of which pointer is not aligned.
+#[derive(Debug, Copy, Clone)]
+pub enum CheckAlignMsg {
+    /// The accessed pointer did not have proper alignment.
+    AccessedPtr,
+    /// The access ocurred with a place that was based on a misaligned pointer.
+    BasedOn,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum InvalidMetaKind {
     /// Size of a `[T]` is too big
     SliceTooBig,
@@ -329,7 +338,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using an integer as a pointer in the wrong way.
     DanglingIntPointer(u64, CheckInAllocMsg),
     /// Used a pointer with bad alignment.
-    AlignmentCheckFailed(Misalignment),
+    AlignmentCheckFailed(Misalignment, CheckAlignMsg),
     /// Writing to read-only memory.
     WriteToReadOnly(AllocId),
     /// Trying to access the data behind a function pointer.
