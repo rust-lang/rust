@@ -75,6 +75,7 @@ impl EarlyLintPass for RawStrings {
             if !snippet(cx, expr.span, prefix).trim().starts_with(prefix) {
                 return;
             }
+            let descr = lit.kind.descr();
 
             if !str.contains(['\\', '"']) {
                 span_lint_and_then(
@@ -89,20 +90,17 @@ impl EarlyLintPass for RawStrings {
                         let r_pos = expr.span.lo() + BytePos::from_usize(prefix.len() - 1);
                         let start = start.with_lo(r_pos);
 
-                        if end.is_empty() {
-                            diag.span_suggestion(
-                                start,
-                                "use a string literal instead",
-                                format!("\"{str}\""),
-                                Applicability::MachineApplicable,
-                            );
-                        } else {
-                            diag.multipart_suggestion(
-                                "try",
-                                vec![(start, String::new()), (end, String::new())],
-                                Applicability::MachineApplicable,
-                            );
+                        let mut remove = vec![(start, String::new())];
+                        // avoid debug ICE from empty suggestions
+                        if !end.is_empty() {
+                            remove.push((end, String::new()));
                         }
+
+                        diag.multipart_suggestion_verbose(
+                            format!("use a plain {descr} literal instead"),
+                            remove,
+                            Applicability::MachineApplicable,
+                        );
                     },
                 );
                 if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS), rustc_lint::Allow) {
@@ -149,9 +147,9 @@ impl EarlyLintPass for RawStrings {
                         let (start, end) = hash_spans(expr.span, prefix, req, max);
 
                         let message = match max - req {
-                            _ if req == 0 => "remove all the hashes around the literal".to_string(),
-                            1 => "remove one hash from both sides of the literal".to_string(),
-                            n => format!("remove {n} hashes from both sides of the literal"),
+                            _ if req == 0 => format!("remove all the hashes around the {descr} literal"),
+                            1 => format!("remove one hash from both sides of the {descr} literal"),
+                            n => format!("remove {n} hashes from both sides of the {descr} literal"),
                         };
 
                         diag.multipart_suggestion(
