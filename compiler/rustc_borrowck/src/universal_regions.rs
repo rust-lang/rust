@@ -639,10 +639,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         };
 
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
-        let subst_mapping =
-            iter::zip(identity_args.regions(), fr_args.regions().map(|r| r.as_var()));
+        let arg_mapping = iter::zip(identity_args.regions(), fr_args.regions().map(|r| r.as_var()));
 
-        UniversalRegionIndices { indices: global_mapping.chain(subst_mapping).collect(), fr_static }
+        UniversalRegionIndices { indices: global_mapping.chain(arg_mapping).collect(), fr_static }
     }
 
     fn compute_inputs_and_output(

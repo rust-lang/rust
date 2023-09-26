@@ -1664,7 +1664,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     lifetime.ident,
                 ));
 
-                // Now make an arg that we can use for the substs of the opaque tykind.
+                // Now make an arg that we can use for the generic params of the opaque tykind.
                 let id = self.next_node_id();
                 let lifetime_arg = self.new_named_lifetime_with_res(id, lifetime.ident, res);
                 let duplicated_lifetime_def_id = self.local_def_id(duplicated_lifetime_node_id);

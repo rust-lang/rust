@@ -569,7 +569,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> Result<T, ErrorHandled> {
         frame
             .instance
-            .try_subst_mir_and_normalize_erasing_regions(
+            .try_instantiate_mir_and_normalize_erasing_regions(
                 *self.tcx,
                 self.param_env,
                 ty::EarlyBinder::bind(value),
