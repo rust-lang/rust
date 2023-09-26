@@ -10,22 +10,23 @@
 //!
 //! is called "pinning." We would say that a value which satisfies these guarantees has been
 //! "pinned," in that it has been permanently (until the end of its lifetime) attached to its
-//! location in memory. Pinning a value is incredibly useful in that it provides the necessary
-//! guarantees[^guarantees] for [`unsafe`] code to be able to dereference raw pointers to the pinned
-//! value for the duration it is pinned (which, [as we'll see later][drop-guarantee], is necessarily
-//! from the time the value is first pinned until the end of its lifetime). This concept of
-//! "pinning" is necessary to implement safe interfaces on top of things like self-referential types
-//! and intrusive data structures which cannot currently be modeled in fully safe Rust using only
-//! borrow-checked [references][reference].
+//! location in memory, as though pinned to a pinboard. Pinning a value is incredibly useful in
+//! that it provides the necessary guarantees[^guarantees] for [`unsafe`] code to be able to
+//! dereference raw pointers to the pinned value for the duration it is pinned (which,
+//! [as we'll see later][drop-guarantee], is necessarily from the time the value is first pinned
+//! until the end of its lifetime). This concept of "pinning" is necessary to implement safe
+//! interfaces on top of things like self-referential types and intrusive data structures which
+//! cannot currently be modeled in fully safe Rust using only borrow-checked
+//! [references][reference].
 //!
 //! "Pinning" allows us to put a *value* which exists at some location in memory into a state where
 //! safe code cannot *move* that value to a different location in memory or otherwise invalidate it
 //! at its current location (unless it implements [`Unpin`], which we will
-//! [talk about below][unpin]). Anything that wants to interact with the pinned value in a way that
-//! has the potential to violate these guarantees must promise that it will not actually violate
-//! them, using the [`unsafe`] keyword to mark that such a promise is upheld by the user and not
-//! the compiler. In this way, we can allow other [`unsafe`] code to rely on any pointers that
-//! point to the pinned value to be valid to dereference while it is pinned.
+//! [talk about below][self#unpin]). Anything that wants to interact with the pinned value in a way
+//! that has the potential to violate these guarantees must promise that it will not actually
+//! violate them, using the [`unsafe`] keyword to mark that such a promise is upheld by the user
+//! and not the compiler. In this way, we can allow other [`unsafe`] code to rely on any pointers
+//! that point to the pinned value to be valid to dereference while it is pinned.
 //!
 //! [^guarantees]: Pinning on its own does not provide *all* the invariants necessary here. However,
 //! in order to validly pin a value in the first place, it must already satisfy the other invariants
@@ -61,7 +62,7 @@
 //! [`Copy`]ing a value from one place in memory to another. In Rust, "move" carries with it the
 //! semantics of ownership transfer from one variable to another, which is the key difference
 //! between a [`Copy`] and a move. For the purposes of this module's documentation, however, when
-//! we write *move* in italics, we mean *specifically* that the value has moved in the mechanical
+//! we write *move* in italics, we mean *specifically* that the value has *moved* in the mechanical
 //! sense of being located at a new place in memory.
 //!
 //! All values in Rust are trivially *moveable*. This means that the address at which a value is
@@ -184,12 +185,38 @@
 //! will not be *moved* or [otherwise invalidated][subtle-details].
 //!
 //! We call such a [`Pin`]-wrapped pointer a **pinning pointer,** (or pinning reference, or pinning
-//! `Box`, etc.) because its existince is the thing that is pinning the underlying pointee in place:
-//! it is the metaphorical "pin" securing the data in place on the pinboard (in memory).
+//! `Box`, etc.) because its existince is the thing that is *symbolically* pinning the underlying
+//! pointee in place: it is the metaphorical "pin" securing the data in place on the pinboard
+//! (in memory).
 //!
-//! It is important to stress that the thing in the [`Pin`] is not the value which we want to pin
-//! itself, but rather a pointer to that value! A [`Pin<Ptr>`] does not pin the `Ptr` but rather
-//! the pointer's ***pointee** value*.
+//! Notice that the thing wrapped by [`Pin`] is not the value which we want to pin itself, but
+//! rather a pointer to that value! A [`Pin<Ptr>`] does not pin the `Ptr`; instead, it pins the
+//! pointer's ***pointee** value*.
+//!
+//! ### Pinning as a library contract
+//!
+//! Pinning does not require nor make use of any compiler "magic"[^noalias], only a specific
+//! contract between the [`unsafe`] parts of a library API and its users.
+//!
+//! It is important to stress this point as a user of the [`unsafe`] parts of the [`Pin`] API.
+//! Practically, this means that performing the mechanics of "pinning" a value by creating a
+//! [`Pin<Ptr>`] to it *does not* actually change the way the compiler behaves towards the
+//! inner value! It is possible to use incorrect [`unsafe`] code to create a [`Pin<Ptr>`] to a
+//! value which does not actually satisfy the invariants that a pinned value must satisfy, and in
+//! this way lead undefined behavior even in (from that point) fully safe code. Similarly, using
+//! [`unsafe`], one may get access to a bare [`&mut T`] from a [`Pin<Ptr>`] and
+//! juse that to invalidly *move* pinned the value out. It is the job of the user of the
+//! [`unsafe`] parts of the [`Pin`] API to ensure these invariants are not violated.
+//!
+//! This differs from e.g. [`UnsafeCell`] which changes the semantics of a program's compiled
+//! output. A [`Pin<Ptr>`] is a handle to a value which we have promised we will not move out of,
+//! but Rust still considers all values themselves to be fundamentally moveable through, *e.g.*
+//! assignment or [`mem::replace`].
+//!
+//! [^noalias]: There is a bit of nuance here that is still being decided about what the aliasing
+//! semantics of `Pin<&mut T>` should be, but this is true as of today.
+//!
+//! ### How [`Pin`] prevents misuse in safe code
 //!
 //! In order to accomplish the goal of pinning the pointee value, [`Pin<Ptr>`] restricts access to
 //! the wrapped `Ptr` type in safe code. Specifically, [`Pin`] disallows the ability to access
@@ -199,23 +226,25 @@
 //! through that <code>[&mut] T</code> it would be possible to *move* the underlying value out of
 //! the pointer with [`mem::replace`], etc.
 //!
-//! This promise must be upheld manually by [`unsafe`] code which interacts with the [`Pin<Ptr>`]
-//! so that other [`unsafe`] code can rely on the pointee value being *un-moved* and valid.
-//! Interfaces that operate on values which are in an address-sensitive state accept an argument
-//! like <code>[Pin]<[&mut] T></code> or <code>[Pin]<[Box]\<T>></code> to indicate this contract to
-//! the caller.
+//! As discussed above, this promise must be upheld manually by [`unsafe`] code which interacts
+//! with the [`Pin<Ptr>`] so that other [`unsafe`] code can rely on the pointee value being
+//! *un-moved* and valid. Interfaces that operate on values which are in an address-sensitive state
+//! accept an argument like <code>[Pin]<[&mut] T></code> or <code>[Pin]<[Box]\<T>></code> to
+//! indicate this contract to the caller.
 //!
-//! [As discussed below][drop-guarantee], this has consequences for running
-//! destructors of pinned memory, too.
+//! [As discussed below][drop-guarantee], opting in to using pinning guarantees in the interface
+//! of an address-sensitive type has consequences for the implementation of some safe traits on
+//! that type as well.
 //!
 //! ## Interaction between [`Deref`] and [`Pin<Ptr>`]
 //!
 //! Since [`Pin<Ptr>`] can wrap any pointer type, it uses [`Deref`] and [`DerefMut`] in
 //! order to identify the type of the pinned pointee data and provide (restricted) access to it.
 //!
-//! A [`Pin<Ptr>`] where [`Ptr: Deref`][Deref] is a "`Ptr`-style pointer" to a pinned
-//! [`P::Target`][Target] – so, a <code>[Pin]<[Box]\<T>></code> is an owned pointer to a pinned `T`,
-//! and a <code>[Pin]<[Rc]\<T>></code> is a reference-counted pointer to a pinned `T`.
+//! A [`Pin<Ptr>`] where [`Ptr: Deref`][Deref] is a "`Ptr`-style pinning pointer" to a pinned
+//! [`P::Target`][Target] – so, a <code>[Pin]<[Box]\<T>></code> is an owned, pinning pointer to a
+//! pinned `T`, and a <code>[Pin]<[Rc]\<T>></code> is a reference-counted, pinning pointer to a
+//! pinned `T`.
 //!
 //! [`Pin<Ptr>`] also uses the [`<Ptr as Deref>::Target`][Target] type information to modify the
 //! interface it is allowed to provide for interacting with that data (for example, when a
@@ -227,17 +256,6 @@
 //! implementation of [`DerefMut::deref_mut`]. It is unsound for [`unsafe`] code to wrap pointer
 //! types with such "malicious" implementations of [`Deref`]; see [`Pin<Ptr>::new_unchecked`] for
 //! details.
-//!
-//! ## Pinning as a library contract
-//!
-//! Pinning does not require any compiler "magic"[^noalias], only a specific contract between the
-//! library API and its users. This differs from e.g. [`UnsafeCell`] which changes the semantics of
-//! a program's compiled output. A [`Pin<Ptr>`] is a handle to a value which does not allow moving
-//! the value out, but Rust still considers all values themselves to be moveable with e.g.
-//! [`mem::replace`].
-//!
-//! [^noalias]: There is a bit of nuance here that is still being decided about what the aliasing
-//! semantics of `Pin<&mut T>` should be, but this is true as of today.
 //!
 //! ## Fixing `AddrTracker`
 //!
@@ -850,6 +868,7 @@
 //! [`std::alloc`]: ../../std/alloc/index.html
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [Box]: ../../std/boxed/struct.Box.html "Box"
+//! [`Box`]: ../../std/boxed/struct.Box.html "Box"
 //! [`Rc<T>`]: ../../std/rc/struct.Rc.html
 //! [Rc]: ../../std/rc/struct.Rc.html "rc::Rc"
 //! [`Vec<T>`]: ../../std/vec/struct.Vec.html
@@ -861,6 +880,7 @@
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
 //! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
 //! [VecDeque]: ../../std/collections/struct.VecDeque.html "collections::VecDeque"
+//! [`String`]: ../../std/string/struct.String.html "String"
 
 #![stable(feature = "pin", since = "1.33.0")]
 
