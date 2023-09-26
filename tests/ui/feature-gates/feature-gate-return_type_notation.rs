@@ -7,6 +7,7 @@
 #![feature(async_fn_in_trait)]
 
 trait Trait {
+    #[allow(async_fn_in_trait)]
     async fn m();
 }
 
