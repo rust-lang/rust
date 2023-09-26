@@ -1,0 +1,20 @@
+error[E0658]: the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe
+  --> $DIR/feature-gate-safe-intrinsic.rs:1:1
+   |
+LL | #[rustc_safe_intrinsic]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+
+error: attribute should be applied to intrinsic functions
+  --> $DIR/feature-gate-safe-intrinsic.rs:1:1
+   |
+LL | #[rustc_safe_intrinsic]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn safe() {}
+   | ------------ not an intrinsic function
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

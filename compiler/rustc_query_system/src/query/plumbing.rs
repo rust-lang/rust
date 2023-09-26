@@ -18,7 +18,7 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
-use rustc_data_structures::{cold_path, sync};
+use rustc_data_structures::{outline, sync};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
@@ -265,7 +265,7 @@ where
     match result {
         Ok(()) => {
             let Some((v, index)) = query.query_cache(qcx).lookup(&key) else {
-                cold_path(|| {
+                outline(|| {
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
                     let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();

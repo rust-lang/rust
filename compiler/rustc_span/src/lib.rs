@@ -33,7 +33,7 @@ extern crate rustc_macros;
 #[macro_use]
 extern crate tracing;
 
-use rustc_data_structures::{cold_path, AtomicRef};
+use rustc_data_structures::{outline, AtomicRef};
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
@@ -1592,7 +1592,7 @@ impl SourceFile {
             return &lines[..];
         }
 
-        cold_path(|| {
+        outline(|| {
             self.convert_diffs_to_lines_frozen();
             if let Some(SourceFileLines::Lines(lines)) = self.lines.get() {
                 return &lines[..];
