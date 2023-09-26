@@ -81,6 +81,24 @@ impl<'a> PanicInfo<'a> {
         Some(&self.location)
     }
 
+    /// Returns the payload associated with the panic.
+    ///
+    /// On `core::panic::PanicInfo`, this method never returns anything useful.
+    /// It only exists because of compatibility with [`std::panic::PanicInfo`],
+    /// which used to be the same type.
+    ///
+    /// See [`std::panic::PanicInfo::payload`].
+    ///
+    /// [`std::panic::PanicInfo`]: ../../std/panic/struct.PanicInfo.html
+    /// [`std::panic::PanicInfo::payload`]: ../../std/panic/struct.PanicInfo.html#method.payload
+    #[deprecated(since = "1.74.0", note = "this never returns anything useful")]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    #[allow(deprecated, deprecated_in_future)]
+    pub fn payload(&self) -> &(dyn crate::any::Any + Send) {
+        struct NoPayload;
+        &NoPayload
+    }
+
     /// Returns whether the panic handler is allowed to unwind the stack from
     /// the point where the panic occurred.
     ///
