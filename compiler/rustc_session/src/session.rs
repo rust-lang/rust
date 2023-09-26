@@ -14,7 +14,9 @@ use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_data_structures::sync::{AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread};
+use rustc_data_structures::sync::{
+    AtomicU64, DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
+};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
@@ -35,7 +37,6 @@ use rustc_target::spec::{
 };
 
 use std::any::Any;
-use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::ops::{Div, Mul};
@@ -149,7 +150,7 @@ pub struct Session {
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
 
-    incr_comp_session: OneThread<RefCell<IncrCompSession>>,
+    incr_comp_session: RwLock<IncrCompSession>,
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
@@ -533,9 +534,9 @@ impl Session {
         *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
     }
 
-    pub fn incr_comp_session_dir(&self) -> cell::Ref<'_, PathBuf> {
+    pub fn incr_comp_session_dir(&self) -> MappedReadGuard<'_, PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
-        cell::Ref::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
+        ReadGuard::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
             IncrCompSession::NotInitialized => panic!(
                 "trying to get session directory from `IncrCompSession`: {:?}",
                 *incr_comp_session,
@@ -548,7 +549,7 @@ impl Session {
         })
     }
 
-    pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
+    pub fn incr_comp_session_dir_opt(&self) -> Option<MappedReadGuard<'_, PathBuf>> {
         self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
     }
 
@@ -1176,7 +1177,7 @@ pub fn build_session(
         parse_sess,
         sysroot,
         io,
-        incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
+        incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         code_stats: Default::default(),
         optimization_fuel,

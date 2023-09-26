@@ -43,7 +43,6 @@
 pub use crate::marker::*;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
-use std::ops::{Deref, DerefMut};
 
 mod lock;
 pub use lock::{Lock, LockGuard, Mode};
@@ -309,8 +308,6 @@ cfg_match! {
 
         use parking_lot::RwLock as InnerRwLock;
 
-        use std::thread;
-
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
         const ERROR_CHECKING: bool = false;
@@ -443,58 +440,5 @@ impl<T: Clone> Clone for RwLock<T> {
     #[inline]
     fn clone(&self) -> Self {
         RwLock::new(self.borrow().clone())
-    }
-}
-
-/// A type which only allows its inner value to be used in one thread.
-/// It will panic if it is used on multiple threads.
-#[derive(Debug)]
-pub struct OneThread<T> {
-    #[cfg(parallel_compiler)]
-    thread: thread::ThreadId,
-    inner: T,
-}
-
-#[cfg(parallel_compiler)]
-unsafe impl<T> std::marker::Sync for OneThread<T> {}
-#[cfg(parallel_compiler)]
-unsafe impl<T> std::marker::Send for OneThread<T> {}
-
-impl<T> OneThread<T> {
-    #[inline(always)]
-    fn check(&self) {
-        #[cfg(parallel_compiler)]
-        assert_eq!(thread::current().id(), self.thread);
-    }
-
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        OneThread {
-            #[cfg(parallel_compiler)]
-            thread: thread::current().id(),
-            inner,
-        }
-    }
-
-    #[inline(always)]
-    pub fn into_inner(value: Self) -> T {
-        value.check();
-        value.inner
-    }
-}
-
-impl<T> Deref for OneThread<T> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-        self.check();
-        &self.inner
-    }
-}
-
-impl<T> DerefMut for OneThread<T> {
-    fn deref_mut(&mut self) -> &mut T {
-        self.check();
-        &mut self.inner
     }
 }
