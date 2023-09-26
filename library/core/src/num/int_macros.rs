@@ -915,26 +915,10 @@ macro_rules! int_impl {
         #[inline]
         pub const fn checked_isqrt(self) -> Option<Self> {
             if self < 0 {
-                return None;
-            } else if self < 2 {
-                return Some(self);
+                None
+            } else {
+                Some((self as $UnsignedT).isqrt() as Self)
             }
-
-            let mut x: Self = self;
-            let mut c: Self = 0;
-            let mut d: Self = 1 << (self.ilog2() & !1);
-
-            while (d != 0) {
-                if x >= c + d {
-                    x -= c + d;
-                    c = (c >> 1) + d;
-                } else {
-                    c >>= 1;
-                }
-                d >>= 2;
-            }
-
-            return Some(c);
         }
 
         /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric
@@ -2118,27 +2102,15 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            if self < 0 {
-                panic!("argument of integer square root must be non-negative")
-            } else if self < 2 {
-                return self;
+            // I would like to implement it as
+            // ```
+            // self.checked_isqrt().expect("argument of integer square root must be non-negative")
+            // ```
+            // but `expect` is not yet stable as a `const fn`.
+            match self.checked_isqrt() {
+                Some(sqrt) => sqrt,
+                None => panic!("argument of integer square root must be non-negative"),
             }
-
-            let mut x: Self = self;
-            let mut c: Self = 0;
-            let mut d: Self = 1 << (self.ilog2() & !1);
-
-            while (d != 0) {
-                if x >= c + d {
-                    x -= c + d;
-                    c = (c >> 1) + d;
-                } else {
-                    c >>= 1;
-                }
-                d >>= 2;
-            }
-
-            return c;
         }
 
         /// Calculates the quotient of Euclidean division of `self` by `rhs`.

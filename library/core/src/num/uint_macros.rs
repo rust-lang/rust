@@ -2011,7 +2011,7 @@ macro_rules! uint_impl {
                 d >>= 2;
             }
 
-            return c;
+            c
         }
 
         /// Performs Euclidean division.
