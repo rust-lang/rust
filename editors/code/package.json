@@ -467,7 +467,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.diagnostics.useRustcErrorCode": {
-                    "markdownDescription": "Whether to use the rustc error code.",
+                    "markdownDescription": "Whether to show diagnostics using the original rustc error code. If this is false, all rustc diagnostics will have the code 'rustc(Click for full compiler diagnostics)'",
                     "default": false,
                     "type": "boolean"
                 },
