@@ -1,3 +1,5 @@
+#![crate_name="issue_16265_1"]
+
 pub struct Foo;
 
 // @hasraw issue_16265_1/traits/index.html 'source'

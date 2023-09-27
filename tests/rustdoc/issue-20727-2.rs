@@ -1,6 +1,8 @@
 // aux-build:issue-20727.rs
 // ignore-cross-compile
 
+#![crate_name="issue_20727_2"]
+
 extern crate issue_20727;
 
 // @has issue_20727_2/trait.Add.html

@@ -1,6 +1,8 @@
 // aux-build:issue-19190-3.rs
 // ignore-cross-compile
 
+#![crate_name="issue_19190_3"]
+
 extern crate issue_19190_3;
 
 use std::ops::Deref;

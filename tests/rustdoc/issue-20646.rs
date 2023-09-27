@@ -1,6 +1,7 @@
 // aux-build:issue-20646.rs
 // ignore-cross-compile
 
+#![crate_name="issue_20646"]
 #![feature(associated_types)]
 
 extern crate issue_20646;

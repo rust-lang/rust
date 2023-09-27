@@ -1,3 +1,5 @@
+#![crate_name="issue_19190"]
+
 use std::ops::Deref;
 
 pub struct Foo;

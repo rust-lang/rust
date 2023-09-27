@@ -1,6 +1,8 @@
 // aux-build:issue-20727.rs
 // ignore-cross-compile
 
+#![crate_name="issue_20727_3"]
+
 extern crate issue_20727;
 
 pub trait Bar {}

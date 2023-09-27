@@ -1,3 +1,5 @@
+#![crate_name="issue_20175"]
+
 pub trait Foo {
     fn foo(&self) {}
 }

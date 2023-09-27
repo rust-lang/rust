@@ -1,6 +1,8 @@
 // aux-build:issue-13698.rs
 // ignore-cross-compile
 
+#![crate_name="issue_13698"]
+
 extern crate issue_13698;
 
 pub struct Foo;
