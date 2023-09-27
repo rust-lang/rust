@@ -621,7 +621,7 @@ fn foo(&self) -> Self::T { String::new() }
                         {
                             diag.span_label(
                                 item.span,
-                                format!("associated type is `default` and may be overridden"),
+                                "associated type is `default` and may be overridden",
                             );
                             return true;
                         }

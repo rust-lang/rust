@@ -644,7 +644,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if self.can_eq(self.param_env, ty, expected) {
                                 err.span_label(
                                     ex.span,
-                                    format!("expected because of this `break`"),
+                                    "expected because of this `break`",
                                 );
                                 exit = true;
                             }
