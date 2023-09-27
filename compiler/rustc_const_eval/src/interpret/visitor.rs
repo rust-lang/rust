@@ -21,7 +21,7 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
     /// `read_discriminant` can be hooked for better error messages.
     #[inline(always)]
     fn read_discriminant(&mut self, v: &Self::V) -> InterpResult<'tcx, VariantIdx> {
-        Ok(self.ecx().read_discriminant(&v.to_op(self.ecx())?)?)
+        self.ecx().read_discriminant(&v.to_op(self.ecx())?)
     }
 
     /// This function provides the chance to reorder the order in which fields are visited for

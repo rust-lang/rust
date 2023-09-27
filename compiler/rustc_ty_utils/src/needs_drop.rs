@@ -20,8 +20,7 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
     let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor, false)
-        .filter(filter_array_elements(tcx, query.param_env))
-        .next()
+        .find(filter_array_elements(tcx, query.param_env))
         .is_some();
 
     debug!("needs_drop_raw({:?}) = {:?}", query, res);
@@ -56,8 +55,7 @@ fn has_significant_drop_raw<'tcx>(
         adt_consider_insignificant_dtor(tcx),
         true,
     )
-    .filter(filter_array_elements(tcx, query.param_env))
-    .next()
+    .find(filter_array_elements(tcx, query.param_env))
     .is_some();
     debug!("has_significant_drop_raw({:?}) = {:?}", query, res);
     res
