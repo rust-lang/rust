@@ -938,13 +938,13 @@ marker_impls! {
 /// mem::replace(&mut *pinned_string, "other".to_string());
 /// ```
 ///
-/// This trait is automatically implemented for almost every type. The compiler (and you!) is free
-/// to take the conservative stance of marking types as [`Unpin`] by default. This is because if a
-/// type implements [`Unpin`], then it is unsound for [`unsafe`] code to assume that type is truly
-/// pinned, *even* when viewed through a "pinning" pointer! It is the responsibility of the
-/// implementor of [`unsafe`] code that relies upon pinning for soundness to ensure that all the
-/// types it expects to be truly pinned do not implement [`Unpin`]. For more details, see the
-/// [`pin` module] docs!
+/// This trait is automatically implemented for almost every type. The compiler is free
+/// to take the conservative stance of marking types as [`Unpin`] so long as all of the types that
+/// compose its fields are also [`Unpin`]. This is because if a type implements [`Unpin`], then it
+/// is unsound for that type's implementation to rely on pinning-related guarantees for soundness,
+/// *even* when viewed through a "pinning" pointer! It is the responsibility of the implementor of
+/// a type that relies upon pinning for soundness to ensure that type is *not* marked as [`Unpin`]
+/// by adding [`PhantomPinned`] field. For more details, see the [`pin` module] docs.
 ///
 /// [`mem::replace`]: crate::mem::replace "mem replace"
 /// [`Pin`]: crate::pin::Pin "Pin"

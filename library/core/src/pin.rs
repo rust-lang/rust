@@ -205,7 +205,7 @@
 //! value which does not actually satisfy the invariants that a pinned value must satisfy, and in
 //! this way lead undefined behavior even in (from that point) fully safe code. Similarly, using
 //! [`unsafe`], one may get access to a bare [`&mut T`] from a [`Pin<Ptr>`] and
-//! juse that to invalidly *move* pinned the value out. It is the job of the user of the
+//! use that to invalidly *move* pinned the value out. It is the job of the user of the
 //! [`unsafe`] parts of the [`Pin`] API to ensure these invariants are not violated.
 //!
 //! This differs from e.g. [`UnsafeCell`] which changes the semantics of a program's compiled
@@ -336,24 +336,18 @@
 //! unsound without being expressed through pinning, and they would then need to not
 //! implement [`Unpin`].
 //!
-//! The compiler (and users!) is free to take the conservative stance of marking types as [`Unpin`]
-//! by default. This is because if a type implements [`Unpin`], then it is unsound for [`unsafe`]
-//! code to assume that type is truly pinned, *even* when viewed through a "pinning" pointer! It is
-//! the responsibility of *the implementor of [`unsafe`] code that relies upon pinning for
-//! soundness* (you, in this case!) to ensure that all the types which that code expects to be truly
-//! pinned do not implement [`Unpin`].
+//! The compiler is free to take the conservative stance of marking types as [`Unpin`] so long as
+//! all of the types that compose its fields are also [`Unpin`]. This is because if a type
+//! implements [`Unpin`], then it is unsound for that type's implementation to rely on
+//! pinning-related guarantees for soundness, *even* when viewed through a "pinning" pointer! It is
+//! the responsibility of the implementor of a type that relies upon pinning for soundness to
+//! ensure that type is *not* marked as [`Unpin`] by adding [`PhantomPinned`] field. This is
+//! exactly what we did with our `AddrTracker` example above. Without doing this, you *must not*
+//! rely on pinning-related guarantees to apply to your type!
 //!
-//! Like other auto-traits, the compiler will automatically determine that a type implements
-//! [`Unpin`] if all its fields also implement [`Unpin`]. If you are building a type which consists
-//! of only [`Unpin`] types but has an address-sensistive state and thus should not itself
-//! implement [`Unpin`], you must opt out of [`Unpin`] via adding a field with the
-//! [`PhantomPinned`] marker type, as we did with our latest `AddrTracker` example above. Without
-//! doing this, you must not rely on the pinning guarantees to apply to your type!
-//!
-//! If you have reason to pin a value of a type that implements [`Unpin`] such that pinning-related
-//! guarantees actually are respected, you'll need to create your own wrapper type which itself
-//! opts out of implementing [`Unpin`] and contains a sub-field with the [`Unpin`] type that you
-//! want to pin.
+//! If need to truly pin a value of a foreign or built-in type that implements [`Unpin`], you'll
+//! need to create your own wrapper type around the [`Unpin`] type you want to pin and then
+//! opts-out of [`Unpin`] using [`PhantomPinned`].
 //!
 //! Exposing access to the inner field which you want to remain pinned must then be carefully
 //! considered as well! Remember, exposing a method that gives access to a
