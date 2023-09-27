@@ -104,99 +104,51 @@ fn is_operation_we_care_about<'tcx>(
     deref_assign_or_addr_of(e).or_else(|| ptr_write(cx, e))
 }
 
-fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
-    let e = e.peel_blocks();
+fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, orig_expr: &'tcx Expr<'tcx>) -> bool {
+    let mut need_check_freeze = false;
+    let mut e = orig_expr;
 
-    fn from_casts<'tcx>(
-        cx: &LateContext<'tcx>,
-        e: &'tcx Expr<'tcx>,
-        need_check_freeze: &mut bool,
-    ) -> Option<&'tcx Expr<'tcx>> {
-        // <expr> as *mut ...
-        let mut e = if let ExprKind::Cast(e, t) = e.kind
-            && let ty::RawPtr(TypeAndMut { mutbl: Mutability::Mut, .. }) = cx.typeck_results().node_type(t.hir_id).kind() {
-            e
-        // <expr>.cast_mut()
+    let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
+
+    // Bail out early if the end type is **not** a mutable pointer.
+    if !matches!(end_ty.kind(), ty::RawPtr(TypeAndMut { ty: _, mutbl: Mutability::Mut })) {
+        return false;
+    }
+
+    loop {
+        e = e.peel_blocks();
+        // <expr> as ...
+        e = if let ExprKind::Cast(expr, _) = e.kind {
+            expr
+        // <expr>.cast(), <expr>.cast_mut() or <expr>.cast_const()
         } else if let ExprKind::MethodCall(_, expr, [], _) = e.kind
             && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-            && cx.tcx.is_diagnostic_item(sym::ptr_cast_mut, def_id) {
+            && matches!(
+                cx.tcx.get_diagnostic_name(def_id),
+                Some(sym::ptr_cast | sym::const_ptr_cast | sym::ptr_cast_mut | sym::ptr_cast_const)
+            )
+        {
             expr
-        // UnsafeCell::raw_get(<expr>)
+        // ptr::from_ref(<expr>), UnsafeCell::raw_get(<expr>) or mem::transmute<_, _>(<expr>)
         } else if let ExprKind::Call(path, [arg]) = e.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && cx.tcx.is_diagnostic_item(sym::unsafe_cell_raw_get, def_id)
+            && matches!(
+                cx.tcx.get_diagnostic_name(def_id),
+                Some(sym::ptr_from_ref | sym::unsafe_cell_raw_get | sym::transmute)
+            )
         {
-            *need_check_freeze = true;
+            if cx.tcx.is_diagnostic_item(sym::unsafe_cell_raw_get, def_id) {
+                need_check_freeze = true;
+            }
             arg
         } else {
-            return None;
+            break;
         };
-
-        let mut had_at_least_one_cast = false;
-        loop {
-            e = e.peel_blocks();
-            // <expr> as *mut/const ... or <expr> as <uint>
-            e = if let ExprKind::Cast(expr, t) = e.kind
-                && matches!(cx.typeck_results().node_type(t.hir_id).kind(), ty::RawPtr(_) | ty::Uint(_))  {
-                had_at_least_one_cast = true;
-                expr
-            // <expr>.cast(), <expr>.cast_mut() or <expr>.cast_const()
-            } else if let ExprKind::MethodCall(_, expr, [], _) = e.kind
-                && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-                && matches!(
-                    cx.tcx.get_diagnostic_name(def_id),
-                    Some(sym::ptr_cast | sym::const_ptr_cast | sym::ptr_cast_mut | sym::ptr_cast_const)
-                )
-            {
-                had_at_least_one_cast = true;
-                expr
-            // ptr::from_ref(<expr>) or UnsafeCell::raw_get(<expr>)
-            } else if let ExprKind::Call(path, [arg]) = e.kind
-                && let ExprKind::Path(ref qpath) = path.kind
-                && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-                && matches!(
-                    cx.tcx.get_diagnostic_name(def_id),
-                    Some(sym::ptr_from_ref | sym::unsafe_cell_raw_get)
-                )
-            {
-                if cx.tcx.is_diagnostic_item(sym::unsafe_cell_raw_get, def_id) {
-                    *need_check_freeze = true;
-                }
-                return Some(arg);
-            } else if had_at_least_one_cast {
-                return Some(e);
-            } else {
-                return None;
-            };
-        }
     }
 
-    fn from_transmute<'tcx>(
-        cx: &LateContext<'tcx>,
-        e: &'tcx Expr<'tcx>,
-    ) -> Option<&'tcx Expr<'tcx>> {
-        // mem::transmute::<_, *mut _>(<expr>)
-        if let ExprKind::Call(path, [arg]) = e.kind
-            && let ExprKind::Path(ref qpath) = path.kind
-            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && cx.tcx.is_diagnostic_item(sym::transmute, def_id)
-            && let ty::RawPtr(TypeAndMut { mutbl: Mutability::Mut, .. }) = cx.typeck_results().node_type(e.hir_id).kind() {
-            Some(arg)
-        } else {
-            None
-        }
-    }
-
-    let mut need_check_freeze = false;
-    let Some(e) = from_casts(cx, e, &mut need_check_freeze).or_else(|| from_transmute(cx, e))
-    else {
-        return false;
-    };
-
-    let e = e.peel_blocks();
-    let node_type = cx.typeck_results().node_type(e.hir_id);
-    if let ty::Ref(_, inner_ty, Mutability::Not) = node_type.kind() {
+    let start_ty = cx.typeck_results().node_type(e.hir_id);
+    if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
         // If an UnsafeCell method is involved we need to additionaly check the
         // inner type for the presence of the Freeze trait (ie does NOT contain
         // an UnsafeCell), since in that case we would incorrectly lint on valid casts.
