@@ -1273,8 +1273,49 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
     searchState.setup();
 }());
 
-// This section handles sidebar resizing
+// Hide, show, and resize the sidebar
+//
+// The body class and CSS variable are initially set up in storage.js,
+// but in this file, we implement:
+//
+//   * the show sidebar button, which appears if the sidebar is hidden
+//     and, by clicking on it, will bring it back
+//   * the sidebar resize handle, which appears only on large viewports
+//     with a [fine precision pointer] to allow the user to change
+//     the size of the sidebar
+//
+// [fine precision pointer]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/pointer
 (function() {
+    // 100 is the size of the logo
+    // don't let the sidebar get smaller than that, or it'll get squished
+    const SIDEBAR_MIN = 100;
+    // Don't let the sidebar get bigger than this
+    const SIDEBAR_MAX = 500;
+    // Don't let the body (including the gutter) get smaller than this
+    //
+    // WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
+    // Acceptable values for BODY_MIN are constrained by the mobile breakpoint
+    // (which is the minimum size of the whole page where the sidebar exists)
+    // and the default sidebar width:
+    //
+    //     BODY_MIN <= RUSTDOC_MOBILE_BREAKPOINT - DEFAULT_SIDEBAR_WIDTH
+    //
+    // At the time of this writing, the DEFAULT_SIDEBAR_WIDTH on src pages is
+    // 300px, and the RUSTDOC_MOBILE_BREAKPOINT is 700px, so BODY_MIN must be
+    // at most 400px. Otherwise, it would start out at the default size, then
+    // grabbing the resize handle would suddenly cause it to jank to
+    // its contraint-generated maximum.
+    const BODY_MIN = 400;
+    // At half-way past the minimum size, vanish the sidebar entirely
+    const SIDEBAR_VANISH_THRESHOLD = SIDEBAR_MIN / 2;
+
+    // Toolbar button to show the sidebar.
+    //
+    // On small, "mobile-sized" viewports, it's not persistent and it
+    // can only be activated by going into Settings and hiding the nav bar.
+    // On larger, "desktop-sized" viewports (though that includes many
+    // tablets), it's fixed-position, appears in the left side margin,
+    // and it can be activated by resizing the sidebar into nothing.
     const sidebarButton = document.getElementById("sidebar-button");
     if (sidebarButton) {
         sidebarButton.addEventListener("click", e => {
@@ -1283,13 +1324,38 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
             e.preventDefault();
         });
     }
+
+    // Pointer capture.
+    //
+    // Resizing is a single-pointer gesture. Any secondary pointer is ignored
     let currentPointerId = null;
+
+    // "Desired" sidebar size.
+    //
+    // This is stashed here for window resizing. If the sidebar gets
+    // shrunk to maintain BODY_MIN, and then the user grows the window again,
+    // it gets the sidebar to restore its size.
+    let desiredSidebarSize = null;
+
+    // If this page has no sidebar at all, bail out.
     const resizer = document.querySelector(".sidebar-resizer");
     const sidebar = document.querySelector(".sidebar");
     if (!resizer || !sidebar) {
         return;
     }
+
+    // src page and docs page use different variables, because the contents of
+    // the sidebar are so different that it's reasonable to thing the user
+    // would want them to have different sizes
     const isSrcPage = hasClass(document.body, "src");
+
+    // Call this function to hide the sidebar when using the resize handle
+    //
+    // This function also nulls out the sidebar width CSS variable and setting,
+    // causing it to return to its default. This does not happen if you do it
+    // from settings.js, which uses a separate function. It's done here because
+    // the minimum sidebar size is rather uncomfortable, and it must pass
+    // through that size when using the shrink-to-nothing gesture.
     function hideSidebar() {
         if (isSrcPage) {
             window.rustdocCloseSourceSidebar();
@@ -1302,6 +1368,13 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
             document.documentElement.style.removeProperty("--desktop-sidebar-width");
         }
     }
+
+    // Call this function to show the sidebar from the resize handle.
+    // On docs pages, this can only happen if the user has grabbed the resize
+    // handle, shrunk the sidebar down to nothing, and then pulls back into
+    // the visible range without releasing it. You can, however, grab the
+    // resize handle on a source page with the sidebar closed, because it
+    // remains visible all the time on there.
     function showSidebar() {
         if (isSrcPage) {
             window.rustdocShowSourceSidebar();
@@ -1310,6 +1383,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
             updateLocalStorage("hide-sidebar", "false");
         }
     }
+
+    // Call this to set the correct CSS variable and setting.
+    // This function doesn't enforce size constraints. Do that before calling it!
     function changeSidebarSize(size) {
         if (isSrcPage) {
             updateLocalStorage("src-sidebar-width", size);
@@ -1319,34 +1395,54 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
             document.documentElement.style.setProperty("--desktop-sidebar-width", size + "px");
         }
     }
+
+    // Check if the sidebar is hidden. Since src pages and doc pages have
+    // different settings, this function has to check that.
     function isSidebarHidden() {
         return isSrcPage ?
             !hasClass(document.documentElement, "src-sidebar-expanded") :
             hasClass(document.documentElement, "hide-sidebar");
     }
+
+    // Respond to the resize handle event.
+    // This function enforces size constraints, and implements the
+    // shrink-to-nothing gesture based on thresholds defined above.
     function resize(e) {
         if (currentPointerId === null || currentPointerId !== e.pointerId) {
             return;
         }
         e.preventDefault();
         const pos = e.clientX - sidebar.offsetLeft - 3;
-        if (pos < 50) {
+        if (pos < SIDEBAR_VANISH_THRESHOLD) {
             hideSidebar();
-        } else if (pos >= 100) {
-            // 100 is the size of the logo
-            // don't let the sidebar get smaller than that, or it'll get squished
+        } else if (pos >= SIDEBAR_MIN) {
             if (isSidebarHidden()) {
                 showSidebar();
             }
-            // don't let the sidebar get wider than 500
-            changeSidebarSize(Math.min(pos, window.innerWidth - 100, 500));
+            // don't let the sidebar get wider than SIDEBAR_MAX, or the body narrower
+            // than BODY_MIN
+            const constrainedPos = Math.min(pos, window.innerWidth - BODY_MIN, SIDEBAR_MAX);
+            changeSidebarSize(constrainedPos);
+            desiredSidebarSize = constrainedPos;
         }
     }
+    // Respond to the window resize event.
+    window.addEventListener("resize", () => {
+        stopResize();
+        if (desiredSidebarSize >= (window.innerWidth - BODY_MIN)) {
+            changeSidebarSize(window.innerWidth - BODY_MIN);
+        } else if (desiredSidebarSize !== null && desiredSidebarSize > SIDEBAR_MIN) {
+            changeSidebarSize(desiredSidebarSize);
+        }
+    });
     function stopResize(e) {
         if (currentPointerId === null) {
             return;
         }
-        e.preventDefault();
+        if (e) {
+            e.preventDefault();
+        }
+        desiredSidebarSize = sidebar.getBoundingClientRect().width;
         removeClass(resizer, "active");
         window.removeEventListener("pointermove", resize, false);
         window.removeEventListener("pointerup", stopResize, false);
@@ -1376,6 +1472,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
         window.addEventListener("pointerup", stopResize, false);
         addClass(resizer, "active");
         addClass(document.documentElement, "sidebar-resizing");
+        desiredSidebarSize = null;
     }
     resizer.addEventListener("pointerdown", initResize, false);
 }());

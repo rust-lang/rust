@@ -9,6 +9,11 @@
 :root {
 	--nav-sub-mobile-padding: 8px;
 	--search-typename-width: 6.75rem;
+	/* DEFAULT_SIDEBAR_WIDTH
+	   see main.js for information on these values
+	   and on the RUSTDOC_MOBILE_BREAKPOINT */
+	--desktop-sidebar-width: 200px;
+	--src-sidebar-width: 300px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -383,7 +388,7 @@ img {
 
 .sidebar {
 	font-size: 0.875rem;
-	flex: 0 0 var(--desktop-sidebar-width, 200px);
+	flex: 0 0 var(--desktop-sidebar-width);
 	overflow-y: scroll;
 	overscroll-behavior: contain;
 	position: sticky;
@@ -414,7 +419,7 @@ img {
 	position: absolute;
 	height: 100%;
 	/* make sure there's a 1px gap between the scrollbar and resize handle */
-	left: calc(var(--desktop-sidebar-width, 200px) + 1px);
+	left: calc(var(--desktop-sidebar-width) + 1px);
 }
 
 .rustdoc.src .sidebar-resizer {
@@ -426,7 +431,7 @@ img {
 .src-sidebar-expanded .rustdoc.src .sidebar-resizer {
 	/* for src sidebar, gap is already provided by 1px border on sidebar itself, so place resizer
 	   to right of it */
-	left: var(--src-sidebar-width, 300px);
+	left: var(--src-sidebar-width);
 }
 
 .sidebar-resizing {
@@ -448,7 +453,7 @@ img {
 	margin: 0;
 	/* when active or hovered, place resizer glow on top of the sidebar (right next to, or even
 	   on top of, the scrollbar) */
-	left: var(--desktop-sidebar-width, 200px);
+	left: var(--desktop-sidebar-width);
 	border-left: solid 1px var(--sidebar-resizer-hover);
 }
 
@@ -457,7 +462,7 @@ img {
 .src-sidebar-expanded .rustdoc.src .sidebar-resizer:focus,
 .src-sidebar-expanded .rustdoc.src .sidebar-resizer.active {
 	/* when active or hovered, place resizer glow on top of the normal src sidebar border */
-	left: calc(var(--src-sidebar-width, 300px) - 1px);
+	left: calc(var(--src-sidebar-width) - 1px);
 }
 
 @media (pointer: coarse) {
@@ -497,7 +502,7 @@ img {
 
 .src-sidebar-expanded .src .sidebar {
 	overflow-y: auto;
-	flex-basis: var(--src-sidebar-width, 300px);
+	flex-basis: var(--src-sidebar-width);
 }
 
 .src-sidebar-expanded .src .sidebar > *:not(#src-sidebar-toggle) {
@@ -1806,7 +1811,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in src-script.js
+in src-script.js and main.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
