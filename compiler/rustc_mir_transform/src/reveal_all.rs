@@ -32,6 +32,10 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
         _context: PlaceContext,
         _location: Location,
     ) {
+        // Performance optimization: don't reintern if there is no `OpaqueCast` to remove.
+        if place.projection.iter().all(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_))) {
+            return;
+        }
         // `OpaqueCast` projections are only needed if there are opaque types on which projections are performed.
         // After the `RevealAll` pass, all opaque types are replaced with their hidden types, so we don't need these
         // projections anymore.
