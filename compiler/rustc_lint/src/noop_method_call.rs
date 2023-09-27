@@ -98,6 +98,12 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, cx.param_env, did, args) else { return };
         // (Re)check that it implements the noop diagnostic.
         let Some(name) = cx.tcx.get_diagnostic_name(i.def_id()) else { return };
+        if !matches!(
+            name,
+            sym::noop_method_borrow | sym::noop_method_clone | sym::noop_method_deref
+        ) {
+            return;
+        }
 
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
         let expr_ty = cx.typeck_results().expr_ty_adjusted(expr);
