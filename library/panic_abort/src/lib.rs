@@ -44,7 +44,8 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
             }
         } else if #[cfg(any(target_os = "hermit",
                             all(target_vendor = "fortanix", target_env = "sgx"),
-                            target_os = "xous"
+                            target_os = "xous",
+                            target_os = "uefi",
         ))] {
             unsafe fn abort() -> ! {
                 // call std::sys::abort_internal

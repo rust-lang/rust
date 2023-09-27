@@ -131,13 +131,12 @@ pub(super) fn check<'tcx>(
 
     let mut applicability = Applicability::MachineApplicable;
 
-    //Special handling for `format!` as arg_root
+    // Special handling for `format!` as arg_root
     if let Some(macro_call) = root_macro_call_first_node(cx, arg_root) {
-        if !cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id) {
-            return;
-        }
-        find_format_args(cx, arg_root, macro_call.expn, |format_args| {
-            let span = format_args_inputs_span(format_args);
+        if cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id)
+            && let Some(format_args) = find_format_args(cx, arg_root, macro_call.expn)
+        {
+            let span = format_args_inputs_span(&format_args);
             let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
             span_lint_and_sugg(
                 cx,
@@ -148,7 +147,7 @@ pub(super) fn check<'tcx>(
                 format!("unwrap_or_else({closure_args} panic!({sugg}))"),
                 applicability,
             );
-        });
+        }
         return;
     }
 

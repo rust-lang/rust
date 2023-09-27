@@ -76,6 +76,7 @@ fn h() -> Vec<u16> {
 
 fn i() -> () {
     {
+        // does not suggest on function with explicit unit return type
         ();
         //~^ ERROR: statement with no effect
     }

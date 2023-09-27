@@ -578,11 +578,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         }
     }
 
-    // All uses of `gate_all!` below this point were added in #65742,
+    // All uses of `gate_all_legacy_dont_use!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
     // We emit an early future-incompatible warning for these.
     // New syntax gates should go above here to get a hard error gate.
-    macro_rules! gate_all {
+    macro_rules! gate_all_legacy_dont_use {
         ($gate:ident, $msg:literal) => {
             for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
                 gate_feature_post!(future_incompatible; &visitor, $gate, *span, $msg);
@@ -590,13 +590,19 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         };
     }
 
-    gate_all!(trait_alias, "trait aliases are experimental");
-    gate_all!(associated_type_bounds, "associated type bounds are unstable");
-    gate_all!(return_type_notation, "return type notation is experimental");
-    gate_all!(decl_macro, "`macro` is experimental");
-    gate_all!(box_patterns, "box pattern syntax is experimental");
-    gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
-    gate_all!(try_blocks, "`try` blocks are unstable");
+    gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
+    gate_all_legacy_dont_use!(associated_type_bounds, "associated type bounds are unstable");
+    // Despite being a new feature, `where T: Trait<Assoc(): Sized>`, which is RTN syntax now,
+    // used to be gated under associated_type_bounds, which are right above, so RTN needs to
+    // be too.
+    gate_all_legacy_dont_use!(return_type_notation, "return type notation is experimental");
+    gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
+    gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
+    gate_all_legacy_dont_use!(
+        exclusive_range_pattern,
+        "exclusive range pattern syntax is experimental"
+    );
+    gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
 
     visit::walk_crate(&mut visitor, krate);
 }

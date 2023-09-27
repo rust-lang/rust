@@ -286,6 +286,10 @@ pub struct TargetMachineFactoryConfig {
     /// so the path to the dwarf object has to be provided when we create the target machine.
     /// This can be ignored by backends which do not need it for their Split DWARF support.
     pub split_dwarf_file: Option<PathBuf>,
+
+    /// The name of the output object file. Used for setting OutputFilenames in target options
+    /// so that LLVM can emit the CodeView S_OBJNAME record in pdb files
+    pub output_obj_file: Option<PathBuf>,
 }
 
 impl TargetMachineFactoryConfig {
@@ -302,7 +306,10 @@ impl TargetMachineFactoryConfig {
         } else {
             None
         };
-        TargetMachineFactoryConfig { split_dwarf_file }
+
+        let output_obj_file =
+            Some(cgcx.output_filenames.temp_path(OutputType::Object, Some(module_name)));
+        TargetMachineFactoryConfig { split_dwarf_file, output_obj_file }
     }
 }
 

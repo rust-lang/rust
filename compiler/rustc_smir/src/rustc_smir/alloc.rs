@@ -3,11 +3,9 @@ use rustc_middle::mir::{
     ConstValue,
 };
 
-use crate::{
-    rustc_smir::{Stable, Tables},
-    stable_mir::mir::Mutability,
-    stable_mir::ty::{Allocation, ProvenanceMap},
-};
+use crate::rustc_smir::{Stable, Tables};
+use stable_mir::mir::Mutability;
+use stable_mir::ty::{Allocation, ProvenanceMap};
 
 /// Creates new empty `Allocation` from given `Align`.
 fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {

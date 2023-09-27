@@ -665,6 +665,9 @@ pub use core::{
 )]
 pub use core::concat_bytes;
 
+#[unstable(feature = "cfg_match", issue = "115585")]
+pub use core::cfg_match;
+
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
 

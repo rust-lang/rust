@@ -5,7 +5,7 @@ use rustc_infer::infer::{outlives::env::OutlivesEnvironment, TyCtxtInferExt};
 use rustc_lint_defs::builtin::REFINING_IMPL_TRAIT;
 use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::{
@@ -176,9 +176,13 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     };
 
-    // For quicker lookup, use an `IndexSet`
-    // (we don't use one earlier because it's not foldable..)
-    let trait_bounds = FxIndexSet::from_iter(trait_bounds);
+    // For quicker lookup, use an `IndexSet` (we don't use one earlier because
+    // it's not foldable..).
+    // Also, We have to anonymize binders in these types because they may contain
+    // `BrNamed` bound vars, which contain unique `DefId`s which correspond to syntax
+    // locations that we don't care about when checking bound equality.
+    let trait_bounds = FxIndexSet::from_iter(trait_bounds.fold_with(&mut Anonymize { tcx }));
+    let impl_bounds = impl_bounds.fold_with(&mut Anonymize { tcx });
 
     // Find any clauses that are present in the impl's RPITITs that are not
     // present in the trait's RPITITs. This will trigger on trivial predicates,
@@ -307,5 +311,22 @@ fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibili
             }
         }
         _ => None,
+    }
+}
+
+struct Anonymize<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Anonymize<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        self.tcx.anonymize_bound_vars(t)
     }
 }

@@ -289,7 +289,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
-    /// returns an appropriate set of substitutions for this particular reference to `I`.
+    /// returns an appropriate set of generic arguments for this particular reference to `I`.
     pub fn ast_path_args_for_ty(
         &self,
         span: Span,
@@ -315,7 +315,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Given the type/lifetime/const arguments provided to some path (along with
     /// an implicit `Self`, if this is a trait reference), returns the complete
-    /// set of substitutions. This may involve applying defaulted type parameters.
+    /// set of generic arguments. This may involve applying defaulted type parameters.
     /// Constraints on associated types are created from `create_assoc_bindings_for_generic_args`.
     ///
     /// Example:
@@ -909,23 +909,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         let args = self.ast_path_args_for_ty(span, did, item_segment);
 
-        if let DefKind::TyAlias { lazy: true } = tcx.def_kind(did) {
+        if let DefKind::TyAlias = tcx.def_kind(did)
+            && tcx.type_alias_is_lazy(did)
+        {
             // Type aliases defined in crates that have the
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
             let alias_ty = tcx.mk_alias_ty(did, args);
             Ty::new_alias(tcx, ty::Weak, alias_ty)
         } else {
-            let ty = tcx.at(span).type_of(did);
-            if ty.skip_binder().has_opaque_types() {
-                // Type aliases referring to types that contain opaque types (but aren't just directly
-                // referencing a single opaque type) get encoded as a type alias that normalization will
-                // then actually instantiate the where bounds of.
-                let alias_ty = tcx.mk_alias_ty(did, args);
-                Ty::new_alias(tcx, ty::Weak, alias_ty)
-            } else {
-                ty.instantiate(tcx, args)
-            }
+            tcx.at(span).type_of(did).instantiate(tcx, args)
         }
     }
 
@@ -2164,7 +2157,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             Res::Def(
                 DefKind::Enum
-                | DefKind::TyAlias { .. }
+                | DefKind::TyAlias
                 | DefKind::Struct
                 | DefKind::Union
                 | DefKind::ForeignTy,
@@ -2781,7 +2774,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
-                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) | ty::BrEnv => {
+                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon | ty::BrEnv => {
                     "an anonymous lifetime".to_string()
                 }
                 ty::BrNamed(_, name) => format!("lifetime `{name}`"),
@@ -2789,7 +2782,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let mut err = generate_err(&br_name);
 
-            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) = *br {
+            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon = *br {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is
                 // if it only appears in "associated types" in the

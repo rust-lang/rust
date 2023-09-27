@@ -19,8 +19,8 @@ Available targets:
 ## Requirements
 
 All UEFI targets can be used as `no-std` environments via cross-compilation.
-Support for `std` is missing, but actively worked on. `alloc` is supported if
-an allocator is provided by the user. No host tools are supported.
+Support for `std` is present, but incomplete and extremely new. `alloc` is supported if
+an allocator is provided by the user or if using std. No host tools are supported.
 
 The UEFI environment resembles the environment for Microsoft Windows, with some
 minor differences. Therefore, cross-compiling for UEFI works with the same
@@ -230,3 +230,76 @@ pub extern "C" fn main(_h: efi::Handle, st: *mut efi::SystemTable) -> efi::Statu
     efi::Status::SUCCESS
 }
 ```
+
+## Rust std for UEFI
+This section contains information on how to use std on UEFI.
+
+### Build std
+The building std part is pretty much the same as the official [docs](https://rustc-dev-guide.rust-lang.org/getting-started.html).
+The linker that should be used is `rust-lld`. Here is a sample `config.toml`:
+```toml
+[rust]
+lld = true
+```
+Then just build using `x.py`:
+```sh
+./x.py build --target x86_64-unknown-uefi --stage 1
+```
+Alternatively, it is possible to use the `build-std` feature. However, you must use a toolchain which has the UEFI std patches.
+Then just build the project using the following command:
+```sh
+cargo build --target x86_64-unknown-uefi -Zbuild-std=std,panic_abort
+```
+
+### Implemented features
+#### alloc
+- Implemented using `EFI_BOOT_SERVICES.AllocatePool()` and `EFI_BOOT_SERVICES.FreePool()`.
+- Passes all the tests.
+- Currently uses `EfiLoaderData` as the `EFI_ALLOCATE_POOL->PoolType`.
+#### cmath
+- Provided by compiler-builtins.
+#### env
+- Just some global constants.
+#### locks
+- The provided locks should work on all standard single-threaded UEFI implementations.
+#### os_str
+- While the strings in UEFI should be valid UCS-2, in practice, many implementations just do not care and use UTF-16 strings.
+- Thus, the current implementation supports full UTF-16 strings.
+
+## Example: Hello World With std
+The following code features a valid UEFI application, including stdio and `alloc` (`OsString` and `Vec`):
+
+This example can be compiled as binary crate via `cargo` using the toolchain
+compiled from the above source (named custom):
+
+```sh
+cargo +custom build --target x86_64-unknown-uefi
+```
+
+```rust,ignore (platform-specific)
+#![feature(uefi_std)]
+
+use r_efi::{efi, protocols::simple_text_output};
+use std::{
+  ffi::OsString,
+  os::uefi::{env, ffi::OsStrExt}
+};
+
+pub fn main() {
+  let st = env::system_table().as_ptr() as *mut efi::SystemTable;
+  let mut s: Vec<u16> = OsString::from("Hello World!\n").encode_wide().collect();
+  s.push(0);
+  let r =
+      unsafe {
+        let con_out: *mut simple_text_output::Protocol = (*st).con_out;
+        let output_string: extern "efiapi" fn(_: *mut simple_text_output::Protocol, *mut u16) -> efi::Status = (*con_out).output_string;
+        output_string(con_out, s.as_ptr() as *mut efi::Char16)
+      };
+  assert!(!r.is_error())
+}
+```
+
+### BootServices
+The current implementation of std makes `BootServices` unavailable once `ExitBootServices` is called. Refer to [Runtime Drivers](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/7_driver_entry_point/711_runtime_drivers) for more information regarding how to handle switching from using physical addresses to using virtual addresses.
+
+Note: It should be noted that it is up to the user to drop all allocated memory before `ExitBootServices` is called.

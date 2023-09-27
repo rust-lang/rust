@@ -7,7 +7,7 @@ use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_span::{Span, Symbol};
+use rustc_span::Symbol;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
@@ -29,20 +29,14 @@ pub fn renumber_mir<'tcx>(
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum BoundRegionInfo {
-    Name(Symbol),
-    Span(Span),
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum RegionCtxt {
     Location(Location),
     TyContext(TyContext),
     Free(Symbol),
-    Bound(BoundRegionInfo),
-    LateBound(BoundRegionInfo),
+    Bound(Symbol),
+    LateBound(Symbol),
     Existential(Option<Symbol>),
-    Placeholder(BoundRegionInfo),
+    Placeholder(Symbol),
     Unknown,
 }
 

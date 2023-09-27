@@ -11,7 +11,7 @@ use rustc_span::{Span, Symbol};
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
-use crate::renumber::{BoundRegionInfo, RegionCtxt};
+use crate::renumber::RegionCtxt;
 use crate::type_check::{InstantiateOpaqueType, Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -126,10 +126,9 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             .placeholder_region(self.type_checker.infcx, placeholder);
 
         let reg_info = match placeholder.bound.kind {
-            ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
-            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(sym::anon),
-            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
+            ty::BoundRegionKind::BrAnon => sym::anon,
+            ty::BoundRegionKind::BrNamed(_, name) => name,
+            ty::BoundRegionKind::BrEnv => sym::env,
         };
 
         if cfg!(debug_assertions) {

@@ -31,7 +31,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, AssocItemContainer, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
@@ -827,7 +826,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -862,7 +861,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -903,7 +902,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::Variant
         | DefKind::Trait
         | DefKind::Impl { .. } => true,
-        DefKind::TyAlias { .. }
+        DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -938,7 +937,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -982,7 +981,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::Const
         | DefKind::Fn
         | DefKind::ForeignMod
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::Enum
         | DefKind::Union
@@ -1092,9 +1091,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::Closure
         | DefKind::Generator
         | DefKind::ExternCrate => false,
-        DefKind::TyAlias { lazy } => {
-            lazy || tcx.type_of(def_id).instantiate_identity().has_opaque_types()
-        }
+        DefKind::TyAlias => tcx.type_alias_is_lazy(def_id),
     }
 }
 
@@ -1105,7 +1102,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -1145,7 +1142,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Fn
         | DefKind::Const
         | DefKind::Static(..)
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
         | DefKind::AssocFn
@@ -1205,7 +1202,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Const
         | DefKind::Static(..)
         | DefKind::Ctor(..)
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
@@ -1246,7 +1243,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::AssocConst
         | DefKind::AnonConst
         | DefKind::Static(..)
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::Impl { of_trait: false }
         | DefKind::ForeignTy
@@ -1279,7 +1276,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::Fn
         | DefKind::Static(..)
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
@@ -1450,6 +1447,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Macro(_) = def_kind {
                 self.encode_info_for_macro(local_id);
+            }
+            if let DefKind::TyAlias = def_kind {
+                self.tables
+                    .type_alias_is_lazy
+                    .set(def_id.index, self.tcx.type_alias_is_lazy(def_id));
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);

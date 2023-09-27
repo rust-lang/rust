@@ -647,7 +647,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 // parameters, but the self-type of their impl block do will fail to normalize.
                 if !tcx.sess.opts.unstable_opts.polymorphize || !instance.has_param() {
                     // This is a method within an impl, find out what the self-type is:
-                    let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
+                    let impl_self_ty = tcx.instantiate_and_normalize_erasing_regions(
                         instance.args,
                         ty::ParamEnv::reveal_all(),
                         tcx.type_of(impl_def_id),

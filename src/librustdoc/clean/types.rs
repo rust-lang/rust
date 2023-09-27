@@ -1384,28 +1384,6 @@ impl FnDecl {
     pub(crate) fn self_type(&self) -> Option<SelfTy> {
         self.inputs.values.get(0).and_then(|v| v.to_self())
     }
-
-    /// Returns the sugared return type for an async function.
-    ///
-    /// For example, if the return type is `impl std::future::Future<Output = i32>`, this function
-    /// will return `i32`.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the return type does not match the expected sugaring for async
-    /// functions.
-    pub(crate) fn sugared_async_return_type(&self) -> Type {
-        if let Type::ImplTrait(v) = &self.output &&
-            let [GenericBound::TraitBound(PolyTrait { trait_, .. }, _ )] = &v[..]
-        {
-            let bindings = trait_.bindings().unwrap();
-            let ret_ty = bindings[0].term();
-            let ty = ret_ty.ty().expect("Unexpected constant return term");
-            ty.clone()
-        } else {
-            panic!("unexpected desugaring of async function")
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1614,6 +1592,28 @@ impl Type {
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             BareFunction(..) => Some(PrimitiveType::Fn),
             _ => None,
+        }
+    }
+
+    /// Returns the sugared return type for an async function.
+    ///
+    /// For example, if the return type is `impl std::future::Future<Output = i32>`, this function
+    /// will return `i32`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the return type does not match the expected sugaring for async
+    /// functions.
+    pub(crate) fn sugared_async_return_type(&self) -> Type {
+        if let Type::ImplTrait(v) = self &&
+            let [GenericBound::TraitBound(PolyTrait { trait_, .. }, _ )] = &v[..]
+        {
+            let bindings = trait_.bindings().unwrap();
+            let ret_ty = bindings[0].term();
+            let ty = ret_ty.ty().expect("unexpected constant in async fn return term");
+            ty.clone()
+        } else {
+            panic!("unexpected async fn return type")
         }
     }
 

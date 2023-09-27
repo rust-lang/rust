@@ -196,9 +196,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::Macro(_, macro_kind) => DefKind::Macro(macro_kind),
                 ItemKind::Mod(..) => DefKind::Mod,
                 ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
-                ItemKind::TyAlias(..) => {
-                    DefKind::TyAlias { lazy: self.tcx.features().lazy_type_alias }
-                }
+                ItemKind::TyAlias(..) => DefKind::TyAlias,
                 ItemKind::Enum(..) => DefKind::Enum,
                 ItemKind::Struct(..) => DefKind::Struct,
                 ItemKind::Union(..) => DefKind::Union,

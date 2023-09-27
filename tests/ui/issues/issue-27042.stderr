@@ -11,11 +11,18 @@ LL | |         while true { break }; // but here we cite the whole loop
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:6:16
    |
+LL |     let _: i32 =
+   |         - expected because of this assignment
+LL |         'a: // in this case, the citation is just the `break`:
 LL |         loop { break };
-   |                ^^^^^
-   |                |
-   |                expected `i32`, found `()`
-   |                help: give it a value of the expected type: `break 42`
+   |         ----   ^^^^^ expected `i32`, found `()`
+   |         |
+   |         this loop is expected to be of type `i32`
+   |
+help: give it a value of the expected type
+   |
+LL |         loop { break 42 };
+   |                      ++
 
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:8:9

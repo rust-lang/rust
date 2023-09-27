@@ -360,7 +360,7 @@ pub trait PrettyPrinter<'tcx>:
                 self.write_str(get_local_name(&self, symbol, parent, parent_key).as_str())?;
                 self.write_str("::")?;
             } else if let DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Trait
-                | DefKind::TyAlias { .. } | DefKind::Fn | DefKind::Const | DefKind::Static(_) = kind
+                | DefKind::TyAlias | DefKind::Fn | DefKind::Const | DefKind::Static(_) = kind
             {
             } else {
                 // If not covered above, like for example items out of `impl` blocks, fallback.
@@ -766,7 +766,7 @@ pub trait PrettyPrinter<'tcx>:
 
                 let parent = self.tcx().parent(def_id);
                 match self.tcx().def_kind(parent) {
-                    DefKind::TyAlias { .. } | DefKind::AssocTy => {
+                    DefKind::TyAlias | DefKind::AssocTy => {
                         // NOTE: I know we should check for NO_QUERIES here, but it's alright.
                         // `type_of` on a type alias or assoc type should never cause a cycle.
                         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: d, .. }) =
@@ -2330,7 +2330,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
                 match kind {
-                    ty::BrAnon(..) | ty::BrEnv => r,
+                    ty::BrAnon | ty::BrEnv => r,
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
@@ -2451,7 +2451,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
                 let (name, kind) = match br.kind {
-                    ty::BrAnon(..) | ty::BrEnv => {
+                    ty::BrAnon | ty::BrEnv => {
                         let name = next_name(&self);
 
                         if let Some(lt_idx) = lifetime_idx {
@@ -2998,7 +2998,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 
             match child.res {
                 def::Res::Def(DefKind::AssocTy, _) => {}
-                def::Res::Def(DefKind::TyAlias { .. }, _) => {}
+                def::Res::Def(DefKind::TyAlias, _) => {}
                 def::Res::Def(defkind, def_id) => {
                     if let Some(ns) = defkind.ns() {
                         collect_fn(&child.ident, ns, def_id);

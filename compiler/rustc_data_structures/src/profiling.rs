@@ -81,8 +81,8 @@
 //!
 //! [mm]: https://github.com/rust-lang/measureme/
 
-use crate::cold_path;
 use crate::fx::FxHashMap;
+use crate::outline;
 
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
@@ -697,7 +697,7 @@ impl<'a> TimingGuard<'a> {
     #[inline]
     pub fn finish_with_query_invocation_id(self, query_invocation_id: QueryInvocationId) {
         if let Some(guard) = self.0 {
-            cold_path(|| {
+            outline(|| {
                 let event_id = StringId::new_virtual(query_invocation_id.0);
                 let event_id = EventId::from_virtual(event_id);
                 guard.finish_with_override_event_id(event_id);

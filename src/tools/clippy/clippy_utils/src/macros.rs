@@ -10,8 +10,9 @@ use rustc_lint::LateContext;
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol};
-use std::cell::RefCell;
+use std::cell::OnceCell;
 use std::ops::ControlFlow;
+use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
@@ -374,28 +375,21 @@ thread_local! {
     /// A thread local is used because [`FormatArgs`] is `!Send` and `!Sync`, we are making an
     /// assumption that the early pass that populates the map and the later late passes will all be
     /// running on the same thread.
-    static AST_FORMAT_ARGS: RefCell<FxHashMap<Span, FormatArgs>> = {
+    #[doc(hidden)]
+    pub static AST_FORMAT_ARGS: OnceCell<FxHashMap<Span, Rc<FormatArgs>>> = {
         static CALLED: AtomicBool = AtomicBool::new(false);
         debug_assert!(
             !CALLED.swap(true, Ordering::SeqCst),
             "incorrect assumption: `AST_FORMAT_ARGS` should only be accessed by a single thread",
         );
 
-        RefCell::default()
+        OnceCell::new()
     };
 }
 
-/// Record [`rustc_ast::FormatArgs`] for use in late lint passes, this should only be called by
-/// `FormatArgsCollector`
-pub fn collect_ast_format_args(span: Span, format_args: &FormatArgs) {
-    AST_FORMAT_ARGS.with(|ast_format_args| {
-        ast_format_args.borrow_mut().insert(span, format_args.clone());
-    });
-}
-
-/// Calls `callback` with an AST [`FormatArgs`] node if a `format_args` expansion is found as a
-/// descendant of `expn_id`
-pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId, callback: impl FnOnce(&FormatArgs)) {
+/// Returns an AST [`FormatArgs`] node if a `format_args` expansion is found as a descendant of
+/// `expn_id`
+pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId) -> Option<Rc<FormatArgs>> {
     let format_args_expr = for_each_expr(start, |expr| {
         let ctxt = expr.span.ctxt();
         if ctxt.outer_expn().is_descendant_of(expn_id) {
@@ -410,13 +404,14 @@ pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId,
         } else {
             ControlFlow::Continue(Descend::No)
         }
-    });
+    })?;
 
-    if let Some(expr) = format_args_expr {
-        AST_FORMAT_ARGS.with(|ast_format_args| {
-            ast_format_args.borrow().get(&expr.span).map(callback);
-        });
-    }
+    AST_FORMAT_ARGS.with(|ast_format_args| {
+        ast_format_args
+            .get()?
+            .get(&format_args_expr.span.with_parent(None))
+            .map(Rc::clone)
+    })
 }
 
 /// Attempt to find the [`rustc_hir::Expr`] that corresponds to the [`FormatArgument`]'s value, if

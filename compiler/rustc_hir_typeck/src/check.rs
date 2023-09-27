@@ -204,7 +204,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         &[ty::GenericArg::from(ty::Region::new_late_bound(
             tcx,
             ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon(None) },
+            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon },
         ))],
     );
     let panic_info_ref_ty = Ty::new_imm_ref(
@@ -212,14 +212,14 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         ty::Region::new_late_bound(
             tcx,
             ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(None) },
+            ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },
         ),
         panic_info_ty,
     );
 
     let bounds = tcx.mk_bound_variable_kinds(&[
-        ty::BoundVariableKind::Region(ty::BrAnon(None)),
-        ty::BoundVariableKind::Region(ty::BrAnon(None)),
+        ty::BoundVariableKind::Region(ty::BrAnon),
+        ty::BoundVariableKind::Region(ty::BrAnon),
     ]);
     let expected_sig = ty::Binder::bind_with_vars(
         tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.unsafety, Abi::Rust),

@@ -143,7 +143,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy

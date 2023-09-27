@@ -1007,7 +1007,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     pub(super) fn register_predefined_opaques_in_new_solver(&mut self) {
-        // OK to use the identity substitutions for each opaque type key, since
+        // OK to use the identity arguments for each opaque type key, since
         // we remap opaques from HIR typeck back to their definition params.
         let opaques: Vec<_> = self
             .infcx
@@ -1367,14 +1367,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 };
                 let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
-                    use crate::renumber::{BoundRegionInfo, RegionCtxt};
+                    use crate::renumber::RegionCtxt;
 
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
-                            ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
-                            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(sym::anon),
-                            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-                            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
+                            ty::BoundRegionKind::BrAnon => sym::anon,
+                            ty::BoundRegionKind::BrNamed(_, name) => name,
+                            ty::BoundRegionKind::BrEnv => sym::env,
                         };
 
                         RegionCtxt::LateBound(reg_info)

@@ -10,6 +10,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-print-in-tests
            allow-private-module-inception
            allow-unwrap-in-tests
+           allowed-dotfiles
            allowed-idents-below-min-chars
            allowed-scripts
            arithmetic-side-effects-allowed
@@ -82,6 +83,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-print-in-tests
            allow-private-module-inception
            allow-unwrap-in-tests
+           allowed-dotfiles
            allowed-idents-below-min-chars
            allowed-scripts
            arithmetic-side-effects-allowed

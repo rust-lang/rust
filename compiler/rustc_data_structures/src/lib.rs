@@ -51,9 +51,10 @@ use std::fmt;
 
 pub use rustc_index::static_assert_size;
 
+/// This calls the passed function while ensuring it won't be inlined into the caller.
 #[inline(never)]
 #[cold]
-pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
+pub fn outline<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
 

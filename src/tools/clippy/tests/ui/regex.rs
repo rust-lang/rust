@@ -2,7 +2,8 @@
     unused,
     clippy::needless_raw_strings,
     clippy::needless_raw_string_hashes,
-    clippy::needless_borrow
+    clippy::needless_borrow,
+    clippy::needless_borrows_for_generic_args
 )]
 #![warn(clippy::invalid_regex, clippy::trivial_regex)]
 

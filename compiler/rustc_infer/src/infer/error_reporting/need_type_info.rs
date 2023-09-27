@@ -918,7 +918,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             //
             // See the `need_type_info/issue-103053.rs` test for
             // a example.
-            if !matches!(path.res, Res::Def(DefKind::TyAlias { .. }, _)) => {
+            if !matches!(path.res, Res::Def(DefKind::TyAlias, _)) => {
                 if let Some(ty) = self.opt_node_type(expr.hir_id)
                     && let ty::Adt(_, args) = ty.kind()
                 {
@@ -1047,7 +1047,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                         ) => {
                             if tcx.res_generics_def_id(path.res) != Some(def.did()) {
                                 match path.res {
-                                    Res::Def(DefKind::TyAlias { .. }, _) => {
+                                    Res::Def(DefKind::TyAlias, _) => {
                                         // FIXME: Ideally we should support this. For that
                                         // we have to map back from the self type to the
                                         // type alias though. That's difficult.
