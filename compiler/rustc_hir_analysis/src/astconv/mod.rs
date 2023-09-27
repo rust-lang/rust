@@ -909,23 +909,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         let args = self.ast_path_args_for_ty(span, did, item_segment);
 
-        if let DefKind::TyAlias { lazy: true } = tcx.def_kind(did) {
+        if let DefKind::TyAlias = tcx.def_kind(did)
+            && tcx.type_alias_is_lazy(did)
+        {
             // Type aliases defined in crates that have the
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
             let alias_ty = tcx.mk_alias_ty(did, args);
             Ty::new_alias(tcx, ty::Weak, alias_ty)
         } else {
-            let ty = tcx.at(span).type_of(did);
-            if ty.skip_binder().has_opaque_types() {
-                // Type aliases referring to types that contain opaque types (but aren't just directly
-                // referencing a single opaque type) get encoded as a type alias that normalization will
-                // then actually instantiate the where bounds of.
-                let alias_ty = tcx.mk_alias_ty(did, args);
-                Ty::new_alias(tcx, ty::Weak, alias_ty)
-            } else {
-                ty.instantiate(tcx, args)
-            }
+            tcx.at(span).type_of(did).instantiate(tcx, args)
         }
     }
 
@@ -2164,7 +2157,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             Res::Def(
                 DefKind::Enum
-                | DefKind::TyAlias { .. }
+                | DefKind::TyAlias
                 | DefKind::Struct
                 | DefKind::Union
                 | DefKind::ForeignTy,

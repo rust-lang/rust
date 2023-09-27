@@ -493,7 +493,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
                 let parent_ty = self.tcx.type_of(parent).instantiate_identity();
-                if let DefKind::TyAlias { .. } | DefKind::AssocTy = self.tcx.def_kind(parent)
+                if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
@@ -577,7 +577,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
                 let parent_ty = self.tcx.type_of(parent).instantiate_identity();
-                if let hir::def::DefKind::TyAlias { .. } | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
+                if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
