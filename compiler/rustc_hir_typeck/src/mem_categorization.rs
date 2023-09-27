@@ -464,7 +464,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // Opaque types can't have field projections, but we can instead convert
         // the current place in-place (heh) to the hidden type, and then apply all
         // follow up projections on that.
-        if node_ty != place_ty && place_ty.has_opaque_types() {
+        if node_ty != place_ty && matches!(place_ty.kind(), ty::Alias(ty::Opaque, ..)) {
             projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
         }
         projections.push(Projection { kind, ty });
