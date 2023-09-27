@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use crate::rustc_internal::Opaque;
+use crate::Opaque;
 
 use super::ty::{
     Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,

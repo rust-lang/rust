@@ -13,13 +13,13 @@
 extern crate rustc_hir;
 extern crate rustc_middle;
 extern crate rustc_smir;
+extern crate stable_mir;
 
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::{
-    rustc_internal,
-    stable_mir::{self, fold::Foldable},
-};
+use rustc_smir::rustc_internal;
+
+use stable_mir::fold::Foldable;
 use std::assert_matches::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -27,7 +27,7 @@ use std::ops::ControlFlow;
 const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
-fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
+fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     // Get the local crate using stable_mir API.
     let local = stable_mir::local_crate();
     assert_eq!(&local.name, CRATE_NAME);
@@ -36,12 +36,12 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
 
     // Find items in the local crate.
     let items = stable_mir::all_local_items();
-    assert!(get_item(tcx, &items, (DefKind::Fn, "foo::bar")).is_some());
+    assert!(get_item(&items, (DefKind::Fn, "foo::bar")).is_some());
 
     // Find the `std` crate.
     assert!(stable_mir::find_crate("std").is_some());
 
-    let bar = get_item(tcx, &items, (DefKind::Fn, "bar")).unwrap();
+    let bar = get_item(&items, (DefKind::Fn, "bar")).unwrap();
     let body = bar.body();
     assert_eq!(body.locals.len(), 2);
     assert_eq!(body.blocks.len(), 1);
@@ -56,7 +56,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
-    let foo_bar = get_item(tcx, &items, (DefKind::Fn, "foo_bar")).unwrap();
+    let foo_bar = get_item(&items, (DefKind::Fn, "foo_bar")).unwrap();
     let body = foo_bar.body();
     assert_eq!(body.locals.len(), 7);
     assert_eq!(body.blocks.len(), 4);
@@ -66,7 +66,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
-    let types = get_item(tcx, &items, (DefKind::Fn, "types")).unwrap();
+    let types = get_item(&items, (DefKind::Fn, "types")).unwrap();
     let body = types.body();
     assert_eq!(body.locals.len(), 6);
     assert_matches!(
@@ -96,7 +96,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         ))
     );
 
-    let drop = get_item(tcx, &items, (DefKind::Fn, "drop")).unwrap();
+    let drop = get_item(&items, (DefKind::Fn, "drop")).unwrap();
     let body = drop.body();
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
@@ -105,7 +105,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
-    let assert = get_item(tcx, &items, (DefKind::Fn, "assert")).unwrap();
+    let assert = get_item(&items, (DefKind::Fn, "assert")).unwrap();
     let body = assert.body();
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
@@ -114,7 +114,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         other => panic!("{other:?}"),
     }
 
-    let monomorphic = get_item(tcx, &items, (DefKind::Fn, "monomorphic")).unwrap();
+    let monomorphic = get_item(&items, (DefKind::Fn, "monomorphic")).unwrap();
     for block in monomorphic.body().blocks {
         match &block.terminator {
             stable_mir::mir::Terminator::Call { func, .. } => match func {
@@ -154,7 +154,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
         }
     }
 
-    let foo_const = get_item(tcx, &items, (DefKind::Const, "FOO")).unwrap();
+    let foo_const = get_item(&items, (DefKind::Const, "FOO")).unwrap();
     // Ensure we don't panic trying to get the body of a constant.
     foo_const.body();
 
@@ -163,13 +163,11 @@ fn test_stable_mir(tcx: TyCtxt<'_>) -> ControlFlow<()> {
 
 // Use internal API to find a function in a crate.
 fn get_item<'a>(
-    tcx: TyCtxt,
     items: &'a stable_mir::CrateItems,
     item: (DefKind, &str),
 ) -> Option<&'a stable_mir::CrateItem> {
     items.iter().find(|crate_item| {
-        let def_id = rustc_internal::item_def_id(crate_item);
-        tcx.def_kind(def_id) == item.0 && tcx.def_path_str(def_id) == item.1
+        crate_item.kind().to_string() == format!("{:?}", item.0) && crate_item.name() == item.1
     })
 }
 

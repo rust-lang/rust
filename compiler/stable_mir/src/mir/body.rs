@@ -1,8 +1,6 @@
-use crate::rustc_internal::Opaque;
-use crate::stable_mir::ty::{
-    AdtDef, ClosureDef, Const, GeneratorDef, GenericArgs, Movability, Region,
-};
-use crate::stable_mir::{self, ty::Ty, Span};
+use crate::ty::{AdtDef, ClosureDef, Const, GeneratorDef, GenericArgs, Movability, Region};
+use crate::Opaque;
+use crate::{ty::Ty, Span};
 
 #[derive(Clone, Debug)]
 pub struct Body {
@@ -135,7 +133,7 @@ pub enum AsyncGeneratorKind {
 }
 
 pub(crate) type LocalDefId = Opaque;
-/// [`rustc_middle::mir::Coverage`] is heavily tied to internal details of the
+/// The rustc coverage data structures are heavily tied to internal details of the
 /// coverage implementation that are likely to change, and are unlikely to be
 /// useful to third-party tools for the foreseeable future.
 pub(crate) type Coverage = Opaque;
@@ -215,7 +213,7 @@ pub enum Rvalue {
     /// generator lowering, `Generator` aggregate kinds are disallowed too.
     Aggregate(AggregateKind, Vec<Operand>),
 
-    /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
+    /// * `Offset` has the same semantics as `<*const T>::offset`, except that the second
     ///   parameter may be a `usize` as well.
     /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
     ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
@@ -245,16 +243,14 @@ pub enum Rvalue {
     /// deref operation, immediately followed by one or more projections.
     CopyForDeref(Place),
 
-    /// Computes the discriminant of the place, returning it as an integer of type
-    /// [`discriminant_ty`]. Returns zero for types without discriminant.
+    /// Computes the discriminant of the place, returning it as an integer.
+    /// Returns zero for types without discriminant.
     ///
     /// The validity requirements for the underlying value are undecided for this rvalue, see
     /// [#91095]. Note too that the value of the discriminant is not the same thing as the
-    /// variant index; use [`discriminant_for_variant`] to convert.
+    /// variant index;
     ///
-    /// [`discriminant_ty`]: rustc_middle::ty::Ty::discriminant_ty
     /// [#91095]: https://github.com/rust-lang/rust/issues/91095
-    /// [`discriminant_for_variant`]: rustc_middle::ty::Ty::discriminant_for_variant
     Discriminant(Place),
 
     /// Yields the length of the place, as a `usize`.
@@ -295,7 +291,7 @@ pub enum Rvalue {
     ///
     /// **Needs clarification**: Are there weird additional semantics here related to the runtime
     /// nature of this operation?
-    ThreadLocalRef(stable_mir::CrateItem),
+    ThreadLocalRef(crate::CrateItem),
 
     /// Computes a value as described by the operation.
     NullaryOp(NullOp, Ty),
