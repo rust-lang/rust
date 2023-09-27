@@ -1039,7 +1039,39 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
                 ty::PredicateKind::Uninhabited(ty, module) => {
-                    self.evaluate_uninhabited_predicate(previous_stack, &obligation, ty, module)
+                    let tcx = self.tcx();
+                    let dfn = previous_stack.cache.next_dfn();
+                    let predicate = obligation.predicate.fold_with(&mut self.freshener);
+                    let param_env = obligation.param_env;
+
+                    if let Some(result) = self.check_evaluation_cache(param_env, predicate) {
+                        debug!("CACHE HIT");
+                        return Ok(result);
+                    }
+
+                    let (result, dep_node) = self.in_task(|this| {
+                        this.evaluate_uninhabited_predicate(
+                            previous_stack,
+                            &obligation.with(tcx, predicate),
+                            ty,
+                            module,
+                        )
+                    });
+                    let result = result?;
+
+                    if !result.must_apply_modulo_regions() {
+                        previous_stack.cache.on_failure(dfn);
+                    }
+
+                    let reached_depth =
+                        previous_stack.head.map_or(0, |stack| stack.reached_depth.get());
+                    if reached_depth >= previous_stack.depth() {
+                        debug!("CACHE MISS");
+                        self.insert_evaluation_cache(param_env, predicate, dep_node, result);
+                        previous_stack.cache.on_completion(dfn);
+                    }
+
+                    Ok(result)
                 }
             }
         })
@@ -1174,7 +1206,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // If a trait predicate is in the (local or global) evaluation cache,
         // then we know it holds without cycles.
-        if let Some(result) = self.check_evaluation_cache(param_env, fresh_trait_pred) {
+        if let Some(result) =
+            self.check_evaluation_cache(param_env, fresh_trait_pred.to_predicate(self.tcx()))
+        {
             debug!("CACHE HIT");
             return Ok(result);
         }
@@ -1248,6 +1282,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let reached_depth = stack.reached_depth.get();
         if reached_depth >= stack.depth {
             debug!("CACHE MISS");
+            let fresh_trait_pred = fresh_trait_pred.to_predicate(self.tcx());
             self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
             stack.cache().on_completion(stack.dfn);
         } else {
@@ -1442,7 +1477,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn check_evaluation_cache(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::Predicate<'tcx>,
     ) -> Option<EvaluationResult> {
         // Neither the global nor local cache is aware of intercrate
         // mode, so don't do any caching. In particular, we might
@@ -1464,7 +1499,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn insert_evaluation_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::Predicate<'tcx>,
         dep_node: DepNodeIndex,
         result: EvaluationResult,
     ) {
