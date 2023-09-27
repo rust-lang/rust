@@ -545,6 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
             let Some(
                 hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
+                | hir::Node::Block(hir::Block { expr: Some(&ref p), .. })
                 | hir::Node::Expr(&ref p),
             ) = self.tcx.hir().find(parent_id)
             else {
