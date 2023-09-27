@@ -131,16 +131,8 @@ impl FileEncoder {
         let buf = unsafe { self.buffer_empty().first_chunk_mut::<N>().unwrap_unchecked() };
         let written = visitor(buf);
         // We have to ensure that an errant visitor cannot cause self.buffered to exeed BUF_SIZE.
-        if written > N {
-            Self::panic_invalid_write::<N>(written);
-        }
-        self.buffered += written;
-    }
-
-    #[cold]
-    #[inline(never)]
-    fn panic_invalid_write<const N: usize>(written: usize) {
-        panic!("FileEncoder::write_with::<{N}> cannot be used to write {written} bytes");
+        debug_assert!(written <= N);
+        self.buffered += written.min(N);
     }
 
     /// Helper for calls where [`FileEncoder::write_with`] always writes the whole array.
