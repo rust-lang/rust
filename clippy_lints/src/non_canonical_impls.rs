@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::paths::ORD_CMP;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, match_def_path, path_res, std_or_core};
+use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, path_res, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, LangItem, Node, UnOp};
@@ -261,7 +260,7 @@ fn self_cmp_call<'tcx>(
     match cmp_expr.kind {
         ExprKind::Call(path, [_self, _other]) => path_res(cx, path)
             .opt_def_id()
-            .is_some_and(|def_id| match_def_path(cx, def_id, &ORD_CMP)),
+            .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::ord_cmp_method, def_id)),
         ExprKind::MethodCall(_, _, [_other], ..) => {
             // We can set this to true here no matter what as if it's a `MethodCall` and goes to the
             // `else` branch, it must be a method named `cmp` that isn't `Ord::cmp`
@@ -273,7 +272,7 @@ fn self_cmp_call<'tcx>(
             cx.tcx
                 .typeck(def_id)
                 .type_dependent_def_id(cmp_expr.hir_id)
-                .is_some_and(|def_id| match_def_path(cx, def_id, &ORD_CMP))
+                .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::ord_cmp_method, def_id))
         },
         _ => false,
     }

@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::ty::expr_sig;
-use clippy_utils::{get_parent_node, is_default_equivalent, match_path, path_def_id, paths};
+use clippy_utils::{get_parent_node, is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_ty, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, Local, Node, QPath, TyKind};
+use rustc_hir::{def::Res, Block, Expr, ExprKind, Local, Node, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -55,7 +55,7 @@ impl LateLintPass<'_> for BoxDefault {
                 expr.span,
                 "`Box::new(_)` of default value",
                 "try",
-                if is_plain_default(arg_path) || given_type(cx, expr) {
+                if is_plain_default(cx, arg_path) || given_type(cx, expr) {
                     "Box::default()".into()
                 } else if let Some(arg_ty) = cx.typeck_results().expr_ty(arg).make_suggestable(cx.tcx, true) {
                     with_forced_trimmed_paths!(format!("Box::<{arg_ty}>::default()"))
@@ -68,11 +68,13 @@ impl LateLintPass<'_> for BoxDefault {
     }
 }
 
-fn is_plain_default(arg_path: &Expr<'_>) -> bool {
+fn is_plain_default(cx: &LateContext<'_>, arg_path: &Expr<'_>) -> bool {
     // we need to match the actual path so we don't match e.g. "u8::default"
-    if let ExprKind::Path(QPath::Resolved(None, path)) = &arg_path.kind {
+    if let ExprKind::Path(QPath::Resolved(None, path)) = &arg_path.kind
+        && let Res::Def(_, def_id) = path.res
+    {
         // avoid generic parameters
-        match_path(path, &paths::DEFAULT_TRAIT_METHOD) && path.segments.iter().all(|seg| seg.args.is_none())
+        cx.tcx.is_diagnostic_item(sym::default_fn, def_id) && path.segments.iter().all(|seg| seg.args.is_none())
     } else {
         false
     }

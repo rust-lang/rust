@@ -19,8 +19,8 @@ LL |     const DEREF_MUT_TRAIT: [&str; 4] = ["core", "ops", "deref", "DerefMut"]
 error: hardcoded path to a diagnostic item
   --> $DIR/unnecessary_def_path_hardcoded_path.rs:12:43
    |
-LL |     const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
-   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const OPS_MOD: [&str; 5] = ["core", "ops"];
+   |                                ^^^^^^^^^^^^^^^
    |
    = help: convert all references to use `sym::deref_method`
 

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_c_void;
-use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, match_any_def_paths, paths};
+use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant};
 use rustc_hir::{Expr, ExprKind, GenericArg};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::LayoutOf;
@@ -75,16 +75,17 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             }
         },
         ExprKind::Call(func, [arg, ..]) if arg.hir_id == e.hir_id => {
-            static PATHS: &[&[&str]] = &[
-                paths::PTR_READ_UNALIGNED.as_slice(),
-                paths::PTR_UNALIGNED_VOLATILE_LOAD.as_slice(),
-                paths::PTR_UNALIGNED_VOLATILE_STORE.as_slice(),
-            ];
-
             if let ExprKind::Path(path) = &func.kind
                 && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
-                && (match_any_def_paths(cx, def_id, PATHS).is_some()
-                    || cx.tcx.is_diagnostic_item(sym::ptr_write_unaligned, def_id))
+                && matches!(
+                    cx.tcx.get_diagnostic_name(def_id),
+                    Some(
+                        sym::ptr_write_unaligned
+                        | sym::ptr_read_unaligned
+                        | sym::intrinsics_unaligned_volatile_load
+                        | sym::intrinsics_unaligned_volatile_store
+                    )
+                )
             {
                 true
             } else {
