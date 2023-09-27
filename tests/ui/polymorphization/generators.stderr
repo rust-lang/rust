@@ -8,34 +8,20 @@ LL | #![feature(generic_const_exprs, generators, generator_trait, rustc_attrs)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: item has unused generic parameters
-  --> $DIR/generators.rs:36:5
+  --> $DIR/generators.rs:35:5
    |
 LL | pub fn unused_type<T>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
    |                    - generic parameter `T` is unused
-LL |
 LL |     || {
    |     ^^
 
 error: item has unused generic parameters
-  --> $DIR/generators.rs:34:8
-   |
-LL | pub fn unused_type<T>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
-   |        ^^^^^^^^^^^ - generic parameter `T` is unused
-
-error: item has unused generic parameters
-  --> $DIR/generators.rs:62:5
+  --> $DIR/generators.rs:60:5
    |
 LL | pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
    |                     ------------ generic parameter `T` is unused
-LL |
 LL |     || {
    |     ^^
 
-error: item has unused generic parameters
-  --> $DIR/generators.rs:60:8
-   |
-LL | pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
-   |        ^^^^^^^^^^^^ ------------ generic parameter `T` is unused
-
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 

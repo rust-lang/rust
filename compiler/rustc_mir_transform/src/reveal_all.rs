@@ -26,6 +26,25 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
     }
 
     #[inline]
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        _context: PlaceContext,
+        _location: Location,
+    ) {
+        // `OpaqueCast` projections are only needed if there are opaque types on which projections are performed.
+        // After the `RevealAll` pass, all opaque types are replaced with their hidden types, so we don't need these
+        // projections anymore.
+        place.projection = self.tcx.mk_place_elems(
+            &place
+                .projection
+                .into_iter()
+                .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_)))
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    #[inline]
     fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, _: Location) {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
