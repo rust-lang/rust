@@ -108,7 +108,7 @@ enum Value<'tcx> {
 }
 
 /// For each local, save the place corresponding to `*local`.
-#[instrument(level = "trace", skip(tcx, body))]
+#[instrument(level = "trace", skip(tcx, body, ssa))]
 fn compute_replacement<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
