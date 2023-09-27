@@ -130,6 +130,7 @@ unsafe fn assign_to_ref() {
     }
 }
 
+const RAW_PTR: *mut u8 = 1 as *mut u8;
 unsafe fn no_warn() {
     let num = &3i32;
     let mut_num = &mut 3i32;
@@ -144,6 +145,9 @@ unsafe fn no_warn() {
     let mut value = 3;
     let value: *const i32 = &mut value;
     *(value as *const i16 as *mut i16) = 42;
+    *RAW_PTR = 42; // RAW_PTR is defined outside the function body,
+                   // make sure we don't ICE on it when trying to
+                   // determine if we should lint on it or not.
 
     fn safe_as_mut<T>(x: &std::cell::UnsafeCell<T>) -> &mut T {
         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
