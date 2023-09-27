@@ -81,7 +81,7 @@ impl Foldable for UnevaluatedConst {
 
 impl Foldable for ConstDef {
     fn super_fold<V: Folder>(&self, _folder: &mut V) -> ControlFlow<V::Break, Self> {
-        ControlFlow::Continue(self.clone())
+        ControlFlow::Continue(*self)
     }
 }
 
@@ -96,7 +96,7 @@ impl<T: Foldable> Foldable for Option<T> {
 
 impl Foldable for Promoted {
     fn super_fold<V: Folder>(&self, _folder: &mut V) -> ControlFlow<V::Break, Self> {
-        ControlFlow::Continue(self.clone())
+        ControlFlow::Continue(*self)
     }
 }
 
