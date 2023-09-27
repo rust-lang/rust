@@ -117,6 +117,10 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     // Needed to avoid the need to copy windows.lib into the sysroot.
     (Some(Mode::Rustc), "windows_raw_dylib", None),
     (Some(Mode::ToolRustc), "windows_raw_dylib", None),
+    // If rustc wants to use rust-lld as the default linker in a target spec.
+    (Some(Mode::Rustc), "rust_lld", None),
+    (Some(Mode::ToolRustc), "rust_lld", None),
+    (Some(Mode::Codegen), "rust_lld", None),
 ];
 
 /// A structure representing a Rust compiler.
