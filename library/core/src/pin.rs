@@ -31,9 +31,9 @@
 //! [^guarantees]: Pinning on its own does not provide *all* the invariants necessary here. However,
 //! in order to validly pin a value in the first place, it must already satisfy the other invariants
 //! for it to be valid to dereference a pointer to that value while it is pinned, and using the
-//! [`Drop` guarantee][drop-guarantee], we can ensure that any interested parties are notified
-//! before the value becomes no longer pinned, i.e. when the value goes out of scope and is
-//! invalidated.
+//! [`Drop` guarantee][self#subtle-details-and-the-drop-guarantee], we can ensure that any
+//! interested parties are notified before the value becomes no longer pinned, i.e. when the value
+//! goes out of scope and is invalidated.
 //!
 //! Note that as long as you don't use [`unsafe`], it's impossible to create or misuse a pinned
 //! value in a way that will produce unsoundness. See the documentation of [`Pin<Ptr>`] for more
