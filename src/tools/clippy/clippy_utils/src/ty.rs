@@ -31,7 +31,7 @@ use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::assert_matches::debug_assert_matches;
 use std::iter;
 
-use crate::{match_def_path, path_res, paths};
+use crate::{match_def_path, path_res};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
@@ -461,10 +461,8 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         else if is_type_lang_item(cx, ty, LangItem::OwnedBox)
             || matches!(
                 get_type_diagnostic_name(cx, ty),
-                Some(sym::HashSet | sym::Rc | sym::Arc | sym::cstring_type)
+                Some(sym::HashSet | sym::Rc | sym::Arc | sym::cstring_type | sym::RcWeak | sym::ArcWeak)
             )
-            || match_type(cx, ty, &paths::WEAK_RC)
-            || match_type(cx, ty, &paths::WEAK_ARC)
         {
             // Check all of the generic arguments.
             if let ty::Adt(_, subs) = ty.kind() {

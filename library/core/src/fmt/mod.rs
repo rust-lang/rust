@@ -239,6 +239,7 @@ impl<W: Write + ?Sized> Write for &mut W {
 /// documentation of the methods defined on `Formatter` below.
 #[allow(missing_debug_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Formatter"]
 pub struct Formatter<'a> {
     flags: u32,
     fill: char,

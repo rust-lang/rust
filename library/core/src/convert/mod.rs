@@ -100,6 +100,7 @@ pub use num::FloatToInt;
 #[stable(feature = "convert_id", since = "1.33.0")]
 #[rustc_const_stable(feature = "const_identity", since = "1.33.0")]
 #[inline(always)]
+#[rustc_diagnostic_item = "convert_identity"]
 pub const fn identity<T>(x: T) -> T {
     x
 }
@@ -642,6 +643,7 @@ pub trait TryFrom<T>: Sized {
 
     /// Performs the conversion.
     #[stable(feature = "try_from", since = "1.34.0")]
+    #[rustc_diagnostic_item = "try_from_fn"]
     fn try_from(value: T) -> Result<Self, Self::Error>;
 }
 

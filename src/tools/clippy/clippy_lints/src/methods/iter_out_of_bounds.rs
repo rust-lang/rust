@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::higher::VecArgs;
-use clippy_utils::{expr_or_init, is_trait_method, match_def_path, paths};
+use clippy_utils::{expr_or_init, is_trait_method};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -26,14 +26,14 @@ fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> 
     };
     let did = adt.did();
 
-    if match_def_path(cx, did, &paths::ARRAY_INTO_ITER) {
+    if cx.tcx.is_diagnostic_item(sym::ArrayIntoIter, did) {
         // For array::IntoIter<T, const N: usize>, the length is the second generic
         // parameter.
         substs
             .const_at(1)
             .try_eval_target_usize(cx.tcx, cx.param_env)
             .map(u128::from)
-    } else if match_def_path(cx, did, &paths::SLICE_ITER)
+    } else if cx.tcx.is_diagnostic_item(sym::SliceIter, did)
         && let ExprKind::MethodCall(_, recv, ..) = iter.kind
     {
         if let ty::Array(_, len) = cx.typeck_results().expr_ty(recv).peel_refs().kind() {
@@ -47,9 +47,9 @@ fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> 
         } else {
             None
         }
-    } else if match_def_path(cx, did, &paths::ITER_EMPTY) {
+    } else if cx.tcx.is_diagnostic_item(sym::IterEmpty, did) {
         Some(0)
-    } else if match_def_path(cx, did, &paths::ITER_ONCE) {
+    } else if cx.tcx.is_diagnostic_item(sym::IterOnce, did) {
         Some(1)
     }  else {
         None

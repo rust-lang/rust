@@ -624,6 +624,7 @@ pub trait FromStr: Sized {
     /// assert_eq!(5, x);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "from_str_method"]
     fn from_str(s: &str) -> Result<Self, Self::Err>;
 }
 

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_lang_item, walk_ptrs_ty_depth};
-use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -22,7 +21,7 @@ pub fn check(
     if_chain! {
         if args.is_empty() && method_name == sym::to_string;
         if let Some(to_string_meth_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-        if match_def_path(cx, to_string_meth_did, &paths::TO_STRING_METHOD);
+        if cx.tcx.is_diagnostic_item(sym::to_string_method, to_string_meth_did);
         if let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id);
         let arg_ty = cx.typeck_results().expr_ty_adjusted(receiver);
         let self_ty = args.type_at(0);

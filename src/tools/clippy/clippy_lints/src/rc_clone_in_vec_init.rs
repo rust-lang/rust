@@ -2,11 +2,11 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::ty::match_type;
-use clippy_utils::{last_path_segment, paths};
+use clippy_utils::last_path_segment;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span, Symbol};
 
@@ -133,8 +133,9 @@ fn ref_init(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(Symbol, Span)> {
                 return Some((symbol, func.span));
             }
 
-            let ty_path = cx.typeck_results().expr_ty(expr);
-            if match_type(cx, ty_path, &paths::WEAK_RC) || match_type(cx, ty_path, &paths::WEAK_ARC) {
+            if let ty::Adt(adt, _) = *cx.typeck_results().expr_ty(expr).kind()
+                && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::RcWeak | sym::ArcWeak))
+            {
                 return Some((Symbol::intern("Weak"), func.span));
             }
         }

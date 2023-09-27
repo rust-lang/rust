@@ -723,6 +723,7 @@ pub unsafe fn uninitialized<T>() -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[rustc_diagnostic_item = "mem_swap"]
 pub const fn swap<T>(x: &mut T, y: &mut T) {
     // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
     // reinterpretation of values as (chunkable) byte arrays, and the loop in the

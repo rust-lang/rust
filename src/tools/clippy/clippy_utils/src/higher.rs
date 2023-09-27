@@ -457,7 +457,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                 };
             },
             ExprKind::Path(QPath::Resolved(_, path))
-                if match_def_path(cx, path.res.opt_def_id()?, &paths::DEFAULT_TRAIT_METHOD)
+                if cx.tcx.is_diagnostic_item(sym::default_fn, path.res.opt_def_id()?)
                     && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec) =>
             {
                 return Some(VecInitKind::Default);

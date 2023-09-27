@@ -130,6 +130,7 @@ pub trait Default: Sized {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "default_fn"]
     fn default() -> Self;
 }
 
