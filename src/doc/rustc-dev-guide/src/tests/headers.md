@@ -190,7 +190,7 @@ The following headers are generally available, and not specific to particular
 test suites.
 
 * `compile-flags` passes extra command-line args to the compiler,
-  e.g. `compile-flags -g` which forces debuginfo to be enabled.
+  e.g. `// compile-flags: -g` which forces debuginfo to be enabled.
 * `run-flags` passes extra args to the test if the test is to be executed.
 * `edition` controls the edition the test should be compiled with
   (defaults to 2015). Example usage: `// edition:2018`.
