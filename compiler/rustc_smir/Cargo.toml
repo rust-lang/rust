@@ -4,24 +4,14 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-# Use optional dependencies for rustc_* in order to support building this crate separately.
-rustc_hir = { path = "../rustc_hir", optional = true }
-rustc_middle = { path = "../rustc_middle", optional = true }
-rustc_span = { path = "../rustc_span", optional = true }
-rustc_target = { path = "../rustc_target", optional = true }
-rustc_driver = { path = "../rustc_driver", optional = true }
-rustc_interface = { path = "../rustc_interface", optional = true}
-rustc_session = {path = "../rustc_session", optional = true}
+rustc_hir = { path = "../rustc_hir" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+rustc_driver = { path = "../rustc_driver" }
+rustc_interface = { path = "../rustc_interface" }
+rustc_session = {path = "../rustc_session" }
 tracing = "0.1"
-scoped-tls = "1.0"
+stable_mir = {path = "../stable_mir" }
 
 [features]
-default = [
-    "rustc_hir",
-    "rustc_middle",
-    "rustc_span",
-    "rustc_target",
-    "rustc_driver",
-    "rustc_interface",
-    "rustc_session",
-]

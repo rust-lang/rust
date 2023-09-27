@@ -11,9 +11,10 @@
 
 extern crate rustc_middle;
 extern crate rustc_smir;
+extern crate stable_mir;
 
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::{rustc_internal, stable_mir};
+use rustc_smir::rustc_internal;
 use std::io::Write;
 use std::ops::ControlFlow;
 

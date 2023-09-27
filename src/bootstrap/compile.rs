@@ -1789,7 +1789,10 @@ pub fn run_cargo(
                 // During check builds we need to keep crate metadata
                 keep = true;
             } else if rlib_only_metadata {
-                if filename.contains("jemalloc_sys") || filename.contains("rustc_smir") {
+                if filename.contains("jemalloc_sys")
+                    || filename.contains("rustc_smir")
+                    || filename.contains("stable_mir")
+                {
                     // jemalloc_sys and rustc_smir are not linked into librustc_driver.so,
                     // so we need to distribute them as rlib to be able to use them.
                     keep |= filename.ends_with(".rlib");

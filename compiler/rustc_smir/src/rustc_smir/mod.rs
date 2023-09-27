@@ -7,19 +7,16 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
-use crate::stable_mir::ty::{
-    FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy,
-};
-use crate::stable_mir::{self, CompilerError, Context};
+use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_span::ErrorGuaranteed;
 use rustc_target::abi::FieldIdx;
+use stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
+use stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy};
+use stable_mir::{self, opaque, Context};
 use tracing::debug;
 
 mod alloc;
@@ -42,6 +39,14 @@ impl<'tcx> Context for Tables<'tcx> {
 
     fn name_of_def_id(&self, def_id: stable_mir::DefId) -> String {
         self.tcx.def_path_str(self[def_id])
+    }
+
+    fn print_span(&self, span: stable_mir::ty::Span) -> String {
+        self.tcx.sess.source_map().span_to_diagnostic_string(self[span])
+    }
+
+    fn def_kind(&mut self, def_id: stable_mir::DefId) -> stable_mir::DefKind {
+        self.tcx.def_kind(self[def_id]).stable(self)
     }
 
     fn span_of_an_item(&mut self, def_id: stable_mir::DefId) -> Span {
@@ -104,11 +109,7 @@ impl<'tcx> Context for Tables<'tcx> {
         }
     }
 
-    fn rustc_tables(&mut self, f: &mut dyn FnMut(&mut Tables<'_>)) {
-        f(self)
-    }
-
-    fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {
+    fn ty_kind(&mut self, ty: stable_mir::ty::Ty) -> TyKind {
         self.types[ty.0].clone().stable(self)
     }
 
@@ -276,7 +277,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 place.stable(tables),
             ),
             ThreadLocalRef(def_id) => {
-                stable_mir::mir::Rvalue::ThreadLocalRef(rustc_internal::crate_item(*def_id))
+                stable_mir::mir::Rvalue::ThreadLocalRef(tables.crate_item(*def_id))
             }
             AddressOf(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
@@ -739,7 +740,7 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
             mir::AggregateKind::Tuple => stable_mir::mir::AggregateKind::Tuple,
             mir::AggregateKind::Adt(def_id, var_idx, generic_arg, user_ty_index, field_idx) => {
                 stable_mir::mir::AggregateKind::Adt(
-                    rustc_internal::adt_def(*def_id),
+                    tables.adt_def(*def_id),
                     var_idx.index(),
                     generic_arg.stable(tables),
                     user_ty_index.map(|idx| idx.index()),
@@ -748,13 +749,13 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
             }
             mir::AggregateKind::Closure(def_id, generic_arg) => {
                 stable_mir::mir::AggregateKind::Closure(
-                    rustc_internal::closure_def(*def_id),
+                    tables.closure_def(*def_id),
                     generic_arg.stable(tables),
                 )
             }
             mir::AggregateKind::Generator(def_id, generic_arg, movability) => {
                 stable_mir::mir::AggregateKind::Generator(
-                    rustc_internal::generator_def(*def_id),
+                    tables.generator_def(*def_id),
                     generic_arg.stable(tables),
                     movability.stable(tables),
                 )
@@ -964,13 +965,13 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
     type T = stable_mir::ty::BoundTyKind;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::BoundTyKind;
 
         match self {
             ty::BoundTyKind::Anon => BoundTyKind::Anon,
             ty::BoundTyKind::Param(def_id, symbol) => {
-                BoundTyKind::Param(rustc_internal::param_def(*def_id), symbol.to_string())
+                BoundTyKind::Param(tables.param_def(*def_id), symbol.to_string())
             }
         }
     }
@@ -979,13 +980,13 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
 impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
     type T = stable_mir::ty::BoundRegionKind;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::BoundRegionKind;
 
         match self {
             ty::BoundRegionKind::BrAnon => BoundRegionKind::BrAnon,
             ty::BoundRegionKind::BrNamed(def_id, symbol) => {
-                BoundRegionKind::BrNamed(rustc_internal::br_named_def(*def_id), symbol.to_string())
+                BoundRegionKind::BrNamed(tables.br_named_def(*def_id), symbol.to_string())
             }
             ty::BoundRegionKind::BrEnv => BoundRegionKind::BrEnv,
         }
@@ -1072,12 +1073,10 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
             ty::Uint(uint_ty) => TyKind::RigidTy(RigidTy::Uint(uint_ty.stable(tables))),
             ty::Float(float_ty) => TyKind::RigidTy(RigidTy::Float(float_ty.stable(tables))),
             ty::Adt(adt_def, generic_args) => TyKind::RigidTy(RigidTy::Adt(
-                rustc_internal::adt_def(adt_def.did()),
+                tables.adt_def(adt_def.did()),
                 generic_args.stable(tables),
             )),
-            ty::Foreign(def_id) => {
-                TyKind::RigidTy(RigidTy::Foreign(rustc_internal::foreign_def(*def_id)))
-            }
+            ty::Foreign(def_id) => TyKind::RigidTy(RigidTy::Foreign(tables.foreign_def(*def_id))),
             ty::Str => TyKind::RigidTy(RigidTy::Str),
             ty::Array(ty, constant) => {
                 TyKind::RigidTy(RigidTy::Array(tables.intern_ty(*ty), constant.stable(tables)))
@@ -1091,10 +1090,9 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
                 tables.intern_ty(*ty),
                 mutbl.stable(tables),
             )),
-            ty::FnDef(def_id, generic_args) => TyKind::RigidTy(RigidTy::FnDef(
-                rustc_internal::fn_def(*def_id),
-                generic_args.stable(tables),
-            )),
+            ty::FnDef(def_id, generic_args) => {
+                TyKind::RigidTy(RigidTy::FnDef(tables.fn_def(*def_id), generic_args.stable(tables)))
+            }
             ty::FnPtr(poly_fn_sig) => TyKind::RigidTy(RigidTy::FnPtr(poly_fn_sig.stable(tables))),
             ty::Dynamic(existential_predicates, region, dyn_kind) => {
                 TyKind::RigidTy(RigidTy::Dynamic(
@@ -1107,11 +1105,11 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
                 ))
             }
             ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
-                rustc_internal::closure_def(*def_id),
+                tables.closure_def(*def_id),
                 generic_args.stable(tables),
             )),
             ty::Generator(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Generator(
-                rustc_internal::generator_def(*def_id),
+                tables.generator_def(*def_id),
                 generic_args.stable(tables),
                 movability.stable(tables),
             )),
@@ -1223,7 +1221,7 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
         use stable_mir::ty::TraitDecl;
 
         TraitDecl {
-            def_id: rustc_internal::trait_def(self.def_id),
+            def_id: tables.trait_def(self.def_id),
             unsafety: self.unsafety.stable(tables),
             paren_sugar: self.paren_sugar,
             has_auto_impl: self.has_auto_impl,
@@ -1272,7 +1270,7 @@ impl<'tcx> Stable<'tcx> for ty::TraitRef<'tcx> {
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::TraitRef;
 
-        TraitRef { def_id: rustc_internal::trait_def(self.def_id), args: self.args.stable(tables) }
+        TraitRef { def_id: tables.trait_def(self.def_id), args: self.args.stable(tables) }
     }
 }
 
@@ -1516,8 +1514,11 @@ impl<'tcx> Stable<'tcx> for rustc_span::Span {
     }
 }
 
-impl<T> From<ErrorGuaranteed> for CompilerError<T> {
-    fn from(_error: ErrorGuaranteed) -> Self {
-        CompilerError::CompilationFailed
+impl<'tcx> Stable<'tcx> for DefKind {
+    type T = stable_mir::DefKind;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        // FIXME: add a real implementation of stable DefKind
+        opaque(self)
     }
 }
