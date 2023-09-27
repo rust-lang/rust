@@ -7,7 +7,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind};
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -124,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             FnKind::Method(_, sig, ..) => {
                 if trait_ref_of_method(cx, def_id).is_some()
                     || already_const(sig.header)
-                    || method_accepts_droppable(cx, sig.decl.inputs)
+                    || method_accepts_droppable(cx, def_id)
                 {
                     return;
                 }
@@ -165,12 +164,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 
 /// Returns true if any of the method parameters is a type that implements `Drop`. The method
 /// can't be made const then, because `drop` can't be const-evaluated.
-fn method_accepts_droppable(cx: &LateContext<'_>, param_tys: &[hir::Ty<'_>]) -> bool {
+fn method_accepts_droppable(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
+    let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
+
     // If any of the params are droppable, return true
-    param_tys.iter().any(|hir_ty| {
-        let ty_ty = hir_ty_to_ty(cx.tcx, hir_ty);
-        has_drop(cx, ty_ty)
-    })
+    sig.inputs().iter().any(|&ty| has_drop(cx, ty))
 }
 
 // We don't have to lint on something that's already `const`

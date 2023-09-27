@@ -1108,10 +1108,7 @@ fn clean_function<'tcx>(
                 clean_args_from_types_and_names(cx, sig.decl.inputs, names)
             }
         };
-        let mut decl = clean_fn_decl_with_args(cx, sig.decl, args);
-        if sig.header.is_async() {
-            decl.output = decl.sugared_async_return_type();
-        }
+        let decl = clean_fn_decl_with_args(cx, sig.decl, Some(&sig.header), args);
         (generics, decl)
     });
     Box::new(Function { decl, generics })
@@ -1162,12 +1159,16 @@ fn clean_args_from_types_and_body_id<'tcx>(
 fn clean_fn_decl_with_args<'tcx>(
     cx: &mut DocContext<'tcx>,
     decl: &hir::FnDecl<'tcx>,
+    header: Option<&hir::FnHeader>,
     args: Arguments,
 ) -> FnDecl {
-    let output = match decl.output {
+    let mut output = match decl.output {
         hir::FnRetTy::Return(typ) => clean_ty(typ, cx),
         hir::FnRetTy::DefaultReturn(..) => Type::Tuple(Vec::new()),
     };
+    if let Some(header) = header && header.is_async() {
+        output = output.sugared_async_return_type();
+    }
     FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
 }
 
@@ -1180,7 +1181,11 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
 
     // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
     // but shouldn't change any code meaning.
-    let output = clean_middle_ty(sig.output(), cx, None, None);
+    let mut output = clean_middle_ty(sig.output(), cx, None, None);
+
+    if let Some(did) = did && cx.tcx.asyncness(did).is_async() {
+        output = output.sugared_async_return_type();
+    }
 
     FnDecl {
         output,
@@ -1753,7 +1758,7 @@ fn maybe_expand_private_type_alias<'tcx>(
     cx: &mut DocContext<'tcx>,
     path: &hir::Path<'tcx>,
 ) -> Option<Type> {
-    let Res::Def(DefKind::TyAlias { .. }, def_id) = path.res else { return None };
+    let Res::Def(DefKind::TyAlias, def_id) = path.res else { return None };
     // Substitute private type aliases
     let def_id = def_id.as_local()?;
     let alias = if !cx.cache.effective_visibilities.is_exported(cx.tcx, def_id.to_def_id())
@@ -2022,7 +2027,7 @@ impl<'tcx> ContainerTy<'tcx> {
                 let (DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum
-                | DefKind::TyAlias { .. }
+                | DefKind::TyAlias
                 | DefKind::Trait) = tcx.def_kind(container)
                 else {
                     return ObjectLifetimeDefault::Empty;
@@ -2566,7 +2571,7 @@ fn clean_bare_fn_ty<'tcx>(
             .map(|x| clean_generic_param(cx, None, x))
             .collect();
         let args = clean_args_from_types_and_names(cx, bare_fn.decl.inputs, bare_fn.param_names);
-        let decl = clean_fn_decl_with_args(cx, bare_fn.decl, args);
+        let decl = clean_fn_decl_with_args(cx, bare_fn.decl, None, args);
         (generic_params, decl)
     });
     BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
@@ -2854,7 +2859,7 @@ fn clean_impl<'tcx>(
     let for_ = clean_ty(impl_.self_ty, cx);
     let type_alias =
         for_.def_id(&cx.cache).and_then(|alias_def_id: DefId| match tcx.def_kind(alias_def_id) {
-            DefKind::TyAlias { .. } => Some(clean_middle_ty(
+            DefKind::TyAlias => Some(clean_middle_ty(
                 ty::Binder::dummy(tcx.type_of(def_id).instantiate_identity()),
                 cx,
                 Some(def_id.to_def_id()),
@@ -3077,7 +3082,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                     // NOTE: generics must be cleaned before args
                     let generics = clean_generics(generics, cx);
                     let args = clean_args_from_types_and_names(cx, decl.inputs, names);
-                    let decl = clean_fn_decl_with_args(cx, decl, args);
+                    let decl = clean_fn_decl_with_args(cx, decl, None, args);
                     (generics, decl)
                 });
                 ForeignFunctionItem(Box::new(Function { decl, generics }))

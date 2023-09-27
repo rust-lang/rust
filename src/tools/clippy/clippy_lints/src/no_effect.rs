@@ -5,10 +5,8 @@ use clippy_utils::{get_parent_node, is_lint_allowed, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, FnRetTy, ItemKind, Node, PatKind, Stmt, StmtKind,
-    UnsafeSource,
+    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, ItemKind, Node, PatKind, Stmt, StmtKind, UnsafeSource,
 };
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -99,14 +97,13 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
                 |diag| {
                     for parent in cx.tcx.hir().parent_iter(stmt.hir_id) {
                         if let Node::Item(item) = parent.1
-                            && let ItemKind::Fn(sig, ..) = item.kind
-                            && let FnRetTy::Return(ret_ty) = sig.decl.output
+                            && let ItemKind::Fn(..) = item.kind
                             && let Some(Node::Block(block)) = get_parent_node(cx.tcx, stmt.hir_id)
                             && let [.., final_stmt] = block.stmts
                             && final_stmt.hir_id == stmt.hir_id
                         {
                             let expr_ty = cx.typeck_results().expr_ty(expr);
-                            let mut ret_ty = hir_ty_to_ty(cx.tcx, ret_ty);
+                            let mut ret_ty = cx.tcx.fn_sig(item.owner_id).instantiate_identity().output().skip_binder();
 
                             // Remove `impl Future<Output = T>` to get `T`
                             if cx.tcx.ty_is_opaque_future(ret_ty) &&
@@ -115,7 +112,7 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
                                 ret_ty = true_ret_ty;
                             }
 
-                            if ret_ty == expr_ty {
+                            if !ret_ty.is_unit() && ret_ty == expr_ty {
                                 diag.span_suggestion(
                                     stmt.span.shrink_to_lo(),
                                     "did you mean to return it?",

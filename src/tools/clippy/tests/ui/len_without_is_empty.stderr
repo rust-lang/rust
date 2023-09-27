@@ -141,5 +141,11 @@ error: struct `AsyncResultLenWithoutIsEmpty` has a public `len` method, but no `
 LL |     pub async fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors
+error: type `Alias2` has a public `len` method, but no `is_empty` method
+  --> $DIR/len_without_is_empty.rs:456:5
+   |
+LL |     pub fn len(&self) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
 

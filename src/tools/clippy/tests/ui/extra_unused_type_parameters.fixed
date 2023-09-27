@@ -113,4 +113,19 @@ with_span!(
     }
 );
 
+mod issue11302 {
+    use std::fmt::Debug;
+    use std::marker::PhantomData;
+
+    #[derive(Debug)]
+    struct Wrapper<T>(PhantomData<T>);
+
+    fn store<T: 'static>(v: &mut Vec<Box<dyn Debug>>)
+    where
+        Wrapper<T>: Debug,
+    {
+        v.push(Box::new(Wrapper(PhantomData)));
+    }
+}
+
 fn main() {}

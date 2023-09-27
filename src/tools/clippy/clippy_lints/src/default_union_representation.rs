@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{self as hir, HirId, Item, ItemKind};
-use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_hir::{HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, FieldDef, GenericArg, List};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -52,7 +52,10 @@ declare_lint_pass!(DefaultUnionRepresentation => [DEFAULT_UNION_REPRESENTATION])
 
 impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if is_union_with_two_non_zst_fields(cx, item) && !has_c_repr_attr(cx, item.hir_id()) {
+        if !item.span.from_expansion()
+            && is_union_with_two_non_zst_fields(cx, item)
+            && !has_c_repr_attr(cx, item.hir_id())
+        {
             span_lint_and_help(
                 cx,
                 DEFAULT_UNION_REPRESENTATION,
@@ -73,18 +76,17 @@ impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
 /// if there is only one field left after ignoring ZST fields then the offset
 /// of that field does not matter either.)
 fn is_union_with_two_non_zst_fields(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
-    if let ItemKind::Union(data, _) = &item.kind {
-        data.fields().iter().filter(|f| !is_zst(cx, f.ty)).count() >= 2
+    if let ItemKind::Union(..) = &item.kind
+        && let ty::Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
+    {
+        adt_def.all_fields().filter(|f| !is_zst(cx, f, args)).count() >= 2
     } else {
         false
     }
 }
 
-fn is_zst(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) -> bool {
-    if hir_ty.span.from_expansion() {
-        return false;
-    }
-    let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+fn is_zst<'tcx>(cx: &LateContext<'tcx>, field: &FieldDef, args: &'tcx List<GenericArg<'tcx>>) -> bool {
+    let ty = field.ty(cx.tcx, args);
     if let Ok(layout) = cx.layout_of(ty) {
         layout.is_zst()
     } else {

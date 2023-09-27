@@ -160,9 +160,9 @@ pub unsafe fn create_module<'ll>(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.is_builtin {
+        // tm is disposed by its drop impl
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);
-        llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
-        llvm::LLVMRustDisposeTargetMachine(tm);
+        llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, &tm);
 
         let llvm_data_layout = llvm::LLVMGetDataLayoutStr(llmod);
         let llvm_data_layout = str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())

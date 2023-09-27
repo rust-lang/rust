@@ -115,7 +115,7 @@ impl From<DefKind> for ItemType {
             DefKind::Struct => Self::Struct,
             DefKind::Union => Self::Union,
             DefKind::Trait => Self::Trait,
-            DefKind::TyAlias { .. } => Self::TypeAlias,
+            DefKind::TyAlias => Self::TypeAlias,
             DefKind::TraitAlias => Self::TraitAlias,
             DefKind::Macro(kind) => match kind {
                 MacroKind::Bang => ItemType::Macro,

@@ -455,7 +455,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                         CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_usize(i),
-                                kind: ty::BrAnon(None),
+                                kind: ty::BrAnon,
                             };
                             ty::Region::new_late_bound(tcx, ty::INNERMOST, br).into()
                         }

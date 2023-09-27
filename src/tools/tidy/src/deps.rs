@@ -18,6 +18,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0/MIT",
     "ISC",
     "MIT / Apache-2.0",
+    "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
     "MIT OR Apache-2.0",
     "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
@@ -57,14 +58,14 @@ const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
     // tidy-alphabetical-start
     ("bitmaps", "MPL-2.0+"),
     ("bytesize", "Apache-2.0"),
+    ("byteyarn", "Apache-2.0"),
     ("ciborium", "Apache-2.0"),
     ("ciborium-io", "Apache-2.0"),
     ("ciborium-ll", "Apache-2.0"),
     ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
+    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
     ("im-rc", "MPL-2.0+"),
-    ("imara-diff", "Apache-2.0"),
-    ("instant", "BSD-3-Clause"),
     ("normalize-line-endings", "Apache-2.0"),
     ("openssl", "Apache-2.0"),
     ("ryu", "Apache-2.0 OR BSL-1.0"),
@@ -179,7 +180,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "instant",
     "intl-memoizer",
     "intl_pluralrules",
-    "io-lifetimes",
     "is-terminal",
     "itertools",
     "itoa",
@@ -217,6 +217,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "pulldown-cmark",
     "punycode",
     "quote",
+    "r-efi",
+    "r-efi-alloc",
     "rand",
     "rand_chacha",
     "rand_core",

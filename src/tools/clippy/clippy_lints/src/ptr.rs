@@ -16,7 +16,6 @@ use rustc_hir::{
     ImplItemKind, ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind,
     TyKind, Unsafety,
 };
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::{LateContext, LateLintPass};
@@ -172,13 +171,8 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
             for arg in check_fn_args(
                 cx,
-                cx.tcx
-                    .fn_sig(item.owner_id)
-                    .instantiate_identity()
-                    .skip_binder()
-                    .inputs(),
+                cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder(),
                 sig.decl.inputs,
-                &sig.decl.output,
                 &[],
             )
             .filter(|arg| arg.mutability() == Mutability::Not)
@@ -237,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         let decl = sig.decl;
         let sig = cx.tcx.fn_sig(item_id).instantiate_identity().skip_binder();
-        let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, &decl.output, body.params)
+        let lint_args: Vec<_> = check_fn_args(cx, sig, decl.inputs, body.params)
             .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
             .collect();
         let results = check_ptr_arg_usage(cx, body, &lint_args);
@@ -443,12 +437,13 @@ impl<'tcx> DerefTy<'tcx> {
 #[expect(clippy::too_many_lines)]
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
-    tys: &'tcx [Ty<'tcx>],
+    fn_sig: ty::FnSig<'tcx>,
     hir_tys: &'tcx [hir::Ty<'tcx>],
-    ret_ty: &'tcx FnRetTy<'tcx>,
     params: &'tcx [Param<'tcx>],
 ) -> impl Iterator<Item = PtrArg<'tcx>> + 'cx {
-    tys.iter()
+    fn_sig
+        .inputs()
+        .iter()
         .zip(hir_tys.iter())
         .enumerate()
         .filter_map(move |(i, (ty, hir_ty))| {
@@ -494,9 +489,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 })
                             {
                                 if !lifetime.is_anonymous()
-                                    && let FnRetTy::Return(ret_ty) = ret_ty
-                                    && let ret_ty = hir_ty_to_ty(cx.tcx, ret_ty)
-                                    && ret_ty
+                                    && fn_sig.output()
                                         .walk()
                                         .filter_map(|arg| {
                                             arg.as_region().and_then(|lifetime| {

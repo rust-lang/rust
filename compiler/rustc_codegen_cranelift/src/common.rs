@@ -359,7 +359,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        self.instance.subst_mir_and_normalize_erasing_regions(
+        self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
             ty::ParamEnv::reveal_all(),
             ty::EarlyBinder::bind(value),

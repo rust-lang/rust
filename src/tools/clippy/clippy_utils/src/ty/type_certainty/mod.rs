@@ -207,9 +207,8 @@ fn path_segment_certainty(
             // Checking `res_generics_def_id(..)` before calling `generics_of` avoids an ICE.
             if cx.tcx.res_generics_def_id(path_segment.res).is_some() {
                 let generics = cx.tcx.generics_of(def_id);
-                let count = generics.params.len() - generics.host_effect_index.is_some() as usize;
-                let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && count == 0
-                {
+                let count = generics.params.len() - usize::from(generics.host_effect_index.is_some());
+                let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && count == 0 {
                     Certainty::Certain(None)
                 } else {
                     Certainty::Uncertain
@@ -220,7 +219,7 @@ fn path_segment_certainty(
                 // See the comment preceding `qpath_certainty`. `def_id` could refer to a type or a value.
                 let certainty = lhs.join_clearing_def_ids(rhs);
                 if resolves_to_type {
-                    if let DefKind::TyAlias { .. } = cx.tcx.def_kind(def_id) {
+                    if let DefKind::TyAlias = cx.tcx.def_kind(def_id) {
                         adt_def_id(cx.tcx.type_of(def_id).instantiate_identity())
                             .map_or(certainty, |def_id| certainty.with_def_id(def_id))
                     } else {
@@ -300,10 +299,11 @@ fn type_is_inferrable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> b
 
     // Check that all type parameters appear in the functions input types.
     (0..(generics.parent_count + generics.params.len()) as u32).all(|index| {
-        Some(index as usize) == generics.host_effect_index || fn_sig
-            .inputs()
-            .iter()
-            .any(|input_ty| contains_param(*input_ty.skip_binder(), index))
+        Some(index as usize) == generics.host_effect_index
+            || fn_sig
+                .inputs()
+                .iter()
+                .any(|input_ty| contains_param(*input_ty.skip_binder(), index))
     })
 }
 

@@ -229,7 +229,7 @@ rustc_queries! {
             action = {
                 use rustc_hir::def::DefKind;
                 match tcx.def_kind(key) {
-                    DefKind::TyAlias { .. } => "expanding type alias",
+                    DefKind::TyAlias => "expanding type alias",
                     DefKind::TraitAlias => "expanding trait alias",
                     _ => "computing type of",
                 }
@@ -249,6 +249,14 @@ rustc_queries! {
             "computing type of opaque `{path}`",
             path = tcx.def_path_str(key),
         }
+    }
+
+    query type_alias_is_lazy(key: DefId) -> bool {
+        desc { |tcx|
+            "computing whether `{path}` is a lazy type alias",
+            path = tcx.def_path_str(key),
+        }
+        separate_provide_extern
     }
 
     query collect_return_position_impl_trait_in_trait_tys(key: DefId)

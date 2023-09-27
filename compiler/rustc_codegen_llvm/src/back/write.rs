@@ -1,4 +1,5 @@
 use crate::back::lto::ThinBuffer;
+use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
 };
@@ -98,8 +99,8 @@ pub fn write_output_file<'ll>(
     }
 }
 
-pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm::TargetMachine {
-    let config = TargetMachineFactoryConfig { split_dwarf_file: None };
+pub fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
+    let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
     let features = llvm_util::global_llvm_features(sess, false);
@@ -107,7 +108,7 @@ pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm:
         .unwrap_or_else(|err| llvm_err(sess.diagnostic(), err).raise())
 }
 
-pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
+pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(()).split_dwarf_path(
             tcx.sess.split_debuginfo(),
@@ -117,7 +118,11 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut ll
     } else {
         None
     };
-    let config = TargetMachineFactoryConfig { split_dwarf_file };
+
+    let output_obj_file =
+        Some(tcx.output_filenames(()).temp_path(OutputType::Object, Some(mod_name)));
+    let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
+
     target_machine_factory(
         &tcx.sess,
         tcx.backend_optimization_level(()),
@@ -255,38 +260,38 @@ pub fn target_machine_factory(
     let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
     Arc::new(move |config: TargetMachineFactoryConfig| {
-        let split_dwarf_file =
-            path_mapping.map_prefix(config.split_dwarf_file.unwrap_or_default()).0;
-        let split_dwarf_file = CString::new(split_dwarf_file.to_str().unwrap()).unwrap();
-
-        let tm = unsafe {
-            llvm::LLVMRustCreateTargetMachine(
-                triple.as_ptr(),
-                cpu.as_ptr(),
-                features.as_ptr(),
-                abi.as_ptr(),
-                code_model,
-                reloc_model,
-                opt_level,
-                use_softfp,
-                ffunction_sections,
-                fdata_sections,
-                funique_section_names,
-                trap_unreachable,
-                singlethread,
-                asm_comments,
-                emit_stack_size_section,
-                relax_elf_relocations,
-                use_init_array,
-                split_dwarf_file.as_ptr(),
-                debuginfo_compression.as_ptr(),
-                force_emulated_tls,
-                args_cstr_buff.as_ptr() as *const c_char,
-                args_cstr_buff.len(),
-            )
+        let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
+            let path = path_mapping.map_prefix(path.unwrap_or_default()).0;
+            CString::new(path.to_str().unwrap()).unwrap()
         };
 
-        tm.ok_or_else(|| LlvmError::CreateTargetMachine { triple: triple.clone() })
+        let split_dwarf_file = path_to_cstring_helper(config.split_dwarf_file);
+        let output_obj_file = path_to_cstring_helper(config.output_obj_file);
+
+        OwnedTargetMachine::new(
+            &triple,
+            &cpu,
+            &features,
+            &abi,
+            code_model,
+            reloc_model,
+            opt_level,
+            use_softfp,
+            ffunction_sections,
+            fdata_sections,
+            funique_section_names,
+            trap_unreachable,
+            singlethread,
+            asm_comments,
+            emit_stack_size_section,
+            relax_elf_relocations,
+            use_init_array,
+            &split_dwarf_file,
+            &output_obj_file,
+            &debuginfo_compression,
+            force_emulated_tls,
+            &args_cstr_buff,
+        )
     })
 }
 

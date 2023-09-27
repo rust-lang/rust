@@ -142,6 +142,8 @@ pub mod solid;
 #[cfg(target_os = "tvos")]
 #[path = "ios/mod.rs"]
 pub(crate) mod tvos;
+#[cfg(target_os = "uefi")]
+pub mod uefi;
 #[cfg(target_os = "vita")]
 pub mod vita;
 #[cfg(target_os = "vxworks")]

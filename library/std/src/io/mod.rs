@@ -1236,22 +1236,22 @@ impl<'a> IoSliceMut<'a> {
     pub fn advance_slices(bufs: &mut &mut [IoSliceMut<'a>], n: usize) {
         // Number of buffers to remove.
         let mut remove = 0;
-        // Total length of all the to be removed buffers.
-        let mut accumulated_len = 0;
+        // Remaining length before reaching n.
+        let mut left = n;
         for buf in bufs.iter() {
-            if accumulated_len + buf.len() > n {
-                break;
-            } else {
-                accumulated_len += buf.len();
+            if let Some(remainder) = left.checked_sub(buf.len()) {
+                left = remainder;
                 remove += 1;
+            } else {
+                break;
             }
         }
 
         *bufs = &mut take(bufs)[remove..];
         if bufs.is_empty() {
-            assert!(n == accumulated_len, "advancing io slices beyond their length");
+            assert!(left == 0, "advancing io slices beyond their length");
         } else {
-            bufs[0].advance(n - accumulated_len)
+            bufs[0].advance(left);
         }
     }
 }
@@ -1379,22 +1379,25 @@ impl<'a> IoSlice<'a> {
     pub fn advance_slices(bufs: &mut &mut [IoSlice<'a>], n: usize) {
         // Number of buffers to remove.
         let mut remove = 0;
-        // Total length of all the to be removed buffers.
-        let mut accumulated_len = 0;
+        // Remaining length before reaching n. This prevents overflow
+        // that could happen if the length of slices in `bufs` were instead
+        // accumulated. Those slice may be aliased and, if they are large
+        // enough, their added length may overflow a `usize`.
+        let mut left = n;
         for buf in bufs.iter() {
-            if accumulated_len + buf.len() > n {
-                break;
-            } else {
-                accumulated_len += buf.len();
+            if let Some(remainder) = left.checked_sub(buf.len()) {
+                left = remainder;
                 remove += 1;
+            } else {
+                break;
             }
         }
 
         *bufs = &mut take(bufs)[remove..];
         if bufs.is_empty() {
-            assert!(n == accumulated_len, "advancing io slices beyond their length");
+            assert!(left == 0, "advancing io slices beyond their length");
         } else {
-            bufs[0].advance(n - accumulated_len)
+            bufs[0].advance(left);
         }
     }
 }

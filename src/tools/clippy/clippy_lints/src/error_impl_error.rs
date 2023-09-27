@@ -3,7 +3,6 @@ use clippy_utils::path_res;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Item, ItemKind};
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Visibility;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -42,9 +41,10 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
         };
 
         match item.kind {
-            ItemKind::TyAlias(ty, _) if implements_trait(cx, hir_ty_to_ty(cx.tcx, ty), error_def_id, &[])
-                && item.ident.name == sym::Error
-                && is_visible_outside_module(cx, item.owner_id.def_id) =>
+            ItemKind::TyAlias(..) if item.ident.name == sym::Error
+                && is_visible_outside_module(cx, item.owner_id.def_id)
+                && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+                && implements_trait(cx, ty, error_def_id, &[]) =>
             {
                 span_lint(
                     cx,

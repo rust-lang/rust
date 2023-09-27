@@ -21,7 +21,7 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
                 DefKind::Fn | DefKind::AssocFn => {
                     dump_abi_of_fn_item(tcx, id, attr);
                 }
-                DefKind::TyAlias { .. } => {
+                DefKind::TyAlias => {
                     dump_abi_of_fn_type(tcx, id, attr);
                 }
                 _ => {

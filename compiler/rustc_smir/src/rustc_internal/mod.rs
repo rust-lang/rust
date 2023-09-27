@@ -3,75 +3,17 @@
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
 //! until stable MIR is complete.
 
-use std::fmt::Debug;
 use std::ops::{ControlFlow, Index};
 
 use crate::rustc_internal;
-use crate::stable_mir::CompilerError;
-use crate::{
-    rustc_smir::Tables,
-    stable_mir::{self, with},
-};
+use crate::rustc_smir::Tables;
 use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::TyCtxt;
 pub use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
-
-fn with_tables<R>(mut f: impl FnMut(&mut Tables<'_>) -> R) -> R {
-    let mut ret = None;
-    with(|tables| tables.rustc_tables(&mut |t| ret = Some(f(t))));
-    ret.unwrap()
-}
-
-pub fn item_def_id(item: &stable_mir::CrateItem) -> DefId {
-    with_tables(|t| t[item.0])
-}
-
-pub fn crate_item(did: DefId) -> stable_mir::CrateItem {
-    with_tables(|t| t.crate_item(did))
-}
-
-pub fn adt_def(did: DefId) -> stable_mir::ty::AdtDef {
-    with_tables(|t| t.adt_def(did))
-}
-
-pub fn foreign_def(did: DefId) -> stable_mir::ty::ForeignDef {
-    with_tables(|t| t.foreign_def(did))
-}
-
-pub fn fn_def(did: DefId) -> stable_mir::ty::FnDef {
-    with_tables(|t| t.fn_def(did))
-}
-
-pub fn closure_def(did: DefId) -> stable_mir::ty::ClosureDef {
-    with_tables(|t| t.closure_def(did))
-}
-
-pub fn generator_def(did: DefId) -> stable_mir::ty::GeneratorDef {
-    with_tables(|t| t.generator_def(did))
-}
-
-pub fn alias_def(did: DefId) -> stable_mir::ty::AliasDef {
-    with_tables(|t| t.alias_def(did))
-}
-
-pub fn param_def(did: DefId) -> stable_mir::ty::ParamDef {
-    with_tables(|t| t.param_def(did))
-}
-
-pub fn br_named_def(did: DefId) -> stable_mir::ty::BrNamedDef {
-    with_tables(|t| t.br_named_def(did))
-}
-
-pub fn trait_def(did: DefId) -> stable_mir::ty::TraitDef {
-    with_tables(|t| t.trait_def(did))
-}
-
-pub fn impl_def(did: DefId) -> stable_mir::ty::ImplDef {
-    with_tables(|t| t.impl_def(did))
-}
+use stable_mir::CompilerError;
 
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     type Output = DefId;
@@ -79,6 +21,15 @@ impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     #[inline(always)]
     fn index(&self, index: stable_mir::DefId) -> &Self::Output {
         &self.def_ids[index.0]
+    }
+}
+
+impl<'tcx> Index<stable_mir::ty::Span> for Tables<'tcx> {
+    type Output = Span;
+
+    #[inline(always)]
+    fn index(&self, index: stable_mir::ty::Span) -> &Self::Output {
+        &self.spans[index.0]
     }
 }
 
@@ -178,30 +129,10 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 }
 
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    crate::stable_mir::run(
+    stable_mir::run(
         Tables { tcx, def_ids: vec![], alloc_ids: vec![], spans: vec![], types: vec![] },
         f,
     );
-}
-
-/// A type that provides internal information but that can still be used for debug purpose.
-#[derive(Clone)]
-pub struct Opaque(String);
-
-impl std::fmt::Display for Opaque {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::fmt::Debug for Opaque {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-pub(crate) fn opaque<T: Debug>(value: &T) -> Opaque {
-    Opaque(format!("{value:?}"))
 }
 
 pub struct StableMir<B = (), C = ()>

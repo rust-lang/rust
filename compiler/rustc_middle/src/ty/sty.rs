@@ -69,7 +69,7 @@ pub struct FreeRegion {
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(Option<Span>),
+    BrAnon,
 
     /// Named region parameters for functions (a in &'a T)
     ///
@@ -1223,7 +1223,7 @@ impl<'tcx> AliasTy<'tcx> {
             DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
             DefKind::AssocTy => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
-            DefKind::TyAlias { .. } => ty::Weak,
+            DefKind::TyAlias => ty::Weak,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
     }
@@ -1465,7 +1465,7 @@ impl<'tcx> Region<'tcx> {
         bound_region: ty::BoundRegion,
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BrAnon(None) } = bound_region
+        if let ty::BoundRegion { var, kind: ty::BrAnon } = bound_region
             && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
@@ -1959,7 +1959,7 @@ impl<'tcx> Ty<'tcx> {
             (kind, tcx.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
                 | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Weak, DefKind::TyAlias { .. })
+                | (ty::Weak, DefKind::TyAlias)
         );
         Ty::new(tcx, Alias(kind, alias_ty))
     }
@@ -3010,7 +3010,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(RegionKind<'_>, 28);
+    static_assert_size!(RegionKind<'_>, 24);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
 }

@@ -44,7 +44,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
     ) -> bool {
         trace!(%caller);
         for &(callee, args) in tcx.mir_inliner_callees(caller.def) {
-            let Ok(args) = caller.try_subst_mir_and_normalize_erasing_regions(
+            let Ok(args) = caller.try_instantiate_mir_and_normalize_erasing_regions(
                 tcx,
                 param_env,
                 ty::EarlyBinder::bind(args),

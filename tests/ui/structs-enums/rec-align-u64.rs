@@ -5,7 +5,7 @@
 
 // Issue #2303
 
-#![feature(intrinsics)]
+#![feature(intrinsics, rustc_attrs)]
 
 use std::mem;
 

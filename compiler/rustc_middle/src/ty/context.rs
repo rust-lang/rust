@@ -318,7 +318,7 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon(None) })`
+    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon })`
     /// for small values of `i` and `v`.
     pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
 }
@@ -395,7 +395,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
                     .map(|v| {
                         mk(ty::ReLateBound(
                             ty::DebruijnIndex::from(i),
-                            ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BrAnon(None) },
+                            ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BrAnon },
                         ))
                     })
                     .collect()
@@ -1114,7 +1114,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir().fn_decl_by_hir_id(hir_id)
             && let hir::TyKind::Path(hir::QPath::Resolved(
                 None,
-                hir::Path { res: hir::def::Res::Def(DefKind::TyAlias { .. }, def_id), .. }, )) = hir_output.kind
+                hir::Path { res: hir::def::Res::Def(DefKind::TyAlias, def_id), .. }, )) = hir_output.kind
             && let Some(local_id) = def_id.as_local()
             && let Some(alias_ty) = self.hir().get_by_def_id(local_id).alias_ty() // it is type alias
             && let Some(alias_generics) = self.hir().get_by_def_id(local_id).generics()

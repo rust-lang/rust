@@ -193,7 +193,7 @@ impl<'tcx> Inliner<'tcx> {
             return Err("optimization fuel exhausted");
         }
 
-        let Ok(callee_body) = callsite.callee.try_subst_mir_and_normalize_erasing_regions(
+        let Ok(callee_body) = callsite.callee.try_instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
             self.param_env,
             ty::EarlyBinder::bind(callee_body.clone()),
@@ -481,9 +481,10 @@ impl<'tcx> Inliner<'tcx> {
                 work_list.push(target);
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = callsite
-                    .callee
-                    .subst_mir(self.tcx, ty::EarlyBinder::bind(&place.ty(callee_body, tcx).ty));
+                let ty = callsite.callee.instantiate_mir(
+                    self.tcx,
+                    ty::EarlyBinder::bind(&place.ty(callee_body, tcx).ty),
+                );
                 if ty.needs_drop(tcx, self.param_env) && let UnwindAction::Cleanup(unwind) = unwind {
                     work_list.push(unwind);
                 }
@@ -650,7 +651,7 @@ impl<'tcx> Inliner<'tcx> {
                 // Copy only unevaluated constants from the callee_body into the caller_body.
                 // Although we are only pushing `ConstKind::Unevaluated` consts to
                 // `required_consts`, here we may not only have `ConstKind::Unevaluated`
-                // because we are calling `subst_and_normalize_erasing_regions`.
+                // because we are calling `instantiate_and_normalize_erasing_regions`.
                 caller_body.required_consts.extend(
                     callee_body.required_consts.iter().copied().filter(|&ct| match ct.const_ {
                         Const::Ty(_) => {
@@ -811,9 +812,10 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         match terminator.kind {
             TerminatorKind::Drop { ref place, unwind, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = self
-                    .instance
-                    .subst_mir(tcx, ty::EarlyBinder::bind(&place.ty(self.callee_body, tcx).ty));
+                let ty = self.instance.instantiate_mir(
+                    tcx,
+                    ty::EarlyBinder::bind(&place.ty(self.callee_body, tcx).ty),
+                );
                 if ty.needs_drop(tcx, self.param_env) {
                     self.cost += CALL_PENALTY;
                     if let UnwindAction::Cleanup(_) = unwind {
@@ -824,7 +826,8 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 }
             }
             TerminatorKind::Call { func: Operand::Constant(ref f), unwind, .. } => {
-                let fn_ty = self.instance.subst_mir(tcx, ty::EarlyBinder::bind(&f.const_.ty()));
+                let fn_ty =
+                    self.instance.instantiate_mir(tcx, ty::EarlyBinder::bind(&f.const_.ty()));
                 self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind() && tcx.is_intrinsic(def_id) {
                     // Don't give intrinsics the extra penalty for calls
                     INSTR_COST

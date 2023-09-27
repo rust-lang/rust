@@ -648,6 +648,10 @@ passes_rustc_lint_opt_ty =
     `#[rustc_lint_opt_ty]` should be applied to a struct
     .label = not a struct
 
+passes_rustc_safe_intrinsic =
+    attribute should be applied to intrinsic functions
+    .label = not an intrinsic function
+
 passes_rustc_std_internal_symbol =
     attribute should be applied to functions or statics
     .label = not a function or static

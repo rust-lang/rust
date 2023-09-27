@@ -986,11 +986,16 @@ pub trait Tuple {}
 pub trait PointerLike {}
 
 /// A marker for types which can be used as types of `const` generic parameters.
+///
+/// These types must have a proper equivalence relation (`Eq`) and it must be automatically
+/// derived (`StructuralPartialEq`). There's a hard-coded check in the compiler ensuring
+/// that all fields are also `ConstParamTy`, which implies that recursively, all fields
+/// are `StructuralPartialEq`.
 #[lang = "const_param_ty"]
 #[unstable(feature = "adt_const_params", issue = "95174")]
 #[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 #[allow(multiple_supertrait_upcastable)]
-pub trait ConstParamTy: StructuralEq + StructuralPartialEq {}
+pub trait ConstParamTy: StructuralEq + StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]

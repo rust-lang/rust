@@ -1454,13 +1454,13 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         let hir::ItemKind::TyAlias(hir_ty, type_alias_generics) = &item.kind else { return };
 
-        if cx.tcx.features().lazy_type_alias {
-            // Bounds of lazy type aliases are respected.
+        // Bounds of lazy type aliases and TAITs are respected.
+        if cx.tcx.type_alias_is_lazy(item.owner_id) {
             return;
         }
 
         let ty = cx.tcx.type_of(item.owner_id).skip_binder();
-        if ty.has_opaque_types() || ty.has_inherent_projections() {
+        if ty.has_inherent_projections() {
             // Bounds of type aliases that contain opaque types or inherent projections are respected.
             // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`, `type X = Type::Inherent;`.
             return;
