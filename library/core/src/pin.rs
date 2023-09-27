@@ -753,9 +753,11 @@
 //! 1.  *Structural [`Unpin`].* A struct can be [`Unpin`] if, and only if, all of its
 //!     structurally-pinned fields are, too. This is [`Unpin`]'s behavior by default.
 //!     However, as a libray author, it is your responsibility not to write something like
-//!     <code>unsafe impl\<T> [Unpin] for Struct\<T> {}</code>. (Adding *any* projection
-//!     operation requires unsafe code, so the fact that [`Unpin`] is a safe trait does not break
-//!     the principle that you only have to worry about any of this if you use [`unsafe`].)
+//!     <code>impl\<T> [Unpin] for Struct\<T> {}</code> and then offer a method that provides
+//!     structural pinning to an inner field of `T`, which may not be [`Unpin`]! (Adding *any*
+//!     projection operation requires unsafe code, so the fact that [`Unpin`] is a safe trait does
+//!     not break the principle that you only have to worry about any of this if you use
+//!     [`unsafe`].)
 //!
 //! 2.  *Pinned Destruction.* As discussed [above][drop-impl], [`drop`] takes
 //!     [`&mut self`], but the struct (and hence its fields) might have been pinned
@@ -764,14 +766,14 @@
 //!
 //!     As a consequence, the struct *must not* be [`#[repr(packed)]`][packed].
 //!
-//! 3.  *Structural Notice of Destruction.* You must uphold the the [`Drop` guarantee][drop-guarantee]:
-//!     once your struct is pinned, the struct's storage cannot be re-used without calling the
-//!     structurally-pinned fields' destructors, as well.
+//! 3.  *Structural Notice of Destruction.* You must uphold the the
+//!     [`Drop` guarantee][drop-guarantee]: once your struct is pinned, the struct's storage cannot
+//!     be re-used without calling the structurally-pinned fields' destructors, as well.
 //!
 //!     This can be tricky, as witnessed by [`VecDeque<T>`]: the destructor of [`VecDeque<T>`]
 //!     can fail to call [`drop`] on all elements if one of the destructors panics. This violates
-//!     the [`Drop` guarantee][drop-guarantee], because it can lead to elements being deallocated without
-//!     their destructor being called.
+//!     the [`Drop` guarantee][drop-guarantee], because it can lead to elements being deallocated
+//!     without their destructor being called.
 //!
 //!     [`VecDeque<T>`] has no pinning projections, so its destructor is sound. If it wanted
 //!     to provide such structural pinning, its destructor would need to abort the process if any
