@@ -1275,7 +1275,8 @@ impl Build {
                 options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
             }
 
-            let no_threads = util::lld_flag_no_threads(target.contains("windows"));
+            let no_threads =
+                util::lld_flag_no_threads(&self.initial_lld, target.contains("windows"));
             options[1] = Some(format!("-Clink-arg=-Wl,{no_threads}"));
         }
 

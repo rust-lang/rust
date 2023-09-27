@@ -859,7 +859,10 @@ impl Step for RustdocTheme {
         if builder.is_fuse_ld_lld(self.compiler.host) {
             cmd.env(
                 "RUSTDOC_LLD_NO_THREADS",
-                util::lld_flag_no_threads(self.compiler.host.contains("windows")),
+                util::lld_flag_no_threads(
+                    &builder.initial_lld,
+                    self.compiler.host.contains("windows"),
+                ),
             );
         }
         builder.run_delaying_failure(&mut cmd);

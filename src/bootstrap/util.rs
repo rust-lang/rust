@@ -479,10 +479,11 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
     clang_rt_dir.to_path_buf()
 }
 
-pub fn lld_flag_no_threads(is_windows: bool) -> &'static str {
+/// Find out which thread flags should be passed to LLD.
+pub fn lld_flag_no_threads(lld: &Path, is_windows: bool) -> &'static str {
     static LLD_NO_THREADS: OnceCell<(&'static str, &'static str)> = OnceCell::new();
     let (windows, other) = LLD_NO_THREADS.get_or_init(|| {
-        let out = output(Command::new("lld").arg("-flavor").arg("ld").arg("--version"));
+        let out = output(Command::new(lld).arg("-flavor").arg("ld").arg("--version"));
         let newer = match (out.find(char::is_numeric), out.find('.')) {
             (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
             _ => true,
