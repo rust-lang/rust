@@ -1882,12 +1882,6 @@ rustc_queries! {
         desc { |tcx| "determining whether `{}` needs codegen", tcx.def_path_str(def_id) }
     }
 
-    /// All items participating in code generation together with items inlined into them.
-    query codegened_and_inlined_items(_: ()) -> &'tcx DefIdSet {
-        eval_always
-        desc { "collecting codegened and inlined items" }
-    }
-
     query codegen_unit(sym: Symbol) -> &'tcx CodegenUnit<'tcx> {
         desc { "getting codegen unit `{sym}`" }
     }
