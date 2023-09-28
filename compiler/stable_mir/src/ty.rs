@@ -205,7 +205,7 @@ pub struct ConstDef(pub DefId);
 pub struct ImplDef(pub DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct RegionDef(pub(crate) DefId);
+pub struct RegionDef(pub DefId);
 
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);

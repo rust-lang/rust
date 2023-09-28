@@ -7,13 +7,8 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
-use crate::stable_mir::ty::{
-    BoundRegion, EarlyBoundRegion, FloatTy, FreeRegion, GenericParamDef, IntTy, Movability, Region,
-    RigidTy, Span, TyKind, UintTy,
-};
-use crate::stable_mir::{self, CompilerError, Context};
+use crate::rustc_smir::hir::def::DefKind;
+use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -1515,7 +1510,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
     type T = stable_mir::ty::RegionKind;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        use crate::stable_mir::ty::RegionKind;
+        use stable_mir::ty::RegionKind;
         match self {
             ty::ReEarlyBound(early_reg) => RegionKind::ReEarlyBound(EarlyBoundRegion {
                 def_id: tables.region_def(early_reg.def_id),
