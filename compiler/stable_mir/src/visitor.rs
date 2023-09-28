@@ -1,6 +1,9 @@
 use std::ops::ControlFlow;
 
-use crate::Opaque;
+use crate::{
+    ty::{BoundRegion, BoundRegionKind},
+    Opaque,
+};
 
 use super::ty::{
     Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
@@ -14,6 +17,9 @@ pub trait Visitor: Sized {
     }
     fn visit_const(&mut self, c: &Const) -> ControlFlow<Self::Break> {
         c.super_visit(self)
+    }
+    fn visit_reg(&mut self, reg: &Region) -> ControlFlow<Self::Break> {
+        reg.super_visit(self)
     }
 }
 
@@ -102,8 +108,35 @@ impl Visitable for GenericArgs {
 }
 
 impl Visitable for Region {
-    fn super_visit<V: Visitor>(&self, _visitor: &mut V) -> ControlFlow<V::Break> {
+    fn visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
+        visitor.visit_reg(self)
+    }
+
+    fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
+        match self.kind.clone() {
+            crate::ty::RegionKind::ReEarlyBound(_) => {}
+            crate::ty::RegionKind::ReLateBound(_, bound_reg) => bound_reg.visit(visitor)?,
+            crate::ty::RegionKind::ReStatic => {}
+            crate::ty::RegionKind::RePlaceholder(bound_reg) => bound_reg.bound.visit(visitor)?,
+            crate::ty::RegionKind::ReErased => {}
+        }
         ControlFlow::Continue(())
+    }
+}
+
+impl Visitable for BoundRegion {
+    fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
+        self.kind.visit(visitor)
+    }
+}
+
+impl Visitable for BoundRegionKind {
+    fn super_visit<V: Visitor>(&self, _visitor: &mut V) -> ControlFlow<V::Break> {
+        match self {
+            BoundRegionKind::BrAnon => ControlFlow::Continue(()),
+            BoundRegionKind::BrNamed(_, _) => ControlFlow::Continue(()),
+            BoundRegionKind::BrEnv => ControlFlow::Continue(()),
+        }
     }
 }
 
