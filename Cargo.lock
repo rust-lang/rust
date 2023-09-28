@@ -2419,7 +2419,7 @@ dependencies = [
  "rustc_version",
  "serde",
  "smallvec",
- "ui_test 0.11.7",
+ "ui_test 0.21.2",
 ]
 
 [[package]]
@@ -5621,18 +5621,23 @@ checksum = "9e79c4d996edb816c91e4308506774452e55e95c3c9de07b6729e17e15a5ef81"
 
 [[package]]
 name = "ui_test"
-version = "0.11.7"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c21899b59f53717dfad29e4f46e5b21a200a1b6888ab86532a07cfc8b48dd78c"
+checksum = "bfd8fb9b15c8332cf51bfc2dc4830063b2446a9c9d732421b56f2478024a3971"
 dependencies = [
+ "annotate-snippets",
+ "anyhow",
  "bstr",
  "cargo-platform",
  "cargo_metadata",
  "color-eyre",
  "colored",
+ "comma",
  "crossbeam-channel",
- "diff",
+ "indicatif",
  "lazy_static",
+ "levenshtein",
+ "prettydiff",
  "regex",
  "rustc_version",
  "rustfix",
@@ -5643,9 +5648,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.20.0"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfd8fb9b15c8332cf51bfc2dc4830063b2446a9c9d732421b56f2478024a3971"
+checksum = "aaf4bf7c184b8dfc7a4d3b90df789b1eb992ee42811cd115f32a7a1eb781058d"
 dependencies = [
  "annotate-snippets",
  "anyhow",
