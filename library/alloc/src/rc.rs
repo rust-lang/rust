@@ -1651,6 +1651,21 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() as *const () == other.ptr.as_ptr() as *const ()
     }
+
+    unsafe fn drop_dealloc(&mut self) {
+        unsafe {
+            // destroy the contained object
+            ptr::drop_in_place(Self::get_mut_unchecked(self));
+
+            // remove the implicit "strong weak" pointer now that we've
+            // destroyed the contents.
+            self.inner().dec_weak();
+
+            if self.inner().weak() == 0 {
+                self.alloc.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+            }
+        }
+    }
 }
 
 impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
@@ -2085,19 +2100,10 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
     /// drop(foo2);   // Prints "dropped!"
     /// ```
     fn drop(&mut self) {
-        unsafe {
-            self.inner().dec_strong();
-            if self.inner().strong() == 0 {
-                // destroy the contained object
-                ptr::drop_in_place(Self::get_mut_unchecked(self));
-
-                // remove the implicit "strong weak" pointer now that we've
-                // destroyed the contents.
-                self.inner().dec_weak();
-
-                if self.inner().weak() == 0 {
-                    self.alloc.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
-                }
+        self.inner().dec_strong();
+        if self.inner().strong() == 0 {
+            unsafe {
+                self.drop_dealloc();
             }
         }
     }
