@@ -217,7 +217,7 @@ impl From<__timespec64> for Timespec {
 }
 
 #[cfg(any(
-    all(target_os = "macos", any(not(target_arch = "aarch64"))),
+    all(target_os = "macos", not(target_arch = "aarch64")),
     target_os = "ios",
     target_os = "watchos",
     target_os = "tvos"
@@ -338,7 +338,7 @@ mod inner {
 }
 
 #[cfg(not(any(
-    all(target_os = "macos", any(not(target_arch = "aarch64"))),
+    all(target_os = "macos", not(target_arch = "aarch64")),
     target_os = "ios",
     target_os = "watchos",
     target_os = "tvos"
