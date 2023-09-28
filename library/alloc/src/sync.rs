@@ -3270,6 +3270,27 @@ impl<T> From<T> for Arc<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_array", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> From<[T; N]> for Arc<[T]> {
+    /// Converts a [`[T; N]`](prim@array) into an `Arc<[T]>`.
+    ///
+    /// The conversion moves the array into a newly allocated `Arc`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let original: [i32; 3] = [1, 2, 3];
+    /// let shared: Arc<[i32]> = Arc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: [T; N]) -> Arc<[T]> {
+        Arc::<[T; N]>::from(v)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: Clone> From<&[T]> for Arc<[T]> {
     /// Allocate a reference-counted slice and fill it by cloning `v`'s items.
