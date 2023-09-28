@@ -28,8 +28,8 @@ declare_clippy_lint! {
     /// know the name of the lint.
     ///
     /// ### Known problems
-    /// Only checks for lints associated using the
-    /// `declare_lint_pass!`, `impl_lint_pass!`, and `lint_array!` macros.
+    /// Only checks for lints associated using the `declare_lint_pass!` and
+    /// `impl_lint_pass!` macros.
     ///
     /// ### Example
     /// ```rust,ignore

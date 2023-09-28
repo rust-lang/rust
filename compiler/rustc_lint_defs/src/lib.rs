@@ -785,16 +785,7 @@ macro_rules! declare_tool_lint {
     );
 }
 
-/// Declares a static `LintArray` and return it as an expression.
-#[macro_export]
-macro_rules! lint_array {
-    ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
-    ($( $lint:expr ),*) => {{
-        vec![$($lint),*]
-    }}
-}
-
-pub type LintArray = Vec<&'static Lint>;
+pub type LintVec = Vec<&'static Lint>;
 
 pub trait LintPass {
     fn name(&self) -> &'static str;
@@ -808,7 +799,7 @@ macro_rules! impl_lint_pass {
             fn name(&self) -> &'static str { stringify!($ty) }
         }
         impl $ty {
-            pub fn get_lints() -> $crate::LintArray { $crate::lint_array!($($lint),*) }
+            pub fn get_lints() -> $crate::LintVec { vec![$($lint),*] }
         }
     };
 }
