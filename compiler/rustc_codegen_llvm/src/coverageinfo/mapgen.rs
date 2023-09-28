@@ -6,7 +6,7 @@ use crate::llvm;
 
 use itertools::Itertools as _;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
@@ -205,11 +205,15 @@ rustc_index::newtype_index! {
 #[derive(Default)]
 struct VirtualFileMapping {
     local_to_global: IndexVec<LocalFileId, u32>,
+    global_to_local: FxIndexMap<u32, LocalFileId>,
 }
 
 impl VirtualFileMapping {
-    fn push_global_id(&mut self, global_file_id: u32) -> LocalFileId {
-        self.local_to_global.push(global_file_id)
+    fn local_id_for_global(&mut self, global_file_id: u32) -> LocalFileId {
+        *self
+            .global_to_local
+            .entry(global_file_id)
+            .or_insert_with(|| self.local_to_global.push(global_file_id))
     }
 
     fn into_vec(self) -> Vec<u32> {
@@ -226,7 +230,7 @@ fn encode_mappings_for_function(
     global_file_table: &GlobalFileTable,
     function_coverage: &FunctionCoverage<'_>,
 ) -> Vec<u8> {
-    let mut counter_regions = function_coverage.counter_regions().collect::<Vec<_>>();
+    let counter_regions = function_coverage.counter_regions();
     if counter_regions.is_empty() {
         return Vec::new();
     }
@@ -236,25 +240,23 @@ fn encode_mappings_for_function(
     let mut virtual_file_mapping = VirtualFileMapping::default();
     let mut mapping_regions = Vec::with_capacity(counter_regions.len());
 
-    // Sort and group the list of (counter, region) mapping pairs by filename.
-    // (Preserve any further ordering imposed by `FunctionCoverage`.)
+    // Group mappings into runs with the same filename, preserving the order
+    // yielded by `FunctionCoverage`.
     // Prepare file IDs for each filename, and prepare the mapping data so that
     // we can pass it through FFI to LLVM.
-    counter_regions.sort_by_key(|(_counter, region)| region.file_name);
-    for counter_regions_for_file in
-        counter_regions.group_by(|(_, a), (_, b)| a.file_name == b.file_name)
+    for (file_name, counter_regions_for_file) in
+        &counter_regions.group_by(|(_counter, region)| region.file_name)
     {
         // Look up the global file ID for this filename.
-        let file_name = counter_regions_for_file[0].1.file_name;
         let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
 
         // Associate that global file ID with a local file ID for this function.
-        let local_file_id = virtual_file_mapping.push_global_id(global_file_id);
+        let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
         debug!("  file id: {local_file_id:?} => global {global_file_id} = '{file_name:?}'");
 
         // For each counter/region pair in this function+file, convert it to a
         // form suitable for FFI.
-        for &(counter, region) in counter_regions_for_file {
+        for (counter, region) in counter_regions_for_file {
             let CodeRegion { file_name: _, start_line, start_col, end_line, end_col } = *region;
 
             debug!("Adding counter {counter:?} to map for {region:?}");
