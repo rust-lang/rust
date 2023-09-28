@@ -214,7 +214,11 @@ macro_rules! uint_module {
                 assert_eq!((99 as $T).isqrt(), 9 as $T);
                 assert_eq!((100 as $T).isqrt(), 10 as $T);
                 assert_eq!($T::MAX.isqrt(), (1 << ($T::BITS / 2)) - 1);
+            }
 
+            #[cfg(not(miri))] // Miri is too slow
+            #[test]
+            fn test_lots_of_isqrt() {
                 let n_max: $T = (1024 * 1024).min($T::MAX as u128) as $T;
                 for n in 0..=n_max {
                     let isqrt: $T = n.isqrt();
