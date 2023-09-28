@@ -1532,7 +1532,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 })
             }
             ty::ReErased => RegionKind::ReErased,
-            _ => unimplemented!(),
+            _ => unreachable!("{self:?}"),
         }
     }
 }
