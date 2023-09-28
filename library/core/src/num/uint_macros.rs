@@ -1998,21 +1998,26 @@ macro_rules! uint_impl {
                 return self;
             }
 
-            let mut x = self;
-            let mut c = 0;
-            let mut d = 1 << (self.ilog2() & !1);
+            // The algorithm is based on the one presented in
+            // <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
+            // which cites as source the following C code:
+            // <https://web.archive.org/web/20120306040058/http://medialab.freaknet.org/martin/src/sqrt/sqrt.c>.
 
-            while d != 0 {
-                if x >= c + d {
-                    x -= c + d;
-                    c = (c >> 1) + d;
+            let mut op = self;
+            let mut res = 0;
+            let mut one = 1 << (self.ilog2() & !1);
+
+            while one != 0 {
+                if op >= res + one {
+                    op -= res + one;
+                    res = (res >> 1) + one;
                 } else {
-                    c >>= 1;
+                    res >>= 1;
                 }
-                d >>= 2;
+                one >>= 2;
             }
 
-            c
+            res
         }
 
         /// Performs Euclidean division.
