@@ -766,6 +766,8 @@ impl fmt::Display for ConfigError {
     }
 }
 
+impl std::error::Error for ConfigError {}
+
 impl Config {
     pub fn new(
         root_path: AbsPathBuf,
