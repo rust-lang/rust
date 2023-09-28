@@ -181,7 +181,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, _, _)) => meth::get_vtable(cx, source, data.principal()),
+        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(cx, source, data.principal()),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }

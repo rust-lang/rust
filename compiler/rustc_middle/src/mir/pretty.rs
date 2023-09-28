@@ -1146,10 +1146,10 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
                 write!(fmt, "[-{offset:?} of {min_length:?}]")?;
             }
-            ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
+            ProjectionElem::Subslice { from, to: 0, from_end: true } => {
                 write!(fmt, "[{from:?}:]")?;
             }
-            ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
+            ProjectionElem::Subslice { from: 0, to, from_end: true } => {
                 write!(fmt, "[:-{to:?}]")?;
             }
             ProjectionElem::Subslice { from, to, from_end: true } => {
