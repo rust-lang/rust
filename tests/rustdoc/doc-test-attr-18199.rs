@@ -1,4 +1,5 @@
 // compile-flags:--test
+// https://github.com/rust-lang/rust/issues/18199
 
 #![doc(test(attr(feature(staged_api))))]
 

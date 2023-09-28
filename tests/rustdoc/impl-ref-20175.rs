@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/20175
+
 #![crate_name="issue_20175"]
 
 pub trait Foo {
