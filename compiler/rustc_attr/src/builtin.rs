@@ -162,7 +162,7 @@ pub enum StabilityLevel {
         is_soft: bool,
         /// If part of a feature is stabilized and a new feature is added for the remaining parts,
         /// then the `implied_by` attribute is used to indicate which now-stable feature previously
-        /// contained a item.
+        /// contained an item.
         ///
         /// ```pseudo-Rust
         /// #[unstable(feature = "foo", issue = "...")]

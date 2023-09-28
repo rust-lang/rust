@@ -112,7 +112,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
-    /// Return a LLVM type that has at most the required alignment,
+    /// Return an LLVM type that has at most the required alignment,
     /// and exactly the required size, as a best-effort padding array.
     pub(crate) fn type_padding_filler(&self, size: Size, align: Align) -> &'ll Type {
         let unit = Integer::approximate_align(self, align);
