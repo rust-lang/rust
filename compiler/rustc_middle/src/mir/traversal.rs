@@ -188,14 +188,14 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+impl<'tcx> Iterator for Postorder<'_, 'tcx> {
+    type Item = BasicBlock;
 
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+    fn next(&mut self) -> Option<BasicBlock> {
         let (bb, _) = self.visit_stack.pop()?;
         self.traverse_successor();
-        
-        Some((bb, &self.basic_blocks[bb]))
+
+        Some(bb)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
