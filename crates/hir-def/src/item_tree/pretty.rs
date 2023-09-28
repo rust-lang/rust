@@ -261,15 +261,15 @@ impl Printer<'_> {
                     self.indented(|this| {
                         for param in params.clone() {
                             this.print_attrs_of(param, "\n");
-                            match &this.tree[param] {
-                                Param::Normal(ty) => {
+                            match &this.tree[param].type_ref {
+                                Some(ty) => {
                                     if flags.contains(FnFlags::HAS_SELF_PARAM) {
                                         w!(this, "self: ");
                                     }
                                     this.print_type_ref(ty);
                                     wln!(this, ",");
                                 }
-                                Param::Varargs => {
+                                None => {
                                     wln!(this, "...");
                                 }
                             };
