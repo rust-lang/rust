@@ -236,7 +236,7 @@ declare_features! (
     /// Allows using the `#[fundamental]` attribute.
     (active, fundamental, "1.0.0", Some(29635), None),
     /// Allows using `#[link_name="llvm.*"]`.
-    (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
+    (internal, link_llvm_intrinsics, "1.0.0", Some(29602), None),
     /// Allows using the `#[linkage = ".."]` attribute.
     (active, linkage, "1.0.0", Some(29603), None),
     /// Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
@@ -245,6 +245,8 @@ declare_features! (
     (active, packed_bundled_libs, "1.69.0", Some(108081), None),
     /// Allows using the `#![panic_runtime]` attribute.
     (internal, panic_runtime, "1.10.0", Some(32837), None),
+    /// Allows `extern "platform-intrinsic" { ... }`.
+    (internal, platform_intrinsics, "1.4.0", Some(27731), None),
     /// Allows using `#[rustc_allow_const_fn_unstable]`.
     /// This is an attribute on `const fn` for the same
     /// purpose as `#[allow_internal_unstable]`.
@@ -526,8 +528,6 @@ declare_features! (
     (active, object_safe_for_dispatch, "1.40.0", Some(43561), None),
     /// Allows using `#[optimize(X)]`.
     (active, optimize_attribute, "1.34.0", Some(54882), None),
-    /// Allows `extern "platform-intrinsic" { ... }`.
-    (active, platform_intrinsics, "1.4.0", Some(27731), None),
     /// Allows using `#![plugin(myplugin)]`.
     (active, plugin, "1.0.0", Some(29597), None),
     /// Allows exhaustive integer pattern matching on `usize` and `isize`.

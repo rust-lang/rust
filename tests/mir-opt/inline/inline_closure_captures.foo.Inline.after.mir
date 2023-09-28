@@ -42,10 +42,10 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         StorageLive(_9);
         _9 = move (_7.0: i32);
         StorageLive(_11);
-        _10 = deref_copy ((*_6).0: &i32);
+        _10 = ((*_6).0: &i32);
         _11 = (*_10);
         StorageLive(_13);
-        _12 = deref_copy ((*_6).1: &T);
+        _12 = ((*_6).1: &T);
         _13 = (*_12);
         _0 = (move _11, move _13);
         StorageDead(_13);

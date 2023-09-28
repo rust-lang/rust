@@ -86,18 +86,14 @@ mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
-use rustc_ast as ast;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
-use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, LocalModDefId};
+use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
 };
-use rustc_span::symbol::Ident;
-use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;

@@ -26,8 +26,6 @@
 +         let mut _6: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8};
 +         let mut _7: u32;
 +         let mut _8: i32;
-+         let mut _9: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8};
-+         let mut _10: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8};
 +     }
   
       bb0: {
@@ -50,7 +48,7 @@
 -         _1 = <{generator@$DIR/inline_generator.rs:16:5: 16:8} as Generator<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb5];
 +         StorageLive(_5);
 +         _5 = const false;
-+         _6 = deref_copy (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
++         _6 = (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb5, 1: bb9, 3: bb10, otherwise: bb11];
       }
@@ -99,8 +97,7 @@
 + 
 +     bb8: {
 +         _1 = GeneratorState::<i32, bool>::Yielded(move _8);
-+         _9 = deref_copy (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
-+         discriminant((*_9)) = 3;
++         discriminant((*_6)) = 3;
 +         goto -> bb1;
 +     }
 + 
@@ -112,8 +109,7 @@
 +         StorageLive(_8);
 +         StorageDead(_8);
 +         _1 = GeneratorState::<i32, bool>::Complete(_5);
-+         _10 = deref_copy (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
-+         discriminant((*_10)) = 1;
++         discriminant((*_6)) = 1;
 +         goto -> bb1;
 +     }
 + 
