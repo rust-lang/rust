@@ -82,16 +82,16 @@ pub fn simd_test(
     };
     let macro_test = Ident::new(macro_test, Span::call_site());
 
-    let mut cfg_target_features = TokenStream::new();
+    let mut detect_missing_features = TokenStream::new();
     for feature in target_features {
         let q = quote_spanned! {
             proc_macro2::Span::call_site() =>
-            #macro_test!(#feature) &&
+            if !#macro_test!(#feature) {
+                missing_features.push(#feature);
+            }
         };
-        q.to_tokens(&mut cfg_target_features);
+        q.to_tokens(&mut detect_missing_features);
     }
-    let q = quote! { true };
-    q.to_tokens(&mut cfg_target_features);
 
     let test_norun = std::env::var("STDSIMD_TEST_NORUN").is_ok();
     let maybe_ignore = if test_norun {
@@ -107,11 +107,13 @@ pub fn simd_test(
         #maybe_ignore
         #(#item_attrs)*
         fn #name() {
-            if #force_test | (#cfg_target_features) {
+            let mut missing_features = ::std::vec::Vec::new();
+            #detect_missing_features
+            if #force_test || missing_features.is_empty() {
                 let v = unsafe { #name() };
                 return v;
             } else {
-                ::stdarch_test::assert_skip_test_ok(stringify!(#name));
+                ::stdarch_test::assert_skip_test_ok(stringify!(#name), &missing_features);
             }
 
             #[target_feature(enable = #enable_feature)]
