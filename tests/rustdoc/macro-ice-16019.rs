@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/16019
+
 macro_rules! define_struct {
     ($rounds:expr) => (
         struct Struct {
