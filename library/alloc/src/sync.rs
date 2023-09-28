@@ -2190,7 +2190,7 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
                 }
             }
             _ => {
-                // Another Arcs exist, so we must clone.
+                // Other Arcs might exist, so we must clone.
                 // Pre-allocate memory to allow writing the cloned value directly.
                 let mut arc = Self::new_uninit_in(this.alloc.clone());
                 unsafe {
