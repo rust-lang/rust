@@ -1,6 +1,9 @@
 // aux-build:issue-19190-3.rs
 // ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/19190
+#![crate_name="issue_19190_3"]
+
 extern crate issue_19190_3;
 
 use std::ops::Deref;

@@ -1,5 +1,8 @@
 // aux-build:issue-17476.rs
 // ignore-cross-compile
+// https://github.com/rust-lang/rust/issues/17476
+
+#![crate_name="issue_17476"]
 
 extern crate issue_17476;
 

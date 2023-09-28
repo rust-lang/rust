@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/19190
+#![crate_name="issue_19190"]
+
 use std::ops::Deref;
 
 pub struct Foo;
