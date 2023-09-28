@@ -8,6 +8,7 @@ use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
 use std::iter;
@@ -273,7 +274,20 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let args = relation.relate(a.args, b.args)?;
+            let args = match relation.tcx().def_kind(a.def_id) {
+                DefKind::OpaqueTy => relate_args_with_variances(
+                    relation,
+                    a.def_id,
+                    relation.tcx().variances_of(a.def_id),
+                    a.args,
+                    b.args,
+                    false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+                )?,
+                DefKind::AssocTy | DefKind::AssocConst | DefKind::TyAlias => {
+                    relation.relate(a.args, b.args)?
+                }
+                def => bug!("unknown alias DefKind: {def:?}"),
+            };
             Ok(relation.tcx().mk_alias_ty(a.def_id, args))
         }
     }
@@ -534,24 +548,6 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::FnPtr(a_fty), &ty::FnPtr(b_fty)) => {
             let fty = relation.relate(a_fty, b_fty)?;
             Ok(Ty::new_fn_ptr(tcx, fty))
-        }
-
-        // The args of opaque types may not all be invariant, so we have
-        // to treat them separately from other aliases.
-        (
-            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, args: a_args, .. }),
-            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, args: b_args, .. }),
-        ) if a_def_id == b_def_id => {
-            let opt_variances = tcx.variances_of(a_def_id);
-            let args = relate_args_with_variances(
-                relation,
-                a_def_id,
-                opt_variances,
-                a_args,
-                b_args,
-                false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
-            )?;
-            Ok(Ty::new_opaque(tcx, a_def_id, args))
         }
 
         // Alias tend to mostly already be handled downstream due to normalization.
