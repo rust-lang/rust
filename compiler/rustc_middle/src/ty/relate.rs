@@ -135,7 +135,7 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
 }
 
 #[inline]
-pub fn relate_args<'tcx, R: TypeRelation<'tcx>>(
+pub fn relate_args_invariantly<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     a_arg: GenericArgsRef<'tcx>,
     b_arg: GenericArgsRef<'tcx>,
@@ -284,7 +284,7 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
                 )?,
                 DefKind::AssocTy | DefKind::AssocConst | DefKind::TyAlias => {
-                    relation.relate(a.args, b.args)?
+                    relate_args_invariantly(relation, a.args, b.args)?
                 }
                 def => bug!("unknown alias DefKind: {def:?}"),
             };
@@ -329,7 +329,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let args = relate_args(relation, a.args, b.args)?;
+            let args = relate_args_invariantly(relation, a.args, b.args)?;
             Ok(ty::TraitRef::new(relation.tcx(), a.def_id, args))
         }
     }
@@ -345,7 +345,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let args = relate_args(relation, a.args, b.args)?;
+            let args = relate_args_invariantly(relation, a.args, b.args)?;
             Ok(ty::ExistentialTraitRef { def_id: a.def_id, args })
         }
     }
@@ -463,7 +463,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // All Generator types with the same id represent
             // the (anonymous) type of the same generator expression. So
             // all of their regions should be equated.
-            let args = relation.relate(a_args, b_args)?;
+            let args = relate_args_invariantly(relation, a_args, b_args)?;
             Ok(Ty::new_generator(tcx, a_id, args, movability))
         }
 
@@ -473,7 +473,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // All GeneratorWitness types with the same id represent
             // the (anonymous) type of the same generator expression. So
             // all of their regions should be equated.
-            let args = relation.relate(a_args, b_args)?;
+            let args = relate_args_invariantly(relation, a_args, b_args)?;
             Ok(Ty::new_generator_witness(tcx, a_id, args))
         }
 
@@ -481,7 +481,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // All Closure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
-            let args = relation.relate(a_args, b_args)?;
+            let args = relate_args_invariantly(relation, a_args, b_args)?;
             Ok(Ty::new_closure(tcx, a_id, &args))
         }
 
@@ -705,7 +705,7 @@ impl<'tcx> Relate<'tcx> for ty::ClosureArgs<'tcx> {
         a: ty::ClosureArgs<'tcx>,
         b: ty::ClosureArgs<'tcx>,
     ) -> RelateResult<'tcx, ty::ClosureArgs<'tcx>> {
-        let args = relate_args(relation, a.args, b.args)?;
+        let args = relate_args_invariantly(relation, a.args, b.args)?;
         Ok(ty::ClosureArgs { args })
     }
 }
@@ -716,7 +716,7 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorArgs<'tcx> {
         a: ty::GeneratorArgs<'tcx>,
         b: ty::GeneratorArgs<'tcx>,
     ) -> RelateResult<'tcx, ty::GeneratorArgs<'tcx>> {
-        let args = relate_args(relation, a.args, b.args)?;
+        let args = relate_args_invariantly(relation, a.args, b.args)?;
         Ok(ty::GeneratorArgs { args })
     }
 }
@@ -727,7 +727,7 @@ impl<'tcx> Relate<'tcx> for GenericArgsRef<'tcx> {
         a: GenericArgsRef<'tcx>,
         b: GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, GenericArgsRef<'tcx>> {
-        relate_args(relation, a, b)
+        relate_args_invariantly(relation, a, b)
     }
 }
 
