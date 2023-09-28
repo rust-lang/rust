@@ -148,7 +148,10 @@ impl Foldable for RigidTy {
             }
             RigidTy::Slice(inner) => *inner = inner.fold(folder)?,
             RigidTy::RawPtr(ty, _) => *ty = ty.fold(folder)?,
-            RigidTy::Ref(_, ty, _) => *ty = ty.fold(folder)?,
+            RigidTy::Ref(reg, ty, _) => {
+                *reg = reg.fold(folder)?;
+                *ty = ty.fold(folder)?
+            }
             RigidTy::FnDef(_, args) => *args = args.fold(folder)?,
             RigidTy::FnPtr(sig) => *sig = sig.fold(folder)?,
             RigidTy::Closure(_, args) => *args = args.fold(folder)?,
