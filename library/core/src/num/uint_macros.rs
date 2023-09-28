@@ -1985,10 +1985,11 @@ macro_rules! uint_impl {
         ///
         /// Basic usage:
         /// ```
+        /// #![feature(isqrt)]
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
         /// ```
-        #[stable(feature = "isqrt", since = "1.73.0")]
-        #[rustc_const_stable(feature = "isqrt", since = "1.73.0")]
+        #[unstable(feature = "isqrt", issue = "none")]
+        #[rustc_const_unstable(feature = "isqrt", issue = "none")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
