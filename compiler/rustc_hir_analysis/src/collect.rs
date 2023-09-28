@@ -1374,7 +1374,7 @@ fn impl_trait_ref(
                 // make astconv happy.
                 let mut path_segments = ast_trait_ref.path.segments.to_vec();
                 let last_segment = path_segments.len() - 1;
-                let mut args = path_segments[last_segment].args().clone();
+                let mut args = *path_segments[last_segment].args();
                 let last_arg = args.args.len() - 1;
                 assert!(matches!(args.args[last_arg], hir::GenericArg::Const(anon_const) if tcx.has_attr(anon_const.value.def_id, sym::rustc_host)));
                 args.args = &args.args[..args.args.len() - 1];

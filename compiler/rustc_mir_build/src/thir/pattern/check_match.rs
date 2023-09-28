@@ -740,9 +740,7 @@ fn non_exhaustive_match<'p, 'tcx>(
                         ));
                 }
             } else if ty == cx.tcx.types.str_ {
-                err.note(format!(
-                    "`&str` cannot be matched exhaustively, so a wildcard `_` is necessary",
-                ));
+                err.note("`&str` cannot be matched exhaustively, so a wildcard `_` is necessary");
             } else if cx.is_foreign_non_exhaustive_enum(ty) {
                 err.note(format!("`{ty}` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively"));
             }

@@ -54,11 +54,8 @@ impl EnumSizeOpt {
         let layout = tcx.layout_of(param_env.and(ty)).ok()?;
         let variants = match &layout.variants {
             Variants::Single { .. } => return None,
-            Variants::Multiple { tag_encoding, .. }
-                if matches!(tag_encoding, TagEncoding::Niche { .. }) =>
-            {
-                return None;
-            }
+            Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => return None,
+
             Variants::Multiple { variants, .. } if variants.len() <= 1 => return None,
             Variants::Multiple { variants, .. } => variants,
         };

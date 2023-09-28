@@ -186,7 +186,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 fallback_label: format!("not a {expected}"),
                 span,
                 span_label: match res {
-                    Res::Def(kind, def_id) if kind == DefKind::TyParam => {
+                    Res::Def(DefKind::TyParam, def_id) => {
                         Some((self.r.def_span(def_id), "found this type parameter"))
                     }
                     _ => None,
