@@ -1,6 +1,9 @@
 use std::ops::ControlFlow;
 
-use crate::Opaque;
+use crate::{
+    ty::{self, BoundRegion, BoundRegionKind},
+    Opaque,
+};
 
 use super::ty::{
     Allocation, Binder, Const, ConstDef, ConstantKind, ExistentialPredicate, FnSig, GenericArgKind,
@@ -14,6 +17,9 @@ pub trait Folder: Sized {
     }
     fn fold_const(&mut self, c: &Const) -> ControlFlow<Self::Break, Const> {
         c.super_fold(self)
+    }
+    fn visit_reg(&mut self, reg: &Region) -> ControlFlow<Self::Break, Region> {
+        reg.super_fold(self)
     }
 }
 
@@ -107,8 +113,39 @@ impl Foldable for GenericArgs {
 }
 
 impl Foldable for Region {
+    fn fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
+        folder.visit_reg(self)
+    }
+    fn super_fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
+        let mut kind = self.kind.clone();
+        match &mut kind {
+            crate::ty::RegionKind::ReEarlyBound(_) => {}
+            crate::ty::RegionKind::ReLateBound(_, bound_reg) => {
+                *bound_reg = bound_reg.fold(folder)?
+            }
+            crate::ty::RegionKind::ReStatic => {}
+            crate::ty::RegionKind::RePlaceholder(bound_reg) => {
+                bound_reg.bound = bound_reg.bound.fold(folder)?
+            }
+            crate::ty::RegionKind::ReErased => {}
+        }
+        ControlFlow::Continue(ty::Region { kind: kind }.into())
+    }
+}
+
+impl Foldable for BoundRegion {
+    fn super_fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
+        ControlFlow::Continue(BoundRegion { var: self.var, kind: self.kind.fold(folder)? })
+    }
+}
+
+impl Foldable for BoundRegionKind {
     fn super_fold<V: Folder>(&self, _folder: &mut V) -> ControlFlow<V::Break, Self> {
-        ControlFlow::Continue(self.clone())
+        match self {
+            BoundRegionKind::BrAnon => ControlFlow::Continue(self.clone()),
+            BoundRegionKind::BrNamed(_, _) => ControlFlow::Continue(self.clone()),
+            BoundRegionKind::BrEnv => ControlFlow::Continue(self.clone()),
+        }
     }
 }
 
