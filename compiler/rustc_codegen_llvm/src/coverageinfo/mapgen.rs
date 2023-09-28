@@ -13,6 +13,7 @@ use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::def_id::DefIdSet;
 use rustc_span::Symbol;
 
 /// Generates and exports the Coverage Map.
@@ -313,8 +314,7 @@ fn save_function_record(
 /// `-Clink-dead-code` will not generate code for unused generic functions.)
 ///
 /// We can find the unused functions (including generic functions) by the set difference of all MIR
-/// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`tcx` query
-/// `codegened_and_inlined_items`).
+/// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`codegenned_and_inlined_items`).
 ///
 /// These unused functions don't need to be codegenned, but we do need to add them to the function
 /// coverage map (in a single designated CGU) so that we still emit coverage mappings for them.
@@ -350,7 +350,7 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
         })
         .collect();
 
-    let codegenned_def_ids = tcx.codegened_and_inlined_items(());
+    let codegenned_def_ids = codegenned_and_inlined_items(tcx);
 
     // For each `DefId` that should have coverage instrumentation but wasn't
     // codegenned, add it to the function coverage map as an unused function.
@@ -366,6 +366,37 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
         let instance = declare_unused_fn(tcx, def_id);
         add_unused_function_coverage(cx, instance, function_coverage_info);
     }
+}
+
+/// All items participating in code generation together with (instrumented)
+/// items inlined into them.
+fn codegenned_and_inlined_items(tcx: TyCtxt<'_>) -> DefIdSet {
+    let (items, cgus) = tcx.collect_and_partition_mono_items(());
+    let mut visited = DefIdSet::default();
+    let mut result = items.clone();
+
+    for cgu in cgus {
+        for item in cgu.items().keys() {
+            if let mir::mono::MonoItem::Fn(ref instance) = item {
+                let did = instance.def_id();
+                if !visited.insert(did) {
+                    continue;
+                }
+                let body = tcx.instance_mir(instance.def);
+                for block in body.basic_blocks.iter() {
+                    for statement in &block.statements {
+                        let mir::StatementKind::Coverage(_) = statement.kind else { continue };
+                        let scope = statement.source_info.scope;
+                        if let Some(inlined) = scope.inlined_instance(&body.source_scopes) {
+                            result.insert(inlined.def_id());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    result
 }
 
 fn declare_unused_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::Instance<'tcx> {
