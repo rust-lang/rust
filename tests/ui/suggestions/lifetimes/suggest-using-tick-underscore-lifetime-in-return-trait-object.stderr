@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-16922.rs:4:5
+  --> $DIR/suggest-using-tick-underscore-lifetime-in-return-trait-object.rs:5:5
    |
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
    |                       - let's call the lifetime of this reference `'1`
