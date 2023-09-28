@@ -36,6 +36,8 @@ unsafe fn ref_to_mut() {
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *std::mem::transmute::<_, *mut i32>(num);
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let _num = &mut *(std::mem::transmute::<_, *mut i32>(num) as *mut i32);
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *std::cell::UnsafeCell::raw_get(
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
         num as *const i32 as *const std::cell::UnsafeCell<i32>
@@ -47,7 +49,19 @@ unsafe fn ref_to_mut() {
     let deferred = (std::ptr::from_ref(num) as *const i32 as *const i32).cast_mut() as *mut i32;
     let _num = &mut *deferred;
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let deferred_rebind = deferred;
+    let _num = &mut *deferred_rebind;
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *(num as *const _ as usize as *mut i32);
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    let _num = &mut *(std::mem::transmute::<_, *mut _>(num as *const i32) as *mut i32);
+    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+
+    static NUM: &'static i32 = &2;
+    let num = NUM as *const i32 as *mut i32;
+    let num = num;
+    let num = num;
+    let _num = &mut *num;
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
 
     unsafe fn generic_ref_cast_mut<T>(this: &T) -> &mut T {
@@ -85,6 +99,8 @@ unsafe fn assign_to_ref() {
     //~^ ERROR assigning to `&T` is undefined behavior
     *std::mem::transmute::<_, *mut i32>(num) += 1;
     //~^ ERROR assigning to `&T` is undefined behavior
+    *(std::mem::transmute::<_, *mut i32>(num) as *mut i32) += 1;
+    //~^ ERROR assigning to `&T` is undefined behavior
     std::ptr::write(
     //~^ ERROR assigning to `&T` is undefined behavior
         std::mem::transmute::<*const i32, *mut i32>(num),
@@ -93,6 +109,9 @@ unsafe fn assign_to_ref() {
 
     let value = num as *const i32 as *mut i32;
     *value = 1;
+    //~^ ERROR assigning to `&T` is undefined behavior
+    let value_rebind = value;
+    *value_rebind = 1;
     //~^ ERROR assigning to `&T` is undefined behavior
     *(num as *const i32).cast::<i32>().cast_mut() = 2;
     //~^ ERROR assigning to `&T` is undefined behavior
@@ -111,6 +130,7 @@ unsafe fn assign_to_ref() {
     }
 }
 
+const RAW_PTR: *mut u8 = 1 as *mut u8;
 unsafe fn no_warn() {
     let num = &3i32;
     let mut_num = &mut 3i32;
@@ -125,6 +145,9 @@ unsafe fn no_warn() {
     let mut value = 3;
     let value: *const i32 = &mut value;
     *(value as *const i16 as *mut i16) = 42;
+    *RAW_PTR = 42; // RAW_PTR is defined outside the function body,
+                   // make sure we don't ICE on it when trying to
+                   // determine if we should lint on it or not.
 
     fn safe_as_mut<T>(x: &std::cell::UnsafeCell<T>) -> &mut T {
         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }

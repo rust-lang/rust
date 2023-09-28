@@ -196,7 +196,7 @@ late_lint_methods!(
             BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
-            InvalidReferenceCasting: InvalidReferenceCasting::default(),
+            InvalidReferenceCasting: InvalidReferenceCasting,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             NonUpperCaseGlobals: NonUpperCaseGlobals,

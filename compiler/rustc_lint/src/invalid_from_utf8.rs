@@ -84,9 +84,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
                 )
             };
 
-            let mut init = cx.expr_or_init(arg);
+            let mut init = cx.expr_or_init_with_outside_body(arg);
             while let ExprKind::AddrOf(.., inner) = init.kind {
-                init = cx.expr_or_init(inner);
+                init = cx.expr_or_init_with_outside_body(inner);
             }
             match init.kind {
                 ExprKind::Lit(Spanned { node: lit, .. }) => {

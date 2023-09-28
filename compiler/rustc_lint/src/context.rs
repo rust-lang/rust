@@ -1317,6 +1317,40 @@ impl<'tcx> LateContext<'tcx> {
     }
 
     /// If the given expression is a local binding, find the initializer expression.
+    /// If that initializer expression is another local binding, find its initializer again.
+    ///
+    /// This process repeats as long as possible (but usually no more than once).
+    /// Type-check adjustments are not taken in account in this function.
+    ///
+    /// Examples:
+    /// ```
+    /// let abc = 1;
+    /// let def = abc + 2;
+    /// //        ^^^^^^^ output
+    /// let def = def;
+    /// dbg!(def);
+    /// //   ^^^ input
+    /// ```
+    pub fn expr_or_init<'a>(&self, mut expr: &'a hir::Expr<'tcx>) -> &'a hir::Expr<'tcx> {
+        expr = expr.peel_blocks();
+
+        while let hir::ExprKind::Path(ref qpath) = expr.kind
+            && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
+                Res::Local(hir_id) => self.tcx.hir().find_parent(hir_id),
+                _ => None,
+            }
+            && let Some(init) = match parent_node {
+                hir::Node::Expr(expr) => Some(expr),
+                hir::Node::Local(hir::Local { init, .. }) => *init,
+                _ => None
+            }
+        {
+            expr = init.peel_blocks();
+        }
+        expr
+    }
+
+    /// If the given expression is a local binding, find the initializer expression.
     /// If that initializer expression is another local or **outside** (`const`/`static`)
     /// binding, find its initializer again.
     ///
@@ -1338,7 +1372,10 @@ impl<'tcx> LateContext<'tcx> {
     /// dbg!(def);
     /// //   ^^^ input
     /// ```
-    pub fn expr_or_init<'a>(&self, mut expr: &'a hir::Expr<'tcx>) -> &'a hir::Expr<'tcx> {
+    pub fn expr_or_init_with_outside_body<'a>(
+        &self,
+        mut expr: &'a hir::Expr<'tcx>,
+    ) -> &'a hir::Expr<'tcx> {
         expr = expr.peel_blocks();
 
         while let hir::ExprKind::Path(ref qpath) = expr.kind
