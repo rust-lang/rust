@@ -44,12 +44,9 @@ pub struct Region {
 pub enum RegionKind {
     ReEarlyBound(EarlyBoundRegion),
     ReLateBound(DebruijnIndex, BoundRegion),
-    ReFree(FreeRegion),
     ReStatic,
-    ReVar(RegionVid),
     RePlaceholder(Placeholder<BoundRegion>),
     ReErased,
-    ReError(ErrorGuaranteed),
 }
 
 pub(crate) type DebruijnIndex = u32;
@@ -69,14 +66,6 @@ pub struct BoundRegion {
     pub kind: BoundRegionKind,
 }
 
-#[derive(Debug, Clone)]
-pub struct FreeRegion {
-    pub scope: RegionDef,
-    pub bound_region: BoundRegionKind,
-}
-
-pub(crate) type RegionVid = u32;
-
 pub(crate) type UniverseIndex = u32;
 
 #[derive(Debug, Clone)]
@@ -84,8 +73,6 @@ pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub bound: T,
 }
-
-pub(crate) type ErrorGuaranteed = ();
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Span(pub usize);

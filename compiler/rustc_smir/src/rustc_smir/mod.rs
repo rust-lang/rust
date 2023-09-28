@@ -8,7 +8,7 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_smir::hir::def::DefKind;
-use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
+use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, Region};
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -1521,12 +1521,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 db_index.as_u32(),
                 BoundRegion { var: bound_reg.var.as_u32(), kind: bound_reg.kind.stable(tables) },
             ),
-            ty::ReFree(free_reg) => RegionKind::ReFree(FreeRegion {
-                scope: tables.region_def(free_reg.scope),
-                bound_region: free_reg.bound_region.stable(tables),
-            }),
             ty::ReStatic => RegionKind::ReStatic,
-            ty::ReVar(vid_reg) => RegionKind::ReVar(vid_reg.as_u32()),
             ty::RePlaceholder(place_holder) => {
                 RegionKind::RePlaceholder(stable_mir::ty::Placeholder {
                     universe: place_holder.universe.as_u32(),
@@ -1537,7 +1532,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 })
             }
             ty::ReErased => RegionKind::ReErased,
-            ty::ReError(_) => RegionKind::ReError(()),
+            _=> unimplemented!()
         }
     }
 }
