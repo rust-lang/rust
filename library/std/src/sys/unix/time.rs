@@ -40,6 +40,10 @@ impl SystemTime {
         SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
     }
 
+    pub fn now() -> SystemTime {
+        SystemTime { t: Timespec::now(libc::CLOCK_REALTIME) }
+    }
+
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.t.sub_timespec(&other.t)
     }
@@ -77,6 +81,36 @@ impl Timespec {
         assert!(tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64);
         // SAFETY: The assert above checks tv_nsec is within the valid range
         Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds(tv_nsec as u32) } }
+    }
+
+    pub fn now(clock: libc::clockid_t) -> Timespec {
+        use crate::mem::MaybeUninit;
+        use crate::sys::cvt;
+
+        // Try to use 64-bit time in preparation for Y2038.
+        #[cfg(all(
+            target_os = "linux",
+            target_env = "gnu",
+            target_pointer_width = "32",
+            not(target_arch = "riscv32")
+        ))]
+        {
+            use crate::sys::weak::weak;
+
+            // __clock_gettime64 was added to 32-bit arches in glibc 2.34,
+            // and it handles both vDSO calls and ENOSYS fallbacks itself.
+            weak!(fn __clock_gettime64(libc::clockid_t, *mut __timespec64) -> libc::c_int);
+
+            if let Some(clock_gettime64) = __clock_gettime64.get() {
+                let mut t = MaybeUninit::uninit();
+                cvt(unsafe { clock_gettime64(clock, t.as_mut_ptr()) }).unwrap();
+                return Timespec::from(unsafe { t.assume_init() });
+            }
+        }
+
+        let mut t = MaybeUninit::uninit();
+        cvt(unsafe { libc::clock_gettime(clock, t.as_mut_ptr()) }).unwrap();
+        Timespec::from(unsafe { t.assume_init() })
     }
 
     pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
@@ -224,7 +258,6 @@ impl From<__timespec64> for Timespec {
 ))]
 mod inner {
     use crate::sync::atomic::{AtomicU64, Ordering};
-    use crate::sys::cvt;
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
 
@@ -265,16 +298,6 @@ mod inner {
 
         pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
             Some(Instant { t: self.t.checked_sub(checked_dur2intervals(other)?)? })
-        }
-    }
-
-    impl SystemTime {
-        pub fn now() -> SystemTime {
-            use crate::ptr;
-
-            let mut s = libc::timeval { tv_sec: 0, tv_usec: 0 };
-            cvt(unsafe { libc::gettimeofday(&mut s, ptr::null_mut()) }).unwrap();
-            return SystemTime::from(s);
         }
     }
 
@@ -345,11 +368,9 @@ mod inner {
 )))]
 mod inner {
     use crate::fmt;
-    use crate::mem::MaybeUninit;
-    use crate::sys::cvt;
     use crate::time::Duration;
 
-    use super::{SystemTime, Timespec};
+    use super::Timespec;
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Instant {
@@ -384,41 +405,6 @@ mod inner {
                 .field("tv_sec", &self.t.tv_sec)
                 .field("tv_nsec", &self.t.tv_nsec.0)
                 .finish()
-        }
-    }
-
-    impl SystemTime {
-        pub fn now() -> SystemTime {
-            SystemTime { t: Timespec::now(libc::CLOCK_REALTIME) }
-        }
-    }
-
-    impl Timespec {
-        pub fn now(clock: libc::clockid_t) -> Timespec {
-            // Try to use 64-bit time in preparation for Y2038.
-            #[cfg(all(
-                target_os = "linux",
-                target_env = "gnu",
-                target_pointer_width = "32",
-                not(target_arch = "riscv32")
-            ))]
-            {
-                use crate::sys::weak::weak;
-
-                // __clock_gettime64 was added to 32-bit arches in glibc 2.34,
-                // and it handles both vDSO calls and ENOSYS fallbacks itself.
-                weak!(fn __clock_gettime64(libc::clockid_t, *mut super::__timespec64) -> libc::c_int);
-
-                if let Some(clock_gettime64) = __clock_gettime64.get() {
-                    let mut t = MaybeUninit::uninit();
-                    cvt(unsafe { clock_gettime64(clock, t.as_mut_ptr()) }).unwrap();
-                    return Timespec::from(unsafe { t.assume_init() });
-                }
-            }
-
-            let mut t = MaybeUninit::uninit();
-            cvt(unsafe { libc::clock_gettime(clock, t.as_mut_ptr()) }).unwrap();
-            Timespec::from(unsafe { t.assume_init() })
         }
     }
 }
