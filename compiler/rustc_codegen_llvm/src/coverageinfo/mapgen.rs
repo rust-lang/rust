@@ -147,6 +147,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     coverageinfo::save_cov_data_to_mod(cx, cov_data_val);
 }
 
+/// Maps "global" (per-CGU) file ID numbers to their underlying filenames.
 struct GlobalFileTable {
     /// This "raw" table doesn't include the working dir, so a filename's
     /// global ID is its index in this set **plus one**.
@@ -206,6 +207,30 @@ impl GlobalFileTable {
     }
 }
 
+rustc_index::newtype_index! {
+    // Tell the newtype macro to not generate `Encode`/`Decode` impls.
+    #[custom_encodable]
+    #[max = 0xFFFF_FFFF]
+    struct LocalFileId {}
+}
+
+/// Holds a mapping from "local" (per-function) file IDs to "global" (per-CGU)
+/// file IDs.
+#[derive(Default)]
+struct VirtualFileMapping {
+    local_to_global: IndexVec<LocalFileId, u32>,
+}
+
+impl VirtualFileMapping {
+    fn push_global_id(&mut self, global_file_id: u32) -> LocalFileId {
+        self.local_to_global.push(global_file_id)
+    }
+
+    fn into_vec(self) -> Vec<u32> {
+        self.local_to_global.raw
+    }
+}
+
 /// Using the expressions and counter regions collected for a single function,
 /// generate the variable-sized payload of its corresponding `__llvm_covfun`
 /// entry. The payload is returned as a vector of bytes.
@@ -222,7 +247,7 @@ fn encode_mappings_for_function(
 
     let expressions = function_coverage.counter_expressions().collect::<Vec<_>>();
 
-    let mut virtual_file_mapping = IndexVec::<u32, u32>::new();
+    let mut virtual_file_mapping = VirtualFileMapping::default();
     let mut mapping_regions = Vec::with_capacity(counter_regions.len());
 
     // Sort and group the list of (counter, region) mapping pairs by filename.
@@ -238,8 +263,8 @@ fn encode_mappings_for_function(
         let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
 
         // Associate that global file ID with a local file ID for this function.
-        let local_file_id: u32 = virtual_file_mapping.push(global_file_id);
-        debug!("  file id: local {local_file_id} => global {global_file_id} = '{file_name:?}'");
+        let local_file_id = virtual_file_mapping.push_global_id(global_file_id);
+        debug!("  file id: {local_file_id:?} => global {global_file_id} = '{file_name:?}'");
 
         // For each counter/region pair in this function+file, convert it to a
         // form suitable for FFI.
@@ -249,7 +274,7 @@ fn encode_mappings_for_function(
             debug!("Adding counter {counter:?} to map for {region:?}");
             mapping_regions.push(CounterMappingRegion::code_region(
                 counter,
-                local_file_id,
+                local_file_id.as_u32(),
                 start_line,
                 start_col,
                 end_line,
@@ -261,7 +286,7 @@ fn encode_mappings_for_function(
     // Encode the function's coverage mappings into a buffer.
     llvm::build_byte_buffer(|buffer| {
         coverageinfo::write_mapping_to_buffer(
-            virtual_file_mapping.raw,
+            virtual_file_mapping.into_vec(),
             expressions,
             mapping_regions,
             buffer,
