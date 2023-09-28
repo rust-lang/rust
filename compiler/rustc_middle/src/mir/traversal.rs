@@ -226,64 +226,6 @@ pub fn postorder<'a, 'tcx>(
     reverse_postorder(body).rev()
 }
 
-/// Reverse postorder traversal of a graph
-///
-/// Reverse postorder is the reverse order of a postorder traversal.
-/// This is different to a preorder traversal and represents a natural
-/// linearization of control-flow.
-///
-/// ```text
-///
-///         A
-///        / \
-///       /   \
-///      B     C
-///       \   /
-///        \ /
-///         D
-/// ```
-///
-/// A reverse postorder traversal of this graph is either `A B C D` or `A C B D`
-/// Note that for a graph containing no loops (i.e., A DAG), this is equivalent to
-/// a topological sort.
-///
-/// Construction of a `ReversePostorder` traversal requires doing a full
-/// postorder traversal of the graph, therefore this traversal should be
-/// constructed as few times as possible.
-#[derive(Clone)]
-pub struct ReversePostorder<'a, 'tcx> {
-    body: &'a Body<'tcx>,
-    blocks: Vec<BasicBlock>,
-    idx: usize,
-}
-
-impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
-    pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> ReversePostorder<'a, 'tcx> {
-        let blocks: Vec<_> = Postorder::new(&body.basic_blocks, root).map(|(bb, _)| bb).collect();
-        let len = blocks.len();
-        ReversePostorder { body, blocks, idx: len }
-    }
-}
-
-impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
-
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        if self.idx == 0 {
-            return None;
-        }
-        self.idx -= 1;
-
-        self.blocks.get(self.idx).map(|&bb| (bb, &self.body[bb]))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.idx, Some(self.idx))
-    }
-}
-
-impl<'a, 'tcx> ExactSizeIterator for ReversePostorder<'a, 'tcx> {}
-
 /// Returns an iterator over all basic blocks reachable from the `START_BLOCK` in no particular
 /// order.
 ///
