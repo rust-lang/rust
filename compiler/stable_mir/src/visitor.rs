@@ -1,9 +1,6 @@
 use std::ops::ControlFlow;
 
-use crate::{
-    ty::{BoundRegion, BoundRegionKind},
-    Opaque,
-};
+use crate::Opaque;
 
 use super::ty::{
     Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
@@ -112,31 +109,8 @@ impl Visitable for Region {
         visitor.visit_reg(self)
     }
 
-    fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
-        match self.kind.clone() {
-            crate::ty::RegionKind::ReEarlyBound(_) => {}
-            crate::ty::RegionKind::ReLateBound(_, bound_reg) => bound_reg.visit(visitor)?,
-            crate::ty::RegionKind::ReStatic => {}
-            crate::ty::RegionKind::RePlaceholder(bound_reg) => bound_reg.bound.visit(visitor)?,
-            crate::ty::RegionKind::ReErased => {}
-        }
+    fn super_visit<V: Visitor>(&self, _: &mut V) -> ControlFlow<V::Break> {
         ControlFlow::Continue(())
-    }
-}
-
-impl Visitable for BoundRegion {
-    fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
-        self.kind.visit(visitor)
-    }
-}
-
-impl Visitable for BoundRegionKind {
-    fn super_visit<V: Visitor>(&self, _visitor: &mut V) -> ControlFlow<V::Break> {
-        match self {
-            BoundRegionKind::BrAnon => ControlFlow::Continue(()),
-            BoundRegionKind::BrNamed(_, _) => ControlFlow::Continue(()),
-            BoundRegionKind::BrEnv => ControlFlow::Continue(()),
-        }
     }
 }
 
