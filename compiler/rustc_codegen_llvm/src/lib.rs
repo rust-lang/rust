@@ -12,6 +12,7 @@
 #![feature(hash_raw_entry)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(slice_group_by)]
 #![feature(impl_trait_in_assoc_type)]
