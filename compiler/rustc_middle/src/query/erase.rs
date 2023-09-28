@@ -182,6 +182,10 @@ impl EraseType for ty::Binder<'_, &'_ ty::List<Ty<'_>>> {
     type Result = [u8; size_of::<ty::Binder<'static, &'static ty::List<Ty<'static>>>>()];
 }
 
+impl EraseType for Option<ty::Const<'_>> {
+    type Result = [u8; size_of::<Option<ty::Const<'static>>>()];
+}
+
 impl<T0, T1> EraseType for (&'_ T0, &'_ T1) {
     type Result = [u8; size_of::<(&'static (), &'static ())>()];
 }

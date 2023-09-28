@@ -117,7 +117,11 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
-            match tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
+            match tcx.at(sp).lit_to_const_for_patterns(LitToConstInput {
+                lit: &lit.node,
+                ty: node.ty,
+                neg,
+            }) {
                 Ok(c) => c,
                 Err(LitToConstError::Reported(guar)) => ty::Const::new_error(tcx, guar, node.ty),
                 Err(LitToConstError::TypeError) => {

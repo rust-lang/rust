@@ -607,7 +607,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => None,
         };
         if let Some(lit_input) = lit_input {
-            match tcx.at(expr.span).lit_to_const(lit_input) {
+            match tcx.at(expr.span).lit_to_const_for_patterns(lit_input) {
                 Ok(c) => return self.const_to_pat(Const::Ty(c), id, span, None).kind,
                 // If an error occurred, ignore that it's a literal
                 // and leave reporting the error up to const eval of
@@ -676,7 +676,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let lit_input =
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
-        match self.tcx.at(expr.span).lit_to_const(lit_input) {
+        match self.tcx.at(expr.span).lit_to_const_for_patterns(lit_input) {
             Ok(constant) => {
                 self.const_to_pat(Const::Ty(constant), expr.hir_id, lit.span, None).kind
             }

@@ -1,11 +1,11 @@
-error: `<i32 as Identity>::Identity` is forbidden as the type of a const generic parameter
-  --> $DIR/projection-as-arg-const.rs:13:21
+warning: the feature `adt_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/projection-as-arg-const.rs:3:12
    |
-LL | pub fn foo<const X: <i32 as Identity>::Identity>() {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![feature(adt_const_params)]
+   |            ^^^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
 
-error: aborting due to previous error
+warning: 1 warning emitted
 

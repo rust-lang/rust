@@ -194,17 +194,10 @@ impl<'tcx> Const<'tcx> {
         };
 
         if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-            match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return Some(c),
-                Err(e) => {
-                    tcx.sess.delay_span_bug(
-                        expr.span,
-                        format!("Const::from_anon_const: couldn't lit_to_const {e:?}"),
-                    );
-                }
-            }
+            // If we failed to validate the type of the lit (which we sometimes
+            // need to actually build the valtree), then return `None`, which
+            // will make it fall back to using an unevaluated const.
+            return tcx.at(expr.span).lit_to_const(lit_input);
         }
 
         match expr.kind {

@@ -32,6 +32,7 @@ fluent_messages! { "../messages.ftl" }
 pub fn provide(providers: &mut Providers) {
     providers.check_match = thir::pattern::check_match;
     providers.lit_to_const = thir::constant::lit_to_const;
+    providers.lit_to_const_for_patterns = thir::constant::lit_to_const_for_patterns;
     providers.mir_built = build::mir_built;
     providers.closure_saved_names_of_captured_variables =
         build::closure_saved_names_of_captured_variables;

@@ -1111,11 +1111,19 @@ rustc_queries! {
         desc { "getting a &core::panic::Location referring to a span" }
     }
 
-    // FIXME get rid of this with valtrees
     query lit_to_const(
         key: LitToConstInput<'tcx>
-    ) -> Result<ty::Const<'tcx>, LitToConstError> {
+    ) -> Option<ty::Const<'tcx>> {
         desc { "converting literal to const" }
+    }
+
+    // FIXME: We could get rid of this if we got rid of float patterns, for
+    // example, but we would also need to make sure that other things like
+    // const type mismatches are handled elsewhere.
+    query lit_to_const_for_patterns(
+        key: LitToConstInput<'tcx>
+    ) -> Result<ty::Const<'tcx>, LitToConstError> {
+        desc { "converting literal to pattern const" }
     }
 
     query check_match(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
