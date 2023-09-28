@@ -2172,7 +2172,7 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
             {
                 // This is the only Arc, but other Weak pointers might exist.
                 // Weak pointers can no longer upgrade at this point, though.
-                if this.inner().weak.load(Relaxed) == ONE_WEAK {
+                if this.inner().weak.compare_exchange(ONE_WEAK, NO_WEAK, Relaxed, Relaxed).is_ok() {
                     // No Weak pointers exist.
                     this.inner().strong.store(ONE_STRONG, Release); // Restore the strong count for this Arc.
                 } else {
