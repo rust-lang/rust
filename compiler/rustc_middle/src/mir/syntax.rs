@@ -1333,7 +1333,7 @@ pub enum AggregateKind<'tcx> {
     Generator(DefId, GenericArgsRef<'tcx>, hir::Movability),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum NullOp<'tcx> {
     /// Returns the size of a value of that type
     SizeOf,

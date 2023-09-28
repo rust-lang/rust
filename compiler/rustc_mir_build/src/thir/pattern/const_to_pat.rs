@@ -24,6 +24,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
+    ///
+    /// `cv` must be a valtree or a `mir::ConstValue`.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn const_to_pat(
         &self,
@@ -64,12 +66,10 @@ struct ConstToPat<'tcx> {
 }
 
 /// This error type signals that we encountered a non-struct-eq situation.
-/// We bubble this up in order to get back to the reference destructuring and make that emit
-/// a const pattern instead of a deref pattern. This allows us to simply call `PartialEq::eq`
-/// on such patterns (since that function takes a reference) and not have to jump through any
-/// hoops to get a reference to the value.
+/// We will fall back to calling `PartialEq::eq` on such patterns,
+/// and exhaustiveness checking will consider them as matching nothing.
 #[derive(Debug)]
-struct FallbackToConstRef;
+struct FallbackToOpaqueConst;
 
 impl<'tcx> ConstToPat<'tcx> {
     fn new(
@@ -136,7 +136,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 }
                 ty::ConstKind::Value(valtree) => self
                     .recur(valtree, cv.ty(), mir_structural_match_violation.unwrap_or(false))
-                    .unwrap_or_else(|_| {
+                    .unwrap_or_else(|_: FallbackToOpaqueConst| {
                         Box::new(Pat {
                             span: self.span,
                             ty: cv.ty(),
@@ -285,7 +285,7 @@ impl<'tcx> ConstToPat<'tcx> {
     fn field_pats(
         &self,
         vals: impl Iterator<Item = (ValTree<'tcx>, Ty<'tcx>)>,
-    ) -> Result<Vec<FieldPat<'tcx>>, FallbackToConstRef> {
+    ) -> Result<Vec<FieldPat<'tcx>>, FallbackToOpaqueConst> {
         vals.enumerate()
             .map(|(idx, (val, ty))| {
                 let field = FieldIdx::new(idx);
@@ -303,7 +303,7 @@ impl<'tcx> ConstToPat<'tcx> {
         cv: ValTree<'tcx>,
         ty: Ty<'tcx>,
         mir_structural_match_violation: bool,
-    ) -> Result<Box<Pat<'tcx>>, FallbackToConstRef> {
+    ) -> Result<Box<Pat<'tcx>>, FallbackToOpaqueConst> {
         let id = self.id;
         let span = self.span;
         let tcx = self.tcx();
@@ -318,7 +318,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     span,
                     FloatPattern,
                 );
-                return Err(FallbackToConstRef);
+                return Err(FallbackToOpaqueConst);
             }
             // If the type is not structurally comparable, just emit the constant directly,
             // causing the pattern match code to treat it opaquely.
@@ -342,11 +342,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 // Since we are behind a reference, we can just bubble the error up so we get a
                 // constant at reference type, making it easy to let the fallback call
                 // `PartialEq::eq` on it.
-                return Err(FallbackToConstRef);
+                return Err(FallbackToOpaqueConst);
             }
             ty::FnDef(..) => {
                 self.saw_const_match_error.set(true);
                 tcx.sess.emit_err(InvalidPattern { span, non_sm_ty: ty });
+                // We errored, so the pattern we generate is irrelevant.
                 PatKind::Wild
             }
             ty::Adt(adt_def, _) if !self.type_marked_structural(ty) => {
@@ -354,6 +355,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 self.saw_const_match_error.set(true);
                 let err = TypeNotStructural { span, non_sm_ty: ty };
                 tcx.sess.emit_err(err);
+                // We errored, so the pattern we generate is irrelevant.
                 PatKind::Wild
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
@@ -423,13 +425,15 @@ impl<'tcx> ConstToPat<'tcx> {
                                 IndirectStructuralMatch { non_sm_ty: *pointee_ty },
                             );
                         }
-                        return Err(FallbackToConstRef);
+                        return Err(FallbackToOpaqueConst);
                     } else {
                         if !self.saw_const_match_error.get() {
                             self.saw_const_match_error.set(true);
                             let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
                             tcx.sess.emit_err(err);
                         }
+                        tcx.sess.delay_span_bug(span, "`saw_const_match_error` set but no error?");
+                        // We errored, so the pattern we generate is irrelevant.
                         PatKind::Wild
                     }
                 }
@@ -442,6 +446,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         tcx.sess.emit_err(err);
 
                         // FIXME: introduce PatKind::Error to silence follow up diagnostics due to unreachable patterns.
+                        // We errored, so the pattern we generate is irrelevant.
                         PatKind::Wild
                     } else {
                         let old = self.behind_reference.replace(true);
@@ -472,6 +477,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 self.saw_const_match_error.set(true);
                 let err = InvalidPattern { span, non_sm_ty: ty };
                 tcx.sess.emit_err(err);
+                // We errored, so the pattern we generate is irrelevant.
                 PatKind::Wild
             }
         };

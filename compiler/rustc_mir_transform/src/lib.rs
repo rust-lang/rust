@@ -76,6 +76,7 @@ mod errors;
 mod ffi_unwind_calls;
 mod function_item_references;
 mod generator;
+mod gvn;
 pub mod inline;
 mod instsimplify;
 mod large_enums;
@@ -549,6 +550,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // latter pass will leverage the created opportunities.
             &separate_const_switch::SeparateConstSwitch,
             &const_prop::ConstProp,
+            &gvn::GVN,
             &dataflow_const_prop::DataflowConstProp,
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
