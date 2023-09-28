@@ -1988,8 +1988,8 @@ macro_rules! uint_impl {
         /// #![feature(isqrt)]
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
         /// ```
-        #[unstable(feature = "isqrt", issue = "none")]
-        #[rustc_const_unstable(feature = "isqrt", issue = "none")]
+        #[unstable(feature = "isqrt", issue = "116226")]
+        #[rustc_const_unstable(feature = "isqrt", issue = "116226")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
