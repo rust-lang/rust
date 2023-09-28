@@ -163,20 +163,47 @@
 //! first option is ruled out.
 //!
 //! In order to implement the second option, we must in some way enforce its key invariant,
-//! *i.e.* prevent the value from being *moved* or otherwise invalidated. (You may notice this
-//! sounds an awful lot like the definition of *pinning* a value). There are two ways by
-//! which we might enforce this validity invariant in Rust:
+//! *i.e.* prevent the value from being *moved* or otherwise invalidated (you may notice this
+//! sounds an awful lot like the definition of *pinning* a value). There a few ways one might be
+//! able to enforce this invariant in Rust:
 //!
 //! 1. Offer a wholly `unsafe` API to interact with the object, thus requiring every caller to
-//! uphold the invariant themselves; or,
-//! 2. Leverage the type system to encode and enforce this invariant by presenting a restricted
-//! API surface to interact with the object
+//! uphold the invariant themselves
+//! 2. Store the value that must not be moved behind a carefully managed pointer internal to
+//! the object
+//! 3. Leverage the type system to encode and enforce this invariant by presenting a restricted
+//! API surface to interact with *any* object that requires these invariants
 //!
-//! The first option is quite obviously undesirable, as the `unsafe`ty of the interface will
+//! The first option is quite obviously undesirable, as the [`unsafe`]ty of the interface will
 //! become viral throughout all code that interacts with the object.
 //!
-//! [`Pin<Ptr>`] is an implementation of the second option, allowing us to pin a value in place
-//! until its [`drop`] runs in a way that we can depend on it staying valid in `unsafe` code.
+//! The second option is a viable solution to the problem for some use cases, in particular
+//! for self-referrential types. Under this model, any type that has an address sensitive state
+//! would ultimately store its data in something like a [`Box<T>`] and then carefully manage
+//! the access to that data internally to ensure no *moves* or other invalidation occur, then
+//! provide a safe interface on top.
+//!
+//! There are a couple of linked disadvantages to using this model. The core issue is a lack
+//! of generality. This is an issue first because it means hat each individual type that
+//! implements such an interface does so on its own. Each individual developer must themselves
+//! think through all the guarantees needed to ensure the API they present is sound. This puts
+//! a greater burden on each developer, rather than allowing building a shared understanding of the
+//! problem space, encoded into a shared interface to solve it. In addition, and the key issue that
+//! drove Rust towards another solution, is that each individual object must assume it is on its
+//! own in ensuring that its data does not become *moved* or otherwise invalidated. Since there is
+//! no shared contract between values of different types, an object cannot assume that others
+//! interacting with it will be a good citizen with its data. Because of this, *composition* of
+//! address-sensitive types requires at least a level of pointer indirection (and, practically, a
+//! heap allocation) each time a new object is added to the mix. This is particularly a problem
+//! when one considers the implications of composing together the [`Future`]s which will eventaully
+//! make up an asynchronous task (including address-sensitive `async fn` state machines).
+//! It is plausible that there could be many layers of [`Future`]s composed together, including
+//! multiple layers of `async fn`s handling different parts of a task, and it was deemed
+//! unacceptable to force indirection and allocation for each layer of composition in this case.
+//!
+//! [`Pin<Ptr>`] is an implementation of the third option. It allows us to solve the issues
+//! discussed with the second option by building a *shared contractual language* around the
+//! guarantees of "pinning" data.
 //!
 //! ## Using [`Pin<Ptr>`] to pin values
 //!
