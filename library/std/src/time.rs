@@ -109,7 +109,7 @@ pub use core::time::TryFromFloatSecsError;
 /// |-----------|----------------------------------------------------------------------|
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime (Monotonic Clock)]                                    |
-/// | Darwin    | [mach_absolute_time]                                                 |
+/// | Darwin    | [clock_gettime (Monotonic Clock)]                                    |
 /// | VXWorks   | [clock_gettime (Monotonic Clock)]                                    |
 /// | SOLID     | `get_tim`                                                            |
 /// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
@@ -121,7 +121,6 @@ pub use core::time::TryFromFloatSecsError;
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
 /// [__wasi_clock_time_get (Monotonic Clock)]: https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#clock_time_get
 /// [clock_gettime (Monotonic Clock)]: https://linux.die.net/man/3/clock_gettime
-/// [mach_absolute_time]: https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/services/services.html
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
