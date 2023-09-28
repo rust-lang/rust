@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.72.0"]
     pub NEEDLESS_RAW_STRING_HASHES,
-    style,
+    pedantic,
     "suggests reducing the number of hashes around a raw string literal"
 }
 impl_lint_pass!(RawStrings => [NEEDLESS_RAW_STRINGS, NEEDLESS_RAW_STRING_HASHES]);
