@@ -292,9 +292,9 @@
 //! to it *cannot* panic.
 //!
 //! ```
-//! use core::marker::PhantomPinned;
-//! use core::pin::Pin;
-//! use core::pin::pin;
+//! use std::marker::PhantomPinned;
+//! use std::pin::Pin;
+//! use std::pin::pin;
 //!
 //! #[derive(Default)]
 //! struct AddrTracker {
@@ -327,9 +327,8 @@
 //! let mut ptr_to_pinned_tracker: Pin<&mut AddrTracker> = pin!(tracker);
 //! ptr_to_pinned_tracker.as_mut().check_for_move();
 //!
-//! // Trying to access `tracker` or pass `ptr_to_pinned_tracker` to anything
-//! // that requires mutable access to a non-pinned version of it will no longer
-//! // compile
+//! // Trying to access `tracker` or pass `ptr_to_pinned_tracker` to anything that requires
+//! // mutable access to a non-pinned version of it will no longer compile
 //!
 //! // 3. We can now assume that the tracker value will never be moved, thus
 //! // this will never panic!
