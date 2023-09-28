@@ -192,12 +192,10 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
 
     fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        let next = self.visit_stack.pop();
-        if next.is_some() {
-            self.traverse_successor();
-        }
-
-        next.map(|(bb, _)| (bb, &self.basic_blocks[bb]))
+        let (bb, _) = self.visit_stack.pop()?;
+        self.traverse_successor();
+        
+        Some((bb, &self.basic_blocks[bb]))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
