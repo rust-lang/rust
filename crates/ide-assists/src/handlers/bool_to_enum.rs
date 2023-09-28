@@ -16,7 +16,7 @@ use syntax::{
         edit_in_place::{AttrsOwnerEdit, Indent},
         make, HasName,
     },
-    match_ast, ted, AstNode, NodeOrToken, SyntaxNode, T,
+    ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
 };
 use text_edit::TextRange;
 
@@ -472,33 +472,16 @@ fn add_enum_def(
     );
 }
 
-/// Finds where to put the new enum definition, at the nearest module or at top-level.
-fn node_to_insert_before(mut target_node: SyntaxNode) -> SyntaxNode {
-    let mut ancestors = target_node.ancestors();
-
-    while let Some(ancestor) = ancestors.next() {
-        match_ast! {
-            match ancestor {
-                ast::Item(item) => {
-                    if item
-                        .syntax()
-                        .parent()
-                        .and_then(|item_list| item_list.parent())
-                        .and_then(ast::Module::cast)
-                        .is_some()
-                    {
-                        return ancestor;
-                    }
-                },
-                ast::SourceFile(_) => break,
-                _ => (),
-            }
-        }
-
-        target_node = ancestor;
-    }
-
+/// Finds where to put the new enum definition.
+/// Tries to find the ast node at the nearest module or at top-level, otherwise just
+/// returns the input node.
+fn node_to_insert_before(target_node: SyntaxNode) -> SyntaxNode {
     target_node
+        .ancestors()
+        .take_while(|it| !matches!(it.kind(), SyntaxKind::MODULE | SyntaxKind::SOURCE_FILE))
+        .filter(|it| ast::Item::can_cast(it.kind()))
+        .last()
+        .unwrap_or(target_node)
 }
 
 fn make_bool_enum(make_pub: bool) -> ast::Enum {
