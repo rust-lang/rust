@@ -230,7 +230,7 @@
 //! [`Pin<Ptr>`] to it *does not* actually change the way the compiler behaves towards the
 //! inner value! It is possible to use incorrect [`unsafe`] code to create a [`Pin<Ptr>`] to a
 //! value which does not actually satisfy the invariants that a pinned value must satisfy, and in
-//! this way lead undefined behavior even in (from that point) fully safe code. Similarly, using
+//! this way lead to undefined behavior even in (from that point) fully safe code. Similarly, using
 //! [`unsafe`], one may get access to a bare [`&mut T`] from a [`Pin<Ptr>`] and
 //! use that to invalidly *move* pinned the value out. It is the job of the user of the
 //! [`unsafe`] parts of the [`Pin`] API to ensure these invariants are not violated.
@@ -423,9 +423,9 @@
 //!     /// Create a new `Unmovable`.
 //!     ///
 //!     /// To ensure the data doesn't move we place it on the heap behind a pinning Box.
-//!     /// Note that the data is pinned, but the which is pinning it can itself still be moved.
-//!     /// This is important because it means we can return the pointer from the function, which
-//!     /// is itself a kind of move!
+//!     /// Note that the data is pinned, but the `Pin<Box<Self>>` which is pinning it can
+//!     /// itself still be moved. This is important because it means we can return the pinning
+//!     /// pointer from the function, which is itself a kind of move!
 //!     fn new() -> Pin<Box<Self>> {
 //!         let res = Unmovable {
 //!             data: [0; 64],
