@@ -31,10 +31,7 @@ fn main() {
         v,
         "some {}\
         {} \\ {}",
-        "1",
-        "2",
-        "3",
-        //~^ ERROR: literal with an empty format string
+        "1", "2", "3",
     );
     writeln!(v, "{}", "\\");
     //~^ ERROR: literal with an empty format string
@@ -49,7 +46,6 @@ fn main() {
     // hard mode
     writeln!(v, r#"{}{}"#, '#', '"');
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
     // should not lint
     writeln!(v, r"{}", "\r");
 }

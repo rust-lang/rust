@@ -39,18 +39,14 @@ fn main() {
     // throw a warning
     println!("hello world");
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
     println!("world hello");
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
 
     // named args shouldn't change anything either
     println!("hello world");
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
     println!("world hello");
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
 
     // The string literal from `file!()` has a callsite span that isn't marked as coming from an
     // expansion

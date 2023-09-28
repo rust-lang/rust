@@ -43,16 +43,22 @@ fn main() {
     // throw a warning
     writeln!(v, "{0} {1}", "hello", "world");
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
     writeln!(v, "{1} {0}", "hello", "world");
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
 
     // named args shouldn't change anything either
     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
     //~^ ERROR: literal with an empty format string
-    //~| ERROR: literal with an empty format string
+
+    // #10128
+    writeln!(v, "{0} {1} {2}", "hello", 2, "world");
+    //~^ ERROR: literal with an empty format string
+    writeln!(v, "{2} {1} {0}", "hello", 2, "world");
+    //~^ ERROR: literal with an empty format string
+    writeln!(v, "{0} {1} {2}, {bar}", "hello", 2, 3, bar = 4);
+    //~^ ERROR: literal with an empty format string
+    writeln!(v, "{0} {1} {2}, {3} {4}", "hello", 2, 3, "world", 4);
+    //~^ ERROR: literal with an empty format string
 }
