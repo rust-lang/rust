@@ -686,7 +686,10 @@ impl<T> MaybeUninit<T> {
     /// // they both get dropped!
     /// ```
     #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init_read", issue = "63567")]
+    #[rustc_const_stable(
+        feature = "const_maybe_uninit_assume_init_read",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     #[inline(always)]
     #[track_caller]
     pub const unsafe fn assume_init_read(&self) -> T {
