@@ -613,10 +613,17 @@ pub struct Function {
     pub(crate) flags: FnFlags,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Param {
-    Normal(Interned<TypeRef>),
-    Varargs,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Param {
+    /// This is [`None`] for varargs
+    pub type_ref: Option<Interned<TypeRef>>,
+    pub ast_id: ParamAstId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParamAstId {
+    Param(FileAstId<ast::Param>),
+    SelfParam(FileAstId<ast::SelfParam>),
 }
 
 bitflags::bitflags! {
