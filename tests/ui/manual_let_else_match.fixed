@@ -133,3 +133,7 @@ fn not_fire() {
         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ ..] => data,
     };
 }
+
+fn issue11579() {
+    let Some(msg) = Some("hi") else { unreachable!("can't happen") };
+}

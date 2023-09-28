@@ -92,5 +92,15 @@ LL | |         _ => return,
 LL | |     };
    | |______^ help: consider writing: `let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };`
 
-error: aborting due to 9 previous errors
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else_match.rs:175:5
+   |
+LL | /     let msg = match Some("hi") {
+LL | |
+LL | |         Some(m) => m,
+LL | |         _ => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(msg) = Some("hi") else { unreachable!("can't happen") };`
+
+error: aborting due to 10 previous errors
 
