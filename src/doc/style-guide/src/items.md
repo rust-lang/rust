@@ -367,26 +367,52 @@ where
 ## Type aliases
 
 Keep type aliases on one line when they fit. If necessary to break the line, do
-so after the `=`, and block-indent the right-hand side:
+so before the `=`, and block-indent the right-hand side:
 
 ```rust
 pub type Foo = Bar<T>;
 
 // If multi-line is required
-type VeryLongType<T, U: SomeBound> =
-    AnEvenLongerType<T, U, Foo<T>>;
+type VeryLongType<T, U: SomeBound>
+    = AnEvenLongerType<T, U, Foo<T>>;
 ```
 
-Where possible avoid `where` clauses and keep type constraints inline. Where
-that is not possible split the line before and after the `where` clause (and
-split the `where` clause as normal), e.g.,
+When there is a trailing `where` clause after the type, and no `where` clause
+present before the type, break before the `=` and indent. Then break before the
+`where` keyword and format the clauses normally, e.g.,
 
 ```rust
+// With only a trailing where clause
 type VeryLongType<T, U>
+    = AnEvenLongerType<T, U, Foo<T>>
+where
+    T: U::AnAssociatedType,
+    U: SomeBound;
+```
+
+When there is a `where` clause before the type, format it normally, and break
+after the last clause. Do not indent before the `=` to leave it visually
+distinct from the indented clauses that precede it. If there is additionally a
+`where` clause after the type, break before the `where` keyword and format the
+clauses normally.
+
+```rust
+// With only a preceding where clause.
+type WithPrecedingWC<T, U>
 where
     T: U::AnAssociatedType,
     U: SomeBound,
 = AnEvenLongerType<T, U, Foo<T>>;
+
+// Or with both a preceding and trailing where clause.
+type WithPrecedingWC<T, U>
+where
+    T: U::AnAssociatedType,
+    U: SomeBound,
+= AnEvenLongerType<T, U, Foo<T>>
+where
+    T: U::AnAssociatedType2,
+    U: SomeBound2;
 ```
 
 ## Associated types

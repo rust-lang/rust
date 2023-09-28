@@ -1083,7 +1083,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
     }
 
     fn parse_in_attribute_block(&mut self) -> Option<LangStringToken<'a>> {
-        while let Some((pos, c)) = self.inner.next() {
+        if let Some((pos, c)) = self.inner.next() {
             if c == '}' {
                 self.is_in_attribute_block = false;
                 return self.next();

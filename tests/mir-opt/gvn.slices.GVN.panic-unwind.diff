@@ -1,0 +1,275 @@
+- // MIR for `slices` before GVN
++ // MIR for `slices` after GVN
+  
+  fn slices() -> () {
+      let mut _0: ();
+      let _1: &str;
+      let _2: ();
+      let mut _3: &str;
+      let _5: ();
+      let mut _6: &str;
+      let _7: ();
+      let mut _8: (&*const u8, &*const u8);
+      let mut _9: &*const u8;
+      let _10: *const u8;
+      let mut _11: &str;
+      let mut _12: &*const u8;
+      let _13: *const u8;
+      let mut _14: &str;
+      let mut _17: bool;
+      let mut _18: *const u8;
+      let mut _19: *const u8;
+      let mut _20: !;
+      let _22: !;
+      let mut _23: core::panicking::AssertKind;
+      let mut _24: &*const u8;
+      let _25: &*const u8;
+      let mut _26: &*const u8;
+      let _27: &*const u8;
+      let mut _28: std::option::Option<std::fmt::Arguments<'_>>;
+      let mut _30: &str;
+      let _31: ();
+      let mut _32: &[u8];
+      let _33: ();
+      let mut _34: (&*const u8, &*const u8);
+      let mut _35: &*const u8;
+      let _36: *const u8;
+      let mut _37: &str;
+      let mut _38: &*const u8;
+      let _39: *const u8;
+      let mut _40: &[u8];
+      let mut _43: bool;
+      let mut _44: *const u8;
+      let mut _45: *const u8;
+      let mut _46: !;
+      let _48: !;
+      let mut _49: core::panicking::AssertKind;
+      let mut _50: &*const u8;
+      let _51: &*const u8;
+      let mut _52: &*const u8;
+      let _53: &*const u8;
+      let mut _54: std::option::Option<std::fmt::Arguments<'_>>;
+      scope 1 {
+          debug s => _1;
+          let _4: &str;
+          scope 2 {
+              debug t => _4;
+              let _15: &*const u8;
+              let _16: &*const u8;
+              let _29: &[u8];
+              scope 3 {
+                  debug left_val => _15;
+                  debug right_val => _16;
+                  let _21: core::panicking::AssertKind;
+                  scope 4 {
+                      debug kind => _21;
+                  }
+              }
+              scope 5 {
+                  debug u => _29;
+                  let _41: &*const u8;
+                  let _42: &*const u8;
+                  scope 7 {
+                      debug left_val => _41;
+                      debug right_val => _42;
+                      let _47: core::panicking::AssertKind;
+                      scope 8 {
+                          debug kind => _47;
+                      }
+                  }
+              }
+              scope 6 {
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+          _1 = const "my favourite slice";
+          StorageLive(_2);
+-         StorageLive(_3);
+-         _3 = _1;
+-         _2 = opaque::<&str>(move _3) -> [return: bb1, unwind continue];
++         _2 = opaque::<&str>(_1) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         StorageDead(_3);
+          StorageDead(_2);
+          StorageLive(_4);
+          _4 = _1;
+          StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = _4;
+-         _5 = opaque::<&str>(move _6) -> [return: bb2, unwind continue];
++         _5 = opaque::<&str>(_1) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+-         StorageDead(_6);
+          StorageDead(_5);
+-         StorageLive(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          _11 = &(*_1);
+          _10 = core::str::<impl str>::as_ptr(move _11) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+          StorageDead(_11);
+          _9 = &_10;
+          StorageLive(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = &(*_4);
+          _13 = core::str::<impl str>::as_ptr(move _14) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+          StorageDead(_14);
+          _12 = &_13;
+          _8 = (move _9, move _12);
+          StorageDead(_12);
+          StorageDead(_9);
+          StorageLive(_15);
+          _15 = (_8.0: &*const u8);
+          StorageLive(_16);
+          _16 = (_8.1: &*const u8);
+          StorageLive(_17);
+          StorageLive(_18);
+          _18 = (*_15);
+          StorageLive(_19);
+          _19 = (*_16);
+          _17 = Eq(move _18, move _19);
+          switchInt(move _17) -> [0: bb6, otherwise: bb5];
+      }
+  
+      bb5: {
+          StorageDead(_19);
+          StorageDead(_18);
+-         _7 = const ();
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageDead(_15);
+          StorageDead(_13);
+          StorageDead(_10);
+          StorageDead(_8);
+-         StorageDead(_7);
+-         StorageLive(_29);
+          StorageLive(_30);
+          _30 = &(*_1);
+          _29 = move _30 as &[u8] (Transmute);
+          StorageDead(_30);
+          StorageLive(_31);
+-         StorageLive(_32);
+-         _32 = _29;
+-         _31 = opaque::<&[u8]>(move _32) -> [return: bb7, unwind continue];
++         _31 = opaque::<&[u8]>(_29) -> [return: bb7, unwind continue];
+      }
+  
+      bb6: {
+          StorageDead(_19);
+          StorageDead(_18);
+-         StorageLive(_21);
+          _21 = core::panicking::AssertKind::Eq;
+          StorageLive(_22);
+-         StorageLive(_23);
+-         _23 = move _21;
+          StorageLive(_24);
+          StorageLive(_25);
+          _25 = &(*_15);
+          _24 = &(*_25);
+          StorageLive(_26);
+          StorageLive(_27);
+          _27 = &(*_16);
+          _26 = &(*_27);
+          StorageLive(_28);
+          _28 = Option::<Arguments<'_>>::None;
+-         _22 = core::panicking::assert_failed::<*const u8, *const u8>(move _23, move _24, move _26, move _28) -> unwind continue;
++         _22 = core::panicking::assert_failed::<*const u8, *const u8>(_21, move _24, move _26, move _28) -> unwind continue;
+      }
+  
+      bb7: {
+-         StorageDead(_32);
+          StorageDead(_31);
+-         StorageLive(_33);
+          StorageLive(_34);
+          StorageLive(_35);
+          StorageLive(_36);
+          StorageLive(_37);
+          _37 = &(*_1);
+          _36 = core::str::<impl str>::as_ptr(move _37) -> [return: bb8, unwind continue];
+      }
+  
+      bb8: {
+          StorageDead(_37);
+          _35 = &_36;
+          StorageLive(_38);
+          StorageLive(_39);
+          StorageLive(_40);
+          _40 = &(*_29);
+          _39 = core::slice::<impl [u8]>::as_ptr(move _40) -> [return: bb9, unwind continue];
+      }
+  
+      bb9: {
+          StorageDead(_40);
+          _38 = &_39;
+          _34 = (move _35, move _38);
+          StorageDead(_38);
+          StorageDead(_35);
+          StorageLive(_41);
+          _41 = (_34.0: &*const u8);
+          StorageLive(_42);
+          _42 = (_34.1: &*const u8);
+          StorageLive(_43);
+          StorageLive(_44);
+          _44 = (*_41);
+          StorageLive(_45);
+          _45 = (*_42);
+          _43 = Eq(move _44, move _45);
+          switchInt(move _43) -> [0: bb11, otherwise: bb10];
+      }
+  
+      bb10: {
+          StorageDead(_45);
+          StorageDead(_44);
+-         _33 = const ();
+          StorageDead(_43);
+          StorageDead(_42);
+          StorageDead(_41);
+          StorageDead(_39);
+          StorageDead(_36);
+          StorageDead(_34);
+-         StorageDead(_33);
+          _0 = const ();
+-         StorageDead(_29);
+          StorageDead(_4);
+-         StorageDead(_1);
+          return;
+      }
+  
+      bb11: {
+          StorageDead(_45);
+          StorageDead(_44);
+-         StorageLive(_47);
+          _47 = core::panicking::AssertKind::Eq;
+          StorageLive(_48);
+-         StorageLive(_49);
+-         _49 = move _47;
+          StorageLive(_50);
+          StorageLive(_51);
+          _51 = &(*_41);
+          _50 = &(*_51);
+          StorageLive(_52);
+          StorageLive(_53);
+          _53 = &(*_42);
+          _52 = &(*_53);
+          StorageLive(_54);
+          _54 = Option::<Arguments<'_>>::None;
+-         _48 = core::panicking::assert_failed::<*const u8, *const u8>(move _49, move _50, move _52, move _54) -> unwind continue;
++         _48 = core::panicking::assert_failed::<*const u8, *const u8>(_47, move _50, move _52, move _54) -> unwind continue;
+      }
+  }
+  
