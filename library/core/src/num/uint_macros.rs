@@ -1997,11 +1997,11 @@ macro_rules! uint_impl {
                 return self;
             }
 
-            let mut x: Self = self;
-            let mut c: Self = 0;
-            let mut d: Self = 1 << (self.ilog2() & !1);
+            let mut x = self;
+            let mut c = 0;
+            let mut d = 1 << (self.ilog2() & !1);
 
-            while (d != 0) {
+            while d != 0 {
                 if x >= c + d {
                     x -= c + d;
                     c = (c >> 1) + d;
