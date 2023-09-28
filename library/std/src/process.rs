@@ -1807,9 +1807,9 @@ impl ExitStatusError {
 }
 
 #[unstable(feature = "exit_status_error", issue = "84908")]
-impl Into<ExitStatus> for ExitStatusError {
-    fn into(self) -> ExitStatus {
-        ExitStatus(self.0.into())
+impl From<ExitStatusError> for ExitStatus {
+    fn from(error: ExitStatusError) -> Self {
+        Self(error.0.into())
     }
 }
 
