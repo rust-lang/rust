@@ -542,7 +542,7 @@ jobs:
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
       AWS_REGION: us-west-1
       CACHE_DOMAIN: ci-caches.rust-lang.org
-    if: "github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
+    if: "github.event_name == 'push' && (((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust') || ((github.ref == 'refs/heads/automation/bors/try') && github.repository == 'rust-lang/rust'))"
     strategy:
       matrix:
         include:
