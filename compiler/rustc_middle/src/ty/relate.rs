@@ -831,19 +831,6 @@ impl<'tcx> Relate<'tcx> for Term<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: ty::ProjectionPredicate<'tcx>,
-        b: ty::ProjectionPredicate<'tcx>,
-    ) -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>> {
-        Ok(ty::ProjectionPredicate {
-            projection_ty: relation.relate(a.projection_ty, b.projection_ty)?,
-            term: relation.relate(a.term, b.term)?,
-        })
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Error handling
 
