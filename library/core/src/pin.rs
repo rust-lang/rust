@@ -36,7 +36,7 @@
 //! goes out of scope and is invalidated.
 //!
 //! Note that as long as you don't use [`unsafe`], it's impossible to create or misuse a pinned
-//! value in a way that will produce unsoundness. See the documentation of [`Pin<Ptr>`] for more
+//! value in a way that is unsound. See the documentation of [`Pin<Ptr>`] for more
 //! information on the practicalities of how to pin a value and how to use that pinned value from a
 //! user's perspective without using [`unsafe`].
 //!
@@ -179,8 +179,8 @@
 //!
 //! The second option is a viable solution to the problem for some use cases, in particular
 //! for self-referrential types. Under this model, any type that has an address sensitive state
-//! would ultimately store its data in something like a [`Box<T>`] and then carefully manage
-//! the access to that data internally to ensure no *moves* or other invalidation occur, then
+//! would ultimately store its data in something like a [`Box<T>`], carefully manage internal
+//! access to that data to ensure no *moves* or other invalidation occurs, and finally
 //! provide a safe interface on top.
 //!
 //! There are a couple of linked disadvantages to using this model. The core issue is a lack
@@ -190,21 +190,20 @@
 //! rather build a shared understanding of the problem space and encode that understanding into a
 //! shared interface to solve it which everyone helps validate.
 //!
-//! In addition, and the key issue that drove Rust towards developing another solution, is that
-//! in this model, each individual object must assume it is *on its own* to ensure that its data
-//! does not become *moved* or otherwise invalidated. Since there is no shared contract between
-//! values of different types, an object cannot assume that others interacting with it will
-//! properly respect the invariants around interacting with its data and must therefore protect
-//! it from everyone. Because of this, *composition* of address-sensitive types requires at least
-//! a level of pointer indirection each time a new object is added to the mix (and, practically, a
-//! heap allocation).
+//! In addition, in this model, each individual object must assume it is *on its own* to ensure
+//! that its data does not become *moved* or otherwise invalidated. Since there is no shared
+//! contract between values of different types, an object cannot assume that others interacting
+//! with it will properly respect the invariants around interacting with its data and must
+//! therefore protect it from everyone. Because of this, *composition* of address-sensitive types
+//! requires at least a level of pointer indirection each time a new object is added to the mix
+//! (and, practically, a heap allocation).
 //!
-//! This is particularly a problem when one considers, for exapmle, the implications of composing
-//! together the [`Future`]s which will eventaully make up an asynchronous task (including
-//! address-sensitive `async fn` state machines). It is plausible that there could be many layers
-//! of [`Future`]s composed together, including multiple layers of `async fn`s handling different
-//! parts of a task. It was deemed unacceptable to force indirection and allocation for each layer
-//! of composition in this case.
+//! This is the key thing that drove Rust towards a different model. It is particularly a problem
+//! when one considers, for exapmle, the implications of composing together the [`Future`]s which
+//! will eventaully make up an asynchronous task (including address-sensitive `async fn` state
+//! machines). It is plausible that there could be many layers of [`Future`]s composed together,
+//! including multiple layers of `async fn`s handling different parts of a task. It was deemed
+//! unacceptable to force indirection and allocation for each layer of composition in this case.
 //!
 //! [`Pin<Ptr>`] is an implementation of the third option. It allows us to solve the issues
 //! discussed with the second option by building a *shared contractual language* around the
@@ -237,7 +236,7 @@
 //! value which does not actually satisfy the invariants that a pinned value must satisfy, and in
 //! this way lead to undefined behavior even in (from that point) fully safe code. Similarly, using
 //! [`unsafe`], one may get access to a bare [`&mut T`] from a [`Pin<Ptr>`] and
-//! use that to invalidly *move* pinned the value out. It is the job of the user of the
+//! use that to invalidly *move* the pinned value out. It is the job of the user of the
 //! [`unsafe`] parts of the [`Pin`] API to ensure these invariants are not violated.
 //!
 //! This differs from e.g. [`UnsafeCell`] which changes the semantics of a program's compiled
@@ -496,7 +495,7 @@
 //! *Moving* or otherwise invalidating an element's data would invalidate the pointers back to it
 //! which are stored in the elements ahead and behind it. Thus, in order to soundly dereference
 //! the pointers stored to the next and previous elements, we must satisfy the guarantee that
-//! nothing has invalidated those pointers (which point to data which we do not own).
+//! nothing has invalidated those pointers (which point to data that we do not own).
 //!
 //! Moreover, the [`Drop`][Drop] implementation of each element must in some way notify its
 //! predecessor and successor elements that it should be removed from the list before it is fully
@@ -504,7 +503,7 @@
 //!
 //! Crucially, this means we have to be able to rely on [`drop`] always being called before an
 //! element is invalidated. If an element could be deallocated or otherwise invalidated without
-//! calling [`drop`], the pointers to it which are stored in its neighboring elements would
+//! calling [`drop`], the pointers to it stored in its neighboring elements would
 //! become invalid, which would break the data structure.
 //!
 //! Therefore, pinning data also comes with [the "`Drop` guarantee"][drop-guarantee].
@@ -513,20 +512,20 @@
 //! [subtle-details]: self#subtle-details-and-the-drop-guarantee
 //! [drop-guarantee]: self#subtle-details-and-the-drop-guarantee
 //!
-//! The purpose of pinning is not *just* to prevent a value from being *moved*, but rather more
+//! The purpose of pinning is not *just* to prevent a value from being *moved*, but more
 //! generally to be able to rely on the pinned value *remaining valid **at a specific place*** in
 //! memory.
 //!
 //! To do so, pinning a value adds an *additional* invariant that must be upheld in order for use
-//! of the pinned data to be valid, on top of the ones that must be upheld for a non-pinned value of
-//! the same type:
+//! of the pinned data to be valid, on top of the ones that must be upheld for a non-pinned value
+//! of the same type to be valid:
 //!
 //! From the moment a value is pinned by constructing a [`Pin`]ning pointer to it, that value
 //! must *remain, **valid***, at that same address in memory, *until its [`drop`] handler is
 //! called.*
 //!
-//! There is some subtlety to this which we have not yet talked about in detail. The invariant above
-//! means that, yes,
+//! There is some subtlety to this which we have not yet talked about in detail. The invariant
+//! described above means that, yes,
 //!
 //! 1. The value must not be moved out of its location in memory
 //!
@@ -540,31 +539,31 @@
 //! ## `Drop` guarantee
 //!
 //! There needs to be a way for a pinned value to notify any code that is relying on its pinned
-//! status that it is about to be destroyed, so that such code can remove its address from their
-//! data structures or otherwise change their behavior with the knowledge that they can no longer
-//! rely on that value existing at the same location.
+//! status that it is about to be destroyed. In this way, the dependent code can remove the
+//! pinned value's address from its data structures or otherwise change its behavior with the
+//! knowledge that it can no longer rely on that value existing at the location it was pinned to.
 //!
 //! Thus, in any situation where we may want to overwrite a pinned value, that value's [`drop`] must
 //! be called beforehand (unless the pinned value implements [`Unpin`], in which case we can ignore
 //! all of [`Pin`]'s guarantees, as usual).
 //!
-//! The most common storage-reuse situation is when a value on the stack is destroyed as part of a
-//! function return, or when heap storage is freed. In both cases, [`drop`] gets run for us
-//! by Rust when using standard safe code. However, for heap or otherwise custom-allocated storage,
-//! [`unsafe`] code must make sure to call [`ptr::drop_in_place`] before deallocating and re-using
-//! said storage.
+//! The most common storage-reuse situations occur when a value on the stack is destroyed as part
+//! of a function return and when heap storage is freed. In both cases, [`drop`] gets run for us
+//! by Rust when using standard safe code. However, for manual heap allocations or otherwise
+//! custom-allocated storage, [`unsafe`] code must make sure to call [`ptr::drop_in_place`] before
+//! deallocating and re-using said storage.
 //!
-//! However, reuse can happen even if no storage is (de-)allocated. For example, if we had an
-//! [`Option`] which contained a `Some(v)` where `v` is a pinned value, then `v` would be
-//! invalidated by setting that option to `None`.
+//! In addition, storage "re-use"/invalidation can happen even if no storage is (de-)allocated.
+//! For example, if we had an [`Option`] which contained a `Some(v)` where `v` is pinned, then `v`
+//! would be invalidated by setting that option to `None`.
 //!
-//! Similarly, if a [`Vec`] was used to store pinned values and [`Vec::set_len`] is used to manually
-//! "kill" some elements of a vector, all value "killed" would become invalidated.
+//! Similarly, if a [`Vec`] was used to store pinned values and [`Vec::set_len`] was used to
+//! manually "kill" some elements of a vector, all of the items "killed" would become invalidated,
+//! which would be *undefined behavior* if those items were pinned.
 //!
-//! Both of these cases are somewhat contrived, but it is crucial
-//! to remember that [`Pin`]ned data *must* be [`drop`]ped before it is invalidated, as a matter of
-//! soundness, not just to prevent memory leaks. As a corollary, the following code can *never* be
-//! made safe:
+//! Both of these cases are somewhat contrived, but it is crucial to remember that [`Pin`]ned data
+//! *must* be [`drop`]ped before it is invalidated; not just to prevent memory leaks, but as a
+//! matter of soundness. As a corollary, the following code can *never* be made safe:
 //!
 //! ```rust
 //! # use std::mem::ManuallyDrop;
@@ -637,20 +636,21 @@
 //!
 //! ### Implementing [`Drop`] for pointer types which will be used as [`Pin`]ning pointers
 //!
-//! It should further be noted that creating a pinning pointer of some type `Ptr` to some underlying
-//! `T` which is not `Unpin` *also* carries with it implications on the way that `Ptr` type must
-//! implement [`Drop`] (as well as [`Deref`] and [`DerefMut`])! When implementing a pointer type
-//! that may be used as a pinning pointer, you must also take the same care described above not to
-//! *move* out of or otherwise invalidate the pointee during [`Drop`], [`Deref`], or [`DerefMut`]
+//! It should further be noted that creating a pinning pointer of some type `Ptr` *also* carries
+//! with it implications on the way that `Ptr` type must implement [`Drop`]
+//! (as well as [`Deref`] and [`DerefMut`])! When implementing a pointer type that may be used as
+//! a pinning pointer, you must also take the same care described above not to *move* out of or
+//! otherwise invalidate the pointee during [`Drop`], [`Deref`], or [`DerefMut`]
 //! implementations.
 //!
 //! ## "Assigning" pinned data
 //!
-//! Although in general it is not valid to swap data through a [`Pin<Ptr>`], or assign from
-//! a [`Pin<Ptr>`], for the same reason that a *move* is invalid, there is no particular reason
-//! to disallow doing it with specialized functions, as long as they know how to update all
-//! uses of the pinned address (and any other `unsafe`-assumed invariants). For [`Unmovable`] (
-//! from the example above) we could write
+//! Although in general it is not valid to swap data or assign through a [`Pin<Ptr>`] for the same
+//! reason that reusing a pinned object's memory is invalid, it is possible to do validly when
+//! implemented with special care for the needs of the exact data structure which is being
+//! modified. For example, the assigning function must know how to update all uses of the pinned
+//! address (and any other invariants necessary to satisfy validity for that type). For
+//! [`Unmovable`] (from the example above), we could write an assignment function like so:
 //!
 //! ```
 //! # use std::pin::Pin;
@@ -689,15 +689,18 @@
 //! Even though we can't have the compiler do the assignment for us, it's possible to write
 //! such specialized functions for types that might need it.
 //!
-//! Note that it _is_ possible to assign through a [`Pin<P>`] by way of [`Pin::set()`]. This does
-//! not violate any guarantees, since it will run [`drop`] on the pointee value before assigning
-//! the new value.
+//! Note that it _is_ possible to assign generically through a [`Pin<P>`] by way of [`Pin::set()`].
+//! This does not violate any guarantees, since it will run [`drop`] on the pointee value before
+//! assigning the new value. Thus, the [`drop`] implementation still has a chance to perform the
+//! necessary notifications to dependent values before the memory location of the original pinned
+//! value is overwritten.
 //!
 //! ## Projections and Structural Pinning
 //! [structural-pinning]: self#projections-and-structural-pinning
 //!
-//! With ordinary structs, it is natural that we want to add *projection* methods
-//! that select one of the fields:
+//! With ordinary structs, it is natural that we want to add *projection* methods that allow
+//! borrowing one or more of the inner fields of a struct when the caller has access to a
+//! borrow of the whole struct:
 //!
 //! ```
 //! # struct Field;
@@ -712,33 +715,35 @@
 //! ```
 //!
 //! When working with address-sensitive types, it's not obvious what the signature of these
-//! functions should be. If `field` takes <code>self: [Pin]<[&mut Struct][&mut]></code>, should it return
-//! [`&mut Field`] or <code>[Pin]<[`&mut Field`]></code>? This question also arises with `enum`s and
-//! wrapper types like [`Vec<T>`], [`Box<T>`], and [`RefCell<T>`]. (This question
-//! applies just as well to shared references, but we'll examine the more common case
-//! of mutable references for illustration).
+//! functions should be. If `field` takes <code>self: [Pin]<[&mut Struct][&mut]></code>, should it
+//! return [`&mut Field`] or <code>[Pin]<[`&mut Field`]></code>? This question also arises with
+//! `enum`s and wrapper types like [`Vec<T>`], [`Box<T>`], and [`RefCell<T>`]. (This question
+//! applies just as well to shared references, but we'll examine the more common case of mutable
+//! references for illustration).
 //!
-//! It turns out that it's up to the author of `Struct` to decide which type the projection
-//! should produce. The choice must be *consistent* though: each field should only ever
-//! be projected as pinned or unpinned; both together will likely be unsound!
+//! It turns out that it's up to the author of `Struct` to decide which type the "projection"
+//! should produce. The choice must be *consistent* though: if a pin is projected to a field
+//! in one place, then it should very likely not be exposed elsewhere without projecting the
+//! pin.
 //!
 //! As the author of a data structure, you get to decide for each field whether pinning
 //! "propagates" to this field or not. Pinning that propagates is also called "structural",
 //! because it follows the structure of the type.
 //!
-//! The choice of whether to pin depends on how the type is being used. If unsafe code
+//! The choice of whether to pin depends on how the type is being used. If [`unsafe`] code
 //! that consumes <code>[Pin]\<[&mut Struct][&mut]></code> also needs to take note of
 //! the address of the field itself, it may be evidence that that field is structurally
 //! pinned. Unfortunately, there are no hard-and-fast rules.
 //!
 //! ### Choosing pinning *not to be* structural for `field`...
 //!
-//! While counter-intuitive, it's actually the easier choice: if a
-//! <code>[Pin]<[&mut] Field></code> is never created, nothing can go wrong (well, so long as no
-//! unsound `unsafe` code is written which expects the invariants of such a [`Pin`] to be upheld
-//! without actually using pinning to guarantee them)! So, if you decide that some field does not
+//! While counter-intuitive, it's actually the easier choice: if you do not expose a
+//! <code>[Pin]<[&mut] Field></code>, then no code must be written assuming that the field is
+//! pinned and so nothing can go wrong. So, if you decide that some field does not
 //! have structural pinning, all you have to ensure is that you never create pinning
-//! reference to that field.
+//! reference to that field. This does of course also mean that if you decide a field does not
+//! have structural pinning, you must not write [`unsafe`] code that assumes (invalidly) that the
+//! field *is* structurally pinned!
 //!
 //! Fields without structural pinning may have a projection method that turns
 //! <code>[Pin]<[&mut] Struct></code> into [`&mut Field`]:
@@ -749,15 +754,19 @@
 //! # struct Struct { field: Field }
 //! impl Struct {
 //!     fn field(self: Pin<&mut Self>) -> &mut Field {
-//!         // This is okay because `field` is never considered pinned.
+//!         // This is okay because `field` is never considered pinned, therefore we do not
+//!         // need to uphold any pinning guarantees for this field in particular. Of course,
+//!         // we must not elsewhere assume this field *is* pinned if we choose to expose
+//!         // such a method!
 //!         unsafe { &mut self.get_unchecked_mut().field }
 //!     }
 //! }
 //! ```
 //!
-//! You may also <code>impl [Unpin] for Struct {}</code> *even if* the type of `field`
-//! is not [`Unpin`]. What that type thinks about pinning is not relevant
-//! when no <code>[Pin]<[&mut] Field></code> is ever created.
+//! You may also in this situation <code>impl [Unpin] for Struct {}</code> *even if* the type of
+//! `field` is not [`Unpin`]. Since we have explicitly chosen not to care about pinning guarantees
+//! for `field`, the way `field`'s type interacts with pinning is no longer relevant in the
+//! context of its use in `Struct`.
 //!
 //! ### Choosing pinning *to be* structural for `field`...
 //!
