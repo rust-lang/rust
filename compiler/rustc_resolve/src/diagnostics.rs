@@ -1169,6 +1169,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     return;
                 }
 
+                if ident.name == kw::Underscore {
+                    return;
+                }
+
                 let child_accessible =
                     accessible && this.is_accessible_from(name_binding.vis, parent_scope.module);
 
