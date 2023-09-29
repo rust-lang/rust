@@ -742,7 +742,7 @@ impl String {
         }
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
-            _ => decode_utf16(v.array_chunks::<2>().copied().map(u16::from_le_bytes))
+            _ => char::decode_utf16(v.array_chunks::<2>().copied().map(u16::from_le_bytes))
                 .collect::<Result<_, _>>()
                 .map_err(|_| FromUtf16Error(())),
         }
@@ -781,8 +781,8 @@ impl String {
             (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
             _ => {
                 let mut iter = v.array_chunks::<2>();
-                let string = decode_utf16(iter.by_ref().copied().map(u16::from_le_bytes))
-                    .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+                let string = char::decode_utf16(iter.by_ref().copied().map(u16::from_le_bytes))
+                    .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
                     .collect();
                 if iter.remainder().is_empty() { string } else { string + "\u{FFFD}" }
             }
@@ -817,7 +817,7 @@ impl String {
         }
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
-            _ => decode_utf16(v.array_chunks::<2>().copied().map(u16::from_be_bytes))
+            _ => char::decode_utf16(v.array_chunks::<2>().copied().map(u16::from_be_bytes))
                 .collect::<Result<_, _>>()
                 .map_err(|_| FromUtf16Error(())),
         }
@@ -856,8 +856,8 @@ impl String {
             (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
             _ => {
                 let mut iter = v.array_chunks::<2>();
-                let string = decode_utf16(iter.by_ref().copied().map(u16::from_be_bytes))
-                    .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+                let string = char::decode_utf16(iter.by_ref().copied().map(u16::from_be_bytes))
+                    .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
                     .collect();
                 if iter.remainder().is_empty() { string } else { string + "\u{FFFD}" }
             }
