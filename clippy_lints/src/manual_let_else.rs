@@ -136,9 +136,9 @@ fn emit_manual_let_else(
             // for this to be machine applicable.
             let mut app = Applicability::HasPlaceholders;
             let (sn_expr, _) = snippet_with_context(cx, expr.span, span.ctxt(), "", &mut app);
-            let (sn_else, _) = snippet_with_context(cx, else_body.span, span.ctxt(), "", &mut app);
+            let (sn_else, else_is_mac_call) = snippet_with_context(cx, else_body.span, span.ctxt(), "", &mut app);
 
-            let else_bl = if matches!(else_body.kind, ExprKind::Block(..)) {
+            let else_bl = if matches!(else_body.kind, ExprKind::Block(..)) && !else_is_mac_call {
                 sn_else.into_owned()
             } else {
                 format!("{{ {sn_else} }}")
