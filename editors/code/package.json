@@ -1488,6 +1488,21 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.rust.analyzerTargetDir": {
+                    "markdownDescription": "Optional path to a rust-analyzer specific target directory.\nThis is useful to prevent rust-analyzer's `cargo check` from blocking builds.\n\nSet to `true` to use a subdirectory of the existing target directory or\nset to a path to use that path.",
+                    "default": null,
+                    "anyOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
                 "rust-analyzer.rustc.source": {
                     "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private\nprojects, or \"discover\" to try to automatically find it if the `rustc-dev` component\nis installed.\n\nAny project which uses rust-analyzer with the rustcPrivate\ncrates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.\n\nThis option does not take effect until rust-analyzer is restarted.",
                     "default": null,

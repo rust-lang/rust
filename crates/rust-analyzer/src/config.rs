@@ -480,6 +480,13 @@ config_data! {
         /// tests or binaries. For example, it may be `--release`.
         runnables_extraArgs: Vec<String>   = "[]",
 
+        /// Optional path to a rust-analyzer specific target directory.
+        /// This is useful to prevent rust-analyzer's `cargo check` from blocking builds.
+        ///
+        /// Set to `true` to use a subdirectory of the existing target directory or
+        /// set to a path to use that path.
+        rust_analyzerTargetDir: Option<TargetDirectory> = "null",
+
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
         /// is installed.
@@ -1192,6 +1199,7 @@ impl Config {
     }
 
     pub fn cargo(&self) -> CargoConfig {
+        let target_directory = self.target_dir_from_config();
         let rustc_source = self.data.rustc_source.as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
                 RustLibSource::Discover
@@ -1208,6 +1216,10 @@ impl Config {
         });
         let sysroot_src =
             self.data.cargo_sysrootSrc.as_ref().map(|sysroot| self.root_path.join(sysroot));
+
+        let mut extra_args = self.data.cargo_extraArgs.clone();
+
+        add_target_dir_to_args(&mut extra_args, target_directory);
 
         CargoConfig {
             features: match &self.data.cargo_features {
@@ -1261,7 +1273,7 @@ impl Config {
                 InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
             },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
-            extra_args: self.data.cargo_extraArgs.clone(),
+            extra_args,
             extra_env: self.data.cargo_extraEnv.clone(),
         }
     }
@@ -1281,10 +1293,14 @@ impl Config {
     }
 
     pub fn flycheck(&self) -> FlycheckConfig {
+        let target_directory = self.target_dir_from_config();
+
         match &self.data.check_overrideCommand {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
+                add_target_dir_to_args(&mut args, target_directory);
+
                 FlycheckConfig::CustomCommand {
                     command,
                     args,
@@ -1303,40 +1319,59 @@ impl Config {
                     },
                 }
             }
-            Some(_) | None => FlycheckConfig::CargoCommand {
-                command: self.data.check_command.clone(),
-                target_triples: self
-                    .data
-                    .check_targets
-                    .clone()
-                    .and_then(|targets| match &targets.0[..] {
-                        [] => None,
-                        targets => Some(targets.into()),
-                    })
-                    .unwrap_or_else(|| self.data.cargo_target.clone().into_iter().collect()),
-                all_targets: self.data.check_allTargets,
-                no_default_features: self
-                    .data
-                    .check_noDefaultFeatures
-                    .unwrap_or(self.data.cargo_noDefaultFeatures),
-                all_features: matches!(
-                    self.data.check_features.as_ref().unwrap_or(&self.data.cargo_features),
-                    CargoFeaturesDef::All
-                ),
-                features: match self
-                    .data
-                    .check_features
-                    .clone()
-                    .unwrap_or_else(|| self.data.cargo_features.clone())
-                {
-                    CargoFeaturesDef::All => vec![],
-                    CargoFeaturesDef::Selected(it) => it,
-                },
-                extra_args: self.check_extra_args(),
-                extra_env: self.check_extra_env(),
-                ansi_color_output: self.color_diagnostic_output(),
-            },
+            Some(_) | None => {
+                let mut extra_args = self.check_extra_args();
+                add_target_dir_to_args(&mut extra_args, target_directory);
+
+                FlycheckConfig::CargoCommand {
+                    command: self.data.check_command.clone(),
+                    target_triples: self
+                        .data
+                        .check_targets
+                        .clone()
+                        .and_then(|targets| match &targets.0[..] {
+                            [] => None,
+                            targets => Some(targets.into()),
+                        })
+                        .unwrap_or_else(|| self.data.cargo_target.clone().into_iter().collect()),
+                    all_targets: self.data.check_allTargets,
+                    no_default_features: self
+                        .data
+                        .check_noDefaultFeatures
+                        .unwrap_or(self.data.cargo_noDefaultFeatures),
+                    all_features: matches!(
+                        self.data.check_features.as_ref().unwrap_or(&self.data.cargo_features),
+                        CargoFeaturesDef::All
+                    ),
+                    features: match self
+                        .data
+                        .check_features
+                        .clone()
+                        .unwrap_or_else(|| self.data.cargo_features.clone())
+                    {
+                        CargoFeaturesDef::All => vec![],
+                        CargoFeaturesDef::Selected(it) => it,
+                    },
+                    extra_args,
+                    extra_env: self.check_extra_env(),
+                    ansi_color_output: self.color_diagnostic_output(),
+                }
+            }
         }
+    }
+
+    fn target_dir_from_config(&self) -> Option<String> {
+        self.data
+            .rust_analyzerTargetDir
+            .as_ref()
+            .map(|target_dir| match target_dir {
+                TargetDirectory::UseSubdirectory(yes) if *yes => {
+                    Some(String::from("target/rust-analyzer"))
+                }
+                TargetDirectory::UseSubdirectory(_) => None,
+                TargetDirectory::Directory(dir) => Some(dir.clone()),
+            })
+            .flatten()
     }
 
     pub fn check_on_save(&self) -> bool {
@@ -1690,6 +1725,13 @@ impl Config {
         self.is_visual_studio_code
     }
 }
+
+fn add_target_dir_to_args(args: &mut Vec<String>, target_dir: Option<String>) {
+    if let Some(target_dir) = target_dir {
+        args.push(format!("--target-dir={}", target_dir));
+    }
+}
+
 // Deserialization definitions
 
 macro_rules! create_bool_or_string_de {
@@ -2035,6 +2077,14 @@ pub enum MemoryLayoutHoverRenderKindDef {
     Hexadecimal,
     #[serde(deserialize_with = "de_unit_v::both")]
     Both,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[serde(untagged)]
+pub enum TargetDirectory {
+    UseSubdirectory(bool),
+    Directory(String),
 }
 
 macro_rules! _config_data {
@@ -2465,6 +2515,19 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 },
             ],
         },
+        "Option<TargetDirectory>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                },
+            ],
+        },
         _ => panic!("missing entry for {ty}: {default}"),
     }
 
@@ -2623,6 +2686,75 @@ mod tests {
         assert_eq!(
             config.proc_macro_srv(),
             Some(AbsPathBuf::try_from(project_root().join("./server")).unwrap())
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_unset() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": null }
+            }))
+            .unwrap();
+        assert_eq!(config.data.rust_analyzerTargetDir, None);
+        assert_eq!(config.cargo().extra_args.len(), 0);
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { extra_args, .. } if extra_args.is_empty())
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_subdir() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": true }
+            }))
+            .unwrap();
+        assert_eq!(
+            config.data.rust_analyzerTargetDir,
+            Some(TargetDirectory::UseSubdirectory(true))
+        );
+        assert_eq!(
+            config.cargo().extra_args,
+            vec!["--target-dir=target/rust-analyzer".to_string()]
+        );
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { extra_args, .. } if extra_args == vec!["--target-dir=target/rust-analyzer".to_string()])
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_relative_dir() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": "other_folder" }
+            }))
+            .unwrap();
+        assert_eq!(
+            config.data.rust_analyzerTargetDir,
+            Some(TargetDirectory::Directory("other_folder".to_string()))
+        );
+        assert_eq!(config.cargo().extra_args, vec!["--target-dir=other_folder".to_string()]);
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { extra_args, .. } if extra_args == vec!["--target-dir=other_folder".to_string()])
         );
     }
 }
