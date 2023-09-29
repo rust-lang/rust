@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/fixpoint-rerun-all-cycle-heads.rs:47:5
+   |
+LL | fn check<'a, T: ?Sized>() {
+   |          -- lifetime `'a` defined here
+LL |     impls_trait::<'a, 'static, A<T>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+
