@@ -1470,15 +1470,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match element_ty2.kind() {
             ty::Int(_) => (),
             _ => {
-                require!(
-                    false,
-                    InvalidMonomorphization::ThirdArgElementType {
-                        span,
-                        name,
-                        expected_element: element_ty2,
-                        third_arg: arg_tys[2]
-                    }
-                );
+                return_error!(InvalidMonomorphization::ThirdArgElementType {
+                    span,
+                    name,
+                    expected_element: element_ty2,
+                    third_arg: arg_tys[2]
+                });
             }
         }
 
@@ -1590,15 +1587,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match element_ty2.kind() {
             ty::Int(_) => (),
             _ => {
-                require!(
-                    false,
-                    InvalidMonomorphization::ThirdArgElementType {
-                        span,
-                        name,
-                        expected_element: element_ty2,
-                        third_arg: arg_tys[2]
-                    }
-                );
+                return_error!(InvalidMonomorphization::ThirdArgElementType {
+                    span,
+                    name,
+                    expected_element: element_ty2,
+                    third_arg: arg_tys[2]
+                });
             }
         }
 
@@ -1989,17 +1983,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
             _ => { /* Unsupported. Fallthrough. */ }
         }
-        require!(
-            false,
-            InvalidMonomorphization::UnsupportedCast {
-                span,
-                name,
-                in_ty,
-                in_elem,
-                ret_ty,
-                out_elem
-            }
-        );
+        return_error!(InvalidMonomorphization::UnsupportedCast {
+            span,
+            name,
+            in_ty,
+            in_elem,
+            ret_ty,
+            out_elem
+        });
     }
     macro_rules! arith_binary {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
@@ -2010,8 +2001,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     })*
                     _ => {},
                 }
-                require!(
-                    false,
+                return_error!(
                     InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
                 );
             })*
@@ -2041,8 +2031,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     })*
                     _ => {},
                 }
-                require!(
-                    false,
+                return_error!(
                     InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
                 );
             })*
