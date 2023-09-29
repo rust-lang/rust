@@ -99,10 +99,6 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct IntRange {
     range: RangeInclusive<u128>,
-    /// Keeps the bias used for encoding the range. It depends on the type of the range and
-    /// possibly the pointer size of the current architecture. The algorithm ensures we never
-    /// compare `IntRange`s with different types/architectures.
-    bias: u128,
 }
 
 impl IntRange {
@@ -150,7 +146,7 @@ impl IntRange {
         }?;
 
         let val = val ^ bias;
-        Some(IntRange { range: val..=val, bias })
+        Some(IntRange { range: val..=val })
     }
 
     #[inline]
@@ -171,7 +167,7 @@ impl IntRange {
                 // This should have been caught earlier by E0030.
                 bug!("malformed range pattern: {}..={}", lo, (hi - offset));
             }
-            IntRange { range: lo..=(hi - offset), bias }
+            IntRange { range: lo..=(hi - offset) }
         })
     }
 
@@ -194,7 +190,7 @@ impl IntRange {
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
         if lo <= other_hi && other_lo <= hi {
-            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), bias: self.bias })
+            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi) })
         } else {
             None
         }
@@ -221,7 +217,7 @@ impl IntRange {
     fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let (lo, hi) = self.boundaries();
 
-        let bias = self.bias;
+        let bias = IntRange::signed_bias(tcx, ty);
         let (lo, hi) = (lo ^ bias, hi ^ bias);
 
         let env = ty::ParamEnv::empty().and(ty);
@@ -304,8 +300,6 @@ impl IntRange {
 impl fmt::Debug for IntRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (lo, hi) = self.boundaries();
-        let bias = self.bias;
-        let (lo, hi) = (lo ^ bias, hi ^ bias);
         write!(f, "{lo}")?;
         write!(f, "{}", RangeEnd::Included)?;
         write!(f, "{hi}")
@@ -402,7 +396,7 @@ impl SplitIntRange {
                     (JustBefore(n), AfterMax) => n..=u128::MAX,
                     _ => unreachable!(), // Ruled out by the sorting and filtering we did
                 };
-                IntRange { range, bias: self.range.bias }
+                IntRange { range }
             })
     }
 }
