@@ -37,7 +37,7 @@ use utils::channel::GitInfo;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
-use crate::core::config::flags;
+use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
 use crate::utils::cache::{Interned, INTERNER};
@@ -1258,17 +1258,24 @@ impl Build {
             && !target.is_msvc()
         {
             Some(self.cc(target))
-        } else if self.config.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
-            Some(self.initial_lld.clone())
+        } else if self.config.lld_mode.is_used()
+            && self.is_lld_direct_linker(target)
+            && self.build == target
+        {
+            match self.config.lld_mode {
+                LldMode::SelfContained => Some(self.initial_lld.clone()),
+                LldMode::External => Some("lld".into()),
+                LldMode::Unused => None,
+            }
         } else {
             None
         }
     }
 
-    // LLD is used through `-fuse-ld=lld` rather than directly.
+    // Is LLD configured directly through `-Clinker`?
     // Only MSVC targets use LLD directly at the moment.
-    fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
-        self.config.use_lld && !target.is_msvc()
+    fn is_lld_direct_linker(&self, target: TargetSelection) -> bool {
+        target.is_msvc()
     }
 
     /// Returns if this target should statically link the C runtime, if specified

@@ -870,7 +870,7 @@ impl Step for Rustc {
         // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
         // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
         // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
-        if builder.config.use_lld && !compiler.host.is_msvc() {
+        if builder.config.lld_mode.is_used() && !compiler.host.is_msvc() {
             cargo.rustflag("-Clink-args=-Wl,--icf=all");
         }
 

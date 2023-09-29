@@ -499,7 +499,7 @@ pub fn linker_flags(
     lld_threads: LldThreads,
 ) -> Vec<String> {
     let mut args = vec![];
-    if builder.is_fuse_ld_lld(target) {
+    if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
         args.push(String::from("-Clink-arg=-fuse-ld=lld"));
 
         if matches!(lld_threads, LldThreads::No) {
