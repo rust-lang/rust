@@ -41,6 +41,12 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
     }
 }
 
+/// Preorder traversal of a graph.
+///
+/// This function creates an iterator over the `Body`'s basic blocks, that
+/// returns basic blocks in a preorder.
+///
+/// See [`Preorder`]'s docs to learn what is preorder traversal.
 pub fn preorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Preorder<'a, 'tcx> {
     Preorder::new(body, START_BLOCK)
 }
@@ -213,10 +219,14 @@ impl<'tcx> Iterator for Postorder<'_, 'tcx> {
     }
 }
 
-/// Creates an iterator over the `Body`'s basic blocks, that:
+/// Postorder traversal of a graph.
+///
+/// This function creates an iterator over the `Body`'s basic blocks, that:
 /// - returns basic blocks in a postorder,
 /// - traverses the `BasicBlocks` CFG cache's reverse postorder backwards, and does not cache the
 ///   postorder itself.
+///
+/// See [`Postorder`]'s docs to learn what is postorder traversal.
 pub fn postorder<'a, 'tcx>(
     body: &'a Body<'tcx>,
 ) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
@@ -241,9 +251,30 @@ pub fn reachable_as_bitset(body: &Body<'_>) -> BitSet<BasicBlock> {
     iter.visited
 }
 
-/// Creates an iterator over the `Body`'s basic blocks, that:
+/// Reverse postorder traversal of a graph.
+///
+/// This function creates an iterator over the `Body`'s basic blocks, that:
 /// - returns basic blocks in a reverse postorder,
 /// - makes use of the `BasicBlocks` CFG cache's reverse postorder.
+///
+/// Reverse postorder is the reverse order of a postorder traversal.
+/// This is different to a preorder traversal and represents a natural
+/// linearization of control-flow.
+///
+/// ```text
+///
+///         A
+///        / \
+///       /   \
+///      B     C
+///       \   /
+///        \ /
+///         D
+/// ```
+///
+/// A reverse postorder traversal of this graph is either `A B C D` or `A C B D`
+/// Note that for a graph containing no loops (i.e., A DAG), this is equivalent to
+/// a topological sort.
 pub fn reverse_postorder<'a, 'tcx>(
     body: &'a Body<'tcx>,
 ) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
