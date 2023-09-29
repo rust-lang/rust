@@ -269,6 +269,8 @@ declare_features! (
     (accepted, non_modrs_mods, "1.30.0", Some(44660), None),
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883), None),
+    /// Allows using `+bundle,+whole-archive` link modifiers with native libs.
+    (accepted, packed_bundled_libs, "CURRENT_RUSTC_VERSION", Some(108081), None),
     /// Allows annotating functions conforming to `fn(&PanicInfo) -> !` with `#[panic_handler]`.
     /// This defines the behavior of panics.
     (accepted, panic_handler, "1.30.0", Some(44489), None),

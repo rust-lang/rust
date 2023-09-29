@@ -241,8 +241,6 @@ declare_features! (
     (active, linkage, "1.0.0", Some(29603), None),
     /// Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
     (internal, needs_panic_runtime, "1.10.0", Some(32837), None),
-    /// Allows using `+bundled,+whole-archive` native libs.
-    (active, packed_bundled_libs, "1.69.0", Some(108081), None),
     /// Allows using the `#![panic_runtime]` attribute.
     (internal, panic_runtime, "1.10.0", Some(32837), None),
     /// Allows `extern "platform-intrinsic" { ... }`.
