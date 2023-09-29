@@ -11,10 +11,10 @@ use super::EvalCtxt;
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn normalize_weak_type(
         &mut self,
-        goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>,
+        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
-        let weak_ty = goal.predicate.projection_ty;
+        let weak_ty = goal.predicate.alias;
         let expected = goal.predicate.term.ty().expect("no such thing as a const alias");
 
         let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, weak_ty.args);

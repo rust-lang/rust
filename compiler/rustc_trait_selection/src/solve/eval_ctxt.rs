@@ -102,7 +102,7 @@ pub(super) struct NestedGoals<'tcx> {
     /// with a fresh inference variable when we evaluate this goal. That can result
     /// in a trait solver cycle. This would currently result in overflow but can be
     /// can be unsound with more powerful coinduction in the future.
-    pub(super) normalizes_to_hack_goal: Option<Goal<'tcx, ty::ProjectionPredicate<'tcx>>>,
+    pub(super) normalizes_to_hack_goal: Option<Goal<'tcx, ty::NormalizesTo<'tcx>>>,
     /// The rest of the goals which have not yet processed or remain ambiguous.
     pub(super) goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
@@ -461,8 +461,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
                     self.compute_projection_goal(Goal { param_env, predicate })
                 }
-                ty::PredicateKind::NormalizesTo(_) => {
-                    todo!()
+                ty::PredicateKind::NormalizesTo(predicate) => {
+                    self.compute_normalizes_to_goal(Goal { param_env, predicate })
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(predicate)) => {
                     self.compute_type_outlives_goal(Goal { param_env, predicate })
@@ -562,10 +562,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
             let unconstrained_goal = goal.with(
                 tcx,
-                ty::ProjectionPredicate {
-                    projection_ty: goal.predicate.projection_ty,
-                    term: unconstrained_rhs,
-                },
+                ty::NormalizesTo { alias: goal.predicate.alias, term: unconstrained_rhs },
             );
 
             let (_, certainty, instantiate_goals) = self.evaluate_goal(
@@ -587,9 +584,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             // looking at the "has changed" return from evaluate_goal,
             // because we expect the `unconstrained_rhs` part of the predicate
             // to have changed -- that means we actually normalized successfully!
-            if goal.predicate.projection_ty
-                != self.resolve_vars_if_possible(goal.predicate.projection_ty)
-            {
+            if goal.predicate.alias != self.resolve_vars_if_possible(goal.predicate.alias) {
                 unchanged_certainty = None;
             }
 
@@ -661,7 +656,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// and does not occur in any other part of the predicate.
     pub(super) fn term_is_fully_unconstrained(
         &self,
-        goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>,
+        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> bool {
         let term_is_infer = match goal.predicate.term.unpack() {
             ty::TermKind::Ty(ty) => {
@@ -725,7 +720,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let mut visitor = ContainsTerm { infcx: self.infcx, term: goal.predicate.term };
 
         term_is_infer
-            && goal.predicate.projection_ty.visit_with(&mut visitor).is_continue()
+            && goal.predicate.alias.visit_with(&mut visitor).is_continue()
             && goal.param_env.visit_with(&mut visitor).is_continue()
     }
 

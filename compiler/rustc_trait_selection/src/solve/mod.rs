@@ -35,6 +35,7 @@ mod fulfill;
 mod inherent_projection;
 pub mod inspect;
 mod normalize;
+mod normalizes_to;
 mod opaques;
 mod project_goals;
 mod search_graph;
@@ -225,7 +226,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn set_normalizes_to_hack_goal(&mut self, goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>) {
+    fn set_normalizes_to_hack_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
         assert!(
             self.nested_goals.normalizes_to_hack_goal.is_none(),
             "attempted to set the projection eq hack goal when one already exists"
@@ -305,7 +306,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         mut ty: Ty<'tcx>,
     ) -> Result<Option<Ty<'tcx>>, NoSolution> {
         for _ in 0..self.local_overflow_limit() {
-            let ty::Alias(_, projection_ty) = *ty.kind() else {
+            let ty::Alias(_, alias) = *ty.kind() else {
                 return Ok(Some(ty));
             };
 
@@ -313,7 +314,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             let normalizes_to_goal = Goal::new(
                 self.tcx(),
                 param_env,
-                ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
+                ty::NormalizesTo { alias, term: normalized_ty.into() },
             );
             self.add_goal(normalizes_to_goal);
             self.try_evaluate_added_goals()?;

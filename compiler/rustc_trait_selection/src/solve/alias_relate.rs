@@ -141,7 +141,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         direction: ty::AliasRelationDirection,
         invert: Invert,
     ) -> Result<(), NoSolution> {
-        let other = match direction {
+        let term = match direction {
             // This is purely an optimization. No need to instantiate a new
             // infer var and equate the RHS to it.
             ty::AliasRelationDirection::Equate => other,
@@ -159,11 +159,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 fresh
             }
         };
-        self.add_goal(Goal::new(
-            self.tcx(),
-            param_env,
-            ty::ProjectionPredicate { projection_ty: alias, term: other },
-        ));
+        self.add_goal(Goal::new(self.tcx(), param_env, ty::NormalizesTo { alias, term }));
 
         Ok(())
     }

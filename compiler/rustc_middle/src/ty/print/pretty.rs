@@ -2874,7 +2874,7 @@ define_print_and_forward_display! {
     }
 
     ty::NormalizesTo<'tcx> {
-        p!("`", print(self.alias), "` normalizes to `", print(self.term), "`")
+        p!(print(self.alias), " normalizes-to ", print(self.term))
     }
 
     ty::Term<'tcx> {

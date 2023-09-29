@@ -12,10 +12,10 @@ use super::EvalCtxt;
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn normalize_inherent_associated_type(
         &mut self,
-        goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>,
+        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
-        let inherent = goal.predicate.projection_ty;
+        let inherent = goal.predicate.alias;
         let expected = goal.predicate.term.ty().expect("inherent consts are treated separately");
 
         let impl_def_id = tcx.parent(inherent.def_id);
