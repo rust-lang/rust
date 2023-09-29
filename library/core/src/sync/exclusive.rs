@@ -2,6 +2,8 @@
 
 use core::fmt;
 use core::future::Future;
+use core::marker::Tuple;
+use core::ops::{Generator, GeneratorState};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
@@ -168,10 +170,52 @@ impl<T> From<T> for Exclusive<T> {
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T: Future + ?Sized> Future for Exclusive<T> {
+impl<F, Args> FnOnce<Args> for Exclusive<F>
+where
+    F: FnOnce<Args>,
+    Args: Tuple,
+{
+    type Output = F::Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
+        self.into_inner().call_once(args)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<F, Args> FnMut<Args> for Exclusive<F>
+where
+    F: FnMut<Args>,
+    Args: Tuple,
+{
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
+        self.get_mut().call_mut(args)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> Future for Exclusive<T>
+where
+    T: Future + ?Sized,
+{
     type Output = T::Output;
+
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.get_pin_mut().poll(cx)
+    }
+}
+
+#[unstable(feature = "generator_trait", issue = "43122")] // also #98407
+impl<R, G> Generator<R> for Exclusive<G>
+where
+    G: Generator<R> + ?Sized,
+{
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    #[inline]
+    fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume(self.get_pin_mut(), arg)
     }
 }

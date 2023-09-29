@@ -4,16 +4,19 @@ use crate::Opaque;
 
 use super::ty::{
     Allocation, Binder, Const, ConstDef, ConstantKind, ExistentialPredicate, FnSig, GenericArgKind,
-    GenericArgs, Promoted, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
+    GenericArgs, Promoted, Region, RigidTy, TermKind, Ty, TyKind, UnevaluatedConst,
 };
 
 pub trait Folder: Sized {
     type Break;
-    fn visit_ty(&mut self, ty: &Ty) -> ControlFlow<Self::Break, Ty> {
+    fn fold_ty(&mut self, ty: &Ty) -> ControlFlow<Self::Break, Ty> {
         ty.super_fold(self)
     }
     fn fold_const(&mut self, c: &Const) -> ControlFlow<Self::Break, Const> {
         c.super_fold(self)
+    }
+    fn fold_reg(&mut self, reg: &Region) -> ControlFlow<Self::Break, Region> {
+        reg.super_fold(self)
     }
 }
 
@@ -26,7 +29,7 @@ pub trait Foldable: Sized + Clone {
 
 impl Foldable for Ty {
     fn fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
-        folder.visit_ty(self)
+        folder.fold_ty(self)
     }
     fn super_fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
         let mut kind = self.kind();
@@ -106,6 +109,15 @@ impl Foldable for GenericArgs {
     }
 }
 
+impl Foldable for Region {
+    fn fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
+        folder.fold_reg(self)
+    }
+    fn super_fold<V: Folder>(&self, _: &mut V) -> ControlFlow<V::Break, Self> {
+        ControlFlow::Continue(self.clone())
+    }
+}
+
 impl Foldable for GenericArgKind {
     fn super_fold<V: Folder>(&self, folder: &mut V) -> ControlFlow<V::Break, Self> {
         let mut this = self.clone();
@@ -136,7 +148,10 @@ impl Foldable for RigidTy {
             }
             RigidTy::Slice(inner) => *inner = inner.fold(folder)?,
             RigidTy::RawPtr(ty, _) => *ty = ty.fold(folder)?,
-            RigidTy::Ref(_, ty, _) => *ty = ty.fold(folder)?,
+            RigidTy::Ref(reg, ty, _) => {
+                *reg = reg.fold(folder)?;
+                *ty = ty.fold(folder)?
+            }
             RigidTy::FnDef(_, args) => *args = args.fold(folder)?,
             RigidTy::FnPtr(sig) => *sig = sig.fold(folder)?,
             RigidTy::Closure(_, args) => *args = args.fold(folder)?,
@@ -214,7 +229,7 @@ pub enum Never {}
 impl Folder for GenericArgs {
     type Break = Never;
 
-    fn visit_ty(&mut self, ty: &Ty) -> ControlFlow<Self::Break, Ty> {
+    fn fold_ty(&mut self, ty: &Ty) -> ControlFlow<Self::Break, Ty> {
         ControlFlow::Continue(match ty.kind() {
             TyKind::Param(p) => self[p],
             _ => *ty,
