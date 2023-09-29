@@ -169,6 +169,7 @@ mod invalid_upcast_comparisons;
 mod items_after_statements;
 mod items_after_test_module;
 mod iter_not_returning_iterator;
+mod iter_without_into_iter;
 mod large_const_arrays;
 mod large_enum_variant;
 mod large_futures;
@@ -1121,6 +1122,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(move |_| Box::new(manual_hash_one::ManualHashOne::new(msrv())));
+    store.register_late_pass(|_| Box::new(iter_without_into_iter::IterWithoutIntoIter));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
