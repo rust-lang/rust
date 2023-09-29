@@ -735,7 +735,7 @@ impl String {
     /// assert!(String::from_utf16le(v).is_err());
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "str_from_utf16_endian", issue = "none", reason = "recently added")]
+    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
     pub fn from_utf16le(v: &[u8]) -> Result<String, FromUtf16Error> {
         if v.len() % 2 != 0 {
             return Err(FromUtf16Error(()));
@@ -774,7 +774,7 @@ impl String {
     ///            String::from_utf16le_lossy(v));
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "str_from_utf16_endian", issue = "none", reason = "recently added")]
+    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
     pub fn from_utf16le_lossy(v: &[u8]) -> String {
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
@@ -810,7 +810,7 @@ impl String {
     /// assert!(String::from_utf16be(v).is_err());
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "str_from_utf16_endian", issue = "none", reason = "recently added")]
+    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
     pub fn from_utf16be(v: &[u8]) -> Result<String, FromUtf16Error> {
         if v.len() % 2 != 0 {
             return Err(FromUtf16Error(()));
@@ -849,7 +849,7 @@ impl String {
     ///            String::from_utf16be_lossy(v));
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "str_from_utf16_endian", issue = "none", reason = "recently added")]
+    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
     pub fn from_utf16be_lossy(v: &[u8]) -> String {
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
