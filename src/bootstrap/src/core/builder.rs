@@ -1729,8 +1729,7 @@ impl<'a> Builder<'a> {
 
         let split_debuginfo_is_stable = target.contains("linux")
             || target.contains("apple")
-            || (target.contains("msvc")
-                && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
+            || (target.is_msvc() && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
             || (target.contains("windows")
                 && self.config.rust_split_debuginfo == SplitDebuginfo::Off);
 
@@ -1909,7 +1908,7 @@ impl<'a> Builder<'a> {
         // the options through environment variables that are fetched and understood by both.
         //
         // FIXME: the guard against msvc shouldn't need to be here
-        if target.contains("msvc") {
+        if target.is_msvc() {
             if let Some(ref cl) = self.config.llvm_clang_cl {
                 cargo.env("CC", cl).env("CXX", cl);
             }

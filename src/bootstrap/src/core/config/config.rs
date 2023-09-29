@@ -489,6 +489,10 @@ impl TargetSelection {
     pub fn is_synthetic(&self) -> bool {
         self.synthetic
     }
+
+    pub fn is_msvc(&self) -> bool {
+        self.contains("msvc")
+    }
 }
 
 impl fmt::Display for TargetSelection {

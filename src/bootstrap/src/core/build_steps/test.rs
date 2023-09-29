@@ -1931,7 +1931,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         //
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
-        if !builder.config.dry_run() && target.contains("msvc") {
+        if !builder.config.dry_run() && target.is_msvc() {
             for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
                 if k != "PATH" {
                     cmd.env(k, v);
@@ -3070,7 +3070,7 @@ impl Step for TestHelpers {
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform cc of these compilers. Note, though, that
         // on MSVC we still need cc's detection of env vars (ugh).
-        if !target.contains("msvc") {
+        if !target.is_msvc() {
             if let Some(ar) = builder.ar(target) {
                 cfg.archiver(ar);
             }

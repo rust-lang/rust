@@ -862,7 +862,7 @@ impl Build {
             }
         } else {
             let base = self.llvm_out(target).join("build");
-            let base = if !self.ninja() && target.contains("msvc") {
+            let base = if !self.ninja() && target.is_msvc() {
                 if self.config.llvm_optimize {
                     if self.config.llvm_release_debuginfo {
                         base.join("RelWithDebInfo")
@@ -1255,7 +1255,7 @@ impl Build {
             Some(self.cxx.borrow()[&target].path().into())
         } else if target != self.config.build
             && helpers::use_host_linker(target)
-            && !target.contains("msvc")
+            && !target.is_msvc()
         {
             Some(self.cc(target))
         } else if self.config.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
@@ -1268,7 +1268,7 @@ impl Build {
     // LLD is used through `-fuse-ld=lld` rather than directly.
     // Only MSVC targets use LLD directly at the moment.
     fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
-        self.config.use_lld && !target.contains("msvc")
+        self.config.use_lld && !target.is_msvc()
     }
 
     fn lld_flags(&self, target: TargetSelection) -> impl Iterator<Item = String> {
@@ -1764,7 +1764,7 @@ to download LLVM rather than building it.
         // In these cases we automatically enable Ninja if we find it in the
         // environment.
         if !self.config.ninja_in_file
-            && self.config.build.contains("msvc")
+            && self.config.build.is_msvc()
             && cmd_finder.maybe_have("ninja").is_some()
         {
             return true;
