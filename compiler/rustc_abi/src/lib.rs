@@ -1,5 +1,3 @@
-// We want to be able to build this crate with a stable compiler, so no
-// `#![feature]` attributes should be added.
 #![cfg_attr(feature = "nightly", feature(step_trait, rustc_attrs, min_specialization))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
@@ -11,7 +9,6 @@ use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
-use rustc_data_structures::stable_hasher::Hash64;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -76,6 +73,7 @@ pub struct ReprOptions {
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
+    #[cfg(feature = "randomize")]
     /// The seed to be used for randomizing a type's layout
     ///
     /// Note: This could technically be a `Hash128` which would
@@ -83,7 +81,7 @@ pub struct ReprOptions {
     /// hash without loss, but it does pay the price of being larger.
     /// Everything's a tradeoff, a 64-bit seed should be sufficient for our
     /// purposes (primarily `-Z randomize-layout`)
-    pub field_shuffle_seed: Hash64,
+    pub field_shuffle_seed: rustc_data_structures::stable_hasher::Hash64,
 }
 
 impl ReprOptions {
