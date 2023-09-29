@@ -3153,7 +3153,7 @@ mod tests {
         let mut p = vals.as_mut_ptr();
 
         if (p as usize) & 0xf != 0 {
-            ofs = ((16 - (p as usize)) & 0xf) >> 2;
+            ofs = (16 - ((p as usize) & 0xf)) >> 2;
             p = p.add(ofs);
         }
 
@@ -3179,7 +3179,7 @@ mod tests {
 
         // Align p to 16-byte boundary
         if (p as usize) & 0xf != 0 {
-            ofs = ((16 - (p as usize)) & 0xf) >> 2;
+            ofs = (16 - ((p as usize) & 0xf)) >> 2;
             p = p.add(ofs);
         }
 
@@ -3205,7 +3205,7 @@ mod tests {
 
         // Align p to 16-byte boundary
         if (p as usize) & 0xf != 0 {
-            ofs = ((16 - (p as usize)) & 0xf) >> 2;
+            ofs = (16 - ((p as usize) & 0xf)) >> 2;
             p = p.add(ofs);
         }
 
