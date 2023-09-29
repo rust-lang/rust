@@ -1,4 +1,5 @@
 #![feature(float_gamma)]
+use std::{f32, f64};
 
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {{
@@ -15,8 +16,7 @@ fn ldexp(a: f64, b: i32) -> f64 {
 }
 
 pub fn main() {
-    use std::f32;
-    use std::f64;
+    mul_add();
 
     assert_approx_eq!(64f32.sqrt(), 8f32);
     assert_approx_eq!(64f64.sqrt(), 8f64);
@@ -47,13 +47,6 @@ pub fn main() {
 
     assert_approx_eq!(8f32.log2(), 3f32);
     assert_approx_eq!(f64::consts::E.log2(), f64::consts::LOG2_E);
-
-    assert_approx_eq!(3.0f32.mul_add(2.0f32, 5.0f32), 11.0);
-    assert_eq!(0.0f32.mul_add(-2.0, f32::consts::E), f32::consts::E);
-    assert_approx_eq!(3.0f64.mul_add(2.0, 5.0), 11.0);
-    assert_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
-    assert_eq!((-3.2f32).mul_add(2.4, f32::NEG_INFINITY), f32::NEG_INFINITY);
-    assert_eq!((-3.2f64).mul_add(2.4, f64::NEG_INFINITY), f64::NEG_INFINITY);
 
     assert_approx_eq!((-1.0f32).abs(), 1.0f32);
     assert_approx_eq!(34.2f64.abs(), 34.2f64);
@@ -145,4 +138,20 @@ pub fn main() {
     let (val, sign) = (-0.5f64).ln_gamma();
     assert_approx_eq!(val, (2.0 * f64::consts::PI.sqrt()).ln());
     assert_eq!(sign, -1);
+}
+
+fn mul_add() {
+    assert_approx_eq!(3.0f32.mul_add(2.0f32, 5.0f32), 11.0);
+    assert_eq!(0.0f32.mul_add(-2.0, f32::consts::E), f32::consts::E);
+    assert_approx_eq!(3.0f64.mul_add(2.0, 5.0), 11.0);
+    assert_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
+    assert_eq!((-3.2f32).mul_add(2.4, f32::NEG_INFINITY), f32::NEG_INFINITY);
+    assert_eq!((-3.2f64).mul_add(2.4, f64::NEG_INFINITY), f64::NEG_INFINITY);
+
+    let f = f32::mul_add(
+        -0.000000000000000000000000000000000000014728589,
+        0.0000037105144,
+        0.000000000000000000000000000000000000000000055,
+    );
+    assert_eq!(f.to_bits(), f32::to_bits(-0.0));
 }
