@@ -935,8 +935,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     macro_rules! require_simd {
-        ($ty: expr, $diag: expr) => {
-            require!($ty.is_simd(), $diag)
+        ($ty: expr, $variant:ident) => {
+            require!($ty.is_simd(), InvalidMonomorphization::$variant { span, name, ty: $ty })
         };
     }
 
@@ -946,10 +946,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     let arg_tys = sig.inputs();
 
     if name == sym::simd_select_bitmask {
-        require_simd!(
-            arg_tys[1],
-            InvalidMonomorphization::SimdArgument { span, name, ty: arg_tys[1] }
-        );
+        require_simd!(arg_tys[1], SimdArgument);
 
         let (len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
 
@@ -988,7 +985,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     // every intrinsic below takes a SIMD vector as its first argument
-    require_simd!(arg_tys[0], InvalidMonomorphization::SimdInput { span, name, ty: arg_tys[0] });
+    require_simd!(arg_tys[0], SimdInput);
     let in_ty = arg_tys[0];
 
     let comparison = match name {
@@ -1003,7 +1000,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
     let (in_len, in_elem) = arg_tys[0].simd_size_and_type(bx.tcx());
     if let Some(cmp_op) = comparison {
-        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        require_simd!(ret_ty, SimdReturn);
 
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
 
@@ -1041,7 +1038,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .unwrap_branch();
         let n = idx.len() as u64;
 
-        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        require_simd!(ret_ty, SimdReturn);
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             out_len == n,
@@ -1099,7 +1096,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }),
         };
 
-        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        require_simd!(ret_ty, SimdReturn);
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             out_len == n,
@@ -1179,10 +1176,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
-        require_simd!(
-            arg_tys[1],
-            InvalidMonomorphization::SimdArgument { span, name, ty: arg_tys[1] }
-        );
+        require_simd!(arg_tys[1], SimdArgument);
         let (v_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
         require!(
             m_len == v_len,
@@ -1401,16 +1395,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // * M: any integer width is supported, will be truncated to i1
 
         // All types must be simd vector types
-        require_simd!(in_ty, InvalidMonomorphization::SimdFirst { span, name, ty: in_ty });
-        require_simd!(
-            arg_tys[1],
-            InvalidMonomorphization::SimdSecond { span, name, ty: arg_tys[1] }
-        );
-        require_simd!(
-            arg_tys[2],
-            InvalidMonomorphization::SimdThird { span, name, ty: arg_tys[2] }
-        );
-        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        require_simd!(in_ty, SimdFirst);
+        require_simd!(arg_tys[1], SimdSecond);
+        require_simd!(arg_tys[2], SimdThird);
+        require_simd!(ret_ty, SimdReturn);
 
         // Of the same length:
         let (out_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
@@ -1524,15 +1512,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // * M: any integer width is supported, will be truncated to i1
 
         // All types must be simd vector types
-        require_simd!(in_ty, InvalidMonomorphization::SimdFirst { span, name, ty: in_ty });
-        require_simd!(
-            arg_tys[1],
-            InvalidMonomorphization::SimdSecond { span, name, ty: arg_tys[1] }
-        );
-        require_simd!(
-            arg_tys[2],
-            InvalidMonomorphization::SimdThird { span, name, ty: arg_tys[2] }
-        );
+        require_simd!(in_ty, SimdFirst);
+        require_simd!(arg_tys[1], SimdSecond);
+        require_simd!(arg_tys[2], SimdThird);
 
         // Of the same length:
         let (element_len1, _) = arg_tys[1].simd_size_and_type(bx.tcx());
@@ -1788,7 +1770,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     bitwise_red!(simd_reduce_any: vector_reduce_or, true);
 
     if name == sym::simd_cast_ptr {
-        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        require_simd!(ret_ty, SimdReturn);
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
@@ -1837,7 +1819,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_expose_addr {
-        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        require_simd!(ret_ty, SimdReturn);
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
@@ -1866,7 +1848,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_from_exposed_addr {
-        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        require_simd!(ret_ty, SimdReturn);
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
@@ -1895,7 +1877,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_cast || name == sym::simd_as {
-        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        require_simd!(ret_ty, SimdReturn);
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
