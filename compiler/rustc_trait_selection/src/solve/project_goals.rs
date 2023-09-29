@@ -346,14 +346,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
         });
 
-        let pred = ty::Clause::from_projection_clause(
-            tcx,
-            tupled_inputs_and_output.map_bound(|(inputs, output)| ty::ProjectionPredicate {
+        let pred = tupled_inputs_and_output
+            .map_bound(|(inputs, output)| ty::ProjectionPredicate {
                 projection_ty: tcx
                     .mk_alias_ty(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs]),
                 term: output.into(),
-            }),
-        );
+            })
+            .to_predicate(tcx);
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
