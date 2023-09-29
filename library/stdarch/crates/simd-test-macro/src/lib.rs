@@ -7,7 +7,7 @@
 #[macro_use]
 extern crate quote;
 
-use proc_macro2::{Delimiter, Ident, Literal, Span, TokenStream, TokenTree};
+use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use std::env;
 
@@ -44,13 +44,9 @@ pub fn simd_test(
         .collect();
 
     let enable_feature = string(enable_feature);
-    let item = TokenStream::from(item);
-    let name = find_name(item.clone());
-
-    let name: TokenStream = name
-        .to_string()
-        .parse()
-        .unwrap_or_else(|_| panic!("failed to parse name: {}", name.to_string()));
+    let mut item = syn::parse_macro_input!(item as syn::ItemFn);
+    let item_attrs = std::mem::take(&mut item.attrs);
+    let name = &item.sig.ident;
 
     let target = env::var("TARGET").expect(
         "TARGET environment variable should be set for rustc (e.g. TARGET=x86_64-apple-darwin cargo test)"
@@ -109,6 +105,7 @@ pub fn simd_test(
         #[allow(non_snake_case)]
         #[test]
         #maybe_ignore
+        #(#item_attrs)*
         fn #name() {
             if #force_test | (#cfg_target_features) {
                 let v = unsafe { #name() };
@@ -122,30 +119,4 @@ pub fn simd_test(
         }
     };
     ret.into()
-}
-
-fn find_name(item: TokenStream) -> Ident {
-    let mut tokens = item.into_iter();
-    while let Some(tok) = tokens.next() {
-        if let TokenTree::Ident(word) = tok {
-            if word == "fn" {
-                break;
-            }
-        }
-    }
-
-    fn get_ident(tt: TokenTree) -> Option<Ident> {
-        match tt {
-            TokenTree::Ident(i) => Some(i),
-            TokenTree::Group(g) if g.delimiter() == Delimiter::None => {
-                get_ident(g.stream().into_iter().next()?)
-            }
-            _ => None,
-        }
-    }
-
-    tokens
-        .next()
-        .and_then(get_ident)
-        .expect("failed to find function name")
 }
