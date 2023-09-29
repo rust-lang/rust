@@ -1105,32 +1105,6 @@ impl Scalar {
     }
 }
 
-rustc_index::newtype_index! {
-    /// The *source-order* index of a field in a variant.
-    ///
-    /// This is how most code after type checking refers to fields, rather than
-    /// using names (as names have hygiene complications and more complex lookup).
-    ///
-    /// Particularly for `repr(Rust)` types, this may not be the same as *layout* order.
-    /// (It is for `repr(C)` `struct`s, however.)
-    ///
-    /// For example, in the following types,
-    /// ```rust
-    /// # enum Never {}
-    /// # #[repr(u16)]
-    /// enum Demo1 {
-    ///    Variant0 { a: Never, b: i32 } = 100,
-    ///    Variant1 { c: u8, d: u64 } = 10,
-    /// }
-    /// struct Demo2 { e: u8, f: u16, g: u8 }
-    /// ```
-    /// `b` is `FieldIdx(1)` in `VariantIdx(0)`,
-    /// `d` is `FieldIdx(1)` in `VariantIdx(1)`, and
-    /// `f` is `FieldIdx(1)` in `VariantIdx(0)`.
-    #[derive(HashStable_Generic)]
-    pub struct FieldIdx {}
-}
-
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
@@ -1621,61 +1595,6 @@ where
             .field("max_repr_align", max_repr_align)
             .field("unadjusted_abi_align", unadjusted_abi_align)
             .finish()
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
-#[rustc_pass_by_value]
-pub struct Layout<'a>(pub Interned<'a, LayoutS<FieldIdx>>);
-
-impl<'a> fmt::Debug for Layout<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // See comment on `<LayoutS as Debug>::fmt` above.
-        self.0.0.fmt(f)
-    }
-}
-
-impl<'a> Layout<'a> {
-    pub fn fields(self) -> &'a FieldsShape<FieldIdx> {
-        &self.0.0.fields
-    }
-
-    pub fn variants(self) -> &'a Variants<FieldIdx> {
-        &self.0.0.variants
-    }
-
-    pub fn abi(self) -> Abi {
-        self.0.0.abi
-    }
-
-    pub fn largest_niche(self) -> Option<Niche> {
-        self.0.0.largest_niche
-    }
-
-    pub fn align(self) -> AbiAndPrefAlign {
-        self.0.0.align
-    }
-
-    pub fn size(self) -> Size {
-        self.0.0.size
-    }
-
-    pub fn max_repr_align(self) -> Option<Align> {
-        self.0.0.max_repr_align
-    }
-
-    pub fn unadjusted_abi_align(self) -> Align {
-        self.0.0.unadjusted_abi_align
-    }
-
-    /// Whether the layout is from a type that implements [`std::marker::PointerLike`].
-    ///
-    /// Currently, that means that the type is pointer-sized, pointer-aligned,
-    /// and has a scalar ABI.
-    pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
-        self.size() == data_layout.pointer_size
-            && self.align().abi == data_layout.pointer_align.abi
-            && matches!(self.abi(), Abi::Scalar(..))
     }
 }
 

@@ -4473,6 +4473,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_feature",
  "rustc_fs_util",
+ "rustc_index",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
