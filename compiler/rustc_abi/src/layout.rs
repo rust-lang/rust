@@ -10,6 +10,7 @@ use crate::{
     NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding, TargetDataLayout,
     Variants, WrappingRange,
 };
+
 pub trait LayoutCalculator {
     type TargetDataLayoutRef: Borrow<TargetDataLayout>;
 
