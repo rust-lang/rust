@@ -64,7 +64,7 @@ use hir_ty::{
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     known_const_to_ast,
-    layout::{Layout as TyLayout, RustcEnumVariantIdx, TagEncoding},
+    layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
     primitive::UintTy,
@@ -4540,15 +4540,31 @@ impl Layout {
         Some(self.0.largest_niche?.available(&*self.1))
     }
 
-    pub fn field_offset(&self, idx: usize) -> Option<u64> {
+    pub fn field_offset(&self, field: Field) -> Option<u64> {
         match self.0.fields {
             layout::FieldsShape::Primitive => None,
             layout::FieldsShape::Union(_) => Some(0),
             layout::FieldsShape::Array { stride, count } => {
-                let i = u64::try_from(idx).ok()?;
+                let i = u64::try_from(field.index()).ok()?;
                 (i < count).then_some((stride * i).bytes())
             }
-            layout::FieldsShape::Arbitrary { ref offsets, .. } => Some(offsets.get(idx)?.bytes()),
+            layout::FieldsShape::Arbitrary { ref offsets, .. } => {
+                Some(offsets.get(RustcFieldIdx(field.id))?.bytes())
+            }
+        }
+    }
+
+    pub fn tuple_field_offset(&self, field: usize) -> Option<u64> {
+        match self.0.fields {
+            layout::FieldsShape::Primitive => None,
+            layout::FieldsShape::Union(_) => Some(0),
+            layout::FieldsShape::Array { stride, count } => {
+                let i = u64::try_from(field).ok()?;
+                (i < count).then_some((stride * i).bytes())
+            }
+            layout::FieldsShape::Arbitrary { ref offsets, .. } => {
+                Some(offsets.get(RustcFieldIdx::new(field))?.bytes())
+            }
         }
     }
 
