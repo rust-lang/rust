@@ -130,7 +130,7 @@ pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
-pub use rustc_session::lint::{LintArray, LintPass};
+pub use rustc_session::lint::{LintPass, LintVec};
 
 fluent_messages! { "../messages.ftl" }
 

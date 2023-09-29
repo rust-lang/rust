@@ -78,14 +78,10 @@ impl SsaLocals {
             visitor.assignments[local] = Set1::One(LocationExtended::Arg);
         }
 
-        if body.basic_blocks.len() > 2 {
-            for (bb, data) in traversal::reverse_postorder(body) {
-                visitor.visit_basic_block_data(bb, data);
-            }
-        } else {
-            for (bb, data) in body.basic_blocks.iter_enumerated() {
-                visitor.visit_basic_block_data(bb, data);
-            }
+        // For SSA assignments, a RPO visit will see the assignment before it sees any use.
+        // We only visit reachable nodes: computing `dominates` on an unreachable node ICEs.
+        for (bb, data) in traversal::reverse_postorder(body) {
+            visitor.visit_basic_block_data(bb, data);
         }
 
         for var_debug_info in &body.var_debug_info {

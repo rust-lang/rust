@@ -24,6 +24,9 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::traits::misc::{
+    type_allowed_to_implement_const_param_ty, ConstParamTyImplementationError,
+};
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -865,43 +868,65 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                     );
                 });
             } else {
-                let err_ty_str;
-                let mut is_ptr = true;
-
-                let err = match ty.kind() {
+                let diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
-                    ty::FnPtr(_) => Some("function pointers"),
-                    ty::RawPtr(_) => Some("raw pointers"),
-                    _ => {
-                        is_ptr = false;
-                        err_ty_str = format!("`{ty}`");
-                        Some(err_ty_str.as_str())
-                    }
+                    ty::FnPtr(_) => Some(tcx.sess.struct_span_err(
+                        hir_ty.span,
+                        "using function pointers as const generic parameters is forbidden",
+                    )),
+                    ty::RawPtr(_) => Some(tcx.sess.struct_span_err(
+                        hir_ty.span,
+                        "using raw pointers as const generic parameters is forbidden",
+                    )),
+                    _ => Some(tcx.sess.struct_span_err(
+                        hir_ty.span,
+                        format!("`{}` is forbidden as the type of a const generic parameter", ty),
+                    )),
                 };
 
-                if let Some(unsupported_type) = err {
-                    if is_ptr {
-                        tcx.sess.span_err(
-                            hir_ty.span,
-                            format!(
-                                "using {unsupported_type} as const generic parameters is forbidden",
-                            ),
-                        );
-                    } else {
-                        let mut err = tcx.sess.struct_span_err(
-                            hir_ty.span,
-                            format!(
-                                "{unsupported_type} is forbidden as the type of a const generic parameter",
-                            ),
-                        );
-                        err.note("the only supported types are integers, `bool` and `char`");
-                        if tcx.sess.is_nightly_build() {
-                            err.help(
-                            "more complex types are supported with `#![feature(adt_const_params)]`",
-                        );
+                if let Some(mut diag) = diag {
+                    diag.note("the only supported types are integers, `bool` and `char`");
+
+                    let cause = ObligationCause::misc(hir_ty.span, param.def_id);
+                    let may_suggest_feature = match type_allowed_to_implement_const_param_ty(
+                        tcx,
+                        tcx.param_env(param.def_id),
+                        ty,
+                        cause,
+                    ) {
+                        // Can never implement `ConstParamTy`, don't suggest anything.
+                        Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => false,
+                        // May be able to implement `ConstParamTy`. Only emit the feature help
+                        // if the type is local, since the user may be able to fix the local type.
+                        Err(ConstParamTyImplementationError::InfrigingFields(..)) => {
+                            fn ty_is_local(ty: Ty<'_>) -> bool {
+                                match ty.kind() {
+                                    ty::Adt(adt_def, ..) => adt_def.did().is_local(),
+                                    // Arrays and slices use the inner type's `ConstParamTy`.
+                                    ty::Array(ty, ..) => ty_is_local(*ty),
+                                    ty::Slice(ty) => ty_is_local(*ty),
+                                    // `&` references use the inner type's `ConstParamTy`.
+                                    // `&mut` are not supported.
+                                    ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(*ty),
+                                    // Say that a tuple is local if any of its components are local.
+                                    // This is not strictly correct, but it's likely that the user can fix the local component.
+                                    ty::Tuple(tys) => tys.iter().any(|ty| ty_is_local(ty)),
+                                    _ => false,
+                                }
+                            }
+
+                            ty_is_local(ty)
                         }
-                        err.emit();
+                        // Implments `ConstParamTy`, suggest adding the feature to enable.
+                        Ok(..) => true,
+                    };
+                    if may_suggest_feature && tcx.sess.is_nightly_build() {
+                        diag.help(
+                            "add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types",
+                        );
                     }
+
+                    diag.emit();
                 }
             }
         }

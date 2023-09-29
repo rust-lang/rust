@@ -5,19 +5,18 @@ use rustc_hir::def::DefKind;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::lint::{lint_array, LintArray};
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
 
 use crate::lints::{BuiltinClashingExtern, BuiltinClashingExternSub};
-use crate::types;
+use crate::{types, LintVec};
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { clashing_extern_declarations, ..*providers };
 }
 
-pub(crate) fn get_lints() -> LintArray {
-    lint_array!(CLASHING_EXTERN_DECLARATIONS)
+pub(crate) fn get_lints() -> LintVec {
+    vec![CLASHING_EXTERN_DECLARATIONS]
 }
 
 fn clashing_extern_declarations(tcx: TyCtxt<'_>, (): ()) {

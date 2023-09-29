@@ -3,6 +3,8 @@ error: using function pointers as const generic parameters is forbidden
    |
 LL |     fn test<const FN: fn() -> u8>(&self) -> u8 {
    |                       ^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
 
 error: aborting due to previous error
 

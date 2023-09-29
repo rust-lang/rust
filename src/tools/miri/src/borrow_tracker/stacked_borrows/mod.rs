@@ -456,6 +456,7 @@ impl Stacks {
                     stack.retain(live_tags);
                 }
             }
+            self.history.retain(live_tags);
             self.modified_since_last_gc = false;
         }
     }

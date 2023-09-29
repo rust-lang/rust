@@ -1,6 +1,7 @@
 use smallvec::SmallVec;
 use std::fmt;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange, InterpError};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
@@ -232,6 +233,12 @@ impl AllocHistory {
             invalidations: SmallVec::new(),
             protectors: SmallVec::new(),
         }
+    }
+
+    pub fn retain(&mut self, live_tags: &FxHashSet<BorTag>) {
+        self.invalidations.retain(|event| live_tags.contains(&event.tag));
+        self.creations.retain(|event| live_tags.contains(&event.retag.new_tag));
+        self.protectors.retain(|event| live_tags.contains(&event.tag));
     }
 }
 
