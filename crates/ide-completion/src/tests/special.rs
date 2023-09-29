@@ -1372,3 +1372,112 @@ fn main() {
         expect!("pub const fn baz<'foo>(&'foo mut self, x: &'foo Foo) -> !"),
     );
 }
+
+#[test]
+fn skips_underscore() {
+    check_with_trigger_character(
+        r#"
+fn foo(_$0) { }
+"#,
+        Some('_'),
+        expect![[r#""#]],
+    );
+    check_with_trigger_character(
+        r#"
+fn foo(_: _$0) { }
+"#,
+        Some('_'),
+        expect![[r#""#]],
+    );
+    check_with_trigger_character(
+        r#"
+fn foo<T>() {
+    foo::<_$0>();
+}
+"#,
+        Some('_'),
+        expect![[r#""#]],
+    );
+    // underscore expressions are fine, they are invalid so the user definitely meant to type an
+    // underscored name here
+    check_with_trigger_character(
+        r#"
+fn foo() {
+    _$0
+}
+"#,
+        Some('_'),
+        expect![[r#"
+            fn foo()       fn()
+            bt u32
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn no_skip_underscore_ident() {
+    check_with_trigger_character(
+        r#"
+fn foo(a_$0) { }
+"#,
+        Some('_'),
+        expect![[r#"
+            kw mut
+            kw ref
+        "#]],
+    );
+    check_with_trigger_character(
+        r#"
+fn foo(_: a_$0) { }
+"#,
+        Some('_'),
+        expect![[r#"
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+    check_with_trigger_character(
+        r#"
+fn foo<T>() {
+    foo::<a_$0>();
+}
+"#,
+        Some('_'),
+        expect![[r#"
+            tp T
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+}
