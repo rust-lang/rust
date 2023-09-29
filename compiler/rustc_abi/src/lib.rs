@@ -1102,6 +1102,7 @@ impl Scalar {
     }
 }
 
+// NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
@@ -1355,6 +1356,7 @@ impl Abi {
     }
 }
 
+// NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
@@ -1375,6 +1377,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     },
 }
 
+// NOTE: This struct is generic over the VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum TagEncoding<VariantIdx: Idx> {
@@ -1485,6 +1488,7 @@ impl Niche {
     }
 }
 
+// NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
