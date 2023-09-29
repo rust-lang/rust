@@ -38,6 +38,17 @@ hir_analysis_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
 
+hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
+
+hir_analysis_coerce_unsized_multi = implementing the trait `CoerceUnsized` requires multiple coercions
+    .note = `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
+    .coercions_note = currently, {$number} fields need coercions: {$coercions}
+    .label = requires multiple coercions
+
+hir_analysis_coercion_between_struct_same_note = expected coercion between the same definition; expected `{$source_path}`, found `{$target_path}`
+
+hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
+
 hir_analysis_const_bound_for_non_const_trait =
     ~const can only be applied to `#[const_trait]` traits
 
@@ -60,6 +71,15 @@ hir_analysis_copy_impl_on_non_adt =
 hir_analysis_copy_impl_on_type_with_dtor =
     the trait `Copy` cannot be implemented for this type; the type has a destructor
     .label = `Copy` not allowed on types with destructors
+
+hir_analysis_dispatch_from_dyn_multi = implementing the `DispatchFromDyn` trait requires multiple coercions
+    .note = the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
+    .coercions_note = currently, {$number} fields need coercions: {$coercions}
+
+hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
+
+hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+    .note = extra field `{$name}` of type `{$ty}` is not allowed
 
 hir_analysis_drop_impl_negative = negative `Drop` impls are not supported
 
@@ -232,6 +252,8 @@ hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
 
+hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
+
 hir_analysis_return_type_notation_conflicting_bound =
     ambiguous associated function `{$assoc_name}` for `{$ty_name}`
     .note = `{$assoc_name}` is declared in two supertraits: `{$first_bound}` and `{$second_bound}`
@@ -298,6 +320,9 @@ hir_analysis_too_large_static = extern static is too large for the current archi
 
 hir_analysis_track_caller_on_main = `main` function is not allowed to be `#[track_caller]`
     .suggestion = remove this annotation
+
+hir_analysis_trait_cannot_impl_for_ty = the trait `{$trait_name}` cannot be implemented for this type
+    .label = this field does not implement `{$trait_name}`
 
 hir_analysis_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
