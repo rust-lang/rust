@@ -244,10 +244,11 @@ impl TargetDataLayout {
         };
 
         // Parse a size string.
-        let size = |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
+        let parse_size =
+            |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
 
         // Parse an alignment string.
-        let align = |s: &[&'a str], cause: &'a str| {
+        let parse_align = |s: &[&'a str], cause: &'a str| {
             if s.is_empty() {
                 return Err(TargetDataLayoutErrors::MissingAlignment { cause });
             }
@@ -271,22 +272,22 @@ impl TargetDataLayout {
                 [p] if p.starts_with('P') => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
-                ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
-                ["f32", ref a @ ..] => dl.f32_align = align(a, "f32")?,
-                ["f64", ref a @ ..] => dl.f64_align = align(a, "f64")?,
+                ["a", ref a @ ..] => dl.aggregate_align = parse_align(a, "a")?,
+                ["f32", ref a @ ..] => dl.f32_align = parse_align(a, "f32")?,
+                ["f64", ref a @ ..] => dl.f64_align = parse_align(a, "f64")?,
                 // FIXME(erikdesjardins): we should be parsing nonzero address spaces
                 // this will require replacing TargetDataLayout::{pointer_size,pointer_align}
                 // with e.g. `fn pointer_size_in(AddressSpace)`
                 [p @ "p", s, ref a @ ..] | [p @ "p0", s, ref a @ ..] => {
-                    dl.pointer_size = size(s, p)?;
-                    dl.pointer_align = align(a, p)?;
+                    dl.pointer_size = parse_size(s, p)?;
+                    dl.pointer_align = parse_align(a, p)?;
                 }
                 [s, ref a @ ..] if s.starts_with('i') => {
                     let Ok(bits) = s[1..].parse::<u64>() else {
-                        size(&s[1..], "i")?; // For the user error.
+                        parse_size(&s[1..], "i")?; // For the user error.
                         continue;
                     };
-                    let a = align(a, s)?;
+                    let a = parse_align(a, s)?;
                     match bits {
                         1 => dl.i1_align = a,
                         8 => dl.i8_align = a,
@@ -303,8 +304,8 @@ impl TargetDataLayout {
                     }
                 }
                 [s, ref a @ ..] if s.starts_with('v') => {
-                    let v_size = size(&s[1..], "v")?;
-                    let a = align(a, s)?;
+                    let v_size = parse_size(&s[1..], "v")?;
+                    let a = parse_align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
                         v.1 = a;
                         continue;
