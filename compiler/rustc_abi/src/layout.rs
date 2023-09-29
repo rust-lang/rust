@@ -8,7 +8,7 @@ use tracing::debug;
 use crate::{
     Abi, AbiAndPrefAlign, Align, FieldsShape, IndexSlice, IndexVec, Integer, LayoutS, Niche,
     NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding, TargetDataLayout,
-    VariantIdx, Variants, WrappingRange, FIRST_VARIANT,
+    Variants, WrappingRange,
 };
 pub trait LayoutCalculator {
     type TargetDataLayoutRef: Borrow<TargetDataLayout>;
@@ -16,7 +16,11 @@ pub trait LayoutCalculator {
     fn delay_bug(&self, txt: String);
     fn current_data_layout(&self) -> Self::TargetDataLayoutRef;
 
-    fn scalar_pair<FieldIdx: Idx>(&self, a: Scalar, b: Scalar) -> LayoutS<FieldIdx> {
+    fn scalar_pair<FieldIdx: Idx, VariantIdx: Idx>(
+        &self,
+        a: Scalar,
+        b: Scalar,
+    ) -> LayoutS<FieldIdx, VariantIdx> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         let b_align = b.align(dl);
@@ -32,7 +36,7 @@ pub trait LayoutCalculator {
             .max_by_key(|niche| niche.available(dl));
 
         LayoutS {
-            variants: Variants::Single { index: FIRST_VARIANT },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Arbitrary {
                 offsets: [Size::ZERO, b_offset].into(),
                 memory_index: [0, 1].into(),
@@ -46,13 +50,18 @@ pub trait LayoutCalculator {
         }
     }
 
-    fn univariant<'a, FieldIdx: Idx, F: Deref<Target = &'a LayoutS<FieldIdx>> + fmt::Debug>(
+    fn univariant<
+        'a,
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+    >(
         &self,
         dl: &TargetDataLayout,
         fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,
         kind: StructKind,
-    ) -> Option<LayoutS<FieldIdx>> {
+    ) -> Option<LayoutS<FieldIdx, VariantIdx>> {
         let layout = univariant(self, dl, fields, repr, kind, NicheBias::Start);
         // Enums prefer niches close to the beginning or the end of the variants so that other
         // (smaller) data-carrying variants can be packed into the space after/before the niche.
@@ -115,11 +124,13 @@ pub trait LayoutCalculator {
         layout
     }
 
-    fn layout_of_never_type<FieldIdx: Idx>(&self) -> LayoutS<FieldIdx> {
+    fn layout_of_never_type<FieldIdx: Idx, VariantIdx: Idx>(
+        &self,
+    ) -> LayoutS<FieldIdx, VariantIdx> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         LayoutS {
-            variants: Variants::Single { index: FIRST_VARIANT },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Uninhabited,
             largest_niche: None,
@@ -133,7 +144,8 @@ pub trait LayoutCalculator {
     fn layout_of_struct_or_enum<
         'a,
         FieldIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx>> + fmt::Debug,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
     >(
         &self,
         repr: &ReprOptions,
@@ -145,7 +157,7 @@ pub trait LayoutCalculator {
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
         dont_niche_optimize_enum: bool,
         always_sized: bool,
-    ) -> Option<LayoutS<FieldIdx>> {
+    ) -> Option<LayoutS<FieldIdx, VariantIdx>> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
 
@@ -181,7 +193,7 @@ pub trait LayoutCalculator {
             }
             // If it's a struct, still compute a layout so that we can still compute the
             // field offsets.
-            None => FIRST_VARIANT,
+            None => VariantIdx::new(0),
         };
 
         let is_struct = !is_enum ||
@@ -284,12 +296,12 @@ pub trait LayoutCalculator {
         // variant layouts, so we can't store them in the
         // overall LayoutS. Store the overall LayoutS
         // and the variant LayoutSs here until then.
-        struct TmpLayout<FieldIdx: Idx> {
-            layout: LayoutS<FieldIdx>,
-            variants: IndexVec<VariantIdx, LayoutS<FieldIdx>>,
+        struct TmpLayout<FieldIdx: Idx, VariantIdx: Idx> {
+            layout: LayoutS<FieldIdx, VariantIdx>,
+            variants: IndexVec<VariantIdx, LayoutS<FieldIdx, VariantIdx>>,
         }
 
-        let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx>> {
+        let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx, VariantIdx>> {
             if dont_niche_optimize_enum {
                 return None;
             }
@@ -327,7 +339,8 @@ pub trait LayoutCalculator {
             let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
                 ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
 
-            let count = niche_variants.size_hint().1.unwrap() as u128;
+            let count =
+                niche_variants.end().index() as u128 - niche_variants.start().index() as u128;
 
             // Find the field with the largest niche
             let (field_index, niche, (niche_start, niche_scalar)) = variants[largest_variant_index]
@@ -660,7 +673,7 @@ pub trait LayoutCalculator {
                     // Common prim might be uninit.
                     Scalar::Union { value: prim }
                 };
-                let pair = self.scalar_pair(tag, prim_scalar);
+                let pair = self.scalar_pair::<FieldIdx, VariantIdx>(tag, prim_scalar);
                 let pair_offsets = match pair.fields {
                     FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                         assert_eq!(memory_index.raw, [0, 1]);
@@ -726,7 +739,7 @@ pub trait LayoutCalculator {
                 // pick the layout with the larger niche; otherwise,
                 // pick tagged as it has simpler codegen.
                 use cmp::Ordering::*;
-                let niche_size = |tmp_l: &TmpLayout<FieldIdx>| {
+                let niche_size = |tmp_l: &TmpLayout<FieldIdx, VariantIdx>| {
                     tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl))
                 };
                 match (tl.layout.size.cmp(&nl.layout.size), niche_size(&tl).cmp(&niche_size(&nl))) {
@@ -748,11 +761,16 @@ pub trait LayoutCalculator {
         Some(best_layout.layout)
     }
 
-    fn layout_of_union<'a, FieldIdx: Idx, F: Deref<Target = &'a LayoutS<FieldIdx>> + fmt::Debug>(
+    fn layout_of_union<
+        'a,
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+    >(
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
-    ) -> Option<LayoutS<FieldIdx>> {
+    ) -> Option<LayoutS<FieldIdx, VariantIdx>> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
@@ -769,7 +787,7 @@ pub trait LayoutCalculator {
         };
 
         let mut size = Size::ZERO;
-        let only_variant = &variants[FIRST_VARIANT];
+        let only_variant = &variants[VariantIdx::new(0)];
         for field in only_variant {
             if field.is_unsized() {
                 self.delay_bug("unsized field in union".to_string());
@@ -836,7 +854,7 @@ pub trait LayoutCalculator {
         };
 
         Some(LayoutS {
-            variants: Variants::Single { index: FIRST_VARIANT },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Union(NonZeroUsize::new(only_variant.len())?),
             abi,
             largest_niche: None,
@@ -854,14 +872,19 @@ enum NicheBias {
     End,
 }
 
-fn univariant<'a, FieldIdx: Idx, F: Deref<Target = &'a LayoutS<FieldIdx>> + fmt::Debug>(
+fn univariant<
+    'a,
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+>(
     this: &(impl LayoutCalculator + ?Sized),
     dl: &TargetDataLayout,
     fields: &IndexSlice<FieldIdx, F>,
     repr: &ReprOptions,
     kind: StructKind,
     niche_bias: NicheBias,
-) -> Option<LayoutS<FieldIdx>> {
+) -> Option<LayoutS<FieldIdx, VariantIdx>> {
     let pack = repr.pack;
     let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
     let mut max_repr_align = repr.align;
@@ -1120,7 +1143,7 @@ fn univariant<'a, FieldIdx: Idx, F: Deref<Target = &'a LayoutS<FieldIdx>> + fmt:
                         } else {
                             ((j, b), (i, a))
                         };
-                        let pair = this.scalar_pair(a, b);
+                        let pair = this.scalar_pair::<FieldIdx, VariantIdx>(a, b);
                         let pair_offsets = match pair.fields {
                             FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                 assert_eq!(memory_index.raw, [0, 1]);
@@ -1162,7 +1185,7 @@ fn univariant<'a, FieldIdx: Idx, F: Deref<Target = &'a LayoutS<FieldIdx>> + fmt:
     };
 
     Some(LayoutS {
-        variants: Variants::Single { index: FIRST_VARIANT },
+        variants: Variants::Single { index: VariantIdx::new(0) },
         fields: FieldsShape::Arbitrary { offsets, memory_index },
         abi,
         largest_niche,
@@ -1173,8 +1196,13 @@ fn univariant<'a, FieldIdx: Idx, F: Deref<Target = &'a LayoutS<FieldIdx>> + fmt:
     })
 }
 
-fn format_field_niches<'a, FieldIdx: Idx, F: Deref<Target = &'a LayoutS<FieldIdx>> + fmt::Debug>(
-    layout: &LayoutS<FieldIdx>,
+fn format_field_niches<
+    'a,
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+>(
+    layout: &LayoutS<FieldIdx, VariantIdx>,
     fields: &IndexSlice<FieldIdx, F>,
     dl: &TargetDataLayout,
 ) -> String {

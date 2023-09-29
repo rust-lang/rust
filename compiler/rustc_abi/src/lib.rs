@@ -11,7 +11,6 @@ use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
-use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::Hash64;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
@@ -1360,7 +1359,7 @@ impl Abi {
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub enum Variants<FieldIdx: Idx> {
+pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
 
@@ -1372,15 +1371,15 @@ pub enum Variants<FieldIdx: Idx> {
     /// For enums, the tag is the sole field of the layout.
     Multiple {
         tag: Scalar,
-        tag_encoding: TagEncoding,
+        tag_encoding: TagEncoding<VariantIdx>,
         tag_field: usize,
-        variants: IndexVec<VariantIdx, LayoutS<FieldIdx>>,
+        variants: IndexVec<VariantIdx, LayoutS<FieldIdx, VariantIdx>>,
     },
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub enum TagEncoding {
+pub enum TagEncoding<VariantIdx: Idx> {
     /// The tag directly stores the discriminant, but possibly with a smaller layout
     /// (so converting the tag to the discriminant can require sign extension).
     Direct,
@@ -1488,27 +1487,9 @@ impl Niche {
     }
 }
 
-rustc_index::newtype_index! {
-    /// The *source-order* index of a variant in a type.
-    ///
-    /// For enums, these are always `0..variant_count`, regardless of any
-    /// custom discriminants that may have been defined, and including any
-    /// variants that may end up uninhabited due to field types.  (Some of the
-    /// variants may not be present in a monomorphized ABI [`Variants`], but
-    /// those skipped variants are always counted when determining the *index*.)
-    ///
-    /// `struct`s, `tuples`, and `unions`s are considered to have a single variant
-    /// with variant index zero, aka [`FIRST_VARIANT`].
-    #[derive(HashStable_Generic)]
-    pub struct VariantIdx {
-        /// Equivalent to `VariantIdx(0)`.
-        const FIRST_VARIANT = 0;
-    }
-}
-
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub struct LayoutS<FieldIdx: Idx> {
+pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape<FieldIdx>,
 
@@ -1519,7 +1500,7 @@ pub struct LayoutS<FieldIdx: Idx> {
     ///
     /// To access all fields of this layout, both `fields` and the fields of the active variant
     /// must be taken into account.
-    pub variants: Variants<FieldIdx>,
+    pub variants: Variants<FieldIdx, VariantIdx>,
 
     /// The `abi` defines how this data is passed between functions, and it defines
     /// value restrictions via `valid_range`.
@@ -1548,13 +1529,13 @@ pub struct LayoutS<FieldIdx: Idx> {
     pub unadjusted_abi_align: Align,
 }
 
-impl<FieldIdx: Idx> LayoutS<FieldIdx> {
+impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
         let align = scalar.align(cx);
         LayoutS {
-            variants: Variants::Single { index: FIRST_VARIANT },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Scalar(scalar),
             largest_niche,
@@ -1566,10 +1547,10 @@ impl<FieldIdx: Idx> LayoutS<FieldIdx> {
     }
 }
 
-impl<FieldIdx: Idx> fmt::Debug for LayoutS<FieldIdx>
+impl<FieldIdx: Idx, VariantIdx: Idx> fmt::Debug for LayoutS<FieldIdx, VariantIdx>
 where
     FieldsShape<FieldIdx>: fmt::Debug,
-    Variants<FieldIdx>: fmt::Debug,
+    Variants<FieldIdx, VariantIdx>: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is how `Layout` used to print before it become
@@ -1617,7 +1598,7 @@ pub struct PointeeInfo {
     pub safe: Option<PointerKind>,
 }
 
-impl<FieldIdx: Idx> LayoutS<FieldIdx> {
+impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {

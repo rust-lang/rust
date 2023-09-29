@@ -45,9 +45,26 @@ rustc_index::newtype_index! {
     pub struct FieldIdx {}
 }
 
+rustc_index::newtype_index! {
+    /// The *source-order* index of a variant in a type.
+    ///
+    /// For enums, these are always `0..variant_count`, regardless of any
+    /// custom discriminants that may have been defined, and including any
+    /// variants that may end up uninhabited due to field types.  (Some of the
+    /// variants may not be present in a monomorphized ABI [`Variants`], but
+    /// those skipped variants are always counted when determining the *index*.)
+    ///
+    /// `struct`s, `tuples`, and `unions`s are considered to have a single variant
+    /// with variant index zero, aka [`FIRST_VARIANT`].
+    #[derive(HashStable_Generic)]
+    pub struct VariantIdx {
+        /// Equivalent to `VariantIdx(0)`.
+        const FIRST_VARIANT = 0;
+    }
+}
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 #[rustc_pass_by_value]
-pub struct Layout<'a>(pub Interned<'a, LayoutS<FieldIdx>>);
+pub struct Layout<'a>(pub Interned<'a, LayoutS<FieldIdx, VariantIdx>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -61,7 +78,7 @@ impl<'a> Layout<'a> {
         &self.0.0.fields
     }
 
-    pub fn variants(self) -> &'a Variants<FieldIdx> {
+    pub fn variants(self) -> &'a Variants<FieldIdx, VariantIdx> {
         &self.0.0.variants
     }
 
@@ -124,8 +141,8 @@ impl<'a, Ty: fmt::Display> fmt::Debug for TyAndLayout<'a, Ty> {
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
-    type Target = &'a LayoutS<FieldIdx>;
-    fn deref(&self) -> &&'a LayoutS<FieldIdx> {
+    type Target = &'a LayoutS<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &&'a LayoutS<FieldIdx, VariantIdx> {
         &self.layout.0.0
     }
 }
