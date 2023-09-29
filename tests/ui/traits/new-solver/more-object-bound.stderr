@@ -4,6 +4,11 @@ error[E0277]: the trait bound `dyn Trait<A = A, B = B>: Trait` is not satisfied
 LL |     foo::<A, B, dyn Trait<A = A, B = B>>(x)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `dyn Trait<A = A, B = B>`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/more-object-bound.rs:9:1
+   |
+LL | trait Trait: SuperTrait<A = <Self as SuperTrait>::B> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `foo`
   --> $DIR/more-object-bound.rs:18:8
    |
@@ -12,10 +17,6 @@ LL | fn foo<A, B, T: ?Sized>(x: T::A) -> B
 LL | where
 LL |     T: Trait<B = B>,
    |        ^^^^^^^^^^^^ required by this bound in `foo`
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn transmute<A, B>(x: A) -> B where dyn Trait<A = A, B = B>: Trait {
-   |                               ++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 
