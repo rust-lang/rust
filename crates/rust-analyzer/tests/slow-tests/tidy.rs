@@ -300,6 +300,8 @@ fn check_test_attrs(path: &Path, text: &str) {
         // This file.
         "slow-tests/tidy.rs",
         "test-utils/src/fixture.rs",
+        // Generated code from lints contains doc tests in string literals.
+        "ide-db/src/generated/lints.rs",
     ];
     if text.contains("#[should_panic") && !need_panic.iter().any(|p| path.ends_with(p)) {
         panic!(

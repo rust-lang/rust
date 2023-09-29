@@ -5266,38 +5266,46 @@ pub fn foo() {}
 #[test]
 fn hover_feature() {
     check(
-        r#"#![feature(box_syntax$0)]"#,
-        expect![[r##"
-                *box_syntax*
-                ```
-                box_syntax
-                ```
-                ___
+        r#"#![feature(intrinsics$0)]"#,
+        expect![[r#"
+            *intrinsics*
+            ```
+            intrinsics
+            ```
+            ___
 
-                # `box_syntax`
+            # `intrinsics`
 
-                The tracking issue for this feature is: [#49733]
+            The tracking issue for this feature is: None.
 
-                [#49733]: https://github.com/rust-lang/rust/issues/49733
+            Intrinsics are never intended to be stable directly, but intrinsics are often
+            exported in some sort of stable manner. Prefer using the stable interfaces to
+            the intrinsic directly when you can.
 
-                See also [`box_patterns`](box-patterns.md)
+            ------------------------
 
-                ------------------------
 
-                Currently the only stable way to create a `Box` is via the `Box::new` method.
-                Also it is not possible in stable Rust to destructure a `Box` in a match
-                pattern. The unstable `box` keyword can be used to create a `Box`. An example
-                usage would be:
+            These are imported as if they were FFI functions, with the special
+            `rust-intrinsic` ABI. For example, if one was in a freestanding
+            context, but wished to be able to `transmute` between types, and
+            perform efficient pointer arithmetic, one would import those functions
+            via a declaration like
 
-                ```rust
-                #![feature(box_syntax)]
+            ```rust
+            #![feature(intrinsics)]
+            #![allow(internal_features)]
+            # fn main() {}
 
-                fn main() {
-                    let b = box 5;
-                }
-                ```
+            extern "rust-intrinsic" {
+                fn transmute<T, U>(x: T) -> U;
 
-            "##]],
+                fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
+            }
+            ```
+
+            As with any other FFI functions, these are always `unsafe` to call.
+
+        "#]],
     )
 }
 
