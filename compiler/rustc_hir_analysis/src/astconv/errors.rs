@@ -191,10 +191,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .collect::<Vec<_>>()[..]
             {
                 let trait_name = self.tcx().def_path_str(*best_trait);
+                let an = if suggested_name != assoc_name.name { "a similarly named" } else { "an" };
                 err.span_label(
                     assoc_name.span,
                     format!(
-                        "there is a similarly named associated type `{suggested_name}` in the \
+                        "there is {an} associated type `{suggested_name}` in the \
                          trait `{trait_name}`",
                     ),
                 );
