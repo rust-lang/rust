@@ -340,7 +340,7 @@ pub trait LayoutCalculator {
                 ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
 
             let count =
-                niche_variants.end().index() as u128 - niche_variants.start().index() as u128;
+                (niche_variants.end().index() as u128 - niche_variants.start().index() as u128) + 1;
 
             // Find the field with the largest niche
             let (field_index, niche, (niche_start, niche_scalar)) = variants[largest_variant_index]
