@@ -3368,6 +3368,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// ### What it does
     /// Looks for calls to [`Stdin::read_line`] to read a line from the standard input
     /// into a string, then later attempting to parse this string into a type without first trimming it, which will
     /// always fail because the string has a trailing newline in it.
