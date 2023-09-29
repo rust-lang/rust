@@ -7,7 +7,8 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use hir::def::DefKind;
+use crate::rustc_smir::hir::def::DefKind;
+use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, Region};
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -1500,9 +1501,39 @@ impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
 impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
     type T = stable_mir::ty::Region;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        // FIXME: add a real implementation of stable regions
-        opaque(self)
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        Region { kind: self.kind().stable(tables) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
+    type T = stable_mir::ty::RegionKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::RegionKind;
+        match self {
+            ty::ReEarlyBound(early_reg) => RegionKind::ReEarlyBound(EarlyBoundRegion {
+                def_id: tables.region_def(early_reg.def_id),
+                index: early_reg.index,
+                name: early_reg.name.to_string(),
+            }),
+            ty::ReLateBound(db_index, bound_reg) => RegionKind::ReLateBound(
+                db_index.as_u32(),
+                BoundRegion { var: bound_reg.var.as_u32(), kind: bound_reg.kind.stable(tables) },
+            ),
+            ty::ReStatic => RegionKind::ReStatic,
+            ty::RePlaceholder(place_holder) => {
+                RegionKind::RePlaceholder(stable_mir::ty::Placeholder {
+                    universe: place_holder.universe.as_u32(),
+                    bound: BoundRegion {
+                        var: place_holder.bound.var.as_u32(),
+                        kind: place_holder.bound.kind.stable(tables),
+                    },
+                })
+            }
+            ty::ReErased => RegionKind::ReErased,
+            _ => unreachable!("{self:?}"),
+        }
     }
 }
 
