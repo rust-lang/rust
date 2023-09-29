@@ -51,7 +51,7 @@ pub struct LintGroup {
 
     let contents = sourcegen::add_preamble("sourcegen_lints", sourcegen::reformat(contents));
 
-    let destination = project_root().join("crates/ide_db/src/generated/lints.rs");
+    let destination = project_root().join("crates/ide-db/src/generated/lints.rs");
     sourcegen::ensure_file_contents(destination.as_path(), &contents);
 }
 
@@ -196,7 +196,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
     let mut clippy_lints: Vec<ClippyLint> = Vec::new();
     let mut clippy_groups: std::collections::BTreeMap<String, Vec<String>> = Default::default();
 
-    for line in file_content.lines().map(|line| line.trim()) {
+    for line in file_content.lines().map(str::trim) {
         if let Some(line) = line.strip_prefix(r#""id": ""#) {
             let clippy_lint = ClippyLint {
                 id: line.strip_suffix(r#"","#).expect("should be suffixed by comma").into(),
@@ -211,12 +211,19 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
                     .push(clippy_lints.last().unwrap().id.clone());
             }
         } else if let Some(line) = line.strip_prefix(r#""docs": ""#) {
-            let prefix_to_strip = r#" ### What it does"#;
-            let line = match line.strip_prefix(prefix_to_strip) {
-                Some(line) => line,
+            let header = "### What it does";
+            let line = match line.find(header) {
+                Some(idx) => &line[idx + header.len()..],
                 None => {
-                    eprintln!("unexpected clippy prefix for {}", clippy_lints.last().unwrap().id);
-                    continue;
+                    let id = &clippy_lints.last().unwrap().id;
+                    // these just don't have the common header
+                    let allowed = ["allow_attributes", "read_line_without_trim"];
+                    if allowed.contains(&id.as_str()) {
+                        line
+                    } else {
+                        eprintln!("\nunexpected clippy prefix for {id}, line={line:?}\n",);
+                        continue;
+                    }
                 }
             };
             // Only take the description, any more than this is a lot of additional data we would embed into the exe
