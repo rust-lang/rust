@@ -52,31 +52,6 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     configure_main(tcx, &ctxt)
 }
 
-// Beware, this is duplicated in `librustc_builtin_macros/test_harness.rs`
-// (with `ast::Item`), so make sure to keep them in sync.
-// A small optimization was added so that hir::Item is fetched only when needed.
-// An equivalent optimization was not applied to the duplicated code in test_harness.rs.
-fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> EntryPointType {
-    let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-    if attr::contains_name(attrs, sym::start) {
-        EntryPointType::Start
-    } else if attr::contains_name(attrs, sym::rustc_main) {
-        EntryPointType::RustcMainAttr
-    } else {
-        if let Some(name) = ctxt.tcx.opt_item_name(id.owner_id.to_def_id())
-            && name == sym::main {
-            if at_root {
-                // This is a top-level function so can be `main`.
-                EntryPointType::MainNamed
-            } else {
-                EntryPointType::OtherMain
-            }
-        } else {
-            EntryPointType::None
-        }
-    }
-}
-
 fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Option<Span> {
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
     attr::find_by_name(attrs, sym).map(|attr| attr.span)
@@ -85,7 +60,13 @@ fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Opti
 fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
     let at_root = ctxt.tcx.opt_local_parent(id.owner_id.def_id) == Some(CRATE_DEF_ID);
 
-    match entry_point_type(ctxt, id, at_root) {
+    let attrs = ctxt.tcx.hir().attrs(id.hir_id());
+    let entry_point_type = rustc_ast::entry::entry_point_type(
+        attrs,
+        at_root,
+        ctxt.tcx.opt_item_name(id.owner_id.to_def_id()),
+    );
+    match entry_point_type {
         EntryPointType::None => {
             if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
                 ctxt.tcx.sess.emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });

@@ -169,29 +169,15 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
     }
 }
 
-// Beware, this is duplicated in librustc_passes/entry.rs (with
-// `rustc_hir::Item`), so make sure to keep them in sync.
 fn entry_point_type(item: &ast::Item, at_root: bool) -> EntryPointType {
     match item.kind {
         ast::ItemKind::Fn(..) => {
-            if attr::contains_name(&item.attrs, sym::start) {
-                EntryPointType::Start
-            } else if attr::contains_name(&item.attrs, sym::rustc_main) {
-                EntryPointType::RustcMainAttr
-            } else if item.ident.name == sym::main {
-                if at_root {
-                    // This is a top-level function so can be 'main'
-                    EntryPointType::MainNamed
-                } else {
-                    EntryPointType::OtherMain
-                }
-            } else {
-                EntryPointType::None
-            }
+            rustc_ast::entry::entry_point_type(&item.attrs, at_root, Some(item.ident.name))
         }
         _ => EntryPointType::None,
     }
 }
+
 /// A folder used to remove any entry points (like fn main) because the harness
 /// generator will provide its own
 struct EntryPointCleaner<'a> {
