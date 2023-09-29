@@ -741,7 +741,7 @@ impl String {
             return Err(FromUtf16Error(()));
         }
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
-            (true, (&[], v, &[])) => Self::from_utf16(v),
+            (true, ([], v, [])) => Self::from_utf16(v),
             _ => decode_utf16(v.array_chunks::<2>().copied().map(u16::from_le_bytes))
                 .collect::<Result<_, _>>()
                 .map_err(|_| FromUtf16Error(())),
@@ -777,8 +777,8 @@ impl String {
     #[unstable(feature = "str_from_utf16_endian", issue = "none", reason = "recently added")]
     pub fn from_utf16le_lossy(v: &[u8]) -> String {
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
-            (true, (&[], v, &[])) => Self::from_utf16_lossy(v),
-            (true, (&[], v, &[_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
+            (true, ([], v, [])) => Self::from_utf16_lossy(v),
+            (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
             _ => {
                 let mut iter = v.array_chunks::<2>();
                 let string = decode_utf16(iter.by_ref().copied().map(u16::from_le_bytes))
@@ -816,7 +816,7 @@ impl String {
             return Err(FromUtf16Error(()));
         }
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
-            (true, (&[], v, &[])) => Self::from_utf16(v),
+            (true, ([], v, [])) => Self::from_utf16(v),
             _ => decode_utf16(v.array_chunks::<2>().copied().map(u16::from_be_bytes))
                 .collect::<Result<_, _>>()
                 .map_err(|_| FromUtf16Error(())),
@@ -852,8 +852,8 @@ impl String {
     #[unstable(feature = "str_from_utf16_endian", issue = "none", reason = "recently added")]
     pub fn from_utf16be_lossy(v: &[u8]) -> String {
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
-            (true, (&[], v, &[])) => Self::from_utf16_lossy(v),
-            (true, (&[], v, &[_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
+            (true, ([], v, [])) => Self::from_utf16_lossy(v),
+            (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
             _ => {
                 let mut iter = v.array_chunks::<2>();
                 let string = decode_utf16(iter.by_ref().copied().map(u16::from_be_bytes))
