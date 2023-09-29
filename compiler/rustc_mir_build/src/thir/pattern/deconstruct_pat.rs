@@ -50,6 +50,7 @@ use std::ops::RangeInclusive;
 
 use smallvec::{smallvec, SmallVec};
 
+use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_index::Idx;
@@ -65,7 +66,6 @@ use rustc_target::abi::{FieldIdx, Integer, Size, VariantIdx, FIRST_VARIANT};
 use self::Constructor::*;
 use self::SliceKind::*;
 
-use super::compare_const_vals;
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
 use crate::errors::{Overlap, OverlappingRangeEndpoints};
 
@@ -619,7 +619,8 @@ pub(super) enum Constructor<'tcx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    FloatRange(mir::Const<'tcx>, mir::Const<'tcx>, RangeEnd),
+    F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
+    F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(mir::Const<'tcx>),
     /// Array and slice patterns.
@@ -634,7 +635,9 @@ pub(super) enum Constructor<'tcx> {
     /// Stands for constructors that are not seen in the matrix, as explained in the documentation
     /// for [`SplitWildcard`]. The carried `bool` is used for the `non_exhaustive_omitted_patterns`
     /// lint.
-    Missing { nonexhaustive_enum_missing_real_variants: bool },
+    Missing {
+        nonexhaustive_enum_missing_real_variants: bool,
+    },
     /// Wildcard pattern.
     Wildcard,
     /// Or-pattern.
@@ -722,7 +725,8 @@ impl<'tcx> Constructor<'tcx> {
             },
             Slice(slice) => slice.arity(),
             Str(..)
-            | FloatRange(..)
+            | F32Range(..)
+            | F64Range(..)
             | IntRange(..)
             | NonExhaustive
             | Opaque
@@ -795,21 +799,21 @@ impl<'tcx> Constructor<'tcx> {
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
-            (
-                FloatRange(self_from, self_to, self_end),
-                FloatRange(other_from, other_to, other_end),
-            ) => {
-                match (
-                    compare_const_vals(pcx.cx.tcx, *self_to, *other_to, pcx.cx.param_env),
-                    compare_const_vals(pcx.cx.tcx, *self_from, *other_from, pcx.cx.param_env),
-                ) {
-                    (Some(to), Some(from)) => {
-                        (from == Ordering::Greater || from == Ordering::Equal)
-                            && (to == Ordering::Less
-                                || (other_end == self_end && to == Ordering::Equal))
+            (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
                     }
-                    _ => false,
-                }
+            }
+            (F64Range(self_from, self_to, self_end), F64Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
             }
             (Str(self_val), Str(other_val)) => {
                 // FIXME Once valtrees are available we can directly use the bytes
@@ -859,7 +863,7 @@ impl<'tcx> Constructor<'tcx> {
                 .any(|other| slice.is_covered_by(other)),
             // This constructor is never covered by anything else
             NonExhaustive => false,
-            Str(..) | FloatRange(..) | Opaque | Missing { .. } | Wildcard | Or => {
+            Str(..) | F32Range(..) | F64Range(..) | Opaque | Missing { .. } | Wildcard | Or => {
                 span_bug!(pcx.span, "found unexpected ctor in all_ctors: {:?}", self)
             }
         }
@@ -1203,7 +1207,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, pcx),
             },
             Str(..)
-            | FloatRange(..)
+            | F32Range(..)
+            | F64Range(..)
             | IntRange(..)
             | NonExhaustive
             | Opaque
@@ -1348,8 +1353,19 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     fields = Fields::empty();
                 } else {
                     match pat.ty.kind() {
-                        ty::Float(_) => {
-                            ctor = FloatRange(*value, *value, RangeEnd::Included);
+                        ty::Float(float_ty) => {
+                            let bits = value.eval_bits(cx.tcx, cx.param_env);
+                            use rustc_apfloat::Float;
+                            ctor = match float_ty {
+                                ty::FloatTy::F32 => {
+                                    let value = rustc_apfloat::ieee::Single::from_bits(bits);
+                                    F32Range(value, value, RangeEnd::Included)
+                                }
+                                ty::FloatTy::F64 => {
+                                    let value = rustc_apfloat::ieee::Double::from_bits(bits);
+                                    F64Range(value, value, RangeEnd::Included)
+                                }
+                            };
                             fields = Fields::empty();
                         }
                         ty::Ref(_, t, _) if t.is_str() => {
@@ -1376,17 +1392,25 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             &PatKind::Range(box PatRange { lo, hi, end }) => {
+                use rustc_apfloat::Float;
                 let ty = lo.ty();
-                ctor = if let Some(int_range) = IntRange::from_range(
-                    cx.tcx,
-                    lo.eval_bits(cx.tcx, cx.param_env),
-                    hi.eval_bits(cx.tcx, cx.param_env),
-                    ty,
-                    &end,
-                ) {
-                    IntRange(int_range)
-                } else {
-                    FloatRange(lo, hi, end)
+                let lo = lo.eval_bits(cx.tcx, cx.param_env);
+                let hi = hi.eval_bits(cx.tcx, cx.param_env);
+                ctor = match ty.kind() {
+                    ty::Char | ty::Int(_) | ty::Uint(_) => {
+                        IntRange(IntRange::from_range(cx.tcx, lo, hi, ty, &end).unwrap())
+                    }
+                    ty::Float(ty::FloatTy::F32) => {
+                        let lo = rustc_apfloat::ieee::Single::from_bits(lo);
+                        let hi = rustc_apfloat::ieee::Single::from_bits(hi);
+                        F32Range(lo, hi, *end)
+                    }
+                    ty::Float(ty::FloatTy::F64) => {
+                        let lo = rustc_apfloat::ieee::Double::from_bits(lo);
+                        let hi = rustc_apfloat::ieee::Double::from_bits(hi);
+                        F64Range(lo, hi, *end)
+                    }
+                    _ => bug!("invalid type for range pattern: {}", ty),
                 };
                 fields = Fields::empty();
             }
@@ -1491,14 +1515,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            &FloatRange(lo, hi, end) => PatKind::Range(Box::new(PatRange { lo, hi, end })),
             IntRange(range) => return range.to_pat(cx.tcx, self.ty),
             Wildcard | NonExhaustive => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
             ),
-            Opaque | Or => {
+            F32Range(..) | F64Range(..) | Opaque | Or => {
                 bug!("can't convert to pattern: {:?}", self)
             }
         };
@@ -1673,11 +1696,8 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 write!(f, "]")
             }
-            &FloatRange(lo, hi, end) => {
-                write!(f, "{lo}")?;
-                write!(f, "{end}")?;
-                write!(f, "{hi}")
-            }
+            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
+            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             IntRange(range) => write!(f, "{range:?}"), // Best-effort, will render e.g. `false` as `0..=0`
             Wildcard | Missing { .. } | NonExhaustive => write!(f, "_ : {:?}", self.ty),
             Or => {
