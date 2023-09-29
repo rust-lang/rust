@@ -1,14 +1,13 @@
-use super::*;
 use std::fmt::Write;
 use std::{borrow::Borrow, cmp, iter, ops::Bound};
 
-#[cfg(feature = "randomize")]
-use rand::{seq::SliceRandom, SeedableRng};
-#[cfg(feature = "randomize")]
-use rand_xoshiro::Xoshiro128StarStar;
-
 use tracing::debug;
 
+use crate::{
+    Abi, AbiAndPrefAlign, Align, FieldIdx, FieldsShape, IndexSlice, IndexVec, Integer, Layout,
+    LayoutS, Niche, NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding,
+    TargetDataLayout, VariantIdx, Variants, WrappingRange, FIRST_VARIANT,
+};
 pub trait LayoutCalculator {
     type TargetDataLayoutRef: Borrow<TargetDataLayout>;
 
@@ -587,7 +586,7 @@ pub trait LayoutCalculator {
 
         let tag_mask = ity.size().unsigned_int_max();
         let tag = Scalar::Initialized {
-            value: Int(ity, signed),
+            value: Primitive::Int(ity, signed),
             valid_range: WrappingRange {
                 start: (min as u128 & tag_mask),
                 end: (max as u128 & tag_mask),
@@ -873,9 +872,12 @@ fn univariant(
         if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
             #[cfg(feature = "randomize")]
             {
+                use rand::{seq::SliceRandom, SeedableRng};
                 // `ReprOptions.layout_seed` is a deterministic seed we can use to randomize field
                 // ordering.
-                let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed.as_u64());
+                let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(
+                    repr.field_shuffle_seed.as_u64(),
+                );
 
                 // Shuffle the ordering of the fields.
                 optimizing.shuffle(&mut rng);

@@ -1,3 +1,5 @@
+// We want to be able to build this crate with a stable compiler, so no
+// `#![feature]` attributes should be added.
 #![cfg_attr(feature = "nightly", feature(step_trait, rustc_attrs, min_specialization))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
@@ -27,9 +29,6 @@ pub use layout::LayoutCalculator;
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
 pub trait HashStableContext {}
-
-use Integer::*;
-use Primitive::*;
 
 bitflags! {
     #[derive(Default)]
@@ -342,6 +341,7 @@ impl TargetDataLayout {
 
     #[inline]
     pub fn ptr_sized_integer(&self) -> Integer {
+        use Integer::*;
         match self.pointer_size.bits() {
             16 => I16,
             32 => I32,
@@ -786,6 +786,7 @@ pub enum Integer {
 impl Integer {
     #[inline]
     pub fn size(self) -> Size {
+        use Integer::*;
         match self {
             I8 => Size::from_bytes(1),
             I16 => Size::from_bytes(2),
@@ -806,6 +807,7 @@ impl Integer {
     }
 
     pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAndPrefAlign {
+        use Integer::*;
         let dl = cx.data_layout();
 
         match self {
@@ -820,6 +822,7 @@ impl Integer {
     /// Returns the largest signed value that can be represented by this Integer.
     #[inline]
     pub fn signed_max(self) -> i128 {
+        use Integer::*;
         match self {
             I8 => i8::MAX as i128,
             I16 => i16::MAX as i128,
@@ -832,6 +835,7 @@ impl Integer {
     /// Finds the smallest Integer type which can represent the signed value.
     #[inline]
     pub fn fit_signed(x: i128) -> Integer {
+        use Integer::*;
         match x {
             -0x0000_0000_0000_0080..=0x0000_0000_0000_007f => I8,
             -0x0000_0000_0000_8000..=0x0000_0000_0000_7fff => I16,
@@ -844,6 +848,7 @@ impl Integer {
     /// Finds the smallest Integer type which can represent the unsigned value.
     #[inline]
     pub fn fit_unsigned(x: u128) -> Integer {
+        use Integer::*;
         match x {
             0..=0x0000_0000_0000_00ff => I8,
             0..=0x0000_0000_0000_ffff => I16,
@@ -855,6 +860,7 @@ impl Integer {
 
     /// Finds the smallest integer with the given alignment.
     pub fn for_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Option<Integer> {
+        use Integer::*;
         let dl = cx.data_layout();
 
         [I8, I16, I32, I64, I128].into_iter().find(|&candidate| {
@@ -864,6 +870,7 @@ impl Integer {
 
     /// Find the largest integer with the given alignment or less.
     pub fn approximate_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Integer {
+        use Integer::*;
         let dl = cx.data_layout();
 
         // FIXME(eddyb) maybe include I128 in the future, when it works everywhere.
@@ -909,6 +916,7 @@ pub enum Primitive {
 
 impl Primitive {
     pub fn size<C: HasDataLayout>(self, cx: &C) -> Size {
+        use Primitive::*;
         let dl = cx.data_layout();
 
         match self {
@@ -923,6 +931,7 @@ impl Primitive {
     }
 
     pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAndPrefAlign {
+        use Primitive::*;
         let dl = cx.data_layout();
 
         match self {
@@ -1027,10 +1036,11 @@ pub enum Scalar {
 impl Scalar {
     #[inline]
     pub fn is_bool(&self) -> bool {
+        use Integer::*;
         matches!(
             self,
             Scalar::Initialized {
-                value: Int(I8, false),
+                value: Primitive::Int(I8, false),
                 valid_range: WrappingRange { start: 0, end: 1 }
             }
         )
