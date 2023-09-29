@@ -803,8 +803,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if tcx.is_foreign_item(def_id) {
                 throw_unsup_format!("foreign thread-local statics are not supported");
             }
-            // We don't give a span -- statics don't need that, they cannot be generic or associated.
-            let allocation = this.ctfe_query(None, |tcx| tcx.eval_static_initializer(def_id))?;
+            let allocation = this.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
             let mut allocation = allocation.inner().clone();
             // This allocation will be deallocated when the thread dies, so it is not in read-only memory.
             allocation.mutability = Mutability::Mut;
