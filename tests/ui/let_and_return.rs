@@ -174,6 +174,25 @@ mod issue_5729 {
     }
 }
 
+mod issue_11335 {
+    pub enum E<T> {
+        A(T),
+        B(T),
+    }
+
+    impl<T> E<T> {
+        pub fn inner(&self) -> &T {
+            let result = match self {
+                E::A(x) => x,
+                E::B(x) => x,
+            };
+
+            result
+            //~^ ERROR: returning the result of a `let` binding from a block
+        }
+    }
+}
+
 // https://github.com/rust-lang/rust-clippy/issues/11167
 macro_rules! fn_in_macro {
     ($b:block) => {
