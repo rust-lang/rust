@@ -3,6 +3,7 @@
 
 #![feature(rustc_private)]
 
+extern crate rustc_data_structures;
 extern crate rustc_session;
 
 use rustc_session::lint::{LintPass, LintVec};

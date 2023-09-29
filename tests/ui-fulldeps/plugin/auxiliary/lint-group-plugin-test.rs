@@ -2,6 +2,7 @@
 
 #![feature(rustc_private)]
 
+extern crate rustc_data_structures;
 // Load rustc as a plugin to get macros.
 extern crate rustc_driver;
 extern crate rustc_hir;

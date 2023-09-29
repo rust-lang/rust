@@ -3776,6 +3776,7 @@ impl_lint_pass!(Methods => [
     ITER_OUT_OF_BOUNDS,
     PATH_ENDS_WITH_EXT,
     REDUNDANT_AS_STR,
+    crate::redundant_clone::REDUNDANT_CLONE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.

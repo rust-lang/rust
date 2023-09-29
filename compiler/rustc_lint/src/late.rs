@@ -14,14 +14,16 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
-use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
+use crate::{passes::LateLintPassObject, LateContext, LateLintPass, Level, LintId, LintStore};
 use rustc_ast as ast;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::join;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit as hir_visit;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::lint::{reveal_actual_level, LintLevelSource};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
 use rustc_span::Span;
@@ -315,8 +317,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
 
 // Combines multiple lint passes into a single pass, at runtime. Each
 // `check_foo` method in `$methods` within this pass simply calls `check_foo`
-// once per `$pass`. Compare with `declare_combined_late_lint_pass`, which is
-// similar, but combines lint passes at compile time.
+// once per `$pass`.
 struct RuntimeCombinedLateLintPass<'a, 'tcx> {
     passes: &'a mut [LateLintPassObject<'tcx>],
 }
@@ -333,6 +334,8 @@ macro_rules! impl_late_lint_pass {
         impl<'tcx> LateLintPass<'tcx> for RuntimeCombinedLateLintPass<'_, 'tcx> {
             $(fn $f(&mut self, context: &LateContext<'tcx>, $($param: $arg),*) {
                 for pass in self.passes.iter_mut() {
+                    #[cfg(debug_assertions)]
+                    context.permitted_lints.set(pass.lint_names());
                     pass.$f(context, $($param),*);
                 }
             })*
@@ -342,11 +345,7 @@ macro_rules! impl_late_lint_pass {
 
 crate::late_lint_methods!(impl_late_lint_pass, []);
 
-pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    module_def_id: LocalModDefId,
-    builtin_lints: T,
-) {
+pub fn late_lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let context = LateContext {
         tcx,
         enclosing_body: None,
@@ -357,20 +356,20 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         last_node_with_lint_attrs: tcx.hir().local_def_id_to_hir_id(module_def_id),
         generics: None,
         only_module: true,
+        #[cfg(debug_assertions)]
+        permitted_lints: Cell::new(None),
     };
 
-    // Note: `passes` is often empty. In that case, it's faster to run
-    // `builtin_lints` directly rather than bundling it up into the
-    // `RuntimeCombinedLateLintPass`.
-    let mut passes: Vec<_> =
-        unerased_lint_store(tcx).late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-    if passes.is_empty() {
-        late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
-    } else {
-        passes.push(Box::new(builtin_lints));
-        let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
-        late_lint_mod_inner(tcx, module_def_id, context, pass);
-    }
+    let enabled_lints = tcx.enabled_lints(());
+
+    let mut passes: Vec<_> = unerased_lint_store(tcx)
+        .late_module_passes
+        .iter()
+        .map(|mk_pass| (mk_pass)(tcx))
+        .filter(|pass| pass.is_enabled(enabled_lints))
+        .collect();
+    let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+    late_lint_mod_inner(tcx, module_def_id, context, pass);
 }
 
 fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
@@ -398,9 +397,18 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 }
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
+    // Trigger check for duplicate diagnostic items
+    let _ = tcx.all_diagnostic_items(());
+
+    let enabled_lints = tcx.enabled_lints(());
+
     // Note: `passes` is often empty.
-    let mut passes: Vec<_> =
-        unerased_lint_store(tcx).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
+    let mut passes: Vec<_> = unerased_lint_store(tcx)
+        .late_passes
+        .iter()
+        .map(|mk_pass| (mk_pass)(tcx))
+        .filter(|pass| pass.is_enabled(enabled_lints))
+        .collect();
 
     if passes.is_empty() {
         return;
@@ -416,6 +424,8 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
         generics: None,
         only_module: false,
+        #[cfg(debug_assertions)]
+        permitted_lints: Cell::new(None),
     };
 
     let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
@@ -455,4 +465,48 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
             });
         },
     );
+}
+
+pub(crate) fn enabled_lints(tcx: TyCtxt<'_>) -> FxHashSet<LintId> {
+    let get_level = |spec: Option<&FxHashMap<_, _>>, lint| match spec.and_then(|m| m.get(&lint)) {
+        Some(&(level, source)) => (Some(level), source),
+        None => (None, LintLevelSource::Default),
+    };
+    let may_lint_shallow = |spec: Option<&FxHashMap<_, _>>, level, mut source, lint| {
+        let actual =
+            reveal_actual_level(level, &mut source, tcx.sess, lint, |lint| get_level(spec, lint));
+
+        actual > Level::Allow
+    };
+
+    let root_lints =
+        tcx.shallow_lint_levels_on(hir::CRATE_OWNER_ID).specs.get(&hir::CRATE_HIR_ID.local_id);
+
+    let mut enabled: FxHashSet<_> = unerased_lint_store(tcx)
+        .get_lints()
+        .iter()
+        .map(|lint| LintId::of(lint))
+        .filter(|&lint| {
+            let (level, source) = get_level(root_lints, lint);
+            may_lint_shallow(root_lints, level, source, lint)
+        })
+        .collect();
+
+    for (def_id, maybe_owner) in tcx.hir().krate().owners.iter_enumerated() {
+        if let hir::MaybeOwner::Owner(_) = maybe_owner {
+            enabled.extend(
+                tcx.shallow_lint_levels_on(hir::OwnerId { def_id })
+                    .specs
+                    .values()
+                    .flat_map(|spec| {
+                        spec.iter().filter(|&(&lint, &(level, source))| {
+                            may_lint_shallow(Some(spec), Some(level), source, lint)
+                        })
+                    })
+                    .map(|(&lint, _)| lint),
+            );
+        }
+    }
+
+    enabled
 }

@@ -35,8 +35,6 @@ fn main() {
     x[const { idx4() }]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
     const { &ARR[idx()] }; // Ok, should not produce stderr, since `suppress-restriction-lint-in-const` is set true.
     const { &ARR[idx4()] }; // Ok, should not produce stderr, since `suppress-restriction-lint-in-const` is set true.
-    //
-    //~^^ ERROR: failed
 
     let y = &x;
     y[0]; // Ok, referencing shouldn't affect this lint. See the issue 6021

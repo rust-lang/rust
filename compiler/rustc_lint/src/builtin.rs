@@ -7,10 +7,7 @@
 //! To add a new lint to rustc, declare it here using `declare_lint!()`.
 //! Then add code to emit the new lint in the appropriate circumstances.
 //! You can do that in an existing `LintPass` if it makes sense, or in a
-//! new `LintPass`, or using `Session::add_lint` elsewhere in the
-//! compiler. Only do the latter if the check can't be written cleanly as a
-//! `LintPass` (also, note that such lints will need to be defined in
-//! `rustc_session::lint::builtin`, not here).
+//! new `LintPass`.
 //!
 //! If you define a new `EarlyLintPass`, you will also need to add it to the
 //! `add_early_builtin!` or `add_early_builtin_with_new!` invocation in
@@ -39,13 +36,14 @@ use crate::{
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
         BuiltinWhileTrue, SuggestChangingAssocTypes,
     },
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
+    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext, LintId,
 };
 use rustc_ast::attr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DecorateLint, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
@@ -1523,6 +1521,9 @@ declare_lint_pass!(
     /// unused within this crate, even though downstream crates can't use it
     /// without producing an error.
     UnusedBrokenConst => []
+    fn is_enabled(&self, _: &FxHashSet<LintId>) -> bool {
+        true
+    }
 );
 
 impl<'tcx> LateLintPass<'tcx> for UnusedBrokenConst {

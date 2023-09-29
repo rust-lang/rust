@@ -8,7 +8,7 @@ extern crate rustc_macros;
 pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
@@ -444,7 +444,7 @@ impl std::hash::Hash for LintId {
 
 impl LintId {
     /// Gets the `LintId` for a `Lint`.
-    pub fn of(lint: &'static Lint) -> LintId {
+    pub const fn of(lint: &'static Lint) -> LintId {
         LintId { lint }
     }
 
@@ -789,14 +789,41 @@ pub type LintVec = Vec<&'static Lint>;
 
 pub trait LintPass {
     fn name(&self) -> &'static str;
+
+    fn is_enabled(&self, _enabled_lints: &FxHashSet<LintId>) -> bool {
+        true
+    }
+
+    #[cfg(debug_assertions)]
+    fn lint_names(&self) -> Option<&'static [&'static str]> {
+        None
+    }
 }
 
 /// Implements `LintPass for $ty` with the given list of `Lint` statics.
 #[macro_export]
 macro_rules! impl_lint_pass {
     ($ty:ty => [$($lint:expr),* $(,)?]) => {
+        $crate::impl_lint_pass! {
+            $ty => [$($lint),*]
+            fn is_enabled(&self, enabled_lints: &rustc_data_structures::fx::FxHashSet<$crate::LintId>) -> bool {
+                [$($lint),*].into_iter()
+                    .any(|lint| enabled_lints.contains(&$crate::LintId::of(lint)))
+            }
+        }
+    };
+    ($ty:ty => [$($lint:expr),* $(,)?] $($method:tt)+) => {
+        #[allow(rustc::lint_pass_impl_without_macro)]
         impl $crate::LintPass for $ty {
             fn name(&self) -> &'static str { stringify!($ty) }
+
+            $($method)+
+
+            #[cfg(debug_assertions)]
+            fn lint_names(&self) -> Option<&'static [&'static str]> {
+                static NAMES: &[&str] = &[$($lint.name),*];
+                Some(NAMES)
+            }
         }
         impl $ty {
             pub fn get_lints() -> $crate::LintVec { vec![$($lint),*] }
@@ -808,8 +835,11 @@ macro_rules! impl_lint_pass {
 /// To the right of `=>` a comma separated list of `Lint` statics is given.
 #[macro_export]
 macro_rules! declare_lint_pass {
-    ($(#[$m:meta])* $name:ident => [$($lint:expr),* $(,)?]) => {
+    ($(#[$m:meta])* $name:ident => [$($lint:path),* $(,)?] $($tt:tt)*) => {
         $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
-        $crate::impl_lint_pass!($name => [$($lint),*]);
+        $crate::impl_lint_pass!(
+            $name => [$($lint),*]
+            $($tt)*
+        );
     };
 }

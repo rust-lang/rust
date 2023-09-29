@@ -3,6 +3,7 @@
 #![feature(rustc_private)]
 #![deny(rustc::lint_pass_impl_without_macro)]
 
+extern crate rustc_data_structures;
 extern crate rustc_middle;
 extern crate rustc_session;
 

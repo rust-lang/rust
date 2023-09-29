@@ -88,9 +88,7 @@ pub use array_into_iter::ARRAY_INTO_ITER;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
-use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
 };
@@ -138,11 +136,11 @@ pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
     expect::provide(providers);
     foreign_modules::provide(providers);
-    *providers = Providers { lint_mod, ..*providers };
-}
-
-fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+    *providers = Providers {
+        lint_mod: late_lint_mod,
+        enabled_lints: |tcx, ()| late::enabled_lints(tcx),
+        ..*providers
+    };
 }
 
 early_lint_methods!(
@@ -180,64 +178,6 @@ early_lint_methods!(
     ]
 );
 
-late_lint_methods!(
-    declare_combined_late_lint_pass,
-    [
-        BuiltinCombinedModuleLateLintPass,
-        [
-            ForLoopsOverFallibles: ForLoopsOverFallibles,
-            DerefIntoDynSupertrait: DerefIntoDynSupertrait,
-            DropForgetUseless: DropForgetUseless,
-            HardwiredLints: HardwiredLints,
-            ImproperCTypesDeclarations: ImproperCTypesDeclarations,
-            ImproperCTypesDefinitions: ImproperCTypesDefinitions,
-            InvalidFromUtf8: InvalidFromUtf8,
-            VariantSizeDifferences: VariantSizeDifferences,
-            BoxPointers: BoxPointers,
-            PathStatements: PathStatements,
-            LetUnderscore: LetUnderscore,
-            InvalidReferenceCasting: InvalidReferenceCasting,
-            // Depends on referenced function signatures in expressions
-            UnusedResults: UnusedResults,
-            NonUpperCaseGlobals: NonUpperCaseGlobals,
-            NonShorthandFieldPatterns: NonShorthandFieldPatterns,
-            UnusedAllocation: UnusedAllocation,
-            // Depends on types used in type definitions
-            MissingCopyImplementations: MissingCopyImplementations,
-            // Depends on referenced function signatures in expressions
-            PtrNullChecks: PtrNullChecks,
-            MutableTransmutes: MutableTransmutes,
-            TypeAliasBounds: TypeAliasBounds,
-            TrivialConstraints: TrivialConstraints,
-            TypeLimits: TypeLimits::new(),
-            NonSnakeCase: NonSnakeCase,
-            InvalidNoMangleItems: InvalidNoMangleItems,
-            // Depends on effective visibilities
-            UnreachablePub: UnreachablePub,
-            ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
-            InvalidValue: InvalidValue,
-            DerefNullPtr: DerefNullPtr,
-            // May Depend on constants elsewhere
-            UnusedBrokenConst: UnusedBrokenConst,
-            UnstableFeatures: UnstableFeatures,
-            UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
-            ArrayIntoIter: ArrayIntoIter::default(),
-            DropTraitConstraints: DropTraitConstraints,
-            TemporaryCStringAsPtr: TemporaryCStringAsPtr,
-            NonPanicFmt: NonPanicFmt,
-            NoopMethodCall: NoopMethodCall,
-            EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
-            InvalidAtomicOrdering: InvalidAtomicOrdering,
-            NamedAsmLabels: NamedAsmLabels,
-            OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
-            MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
-            MapUnitFn: MapUnitFn,
-            MissingDebugImplementations: MissingDebugImplementations,
-            MissingDoc: MissingDoc,
-        ]
-    ]
-);
-
 pub fn new_lint_store(internal_lints: bool) -> LintStore {
     let mut lint_store = LintStore::new();
 
@@ -259,10 +199,70 @@ fn register_builtins(store: &mut LintStore) {
         )
     }
 
+    macro_rules! register_late_mode_passes {
+        [$($pass:ident: $constructor:expr,)*] => {{
+            $(
+                store.register_lints(&$pass::get_lints());
+                store.register_late_mod_pass(|_| Box::new($constructor));
+            )*
+        }}
+     }
+
+    register_late_mode_passes! {
+        ForLoopsOverFallibles: ForLoopsOverFallibles,
+        DerefIntoDynSupertrait: DerefIntoDynSupertrait,
+        DropForgetUseless: DropForgetUseless,
+        ImproperCTypesDeclarations: ImproperCTypesDeclarations,
+        ImproperCTypesDefinitions: ImproperCTypesDefinitions,
+        InvalidFromUtf8: InvalidFromUtf8,
+        VariantSizeDifferences: VariantSizeDifferences,
+        BoxPointers: BoxPointers,
+        PathStatements: PathStatements,
+        LetUnderscore: LetUnderscore,
+        InvalidReferenceCasting: InvalidReferenceCasting,
+        // Depends on referenced function signatures in expressions
+        UnusedResults: UnusedResults,
+        NonUpperCaseGlobals: NonUpperCaseGlobals,
+        NonShorthandFieldPatterns: NonShorthandFieldPatterns,
+        UnusedAllocation: UnusedAllocation,
+        // Depends on types used in type definitions
+        MissingCopyImplementations: MissingCopyImplementations,
+        // Depends on referenced function signatures in expressions
+        PtrNullChecks: PtrNullChecks,
+        MutableTransmutes: MutableTransmutes,
+        TypeAliasBounds: TypeAliasBounds,
+        TrivialConstraints: TrivialConstraints,
+        TypeLimits: TypeLimits::new(),
+        NonSnakeCase: NonSnakeCase,
+        InvalidNoMangleItems: InvalidNoMangleItems,
+        // Depends on effective visibilities
+        UnreachablePub: UnreachablePub,
+        ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+        InvalidValue: InvalidValue,
+        DerefNullPtr: DerefNullPtr,
+        // May Depend on constants elsewhere
+        UnusedBrokenConst: UnusedBrokenConst,
+        UnstableFeatures: UnstableFeatures,
+        UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
+        ArrayIntoIter: ArrayIntoIter::default(),
+        DropTraitConstraints: DropTraitConstraints,
+        TemporaryCStringAsPtr: TemporaryCStringAsPtr,
+        NonPanicFmt: NonPanicFmt,
+        NoopMethodCall: NoopMethodCall,
+        EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
+        InvalidAtomicOrdering: InvalidAtomicOrdering,
+        NamedAsmLabels: NamedAsmLabels,
+        OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
+        MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
+        MapUnitFn: MapUnitFn,
+        MissingDebugImplementations: MissingDebugImplementations,
+        MissingDoc: MissingDoc,
+    }
+
     store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
-    store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
     store.register_lints(&foreign_modules::get_lints());
+    store.register_lints(&HardwiredLints::get_lints());
 
     add_lint_group!(
         "nonstandard_style",

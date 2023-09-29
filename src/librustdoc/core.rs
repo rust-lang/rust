@@ -10,7 +10,8 @@ use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
-use rustc_lint::{late_lint_mod, MissingDoc};
+use rustc_lint::builtin::MISSING_DOCS;
+use rustc_lint::LintId;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
@@ -266,7 +267,7 @@ pub(crate) fn create_config(
         override_queries: Some(|_sess, providers| {
             // We do not register late module lints, so this only runs `MissingDoc`.
             // Most lints will require typechecking, so just don't run them.
-            providers.lint_mod = |tcx, module_def_id| late_lint_mod(tcx, module_def_id, MissingDoc);
+            providers.enabled_lints = |_, _| FxHashSet::from_iter([LintId::of(MISSING_DOCS)]);
             // hack so that `used_trait_imports` won't try to call typeck
             providers.used_trait_imports = |_, _| {
                 static EMPTY_SET: LazyLock<UnordSet<LocalDefId>> = LazyLock::new(UnordSet::default);

@@ -13,7 +13,6 @@ use rustc_hir::{def_id::DefId, Expr, ExprKind, GenericArg, PatKind, Path, PathSe
 use rustc_hir::{HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
@@ -284,18 +283,11 @@ impl EarlyLintPass for LintPassImpl {
         if let ast::ItemKind::Impl(box ast::Impl { of_trait: Some(lint_pass), .. }) = &item.kind {
             if let Some(last) = lint_pass.path.segments.last() {
                 if last.ident.name == sym::LintPass {
-                    let expn_data = lint_pass.path.span.ctxt().outer_expn_data();
-                    let call_site = expn_data.call_site;
-                    if expn_data.kind != ExpnKind::Macro(MacroKind::Bang, sym::impl_lint_pass)
-                        && call_site.ctxt().outer_expn_data().kind
-                            != ExpnKind::Macro(MacroKind::Bang, sym::declare_lint_pass)
-                    {
-                        cx.emit_spanned_lint(
-                            LINT_PASS_IMPL_WITHOUT_MACRO,
-                            lint_pass.path.span,
-                            LintPassByHand,
-                        );
-                    }
+                    cx.emit_spanned_lint(
+                        LINT_PASS_IMPL_WITHOUT_MACRO,
+                        lint_pass.path.span,
+                        LintPassByHand,
+                    );
                 }
             }
         }

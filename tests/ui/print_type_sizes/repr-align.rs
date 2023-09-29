@@ -30,3 +30,5 @@ pub struct S {
     c: A,
     d: i8,
 }
+
+fn f(a: A, e: E, s: S) {}

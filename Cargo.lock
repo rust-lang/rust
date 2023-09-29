@@ -4095,6 +4095,7 @@ dependencies = [
  "rustc_graphviz",
  "rustc_hir",
  "rustc_index",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_query_system",
  "rustc_serialize",

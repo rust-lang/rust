@@ -55,7 +55,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::{allocator::AllocatorKind, StrippedCfgItem};
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -70,6 +70,7 @@ use rustc_hir::def_id::{
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
 use rustc_index::IndexVec;
+use rustc_lint_defs::LintId;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{try_get_cached, CacheSelector, QueryCache, QueryMode, QueryState};
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
@@ -913,6 +914,12 @@ rustc_queries! {
     /// Performs lint checking for the module.
     query lint_mod(key: LocalModDefId) -> () {
         desc { |tcx| "linting {}", describe_as_module(key, tcx) }
+    }
+
+    query enabled_lints(key: ()) -> &'tcx FxHashSet<LintId> {
+        arena_cache
+        no_hash
+        desc { "computing enabled lints" }
     }
 
     query check_unused_traits(_: ()) -> () {

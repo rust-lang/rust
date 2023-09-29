@@ -509,6 +509,9 @@ pub struct LateContext<'tcx> {
 
     /// We are only looking at one module
     pub only_module: bool,
+
+    #[cfg(debug_assertions)]
+    pub(super) permitted_lints: Cell<Option<&'static [&'static str]>>,
 }
 
 /// Context for lint checking of the AST, after expansion, before lowering to HIR.
@@ -1067,6 +1070,15 @@ impl<'tcx> LintContext for LateContext<'tcx> {
             &'b mut DiagnosticBuilder<'a, ()>,
         ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
+        #[cfg(debug_assertions)]
+        if let Some(permitted) = self.permitted_lints.get() {
+            assert!(
+                permitted.contains(&lint.name),
+                "unexpected lint {} emitted from pass. permitted: {permitted:?}",
+                lint.name
+            );
+        }
+
         let hir_id = self.last_node_with_lint_attrs;
 
         match span {

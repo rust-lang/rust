@@ -26,6 +26,7 @@ rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc-rayon-core = { version = "0.5.0", optional = true }
