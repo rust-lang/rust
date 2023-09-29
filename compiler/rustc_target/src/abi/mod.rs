@@ -42,8 +42,8 @@ impl<'a, Ty: fmt::Display> fmt::Debug for TyAndLayout<'a, Ty> {
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
-    type Target = &'a LayoutS;
-    fn deref(&self) -> &&'a LayoutS {
+    type Target = &'a LayoutS<FieldIdx>;
+    fn deref(&self) -> &&'a LayoutS<FieldIdx> {
         &self.layout.0.0
     }
 }

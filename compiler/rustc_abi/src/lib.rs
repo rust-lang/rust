@@ -15,7 +15,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::Hash64;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
-use rustc_index::{IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 #[cfg(feature = "nightly")]
@@ -1134,7 +1134,7 @@ rustc_index::newtype_index! {
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub enum FieldsShape {
+pub enum FieldsShape<FieldIdx: Idx> {
     /// Scalar primitives and `!`, which never have fields.
     Primitive,
 
@@ -1174,7 +1174,7 @@ pub enum FieldsShape {
     },
 }
 
-impl FieldsShape {
+impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
     #[inline]
     pub fn count(&self) -> usize {
         match *self {
@@ -1200,7 +1200,7 @@ impl FieldsShape {
                 assert!(i < count, "tried to access field {i} of array with {count} fields");
                 stride * i
             }
-            FieldsShape::Arbitrary { ref offsets, .. } => offsets[FieldIdx::from_usize(i)],
+            FieldsShape::Arbitrary { ref offsets, .. } => offsets[FieldIdx::new(i)],
         }
     }
 
@@ -1212,7 +1212,7 @@ impl FieldsShape {
             }
             FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
             FieldsShape::Arbitrary { ref memory_index, .. } => {
-                memory_index[FieldIdx::from_usize(i)].try_into().unwrap()
+                memory_index[FieldIdx::new(i)].try_into().unwrap()
             }
         }
     }
@@ -1228,7 +1228,7 @@ impl FieldsShape {
         if let FieldsShape::Arbitrary { ref memory_index, .. } = *self {
             if use_small {
                 for (field_idx, &mem_idx) in memory_index.iter_enumerated() {
-                    inverse_small[mem_idx as usize] = field_idx.as_u32() as u8;
+                    inverse_small[mem_idx as usize] = field_idx.index() as u8;
                 }
             } else {
                 inverse_big = memory_index.invert_bijective_mapping();
@@ -1241,7 +1241,7 @@ impl FieldsShape {
                 if use_small {
                     inverse_small[i] as usize
                 } else {
-                    inverse_big[i as u32].as_usize()
+                    inverse_big[i as u32].index()
                 }
             }
         })
@@ -1386,7 +1386,7 @@ impl Abi {
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub enum Variants {
+pub enum Variants<FieldIdx: Idx> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
 
@@ -1400,7 +1400,7 @@ pub enum Variants {
         tag: Scalar,
         tag_encoding: TagEncoding,
         tag_field: usize,
-        variants: IndexVec<VariantIdx, LayoutS>,
+        variants: IndexVec<VariantIdx, LayoutS<FieldIdx>>,
     },
 }
 
@@ -1534,9 +1534,9 @@ rustc_index::newtype_index! {
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub struct LayoutS {
+pub struct LayoutS<FieldIdx: Idx> {
     /// Says where the fields are located within the layout.
-    pub fields: FieldsShape,
+    pub fields: FieldsShape<FieldIdx>,
 
     /// Encodes information about multi-variant layouts.
     /// Even with `Multiple` variants, a layout still has its own fields! Those are then
@@ -1545,7 +1545,7 @@ pub struct LayoutS {
     ///
     /// To access all fields of this layout, both `fields` and the fields of the active variant
     /// must be taken into account.
-    pub variants: Variants,
+    pub variants: Variants<FieldIdx>,
 
     /// The `abi` defines how this data is passed between functions, and it defines
     /// value restrictions via `valid_range`.
@@ -1574,7 +1574,7 @@ pub struct LayoutS {
     pub unadjusted_abi_align: Align,
 }
 
-impl LayoutS {
+impl<FieldIdx: Idx> LayoutS<FieldIdx> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
@@ -1592,7 +1592,11 @@ impl LayoutS {
     }
 }
 
-impl fmt::Debug for LayoutS {
+impl<FieldIdx: Idx> fmt::Debug for LayoutS<FieldIdx>
+where
+    FieldsShape<FieldIdx>: fmt::Debug,
+    Variants<FieldIdx>: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
@@ -1622,7 +1626,7 @@ impl fmt::Debug for LayoutS {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 #[rustc_pass_by_value]
-pub struct Layout<'a>(pub Interned<'a, LayoutS>);
+pub struct Layout<'a>(pub Interned<'a, LayoutS<FieldIdx>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1632,11 +1636,11 @@ impl<'a> fmt::Debug for Layout<'a> {
 }
 
 impl<'a> Layout<'a> {
-    pub fn fields(self) -> &'a FieldsShape {
+    pub fn fields(self) -> &'a FieldsShape<FieldIdx> {
         &self.0.0.fields
     }
 
-    pub fn variants(self) -> &'a Variants {
+    pub fn variants(self) -> &'a Variants<FieldIdx> {
         &self.0.0.variants
     }
 
@@ -1694,7 +1698,7 @@ pub struct PointeeInfo {
     pub safe: Option<PointerKind>,
 }
 
-impl LayoutS {
+impl<FieldIdx: Idx> LayoutS<FieldIdx> {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {
