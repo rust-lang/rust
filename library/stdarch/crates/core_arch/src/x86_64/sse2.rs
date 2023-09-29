@@ -181,6 +181,9 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    // (non-temporal store)
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_stream_si64() {
         let a: i64 = 7;
         let mut mem = boxed::Box::<i64>::new(-1);

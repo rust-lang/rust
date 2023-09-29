@@ -2848,6 +2848,7 @@ mod tests {
 
     #[allow(deprecated)] // FIXME: This test uses deprecated CSR access functions
     #[simd_test(enable = "sse")]
+    #[cfg_attr(miri, ignore)] // Uses _mm_setcsr, which is not supported by Miri
     unsafe fn test_mm_comieq_ss_vs_ucomieq_ss() {
         // If one of the arguments is a quiet NaN `comieq_ss` should signal an
         // Invalid Operation Exception while `ucomieq_ss` should not.
@@ -3267,12 +3268,15 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_sfence() {
         _mm_sfence();
     }
 
     #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
     #[simd_test(enable = "sse")]
+    #[cfg_attr(miri, ignore)] // Miri does not support accesing the CSR
     unsafe fn test_mm_getcsr_setcsr_1() {
         let saved_csr = _mm_getcsr();
 
@@ -3290,6 +3294,7 @@ mod tests {
 
     #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
     #[simd_test(enable = "sse")]
+    #[cfg_attr(miri, ignore)] // Miri does not support accesing the CSR
     unsafe fn test_mm_getcsr_setcsr_2() {
         // Same as _mm_setcsr_1 test, but with opposite flag value.
 
@@ -3309,6 +3314,7 @@ mod tests {
 
     #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
     #[simd_test(enable = "sse")]
+    #[cfg_attr(miri, ignore)] // Miri does not support accesing the CSR
     unsafe fn test_mm_getcsr_setcsr_underflow() {
         _MM_SET_EXCEPTION_STATE(0);
 
@@ -3347,6 +3353,9 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    // (non-temporal store)
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_stream_ps() {
         let a = _mm_set1_ps(7.0);
         let mut mem = Memory { data: [-1.0; 4] };

@@ -2956,11 +2956,15 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_lfence() {
         _mm_lfence();
     }
 
     #[simd_test(enable = "sse2")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_mfence() {
         _mm_mfence();
     }
@@ -3828,6 +3832,9 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    // (non-temporal store)
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_maskmoveu_si128() {
         let a = _mm_set1_epi8(9);
         #[rustfmt::skip]
@@ -3866,6 +3873,9 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    // (non-temporal store)
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_stream_si128() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let mut r = _mm_undefined_si128();
@@ -3874,6 +3884,9 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    // (non-temporal store)
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_stream_si32() {
         let a: i32 = 7;
         let mut mem = boxed::Box::<i32>::new(-1);
@@ -4562,6 +4575,9 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    // (non-temporal store)
+    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_stream_pd() {
         #[repr(align(128))]
         struct Memory {
