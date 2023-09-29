@@ -1613,6 +1613,7 @@ pub const _MM_FLUSH_ZERO_OFF: u32 = 0x0000;
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_MM_GET_EXCEPTION_MASK)
 #[inline]
+#[allow(deprecated)] // Deprecated function implemented on top of deprecated function
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1628,6 +1629,7 @@ pub unsafe fn _MM_GET_EXCEPTION_MASK() -> u32 {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_MM_GET_EXCEPTION_STATE)
 #[inline]
+#[allow(deprecated)] // Deprecated function implemented on top of deprecated function
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1643,6 +1645,7 @@ pub unsafe fn _MM_GET_EXCEPTION_STATE() -> u32 {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_MM_GET_FLUSH_ZERO_MODE)
 #[inline]
+#[allow(deprecated)] // Deprecated function implemented on top of deprecated function
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1658,6 +1661,7 @@ pub unsafe fn _MM_GET_FLUSH_ZERO_MODE() -> u32 {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_MM_GET_ROUNDING_MODE)
 #[inline]
+#[allow(deprecated)] // Deprecated function implemented on top of deprecated function
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1673,6 +1677,7 @@ pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_MM_SET_EXCEPTION_MASK)
 #[inline]
+#[allow(deprecated)] // Deprecated function implemented on top of deprecated function
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1688,6 +1693,7 @@ pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_MM_SET_EXCEPTION_STATE)
 #[inline]
+#[allow(deprecated)] // Deprecated function implemented on top of deprecated function
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1703,6 +1709,7 @@ pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_MM_SET_FLUSH_ZERO_MODE)
 #[inline]
+#[allow(deprecated)] // Deprecated function implemented on top of deprecated function
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1720,6 +1727,7 @@ pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_MM_SET_ROUNDING_MODE)
 #[inline]
+#[allow(deprecated)] // Deprecated function implemented on top of deprecated function
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -2834,6 +2842,7 @@ mod tests {
         }
     }
 
+    #[allow(deprecated)] // FIXME: This test uses deprecated CSR access functions
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_comieq_ss_vs_ucomieq_ss() {
         // If one of the arguments is a quiet NaN `comieq_ss` should signal an
@@ -3258,6 +3267,7 @@ mod tests {
         _mm_sfence();
     }
 
+    #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_getcsr_setcsr_1() {
         let saved_csr = _mm_getcsr();
@@ -3274,6 +3284,7 @@ mod tests {
         assert_eq_m128(r, exp); // first component is a denormalized f32
     }
 
+    #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_getcsr_setcsr_2() {
         // Same as _mm_setcsr_1 test, but with opposite flag value.
@@ -3292,6 +3303,7 @@ mod tests {
         assert_eq_m128(r, exp); // first component is a denormalized f32
     }
 
+    #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_getcsr_setcsr_underflow() {
         _MM_SET_EXCEPTION_STATE(0);

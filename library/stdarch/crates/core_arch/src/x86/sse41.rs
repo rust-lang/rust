@@ -1668,6 +1668,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
+    #[allow(deprecated)] // FIXME: This test uses deprecated CSR access functions
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_round_sd() {
         let a = _mm_setr_pd(1.5, 3.5);
@@ -1680,6 +1681,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
+    #[allow(deprecated)] // FIXME: This test uses deprecated CSR access functions
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_round_ss() {
         let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);

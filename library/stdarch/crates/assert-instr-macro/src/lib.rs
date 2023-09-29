@@ -35,6 +35,15 @@ pub fn assert_instr(
 
     let instr = &invoc.instr;
     let name = &func.sig.ident;
+    let maybe_allow_deprecated = if func
+        .attrs
+        .iter()
+        .any(|attr| attr.path.is_ident("deprecated"))
+    {
+        quote! { #[allow(deprecated)] }
+    } else {
+        quote! {}
+    };
 
     // Disable assert_instr for x86 targets compiled with avx enabled, which
     // causes LLVM to generate different intrinsics that the ones we are
@@ -135,6 +144,7 @@ pub fn assert_instr(
     let to_test = if disable_dedup_guard {
         quote! {
             #attrs
+            #maybe_allow_deprecated
             #[no_mangle]
             #[inline(never)]
             pub unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
@@ -147,6 +157,7 @@ pub fn assert_instr(
             const #shim_name_ptr : *const u8 = #shim_name_str.as_ptr();
 
             #attrs
+            #maybe_allow_deprecated
             #[no_mangle]
             #[inline(never)]
             pub unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
