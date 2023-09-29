@@ -970,21 +970,21 @@ impl WrappingRange {
 
     /// Returns `self` with replaced `start`
     #[inline(always)]
-    pub fn with_start(mut self, start: u128) -> Self {
+    fn with_start(mut self, start: u128) -> Self {
         self.start = start;
         self
     }
 
     /// Returns `self` with replaced `end`
     #[inline(always)]
-    pub fn with_end(mut self, end: u128) -> Self {
+    fn with_end(mut self, end: u128) -> Self {
         self.end = end;
         self
     }
 
     /// Returns `true` if `size` completely fills the range.
     #[inline]
-    pub fn is_full_for(&self, size: Size) -> bool {
+    fn is_full_for(&self, size: Size) -> bool {
         let max_value = size.unsigned_int_max();
         debug_assert!(self.start <= max_value && self.end <= max_value);
         self.start == (self.end.wrapping_add(1) & max_value)
