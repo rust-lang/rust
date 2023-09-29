@@ -2873,6 +2873,10 @@ define_print_and_forward_display! {
         p!(print(self.term))
     }
 
+    ty::NormalizesTo<'tcx> {
+        p!("`", print(self.alias), "` normalizes to `", print(self.term), "`")
+    }
+
     ty::Term<'tcx> {
       match self.unpack() {
         ty::TermKind::Ty(ty) => p!(print(ty)),
@@ -2937,8 +2941,9 @@ define_print_and_forward_display! {
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 p!("the constant `", print(c1), "` equals `", print(c2), "`")
             }
-            ty::PredicateKind::Ambiguous => p!("ambiguous"),
+            ty::PredicateKind::NormalizesTo(predicate) => p!(print(predicate)),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
+            ty::PredicateKind::Ambiguous => p!("ambiguous"),
         }
     }
 

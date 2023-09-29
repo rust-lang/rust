@@ -461,6 +461,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
                     self.compute_projection_goal(Goal { param_env, predicate })
                 }
+                ty::PredicateKind::NormalizesTo(_) => {
+                    todo!()
+                }
                 ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(predicate)) => {
                     self.compute_type_outlives_goal(Goal { param_env, predicate })
                 }

@@ -360,7 +360,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
-                ty::PredicateKind::AliasRelate(..) => {
+                ty::PredicateKind::NormalizesTo(..) | ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used for new solver")
                 }
             },
@@ -630,6 +630,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     if matches!(self.selcx.infcx.defining_use_anchor, DefiningAnchor::Bubble) =>
                 {
                     ProcessResult::Unchanged
+                }
+                ty::PredicateKind::NormalizesTo(..) => {
+                    bug!("NormalizesTo is only used for new solver")
                 }
                 ty::PredicateKind::AliasRelate(a, b, relate) => match relate {
                     ty::AliasRelationDirection::Equate => match self

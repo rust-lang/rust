@@ -102,7 +102,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                             errors.push(FulfillmentError {
                                 obligation: obligation.clone(),
                                 code: match goal.predicate.kind().skip_binder() {
-                                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
+                                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(_))
+                                    | ty::PredicateKind::NormalizesTo(_) => {
                                         FulfillmentErrorCode::CodeProjectionError(
                                             // FIXME: This could be a `Sorts` if the term is a type
                                             MismatchedProjectionTypes { err: TypeError::Mismatch },

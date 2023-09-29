@@ -821,6 +821,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::AliasRelate(..)
+                | ty::PredicateKind::NormalizesTo(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)

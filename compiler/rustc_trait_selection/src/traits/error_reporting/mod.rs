@@ -1039,7 +1039,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         )
                     }
 
-                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) | ty::PredicateKind::NormalizesTo(..) => {
                         span_bug!(
                             span,
                             "projection clauses should be implied from elsewhere. obligation: `{:?}`",

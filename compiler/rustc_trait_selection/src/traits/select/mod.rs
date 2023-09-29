@@ -1003,6 +1003,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
+                ty::PredicateKind::NormalizesTo(..) => {
+                    bug!("NormalizesTo is only used for new solver")
+                }
                 ty::PredicateKind::AliasRelate(..)
                     if matches!(self.infcx.defining_use_anchor, DefiningAnchor::Bubble) =>
                 {
