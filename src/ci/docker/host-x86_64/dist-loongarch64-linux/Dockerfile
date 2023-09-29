@@ -3,9 +3,8 @@ FROM ubuntu:22.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-# The latest released version does not support LoongArch.
-COPY scripts/crosstool-ng-git.sh /scripts/
-RUN sh /scripts/crosstool-ng-git.sh
+COPY scripts/crosstool-ng.sh /scripts/
+RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
