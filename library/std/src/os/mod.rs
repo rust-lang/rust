@@ -166,8 +166,6 @@ pub mod vxworks;
 pub(crate) mod watchos;
 #[cfg(target_os = "xous")]
 pub mod xous;
-#[cfg(target_os = "custom")]
-pub mod custom;
 
 #[cfg(all(any(unix, target_os = "wasi", doc), not(target_os = "custom")))]
 pub mod fd;
