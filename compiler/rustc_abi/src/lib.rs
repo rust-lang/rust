@@ -53,10 +53,11 @@ bitflags! {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum IntegerType {
-    /// Pointer sized integer type, i.e. isize and usize. The field shows signedness, that
-    /// is, `Pointer(true)` is isize.
+    /// Pointer-sized integer type, i.e. `isize` and `usize`. The field shows signedness, e.g.
+    /// `Pointer(true)` means `isize`.
     Pointer(bool),
-    /// Fix sized integer type, e.g. i8, u32, i128 The bool field shows signedness, `Fixed(I8, false)` means `u8`
+    /// Fixed-sized integer type, e.g. `i8`, `u32`, `i128`. The bool field shows signedness, e.g.
+    /// `Fixed(I8, false)` means `u8`.
     Fixed(Integer, bool),
 }
 
@@ -69,7 +70,7 @@ impl IntegerType {
     }
 }
 
-/// Represents the repr options provided by the user,
+/// Represents the repr options provided by the user.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub struct ReprOptions {
@@ -139,7 +140,7 @@ impl ReprOptions {
     }
 
     /// Returns `true` if this type is valid for reordering and `-Z randomize-layout`
-    /// was enabled for its declaration crate
+    /// was enabled for its declaration crate.
     pub fn can_randomize_type_layout(&self) -> bool {
         !self.inhibit_struct_field_reordering_opt()
             && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
@@ -217,7 +218,8 @@ pub enum TargetDataLayoutErrors<'a> {
 }
 
 impl TargetDataLayout {
-    /// Parse data layout from an [llvm data layout string](https://llvm.org/docs/LangRef.html#data-layout)
+    /// Parse data layout from an
+    /// [llvm data layout string](https://llvm.org/docs/LangRef.html#data-layout)
     ///
     /// This function doesn't fill `c_enum_min_size` and it will always be `I32` since it can not be
     /// determined from llvm string.
@@ -747,7 +749,6 @@ impl Align {
 /// A pair of alignments, ABI-mandated and preferred.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-
 pub struct AbiAndPrefAlign {
     pub abi: Align,
     pub pref: Align,
@@ -773,7 +774,6 @@ impl AbiAndPrefAlign {
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
-
 pub enum Integer {
     I8,
     I16,
@@ -937,8 +937,7 @@ impl Primitive {
 }
 
 /// Inclusive wrap-around range of valid values, that is, if
-/// start > end, it represents `start..=MAX`,
-/// followed by `0..=end`.
+/// start > end, it represents `start..=MAX`, followed by `0..=end`.
 ///
 /// That is, for an i8 primitive, a range of `254..=2` means following
 /// sequence:
@@ -1066,7 +1065,8 @@ impl Scalar {
     }
 
     #[inline]
-    /// Allows the caller to mutate the valid range. This operation will panic if attempted on a union.
+    /// Allows the caller to mutate the valid range. This operation will panic if attempted on a
+    /// union.
     pub fn valid_range_mut(&mut self) -> &mut WrappingRange {
         match self {
             Scalar::Initialized { valid_range, .. } => valid_range,
@@ -1074,7 +1074,8 @@ impl Scalar {
         }
     }
 
-    /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
+    /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole
+    /// layout.
     #[inline]
     pub fn is_always_valid<C: HasDataLayout>(&self, cx: &C) -> bool {
         match *self {
@@ -1252,7 +1253,6 @@ impl AddressSpace {
 /// in terms of categories of C types there are ABI rules for.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-
 pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
@@ -1457,17 +1457,19 @@ impl Niche {
             return None;
         }
 
-        // Extend the range of valid values being reserved by moving either `v.start` or `v.end` bound.
-        // Given an eventual `Option<T>`, we try to maximize the chance for `None` to occupy the niche of zero.
-        // This is accomplished by preferring enums with 2 variants(`count==1`) and always taking the shortest path to niche zero.
-        // Having `None` in niche zero can enable some special optimizations.
+        // Extend the range of valid values being reserved by moving either `v.start` or `v.end`
+        // bound. Given an eventual `Option<T>`, we try to maximize the chance for `None` to occupy
+        // the niche of zero. This is accomplished by preferring enums with 2 variants(`count==1`)
+        // and always taking the shortest path to niche zero. Having `None` in niche zero can
+        // enable some special optimizations.
         //
         // Bound selection criteria:
         // 1. Select closest to zero given wrapping semantics.
         // 2. Avoid moving past zero if possible.
         //
-        // In practice this means that enums with `count > 1` are unlikely to claim niche zero, since they have to fit perfectly.
-        // If niche zero is already reserved, the selection of bounds are of little interest.
+        // In practice this means that enums with `count > 1` are unlikely to claim niche zero,
+        // since they have to fit perfectly. If niche zero is already reserved, the selection of
+        // bounds are of little interest.
         let move_start = |v: WrappingRange| {
             let start = v.start.wrapping_sub(count) & max_value;
             Some((start, Scalar::Initialized { value, valid_range: v.with_start(start) }))
