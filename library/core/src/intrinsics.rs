@@ -1072,7 +1072,7 @@ extern "rust-intrinsic" {
     /// zero-initialization: This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
+    #[rustc_const_stable(feature = "const_assert_type2", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn assert_zero_valid<T>();
@@ -1080,7 +1080,7 @@ extern "rust-intrinsic" {
     /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
+    #[rustc_const_stable(feature = "const_assert_type2", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn assert_mem_uninitialized_valid<T>();
