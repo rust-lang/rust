@@ -2,6 +2,7 @@
 // run-fail
 // check-run-results
 // exec-env:RUST_BACKTRACE=1
+// needs-unwind
 // ignore-android FIXME #17520
 // ignore-wasm no panic support
 // ignore-openbsd no support for libbacktrace without filename
