@@ -73,6 +73,13 @@ impl<'a> fmt::Debug for Layout<'a> {
     }
 }
 
+impl<'a> Deref for Layout<'a> {
+    type Target = &'a LayoutS<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &&'a LayoutS<FieldIdx, VariantIdx> {
+        &self.0.0
+    }
+}
+
 impl<'a> Layout<'a> {
     pub fn fields(self) -> &'a FieldsShape<FieldIdx> {
         &self.0.0.fields
