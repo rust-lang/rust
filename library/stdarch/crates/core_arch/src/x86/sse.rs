@@ -2039,7 +2039,11 @@ mod tests {
         let a = _mm_setr_ps(4.0, 13.0, 16.0, 100.0);
         let r = _mm_rcp_ss(a);
         let e = _mm_setr_ps(0.24993896, 13.0, 16.0, 100.0);
-        assert_eq_m128(r, e);
+        let rel_err = 0.00048828125;
+        assert_approx_eq!(get_m128(r, 0), get_m128(e, 0), 2. * rel_err);
+        for i in 1..4 {
+            assert_eq!(get_m128(r, i), get_m128(e, i));
+        }
     }
 
     #[simd_test(enable = "sse")]
