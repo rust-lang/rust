@@ -683,7 +683,7 @@ pub(super) fn complete_name_ref(
     ctx: &CompletionContext<'_>,
     NameRefContext { nameref, kind }: &NameRefContext,
 ) {
-    match kind {
+    match dbg!(kind) {
         NameRefKind::Path(path_ctx) => {
             flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
 

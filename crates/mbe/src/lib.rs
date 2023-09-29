@@ -19,7 +19,7 @@ mod benchmark;
 mod token_map;
 
 use stdx::impl_from;
-use tt::{Span, TokenId};
+use tt::Span;
 
 use std::fmt;
 
@@ -34,10 +34,8 @@ pub use tt::{Delimiter, DelimiterKind, Punct};
 
 pub use crate::{
     syntax_bridge::{
-        parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_map,
-        syntax_node_to_token_map_with_modifications, syntax_node_to_token_tree,
-        syntax_node_to_token_tree_with_modifications, token_tree_to_syntax_node, SyntheticToken,
-        SyntheticTokenId,
+        map_from_syntax_node, parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_tree,
+        syntax_node_to_token_tree_censored, token_tree_to_syntax_node,
     },
     token_map::TokenMap,
 };
@@ -125,10 +123,8 @@ impl fmt::Display for CountError {
 /// `tt::TokenTree`, but there's a crucial difference: in macro rules, `$ident`
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DeclarativeMacro {
-    rules: Box<[Rule<TokenId>]>,
-    /// Highest id of the token we have in TokenMap
-    shift: Shift,
+pub struct DeclarativeMacro<S> {
+    rules: Box<[Rule<S>]>,
     // This is used for correctly determining the behavior of the pat fragment
     // FIXME: This should be tracked by hygiene of the fragment identifier!
     is_2021: bool,
@@ -141,91 +137,13 @@ struct Rule<S> {
     rhs: MetaTemplate<S>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Shift(u32);
-
-impl Shift {
-    pub fn new(tt: &tt::Subtree<TokenId>) -> Shift {
-        // Note that TokenId is started from zero,
-        // We have to add 1 to prevent duplication.
-        let value = max_id(tt).map_or(0, |it| it + 1);
-        return Shift(value);
-
-        // Find the max token id inside a subtree
-        fn max_id(subtree: &tt::Subtree<TokenId>) -> Option<u32> {
-            let filter =
-                |tt: &_| match tt {
-                    tt::TokenTree::Subtree(subtree) => {
-                        let tree_id = max_id(subtree);
-                        if subtree.delimiter.open != tt::TokenId::unspecified() {
-                            Some(tree_id.map_or(subtree.delimiter.open.0, |t| {
-                                t.max(subtree.delimiter.open.0)
-                            }))
-                        } else {
-                            tree_id
-                        }
-                    }
-                    tt::TokenTree::Leaf(leaf) => {
-                        let &(tt::Leaf::Ident(tt::Ident { span, .. })
-                        | tt::Leaf::Punct(tt::Punct { span, .. })
-                        | tt::Leaf::Literal(tt::Literal { span, .. })) = leaf;
-
-                        (span != tt::TokenId::unspecified()).then_some(span.0)
-                    }
-                };
-            subtree.token_trees.iter().filter_map(filter).max()
-        }
-    }
-
-    /// Shift given TokenTree token id
-    pub fn shift_all(self, tt: &mut tt::Subtree<TokenId>) {
-        for t in &mut tt.token_trees {
-            match t {
-                tt::TokenTree::Leaf(
-                    tt::Leaf::Ident(tt::Ident { span, .. })
-                    | tt::Leaf::Punct(tt::Punct { span, .. })
-                    | tt::Leaf::Literal(tt::Literal { span, .. }),
-                ) => *span = self.shift(*span),
-                tt::TokenTree::Subtree(tt) => {
-                    tt.delimiter.open = self.shift(tt.delimiter.open);
-                    tt.delimiter.close = self.shift(tt.delimiter.close);
-                    self.shift_all(tt)
-                }
-            }
-        }
-    }
-
-    pub fn shift(self, id: tt::TokenId) -> tt::TokenId {
-        if id == tt::TokenId::unspecified() {
-            id
-        } else {
-            tt::TokenId(id.0 + self.0)
-        }
-    }
-
-    pub fn unshift(self, id: tt::TokenId) -> Option<tt::TokenId> {
-        id.0.checked_sub(self.0).map(tt::TokenId)
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Origin {
-    Def,
-    Call,
-}
-
-impl DeclarativeMacro {
-    pub fn from_err(err: ParseError, is_2021: bool) -> DeclarativeMacro {
-        DeclarativeMacro {
-            rules: Box::default(),
-            shift: Shift(0),
-            is_2021,
-            err: Some(Box::new(err)),
-        }
+impl<S: Span> DeclarativeMacro<S> {
+    pub fn from_err(err: ParseError, is_2021: bool) -> DeclarativeMacro<S> {
+        DeclarativeMacro { rules: Box::default(), is_2021, err: Some(Box::new(err)) }
     }
 
     /// The old, `macro_rules! m {}` flavor.
-    pub fn parse_macro_rules(tt: &tt::Subtree<TokenId>, is_2021: bool) -> DeclarativeMacro {
+    pub fn parse_macro_rules(tt: &tt::Subtree<S>, is_2021: bool) -> DeclarativeMacro<S> {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
         // manually seems easier.
@@ -257,11 +175,11 @@ impl DeclarativeMacro {
             }
         }
 
-        DeclarativeMacro { rules: rules.into_boxed_slice(), shift: Shift::new(tt), is_2021, err }
+        DeclarativeMacro { rules: rules.into_boxed_slice(), is_2021, err }
     }
 
     /// The new, unstable `macro m {}` flavor.
-    pub fn parse_macro2(tt: &tt::Subtree<TokenId>, is_2021: bool) -> DeclarativeMacro {
+    pub fn parse_macro2(tt: &tt::Subtree<S>, is_2021: bool) -> DeclarativeMacro<S> {
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
         let mut err = None;
@@ -308,31 +226,15 @@ impl DeclarativeMacro {
             }
         }
 
-        DeclarativeMacro { rules: rules.into_boxed_slice(), shift: Shift::new(tt), is_2021, err }
-    }
-
-    pub fn expand(&self, mut tt: tt::Subtree<TokenId>) -> ExpandResult<tt::Subtree<TokenId>> {
-        self.shift.shift_all(&mut tt);
-        expander::expand_rules(&self.rules, &tt, self.is_2021)
+        DeclarativeMacro { rules: rules.into_boxed_slice(), is_2021, err }
     }
 
     pub fn err(&self) -> Option<&ParseError> {
         self.err.as_deref()
     }
 
-    pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
-        self.shift.shift(id)
-    }
-
-    pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, Origin) {
-        match self.shift.unshift(id) {
-            Some(id) => (id, Origin::Call),
-            None => (id, Origin::Def),
-        }
-    }
-
-    pub fn shift(&self) -> Shift {
-        self.shift
+    pub fn expand(&self, tt: &tt::Subtree<S>) -> ExpandResult<tt::Subtree<S>> {
+        expander::expand_rules(&self.rules, &tt, self.is_2021)
     }
 }
 

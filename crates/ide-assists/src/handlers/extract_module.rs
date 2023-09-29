@@ -3,7 +3,7 @@ use std::{
     iter,
 };
 
-use hir::{HasSource, ModuleSource};
+use hir::{HasSource, HirFileIdExt, ModuleSource};
 use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::FileId,

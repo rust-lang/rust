@@ -13,5 +13,6 @@ doctest = false
 
 [dependencies]
 smol_str.workspace = true
+text-size.workspace = true
 
 stdx.workspace = true

@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir::{Module, ModuleSource};
+use hir::{HirFileIdExt, Module, ModuleSource};
 use ide_db::{
     base_db::{SourceDatabaseExt, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,

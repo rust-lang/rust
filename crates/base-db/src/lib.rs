@@ -5,6 +5,7 @@
 mod input;
 mod change;
 pub mod fixture;
+pub mod span;
 
 use std::panic;
 

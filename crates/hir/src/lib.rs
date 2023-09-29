@@ -124,7 +124,7 @@ pub use {
     hir_expand::{
         attrs::{Attr, AttrId},
         name::{known, Name},
-        ExpandResult, HirFileId, InFile, MacroFile, Origin,
+        tt, ExpandResult, HirFileId, HirFileIdExt, InFile, MacroFile,
     },
     hir_ty::{
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},

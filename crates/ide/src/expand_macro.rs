@@ -1,4 +1,4 @@
-use hir::Semantics;
+use hir::{HirFileIdExt, Semantics};
 use ide_db::{
     base_db::FileId, helpers::pick_best_token,
     syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,

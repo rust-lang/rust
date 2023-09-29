@@ -4,24 +4,32 @@ use syntax::{ast, AstNode};
 use test_utils::extract_annotations;
 use tt::{
     buffer::{TokenBuffer, TokenTreeRef},
-    Leaf, Punct, Spacing,
+    Leaf, Punct, Spacing, Span,
 };
+
+use crate::syntax_bridge::SpanData;
 
 use super::syntax_node_to_token_tree;
 
 fn check_punct_spacing(fixture: &str) {
+    #[derive(PartialEq, Eq, Clone, Copy, Debug)]
+    struct DummyFile;
+    impl Span for DummyFile {
+        const DUMMY: Self = DummyFile;
+    }
+
     let source_file = ast::SourceFile::parse(fixture).ok().unwrap();
-    let (subtree, token_map) = syntax_node_to_token_tree(source_file.syntax());
+    let subtree =
+        syntax_node_to_token_tree(source_file.syntax(), DummyFile, 0.into(), &Default::default());
     let mut annotations: HashMap<_, _> = extract_annotations(fixture)
         .into_iter()
         .map(|(range, annotation)| {
-            let token = token_map.token_by_range(range).expect("no token found");
             let spacing = match annotation.as_str() {
                 "Alone" => Spacing::Alone,
                 "Joint" => Spacing::Joint,
                 a => panic!("unknown annotation: {a}"),
             };
-            (token, spacing)
+            (range, spacing)
         })
         .collect();
 
@@ -29,8 +37,12 @@ fn check_punct_spacing(fixture: &str) {
     let mut cursor = buf.begin();
     while !cursor.eof() {
         while let Some(token_tree) = cursor.token_tree() {
-            if let TokenTreeRef::Leaf(Leaf::Punct(Punct { spacing, span, .. }), _) = token_tree {
-                if let Some(expected) = annotations.remove(span) {
+            if let TokenTreeRef::Leaf(
+                Leaf::Punct(Punct { spacing, span: SpanData { range, .. }, .. }),
+                _,
+            ) = token_tree
+            {
+                if let Some(expected) = annotations.remove(range) {
                     assert_eq!(expected, *spacing);
                 }
             }

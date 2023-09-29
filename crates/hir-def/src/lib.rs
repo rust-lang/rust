@@ -84,7 +84,7 @@ use nameres::DefMap;
 use stdx::impl_from;
 use syntax::ast;
 
-use ::tt::token_id as tt;
+pub use hir_expand::tt;
 
 use crate::{
     builtin_type::BuiltinType,
@@ -1341,15 +1341,13 @@ fn attr_macro_as_call_id(
     def: MacroDefId,
 ) -> MacroCallId {
     let arg = match macro_attr.input.as_deref() {
-        Some(AttrInput::TokenTree(tt)) => (
-            {
-                let mut tt = tt.0.clone();
-                tt.delimiter = tt::Delimiter::UNSPECIFIED;
-                tt
-            },
-            tt.1.clone(),
-        ),
-        _ => (tt::Subtree::empty(), Default::default()),
+        Some(AttrInput::TokenTree(tt)) => {
+            let mut tt = tt.as_ref().clone();
+            tt.delimiter = tt::Delimiter::UNSPECIFIED;
+            tt
+        }
+
+        _ => tt::Subtree::empty(),
     };
 
     def.as_lazy_macro(

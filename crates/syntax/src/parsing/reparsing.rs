@@ -20,7 +20,7 @@ use crate::{
 pub(crate) fn incremental_reparse(
     node: &SyntaxNode,
     edit: &Indel,
-    errors: Vec<SyntaxError>,
+    errors: impl IntoIterator<Item = SyntaxError>,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     if let Some((green, new_errors, old_range)) = reparse_token(node, edit) {
         return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
@@ -147,7 +147,7 @@ fn is_balanced(lexed: &parser::LexedStr<'_>) -> bool {
 }
 
 fn merge_errors(
-    old_errors: Vec<SyntaxError>,
+    old_errors: impl IntoIterator<Item = SyntaxError>,
     new_errors: Vec<SyntaxError>,
     range_before_reparse: TextRange,
     edit: &Indel,
@@ -191,8 +191,12 @@ mod tests {
         let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed: Parse<SourceFile> = {
             let before = SourceFile::parse(&before);
-            let (green, new_errors, range) =
-                incremental_reparse(before.tree().syntax(), &edit, before.errors.to_vec()).unwrap();
+            let (green, new_errors, range) = incremental_reparse(
+                before.tree().syntax(),
+                &edit,
+                before.errors.as_deref().unwrap_or_default().iter().cloned(),
+            )
+            .unwrap();
             assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");
             Parse::new(green, new_errors)
         };

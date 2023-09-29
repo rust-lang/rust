@@ -6,12 +6,18 @@ use syntax::{
     AstNode, SmolStr,
 };
 use test_utils::{bench, bench_fixture, skip_slow_tests};
-use tt::{Span, TokenId};
+use tt::{Span, SpanData};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
     syntax_node_to_token_tree, DeclarativeMacro,
 };
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+struct DummyFile;
+impl Span for DummyFile {
+    const DUMMY: Self = DummyFile;
+}
 
 #[test]
 fn benchmark_parse_macro_rules() {
@@ -39,7 +45,7 @@ fn benchmark_expand_macro_rules() {
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res = rules[&id].expand(tt);
+                let res = rules[&id].expand(&tt);
                 assert!(res.err.is_none());
                 res.value.token_trees.len()
             })
@@ -48,14 +54,14 @@ fn benchmark_expand_macro_rules() {
     assert_eq!(hash, 69413);
 }
 
-fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
+fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro<SpanData<DummyFile>>> {
     macro_rules_fixtures_tt()
         .into_iter()
         .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true)))
         .collect()
 }
 
-fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<TokenId>> {
+fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<SpanData<DummyFile>>> {
     let fixture = bench_fixture::numerous_macro_rules();
     let source_file = ast::SourceFile::parse(&fixture).ok().unwrap();
 
@@ -65,7 +71,12 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<TokenId>> {
         .filter_map(ast::MacroRules::cast)
         .map(|rule| {
             let id = rule.name().unwrap().to_string();
-            let (def_tt, _) = syntax_node_to_token_tree(rule.token_tree().unwrap().syntax());
+            let def_tt = syntax_node_to_token_tree(
+                rule.token_tree().unwrap().syntax(),
+                DummyFile,
+                0.into(),
+                &Default::default(),
+            );
             (id, def_tt)
         })
         .collect()
@@ -73,8 +84,8 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<TokenId>> {
 
 /// Generate random invocation fixtures from rules
 fn invocation_fixtures(
-    rules: &FxHashMap<String, DeclarativeMacro>,
-) -> Vec<(String, tt::Subtree<TokenId>)> {
+    rules: &FxHashMap<String, DeclarativeMacro<SpanData<DummyFile>>>,
+) -> Vec<(String, tt::Subtree<SpanData<DummyFile>>)> {
     let mut seed = 123456789;
     let mut res = Vec::new();
 
@@ -96,8 +107,8 @@ fn invocation_fixtures(
                 loop {
                     let mut subtree = tt::Subtree {
                         delimiter: tt::Delimiter {
-                            open: tt::TokenId::DUMMY,
-                            close: tt::TokenId::DUMMY,
+                            open: SpanData::DUMMY,
+                            close: SpanData::DUMMY,
                             kind: tt::DelimiterKind::Invisible,
                         },
                         token_trees: vec![],
@@ -105,7 +116,7 @@ fn invocation_fixtures(
                     for op in rule.lhs.iter() {
                         collect_from_op(op, &mut subtree, &mut seed);
                     }
-                    if it.expand(subtree.clone()).err.is_none() {
+                    if it.expand(&subtree).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
                     }
@@ -119,7 +130,11 @@ fn invocation_fixtures(
     }
     return res;
 
-    fn collect_from_op(op: &Op<TokenId>, parent: &mut tt::Subtree<TokenId>, seed: &mut usize) {
+    fn collect_from_op(
+        op: &Op<SpanData<DummyFile>>,
+        parent: &mut tt::Subtree<SpanData<DummyFile>>,
+        seed: &mut usize,
+    ) {
         return match op {
             Op::Var { kind, .. } => match kind.as_ref() {
                 Some(MetaVarKind::Ident) => parent.token_trees.push(make_ident("foo")),
@@ -205,32 +220,22 @@ fn invocation_fixtures(
             *seed = usize::wrapping_add(usize::wrapping_mul(*seed, a), c);
             *seed
         }
-        fn make_ident(ident: &str) -> tt::TokenTree<TokenId> {
-            tt::Leaf::Ident(tt::Ident { span: tt::TokenId::DUMMY, text: SmolStr::new(ident) })
+        fn make_ident(ident: &str) -> tt::TokenTree<SpanData<DummyFile>> {
+            tt::Leaf::Ident(tt::Ident { span: SpanData::DUMMY, text: SmolStr::new(ident) }).into()
+        }
+        fn make_punct(char: char) -> tt::TokenTree<SpanData<DummyFile>> {
+            tt::Leaf::Punct(tt::Punct { span: SpanData::DUMMY, char, spacing: tt::Spacing::Alone })
                 .into()
         }
-        fn make_punct(char: char) -> tt::TokenTree<TokenId> {
-            tt::Leaf::Punct(tt::Punct {
-                span: tt::TokenId::DUMMY,
-                char,
-                spacing: tt::Spacing::Alone,
-            })
-            .into()
-        }
-        fn make_literal(lit: &str) -> tt::TokenTree<TokenId> {
-            tt::Leaf::Literal(tt::Literal { span: tt::TokenId::DUMMY, text: SmolStr::new(lit) })
-                .into()
+        fn make_literal(lit: &str) -> tt::TokenTree<SpanData<DummyFile>> {
+            tt::Leaf::Literal(tt::Literal { span: SpanData::DUMMY, text: SmolStr::new(lit) }).into()
         }
         fn make_subtree(
             kind: tt::DelimiterKind,
-            token_trees: Option<Vec<tt::TokenTree<TokenId>>>,
-        ) -> tt::TokenTree<TokenId> {
+            token_trees: Option<Vec<tt::TokenTree<SpanData<DummyFile>>>>,
+        ) -> tt::TokenTree<SpanData<DummyFile>> {
             tt::Subtree {
-                delimiter: tt::Delimiter {
-                    open: tt::TokenId::DUMMY,
-                    close: tt::TokenId::DUMMY,
-                    kind,
-                },
+                delimiter: tt::Delimiter { open: SpanData::DUMMY, close: SpanData::DUMMY, kind },
                 token_trees: token_trees.unwrap_or_default(),
             }
             .into()

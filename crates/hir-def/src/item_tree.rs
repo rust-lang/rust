@@ -43,7 +43,10 @@ use std::{
 };
 
 use ast::{AstNode, HasName, StructKind};
-use base_db::CrateId;
+use base_db::{
+    span::{SpanAnchor, ROOT_ERASED_FILE_AST_ID},
+    CrateId,
+};
 use either::Either;
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
@@ -119,7 +122,7 @@ impl ItemTree {
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(RawAttrs::new(db.upcast(), &file, ctx.hygiene()));
+                    top_attrs = Some(RawAttrs::new(db.upcast(), SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID }, &file, ctx.hygiene()));
                     ctx.lower_module_items(&file)
                 },
                 ast::MacroItems(items) => {

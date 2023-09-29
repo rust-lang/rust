@@ -15,7 +15,6 @@ use crate::macro_expansion_tests::check;
 fn token_mapping_smoke_test() {
     check(
         r#"
-// +tokenids
 macro_rules! f {
     ( struct $ident:ident ) => {
         struct $ident {
@@ -27,23 +26,19 @@ macro_rules! f {
 // +tokenids
 f!(struct MyTraitMap2);
 "#,
-        expect![[r##"
-// call ids will be shifted by Shift(30)
-// +tokenids
-macro_rules! f {#0
-    (#1 struct#2 $#3ident#4:#5ident#6 )#1 =#7>#8 {#9
-        struct#10 $#11ident#12 {#13
-            map#14:#15 :#16:#17std#18:#19:#20collections#21:#22:#23HashSet#24<#25(#26)#26>#27,#28
-        }#13
-    }#9;#29
-}#0
+        expect![[r#"
+macro_rules! f {
+    ( struct $ident:ident ) => {
+        struct $ident {
+            map: ::std::collections::HashSet<()>,
+        }
+    };
+}
 
-// // +tokenids
-// f!(struct#1 MyTraitMap2#2);
-struct#10 MyTraitMap2#32 {#13
-    map#14:#15 ::std#18::collections#21::HashSet#24<#25(#26)#26>#27,#28
-}#13
-"##]],
+struct#SpanAnchor(FileId(0), 1)@58..64 MyTraitMap2#SpanAnchor(FileId(0), 2)@23..34 {#SpanAnchor(FileId(0), 1)@72..73
+    map#SpanAnchor(FileId(0), 1)@86..89:#SpanAnchor(FileId(0), 1)@89..90 ::std#SpanAnchor(FileId(0), 1)@93..96::collections#SpanAnchor(FileId(0), 1)@98..109::HashSet#SpanAnchor(FileId(0), 1)@111..118<#SpanAnchor(FileId(0), 1)@118..119(#SpanAnchor(FileId(0), 1)@119..120)#SpanAnchor(FileId(0), 1)@120..121>#SpanAnchor(FileId(0), 1)@121..122,#SpanAnchor(FileId(0), 1)@122..123
+}#SpanAnchor(FileId(0), 1)@132..133
+"#]],
     );
 }
 
@@ -71,31 +66,22 @@ f! {
 
 
 "#,
-        expect![[r##"
-// call ids will be shifted by Shift(18)
+        expect![[r#"
 // +tokenids
-macro_rules! f {#0
-    (#1$#2(#3$#4tt#5:#6tt#7)#3*#8)#1 =#9>#10 {#11
-        $#12(#13$#14tt#15)#13*#16
-    }#11;#17
-}#0
+macro_rules! f {
+    ($($tt:tt)*) => {
+        $($tt)*
+    };
+}
 
-// // +tokenids
-// f! {
-//     fn#1 main#2() {
-//         1#5;#6
-//         1.0#7;#8
-//         let#9 x#10 =#11 1#12;#13
-//     }
-// }
-fn#19 main#20(#21)#21 {#22
-    1#23;#24
-    1.0#25;#26
-    let#27 x#28 =#29 1#30;#31
-}#22
+fn#SpanAnchor(FileId(0), 2)@22..24 main#SpanAnchor(FileId(0), 2)@25..29(#SpanAnchor(FileId(0), 2)@29..30)#SpanAnchor(FileId(0), 2)@30..31 {#SpanAnchor(FileId(0), 2)@32..33
+    1#SpanAnchor(FileId(0), 2)@42..43;#SpanAnchor(FileId(0), 2)@43..44
+    1.0#SpanAnchor(FileId(0), 2)@53..56;#SpanAnchor(FileId(0), 2)@56..57
+    let#SpanAnchor(FileId(0), 2)@66..69 x#SpanAnchor(FileId(0), 2)@70..71 =#SpanAnchor(FileId(0), 2)@72..73 1#SpanAnchor(FileId(0), 2)@74..75;#SpanAnchor(FileId(0), 2)@75..76
+}#SpanAnchor(FileId(0), 2)@81..82
 
 
-"##]],
+"#]],
     );
 }
 
@@ -150,8 +136,7 @@ macro_rules! identity {
 }
 
 fn main(foo: ()) {
-    // format_args/*+tokenids*/!("{} {} {}"#1,#2 format_args#3!#4("{}"#6,#7 0#8),#9 foo#10,#11 identity#12!#13(10#15),#16 "bar"#17)
-builtin#4294967295 ##4294967295format_args#4294967295 (#0"{} {} {}"#1,#2 format_args#3!#4(#5"{}"#6,#7 0#8)#5,#9 foo#10,#11 identity#12!#13(#1410#15)#14,#16 "bar"#17)#0
+    builtin#SpanAnchor(FileId(0), 0)@0..0 ##SpanAnchor(FileId(0), 0)@0..0format_args#SpanAnchor(FileId(0), 0)@0..0 (#SpanAnchor(FileId(0), 6)@25..26"{} {} {}"#SpanAnchor(FileId(0), 6)@26..36,#SpanAnchor(FileId(0), 6)@36..37 format_args#SpanAnchor(FileId(0), 6)@38..49!#SpanAnchor(FileId(0), 6)@49..50(#SpanAnchor(FileId(0), 6)@50..51"{}"#SpanAnchor(FileId(0), 6)@51..55,#SpanAnchor(FileId(0), 6)@55..56 0#SpanAnchor(FileId(0), 6)@57..58)#SpanAnchor(FileId(0), 6)@58..59,#SpanAnchor(FileId(0), 6)@59..60 foo#SpanAnchor(FileId(0), 6)@61..64,#SpanAnchor(FileId(0), 6)@64..65 identity#SpanAnchor(FileId(0), 6)@66..74!#SpanAnchor(FileId(0), 6)@74..75(#SpanAnchor(FileId(0), 6)@75..7610#SpanAnchor(FileId(0), 6)@76..78)#SpanAnchor(FileId(0), 6)@78..79,#SpanAnchor(FileId(0), 6)@79..80 "bar"#SpanAnchor(FileId(0), 6)@81..86)#SpanAnchor(FileId(0), 6)@86..87
 }
 
 "##]],

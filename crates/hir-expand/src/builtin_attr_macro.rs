@@ -1,5 +1,7 @@
 //! Builtin attributes.
 
+use ::tt::Span;
+
 use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallId, MacroCallKind};
 
 macro_rules! register_builtin {
@@ -98,7 +100,7 @@ fn derive_attr_expand(
 ) -> ExpandResult<tt::Subtree> {
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
-        MacroCallKind::Attr { attr_args, .. } if loc.def.is_attribute_derive() => &attr_args.0,
+        MacroCallKind::Attr { attr_args, .. } if loc.def.is_attribute_derive() => attr_args,
         _ => return ExpandResult::ok(tt::Subtree::empty()),
     };
     pseudo_derive_attr_expansion(tt, derives)
@@ -112,7 +114,7 @@ pub fn pseudo_derive_attr_expansion(
         tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
             char,
             spacing: tt::Spacing::Alone,
-            span: tt::TokenId::unspecified(),
+            span: tt::SpanData::DUMMY,
         }))
     };
 

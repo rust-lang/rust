@@ -24,7 +24,7 @@ use std::fmt;
 
 use base_db::{AnchoredPathBuf, FileId, FileRange};
 use either::Either;
-use hir::{FieldSource, HasSource, InFile, ModuleSource, Semantics};
+use hir::{FieldSource, HasSource, HirFileIdExt, InFile, ModuleSource, Semantics};
 use stdx::never;
 use syntax::{
     ast::{self, HasName},

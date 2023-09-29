@@ -66,7 +66,7 @@ fn typing_inside_a_function_should_not_invalidate_def_map() {
 
 #[test]
 fn typing_inside_a_macro_should_not_invalidate_def_map() {
-    let (mut db, pos) = TestDB::with_position(
+    check_def_map_is_not_recomputed(
         r"
         //- /lib.rs
         macro_rules! m {
@@ -84,27 +84,15 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         //- /foo/bar.rs
         $0
         m!(X);
+
+        pub struct S {}
+        ",
+        r"
+        m!(Y);
+
+        pub struct S {}
         ",
     );
-    let krate = db.test_crate();
-    {
-        let events = db.log_executed(|| {
-            let crate_def_map = db.crate_def_map(krate);
-            let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
-            assert_eq!(module_data.scope.resolutions().count(), 1);
-        });
-        assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
-    }
-    db.set_file_text(pos.file_id, Arc::from("m!(Y);"));
-
-    {
-        let events = db.log_executed(|| {
-            let crate_def_map = db.crate_def_map(krate);
-            let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
-            assert_eq!(module_data.scope.resolutions().count(), 1);
-        });
-        assert!(!format!("{events:?}").contains("crate_def_map"), "{events:#?}")
-    }
 }
 
 #[test]

@@ -99,7 +99,7 @@ impl RootDatabase {
             hir::db::AstIdMapQuery
             hir::db::ParseMacroExpansionQuery
             hir::db::InternMacroCallQuery
-            hir::db::MacroArgNodeQuery
+            hir::db::MacroArgQuery
             hir::db::DeclMacroExpanderQuery
             hir::db::MacroExpandQuery
             hir::db::ExpandProcMacroQuery

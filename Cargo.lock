@@ -1263,6 +1263,7 @@ dependencies = [
  "serde_json",
  "snap",
  "stdx",
+ "text-size",
  "tracing",
  "triomphe",
  "tt",
@@ -2010,6 +2011,7 @@ version = "0.0.0"
 dependencies = [
  "smol_str",
  "stdx",
+ "text-size",
 ]
 
 [[package]]

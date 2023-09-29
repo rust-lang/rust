@@ -1,7 +1,8 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 use std::{fmt, ops};
 
-use base_db::CrateId;
+use ::tt::Span;
+use base_db::{span::SpanAnchor, CrateId};
 use cfg::CfgExpr;
 use either::Either;
 use intern::Interned;
@@ -39,11 +40,16 @@ impl ops::Deref for RawAttrs {
 impl RawAttrs {
     pub const EMPTY: Self = Self { entries: None };
 
-    pub fn new(db: &dyn ExpandDatabase, owner: &dyn ast::HasAttrs, hygiene: &Hygiene) -> Self {
+    pub fn new(
+        db: &dyn ExpandDatabase,
+        span_anchor: SpanAnchor,
+        owner: &dyn ast::HasAttrs,
+        hygiene: &Hygiene,
+    ) -> Self {
         let entries = collect_attrs(owner)
             .filter_map(|(id, attr)| match attr {
                 Either::Left(attr) => {
-                    attr.meta().and_then(|meta| Attr::from_src(db, meta, hygiene, id))
+                    attr.meta().and_then(|meta| Attr::from_src(db, span_anchor, meta, hygiene, id))
                 }
                 Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
                     id,
@@ -58,9 +64,13 @@ impl RawAttrs {
         Self { entries: if entries.is_empty() { None } else { Some(entries) } }
     }
 
-    pub fn from_attrs_owner(db: &dyn ExpandDatabase, owner: InFile<&dyn ast::HasAttrs>) -> Self {
+    pub fn from_attrs_owner(
+        db: &dyn ExpandDatabase,
+        span_anchor: SpanAnchor,
+        owner: InFile<&dyn ast::HasAttrs>,
+    ) -> Self {
         let hygiene = Hygiene::new(db, owner.file_id);
-        Self::new(db, owner.value, &hygiene)
+        Self::new(db, span_anchor, owner.value, &hygiene)
     }
 
     pub fn merge(&self, other: Self) -> Self {
@@ -190,16 +200,17 @@ pub struct Attr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttrInput {
     /// `#[attr = "string"]`
+    // FIXME: This is losing span
     Literal(SmolStr),
     /// `#[attr(subtree)]`
-    TokenTree(Box<(tt::Subtree, mbe::TokenMap)>),
+    TokenTree(Box<tt::Subtree>),
 }
 
 impl fmt::Display for AttrInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AttrInput::Literal(lit) => write!(f, " = \"{}\"", lit.escape_debug()),
-            AttrInput::TokenTree(tt) => tt.0.fmt(f),
+            AttrInput::TokenTree(tt) => tt.fmt(f),
         }
     }
 }
@@ -207,6 +218,7 @@ impl fmt::Display for AttrInput {
 impl Attr {
     fn from_src(
         db: &dyn ExpandDatabase,
+        span_anchor: SpanAnchor,
         ast: ast::Meta,
         hygiene: &Hygiene,
         id: AttrId,
@@ -219,8 +231,13 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            let (tree, map) = syntax_node_to_token_tree(tt.syntax());
-            Some(Interned::new(AttrInput::TokenTree(Box::new((tree, map)))))
+            // FIXME: We could also allocate ids for attributes and use the attribute itself as an anchor
+            let offset =
+                db.ast_id_map(span_anchor.file_id).get_raw(span_anchor.ast_id).text_range().start();
+            // FIXME: Spanmap
+            let tree =
+                syntax_node_to_token_tree(tt.syntax(), span_anchor, offset, &Default::default());
+            Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
         };
@@ -233,10 +250,12 @@ impl Attr {
         hygiene: &Hygiene,
         id: AttrId,
     ) -> Option<Attr> {
-        let (parse, _) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MetaItem);
+        // FIXME: Unecessary roundtrip tt -> ast -> tt
+        let (parse, _map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MetaItem);
         let ast = ast::Meta::cast(parse.syntax_node())?;
 
-        Self::from_src(db, ast, hygiene, id)
+        // FIXME: we discard spans here!
+        Self::from_src(db, SpanAnchor::DUMMY, ast, hygiene, id)
     }
 
     pub fn path(&self) -> &ModPath {
@@ -256,7 +275,7 @@ impl Attr {
     /// #[path(ident)]
     pub fn single_ident_value(&self) -> Option<&tt::Ident> {
         match self.input.as_deref()? {
-            AttrInput::TokenTree(tt) => match &*tt.0.token_trees {
+            AttrInput::TokenTree(tt) => match &*tt.token_trees {
                 [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] => Some(ident),
                 _ => None,
             },
@@ -267,7 +286,7 @@ impl Attr {
     /// #[path TokenTree]
     pub fn token_tree_value(&self) -> Option<&Subtree> {
         match self.input.as_deref()? {
-            AttrInput::TokenTree(tt) => Some(&tt.0),
+            AttrInput::TokenTree(tt) => Some(tt),
             _ => None,
         }
     }

@@ -15,7 +15,7 @@ use hir_def::{
     type_ref::Mutability,
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
 };
-use hir_expand::{db::ExpandDatabase, name::AsName, ExpansionInfo, MacroCallId};
+use hir_expand::{db::ExpandDatabase, name::AsName, ExpansionInfo, HirFileIdExt, MacroCallId};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
@@ -549,7 +549,7 @@ impl<'db> SemanticsImpl<'db> {
         let mut mcache = self.macro_call_cache.borrow_mut();
 
         let mut process_expansion_for_token =
-            |stack: &mut SmallVec<_>, macro_file, item, token: InFile<&_>| {
+            |stack: &mut SmallVec<_>, macro_file, token: InFile<&_>| {
                 let expansion_info = cache
                     .entry(macro_file)
                     .or_insert_with(|| macro_file.expansion_info(self.db.upcast()))
@@ -562,7 +562,6 @@ impl<'db> SemanticsImpl<'db> {
 
                 let mapped_tokens = expansion_info.map_token_down(
                     self.db.upcast(),
-                    item,
                     token,
                     relative_token_offset,
                 )?;
@@ -587,17 +586,12 @@ impl<'db> SemanticsImpl<'db> {
                             // Don't force populate the dyn cache for items that don't have an attribute anyways
                             return None;
                         }
-                        Some((ctx.item_to_macro_call(token.with_value(item.clone()))?, item))
+                        Some(ctx.item_to_macro_call(token.with_value(item.clone()))?)
                     })
                 });
-                if let Some((call_id, item)) = containing_attribute_macro_call {
+                if let Some(call_id) = containing_attribute_macro_call {
                     let file_id = call_id.as_file();
-                    return process_expansion_for_token(
-                        &mut stack,
-                        file_id,
-                        Some(item),
-                        token.as_ref(),
-                    );
+                    return process_expansion_for_token(&mut stack, file_id, token.as_ref());
                 }
 
                 // Then check for token trees, that means we are either in a function-like macro or
@@ -622,7 +616,7 @@ impl<'db> SemanticsImpl<'db> {
                             it
                         }
                     };
-                    process_expansion_for_token(&mut stack, file_id, None, token.as_ref())
+                    process_expansion_for_token(&mut stack, file_id, token.as_ref())
                 } else if let Some(meta) = ast::Meta::cast(parent) {
                     // attribute we failed expansion for earlier, this might be a derive invocation
                     // or derive helper attribute
@@ -647,7 +641,6 @@ impl<'db> SemanticsImpl<'db> {
                                 return process_expansion_for_token(
                                     &mut stack,
                                     file_id,
-                                    Some(adt.into()),
                                     token.as_ref(),
                                 );
                             }
@@ -679,13 +672,11 @@ impl<'db> SemanticsImpl<'db> {
                     let id = self.db.ast_id_map(token.file_id).ast_id(&adt);
                     let helpers =
                         def_map.derive_helpers_in_scope(InFile::new(token.file_id, id))?;
-                    let item = Some(adt.into());
                     let mut res = None;
                     for (.., derive) in helpers.iter().filter(|(helper, ..)| *helper == attr_name) {
                         res = res.or(process_expansion_for_token(
                             &mut stack,
                             derive.as_file(),
-                            item.clone(),
                             token.as_ref(),
                         ));
                     }

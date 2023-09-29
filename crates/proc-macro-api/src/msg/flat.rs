@@ -38,6 +38,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use serde::{Deserialize, Serialize};
+use text_size::TextRange;
 use tt::Span;
 
 use crate::msg::{ENCODE_CLOSE_SPAN_VERSION, VARIABLE_SIZED_SPANS};
@@ -52,6 +53,19 @@ impl SerializableSpan<1> for tt::TokenId {
     }
     fn from_u32([input]: [u32; 1]) -> Self {
         tt::TokenId(input)
+    }
+}
+
+impl<FileId> SerializableSpan<3> for tt::SpanData<FileId>
+where
+    FileId: From<u32> + Into<u32>,
+    Self: Span,
+{
+    fn into_u32(self) -> [u32; 3] {
+        [self.anchor.into(), self.range.start().into(), self.range.end().into()]
+    }
+    fn from_u32([file_id, start, end]: [u32; 3]) -> Self {
+        tt::SpanData { anchor: file_id.into(), range: TextRange::new(start.into(), end.into()) }
     }
 }
 

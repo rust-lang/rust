@@ -18,8 +18,8 @@ macro_rules! __quote {
             crate::tt::Subtree {
                 delimiter: crate::tt::Delimiter {
                     kind: crate::tt::DelimiterKind::$delim,
-                    open: crate::tt::TokenId::unspecified(),
-                    close: crate::tt::TokenId::unspecified(),
+                    open: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
+                    close: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
                 },
                 token_trees: $crate::quote::IntoTt::to_tokens(children),
             }
@@ -32,7 +32,7 @@ macro_rules! __quote {
                 crate::tt::Leaf::Punct(crate::tt::Punct {
                     char: $first,
                     spacing: crate::tt::Spacing::Alone,
-                    span: crate::tt::TokenId::unspecified(),
+                    span: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
                 }).into()
             ]
         }
@@ -44,12 +44,12 @@ macro_rules! __quote {
                 crate::tt::Leaf::Punct(crate::tt::Punct {
                     char: $first,
                     spacing: crate::tt::Spacing::Joint,
-                    span: crate::tt::TokenId::unspecified(),
+                    span: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
                 }).into(),
                 crate::tt::Leaf::Punct(crate::tt::Punct {
                     char: $sec,
                     spacing: crate::tt::Spacing::Alone,
-                    span: crate::tt::TokenId::unspecified(),
+                    span: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
                 }).into()
             ]
         }
@@ -89,7 +89,7 @@ macro_rules! __quote {
         vec![ {
             crate::tt::Leaf::Ident(crate::tt::Ident {
                 text: stringify!($tt).into(),
-                span: crate::tt::TokenId::unspecified(),
+                span: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
             }).into()
         }]
     };
@@ -195,20 +195,22 @@ macro_rules! impl_to_to_tokentrees {
 }
 
 impl_to_to_tokentrees! {
-    u32 => self { crate::tt::Literal{text: self.to_string().into(), span: crate::tt::TokenId::unspecified()} };
-    usize => self { crate::tt::Literal{text: self.to_string().into(), span: crate::tt::TokenId::unspecified()} };
-    i32 => self { crate::tt::Literal{text: self.to_string().into(), span: crate::tt::TokenId::unspecified()} };
-    bool => self { crate::tt::Ident{text: self.to_string().into(), span: crate::tt::TokenId::unspecified()} };
+    u32 => self { crate::tt::Literal{text: self.to_string().into(), span: <crate::tt::SpanData as crate::tt::Span>::DUMMY} };
+    usize => self { crate::tt::Literal{text: self.to_string().into(), span: <crate::tt::SpanData as crate::tt::Span>::DUMMY} };
+    i32 => self { crate::tt::Literal{text: self.to_string().into(), span: <crate::tt::SpanData as crate::tt::Span>::DUMMY} };
+    bool => self { crate::tt::Ident{text: self.to_string().into(), span: <crate::tt::SpanData as crate::tt::Span>::DUMMY} };
     crate::tt::Leaf => self { self };
     crate::tt::Literal => self { self };
     crate::tt::Ident => self { self };
     crate::tt::Punct => self { self };
-    &str => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span: crate::tt::TokenId::unspecified()}};
-    String => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span: crate::tt::TokenId::unspecified()}}
+    &str => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span: <crate::tt::SpanData as crate::tt::Span>::DUMMY}};
+    String => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span: <crate::tt::SpanData as crate::tt::Span>::DUMMY}}
 }
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     #[test]
     fn test_quote_delimiters() {
         assert_eq!(quote!({}).to_string(), "{}");
@@ -231,7 +233,10 @@ mod tests {
     }
 
     fn mk_ident(name: &str) -> crate::tt::Ident {
-        crate::tt::Ident { text: name.into(), span: crate::tt::TokenId::unspecified() }
+        crate::tt::Ident {
+            text: name.into(),
+            span: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
+        }
     }
 
     #[test]
@@ -241,7 +246,9 @@ mod tests {
         let quoted = quote!(#a);
         assert_eq!(quoted.to_string(), "hello");
         let t = format!("{quoted:?}");
-        assert_eq!(t, "SUBTREE $$ 4294967295 4294967295\n  IDENT   hello 4294967295");
+        expect![[r#"
+            SUBTREE $$ SpanData { range: 0..0, anchor: SpanAnchor { file_id: FileId(0), ast_id: Idx::<RustLanguage>>(0) } } SpanData { range: 0..0, anchor: SpanAnchor { file_id: FileId(0), ast_id: Idx::<RustLanguage>>(0) } }
+              IDENT   hello SpanData { range: 0..0, anchor: SpanAnchor { file_id: FileId(0), ast_id: Idx::<RustLanguage>>(0) } }"#]].assert_eq(&t);
     }
 
     #[test]
@@ -273,8 +280,8 @@ mod tests {
         let list = crate::tt::Subtree {
             delimiter: crate::tt::Delimiter {
                 kind: crate::tt::DelimiterKind::Brace,
-                open: crate::tt::TokenId::unspecified(),
-                close: crate::tt::TokenId::unspecified(),
+                open: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
+                close: <crate::tt::SpanData as crate::tt::Span>::DUMMY,
             },
             token_trees: fields.collect(),
         };

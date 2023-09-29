@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use hir::{InFile, Module, ModuleSource};
+use hir::{HirFileIdExt, InFile, Module, ModuleSource};
 use ide_db::{
     base_db::FileRange,
     defs::Definition,

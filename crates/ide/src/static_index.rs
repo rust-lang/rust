@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use hir::{db::HirDatabase, Crate, Module};
+use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
 use ide_db::helpers::get_definition;
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},

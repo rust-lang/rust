@@ -1,4 +1,4 @@
-use hir::{HasSource, HirDisplay, InFile};
+use hir::{HasSource, HirDisplay, HirFileIdExt, InFile};
 use ide_db::assists::{AssistId, AssistKind};
 use syntax::{
     ast::{self, make, HasArgList},

@@ -31,5 +31,6 @@ paths.workspace = true
 tt.workspace = true
 stdx.workspace = true
 profile.workspace = true
+text-size.workspace = true
 # Intentionally *not* depend on anything salsa-related
 # base-db.workspace = true

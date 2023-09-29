@@ -7,6 +7,7 @@
 use std::fmt;
 
 use stdx::impl_from;
+use text_size::{TextRange, TextSize};
 
 pub use smol_str::SmolStr;
 
@@ -31,36 +32,25 @@ impl TokenId {
         Self::UNSPECIFIED
     }
 }
-
-pub mod token_id {
-    pub use crate::{DelimiterKind, Spacing, TokenId};
-    pub type Span = crate::TokenId;
-    pub type Subtree = crate::Subtree<Span>;
-    pub type Punct = crate::Punct<Span>;
-    pub type Delimiter = crate::Delimiter<Span>;
-    pub type Leaf = crate::Leaf<Span>;
-    pub type Ident = crate::Ident<Span>;
-    pub type Literal = crate::Literal<Span>;
-    pub type TokenTree = crate::TokenTree<Span>;
-    pub mod buffer {
-        pub type TokenBuffer<'a> = crate::buffer::TokenBuffer<'a, super::Span>;
-        pub type Cursor<'a> = crate::buffer::Cursor<'a, super::Span>;
-        pub type TokenTreeRef<'a> = crate::buffer::TokenTreeRef<'a, super::Span>;
-    }
-}
-
-pub trait Span: std::fmt::Debug + Copy + Sized {
-    const DUMMY: Self;
-    fn is_dummy(&self) -> bool;
-}
 impl Span for TokenId {
     const DUMMY: Self = TokenId(!0);
-
-    fn is_dummy(&self) -> bool {
-        *self == Self::DUMMY
-    }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct SpanData<Anchor> {
+    /// The text range of this span, relative to the anchor.
+    pub range: TextRange,
+    pub anchor: Anchor,
+}
+
+impl<Anchor: Span> Span for SpanData<Anchor> {
+    const DUMMY: Self =
+        SpanData { range: TextRange::empty(TextSize::new(0)), anchor: Anchor::DUMMY };
+}
+
+pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
+    const DUMMY: Self;
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SyntaxContext(pub u32);
 
@@ -133,7 +123,6 @@ impl<S: Span> Delimiter<S> {
         Self::UNSPECIFIED
     }
 }
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DelimiterKind {

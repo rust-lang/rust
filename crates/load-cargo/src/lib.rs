@@ -4,13 +4,12 @@
 // to run rust-analyzer as a library.
 use std::{collections::hash_map::Entry, mem, path::Path, sync};
 
-use ::tt::token_id as tt;
 use crossbeam_channel::{unbounded, Receiver};
 use ide::{AnalysisHost, Change, SourceRoot};
 use ide_db::{
     base_db::{
-        CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
-        ProcMacroLoadResult, ProcMacros,
+        span::SpanData, CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
+        ProcMacroKind, ProcMacroLoadResult, ProcMacros,
     },
     FxHashMap,
 };
@@ -374,16 +373,19 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        subtree: &tt::Subtree,
-        attrs: Option<&tt::Subtree>,
+        subtree: &tt::Subtree<SpanData>,
+        attrs: Option<&tt::Subtree<SpanData>>,
         env: &Env,
-    ) -> Result<tt::Subtree, ProcMacroExpansionError> {
-        let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
-        match self.0.expand(subtree, attrs, env) {
-            Ok(Ok(subtree)) => Ok(subtree),
-            Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
-            Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
-        }
+    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
+        let _ = (subtree, attrs, env);
+
+        // let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        // match self.0.expand(subtree, attrs, env) {
+        //     Ok(Ok(subtree)) => Ok(subtree),
+        //     Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
+        //     Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
+        // }
+        todo!()
     }
 }
 
@@ -394,10 +396,10 @@ struct IdentityExpander;
 impl ProcMacroExpander for IdentityExpander {
     fn expand(
         &self,
-        subtree: &tt::Subtree,
-        _: Option<&tt::Subtree>,
+        subtree: &tt::Subtree<SpanData>,
+        _: Option<&tt::Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<tt::Subtree, ProcMacroExpansionError> {
+    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
 }
@@ -409,10 +411,10 @@ struct EmptyExpander;
 impl ProcMacroExpander for EmptyExpander {
     fn expand(
         &self,
-        _: &tt::Subtree,
-        _: Option<&tt::Subtree>,
+        _: &tt::Subtree<SpanData>,
+        _: Option<&tt::Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<tt::Subtree, ProcMacroExpansionError> {
+    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
         Ok(tt::Subtree::empty())
     }
 }

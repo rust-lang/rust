@@ -1,7 +1,7 @@
 //! This module resolves `mod foo;` declaration to file.
 use arrayvec::ArrayVec;
 use base_db::{AnchoredPath, FileId};
-use hir_expand::name::Name;
+use hir_expand::{name::Name, HirFileIdExt};
 use limit::Limit;
 use syntax::SmolStr;
 

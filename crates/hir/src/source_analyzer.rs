@@ -30,7 +30,7 @@ use hir_expand::{
     mod_path::path,
     name,
     name::{AsName, Name},
-    HirFileId, InFile,
+    HirFileId, HirFileIdExt, InFile,
 };
 use hir_ty::{
     diagnostics::{

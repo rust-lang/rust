@@ -1,18 +1,20 @@
 //! Builtin derives.
 
-use ::tt::Ident;
+use ::tt::Span;
 use base_db::{CrateOrigin, LangCrateOrigin};
 use itertools::izip;
-use mbe::TokenMap;
 use rustc_hash::FxHashSet;
 use stdx::never;
 use tracing::debug;
 
 use crate::{
     name::{AsName, Name},
-    tt::{self, TokenId},
+    tt, SpanMap,
 };
-use syntax::ast::{self, AstNode, FieldList, HasAttrs, HasGenericParams, HasName, HasTypeBounds};
+use syntax::{
+    ast::{self, AstNode, FieldList, HasAttrs, HasGenericParams, HasName, HasTypeBounds},
+    TextSize,
+};
 
 use crate::{db::ExpandDatabase, name, quote, ExpandError, ExpandResult, MacroCallId};
 
@@ -29,7 +31,7 @@ macro_rules! register_builtin {
                 db: &dyn ExpandDatabase,
                 id: MacroCallId,
                 tt: &ast::Adt,
-                token_map: &TokenMap,
+                token_map: &SpanMap,
             ) -> ExpandResult<tt::Subtree> {
                 let expander = match *self {
                     $( BuiltinDeriveExpander::$trait => $expand, )*
@@ -71,7 +73,7 @@ enum VariantShape {
 }
 
 fn tuple_field_iterator(n: usize) -> impl Iterator<Item = tt::Ident> {
-    (0..n).map(|it| Ident::new(format!("f{it}"), tt::TokenId::unspecified()))
+    (0..n).map(|it| tt::Ident::new(format!("f{it}"), tt::SpanData::DUMMY))
 }
 
 impl VariantShape {
@@ -117,7 +119,7 @@ impl VariantShape {
         }
     }
 
-    fn from(tm: &TokenMap, value: Option<FieldList>) -> Result<Self, ExpandError> {
+    fn from(tm: &SpanMap, value: Option<FieldList>) -> Result<Self, ExpandError> {
         let r = match value {
             None => VariantShape::Unit,
             Some(FieldList::RecordFieldList(it)) => VariantShape::Struct(
@@ -189,8 +191,8 @@ struct BasicAdtInfo {
     associated_types: Vec<tt::Subtree>,
 }
 
-fn parse_adt(tm: &TokenMap, adt: &ast::Adt) -> Result<BasicAdtInfo, ExpandError> {
-    let (name, generic_param_list, shape) = match &adt {
+fn parse_adt(tm: &SpanMap, adt: &ast::Adt) -> Result<BasicAdtInfo, ExpandError> {
+    let (name, generic_param_list, shape) = match adt {
         ast::Adt::Struct(it) => (
             it.name(),
             it.generic_param_list(),
@@ -234,21 +236,44 @@ fn parse_adt(tm: &TokenMap, adt: &ast::Adt) -> Result<BasicAdtInfo, ExpandError>
                 match this {
                     Some(it) => {
                         param_type_set.insert(it.as_name());
-                        mbe::syntax_node_to_token_tree(it.syntax()).0
+                        mbe::syntax_node_to_token_tree(
+                            it.syntax(),
+                            tm.span_for_range(it.syntax().first_token().unwrap().text_range())
+                                .unwrap()
+                                .anchor,
+                            TextSize::from(0),
+                            tm,
+                        )
                     }
                     None => tt::Subtree::empty(),
                 }
             };
             let bounds = match &param {
-                ast::TypeOrConstParam::Type(it) => {
-                    it.type_bound_list().map(|it| mbe::syntax_node_to_token_tree(it.syntax()).0)
-                }
+                ast::TypeOrConstParam::Type(it) => it.type_bound_list().map(|it| {
+                    mbe::syntax_node_to_token_tree(
+                        it.syntax(),
+                        tm.span_for_range(it.syntax().first_token().unwrap().text_range())
+                            .unwrap()
+                            .anchor,
+                        TextSize::from(0),
+                        tm,
+                    )
+                }),
                 ast::TypeOrConstParam::Const(_) => None,
             };
             let ty = if let ast::TypeOrConstParam::Const(param) = param {
                 let ty = param
                     .ty()
-                    .map(|ty| mbe::syntax_node_to_token_tree(ty.syntax()).0)
+                    .map(|ty| {
+                        mbe::syntax_node_to_token_tree(
+                            ty.syntax(),
+                            tm.span_for_range(ty.syntax().first_token().unwrap().text_range())
+                                .unwrap()
+                                .anchor,
+                            TextSize::from(0),
+                            tm,
+                        )
+                    })
                     .unwrap_or_else(tt::Subtree::empty);
                 Some(ty)
             } else {
@@ -282,20 +307,26 @@ fn parse_adt(tm: &TokenMap, adt: &ast::Adt) -> Result<BasicAdtInfo, ExpandError>
             let name = p.path()?.qualifier()?.as_single_name_ref()?.as_name();
             param_type_set.contains(&name).then_some(p)
         })
-        .map(|it| mbe::syntax_node_to_token_tree(it.syntax()).0)
+        .map(|it| {
+            mbe::syntax_node_to_token_tree(
+                it.syntax(),
+                tm.span_for_range(it.syntax().first_token().unwrap().text_range()).unwrap().anchor,
+                TextSize::from(0),
+                tm,
+            )
+        })
         .collect();
     let name_token = name_to_token(&tm, name)?;
     Ok(BasicAdtInfo { name: name_token, shape, param_types, associated_types })
 }
 
-fn name_to_token(token_map: &TokenMap, name: Option<ast::Name>) -> Result<tt::Ident, ExpandError> {
+fn name_to_token(token_map: &SpanMap, name: Option<ast::Name>) -> Result<tt::Ident, ExpandError> {
     let name = name.ok_or_else(|| {
         debug!("parsed item has no name");
         ExpandError::other("missing name")
     })?;
-    let name_token_id =
-        token_map.token_by_range(name.syntax().text_range()).unwrap_or_else(TokenId::unspecified);
-    let name_token = tt::Ident { span: name_token_id, text: name.text().into() };
+    let span = token_map.span_for_range(name.syntax().text_range()).unwrap();
+    let name_token = tt::Ident { span, text: name.text().into() };
     Ok(name_token)
 }
 
@@ -332,7 +363,7 @@ fn name_to_token(token_map: &TokenMap, name: Option<ast::Name>) -> Result<tt::Id
 /// therefore does not get bound by the derived trait.
 fn expand_simple_derive(
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
     trait_path: tt::Subtree,
     make_trait_body: impl FnOnce(&BasicAdtInfo) -> tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
@@ -393,7 +424,7 @@ fn copy_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::marker::Copy }, |_| quote! {})
@@ -403,16 +434,13 @@ fn clone_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::clone::Clone }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
-            let star = tt::Punct {
-                char: '*',
-                spacing: ::tt::Spacing::Alone,
-                span: tt::TokenId::unspecified(),
-            };
+            let star =
+                tt::Punct { char: '*', spacing: ::tt::Spacing::Alone, span: tt::SpanData::DUMMY };
             return quote! {
                 fn clone(&self) -> Self {
                     #star self
@@ -420,11 +448,8 @@ fn clone_expand(
             };
         }
         if matches!(&adt.shape, AdtShape::Enum { variants, .. } if variants.is_empty()) {
-            let star = tt::Punct {
-                char: '*',
-                spacing: ::tt::Spacing::Alone,
-                span: tt::TokenId::unspecified(),
-            };
+            let star =
+                tt::Punct { char: '*', spacing: ::tt::Spacing::Alone, span: tt::SpanData::DUMMY };
             return quote! {
                 fn clone(&self) -> Self {
                     match #star self {}
@@ -452,16 +477,14 @@ fn clone_expand(
 }
 
 /// This function exists since `quote! { => }` doesn't work.
-fn fat_arrow() -> ::tt::Subtree<TokenId> {
-    let eq =
-        tt::Punct { char: '=', spacing: ::tt::Spacing::Joint, span: tt::TokenId::unspecified() };
+fn fat_arrow() -> tt::Subtree {
+    let eq = tt::Punct { char: '=', spacing: ::tt::Spacing::Joint, span: tt::SpanData::DUMMY };
     quote! { #eq> }
 }
 
 /// This function exists since `quote! { && }` doesn't work.
-fn and_and() -> ::tt::Subtree<TokenId> {
-    let and =
-        tt::Punct { char: '&', spacing: ::tt::Spacing::Joint, span: tt::TokenId::unspecified() };
+fn and_and() -> tt::Subtree {
+    let and = tt::Punct { char: '&', spacing: ::tt::Spacing::Joint, span: tt::SpanData::DUMMY };
     quote! { #and& }
 }
 
@@ -469,7 +492,7 @@ fn default_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = &find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::default::Default }, |adt| {
@@ -509,7 +532,7 @@ fn debug_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = &find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::fmt::Debug }, |adt| {
@@ -540,11 +563,8 @@ fn debug_expand(
             },
         };
         if matches!(&adt.shape, AdtShape::Enum { variants, .. } if variants.is_empty()) {
-            let star = tt::Punct {
-                char: '*',
-                spacing: ::tt::Spacing::Alone,
-                span: tt::TokenId::unspecified(),
-            };
+            let star =
+                tt::Punct { char: '*', spacing: ::tt::Spacing::Alone, span: tt::SpanData::DUMMY };
             return quote! {
                 fn fmt(&self, f: &mut #krate::fmt::Formatter) -> #krate::fmt::Result {
                     match #star self {}
@@ -590,7 +610,7 @@ fn hash_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = &find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::hash::Hash }, |adt| {
@@ -599,11 +619,8 @@ fn hash_expand(
             return quote! {};
         }
         if matches!(&adt.shape, AdtShape::Enum { variants, .. } if variants.is_empty()) {
-            let star = tt::Punct {
-                char: '*',
-                spacing: ::tt::Spacing::Alone,
-                span: tt::TokenId::unspecified(),
-            };
+            let star =
+                tt::Punct { char: '*', spacing: ::tt::Spacing::Alone, span: tt::SpanData::DUMMY };
             return quote! {
                 fn hash<H: #krate::hash::Hasher>(&self, ra_expand_state: &mut H) {
                     match #star self {}
@@ -644,7 +661,7 @@ fn eq_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::cmp::Eq }, |_| quote! {})
@@ -654,7 +671,7 @@ fn partial_eq_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::cmp::PartialEq }, |adt| {
@@ -674,14 +691,14 @@ fn partial_eq_expand(
                     }
                     [first, rest @ ..] => {
                         let rest = rest.iter().map(|it| {
-                            let t1 = Ident::new(format!("{}_self", it.text), it.span);
-                            let t2 = Ident::new(format!("{}_other", it.text), it.span);
+                            let t1 = tt::Ident::new(format!("{}_self", it.text), it.span);
+                            let t2 = tt::Ident::new(format!("{}_other", it.text), it.span);
                             let and_and = and_and();
                             quote!(#and_and #t1 .eq( #t2 ))
                         });
                         let first = {
-                            let t1 = Ident::new(format!("{}_self", first.text), first.span);
-                            let t2 = Ident::new(format!("{}_other", first.text), first.span);
+                            let t1 = tt::Ident::new(format!("{}_self", first.text), first.span);
+                            let t2 = tt::Ident::new(format!("{}_other", first.text), first.span);
                             quote!(#t1 .eq( #t2 ))
                         };
                         quote!(#first ##rest)
@@ -708,11 +725,11 @@ fn self_and_other_patterns(
     name: &tt::Ident,
 ) -> (Vec<tt::Subtree>, Vec<tt::Subtree>) {
     let self_patterns = adt.shape.as_pattern_map(name, |it| {
-        let t = Ident::new(format!("{}_self", it.text), it.span);
+        let t = tt::Ident::new(format!("{}_self", it.text), it.span);
         quote!(#t)
     });
     let other_patterns = adt.shape.as_pattern_map(name, |it| {
-        let t = Ident::new(format!("{}_other", it.text), it.span);
+        let t = tt::Ident::new(format!("{}_other", it.text), it.span);
         quote!(#t)
     });
     (self_patterns, other_patterns)
@@ -722,7 +739,7 @@ fn ord_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = &find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::cmp::Ord }, |adt| {
@@ -752,8 +769,8 @@ fn ord_expand(
             |(pat1, pat2, fields)| {
                 let mut body = quote!(#krate::cmp::Ordering::Equal);
                 for f in fields.into_iter().rev() {
-                    let t1 = Ident::new(format!("{}_self", f.text), f.span);
-                    let t2 = Ident::new(format!("{}_other", f.text), f.span);
+                    let t1 = tt::Ident::new(format!("{}_self", f.text), f.span);
+                    let t2 = tt::Ident::new(format!("{}_other", f.text), f.span);
                     body = compare(krate, quote!(#t1), quote!(#t2), body);
                 }
                 let fat_arrow = fat_arrow();
@@ -784,7 +801,7 @@ fn partial_ord_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
     tt: &ast::Adt,
-    tm: &TokenMap,
+    tm: &SpanMap,
 ) -> ExpandResult<tt::Subtree> {
     let krate = &find_builtin_crate(db, id);
     expand_simple_derive(tt, tm, quote! { #krate::cmp::PartialOrd }, |adt| {
@@ -817,8 +834,8 @@ fn partial_ord_expand(
             |(pat1, pat2, fields)| {
                 let mut body = quote!(#krate::option::Option::Some(#krate::cmp::Ordering::Equal));
                 for f in fields.into_iter().rev() {
-                    let t1 = Ident::new(format!("{}_self", f.text), f.span);
-                    let t2 = Ident::new(format!("{}_other", f.text), f.span);
+                    let t1 = tt::Ident::new(format!("{}_self", f.text), f.span);
+                    let t2 = tt::Ident::new(format!("{}_other", f.text), f.span);
                     body = compare(krate, quote!(#t1), quote!(#t2), body);
                 }
                 let fat_arrow = fat_arrow();

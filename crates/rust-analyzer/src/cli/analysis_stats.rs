@@ -8,7 +8,7 @@ use std::{
 
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
-    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ModuleDef, Name,
 };
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},

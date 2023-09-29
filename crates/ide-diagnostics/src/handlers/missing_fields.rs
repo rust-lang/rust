@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{
     db::{ExpandDatabase, HirDatabase},
-    known, AssocItem, HirDisplay, InFile, Type,
+    known, AssocItem, HirDisplay, HirFileIdExt, InFile, Type,
 };
 use ide_db::{
     assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,

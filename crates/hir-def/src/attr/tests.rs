@@ -1,17 +1,18 @@
 //! This module contains tests for doc-expression parsing.
 //! Currently, it tests `#[doc(hidden)]` and `#[doc(alias)]`.
 
+use base_db::span::SpanAnchor;
 use mbe::syntax_node_to_token_tree;
 use syntax::{ast, AstNode};
+use tt::Span;
 
 use crate::attr::{DocAtom, DocExpr};
 
 fn assert_parse_result(input: &str, expected: DocExpr) {
-    let (tt, _) = {
-        let source_file = ast::SourceFile::parse(input).ok().unwrap();
-        let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        syntax_node_to_token_tree(tt.syntax())
-    };
+    let source_file = ast::SourceFile::parse(input).ok().unwrap();
+    let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+    let tt =
+        syntax_node_to_token_tree(tt.syntax(), SpanAnchor::DUMMY, 0.into(), &Default::default());
     let cfg = DocExpr::parse(&tt);
     assert_eq!(cfg, expected);
 }

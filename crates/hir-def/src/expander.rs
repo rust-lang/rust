@@ -1,6 +1,9 @@
 //! Macro expansion utilities.
 
-use base_db::CrateId;
+use base_db::{
+    span::{SpanAnchor, ROOT_ERASED_FILE_AST_ID},
+    CrateId,
+};
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
@@ -118,7 +121,17 @@ impl Expander {
     }
 
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
-        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, &self.hygiene))
+        Attrs::filter(
+            db,
+            self.krate,
+            RawAttrs::new(
+                db.upcast(),
+                // Usin `ROOT_ERASED_FILE_AST_ID` here is fine as this is only used for cfg checking
+                SpanAnchor { file_id: self.current_file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
+                owner,
+                &self.hygiene,
+            ),
+        )
     }
 
     pub(crate) fn cfg_options(&self) -> &CfgOptions {

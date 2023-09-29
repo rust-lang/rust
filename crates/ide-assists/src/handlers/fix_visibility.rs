@@ -1,4 +1,6 @@
-use hir::{db::HirDatabase, HasSource, HasVisibility, ModuleDef, PathResolution, ScopeDef};
+use hir::{
+    db::HirDatabase, HasSource, HasVisibility, HirFileIdExt, ModuleDef, PathResolution, ScopeDef,
+};
 use ide_db::base_db::FileId;
 use syntax::{
     ast::{self, edit_in_place::HasVisibilityEdit, make, HasVisibility as _},

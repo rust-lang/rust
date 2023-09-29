@@ -1,5 +1,5 @@
 use crate::assist_context::{AssistContext, Assists};
-use hir::{HasVisibility, HirDisplay, Module};
+use hir::{HasVisibility, HirDisplay, HirFileIdExt, Module};
 use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::{FileId, Upcast},

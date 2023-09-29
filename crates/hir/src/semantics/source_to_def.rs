@@ -97,7 +97,7 @@ use hir_def::{
     FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId,
     StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId, VariantId,
 };
-use hir_expand::{attrs::AttrId, name::AsName, HirFileId, MacroCallId};
+use hir_expand::{attrs::AttrId, name::AsName, HirFileId, HirFileIdExt, MacroCallId};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};

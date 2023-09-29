@@ -2,12 +2,14 @@
 
 use std::collections::hash_map::Entry;
 
+use base_db::span::ErasedFileAstId;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
 use syntax::ast::{self, HasModuleItem, HasTypeBounds};
 
 use crate::{
     generics::{GenericParams, TypeParamData, TypeParamProvenance},
     type_ref::{LifetimeRef, TraitBoundModifier, TraitRef},
+    LocalLifetimeParamId, LocalTypeOrConstParamId,
 };
 
 use super::*;
@@ -21,6 +23,7 @@ pub(super) struct Ctx<'a> {
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::lower::LowerCtx<'a>,
+    file: HirFileId,
 }
 
 impl<'a> Ctx<'a> {
@@ -30,6 +33,7 @@ impl<'a> Ctx<'a> {
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
             body_ctx: crate::lower::LowerCtx::with_file_id(db, file),
+            file,
         }
     }
 
@@ -77,9 +81,18 @@ impl<'a> Ctx<'a> {
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
-        self.tree
-            .attrs
-            .insert(AttrOwner::TopLevel, RawAttrs::new(self.db.upcast(), block, self.hygiene()));
+        self.tree.attrs.insert(
+            AttrOwner::TopLevel,
+            RawAttrs::new(
+                self.db.upcast(),
+                SpanAnchor {
+                    file_id: self.file,
+                    ast_id: self.source_ast_id_map.ast_id(block).erase(),
+                },
+                block,
+                self.hygiene(),
+            ),
+        );
         self.tree.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {
@@ -109,8 +122,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_mod_item(&mut self, item: &ast::Item) -> Option<ModItem> {
-        let attrs = RawAttrs::new(self.db.upcast(), item, self.hygiene());
-        let item: ModItem = match item {
+        let mod_item: ModItem = match item {
             ast::Item::Struct(ast) => self.lower_struct(ast)?.into(),
             ast::Item::Union(ast) => self.lower_union(ast)?.into(),
             ast::Item::Enum(ast) => self.lower_enum(ast)?.into(),
@@ -129,10 +141,15 @@ impl<'a> Ctx<'a> {
             ast::Item::MacroDef(ast) => self.lower_macro_def(ast)?.into(),
             ast::Item::ExternBlock(ast) => self.lower_extern_block(ast).into(),
         };
+        let attrs = RawAttrs::new(
+            self.db.upcast(),
+            SpanAnchor { file_id: self.file, ast_id: mod_item.ast_id(&self.tree).erase() },
+            item,
+            self.hygiene(),
+        );
+        self.add_attrs(mod_item.into(), attrs);
 
-        self.add_attrs(item.into(), attrs);
-
-        Some(item)
+        Some(mod_item)
     }
 
     fn add_attrs(&mut self, item: AttrOwner, attrs: RawAttrs) {
@@ -146,21 +163,37 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_assoc_item(&mut self, item: &ast::AssocItem) -> Option<AssocItem> {
-        match item {
+    fn lower_assoc_item(&mut self, item_node: &ast::AssocItem) -> Option<AssocItem> {
+        let item: AssocItem = match item_node {
             ast::AssocItem::Fn(ast) => self.lower_function(ast).map(Into::into),
             ast::AssocItem::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
             ast::AssocItem::Const(ast) => Some(self.lower_const(ast).into()),
             ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
-        }
+        }?;
+        let attrs = RawAttrs::new(
+            self.db.upcast(),
+            SpanAnchor { file_id: self.file, ast_id: item.ast_id(&self.tree).erase() },
+            item_node,
+            self.hygiene(),
+        );
+        self.add_attrs(
+            match item {
+                AssocItem::Function(it) => AttrOwner::ModItem(ModItem::Function(it)),
+                AssocItem::TypeAlias(it) => AttrOwner::ModItem(ModItem::TypeAlias(it)),
+                AssocItem::Const(it) => AttrOwner::ModItem(ModItem::Const(it)),
+                AssocItem::MacroCall(it) => AttrOwner::ModItem(ModItem::MacroCall(it)),
+            },
+            attrs,
+        );
+        Some(item)
     }
 
     fn lower_struct(&mut self, strukt: &ast::Struct) -> Option<FileItemTreeId<Struct>> {
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, strukt);
-        let fields = self.lower_fields(&strukt.kind());
         let ast_id = self.source_ast_id_map.ast_id(strukt);
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, strukt, ast_id.erase());
+        let fields = self.lower_fields(&strukt.kind());
         let res = Struct { name, visibility, generic_params, fields, ast_id };
         Some(id(self.data().structs.alloc(res)))
     }
@@ -183,8 +216,20 @@ impl<'a> Ctx<'a> {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
+                let ast_id = match data.ast_id {
+                    FieldAstId::Record(it) => it.erase(),
+                    FieldAstId::Tuple(it) => it.erase(),
+                };
                 let idx = self.data().fields.alloc(data);
-                self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &field, self.hygiene()));
+                self.add_attrs(
+                    idx.into(),
+                    RawAttrs::new(
+                        self.db.upcast(),
+                        SpanAnchor { file_id: self.file, ast_id },
+                        &field,
+                        self.hygiene(),
+                    ),
+                );
             }
         }
         let end = self.next_field_idx();
@@ -204,8 +249,20 @@ impl<'a> Ctx<'a> {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             let data = self.lower_tuple_field(i, &field);
+            let ast_id = match data.ast_id {
+                FieldAstId::Record(it) => it.erase(),
+                FieldAstId::Tuple(it) => it.erase(),
+            };
             let idx = self.data().fields.alloc(data);
-            self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &field, self.hygiene()));
+            self.add_attrs(
+                idx.into(),
+                RawAttrs::new(
+                    self.db.upcast(),
+                    SpanAnchor { file_id: self.file, ast_id },
+                    &field,
+                    self.hygiene(),
+                ),
+            );
         }
         let end = self.next_field_idx();
         IdxRange::new(start..end)
@@ -222,12 +279,12 @@ impl<'a> Ctx<'a> {
     fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, union);
+        let ast_id = self.source_ast_id_map.ast_id(union);
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, union, ast_id.erase());
         let fields = match union.record_field_list() {
             Some(record_field_list) => self.lower_fields(&StructKind::Record(record_field_list)),
             None => Fields::Record(IdxRange::new(self.next_field_idx()..self.next_field_idx())),
         };
-        let ast_id = self.source_ast_id_map.ast_id(union);
         let res = Union { name, visibility, generic_params, fields, ast_id };
         Some(id(self.data().unions.alloc(res)))
     }
@@ -235,12 +292,12 @@ impl<'a> Ctx<'a> {
     fn lower_enum(&mut self, enum_: &ast::Enum) -> Option<FileItemTreeId<Enum>> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_);
+        let ast_id = self.source_ast_id_map.ast_id(enum_);
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_, ast_id.erase());
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
             None => IdxRange::new(self.next_variant_idx()..self.next_variant_idx()),
         };
-        let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.data().enums.alloc(res)))
     }
@@ -249,10 +306,16 @@ impl<'a> Ctx<'a> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
+                let ast_id = data.ast_id.erase();
                 let idx = self.data().variants.alloc(data);
                 self.add_attrs(
                     idx.into(),
-                    RawAttrs::new(self.db.upcast(), &variant, self.hygiene()),
+                    RawAttrs::new(
+                        self.db.upcast(),
+                        SpanAnchor { file_id: self.file, ast_id },
+                        &variant,
+                        self.hygiene(),
+                    ),
                 );
             }
         }
@@ -303,28 +366,39 @@ impl<'a> Ctx<'a> {
                 });
                 self.add_attrs(
                     idx.into(),
-                    RawAttrs::new(self.db.upcast(), &self_param, self.hygiene()),
+                    RawAttrs::new(
+                        self.db.upcast(),
+                        SpanAnchor { file_id: self.file, ast_id: ast_id.erase() },
+                        &self_param,
+                        self.hygiene(),
+                    ),
                 );
                 has_self_param = true;
             }
             for param in param_list.params() {
+                let ast_id = self.source_ast_id_map.ast_id(&param);
                 let idx = match param.dotdotdot_token() {
-                    Some(_) => {
-                        let ast_id = self.source_ast_id_map.ast_id(&param);
-                        self.data()
-                            .params
-                            .alloc(Param { type_ref: None, ast_id: ParamAstId::Param(ast_id) })
-                    }
+                    Some(_) => self
+                        .data()
+                        .params
+                        .alloc(Param { type_ref: None, ast_id: ParamAstId::Param(ast_id) }),
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                         let ty = Interned::new(type_ref);
-                        let ast_id = self.source_ast_id_map.ast_id(&param);
                         self.data()
                             .params
                             .alloc(Param { type_ref: Some(ty), ast_id: ParamAstId::Param(ast_id) })
                     }
                 };
-                self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &param, self.hygiene()));
+                self.add_attrs(
+                    idx.into(),
+                    RawAttrs::new(
+                        self.db.upcast(),
+                        SpanAnchor { file_id: self.file, ast_id: ast_id.erase() },
+                        &param,
+                        self.hygiene(),
+                    ),
+                );
             }
         }
         let end_param = self.next_param_idx();
@@ -381,7 +455,8 @@ impl<'a> Ctx<'a> {
             ast_id,
             flags,
         };
-        res.explicit_generic_params = self.lower_generic_params(HasImplicitSelf::No, func);
+        res.explicit_generic_params =
+            self.lower_generic_params(HasImplicitSelf::No, func, ast_id.erase());
 
         Some(id(self.data().functions.alloc(res)))
     }
@@ -394,8 +469,9 @@ impl<'a> Ctx<'a> {
         let type_ref = type_alias.ty().map(|it| self.lower_type_ref(&it));
         let visibility = self.lower_visibility(type_alias);
         let bounds = self.lower_type_bounds(type_alias);
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
+        let generic_params =
+            self.lower_generic_params(HasImplicitSelf::No, type_alias, ast_id.erase());
         let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
         Some(id(self.data().type_aliases.alloc(res)))
     }
@@ -443,23 +519,20 @@ impl<'a> Ctx<'a> {
     fn lower_trait(&mut self, trait_def: &ast::Trait) -> Option<FileItemTreeId<Trait>> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
-        let generic_params =
-            self.lower_generic_params(HasImplicitSelf::Yes(trait_def.type_bound_list()), trait_def);
+        let ast_id = self.source_ast_id_map.ast_id(trait_def);
+        let generic_params = self.lower_generic_params(
+            HasImplicitSelf::Yes(trait_def.type_bound_list()),
+            trait_def,
+            ast_id.erase(),
+        );
         let is_auto = trait_def.auto_token().is_some();
         let is_unsafe = trait_def.unsafe_token().is_some();
-        let ast_id = self.source_ast_id_map.ast_id(trait_def);
 
         let items = trait_def
             .assoc_item_list()
             .into_iter()
             .flat_map(|list| list.assoc_items())
-            .filter_map(|item| {
-                let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
-                self.lower_assoc_item(&item).map(|item| {
-                    self.add_attrs(ModItem::from(item).into(), attrs);
-                    item
-                })
-            })
+            .filter_map(|item_node| self.lower_assoc_item(&item_node))
             .collect();
 
         let def = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
@@ -472,20 +545,23 @@ impl<'a> Ctx<'a> {
     ) -> Option<FileItemTreeId<TraitAlias>> {
         let name = trait_alias_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_alias_def);
+        let ast_id = self.source_ast_id_map.ast_id(trait_alias_def);
         let generic_params = self.lower_generic_params(
             HasImplicitSelf::Yes(trait_alias_def.type_bound_list()),
             trait_alias_def,
+            ast_id.erase(),
         );
-        let ast_id = self.source_ast_id_map.ast_id(trait_alias_def);
 
         let alias = TraitAlias { name, visibility, generic_params, ast_id };
         Some(id(self.data().trait_aliases.alloc(alias)))
     }
 
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {
+        let ast_id = self.source_ast_id_map.ast_id(impl_def);
         // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
         // type alias rather than a type parameter, so this is handled by the resolver.
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, impl_def);
+        let generic_params =
+            self.lower_generic_params(HasImplicitSelf::No, impl_def, ast_id.erase());
         // FIXME: If trait lowering fails, due to a non PathType for example, we treat this impl
         // as if it was an non-trait impl. Ideally we want to create a unique missing ref that only
         // equals itself.
@@ -499,14 +575,8 @@ impl<'a> Ctx<'a> {
             .assoc_item_list()
             .into_iter()
             .flat_map(|it| it.assoc_items())
-            .filter_map(|item| {
-                let assoc = self.lower_assoc_item(&item)?;
-                let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
-                self.add_attrs(ModItem::from(assoc).into(), attrs);
-                Some(assoc)
-            })
+            .filter_map(|item| self.lower_assoc_item(&item))
             .collect();
-        let ast_id = self.source_ast_id_map.ast_id(impl_def);
         let res =
             Impl { generic_params, target_trait, self_ty, is_negative, is_unsafe, items, ast_id };
         Some(id(self.data().impls.alloc(res)))
@@ -572,15 +642,23 @@ impl<'a> Ctx<'a> {
                     // (in other words, the knowledge that they're in an extern block must not be used).
                     // This is because an extern block can contain macros whose ItemTree's top-level items
                     // should be considered to be in an extern block too.
-                    let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
-                    let id: ModItem = match item {
-                        ast::ExternItem::Fn(ast) => self.lower_function(&ast)?.into(),
-                        ast::ExternItem::Static(ast) => self.lower_static(&ast)?.into(),
-                        ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(&ty)?.into(),
-                        ast::ExternItem::MacroCall(call) => self.lower_macro_call(&call)?.into(),
+                    let mod_item: ModItem = match &item {
+                        ast::ExternItem::Fn(ast) => self.lower_function(ast)?.into(),
+                        ast::ExternItem::Static(ast) => self.lower_static(ast)?.into(),
+                        ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(ty)?.into(),
+                        ast::ExternItem::MacroCall(call) => self.lower_macro_call(call)?.into(),
                     };
-                    self.add_attrs(id.into(), attrs);
-                    Some(id)
+                    let attrs = RawAttrs::new(
+                        self.db.upcast(),
+                        SpanAnchor {
+                            file_id: self.file,
+                            ast_id: mod_item.ast_id(&self.tree).erase(),
+                        },
+                        &item,
+                        self.hygiene(),
+                    );
+                    self.add_attrs(mod_item.into(), attrs);
+                    Some(mod_item)
                 })
                 .collect()
         });
@@ -593,6 +671,7 @@ impl<'a> Ctx<'a> {
         &mut self,
         has_implicit_self: HasImplicitSelf,
         node: &dyn ast::HasGenericParams,
+        owner_ast_id: ErasedFileAstId,
     ) -> Interned<GenericParams> {
         let mut generics = GenericParams::default();
 
@@ -612,12 +691,21 @@ impl<'a> Ctx<'a> {
             generics.fill_bounds(&self.body_ctx, bounds, Either::Left(self_param));
         }
 
-        let add_param_attrs = |item, param| {
-            let attrs = RawAttrs::new(self.db.upcast(), &param, self.body_ctx.hygiene());
+        let add_param_attrs = |item: Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
+                               param| {
+            let attrs = RawAttrs::new(
+                self.db.upcast(),
+                SpanAnchor { file_id: self.file, ast_id: owner_ast_id },
+                &param,
+                self.body_ctx.hygiene(),
+            );
             // This is identical to the body of `Ctx::add_attrs()` but we can't call that here
             // because it requires `&mut self` and the call to `generics.fill()` below also
             // references `self`.
-            match self.tree.attrs.entry(item) {
+            match self.tree.attrs.entry(match item {
+                Either::Right(id) => id.into(),
+                Either::Left(id) => id.into(),
+            }) {
                 Entry::Occupied(mut entry) => {
                     *entry.get_mut() = entry.get().merge(attrs);
                 }

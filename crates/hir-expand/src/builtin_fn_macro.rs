@@ -1,17 +1,22 @@
 //! Builtin macro
 
-use base_db::{AnchoredPath, Edition, FileId};
+use base_db::{
+    span::{SpanAnchor, ROOT_ERASED_FILE_AST_ID},
+    AnchoredPath, Edition, FileId,
+};
 use cfg::CfgExpr;
 use either::Either;
-use mbe::{parse_exprs_with_sep, parse_to_token_tree, TokenMap};
+use mbe::{parse_exprs_with_sep, parse_to_token_tree};
 use syntax::{
     ast::{self, AstToken},
     SmolStr,
 };
 
 use crate::{
-    db::ExpandDatabase, name, quote, tt, EagerCallInfo, ExpandError, ExpandResult, MacroCallId,
-    MacroCallLoc,
+    db::ExpandDatabase,
+    name, quote,
+    tt::{self, Span},
+    EagerCallInfo, ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroCallLoc,
 };
 
 macro_rules! register_builtin {
@@ -110,7 +115,7 @@ register_builtin! {
 }
 
 const DOLLAR_CRATE: tt::Ident =
-    tt::Ident { text: SmolStr::new_inline("$crate"), span: tt::TokenId::unspecified() };
+    tt::Ident { text: SmolStr::new_inline("$crate"), span: tt::SpanData::DUMMY };
 
 fn module_path_expand(
     _db: &dyn ExpandDatabase,
@@ -131,7 +136,7 @@ fn line_expand(
         delimiter: tt::Delimiter::unspecified(),
         token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: "0u32".into(),
-            span: tt::Span::UNSPECIFIED,
+            span: tt::SpanData::DUMMY,
         }))],
     })
 }
@@ -179,7 +184,7 @@ fn assert_expand(
                 token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
                     char: ',',
                     spacing: tt::Spacing::Alone,
-                    span: tt::TokenId::unspecified(),
+                    span: tt::SpanData::DUMMY,
                 }))],
             };
             let cond = cond.clone();
@@ -446,7 +451,7 @@ fn concat_bytes_expand(
             }
         }
     }
-    let ident = tt::Ident { text: bytes.join(", ").into(), span: tt::TokenId::unspecified() };
+    let ident = tt::Ident { text: bytes.join(", ").into(), span: tt::SpanData::DUMMY };
     ExpandResult { value: quote!([#ident]), err }
 }
 
@@ -494,7 +499,7 @@ fn concat_idents_expand(
             }
         }
     }
-    let ident = tt::Ident { text: ident.into(), span: tt::TokenId::unspecified() };
+    let ident = tt::Ident { text: ident.into(), span: tt::SpanData::DUMMY };
     ExpandResult { value: quote!(#ident), err }
 }
 
@@ -533,15 +538,16 @@ fn include_expand(
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
     match db.include_expand(arg_id) {
-        Ok((res, _)) => ExpandResult::ok(res.0.clone()),
+        Ok((res, _)) => ExpandResult::ok(res.as_ref().clone()),
         Err(e) => ExpandResult::new(tt::Subtree::empty(), e),
     }
 }
 
+// FIXME: Check if this is still needed now after the token map rewrite
 pub(crate) fn include_arg_to_tt(
     db: &dyn ExpandDatabase,
     arg_id: MacroCallId,
-) -> Result<(triomphe::Arc<(::tt::Subtree<::tt::TokenId>, TokenMap)>, FileId), ExpandError> {
+) -> Result<(triomphe::Arc<tt::Subtree>, FileId), ExpandError> {
     let loc = db.lookup_intern_macro_call(arg_id);
     let Some(EagerCallInfo { arg, arg_id, .. }) = loc.eager.as_deref() else {
         panic!("include_arg_to_tt called on non include macro call: {:?}", &loc.eager);
@@ -549,9 +555,12 @@ pub(crate) fn include_arg_to_tt(
     let path = parse_string(&arg.0)?;
     let file_id = relative_file(db, *arg_id, &path, false)?;
 
-    let (subtree, map) =
-        parse_to_token_tree(&db.file_text(file_id)).ok_or(mbe::ExpandError::ConversionError)?;
-    Ok((triomphe::Arc::new((subtree, map)), file_id))
+    let subtree = parse_to_token_tree(
+        &db.file_text(file_id),
+        SpanAnchor { file_id: file_id.into(), ast_id: ROOT_ERASED_FILE_AST_ID },
+    )
+    .ok_or(mbe::ExpandError::ConversionError)?;
+    Ok((triomphe::Arc::new(subtree), file_id))
 }
 
 fn include_bytes_expand(
@@ -568,7 +577,7 @@ fn include_bytes_expand(
         delimiter: tt::Delimiter::unspecified(),
         token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: r#"b"""#.into(),
-            span: tt::TokenId::unspecified(),
+            span: tt::SpanData::DUMMY,
         }))],
     };
     ExpandResult::ok(res)

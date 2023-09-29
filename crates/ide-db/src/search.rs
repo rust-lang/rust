@@ -8,7 +8,8 @@ use std::mem;
 
 use base_db::{salsa::Database, FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
-    AsAssocItem, DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility,
+    AsAssocItem, DefWithBody, HasAttrs, HasSource, HirFileIdExt, InFile, ModuleSource, Semantics,
+    Visibility,
 };
 use memchr::memmem::Finder;
 use nohash_hasher::IntMap;

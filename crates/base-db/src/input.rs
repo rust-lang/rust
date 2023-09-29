@@ -13,8 +13,9 @@ use la_arena::{Arena, Idx};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
 use triomphe::Arc;
-use tt::token_id::Subtree;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
+
+use crate::span::SpanData;
 
 // Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
 // then the crate for the proc-macro hasn't been build yet as the build data is missing.
@@ -255,10 +256,10 @@ pub enum ProcMacroKind {
 pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
     fn expand(
         &self,
-        subtree: &Subtree,
-        attrs: Option<&Subtree>,
+        subtree: &tt::Subtree<SpanData>,
+        attrs: Option<&tt::Subtree<SpanData>>,
         env: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError>;
+    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError>;
 }
 
 #[derive(Debug)]

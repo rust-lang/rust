@@ -12,10 +12,12 @@ use std::{
     marker::PhantomData,
 };
 
-use la_arena::{Arena, Idx};
+use la_arena::{Arena, Idx, RawIdx};
 use profile::Count;
 use rustc_hash::FxHasher;
 use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
+
+pub use base_db::span::ErasedFileAstId;
 
 /// `AstId` points to an AST node in a specific file.
 pub struct FileAstId<N: AstIdNode> {
@@ -61,8 +63,6 @@ impl<N: AstIdNode> FileAstId<N> {
         self.raw
     }
 }
-
-pub type ErasedFileAstId = Idx<SyntaxNodePtr>;
 
 pub trait AstIdNode: AstNode {}
 macro_rules! register_ast_id_node {
@@ -129,6 +129,11 @@ impl AstIdMap {
     pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
         let mut res = AstIdMap::default();
+
+        // make sure to allocate the root node
+        if !should_alloc_id(node.kind()) {
+            res.alloc(node);
+        }
         // By walking the tree in breadth-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
@@ -155,6 +160,11 @@ impl AstIdMap {
         res
     }
 
+    /// The [`AstId`] of the root node
+    pub fn root(&self) -> SyntaxNodePtr {
+        self.arena[Idx::from_raw(RawIdx::from_u32(0))].clone()
+    }
+
     pub fn ast_id<N: AstIdNode>(&self, item: &N) -> FileAstId<N> {
         let raw = self.erased_ast_id(item.syntax());
         FileAstId { raw, covariant: PhantomData }
@@ -164,7 +174,7 @@ impl AstIdMap {
         AstPtr::try_from_raw(self.arena[id.raw].clone()).unwrap()
     }
 
-    pub(crate) fn get_raw(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
+    pub fn get_raw(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
         self.arena[id].clone()
     }
 

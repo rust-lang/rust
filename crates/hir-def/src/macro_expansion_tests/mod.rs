@@ -16,21 +16,16 @@ mod proc_macros;
 
 use std::{iter, ops::Range, sync};
 
-use ::mbe::TokenMap;
 use base_db::{fixture::WithFixture, ProcMacro, SourceDatabase};
 use expect_test::Expect;
-use hir_expand::{
-    db::{DeclarativeMacroExpander, ExpandDatabase},
-    AstId, InFile, MacroFile,
-};
+use hir_expand::{db::ExpandDatabase, HirFileIdExt, InFile, MacroFile, SpanMap};
 use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
-    AstNode, SyntaxElement,
-    SyntaxKind::{self, COMMENT, EOF, IDENT, LIFETIME_IDENT},
-    SyntaxNode, TextRange, T,
+    AstNode,
+    SyntaxKind::{COMMENT, EOF, IDENT, LIFETIME_IDENT},
+    SyntaxNode, T,
 };
-use tt::token_id::{Subtree, TokenId};
 
 use crate::{
     db::DefDatabase,
@@ -39,6 +34,7 @@ use crate::{
     resolver::HasResolver,
     src::HasSource,
     test_db::TestDB,
+    tt::Subtree,
     AdtId, AsMacroCall, Lookup, ModuleDefId,
 };
 
@@ -88,43 +84,6 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     let mut text_edits = Vec::new();
     let mut expansions = Vec::new();
 
-    for macro_ in source_file.syntax().descendants().filter_map(ast::Macro::cast) {
-        let mut show_token_ids = false;
-        for comment in macro_.syntax().children_with_tokens().filter(|it| it.kind() == COMMENT) {
-            show_token_ids |= comment.to_string().contains("+tokenids");
-        }
-        if !show_token_ids {
-            continue;
-        }
-
-        let call_offset = macro_.syntax().text_range().start().into();
-        let file_ast_id = db.ast_id_map(source.file_id).ast_id(&macro_);
-        let ast_id = AstId::new(source.file_id, file_ast_id.upcast());
-
-        let DeclarativeMacroExpander { mac, def_site_token_map } =
-            &*db.decl_macro_expander(krate, ast_id);
-        assert_eq!(mac.err(), None);
-        let tt = match &macro_ {
-            ast::Macro::MacroRules(mac) => mac.token_tree().unwrap(),
-            ast::Macro::MacroDef(_) => unimplemented!(""),
-        };
-
-        let tt_start = tt.syntax().text_range().start();
-        tt.syntax().descendants_with_tokens().filter_map(SyntaxElement::into_token).for_each(
-            |token| {
-                let range = token.text_range().checked_sub(tt_start).unwrap();
-                if let Some(id) = def_site_token_map.token_by_range(range) {
-                    let offset = (range.end() + tt_start).into();
-                    text_edits.push((offset..offset, format!("#{}", id.0)));
-                }
-            },
-        );
-        text_edits.push((
-            call_offset..call_offset,
-            format!("// call ids will be shifted by {:?}\n", mac.shift()),
-        ));
-    }
-
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
         let macro_call = InFile::new(source.file_id, &macro_call);
         let res = macro_call
@@ -138,10 +97,10 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let macro_file = MacroFile { macro_call_id };
         let mut expansion_result = db.parse_macro_expansion(macro_file);
         expansion_result.err = expansion_result.err.or(res.err);
-        expansions.push((macro_call.value.clone(), expansion_result, db.macro_arg(macro_call_id)));
+        expansions.push((macro_call.value.clone(), expansion_result));
     }
 
-    for (call, exp, arg) in expansions.into_iter().rev() {
+    for (call, exp) in expansions.into_iter().rev() {
         let mut tree = false;
         let mut expect_errors = false;
         let mut show_token_ids = false;
@@ -185,27 +144,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
         let range = call.syntax().text_range();
         let range: Range<usize> = range.into();
-
-        if show_token_ids {
-            if let Some((tree, map, _)) = arg.value.as_deref() {
-                let tt_range = call.token_tree().unwrap().syntax().text_range();
-                let mut ranges = Vec::new();
-                extract_id_ranges(&mut ranges, map, tree);
-                for (range, id) in ranges {
-                    let idx = (tt_range.start() + range.end()).into();
-                    text_edits.push((idx..idx, format!("#{}", id.0)));
-                }
-            }
-            text_edits.push((range.start..range.start, "// ".into()));
-            call.to_string().match_indices('\n').for_each(|(offset, _)| {
-                let offset = offset + 1 + range.start;
-                text_edits.push((offset..offset, "// ".into()));
-            });
-            text_edits.push((range.end..range.end, "\n".into()));
-            text_edits.push((range.end..range.end, expn_text));
-        } else {
-            text_edits.push((range, expn_text));
-        }
+        text_edits.push((range, expn_text));
     }
 
     text_edits.sort_by_key(|(range, _)| range.start);
@@ -246,20 +185,6 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     expect.assert_eq(&expanded_text);
 }
 
-fn extract_id_ranges(ranges: &mut Vec<(TextRange, TokenId)>, map: &TokenMap, tree: &Subtree) {
-    tree.token_trees.iter().for_each(|tree| match tree {
-        tt::TokenTree::Leaf(leaf) => {
-            let id = match leaf {
-                tt::Leaf::Literal(it) => it.span,
-                tt::Leaf::Punct(it) => it.span,
-                tt::Leaf::Ident(it) => it.span,
-            };
-            ranges.extend(map.ranges_by_token(id, SyntaxKind::ERROR).map(|range| (range, id)));
-        }
-        tt::TokenTree::Subtree(tree) => extract_id_ranges(ranges, map, tree),
-    });
-}
-
 fn reindent(indent: IndentLevel, pp: String) -> String {
     if !pp.contains('\n') {
         return pp;
@@ -276,7 +201,7 @@ fn reindent(indent: IndentLevel, pp: String) -> String {
     res
 }
 
-fn pretty_print_macro_expansion(expn: SyntaxNode, map: Option<&TokenMap>) -> String {
+fn pretty_print_macro_expansion(expn: SyntaxNode, map: Option<&SpanMap>) -> String {
     let mut res = String::new();
     let mut prev_kind = EOF;
     let mut indent_level = 0;
@@ -323,8 +248,8 @@ fn pretty_print_macro_expansion(expn: SyntaxNode, map: Option<&TokenMap>) -> Str
         prev_kind = curr_kind;
         format_to!(res, "{}", token);
         if let Some(map) = map {
-            if let Some(id) = map.token_by_range(token.text_range()) {
-                format_to!(res, "#{}", id.0);
+            if let Some(span) = map.span_for_range(token.text_range()) {
+                format_to!(res, "#{:?}@{:?}", span.anchor, span.range);
             }
         }
     }
