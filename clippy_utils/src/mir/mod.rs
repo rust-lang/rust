@@ -30,20 +30,26 @@ pub fn visit_local_usage(locals: &[Local], mir: &Body<'_>, location: Location) -
         locals.len()
     ];
 
-    traversal::ReversePostorder::new(mir, location.block).try_fold(init, |usage, (tbb, tdata)| {
-        // Give up on loops
-        if tdata.terminator().successors().any(|s| s == location.block) {
-            return None;
-        }
+    traversal::Postorder::new(&mir.basic_blocks, location.block)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .try_fold(init, |usage, tbb| {
+            let tdata = &mir.basic_blocks[tbb];
 
-        let mut v = V {
-            locals,
-            location,
-            results: usage,
-        };
-        v.visit_basic_block_data(tbb, tdata);
-        Some(v.results)
-    })
+            // Give up on loops
+            if tdata.terminator().successors().any(|s| s == location.block) {
+                return None;
+            }
+
+            let mut v = V {
+                locals,
+                location,
+                results: usage,
+            };
+            v.visit_basic_block_data(tbb, tdata);
+            Some(v.results)
+        })
 }
 
 struct V<'a> {
