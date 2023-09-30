@@ -716,14 +716,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
                 PlaceTy::from_ty(fty)
             }
-            ProjectionElem::Subtype(_) => {
-                let guard = span_mirbug_and_err!(
-                    self,
-                    place,
-                    "ProjectionElem::Subtype shouldn't exist in borrowck"
-                );
-                PlaceTy::from_ty(Ty::new_error(tcx, guard))
-            }
+            ProjectionElem::Subtype(_) => PlaceTy::from_ty(Ty::new_error_with_message(
+                tcx,
+                self.last_span,
+                "ProjectionElem::Subtype shouldn't exist in borrowck",
+            )),
             ProjectionElem::OpaqueCast(ty) => {
                 let ty = self.sanitize_type(place, ty);
                 let ty = self.cx.normalize(ty, location);
@@ -2564,13 +2561,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
                 ProjectionElem::Field(..)
-                | ProjectionElem::Subtype(..)
                 | ProjectionElem::Downcast(..)
                 | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
                     // other field access
+                }
+                ProjectionElem::Subtype(_) => {
+                    bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
                 }
             }
         }
