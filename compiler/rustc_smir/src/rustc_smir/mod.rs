@@ -106,7 +106,14 @@ impl<'tcx> Context for Tables<'tcx> {
                         .collect(),
                 })
                 .collect(),
-            locals: mir.local_decls.iter().map(|decl| self.intern_ty(decl.ty)).collect(),
+            locals: mir
+                .local_decls
+                .iter()
+                .map(|decl| stable_mir::mir::LocalDecl {
+                    ty: self.intern_ty(decl.ty),
+                    span: decl.source_info.span.stable(self),
+                })
+                .collect(),
         }
     }
 

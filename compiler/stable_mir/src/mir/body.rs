@@ -5,7 +5,13 @@ use crate::{ty::Ty, Span};
 #[derive(Clone, Debug)]
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
-    pub locals: Vec<Ty>,
+    pub locals: Vec<LocalDecl>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalDecl {
+    pub ty: Ty,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]
