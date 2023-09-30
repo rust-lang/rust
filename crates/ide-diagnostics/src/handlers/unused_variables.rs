@@ -14,6 +14,7 @@ pub(crate) fn unused_variables(
         "unused variable",
         ast,
     )
+    .experimental()
 }
 
 #[cfg(test)]
