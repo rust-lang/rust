@@ -20,6 +20,7 @@ fn equate_intrinsic_type<'tcx>(
     it: &hir::ForeignItem<'_>,
     n_tps: usize,
     n_lts: usize,
+    n_cts: usize,
     sig: ty::PolyFnSig<'tcx>,
 ) {
     let (own_counts, span) = match &it.kind {
@@ -51,7 +52,7 @@ fn equate_intrinsic_type<'tcx>(
 
     if gen_count_ok(own_counts.lifetimes, n_lts, "lifetime")
         && gen_count_ok(own_counts.types, n_tps, "type")
-        && gen_count_ok(own_counts.consts, 0, "const")
+        && gen_count_ok(own_counts.consts, n_cts, "const")
     {
         let it_def_id = it.owner_id.def_id;
         check_function_signature(
@@ -489,7 +490,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     };
     let sig = tcx.mk_fn_sig(inputs, output, false, unsafety, Abi::RustIntrinsic);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
-    equate_intrinsic_type(tcx, it, n_tps, n_lts, sig)
+    equate_intrinsic_type(tcx, it, n_tps, n_lts, 0, sig)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
@@ -501,9 +502,9 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
 
     let name = it.ident.name;
 
-    let (n_tps, inputs, output) = match name {
+    let (n_tps, n_cts, inputs, output) = match name {
         sym::simd_eq | sym::simd_ne | sym::simd_lt | sym::simd_le | sym::simd_gt | sym::simd_ge => {
-            (2, vec![param(0), param(0)], param(1))
+            (2, 0, vec![param(0), param(0)], param(1))
         }
         sym::simd_add
         | sym::simd_sub
@@ -519,8 +520,8 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_fmax
         | sym::simd_fpow
         | sym::simd_saturating_add
-        | sym::simd_saturating_sub => (1, vec![param(0), param(0)], param(0)),
-        sym::simd_arith_offset => (2, vec![param(0), param(1)], param(0)),
+        | sym::simd_saturating_sub => (1, 0, vec![param(0), param(0)], param(0)),
+        sym::simd_arith_offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::simd_neg
         | sym::simd_bswap
         | sym::simd_bitreverse
@@ -538,25 +539,25 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_ceil
         | sym::simd_floor
         | sym::simd_round
-        | sym::simd_trunc => (1, vec![param(0)], param(0)),
-        sym::simd_fpowi => (1, vec![param(0), tcx.types.i32], param(0)),
-        sym::simd_fma => (1, vec![param(0), param(0), param(0)], param(0)),
-        sym::simd_gather => (3, vec![param(0), param(1), param(2)], param(0)),
-        sym::simd_scatter => (3, vec![param(0), param(1), param(2)], Ty::new_unit(tcx)),
-        sym::simd_insert => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
-        sym::simd_extract => (2, vec![param(0), tcx.types.u32], param(1)),
+        | sym::simd_trunc => (1, 0, vec![param(0)], param(0)),
+        sym::simd_fpowi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
+        sym::simd_fma => (1, 0, vec![param(0), param(0), param(0)], param(0)),
+        sym::simd_gather => (3, 0, vec![param(0), param(1), param(2)], param(0)),
+        sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], Ty::new_unit(tcx)),
+        sym::simd_insert => (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0)),
+        sym::simd_extract => (2, 0, vec![param(0), tcx.types.u32], param(1)),
         sym::simd_cast
         | sym::simd_as
         | sym::simd_cast_ptr
         | sym::simd_expose_addr
-        | sym::simd_from_exposed_addr => (2, vec![param(0)], param(1)),
-        sym::simd_bitmask => (2, vec![param(0)], param(1)),
+        | sym::simd_from_exposed_addr => (2, 0, vec![param(0)], param(1)),
+        sym::simd_bitmask => (2, 0, vec![param(0)], param(1)),
         sym::simd_select | sym::simd_select_bitmask => {
-            (2, vec![param(0), param(1), param(1)], param(1))
+            (2, 0, vec![param(0), param(1), param(1)], param(1))
         }
-        sym::simd_reduce_all | sym::simd_reduce_any => (1, vec![param(0)], tcx.types.bool),
+        sym::simd_reduce_all | sym::simd_reduce_any => (1, 0, vec![param(0)], tcx.types.bool),
         sym::simd_reduce_add_ordered | sym::simd_reduce_mul_ordered => {
-            (2, vec![param(0), param(1)], param(1))
+            (2, 0, vec![param(0), param(1)], param(1))
         }
         sym::simd_reduce_add_unordered
         | sym::simd_reduce_mul_unordered
@@ -566,8 +567,9 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_reduce_min
         | sym::simd_reduce_max
         | sym::simd_reduce_min_nanless
-        | sym::simd_reduce_max_nanless => (2, vec![param(0)], param(1)),
-        sym::simd_shuffle => (3, vec![param(0), param(0), param(1)], param(2)),
+        | sym::simd_reduce_max_nanless => (2, 0, vec![param(0)], param(1)),
+        sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
+        sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
             tcx.sess.struct_span_err(it.span, msg).emit();
@@ -577,5 +579,5 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
 
     let sig = tcx.mk_fn_sig(inputs, output, false, hir::Unsafety::Unsafe, Abi::PlatformIntrinsic);
     let sig = ty::Binder::dummy(sig);
-    equate_intrinsic_type(tcx, it, n_tps, 0, sig)
+    equate_intrinsic_type(tcx, it, n_tps, 0, n_cts, sig)
 }

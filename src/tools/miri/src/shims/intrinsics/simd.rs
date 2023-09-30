@@ -12,6 +12,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_simd_intrinsic(
         &mut self,
         intrinsic_name: &str,
+        generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
@@ -484,6 +485,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 from_ty = op.layout.ty,
                                 to_ty = dest.layout.ty,
                             ),
+                    };
+                    this.write_immediate(*val, &dest)?;
+                }
+            }
+            "shuffle_generic" => {
+                let [left, right] = check_arg_count(args)?;
+                let (left, left_len) = this.operand_to_simd(left)?;
+                let (right, right_len) = this.operand_to_simd(right)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                let index = generic_args[2].expect_const().eval(*this.tcx, this.param_env(), Some(this.tcx.span)).unwrap().unwrap_branch();
+                let index_len = index.len();
+
+                assert_eq!(left_len, right_len);
+                assert_eq!(index_len as u64, dest_len);
+
+                for i in 0..dest_len {
+                    let src_index: u64 = index[i as usize].unwrap_leaf()
+                        .try_to_u32().unwrap()
+                        .into();
+                    let dest = this.project_index(&dest, i)?;
+
+                    let val = if src_index < left_len {
+                        this.read_immediate(&this.project_index(&left, src_index)?)?
+                    } else if src_index < left_len.checked_add(right_len).unwrap() {
+                        let right_idx = src_index.checked_sub(left_len).unwrap();
+                        this.read_immediate(&this.project_index(&right, right_idx)?)?
+                    } else {
+                        span_bug!(
+                            this.cur_span(),
+                            "simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}",
+                        );
                     };
                     this.write_immediate(*val, &dest)?;
                 }
