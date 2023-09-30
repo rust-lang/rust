@@ -61,7 +61,7 @@ use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, Integer, Primitive, Size, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 
 use self::Constructor::*;
 use self::SliceKind::*;
@@ -84,35 +84,6 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
     let mut pats = Vec::new();
     expand(pat, &mut pats);
     pats
-}
-
-/// Evaluate an int constant, with a faster branch for a common case.
-#[inline]
-fn fast_try_eval_bits<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    value: &mir::Const<'tcx>,
-) -> Option<u128> {
-    let int  = match value {
-        // If the constant is already evaluated, we shortcut here.
-        mir::Const::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
-            valtree.unwrap_leaf()
-        },
-        // This is a more general form of the previous case.
-        _ => {
-            value.try_eval_scalar_int(tcx, param_env)?
-        },
-    };
-    let size = match value.ty().kind() {
-        ty::Bool => Size::from_bytes(1),
-        ty::Char => Size::from_bytes(4),
-        ty::Int(ity) => Integer::from_int_ty(&tcx, *ity).size(),
-        ty::Uint(uty) => Integer::from_uint_ty(&tcx, *uty).size(),
-        ty::Float(ty::FloatTy::F32) => Primitive::F32.size(&tcx),
-        ty::Float(ty::FloatTy::F64) => Primitive::F64.size(&tcx),
-        _ => return None,
-    };
-    int.to_bits(size).ok()
 }
 
 /// An inclusive interval, used for precise integer exhaustiveness checking.
@@ -1346,14 +1317,14 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             PatKind::Constant { value } => {
                 match pat.ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => {
-                        ctor = match fast_try_eval_bits(cx.tcx, cx.param_env, value) {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
                             Some(bits) => IntRange(IntRange::from_bits(cx.tcx, pat.ty, bits)),
                             None => Opaque,
                         };
                         fields = Fields::empty();
                     }
                     ty::Float(ty::FloatTy::F32) => {
-                        ctor = match fast_try_eval_bits(cx.tcx, cx.param_env, value) {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
                             Some(bits) => {
                                 use rustc_apfloat::Float;
                                 let value = rustc_apfloat::ieee::Single::from_bits(bits);
@@ -1364,7 +1335,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         fields = Fields::empty();
                     }
                     ty::Float(ty::FloatTy::F64) => {
-                        ctor = match fast_try_eval_bits(cx.tcx, cx.param_env, value) {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
                             Some(bits) => {
                                 use rustc_apfloat::Float;
                                 let value = rustc_apfloat::ieee::Double::from_bits(bits);
@@ -1399,8 +1370,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             PatKind::Range(box PatRange { lo, hi, end }) => {
                 use rustc_apfloat::Float;
                 let ty = lo.ty();
-                let lo = fast_try_eval_bits(cx.tcx, cx.param_env, lo).unwrap();
-                let hi = fast_try_eval_bits(cx.tcx, cx.param_env, hi).unwrap();
+                let lo = lo.try_eval_bits(cx.tcx, cx.param_env).unwrap();
+                let hi = hi.try_eval_bits(cx.tcx, cx.param_env).unwrap();
                 ctor = match ty.kind() {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         IntRange(IntRange::from_range(cx.tcx, lo, hi, ty, *end))
