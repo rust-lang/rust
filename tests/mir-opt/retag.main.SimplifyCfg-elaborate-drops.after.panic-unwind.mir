@@ -107,7 +107,7 @@ fn main() -> () {
         _14 = {closure@main::{closure#0}};
         Retag(_14);
         _29 = move _14 as for<'a> fn(&'a i32) -> &'a i32 (PointerCoercion(ClosureFnPointer(Normal)));
-        _13 = move (_29 Subtyped as for<'a> fn(&'a i32) -> &'a i32);
+        _13 = move (_29as for<'a> fn(&'a i32) -> &'a i32);
         StorageDead(_14);
         StorageLive(_15);
         StorageLive(_16);
