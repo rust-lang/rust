@@ -32,7 +32,7 @@ libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libffi = "3.2.0"
-libloading = "0.7"
+libloading = "0.8"
 
 [dev-dependencies]
 colored = "2"
