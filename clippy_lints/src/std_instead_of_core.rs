@@ -1,9 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_from_proc_macro;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, Path, PathSegment};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Span};
@@ -99,6 +101,8 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
         if let Res::Def(_, def_id) = path.res
             && let Some(first_segment) = get_first_segment(path)
             && is_stable(cx, def_id)
+            && !in_external_macro(cx.sess(), path.span)
+            && !is_from_proc_macro(cx, &first_segment.ident)
         {
             let (lint, used_mod, replace_with) = match first_segment.ident.name {
                 sym::std => match cx.tcx.crate_name(def_id.krate) {
