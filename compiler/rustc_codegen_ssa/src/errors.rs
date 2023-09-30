@@ -108,10 +108,6 @@ pub struct CreateTempDir {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_incompatible_linking_modifiers)]
-pub struct IncompatibleLinkingModifiers;
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_add_native_library)]
 pub struct AddNativeLibrary {
     pub library_path: PathBuf,

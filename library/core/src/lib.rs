@@ -178,6 +178,7 @@
 #![feature(ip)]
 #![feature(ip_bits)]
 #![feature(is_ascii_octdigit)]
+#![feature(isqrt)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]

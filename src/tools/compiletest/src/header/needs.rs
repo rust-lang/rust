@@ -134,6 +134,11 @@ pub(super) fn handle_needs(
             condition: config.target_cfg().dynamic_linking,
             ignore_reason: "ignored on targets without dynamic linking",
         },
+        Need {
+            name: "needs-relocation-model-pic",
+            condition: config.target_cfg().relocation_model == "pic",
+            ignore_reason: "ignored on targets without PIC relocation model",
+        },
     ];
 
     let (name, comment) = match ln.split_once([':', ' ']) {

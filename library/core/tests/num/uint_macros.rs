@@ -207,6 +207,35 @@ macro_rules! uint_module {
             }
 
             #[test]
+            fn test_isqrt() {
+                assert_eq!((0 as $T).isqrt(), 0 as $T);
+                assert_eq!((1 as $T).isqrt(), 1 as $T);
+                assert_eq!((2 as $T).isqrt(), 1 as $T);
+                assert_eq!((99 as $T).isqrt(), 9 as $T);
+                assert_eq!((100 as $T).isqrt(), 10 as $T);
+                assert_eq!($T::MAX.isqrt(), (1 << ($T::BITS / 2)) - 1);
+            }
+
+            #[cfg(not(miri))] // Miri is too slow
+            #[test]
+            fn test_lots_of_isqrt() {
+                let n_max: $T = (1024 * 1024).min($T::MAX as u128) as $T;
+                for n in 0..=n_max {
+                    let isqrt: $T = n.isqrt();
+
+                    assert!(isqrt.pow(2) <= n);
+                    assert!(isqrt + 1 == (1 as $T) << ($T::BITS / 2) || (isqrt + 1).pow(2) > n);
+                }
+
+                for n in ($T::MAX - 255)..=$T::MAX {
+                    let isqrt: $T = n.isqrt();
+
+                    assert!(isqrt.pow(2) <= n);
+                    assert!(isqrt + 1 == (1 as $T) << ($T::BITS / 2) || (isqrt + 1).pow(2) > n);
+                }
+            }
+
+            #[test]
             fn test_div_floor() {
                 assert_eq!((8 as $T).div_floor(3), 2);
             }

@@ -116,7 +116,7 @@ impl BorrowedSocket<'_> {
         let mut info = unsafe { mem::zeroed::<sys::c::WSAPROTOCOL_INFOW>() };
         let result = unsafe {
             sys::c::WSADuplicateSocketW(
-                self.as_raw_socket(),
+                self.as_raw_socket() as sys::c::SOCKET,
                 sys::c::GetCurrentProcessId(),
                 &mut info,
             )
@@ -134,7 +134,7 @@ impl BorrowedSocket<'_> {
         };
 
         if socket != sys::c::INVALID_SOCKET {
-            unsafe { Ok(OwnedSocket::from_raw_socket(socket)) }
+            unsafe { Ok(OwnedSocket::from_raw_socket(socket as RawSocket)) }
         } else {
             let error = unsafe { sys::c::WSAGetLastError() };
 
@@ -158,7 +158,7 @@ impl BorrowedSocket<'_> {
             }
 
             unsafe {
-                let socket = OwnedSocket::from_raw_socket(socket);
+                let socket = OwnedSocket::from_raw_socket(socket as RawSocket);
                 socket.set_no_inherit()?;
                 Ok(socket)
             }
@@ -211,7 +211,7 @@ impl Drop for OwnedSocket {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _ = sys::c::closesocket(self.socket);
+            let _ = sys::c::closesocket(self.socket as sys::c::SOCKET);
         }
     }
 }

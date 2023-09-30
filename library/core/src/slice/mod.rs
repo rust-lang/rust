@@ -3410,7 +3410,7 @@ impl<T> [T] {
     /// assert_eq!(a, ['e', 'f', 'a', 'b', 'c', 'd']);
     /// ```
     ///
-    /// Rotate a subslice:
+    /// Rotating a subslice:
     ///
     /// ```
     /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];

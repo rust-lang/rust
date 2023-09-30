@@ -1,5 +1,5 @@
 error[E0597]: `bar` does not live long enough
-  --> $DIR/feature-self-return-type.rs:22:18
+  --> $DIR/feature-self-return-type.rs:21:18
    |
 LL |     let x = {
    |         - borrow later stored here

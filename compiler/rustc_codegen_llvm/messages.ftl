@@ -37,6 +37,8 @@ codegen_llvm_lto_disallowed = lto can only be run for executables, cdylibs and s
 
 codegen_llvm_lto_dylib = lto cannot be used for `dylib` crate type without `-Zdylib-lto`
 
+codegen_llvm_lto_proc_macro = lto cannot be used for `proc-macro` crate type without `-Zdylib-lto`
+
 codegen_llvm_missing_features =
     add the missing features in a `target_feature` attribute
 

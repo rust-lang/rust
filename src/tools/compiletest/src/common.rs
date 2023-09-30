@@ -580,6 +580,8 @@ pub struct TargetCfg {
     pub(crate) sanitizers: Vec<Sanitizer>,
     #[serde(rename = "supports-xray", default)]
     pub(crate) xray: bool,
+    #[serde(default = "default_reloc_model")]
+    pub(crate) relocation_model: String,
 }
 
 impl TargetCfg {
@@ -590,6 +592,10 @@ impl TargetCfg {
 
 fn default_os() -> String {
     "none".into()
+}
+
+fn default_reloc_model() -> String {
+    "pic".into()
 }
 
 #[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]

@@ -329,41 +329,52 @@ fn bounds_from_generic_predicates<'tcx>(
             _ => {}
         }
     }
-    let generics = if types.is_empty() {
-        "".to_string()
-    } else {
-        format!(
-            "<{}>",
-            types
-                .keys()
-                .filter_map(|t| match t.kind() {
-                    ty::Param(_) => Some(t.to_string()),
-                    // Avoid suggesting the following:
-                    // fn foo<T, <T as Trait>::Bar>(_: T) where T: Trait, <T as Trait>::Bar: Other {}
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    };
+
     let mut where_clauses = vec![];
+    let mut types_str = vec![];
     for (ty, bounds) in types {
-        where_clauses
-            .extend(bounds.into_iter().map(|bound| format!("{}: {}", ty, tcx.def_path_str(bound))));
+        if let ty::Param(_) = ty.kind() {
+            let mut bounds_str = vec![];
+            for bound in bounds {
+                let mut projections_str = vec![];
+                for projection in &projections {
+                    let p = projection.skip_binder();
+                    let alias_ty = p.projection_ty;
+                    if bound == tcx.parent(alias_ty.def_id) && alias_ty.self_ty() == ty {
+                        let name = tcx.item_name(alias_ty.def_id);
+                        projections_str.push(format!("{} = {}", name, p.term));
+                    }
+                }
+                let bound_def_path = tcx.def_path_str(bound);
+                if projections_str.is_empty() {
+                    where_clauses.push(format!("{}: {}", ty, bound_def_path));
+                } else {
+                    bounds_str.push(format!("{}<{}>", bound_def_path, projections_str.join(", ")));
+                }
+            }
+            if bounds_str.is_empty() {
+                types_str.push(ty.to_string());
+            } else {
+                types_str.push(format!("{}: {}", ty, bounds_str.join(" + ")));
+            }
+        } else {
+            // Avoid suggesting the following:
+            // fn foo<T, <T as Trait>::Bar>(_: T) where T: Trait, <T as Trait>::Bar: Other {}
+            where_clauses.extend(
+                bounds.into_iter().map(|bound| format!("{}: {}", ty, tcx.def_path_str(bound))),
+            );
+        }
     }
-    for projection in &projections {
-        let p = projection.skip_binder();
-        // FIXME: this is not currently supported syntax, we should be looking at the `types` and
-        // insert the associated types where they correspond, but for now let's be "lazy" and
-        // propose this instead of the following valid resugaring:
-        // `T: Trait, Trait::Assoc = K` → `T: Trait<Assoc = K>`
-        where_clauses.push(format!("{} = {}", tcx.def_path_str(p.projection_ty.def_id), p.term));
-    }
+
+    let generics =
+        if types_str.is_empty() { "".to_string() } else { format!("<{}>", types_str.join(", ")) };
+
     let where_clauses = if where_clauses.is_empty() {
-        String::new()
+        "".to_string()
     } else {
         format!(" where {}", where_clauses.join(", "))
     };
+
     (generics, where_clauses)
 }
 

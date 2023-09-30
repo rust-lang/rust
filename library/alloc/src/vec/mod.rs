@@ -3155,6 +3155,36 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "vec_from_array_ref", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
+    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from(&[1, 2, 3]), vec![1, 2, 3]);
+    /// ```
+    fn from(s: &[T; N]) -> Vec<T> {
+        Self::from(s.as_slice())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "vec_from_array_ref", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone, const N: usize> From<&mut [T; N]> for Vec<T> {
+    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from(&mut [1, 2, 3]), vec![1, 2, 3]);
+    /// ```
+    fn from(s: &mut [T; N]) -> Vec<T> {
+        Self::from(s.as_mut_slice())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
 impl<T, const N: usize> From<[T; N]> for Vec<T> {
     /// Allocate a `Vec<T>` and move `s`'s items into it.

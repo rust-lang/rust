@@ -1,7 +1,7 @@
 use super::{
     mir::Safety,
     mir::{Body, Mutability},
-    with, AllocId, DefId,
+    with, AllocId, DefId, Symbol,
 };
 use crate::Opaque;
 use std::fmt::{self, Debug, Formatter};
@@ -34,7 +34,46 @@ pub struct Const {
 }
 
 type Ident = Opaque;
-pub type Region = Opaque;
+
+#[derive(Debug, Clone)]
+pub struct Region {
+    pub kind: RegionKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum RegionKind {
+    ReEarlyBound(EarlyBoundRegion),
+    ReLateBound(DebruijnIndex, BoundRegion),
+    ReStatic,
+    RePlaceholder(Placeholder<BoundRegion>),
+    ReErased,
+}
+
+pub(crate) type DebruijnIndex = u32;
+
+#[derive(Debug, Clone)]
+pub struct EarlyBoundRegion {
+    pub def_id: RegionDef,
+    pub index: u32,
+    pub name: Symbol,
+}
+
+pub(crate) type BoundVar = u32;
+
+#[derive(Debug, Clone)]
+pub struct BoundRegion {
+    pub var: BoundVar,
+    pub kind: BoundRegionKind,
+}
+
+pub(crate) type UniverseIndex = u32;
+
+#[derive(Debug, Clone)]
+pub struct Placeholder<T> {
+    pub universe: UniverseIndex,
+    pub bound: T,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Span(pub usize);
 
@@ -151,6 +190,9 @@ pub struct ConstDef(pub DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ImplDef(pub DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct RegionDef(pub DefId);
 
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);

@@ -59,9 +59,18 @@ pub(crate) enum BadTypePlusSub {
 #[diag(parse_maybe_recover_from_bad_qpath_stage_2)]
 pub(crate) struct BadQPathStage2 {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
-    pub ty: String,
+    #[subdiagnostic]
+    pub wrap: WrapType,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct WrapType {
+    #[suggestion_part(code = "<")]
+    pub lo: Span,
+    #[suggestion_part(code = ">")]
+    pub hi: Span,
 }
 
 #[derive(Diagnostic)]

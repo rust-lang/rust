@@ -4,7 +4,7 @@ use crate::Opaque;
 
 use super::ty::{
     Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
-    Promoted, RigidTy, TermKind, Ty, UnevaluatedConst,
+    Promoted, Region, RigidTy, TermKind, Ty, UnevaluatedConst,
 };
 
 pub trait Visitor: Sized {
@@ -14,6 +14,9 @@ pub trait Visitor: Sized {
     }
     fn visit_const(&mut self, c: &Const) -> ControlFlow<Self::Break> {
         c.super_visit(self)
+    }
+    fn visit_reg(&mut self, reg: &Region) -> ControlFlow<Self::Break> {
+        reg.super_visit(self)
     }
 }
 
@@ -101,6 +104,16 @@ impl Visitable for GenericArgs {
     }
 }
 
+impl Visitable for Region {
+    fn visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
+        visitor.visit_reg(self)
+    }
+
+    fn super_visit<V: Visitor>(&self, _: &mut V) -> ControlFlow<V::Break> {
+        ControlFlow::Continue(())
+    }
+}
+
 impl Visitable for GenericArgKind {
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         match self {
@@ -128,7 +141,10 @@ impl Visitable for RigidTy {
             }
             RigidTy::Slice(inner) => inner.visit(visitor),
             RigidTy::RawPtr(ty, _) => ty.visit(visitor),
-            RigidTy::Ref(_, ty, _) => ty.visit(visitor),
+            RigidTy::Ref(reg, ty, _) => {
+                reg.visit(visitor);
+                ty.visit(visitor)
+            }
             RigidTy::FnDef(_, args) => args.visit(visitor),
             RigidTy::FnPtr(sig) => sig.visit(visitor),
             RigidTy::Closure(_, args) => args.visit(visitor),

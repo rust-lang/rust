@@ -106,6 +106,45 @@ impl IntoRawHandle for process::ChildStderr {
     }
 }
 
+/// Create a `ChildStdin` from the provided `OwnedHandle`.
+///
+/// The provided handle must be asynchronous, as reading and
+/// writing from and to it is implemented using asynchronous APIs.
+#[stable(feature = "child_stream_from_fd", since = "CURRENT_RUSTC_VERSION")]
+impl From<OwnedHandle> for process::ChildStdin {
+    fn from(handle: OwnedHandle) -> process::ChildStdin {
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        process::ChildStdin::from_inner(pipe)
+    }
+}
+
+/// Create a `ChildStdout` from the provided `OwnedHandle`.
+///
+/// The provided handle must be asynchronous, as reading and
+/// writing from and to it is implemented using asynchronous APIs.
+#[stable(feature = "child_stream_from_fd", since = "CURRENT_RUSTC_VERSION")]
+impl From<OwnedHandle> for process::ChildStdout {
+    fn from(handle: OwnedHandle) -> process::ChildStdout {
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        process::ChildStdout::from_inner(pipe)
+    }
+}
+
+/// Create a `ChildStderr` from the provided `OwnedHandle`.
+///
+/// The provided handle must be asynchronous, as reading and
+/// writing from and to it is implemented using asynchronous APIs.
+#[stable(feature = "child_stream_from_fd", since = "CURRENT_RUSTC_VERSION")]
+impl From<OwnedHandle> for process::ChildStderr {
+    fn from(handle: OwnedHandle) -> process::ChildStderr {
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        process::ChildStderr::from_inner(pipe)
+    }
+}
+
 /// Windows-specific extensions to [`process::ExitStatus`].
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.

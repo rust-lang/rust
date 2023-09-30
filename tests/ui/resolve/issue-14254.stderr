@@ -8,13 +8,23 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-14254.rs:30:9
    |
 LL |         x;
-   |         ^ help: you might have meant to use the available field: `self.x`
+   |         ^
+   |
+help: you might have meant to use the available field
+   |
+LL |         self.x;
+   |         +++++
 
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/issue-14254.rs:32:9
    |
 LL |         y;
-   |         ^ help: you might have meant to use the available field: `self.y`
+   |         ^
+   |
+help: you might have meant to use the available field
+   |
+LL |         self.y;
+   |         +++++
 
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/issue-14254.rs:34:9
@@ -31,7 +41,7 @@ LL |         bah;
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
-   |         ~~~~~~~~~
+   |         ++++++
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/issue-14254.rs:38:9
@@ -43,13 +53,23 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-14254.rs:47:9
    |
 LL |         x;
-   |         ^ help: you might have meant to use the available field: `self.x`
+   |         ^
+   |
+help: you might have meant to use the available field
+   |
+LL |         self.x;
+   |         +++++
 
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/issue-14254.rs:49:9
    |
 LL |         y;
-   |         ^ help: you might have meant to use the available field: `self.y`
+   |         ^
+   |
+help: you might have meant to use the available field
+   |
+LL |         self.y;
+   |         +++++
 
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/issue-14254.rs:51:9
@@ -66,7 +86,7 @@ LL |         bah;
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
-   |         ~~~~~~~~~
+   |         ++++++
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/issue-14254.rs:55:9
@@ -83,7 +103,7 @@ LL |         bah;
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
-   |         ~~~~~~~~~
+   |         ++++++
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:73:9
@@ -94,7 +114,7 @@ LL |         bah;
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
-   |         ~~~~~~~~~
+   |         ++++++
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:82:9
@@ -105,7 +125,7 @@ LL |         bah;
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
-   |         ~~~~~~~~~
+   |         ++++++
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:91:9
@@ -116,7 +136,7 @@ LL |         bah;
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
-   |         ~~~~~~~~~
+   |         ++++++
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:100:9
@@ -127,55 +147,95 @@ LL |         bah;
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
-   |         ~~~~~~~~~
+   |         ++++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:19:9
    |
 LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
+   |         ^^^
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:28:9
    |
 LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
+   |         ^^^
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:45:9
    |
 LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
+   |         ^^^
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:62:9
    |
 LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
+   |         ^^^
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:71:9
    |
 LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
+   |         ^^^
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:80:9
    |
 LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
+   |         ^^^
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:89:9
    |
 LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
+   |         ^^^
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:98:9
    |
 LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
+   |         ^^^
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 
 error: aborting due to 24 previous errors
 

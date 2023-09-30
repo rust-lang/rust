@@ -139,6 +139,10 @@ pub(crate) struct LtoDisallowed;
 pub(crate) struct LtoDylib;
 
 #[derive(Diagnostic)]
+#[diag(codegen_llvm_lto_proc_macro)]
+pub(crate) struct LtoProcMacro;
+
+#[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
     pub llvm_err: String,

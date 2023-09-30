@@ -15,28 +15,44 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
-          _4 = hide_foo() -> [return: bb1, unwind unreachable];
+          _4 = hide_foo() -> [return: bb1, unwind: bb6];
       }
   
       bb1: {
           _3 = &_4;
           StorageLive(_5);
           _5 = ();
--         _2 = <impl Fn() as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind unreachable];
-+         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind unreachable];
+-         _2 = <impl Fn() as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb5];
++         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb5];
       }
   
       bb2: {
           StorageDead(_5);
           StorageDead(_3);
-          StorageDead(_4);
-          StorageDead(_2);
-          _0 = const ();
-          drop(_1) -> [return: bb3, unwind unreachable];
+          drop(_4) -> [return: bb3, unwind: bb6];
       }
   
       bb3: {
+          StorageDead(_4);
+          StorageDead(_2);
+          _0 = const ();
+          drop(_1) -> [return: bb4, unwind: bb7];
+      }
+  
+      bb4: {
           return;
+      }
+  
+      bb5 (cleanup): {
+          drop(_4) -> [return: bb6, unwind terminate(cleanup)];
+      }
+  
+      bb6 (cleanup): {
+          drop(_1) -> [return: bb7, unwind terminate(cleanup)];
+      }
+  
+      bb7 (cleanup): {
+          resume;
       }
   }
   

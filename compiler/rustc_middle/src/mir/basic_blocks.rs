@@ -63,11 +63,14 @@ impl<'tcx> BasicBlocks<'tcx> {
     }
 
     /// Returns basic blocks in a reverse postorder.
+    ///
+    /// See [`traversal::reverse_postorder`]'s docs to learn what is preorder traversal.
+    ///
+    /// [`traversal::reverse_postorder`]: crate::mir::traversal::reverse_postorder
     #[inline]
     pub fn reverse_postorder(&self) -> &[BasicBlock] {
         self.cache.reverse_postorder.get_or_init(|| {
-            let mut rpo: Vec<_> =
-                Postorder::new(&self.basic_blocks, START_BLOCK).map(|(bb, _)| bb).collect();
+            let mut rpo: Vec<_> = Postorder::new(&self.basic_blocks, START_BLOCK).collect();
             rpo.reverse();
             rpo
         })

@@ -241,8 +241,6 @@ declare_features! (
     (active, linkage, "1.0.0", Some(29603), None),
     /// Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
     (internal, needs_panic_runtime, "1.10.0", Some(32837), None),
-    /// Allows using `+bundled,+whole-archive` native libs.
-    (active, packed_bundled_libs, "1.69.0", Some(108081), None),
     /// Allows using the `#![panic_runtime]` attribute.
     (internal, panic_runtime, "1.10.0", Some(32837), None),
     /// Allows `extern "platform-intrinsic" { ... }`.
@@ -472,8 +470,6 @@ declare_features! (
     (active, impl_trait_in_assoc_type, "1.70.0", Some(63063), None),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (active, impl_trait_in_fn_trait_return, "1.64.0", Some(99697), None),
-    /// Allows referencing `Self` and projections in impl-trait.
-    (active, impl_trait_projections, "1.67.0", Some(103532), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
     /// Allows associated types in inherent impls.

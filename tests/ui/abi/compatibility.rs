@@ -1,15 +1,173 @@
 // check-pass
+// revisions: host
+// revisions: arm
+//[arm] compile-flags: --target arm-unknown-linux-gnueabi
+//[arm] needs-llvm-components: arm
+// revisions: aarch64
+//[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//[aarch64] needs-llvm-components: aarch64
+// revisions: s390x
+//[s390x] compile-flags: --target s390x-unknown-linux-gnu
+//[s390x] needs-llvm-components: systemz
+// revisions: mips
+//[mips] compile-flags: --target mips-unknown-linux-gnu
+//[mips] needs-llvm-components: mips
+// revisions: mips64
+//[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
+//[mips64] needs-llvm-components: mips
+// revisions: sparc
+//[sparc] compile-flags: --target sparc-unknown-linux-gnu
+//[sparc] needs-llvm-components: sparc
+// revisions: sparc64
+//[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
+//[sparc64] needs-llvm-components: sparc
+// revisions: powerpc64
+//[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
+//[powerpc64] needs-llvm-components: powerpc
+// revisions: riscv
+//[riscv] compile-flags: --target riscv64gc-unknown-linux-gnu
+//[riscv] needs-llvm-components: riscv
+// revisions: loongarch64
+//[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
+//[loongarch64] needs-llvm-components: loongarch
+// revisions: wasm
+//[wasm] compile-flags: --target wasm32-unknown-unknown
+//[wasm] needs-llvm-components: webassembly
+// revisions: wasi
+//[wasi] compile-flags: --target wasm32-wasi
+//[wasi] needs-llvm-components: webassembly
+// revisions: nvptx64
+//[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
+//[nvptx64] needs-llvm-components: nvptx
 #![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
+#![cfg_attr(not(host), feature(no_core, lang_items), no_std, no_core)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
-use std::marker::PhantomData;
-use std::mem::ManuallyDrop;
-use std::num::NonZeroI32;
-use std::ptr::NonNull;
 
-// FIXME: a bunch of targets are broken in various ways.
+// FIXME: some targets are broken in various ways.
 // Hence there are `cfg` throughout this test to disable parts of it on those targets.
 // sparc64: https://github.com/rust-lang/rust/issues/115336
 // mips64: https://github.com/rust-lang/rust/issues/115404
+
+#[cfg(host)]
+use std::{
+    any::Any, marker::PhantomData, mem::ManuallyDrop, num::NonZeroI32, ptr::NonNull, rc::Rc,
+    sync::Arc,
+};
+
+/// To work cross-target this test must be no_core.
+/// This little prelude supplies what we need.
+#[cfg(not(host))]
+mod prelude {
+    #[lang = "sized"]
+    pub trait Sized {}
+
+    #[lang = "receiver"]
+    pub trait Receiver {}
+    impl<T: ?Sized> Receiver for &T {}
+    impl<T: ?Sized> Receiver for &mut T {}
+
+    #[lang = "copy"]
+    pub trait Copy: Sized {}
+    impl Copy for i32 {}
+    impl Copy for f32 {}
+    impl<T: ?Sized> Copy for &T {}
+    impl<T: ?Sized> Copy for *const T {}
+    impl<T: ?Sized> Copy for *mut T {}
+
+    #[lang = "clone"]
+    pub trait Clone: Sized {
+        fn clone(&self) -> Self;
+    }
+
+    #[lang = "phantom_data"]
+    pub struct PhantomData<T: ?Sized>;
+    impl<T: ?Sized> Copy for PhantomData<T> {}
+
+    #[lang = "unsafe_cell"]
+    #[repr(transparent)]
+    pub struct UnsafeCell<T: ?Sized> {
+        value: T,
+    }
+
+    pub trait Any: 'static {}
+
+    pub enum Option<T> {
+        None,
+        Some(T),
+    }
+    impl<T: Copy> Copy for Option<T> {}
+
+    pub enum Result<T, E> {
+        Ok(T),
+        Err(E),
+    }
+    impl<T: Copy, E: Copy> Copy for Result<T, E> {}
+
+    #[lang = "manually_drop"]
+    #[repr(transparent)]
+    pub struct ManuallyDrop<T: ?Sized> {
+        value: T,
+    }
+    impl<T: Copy + ?Sized> Copy for ManuallyDrop<T> {}
+
+    #[repr(transparent)]
+    #[rustc_layout_scalar_valid_range_start(1)]
+    #[rustc_nonnull_optimization_guaranteed]
+    pub struct NonNull<T: ?Sized> {
+        pointer: *const T,
+    }
+    impl<T: ?Sized> Copy for NonNull<T> {}
+
+    #[repr(transparent)]
+    #[rustc_layout_scalar_valid_range_start(1)]
+    #[rustc_nonnull_optimization_guaranteed]
+    pub struct NonZeroI32(i32);
+
+    // This just stands in for a non-trivial type.
+    pub struct Vec<T> {
+        ptr: NonNull<T>,
+        cap: usize,
+        len: usize,
+    }
+
+    pub struct Unique<T: ?Sized> {
+        pub pointer: NonNull<T>,
+        pub _marker: PhantomData<T>,
+    }
+
+    pub struct Global;
+
+    #[lang = "owned_box"]
+    pub struct Box<T: ?Sized, A = Global>(Unique<T>, A);
+
+    #[repr(C)]
+    struct RcBox<T: ?Sized> {
+        strong: UnsafeCell<usize>,
+        weak: UnsafeCell<usize>,
+        value: T,
+    }
+    pub struct Rc<T: ?Sized, A = Global> {
+        ptr: NonNull<RcBox<T>>,
+        phantom: PhantomData<RcBox<T>>,
+        alloc: A,
+    }
+
+    #[repr(C, align(8))]
+    struct AtomicUsize(usize);
+    #[repr(C)]
+    struct ArcInner<T: ?Sized> {
+        strong: AtomicUsize,
+        weak: AtomicUsize,
+        data: T,
+    }
+    pub struct Arc<T: ?Sized, A = Global> {
+        ptr: NonNull<ArcInner<T>>,
+        phantom: PhantomData<ArcInner<T>>,
+        alloc: A,
+    }
+}
+#[cfg(not(host))]
+use prelude::*;
 
 macro_rules! assert_abi_compatible {
     ($name:ident, $t1:ty, $t2:ty) => {
@@ -26,8 +184,13 @@ macro_rules! assert_abi_compatible {
     };
 }
 
-#[derive(Copy, Clone)]
 struct Zst;
+impl Copy for Zst {}
+impl Clone for Zst {
+    fn clone(&self) -> Self {
+        Zst
+    }
+}
 
 #[repr(C)]
 struct ReprC1<T: ?Sized>(T);
@@ -85,8 +248,8 @@ test_abi_compatible!(nonzero_int, NonZeroI32, i32);
 
 // `DispatchFromDyn` relies on ABI compatibility.
 // This is interesting since these types are not `repr(transparent)`.
-test_abi_compatible!(rc, std::rc::Rc<i32>, *mut i32);
-test_abi_compatible!(arc, std::sync::Arc<i32>, *mut i32);
+test_abi_compatible!(rc, Rc<i32>, *mut i32);
+test_abi_compatible!(arc, Arc<i32>, *mut i32);
 
 // `repr(transparent)` compatibility.
 #[repr(transparent)]
@@ -160,7 +323,7 @@ mod unsized_ {
     use super::*;
     test_transparent_unsized!(str_, str);
     test_transparent_unsized!(slice, [u8]);
-    test_transparent_unsized!(dyn_trait, dyn std::any::Any);
+    test_transparent_unsized!(dyn_trait, dyn Any);
 }
 
 // RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>.
@@ -185,7 +348,7 @@ test_nonnull!(ref_unsized, &[i32]);
 test_nonnull!(mut_unsized, &mut [i32]);
 test_nonnull!(fn_, fn());
 test_nonnull!(nonnull, NonNull<i32>);
-test_nonnull!(nonnull_unsized, NonNull<dyn std::fmt::Debug>);
+test_nonnull!(nonnull_unsized, NonNull<dyn Any>);
 test_nonnull!(non_zero, NonZeroI32);
 
 fn main() {}

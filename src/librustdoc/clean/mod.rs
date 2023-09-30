@@ -1183,7 +1183,13 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
     // but shouldn't change any code meaning.
     let mut output = clean_middle_ty(sig.output(), cx, None, None);
 
-    if let Some(did) = did && cx.tcx.asyncness(did).is_async() {
+    // If the return type isn't an `impl Trait`, we can safely assume that this
+    // function isn't async without needing to execute the query `asyncness` at
+    // all which gives us a noticeable performance boost.
+    if let Some(did) = did
+        && let Type::ImplTrait(_) = output
+        && cx.tcx.asyncness(did).is_async()
+    {
         output = output.sugared_async_return_type();
     }
 

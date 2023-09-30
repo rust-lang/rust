@@ -15,7 +15,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, symbol::kw, Span, Symbol};
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive};
@@ -376,7 +376,9 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             _ if name.as_str().starts_with("simd_") => {
-                match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
+                match generic_simd_intrinsic(
+                    self, name, callee_ty, fn_args, args, ret_ty, llret_ty, span,
+                ) {
                     Ok(llval) => llval,
                     Err(()) => return,
                 }
@@ -911,6 +913,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     name: Symbol,
     callee_ty: Ty<'tcx>,
+    fn_args: GenericArgsRef<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
     ret_ty: Ty<'tcx>,
     llret_ty: &'ll Type,
@@ -1027,6 +1030,56 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             in_elem,
             llret_ty,
             cmp_op,
+        ));
+    }
+
+    if name == sym::simd_shuffle_generic {
+        let idx = fn_args[2]
+            .expect_const()
+            .eval(tcx, ty::ParamEnv::reveal_all(), Some(span))
+            .unwrap()
+            .unwrap_branch();
+        let n = idx.len() as u64;
+
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
+        let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
+        require!(
+            out_len == n,
+            InvalidMonomorphization::ReturnLength { span, name, in_len: n, ret_ty, out_len }
+        );
+        require!(
+            in_elem == out_ty,
+            InvalidMonomorphization::ReturnElement { span, name, in_elem, in_ty, ret_ty, out_ty }
+        );
+
+        let total_len = in_len * 2;
+
+        let indices: Option<Vec<_>> = idx
+            .iter()
+            .enumerate()
+            .map(|(arg_idx, val)| {
+                let idx = val.unwrap_leaf().try_to_i32().unwrap();
+                if idx >= i32::try_from(total_len).unwrap() {
+                    bx.sess().emit_err(InvalidMonomorphization::ShuffleIndexOutOfBounds {
+                        span,
+                        name,
+                        arg_idx: arg_idx as u64,
+                        total_len: total_len.into(),
+                    });
+                    None
+                } else {
+                    Some(bx.const_i32(idx))
+                }
+            })
+            .collect();
+        let Some(indices) = indices else {
+            return Ok(bx.const_null(llret_ty));
+        };
+
+        return Ok(bx.shuffle_vector(
+            args[0].immediate(),
+            args[1].immediate(),
+            bx.const_vector(&indices),
         ));
     }
 
