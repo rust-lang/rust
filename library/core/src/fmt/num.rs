@@ -334,8 +334,16 @@ macro_rules! impl_Exp {
                     // round up last digit
                     if rem >= 5 {
                         n += 1;
+                        // if the digit is rounded to the next power
+                        // instead adjust the exponent
+                        if n % 10 == 0 {
+                            n /= 10;
+                            exponent += 1;
+                        }
                     }
+                    // n = 100
                 }
+                // assert!(n == 666, "{}\n{}\n{}\n",n, exponent, added_precision);
                 (n, exponent, exponent, added_precision)
             };
 
