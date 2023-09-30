@@ -18,7 +18,6 @@ struct MoveDataBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
-    errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
 }
 
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
@@ -31,7 +30,6 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             body,
             tcx,
             param_env,
-            errors: Vec::new(),
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),
@@ -287,11 +285,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 }
 
-pub type MoveDat<'tcx> =
-    Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)>;
-
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
-    fn finalize(self) -> MoveDat<'tcx> {
+    fn finalize(self) -> MoveData<'tcx> {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -304,7 +299,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             "done dumping moves"
         });
 
-        if self.errors.is_empty() { Ok(self.data) } else { Err((self.data, self.errors)) }
+        self.data
     }
 }
 
@@ -312,7 +307,7 @@ pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> MoveDat<'tcx> {
+) -> MoveData<'tcx> {
     let mut builder = MoveDataBuilder::new(body, tcx, param_env);
 
     builder.gather_args();
@@ -551,8 +546,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.record_move(place, path);
                     return;
                 }
-                Err(error @ MoveError::IllegalMove { .. }) => {
-                    self.builder.errors.push((base_place, error));
+                Err(MoveError::IllegalMove { .. }) => {
                     return;
                 }
             };
@@ -573,9 +567,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         } else {
             match self.move_path_for(place) {
                 Ok(path) | Err(MoveError::UnionMove { path }) => self.record_move(place, path),
-                Err(error @ MoveError::IllegalMove { .. }) => {
-                    self.builder.errors.push((place, error));
-                }
+                Err(MoveError::IllegalMove { .. }) => {}
             };
         }
     }

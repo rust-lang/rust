@@ -1,4 +1,3 @@
-use crate::move_paths::builder::MoveDat;
 use crate::un_derefer::UnDerefer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
@@ -377,7 +376,7 @@ pub enum MoveError<'tcx> {
 }
 
 impl<'tcx> MoveError<'tcx> {
-    fn cannot_move_out_of(location: Location, kind: IllegalMoveOriginKind<'tcx>) -> Self {
+    pub fn cannot_move_out_of(location: Location, kind: IllegalMoveOriginKind<'tcx>) -> Self {
         let origin = IllegalMoveOrigin { location, kind };
         MoveError::IllegalMove { cannot_move_out_of: origin }
     }
@@ -388,7 +387,7 @@ impl<'tcx> MoveData<'tcx> {
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> MoveDat<'tcx> {
+    ) -> MoveData<'tcx> {
         builder::gather_moves(body, tcx, param_env)
     }
 

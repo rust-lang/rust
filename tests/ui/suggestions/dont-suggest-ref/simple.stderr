@@ -43,7 +43,7 @@ LL -     while let Either::One(_t) = *r { }
 LL +     while let Either::One(_t) = r { }
    |
 
-error[E0507]: cannot move out of `r` as enum variant `Two` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:47:11
    |
 LL |     match *r {
@@ -124,7 +124,7 @@ LL -     while let Either::One(_t) = *rm { }
 LL +     while let Either::One(_t) = rm { }
    |
 
-error[E0507]: cannot move out of `rm` as enum variant `Two` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:70:11
    |
 LL |     match *rm {
@@ -392,7 +392,7 @@ LL -     while let &Either::One(_t) = r { }
 LL +     while let Either::One(_t) = r { }
    |
 
-error[E0507]: cannot move out of `r` as enum variant `Two` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:155:11
    |
 LL |     match r {
@@ -491,7 +491,7 @@ LL -     while let &mut Either::One(_t) = rm { }
 LL +     while let Either::One(_t) = rm { }
    |
 
-error[E0507]: cannot move out of `rm` as enum variant `Two` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:187:11
    |
 LL |     match rm {
