@@ -815,52 +815,83 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_middle::mir::TerminatorKind::*;
         use stable_mir::mir::Terminator;
+        use stable_mir::mir::TerminatorKind;
         match &self.kind {
-            Goto { target } => Terminator::Goto { target: target.as_usize() },
-            SwitchInt { discr, targets } => Terminator::SwitchInt {
-                discr: discr.stable(tables),
-                targets: targets
-                    .iter()
-                    .map(|(value, target)| stable_mir::mir::SwitchTarget {
-                        value,
-                        target: target.as_usize(),
-                    })
-                    .collect(),
-                otherwise: targets.otherwise().as_usize(),
+            Goto { target } => Terminator {
+                kind: TerminatorKind::Goto { target: target.as_usize() },
+                span: self.source_info.span.stable(tables),
             },
-            UnwindResume => Terminator::Resume,
-            UnwindTerminate(_) => Terminator::Abort,
-            Return => Terminator::Return,
-            Unreachable => Terminator::Unreachable,
-            Drop { place, target, unwind, replace: _ } => Terminator::Drop {
-                place: place.stable(tables),
-                target: target.as_usize(),
-                unwind: unwind.stable(tables),
+            SwitchInt { discr, targets } => Terminator {
+                kind: TerminatorKind::SwitchInt {
+                    discr: discr.stable(tables),
+                    targets: targets
+                        .iter()
+                        .map(|(value, target)| stable_mir::mir::SwitchTarget {
+                            value,
+                            target: target.as_usize(),
+                        })
+                        .collect(),
+                    otherwise: targets.otherwise().as_usize(),
+                },
+                span: self.source_info.span.stable(tables),
+            },
+            UnwindResume => Terminator {
+                kind: TerminatorKind::Resume,
+                span: self.source_info.span.stable(tables),
+            },
+            UnwindTerminate(_) => Terminator {
+                kind: TerminatorKind::Abort,
+                span: self.source_info.span.stable(tables),
+            },
+            Return => Terminator {
+                kind: TerminatorKind::Return,
+                span: self.source_info.span.stable(tables),
+            },
+            Unreachable => Terminator {
+                kind: TerminatorKind::Unreachable,
+                span: self.source_info.span.stable(tables),
+            },
+            Drop { place, target, unwind, replace: _ } => Terminator {
+                kind: TerminatorKind::Drop {
+                    place: place.stable(tables),
+                    target: target.as_usize(),
+                    unwind: unwind.stable(tables),
+                },
+                span: self.source_info.span.stable(tables),
             },
             Call { func, args, destination, target, unwind, call_source: _, fn_span: _ } => {
-                Terminator::Call {
-                    func: func.stable(tables),
-                    args: args.iter().map(|arg| arg.stable(tables)).collect(),
-                    destination: destination.stable(tables),
-                    target: target.map(|t| t.as_usize()),
-                    unwind: unwind.stable(tables),
+                Terminator {
+                    kind: TerminatorKind::Call {
+                        func: func.stable(tables),
+                        args: args.iter().map(|arg| arg.stable(tables)).collect(),
+                        destination: destination.stable(tables),
+                        target: target.map(|t| t.as_usize()),
+                        unwind: unwind.stable(tables),
+                    },
+                    span: self.source_info.span.stable(tables),
                 }
             }
-            Assert { cond, expected, msg, target, unwind } => Terminator::Assert {
-                cond: cond.stable(tables),
-                expected: *expected,
-                msg: msg.stable(tables),
-                target: target.as_usize(),
-                unwind: unwind.stable(tables),
+            Assert { cond, expected, msg, target, unwind } => Terminator {
+                kind: TerminatorKind::Assert {
+                    cond: cond.stable(tables),
+                    expected: *expected,
+                    msg: msg.stable(tables),
+                    target: target.as_usize(),
+                    unwind: unwind.stable(tables),
+                },
+                span: self.source_info.span.stable(tables),
             },
             InlineAsm { template, operands, options, line_spans, destination, unwind } => {
-                Terminator::InlineAsm {
-                    template: format!("{template:?}"),
-                    operands: operands.iter().map(|operand| operand.stable(tables)).collect(),
-                    options: format!("{options:?}"),
-                    line_spans: format!("{line_spans:?}"),
-                    destination: destination.map(|d| d.as_usize()),
-                    unwind: unwind.stable(tables),
+                Terminator {
+                    kind: TerminatorKind::InlineAsm {
+                        template: format!("{template:?}"),
+                        operands: operands.iter().map(|operand| operand.stable(tables)).collect(),
+                        options: format!("{options:?}"),
+                        line_spans: format!("{line_spans:?}"),
+                        destination: destination.map(|d| d.as_usize()),
+                        unwind: unwind.stable(tables),
+                    },
+                    span: self.source_info.span.stable(tables),
                 }
             }
             Yield { .. } | GeneratorDrop | FalseEdge { .. } | FalseUnwind { .. } => unreachable!(),

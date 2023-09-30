@@ -21,7 +21,13 @@ pub struct BasicBlock {
 }
 
 #[derive(Clone, Debug)]
-pub enum Terminator {
+pub struct Terminator {
+    pub kind: TerminatorKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum TerminatorKind {
     Goto {
         target: usize,
     },
