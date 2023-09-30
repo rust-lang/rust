@@ -2,7 +2,7 @@ use crate::un_derefer::UnDerefer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{ParamEnv, TyCtxt};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
@@ -351,8 +351,9 @@ impl<'tcx> MoveData<'tcx> {
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
+        filter: impl Fn(Ty<'tcx>) -> bool,
     ) -> MoveData<'tcx> {
-        builder::gather_moves(body, tcx, param_env)
+        builder::gather_moves(body, tcx, param_env, filter)
     }
 
     /// For the move path `mpi`, returns the root local variable (if any) that starts the path.

@@ -1,7 +1,7 @@
 use rustc_index::IndexVec;
-use rustc_middle::mir::tcx::RvalueInitializationState;
+use rustc_middle::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
 use std::mem;
@@ -12,18 +12,48 @@ use super::{
     LocationMap, MoveData, MoveOut, MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
 };
 
-struct MoveDataBuilder<'a, 'tcx> {
+struct MoveDataBuilder<'a, 'tcx, F> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
+    filter: F,
 }
 
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+impl<'a, 'tcx, F> MoveDataBuilder<'a, 'tcx, F>
+where
+    F: Fn(Ty<'tcx>) -> bool,
+{
+    fn new(
+        body: &'a Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        filter: F,
+    ) -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
         let mut init_path_map = IndexVec::new();
+
+        let locals = body
+            .local_decls
+            .iter_enumerated()
+            .map(|(i, l)| {
+                if l.is_deref_temp() {
+                    return None;
+                }
+                if filter(l.ty) {
+                    Some(new_move_path(
+                        &mut move_paths,
+                        &mut path_map,
+                        &mut init_path_map,
+                        None,
+                        Place::from(i),
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         MoveDataBuilder {
             body,
@@ -33,23 +63,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),
                 rev_lookup: MovePathLookup {
-                    locals: body
-                        .local_decls
-                        .iter_enumerated()
-                        .map(|(i, l)| {
-                            if l.is_deref_temp() {
-                                None
-                            } else {
-                                Some(Self::new_move_path(
-                                    &mut move_paths,
-                                    &mut path_map,
-                                    &mut init_path_map,
-                                    None,
-                                    Place::from(i),
-                                ))
-                            }
-                        })
-                        .collect(),
+                    locals,
                     projections: Default::default(),
                     un_derefer: Default::default(),
                 },
@@ -59,32 +73,33 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 init_loc_map: LocationMap::new(body),
                 init_path_map,
             },
+            filter,
         }
     }
+}
 
-    fn new_move_path(
-        move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
-        path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
-        init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
-        parent: Option<MovePathIndex>,
-        place: Place<'tcx>,
-    ) -> MovePathIndex {
-        let move_path =
-            move_paths.push(MovePath { next_sibling: None, first_child: None, parent, place });
+fn new_move_path<'tcx>(
+    move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
+    path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
+    init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
+    parent: Option<MovePathIndex>,
+    place: Place<'tcx>,
+) -> MovePathIndex {
+    let move_path =
+        move_paths.push(MovePath { next_sibling: None, first_child: None, parent, place });
 
-        if let Some(parent) = parent {
-            let next_sibling = mem::replace(&mut move_paths[parent].first_child, Some(move_path));
-            move_paths[move_path].next_sibling = next_sibling;
-        }
-
-        let path_map_ent = path_map.push(smallvec![]);
-        assert_eq!(path_map_ent, move_path);
-
-        let init_path_map_ent = init_path_map.push(smallvec![]);
-        assert_eq!(init_path_map_ent, move_path);
-
-        move_path
+    if let Some(parent) = parent {
+        let next_sibling = mem::replace(&mut move_paths[parent].first_child, Some(move_path));
+        move_paths[move_path].next_sibling = next_sibling;
     }
+
+    let path_map_ent = path_map.push(smallvec![]);
+    assert_eq!(path_map_ent, move_path);
+
+    let init_path_map_ent = init_path_map.push(smallvec![]);
+    assert_eq!(init_path_map_ent, move_path);
+
+    move_path
 }
 
 enum MovePathResult {
@@ -93,7 +108,10 @@ enum MovePathResult {
     Error,
 }
 
-impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
+impl<'b, 'a, 'tcx, F> Gatherer<'b, 'a, 'tcx, F>
+where
+    F: Fn(Ty<'tcx>) -> bool,
+{
     /// This creates a MovePath for a given place, returning an `MovePathError`
     /// if that place can't be moved from.
     ///
@@ -214,11 +232,15 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 | ProjectionElem::Subtype(_)
                 | ProjectionElem::Downcast(_, _) => (),
             }
+            let elem_ty = PlaceTy::from_ty(place_ty).projection_ty(tcx, elem).ty;
+            if !(self.builder.filter)(elem_ty) {
+                return MovePathResult::Error;
+            }
             if union_path.is_none() {
                 // inlined from add_move_path because of a borrowck conflict with the iterator
                 base =
                     *data.rev_lookup.projections.entry((base, elem.lift())).or_insert_with(|| {
-                        MoveDataBuilder::new_move_path(
+                        new_move_path(
                             &mut data.move_paths,
                             &mut data.path_map,
                             &mut data.init_path_map,
@@ -249,13 +271,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             ..
         } = self.builder;
         *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
-            MoveDataBuilder::new_move_path(
-                move_paths,
-                path_map,
-                init_path_map,
-                Some(base),
-                mk_place(*tcx),
-            )
+            new_move_path(move_paths, path_map, init_path_map, Some(base), mk_place(*tcx))
         })
     }
 
@@ -266,7 +282,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
+impl<'a, 'tcx, F> MoveDataBuilder<'a, 'tcx, F> {
     fn finalize(self) -> MoveData<'tcx> {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
@@ -288,8 +304,9 @@ pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    filter: impl Fn(Ty<'tcx>) -> bool,
 ) -> MoveData<'tcx> {
-    let mut builder = MoveDataBuilder::new(body, tcx, param_env);
+    let mut builder = MoveDataBuilder::new(body, tcx, param_env, filter);
 
     builder.gather_args();
 
@@ -306,7 +323,10 @@ pub(super) fn gather_moves<'tcx>(
     builder.finalize()
 }
 
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
+impl<'a, 'tcx, F> MoveDataBuilder<'a, 'tcx, F>
+where
+    F: Fn(Ty<'tcx>) -> bool,
+{
     fn gather_args(&mut self) {
         for arg in self.body.args_iter() {
             if let Some(path) = self.data.rev_lookup.find_local(arg) {
@@ -334,12 +354,15 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     }
 }
 
-struct Gatherer<'b, 'a, 'tcx> {
-    builder: &'b mut MoveDataBuilder<'a, 'tcx>,
+struct Gatherer<'b, 'a, 'tcx, F> {
+    builder: &'b mut MoveDataBuilder<'a, 'tcx, F>,
     loc: Location,
 }
 
-impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
+impl<'b, 'a, 'tcx, F> Gatherer<'b, 'a, 'tcx, F>
+where
+    F: Fn(Ty<'tcx>) -> bool,
+{
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
             StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {

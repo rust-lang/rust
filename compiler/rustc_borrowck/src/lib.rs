@@ -219,10 +219,10 @@ fn do_mir_borrowck<'tcx>(
     let location_table_owned = LocationTable::new(body);
     let location_table = &location_table_owned;
 
-    let move_data = MoveData::gather_moves(&body, tcx, param_env);
+    let move_data = MoveData::gather_moves(&body, tcx, param_env, |_| true);
     let promoted_move_data = promoted
         .iter_enumerated()
-        .map(|(idx, body)| (idx, MoveData::gather_moves(&body, tcx, param_env)));
+        .map(|(idx, body)| (idx, MoveData::gather_moves(&body, tcx, param_env, |_| true)));
 
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
