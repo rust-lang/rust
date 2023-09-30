@@ -7,8 +7,7 @@ use smallvec::{smallvec, SmallVec};
 use std::mem;
 
 use super::abs_domain::Lift;
-use super::IllegalMoveOriginKind::*;
-use super::{Init, InitIndex, InitKind, InitLocation, LookupResult, MoveError};
+use super::{Init, InitIndex, InitKind, InitLocation, LookupResult};
 use super::{
     LocationMap, MoveData, MoveOut, MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
 };
@@ -88,6 +87,12 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     }
 }
 
+enum MovePathResult {
+    Path(MovePathIndex),
+    Union(MovePathIndex),
+    Error,
+}
+
 impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     /// This creates a MovePath for a given place, returning an `MovePathError`
     /// if that place can't be moved from.
@@ -96,12 +101,12 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     /// problematic for borrowck.
     ///
     /// Maybe we should have separate "borrowck" and "moveck" modes.
-    fn move_path_for(&mut self, place: Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
+    fn move_path_for(&mut self, place: Place<'tcx>) -> MovePathResult {
         let data = &mut self.builder.data;
 
         debug!("lookup({:?})", place);
         let Some(mut base) = data.rev_lookup.find_local(place.local) else {
-            return Err(MoveError::UntrackedLocal);
+            return MovePathResult::Error;
         };
 
         // The move path index of the first union that we find. Once this is
@@ -118,12 +123,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             match elem {
                 ProjectionElem::Deref => match place_ty.kind() {
                     ty::Ref(..) | ty::RawPtr(..) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            BorrowedContent {
-                                target_place: place_ref.project_deeper(&[elem], tcx),
-                            },
-                        ));
+                        return MovePathResult::Error;
                     }
                     ty::Adt(adt, _) => {
                         if !adt.is_box() {
@@ -159,10 +159,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ProjectionElem::Field(_, _) => match place_ty.kind() {
                     ty::Adt(adt, _) => {
                         if adt.has_dtor(tcx) {
-                            return Err(MoveError::cannot_move_out_of(
-                                self.loc,
-                                InteriorOfTypeWithDestructor { container_ty: place_ty },
-                            ));
+                            return MovePathResult::Error;
                         }
                         if adt.is_union() {
                             union_path.get_or_insert(base);
@@ -197,33 +194,15 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                     match place_ty.kind() {
                         ty::Slice(_) => {
-                            return Err(MoveError::cannot_move_out_of(
-                                self.loc,
-                                InteriorOfSliceOrArray {
-                                    ty: place_ty,
-                                    is_index: matches!(elem, ProjectionElem::Index(..)),
-                                },
-                            ));
+                            return MovePathResult::Error;
                         }
                         ty::Array(_, _) => (),
                         _ => bug!("Unexpected type {:#?}", place_ty.is_array()),
                     }
                 }
                 ProjectionElem::Index(_) => match place_ty.kind() {
-                    ty::Array(..) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfSliceOrArray { ty: place_ty, is_index: true },
-                        ));
-                    }
-                    ty::Slice(_) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfSliceOrArray {
-                                ty: place_ty,
-                                is_index: matches!(elem, ProjectionElem::Index(..)),
-                            },
-                        ));
+                    ty::Array(..) | ty::Slice(_) => {
+                        return MovePathResult::Error;
                     }
                     _ => bug!("Unexpected type {place_ty:#?}"),
                 },
@@ -252,9 +231,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
         if let Some(base) = union_path {
             // Move out of union - always move the entire union.
-            Err(MoveError::UnionMove { path: base })
+            MovePathResult::Union(base)
         } else {
-            Ok(base)
+            MovePathResult::Path(base)
         }
     }
 
@@ -543,12 +522,14 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let base_place =
                 Place { local: place.local, projection: self.builder.tcx.mk_place_elems(base) };
             let base_path = match self.move_path_for(base_place) {
-                Ok(path) => path,
-                Err(MoveError::UnionMove { path }) => {
+                MovePathResult::Path(path) => path,
+                MovePathResult::Union(path) => {
                     self.record_move(place, path);
                     return;
                 }
-                Err(MoveError::IllegalMove { .. } | MoveError::UntrackedLocal) => return,
+                MovePathResult::Error => {
+                    return;
+                }
             };
             let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
             let len: u64 = match base_ty.kind() {
@@ -566,8 +547,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
         } else {
             match self.move_path_for(place) {
-                Ok(path) | Err(MoveError::UnionMove { path }) => self.record_move(place, path),
-                Err(MoveError::IllegalMove { .. } | MoveError::UntrackedLocal) => {}
+                MovePathResult::Path(path) | MovePathResult::Union(path) => {
+                    self.record_move(place, path)
+                }
+                MovePathResult::Error => {}
             };
         }
     }

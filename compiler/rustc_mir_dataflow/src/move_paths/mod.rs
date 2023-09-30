@@ -2,7 +2,7 @@ use crate::un_derefer::UnDerefer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
@@ -343,45 +343,6 @@ impl<'tcx> MovePathLookup<'tcx> {
         &self,
     ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + '_ {
         self.locals.iter_enumerated().filter_map(|(l, &idx)| Some((l, idx?)))
-    }
-}
-
-#[derive(Debug)]
-pub struct IllegalMoveOrigin<'tcx> {
-    pub location: Location,
-    pub kind: IllegalMoveOriginKind<'tcx>,
-}
-
-#[derive(Debug)]
-pub enum IllegalMoveOriginKind<'tcx> {
-    /// Illegal move due to attempt to move from behind a reference.
-    BorrowedContent {
-        /// The place the reference refers to: if erroneous code was trying to
-        /// move from `(*x).f` this will be `*x`.
-        target_place: Place<'tcx>,
-    },
-
-    /// Illegal move due to attempt to move from field of an ADT that
-    /// implements `Drop`. Rust maintains invariant that all `Drop`
-    /// ADT's remain fully-initialized so that user-defined destructor
-    /// can safely read from all of the ADT's fields.
-    InteriorOfTypeWithDestructor { container_ty: Ty<'tcx> },
-
-    /// Illegal move due to attempt to move out of a slice or array.
-    InteriorOfSliceOrArray { ty: Ty<'tcx>, is_index: bool },
-}
-
-#[derive(Debug)]
-pub enum MoveError<'tcx> {
-    IllegalMove { cannot_move_out_of: IllegalMoveOrigin<'tcx> },
-    UnionMove { path: MovePathIndex },
-    UntrackedLocal,
-}
-
-impl<'tcx> MoveError<'tcx> {
-    pub fn cannot_move_out_of(location: Location, kind: IllegalMoveOriginKind<'tcx>) -> Self {
-        let origin = IllegalMoveOrigin { location, kind };
-        MoveError::IllegalMove { cannot_move_out_of: origin }
     }
 }
 

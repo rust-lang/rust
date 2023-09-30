@@ -1,13 +1,32 @@
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::mir::*;
-use rustc_middle::ty;
-use rustc_mir_dataflow::move_paths::{IllegalMoveOriginKind, LookupResult, MovePathIndex};
+use rustc_middle::ty::{self, Ty};
+use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::{BytePos, Span};
 
 use crate::diagnostics::CapturedMessageOpt;
 use crate::diagnostics::{DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
+
+#[derive(Debug)]
+pub enum IllegalMoveOriginKind<'tcx> {
+    /// Illegal move due to attempt to move from behind a reference.
+    BorrowedContent {
+        /// The place the reference refers to: if erroneous code was trying to
+        /// move from `(*x).f` this will be `*x`.
+        target_place: Place<'tcx>,
+    },
+
+    /// Illegal move due to attempt to move from field of an ADT that
+    /// implements `Drop`. Rust maintains invariant that all `Drop`
+    /// ADT's remain fully-initialized so that user-defined destructor
+    /// can safely read from all of the ADT's fields.
+    InteriorOfTypeWithDestructor { container_ty: Ty<'tcx> },
+
+    /// Illegal move due to attempt to move out of a slice or array.
+    InteriorOfSliceOrArray { ty: Ty<'tcx>, is_index: bool },
+}
 
 #[derive(Debug)]
 pub(crate) struct MoveError<'tcx> {

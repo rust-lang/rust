@@ -49,16 +49,14 @@ use std::rc::Rc;
 use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
 };
-use rustc_mir_dataflow::move_paths::{
-    IllegalMoveOriginKind, InitIndex, MoveOutIndex, MovePathIndex,
-};
+use rustc_mir_dataflow::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveData};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::MoveDataParamEnv;
 
 use crate::session_diagnostics::VarNeedNotMut;
 
-use self::diagnostics::{AccessKind, MoveError, RegionName};
+use self::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
