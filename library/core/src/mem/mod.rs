@@ -930,7 +930,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// This function is not magic; it is literally defined as
 ///
 /// ```
-/// pub fn drop<T>(_x: T) { }
+/// pub fn drop<T>(_x: T) {}
 /// ```
 ///
 /// Because `_x` is moved into the function, it is automatically dropped before
