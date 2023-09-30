@@ -3,7 +3,7 @@ use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions};
 // This target if is for the Android v7a ABI in thumb mode with
 // NEON unconditionally enabled and, therefore, with 32 FPU registers
 // enabled as well. See section A2.6.2 on page A2-56 in
-// https://static.docs.arm.com/ddi0406/cd/DDI0406C_d_armv7ar_arm.pdf
+// https://web.archive.org/web/20210307234416/https://static.docs.arm.com/ddi0406/cd/DDI0406C_d_armv7ar_arm.pdf
 
 // See https://developer.android.com/ndk/guides/abis.html#v7a
 // for target ABI requirements.
