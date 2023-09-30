@@ -1,0 +1,82 @@
+error: cannot use NaN in patterns
+  --> $DIR/issue-6804-nan-match.rs:11:9
+   |
+LL |         NAN => {},
+   |         ^^^
+   |
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
+   = help: try using the `is_nan` method instead
+
+error: cannot use NaN in patterns
+  --> $DIR/issue-6804-nan-match.rs:16:10
+   |
+LL |         [NAN, _] => {},
+   |          ^^^
+   |
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
+   = help: try using the `is_nan` method instead
+
+error: cannot use NaN in patterns
+  --> $DIR/issue-6804-nan-match.rs:22:9
+   |
+LL |         NAN..=1.0 => {},
+   |         ^^^
+   |
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
+   = help: try using the `is_nan` method instead
+
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/issue-6804-nan-match.rs:22:9
+   |
+LL |         NAN..=1.0 => {},
+   |         ^^^^^^^^^ lower bound larger than upper bound
+
+error: cannot use NaN in patterns
+  --> $DIR/issue-6804-nan-match.rs:24:16
+   |
+LL |         -1.0..=NAN => {},
+   |                ^^^
+   |
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
+   = help: try using the `is_nan` method instead
+
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/issue-6804-nan-match.rs:24:9
+   |
+LL |         -1.0..=NAN => {},
+   |         ^^^^^^^^^^ lower bound larger than upper bound
+
+error: cannot use NaN in patterns
+  --> $DIR/issue-6804-nan-match.rs:26:9
+   |
+LL |         NAN.. => {},
+   |         ^^^
+   |
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
+   = help: try using the `is_nan` method instead
+
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/issue-6804-nan-match.rs:26:9
+   |
+LL |         NAN.. => {},
+   |         ^^^^^ lower bound larger than upper bound
+
+error: cannot use NaN in patterns
+  --> $DIR/issue-6804-nan-match.rs:28:11
+   |
+LL |         ..NAN => {},
+   |           ^^^
+   |
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
+   = help: try using the `is_nan` method instead
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/issue-6804-nan-match.rs:28:9
+   |
+LL |         ..NAN => {},
+   |         ^^^^^
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0030, E0579.
+For more information about an error, try `rustc --explain E0030`.

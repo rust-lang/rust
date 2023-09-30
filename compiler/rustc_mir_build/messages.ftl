@@ -232,6 +232,10 @@ mir_build_mutation_of_layout_constrained_field_requires_unsafe_unsafe_op_in_unsa
     .note = mutating layout constrained fields cannot statically be checked for valid values
     .label = mutation of layout constrained field
 
+mir_build_nan_pattern = cannot use NaN in patterns
+    .note = NaNs compare inequal to everything, even themselves, so this pattern would never match
+    .help = try using the `is_nan` method instead
+
 mir_build_non_const_path = runtime values cannot be referenced in patterns
 
 mir_build_non_empty_never_pattern =

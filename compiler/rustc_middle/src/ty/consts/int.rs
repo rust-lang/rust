@@ -249,17 +249,57 @@ impl ScalarInt {
         }
     }
 
-    #[inline]
-    pub fn try_to_target_usize(&self, tcx: TyCtxt<'_>) -> Result<u64, Size> {
-        Ok(self.to_bits(tcx.data_layout.pointer_size)? as u64)
-    }
-
     /// Tries to convert the `ScalarInt` to an unsigned integer of the given size.
     /// Fails if the size of the `ScalarInt` is not equal to `size` and returns the
     /// `ScalarInt`s size in that case.
     #[inline]
     pub fn try_to_uint(self, size: Size) -> Result<u128, Size> {
         self.to_bits(size)
+    }
+
+    // Tries to convert the `ScalarInt` to `u8`. Fails if the `size` of the `ScalarInt`
+    // in not equal to `Size { raw: 1 }` and returns the `size` value of the `ScalarInt` in
+    // that case.
+    #[inline]
+    pub fn try_to_u8(self) -> Result<u8, Size> {
+        self.try_to_uint(Size::from_bits(8)).map(|v| u8::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to `u16`. Fails if the size of the `ScalarInt`
+    /// in not equal to `Size { raw: 2 }` and returns the `size` value of the `ScalarInt` in
+    /// that case.
+    #[inline]
+    pub fn try_to_u16(self) -> Result<u16, Size> {
+        self.try_to_uint(Size::from_bits(16)).map(|v| u16::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to `u32`. Fails if the `size` of the `ScalarInt`
+    /// in not equal to `Size { raw: 4 }` and returns the `size` value of the `ScalarInt` in
+    /// that case.
+    #[inline]
+    pub fn try_to_u32(self) -> Result<u32, Size> {
+        self.try_to_uint(Size::from_bits(32)).map(|v| u32::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to `u64`. Fails if the `size` of the `ScalarInt`
+    /// in not equal to `Size { raw: 8 }` and returns the `size` value of the `ScalarInt` in
+    /// that case.
+    #[inline]
+    pub fn try_to_u64(self) -> Result<u64, Size> {
+        self.try_to_uint(Size::from_bits(64)).map(|v| u64::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to `u128`. Fails if the `size` of the `ScalarInt`
+    /// in not equal to `Size { raw: 16 }` and returns the `size` value of the `ScalarInt` in
+    /// that case.
+    #[inline]
+    pub fn try_to_u128(self) -> Result<u128, Size> {
+        self.try_to_uint(Size::from_bits(128))
+    }
+
+    #[inline]
+    pub fn try_to_target_usize(&self, tcx: TyCtxt<'_>) -> Result<u64, Size> {
+        self.try_to_uint(tcx.data_layout.pointer_size).map(|v| u64::try_from(v).unwrap())
     }
 
     // Tries to convert the `ScalarInt` to `bool`. Fails if the `size` of the `ScalarInt`
@@ -272,46 +312,6 @@ impl ScalarInt {
             1 => Ok(true),
             _ => Err(self.size()),
         }
-    }
-
-    // Tries to convert the `ScalarInt` to `u8`. Fails if the `size` of the `ScalarInt`
-    // in not equal to `Size { raw: 1 }` and returns the `size` value of the `ScalarInt` in
-    // that case.
-    #[inline]
-    pub fn try_to_u8(self) -> Result<u8, Size> {
-        self.to_bits(Size::from_bits(8)).map(|v| u8::try_from(v).unwrap())
-    }
-
-    /// Tries to convert the `ScalarInt` to `u16`. Fails if the size of the `ScalarInt`
-    /// in not equal to `Size { raw: 2 }` and returns the `size` value of the `ScalarInt` in
-    /// that case.
-    #[inline]
-    pub fn try_to_u16(self) -> Result<u16, Size> {
-        self.to_bits(Size::from_bits(16)).map(|v| u16::try_from(v).unwrap())
-    }
-
-    /// Tries to convert the `ScalarInt` to `u32`. Fails if the `size` of the `ScalarInt`
-    /// in not equal to `Size { raw: 4 }` and returns the `size` value of the `ScalarInt` in
-    /// that case.
-    #[inline]
-    pub fn try_to_u32(self) -> Result<u32, Size> {
-        self.to_bits(Size::from_bits(32)).map(|v| u32::try_from(v).unwrap())
-    }
-
-    /// Tries to convert the `ScalarInt` to `u64`. Fails if the `size` of the `ScalarInt`
-    /// in not equal to `Size { raw: 8 }` and returns the `size` value of the `ScalarInt` in
-    /// that case.
-    #[inline]
-    pub fn try_to_u64(self) -> Result<u64, Size> {
-        self.to_bits(Size::from_bits(64)).map(|v| u64::try_from(v).unwrap())
-    }
-
-    /// Tries to convert the `ScalarInt` to `u128`. Fails if the `size` of the `ScalarInt`
-    /// in not equal to `Size { raw: 16 }` and returns the `size` value of the `ScalarInt` in
-    /// that case.
-    #[inline]
-    pub fn try_to_u128(self) -> Result<u128, Size> {
-        self.to_bits(Size::from_bits(128))
     }
 
     /// Tries to convert the `ScalarInt` to a signed integer of the given size.
@@ -357,6 +357,27 @@ impl ScalarInt {
     pub fn try_to_i128(self) -> Result<i128, Size> {
         self.try_to_int(Size::from_bits(128))
     }
+
+    #[inline]
+    pub fn try_to_target_isize(&self, tcx: TyCtxt<'_>) -> Result<i64, Size> {
+        self.try_to_int(tcx.data_layout.pointer_size).map(|v| i64::try_from(v).unwrap())
+    }
+
+    #[inline]
+    pub fn try_to_float<F: Float>(self) -> Result<F, Size> {
+        // Going through `to_uint` to check size and truncation.
+        Ok(F::from_bits(self.to_bits(Size::from_bits(F::BITS))?))
+    }
+
+    #[inline]
+    pub fn try_to_f32(self) -> Result<Single, Size> {
+        self.try_to_float()
+    }
+
+    #[inline]
+    pub fn try_to_f64(self) -> Result<Double, Size> {
+        self.try_to_float()
+    }
 }
 
 macro_rules! from {
@@ -399,11 +420,7 @@ impl TryFrom<ScalarInt> for bool {
     type Error = Size;
     #[inline]
     fn try_from(int: ScalarInt) -> Result<Self, Size> {
-        int.to_bits(Size::from_bytes(1)).and_then(|u| match u {
-            0 => Ok(false),
-            1 => Ok(true),
-            _ => Err(Size::from_bytes(1)),
-        })
+        int.try_to_bool()
     }
 }
 
