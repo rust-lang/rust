@@ -47,12 +47,12 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     assert_eq!(body.blocks.len(), 1);
     let block = &body.blocks[0];
     assert_eq!(block.statements.len(), 1);
-    match &block.statements[0] {
-        stable_mir::mir::Statement::Assign(..) => {}
+    match &block.statements[0].kind {
+        stable_mir::mir::StatementKind::Assign(..) => {}
         other => panic!("{other:?}"),
     }
-    match &block.terminator {
-        stable_mir::mir::Terminator::Return => {}
+    match &block.terminator.kind {
+        stable_mir::mir::TerminatorKind::Return => {}
         other => panic!("{other:?}"),
     }
 
@@ -61,8 +61,8 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     assert_eq!(body.locals.len(), 7);
     assert_eq!(body.blocks.len(), 4);
     let block = &body.blocks[0];
-    match &block.terminator {
-        stable_mir::mir::Terminator::Call { .. } => {}
+    match &block.terminator.kind {
+        stable_mir::mir::TerminatorKind::Call { .. } => {}
         other => panic!("{other:?}"),
     }
 
@@ -70,27 +70,27 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let body = types.body();
     assert_eq!(body.locals.len(), 6);
     assert_matches!(
-        body.locals[0].kind(),
+        body.locals[0].ty.kind(),
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Bool)
     );
     assert_matches!(
-        body.locals[1].kind(),
+        body.locals[1].ty.kind(),
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Bool)
     );
     assert_matches!(
-        body.locals[2].kind(),
+        body.locals[2].ty.kind(),
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Char)
     );
     assert_matches!(
-        body.locals[3].kind(),
+        body.locals[3].ty.kind(),
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Int(stable_mir::ty::IntTy::I32))
     );
     assert_matches!(
-        body.locals[4].kind(),
+        body.locals[4].ty.kind(),
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Uint(stable_mir::ty::UintTy::U64))
     );
     assert_matches!(
-        body.locals[5].kind(),
+        body.locals[5].ty.kind(),
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Float(
             stable_mir::ty::FloatTy::F64
         ))
@@ -100,8 +100,8 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let body = drop.body();
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
-    match &block.terminator {
-        stable_mir::mir::Terminator::Drop { .. } => {}
+    match &block.terminator.kind {
+        stable_mir::mir::TerminatorKind::Drop { .. } => {}
         other => panic!("{other:?}"),
     }
 
@@ -109,15 +109,15 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let body = assert.body();
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
-    match &block.terminator {
-        stable_mir::mir::Terminator::Assert { .. } => {}
+    match &block.terminator.kind {
+        stable_mir::mir::TerminatorKind::Assert { .. } => {}
         other => panic!("{other:?}"),
     }
 
     let monomorphic = get_item(&items, (DefKind::Fn, "monomorphic")).unwrap();
     for block in monomorphic.body().blocks {
-        match &block.terminator {
-            stable_mir::mir::Terminator::Call { func, .. } => match func {
+        match &block.terminator.kind {
+            stable_mir::mir::TerminatorKind::Call { func, .. } => match func {
                 stable_mir::mir::Operand::Constant(c) => match &c.literal.literal {
                     stable_mir::ty::ConstantKind::Allocated(alloc) => {
                         assert!(alloc.bytes.is_empty());
@@ -127,7 +127,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
                                 mut args,
                             )) => {
                                 let func = def.body();
-                                match func.locals[1]
+                                match func.locals[1].ty
                                     .fold(&mut args)
                                     .continue_value()
                                     .unwrap()
@@ -149,7 +149,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
                 },
                 other => panic!("{other:?}"),
             },
-            stable_mir::mir::Terminator::Return => {}
+            stable_mir::mir::TerminatorKind::Return => {}
             other => panic!("{other:?}"),
         }
     }

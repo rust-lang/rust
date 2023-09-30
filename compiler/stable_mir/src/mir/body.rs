@@ -191,7 +191,13 @@ pub enum NonDivergingIntrinsic {
 }
 
 #[derive(Clone, Debug)]
-pub enum Statement {
+pub struct Statement {
+    pub kind: StatementKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum StatementKind {
     Assign(Place, Rvalue),
     FakeRead(FakeReadCause, Place),
     SetDiscriminant { place: Place, variant_index: VariantIdx },

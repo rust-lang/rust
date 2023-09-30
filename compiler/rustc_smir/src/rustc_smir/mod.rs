@@ -15,7 +15,7 @@ use rustc_middle::mir::interpret::{alloc_range, AllocId};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
-use stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
+use stable_mir::mir::{CopyNonOverlapping, Statement, UserTypeProjection, VariantIdx};
 use stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy};
 use stable_mir::{self, opaque, Context};
 use tracing::debug;
@@ -231,40 +231,71 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
     type T = stable_mir::mir::Statement;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_middle::mir::StatementKind::*;
+        let span = self.source_info.span.stable(tables);
         match &self.kind {
-            Assign(assign) => {
-                stable_mir::mir::Statement::Assign(assign.0.stable(tables), assign.1.stable(tables))
-            }
-            FakeRead(fake_read_place) => stable_mir::mir::Statement::FakeRead(
-                fake_read_place.0.stable(tables),
-                fake_read_place.1.stable(tables),
-            ),
-            SetDiscriminant { place: plc, variant_index: idx } => {
-                stable_mir::mir::Statement::SetDiscriminant {
+            Assign(assign) => Statement {
+                kind: stable_mir::mir::StatementKind::Assign(
+                    assign.0.stable(tables),
+                    assign.1.stable(tables),
+                ),
+                span,
+            },
+            FakeRead(fake_read_place) => Statement {
+                kind: stable_mir::mir::StatementKind::FakeRead(
+                    fake_read_place.0.stable(tables),
+                    fake_read_place.1.stable(tables),
+                ),
+                span,
+            },
+            SetDiscriminant { place: plc, variant_index: idx } => Statement {
+                kind: stable_mir::mir::StatementKind::SetDiscriminant {
                     place: plc.as_ref().stable(tables),
                     variant_index: idx.stable(tables),
-                }
-            }
-            Deinit(place) => stable_mir::mir::Statement::Deinit(place.stable(tables)),
-            StorageLive(place) => stable_mir::mir::Statement::StorageLive(place.stable(tables)),
-            StorageDead(place) => stable_mir::mir::Statement::StorageDead(place.stable(tables)),
-            Retag(retag, place) => {
-                stable_mir::mir::Statement::Retag(retag.stable(tables), place.stable(tables))
-            }
-            PlaceMention(place) => stable_mir::mir::Statement::PlaceMention(place.stable(tables)),
-            AscribeUserType(place_projection, variance) => {
-                stable_mir::mir::Statement::AscribeUserType {
+                },
+                span,
+            },
+            Deinit(place) => Statement {
+                kind: stable_mir::mir::StatementKind::Deinit(place.stable(tables)),
+                span,
+            },
+            StorageLive(place) => Statement {
+                kind: stable_mir::mir::StatementKind::StorageLive(place.stable(tables)),
+                span,
+            },
+            StorageDead(place) => Statement {
+                kind: stable_mir::mir::StatementKind::StorageDead(place.stable(tables)),
+                span,
+            },
+            Retag(retag, place) => Statement {
+                kind: stable_mir::mir::StatementKind::Retag(
+                    retag.stable(tables),
+                    place.stable(tables),
+                ),
+                span,
+            },
+            PlaceMention(place) => Statement {
+                kind: stable_mir::mir::StatementKind::PlaceMention(place.stable(tables)),
+                span,
+            },
+            AscribeUserType(place_projection, variance) => Statement {
+                kind: stable_mir::mir::StatementKind::AscribeUserType {
                     place: place_projection.as_ref().0.stable(tables),
                     projections: place_projection.as_ref().1.stable(tables),
                     variance: variance.stable(tables),
-                }
+                },
+                span,
+            },
+            Coverage(coverage) => {
+                Statement { kind: stable_mir::mir::StatementKind::Coverage(opaque(coverage)), span }
             }
-            Coverage(coverage) => stable_mir::mir::Statement::Coverage(opaque(coverage)),
-            Intrinsic(intrinstic) => {
-                stable_mir::mir::Statement::Intrinsic(intrinstic.stable(tables))
+            Intrinsic(intrinstic) => Statement {
+                kind: stable_mir::mir::StatementKind::Intrinsic(intrinstic.stable(tables)),
+                span,
+            },
+            ConstEvalCounter => {
+                Statement { kind: stable_mir::mir::StatementKind::ConstEvalCounter, span }
             }
-            ConstEvalCounter => stable_mir::mir::Statement::ConstEvalCounter,
-            Nop => stable_mir::mir::Statement::Nop,
+            Nop => Statement { kind: stable_mir::mir::StatementKind::Nop, span },
         }
     }
 }
@@ -816,11 +847,11 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
         use rustc_middle::mir::TerminatorKind::*;
         use stable_mir::mir::Terminator;
         use stable_mir::mir::TerminatorKind;
+        let span = self.source_info.span.stable(tables);
         match &self.kind {
-            Goto { target } => Terminator {
-                kind: TerminatorKind::Goto { target: target.as_usize() },
-                span: self.source_info.span.stable(tables),
-            },
+            Goto { target } => {
+                Terminator { kind: TerminatorKind::Goto { target: target.as_usize() }, span }
+            }
             SwitchInt { discr, targets } => Terminator {
                 kind: TerminatorKind::SwitchInt {
                     discr: discr.stable(tables),
@@ -833,31 +864,19 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
                         .collect(),
                     otherwise: targets.otherwise().as_usize(),
                 },
-                span: self.source_info.span.stable(tables),
+                span,
             },
-            UnwindResume => Terminator {
-                kind: TerminatorKind::Resume,
-                span: self.source_info.span.stable(tables),
-            },
-            UnwindTerminate(_) => Terminator {
-                kind: TerminatorKind::Abort,
-                span: self.source_info.span.stable(tables),
-            },
-            Return => Terminator {
-                kind: TerminatorKind::Return,
-                span: self.source_info.span.stable(tables),
-            },
-            Unreachable => Terminator {
-                kind: TerminatorKind::Unreachable,
-                span: self.source_info.span.stable(tables),
-            },
+            UnwindResume => Terminator { kind: TerminatorKind::Resume, span },
+            UnwindTerminate(_) => Terminator { kind: TerminatorKind::Abort, span },
+            Return => Terminator { kind: TerminatorKind::Return, span },
+            Unreachable => Terminator { kind: TerminatorKind::Unreachable, span },
             Drop { place, target, unwind, replace: _ } => Terminator {
                 kind: TerminatorKind::Drop {
                     place: place.stable(tables),
                     target: target.as_usize(),
                     unwind: unwind.stable(tables),
                 },
-                span: self.source_info.span.stable(tables),
+                span,
             },
             Call { func, args, destination, target, unwind, call_source: _, fn_span: _ } => {
                 Terminator {
@@ -868,7 +887,7 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
                         target: target.map(|t| t.as_usize()),
                         unwind: unwind.stable(tables),
                     },
-                    span: self.source_info.span.stable(tables),
+                    span,
                 }
             }
             Assert { cond, expected, msg, target, unwind } => Terminator {
@@ -879,7 +898,7 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
                     target: target.as_usize(),
                     unwind: unwind.stable(tables),
                 },
-                span: self.source_info.span.stable(tables),
+                span,
             },
             InlineAsm { template, operands, options, line_spans, destination, unwind } => {
                 Terminator {
@@ -891,7 +910,7 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
                         destination: destination.map(|d| d.as_usize()),
                         unwind: unwind.stable(tables),
                     },
-                    span: self.source_info.span.stable(tables),
+                    span,
                 }
             }
             Yield { .. } | GeneratorDrop | FalseEdge { .. } | FalseUnwind { .. } => unreachable!(),
