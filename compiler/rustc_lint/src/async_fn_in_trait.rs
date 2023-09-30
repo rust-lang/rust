@@ -93,7 +93,13 @@ impl<'tcx> LateLintPass<'tcx> for AsyncFnInTrait {
         if let hir::TraitItemKind::Fn(sig, body) = item.kind
             && let hir::IsAsync::Async(async_span) = sig.header.asyncness
         {
+            // RTN can be used to bound `async fn` in traits in a better way than "always"
             if cx.tcx.features().return_type_notation {
+                return;
+            }
+
+            // Only need to think about library implications of reachable traits
+            if !cx.tcx.effective_visibilities(()).is_reachable(item.owner_id.def_id) {
                 return;
             }
 

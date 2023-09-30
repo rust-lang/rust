@@ -3,9 +3,21 @@
 #![feature(async_fn_in_trait)]
 #![deny(async_fn_in_trait)]
 
-trait Foo {
+pub trait Foo {
     async fn not_send();
-    //~^ ERROR
+    //~^ ERROR  use of `async fn` in public traits is discouraged
+}
+
+mod private {
+    pub trait FooUnreachable {
+        async fn not_send();
+        // No warning
+    }
+}
+
+pub(crate) trait FooCrate {
+    async fn not_send();
+    // No warning
 }
 
 fn main() {}
