@@ -54,7 +54,10 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
         let def_id = body.source.def_id();
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
-        let move_data = MoveData::gather_moves(&body, tcx, param_env, |_| true);
+        // For types that do not need dropping, the behaviour is trivial. So we only need to track
+        // init/uninit for types that do need dropping.
+        let move_data =
+            MoveData::gather_moves(&body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));
         let elaborate_patch = {
             let env = MoveDataParamEnv { move_data, param_env };
 
@@ -337,6 +340,18 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let TerminatorKind::Drop { place, target, unwind, replace } = terminator.kind else {
                 continue;
             };
+
+            // This place does not need dropping. It is not have an associated move-path, so the
+            // match below will conservatively keep an unconditional drop. As that drop is useless,
+            // just remove it here and now.
+            if !place
+                .ty(&self.body.local_decls, self.tcx)
+                .ty
+                .needs_drop(self.tcx, self.env.param_env)
+            {
+                self.patch.patch_terminator(bb, TerminatorKind::Goto { target });
+                continue;
+            }
 
             let path = self.move_data().rev_lookup.find(place.as_ref());
             match path {
