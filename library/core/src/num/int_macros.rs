@@ -898,6 +898,30 @@ macro_rules! int_impl {
             acc.checked_mul(base)
         }
 
+        /// Returns the square root of the number, rounded down.
+        ///
+        /// Returns `None` if `self` is negative.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        /// #![feature(isqrt)]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_isqrt(), Some(3));")]
+        /// ```
+        #[unstable(feature = "isqrt", issue = "116226")]
+        #[rustc_const_unstable(feature = "isqrt", issue = "116226")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn checked_isqrt(self) -> Option<Self> {
+            if self < 0 {
+                None
+            } else {
+                Some((self as $UnsignedT).isqrt() as Self)
+            }
+        }
+
         /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric
         /// bounds instead of overflowing.
         ///
@@ -2059,6 +2083,36 @@ macro_rules! int_impl {
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
             acc * base
+        }
+
+        /// Returns the square root of the number, rounded down.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `self` is negative.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        /// #![feature(isqrt)]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
+        /// ```
+        #[unstable(feature = "isqrt", issue = "116226")]
+        #[rustc_const_unstable(feature = "isqrt", issue = "116226")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn isqrt(self) -> Self {
+            // I would like to implement it as
+            // ```
+            // self.checked_isqrt().expect("argument of integer square root must be non-negative")
+            // ```
+            // but `expect` is not yet stable as a `const fn`.
+            match self.checked_isqrt() {
+                Some(sqrt) => sqrt,
+                None => panic!("argument of integer square root must be non-negative"),
+            }
         }
 
         /// Calculates the quotient of Euclidean division of `self` by `rhs`.

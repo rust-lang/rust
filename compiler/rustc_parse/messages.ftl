@@ -509,7 +509,7 @@ parse_maybe_fn_typo_with_impl = you might have meant to write `impl` instead of 
 
 parse_maybe_recover_from_bad_qpath_stage_2 =
     missing angle brackets in associated item path
-    .suggestion = try: `{$ty}`
+    .suggestion = types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
 
 parse_maybe_recover_from_bad_type_plus =
     expected a path on the left-hand side of `+`, not `{$ty}`

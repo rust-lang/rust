@@ -1,5 +1,6 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(portable_simd, platform_intrinsics)]
+#![feature(portable_simd, platform_intrinsics, adt_const_params, inline_const)]
+#![allow(incomplete_features)]
 use std::simd::*;
 
 extern "platform-intrinsic" {
@@ -390,6 +391,8 @@ fn simd_intrinsics() {
         fn simd_reduce_any<T>(x: T) -> bool;
         fn simd_reduce_all<T>(x: T) -> bool;
         fn simd_select<M, T>(m: M, yes: T, no: T) -> T;
+        fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
+        fn simd_shuffle<T, IDX, U>(x: T, y: T, idx: IDX) -> U;
     }
     unsafe {
         // Make sure simd_eq returns all-1 for `true`
@@ -412,6 +415,16 @@ fn simd_intrinsics() {
         assert_eq!(
             simd_select(i8x4::from_array([0, -1, -1, 0]), b, a),
             i32x4::from_array([10, 2, 10, 10])
+        );
+        assert_eq!(simd_shuffle_generic::<_, i32x4, { &[3, 1, 0, 2] }>(a, b), a,);
+        assert_eq!(simd_shuffle::<_, _, i32x4>(a, b, const { [3, 1, 0, 2] }), a,);
+        assert_eq!(
+            simd_shuffle_generic::<_, i32x4, { &[7, 5, 4, 6] }>(a, b),
+            i32x4::from_array([4, 2, 1, 10]),
+        );
+        assert_eq!(
+            simd_shuffle::<_, _, i32x4>(a, b, const { [7, 5, 4, 6] }),
+            i32x4::from_array([4, 2, 1, 10]),
         );
     }
 }

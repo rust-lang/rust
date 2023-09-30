@@ -1,5 +1,3 @@
-#![feature(packed_bundled_libs)]
-
 #[link(name = "native_dep_1", kind = "static", modifiers = "+whole-archive,+bundle")]
 extern "C" {}
 

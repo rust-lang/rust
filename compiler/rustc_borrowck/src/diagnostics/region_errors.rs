@@ -245,7 +245,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else { return; };
             diag.span_note(
                 *trait_span,
-                format!("due to current limitations in the borrow checker, this implies a `'static` lifetime")
+                "due to current limitations in the borrow checker, this implies a `'static` lifetime"
             );
             let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local()) else { return; };
             let Def(_, trait_res_defid) = trait_ref.path.res else { return; };
@@ -277,7 +277,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if suggestions.len() > 0 {
             suggestions.dedup();
             diag.multipart_suggestion_verbose(
-                format!("consider restricting the type parameter to the `'static` lifetime"),
+                "consider restricting the type parameter to the `'static` lifetime",
                 suggestions,
                 Applicability::MaybeIncorrect,
             );

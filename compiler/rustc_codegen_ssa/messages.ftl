@@ -46,8 +46,6 @@ codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files w
 codegen_ssa_illegal_link_ordinal_format = illegal ordinal format in `link_ordinal`
     .note = an unsuffixed integer value, e.g., `1`, is expected
 
-codegen_ssa_incompatible_linking_modifiers = link modifiers combination `+bundle,+whole-archive` is unstable when generating rlibs
-
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
 codegen_ssa_invalid_link_ordinal_nargs = incorrect number of arguments to `#[link_ordinal]`

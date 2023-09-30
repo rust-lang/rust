@@ -2,7 +2,7 @@ use crate::back::write::{
     self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
 };
 use crate::errors::{
-    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib,
+    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
@@ -36,8 +36,12 @@ pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
 pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
-        CrateType::Executable | CrateType::Dylib | CrateType::Staticlib | CrateType::Cdylib => true,
-        CrateType::Rlib | CrateType::ProcMacro => false,
+        CrateType::Executable
+        | CrateType::Dylib
+        | CrateType::Staticlib
+        | CrateType::Cdylib
+        | CrateType::ProcMacro => true,
+        CrateType::Rlib => false,
     }
 }
 
@@ -85,6 +89,11 @@ fn prepare_lto(
             } else if *crate_type == CrateType::Dylib {
                 if !cgcx.opts.unstable_opts.dylib_lto {
                     diag_handler.emit_err(LtoDylib);
+                    return Err(FatalError);
+                }
+            } else if *crate_type == CrateType::ProcMacro {
+                if !cgcx.opts.unstable_opts.dylib_lto {
+                    diag_handler.emit_err(LtoProcMacro);
                     return Err(FatalError);
                 }
             }

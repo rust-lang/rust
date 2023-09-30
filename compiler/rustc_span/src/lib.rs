@@ -1753,7 +1753,7 @@ impl SourceFile {
         // is recorded.
         let diff = match self.normalized_pos.binary_search_by(|np| np.pos.cmp(&pos)) {
             Ok(i) => self.normalized_pos[i].diff,
-            Err(i) if i == 0 => 0,
+            Err(0) => 0,
             Err(i) => self.normalized_pos[i - 1].diff,
         };
 
@@ -1775,7 +1775,7 @@ impl SourceFile {
             .binary_search_by(|np| (np.pos.0 + np.diff).cmp(&(self.start_pos.0 + offset)))
         {
             Ok(i) => self.normalized_pos[i].diff,
-            Err(i) if i == 0 => 0,
+            Err(0) => 0,
             Err(i) => self.normalized_pos[i - 1].diff,
         };
 

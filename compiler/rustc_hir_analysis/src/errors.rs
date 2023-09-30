@@ -964,6 +964,25 @@ pub struct InherentTyOutside {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0378")]
+pub struct DispatchFromDynCoercion<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+    #[note(hir_analysis_coercion_between_struct_same_note)]
+    pub note: bool,
+    pub source_path: String,
+    pub target_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_dispatch_from_dyn_repr, code = "E0378")]
+pub struct DispatchFromDynRepr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_inherent_ty_outside_relevant, code = "E0390")]
 #[help]
 pub struct InherentTyOutsideRelevant {
@@ -1024,4 +1043,109 @@ pub struct InherentNominal {
     #[primary_span]
     #[label]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_dispatch_from_dyn_zst, code = "E0378")]
+#[note]
+pub struct DispatchFromDynZST<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    pub ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0378")]
+pub struct DispatchFromDynSingle<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+    #[note(hir_analysis_coercion_between_struct_single_note)]
+    pub note: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_dispatch_from_dyn_multi, code = "E0378")]
+#[note]
+pub struct DispatchFromDynMulti {
+    #[primary_span]
+    pub span: Span,
+    #[note(hir_analysis_coercions_note)]
+    pub coercions_note: bool,
+    pub number: usize,
+    pub coercions: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0376")]
+pub struct DispatchFromDynStruct<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0377")]
+pub struct DispatchFromDynSame<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+    #[note(hir_analysis_coercion_between_struct_same_note)]
+    pub note: bool,
+    pub source_path: String,
+    pub target_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0374")]
+pub struct CoerceUnsizedOneField<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+    #[note(hir_analysis_coercion_between_struct_single_note)]
+    pub note: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_multi, code = "E0375")]
+#[note]
+pub struct CoerceUnsizedMulti {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note(hir_analysis_coercions_note)]
+    pub coercions_note: bool,
+    pub number: usize,
+    pub coercions: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0378")]
+pub struct CoerceUnsizedMay<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_trait_cannot_impl_for_ty, code = "E0204")]
+pub struct TraitCannotImplForTy {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: String,
+    #[label]
+    pub label_spans: Vec<Span>,
+    #[subdiagnostic]
+    pub notes: Vec<ImplForTyRequires>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_analysis_requires_note)]
+pub struct ImplForTyRequires {
+    #[primary_span]
+    pub span: MultiSpan,
+    pub error_predicate: String,
+    pub trait_name: String,
+    pub ty: String,
 }

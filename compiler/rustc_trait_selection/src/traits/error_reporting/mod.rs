@@ -3211,7 +3211,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let name = match self.tcx.opaque_type_origin(def_id.expect_local()) {
             hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
-                format!("opaque type")
+                "opaque type".to_string()
             }
             hir::OpaqueTyOrigin::TyAlias { .. } => {
                 format!("`{}`", self.tcx.def_path_debug_str(def_id))

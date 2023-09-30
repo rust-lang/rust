@@ -1618,7 +1618,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        let cnt = this.inner().weak.load(Acquire);
+        let cnt = this.inner().weak.load(Relaxed);
         // If the weak count is currently locked, the value of the
         // count was 0 just before taking the lock.
         if cnt == usize::MAX { 0 } else { cnt - 1 }
@@ -1648,7 +1648,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
-        this.inner().strong.load(Acquire)
+        this.inner().strong.load(Relaxed)
     }
 
     /// Increments the strong reference count on the `Arc<T>` associated with the
@@ -2803,7 +2803,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong.load(Acquire) } else { 0 }
+        if let Some(inner) = self.inner() { inner.strong.load(Relaxed) } else { 0 }
     }
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this
@@ -2822,7 +2822,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     pub fn weak_count(&self) -> usize {
         if let Some(inner) = self.inner() {
             let weak = inner.weak.load(Acquire);
-            let strong = inner.strong.load(Acquire);
+            let strong = inner.strong.load(Relaxed);
             if strong == 0 {
                 0
             } else {
@@ -3266,6 +3266,27 @@ impl<T> From<T> for Arc<T> {
     /// ```
     fn from(t: T) -> Self {
         Arc::new(t)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_array", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> From<[T; N]> for Arc<[T]> {
+    /// Converts a [`[T; N]`](prim@array) into an `Arc<[T]>`.
+    ///
+    /// The conversion moves the array into a newly allocated `Arc`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let original: [i32; 3] = [1, 2, 3];
+    /// let shared: Arc<[i32]> = Arc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: [T; N]) -> Arc<[T]> {
+        Arc::<[T; N]>::from(v)
     }
 }
 

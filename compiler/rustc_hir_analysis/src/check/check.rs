@@ -5,18 +5,15 @@ use super::compare_impl_item::check_type_bounds;
 use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
 use super::*;
 use rustc_attr as attr;
-use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ItemKind, Node, PathSegment};
-use rustc_infer::infer::opaque_types::ConstrainOpaqueTypeRegionVisitor;
+use rustc_hir::Node;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitEngineExt as _};
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
-use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
 use rustc_middle::ty::fold::BottomUpFolder;
@@ -218,9 +215,6 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     let args = GenericArgs::identity_for_item(tcx, item.owner_id);
     let span = tcx.def_span(item.owner_id.def_id);
 
-    if !tcx.features().impl_trait_projections {
-        check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
-    }
     if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
         return;
     }
@@ -229,129 +223,6 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     }
 
     let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, &origin);
-}
-
-/// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
-/// in "inheriting lifetimes".
-#[instrument(level = "debug", skip(tcx, span))]
-pub(super) fn check_opaque_for_inheriting_lifetimes(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-    span: Span,
-) {
-    let item = tcx.hir().expect_item(def_id);
-    debug!(?item, ?span);
-
-    struct ProhibitOpaqueVisitor<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        opaque_identity_ty: Ty<'tcx>,
-        parent_count: u32,
-        references_parent_regions: bool,
-        selftys: Vec<(Span, Option<String>)>,
-    }
-
-    impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueVisitor<'tcx> {
-        type BreakTy = Ty<'tcx>;
-
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            debug!(?t, "root_visit_ty");
-            if t == self.opaque_identity_ty {
-                ControlFlow::Continue(())
-            } else {
-                t.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-                    tcx: self.tcx,
-                    op: |region| {
-                        if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *region
-                            && index < self.parent_count
-                        {
-                            self.references_parent_regions= true;
-                        }
-                    },
-                });
-                if self.references_parent_regions {
-                    ControlFlow::Break(t)
-                } else {
-                    ControlFlow::Continue(())
-                }
-            }
-        }
-    }
-
-    impl<'tcx> Visitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
-        type NestedFilter = nested_filter::OnlyBodies;
-
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.tcx.hir()
-        }
-
-        fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
-            match arg.kind {
-                hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
-                    [PathSegment { res: Res::SelfTyParam { .. }, .. }] => {
-                        let impl_ty_name = None;
-                        self.selftys.push((path.span, impl_ty_name));
-                    }
-                    [PathSegment { res: Res::SelfTyAlias { alias_to: def_id, .. }, .. }] => {
-                        let impl_ty_name = Some(self.tcx.def_path_str(*def_id));
-                        self.selftys.push((path.span, impl_ty_name));
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-            hir::intravisit::walk_ty(self, arg);
-        }
-    }
-
-    if let ItemKind::OpaqueTy(&hir::OpaqueTy {
-        origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
-        ..
-    }) = item.kind
-    {
-        let args = GenericArgs::identity_for_item(tcx, def_id);
-        let opaque_identity_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-        let mut visitor = ProhibitOpaqueVisitor {
-            opaque_identity_ty,
-            parent_count: tcx.generics_of(def_id).parent_count as u32,
-            references_parent_regions: false,
-            tcx,
-            selftys: vec![],
-        };
-        let prohibit_opaque = tcx
-            .explicit_item_bounds(def_id)
-            .instantiate_identity_iter_copied()
-            .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
-
-        if let Some(ty) = prohibit_opaque.break_value() {
-            visitor.visit_item(&item);
-            let is_async = match item.kind {
-                ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
-                    matches!(origin, hir::OpaqueTyOrigin::AsyncFn(..))
-                }
-                _ => unreachable!(),
-            };
-
-            let mut err = feature_err(
-                &tcx.sess.parse_sess,
-                sym::impl_trait_projections,
-                span,
-                format!(
-                    "`{}` return type cannot contain a projection or `Self` that references \
-                    lifetimes from a parent scope",
-                    if is_async { "async fn" } else { "impl Trait" },
-                ),
-            );
-            for (span, name) in visitor.selftys {
-                err.span_suggestion(
-                    span,
-                    "consider spelling out the type instead",
-                    name.unwrap_or_else(|| format!("{ty:?}")),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            err.emit();
-        }
-    }
 }
 
 /// Checks that an opaque type does not contain cycles.

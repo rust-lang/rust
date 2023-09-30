@@ -316,7 +316,9 @@ where
     {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
-            OpaqueCast(ty) => base.transmute(self.layout_of(ty)?, self)?,
+            OpaqueCast(ty) => {
+                span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
+            }
             Field(field, _) => self.project_field(base, field.index())?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(&base.to_op(self)?)?.into(),

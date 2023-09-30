@@ -45,6 +45,23 @@ fn sanitize_sh(path: &Path) -> String {
     }
 }
 
+fn is_dir_writable_for_user(dir: &PathBuf) -> bool {
+    let tmp_file = dir.join(".tmp");
+    match fs::File::create(&tmp_file) {
+        Ok(_) => {
+            fs::remove_file(tmp_file).unwrap();
+            true
+        }
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::PermissionDenied {
+                false
+            } else {
+                panic!("Failed the write access check for the current user. {}", e);
+            }
+        }
+    }
+}
+
 fn install_sh(
     builder: &Builder<'_>,
     package: &str,
@@ -56,6 +73,17 @@ fn install_sh(
 
     let prefix = default_path(&builder.config.prefix, "/usr/local");
     let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
+
+    // Sanity check for the user write access on prefix and sysconfdir
+    assert!(
+        is_dir_writable_for_user(&prefix),
+        "User doesn't have write access on `install.prefix` path in the `config.toml`.",
+    );
+    assert!(
+        is_dir_writable_for_user(&sysconfdir),
+        "User doesn't have write access on `install.sysconfdir` path in `config.toml`."
+    );
+
     let datadir = prefix.join(default_path(&builder.config.datadir, "share"));
     let docdir = prefix.join(default_path(&builder.config.docdir, "share/doc/rust"));
     let mandir = prefix.join(default_path(&builder.config.mandir, "share/man"));
@@ -92,6 +120,9 @@ fn prepare_dir(mut path: PathBuf) -> String {
     // More information on the environment variable is available here:
     // https://www.gnu.org/prep/standards/html_node/DESTDIR.html
     if let Some(destdir) = env::var_os("DESTDIR").map(PathBuf::from) {
+        // Sanity check for the user write access on DESTDIR
+        assert!(is_dir_writable_for_user(&destdir), "User doesn't have write access on DESTDIR.");
+
         let without_destdir = path.clone();
         path = destdir;
         // Custom .join() which ignores disk roots.

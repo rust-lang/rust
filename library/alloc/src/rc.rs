@@ -2409,6 +2409,27 @@ impl<T> From<T> for Rc<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_array", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> From<[T; N]> for Rc<[T]> {
+    /// Converts a [`[T; N]`](prim@array) into an `Rc<[T]>`.
+    ///
+    /// The conversion moves the array into a newly allocated `Rc`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let original: [i32; 3] = [1, 2, 3];
+    /// let shared: Rc<[i32]> = Rc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: [T; N]) -> Rc<[T]> {
+        Rc::<[T; N]>::from(v)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: Clone> From<&[T]> for Rc<[T]> {
     /// Allocate a reference-counted slice and fill it by cloning `v`'s items.

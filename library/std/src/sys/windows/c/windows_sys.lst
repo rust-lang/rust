@@ -1,3 +1,6 @@
+--out windows_sys.rs
+--config flatten std
+--filter
 // tidy-alphabetical-start
 Windows.Wdk.Storage.FileSystem.FILE_COMPLETE_IF_OPLOCKED
 Windows.Wdk.Storage.FileSystem.FILE_CONTAINS_EXTENDED_CREATE_INFORMATION
@@ -2108,7 +2111,6 @@ Windows.Win32.Networking.WinSock.WSABASEERR
 Windows.Win32.Networking.WinSock.WSABUF
 Windows.Win32.Networking.WinSock.WSACleanup
 Windows.Win32.Networking.WinSock.WSADATA
-Windows.Win32.Networking.WinSock.WSADATA
 Windows.Win32.Networking.WinSock.WSADuplicateSocketW
 Windows.Win32.Networking.WinSock.WSAEACCES
 Windows.Win32.Networking.WinSock.WSAEADDRINUSE
@@ -2328,7 +2330,6 @@ Windows.Win32.Storage.FileSystem.FileStandardInfo
 Windows.Win32.Storage.FileSystem.FileStorageInfo
 Windows.Win32.Storage.FileSystem.FileStreamInfo
 Windows.Win32.Storage.FileSystem.FindClose
-Windows.Win32.Storage.FileSystem.FindFileHandle
 Windows.Win32.Storage.FileSystem.FindFirstFileW
 Windows.Win32.Storage.FileSystem.FindNextFileW
 Windows.Win32.Storage.FileSystem.FlushFileBuffers
@@ -2420,8 +2421,6 @@ Windows.Win32.System.Console.STD_OUTPUT_HANDLE
 Windows.Win32.System.Console.WriteConsoleW
 Windows.Win32.System.Diagnostics.Debug.ARM64_NT_NEON128
 Windows.Win32.System.Diagnostics.Debug.CONTEXT
-Windows.Win32.System.Diagnostics.Debug.CONTEXT
-Windows.Win32.System.Diagnostics.Debug.CONTEXT
 Windows.Win32.System.Diagnostics.Debug.EXCEPTION_RECORD
 Windows.Win32.System.Diagnostics.Debug.FACILITY_CODE
 Windows.Win32.System.Diagnostics.Debug.FACILITY_NT_BIT
@@ -2434,7 +2433,6 @@ Windows.Win32.System.Diagnostics.Debug.FORMAT_MESSAGE_IGNORE_INSERTS
 Windows.Win32.System.Diagnostics.Debug.FORMAT_MESSAGE_OPTIONS
 Windows.Win32.System.Diagnostics.Debug.FormatMessageW
 Windows.Win32.System.Diagnostics.Debug.M128A
-Windows.Win32.System.Diagnostics.Debug.XSAVE_FORMAT
 Windows.Win32.System.Diagnostics.Debug.XSAVE_FORMAT
 Windows.Win32.System.Environment.FreeEnvironmentStringsW
 Windows.Win32.System.Environment.GetCommandLineW
@@ -2455,7 +2453,6 @@ Windows.Win32.System.Kernel.ExceptionCollidedUnwind
 Windows.Win32.System.Kernel.ExceptionContinueExecution
 Windows.Win32.System.Kernel.ExceptionContinueSearch
 Windows.Win32.System.Kernel.ExceptionNestedException
-Windows.Win32.System.Kernel.FLOATING_SAVE_AREA
 Windows.Win32.System.Kernel.FLOATING_SAVE_AREA
 Windows.Win32.System.Kernel.OBJ_DONT_REPARSE
 Windows.Win32.System.LibraryLoader.GetModuleFileNameW
@@ -2482,6 +2479,7 @@ Windows.Win32.System.SystemInformation.GetSystemTimeAsFileTime
 Windows.Win32.System.SystemInformation.GetWindowsDirectoryW
 Windows.Win32.System.SystemInformation.PROCESSOR_ARCHITECTURE
 Windows.Win32.System.SystemInformation.SYSTEM_INFO
+Windows.Win32.System.SystemServices.ALL_PROCESSOR_GROUPS
 Windows.Win32.System.SystemServices.DLL_PROCESS_DETACH
 Windows.Win32.System.SystemServices.DLL_THREAD_DETACH
 Windows.Win32.System.SystemServices.EXCEPTION_MAXIMUM_PARAMETERS
@@ -2514,6 +2512,7 @@ Windows.Win32.System.Threading.DeleteProcThreadAttributeList
 Windows.Win32.System.Threading.DETACHED_PROCESS
 Windows.Win32.System.Threading.ExitProcess
 Windows.Win32.System.Threading.EXTENDED_STARTUPINFO_PRESENT
+Windows.Win32.System.Threading.GetActiveProcessorCount
 Windows.Win32.System.Threading.GetCurrentProcess
 Windows.Win32.System.Threading.GetCurrentProcessId
 Windows.Win32.System.Threading.GetCurrentThread
@@ -2542,9 +2541,6 @@ Windows.Win32.System.Threading.PROFILE_USER
 Windows.Win32.System.Threading.REALTIME_PRIORITY_CLASS
 Windows.Win32.System.Threading.ReleaseSRWLockExclusive
 Windows.Win32.System.Threading.ReleaseSRWLockShared
-Windows.Win32.System.Threading.RTL_CONDITION_VARIABLE
-Windows.Win32.System.Threading.RTL_RUN_ONCE
-Windows.Win32.System.Threading.RTL_SRWLOCK
 Windows.Win32.System.Threading.SetThreadStackGuarantee
 Windows.Win32.System.Threading.Sleep
 Windows.Win32.System.Threading.SleepConditionVariableSRW
@@ -2584,8 +2580,6 @@ Windows.Win32.System.Threading.WaitForMultipleObjects
 Windows.Win32.System.Threading.WaitForSingleObject
 Windows.Win32.System.Threading.WakeAllConditionVariable
 Windows.Win32.System.Threading.WakeConditionVariable
-Windows.Win32.System.WindowsProgramming.IO_STATUS_BLOCK
-Windows.Win32.System.WindowsProgramming.OBJECT_ATTRIBUTES
 Windows.Win32.System.WindowsProgramming.PROGRESS_CONTINUE
 Windows.Win32.UI.Shell.GetUserProfileDirectoryW
 // tidy-alphabetical-end
