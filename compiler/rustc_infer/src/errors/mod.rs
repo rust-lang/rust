@@ -194,13 +194,13 @@ impl<'a> SourceKindMultiSuggestion<'a> {
         data: &'a FnRetTy<'a>,
         should_wrap_expr: Option<Span>,
     ) -> Self {
-        let (arrow, post) = match data {
-            FnRetTy::DefaultReturn(_) => ("-> ", " "),
-            _ => ("", ""),
+        let arrow = match data {
+            FnRetTy::DefaultReturn(_) => " -> ",
+            _ => "",
         };
         let (start_span, start_span_code, end_span) = match should_wrap_expr {
-            Some(end_span) => (data.span(), format!("{arrow}{ty_info}{post}{{ "), Some(end_span)),
-            None => (data.span(), format!("{arrow}{ty_info}{post}"), None),
+            Some(end_span) => (data.span(), format!("{arrow}{ty_info} {{"), Some(end_span)),
+            None => (data.span(), format!("{arrow}{ty_info}"), None),
         };
         Self::ClosureReturn { start_span, start_span_code, end_span }
     }
