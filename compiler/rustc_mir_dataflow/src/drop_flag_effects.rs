@@ -1,6 +1,6 @@
 use crate::elaborate_drops::DropFlagState;
 use rustc_middle::mir::{self, Body, Location, Terminator, TerminatorKind};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::VariantIdx;
 
 use super::indexes::MovePathIndex;
@@ -55,60 +55,6 @@ pub fn on_all_children_bits<'tcx, F>(
 ) where
     F: FnMut(MovePathIndex),
 {
-    #[inline]
-    fn is_terminal_path<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
-        move_data: &MoveData<'tcx>,
-        path: MovePathIndex,
-    ) -> bool {
-        let place = move_data.move_paths[path].place;
-
-        // When enumerating the child fragments of a path, don't recurse into
-        // paths (1.) past arrays, slices, and pointers, nor (2.) into a type
-        // that implements `Drop`.
-        //
-        // Places behind references or arrays are not tracked by elaboration
-        // and are always assumed to be initialized when accessible. As
-        // references and indexes can be reseated, trying to track them can
-        // only lead to trouble.
-        //
-        // Places behind ADT's with a Drop impl are not tracked by
-        // elaboration since they can never have a drop-flag state that
-        // differs from that of the parent with the Drop impl.
-        //
-        // In both cases, the contents can only be accessed if and only if
-        // their parents are initialized. This implies for example that there
-        // is no need to maintain separate drop flags to track such state.
-        //
-        // FIXME: we have to do something for moving slice patterns.
-        let ty = place.ty(body, tcx).ty;
-        match ty.kind() {
-            ty::Adt(def, _) if (def.has_dtor(tcx) && !def.is_box()) || def.is_union() => {
-                debug!(
-                    "place_contents_drop_state_cannot_differ place: {:?} ty: {:?} Drop => true",
-                    place, ty
-                );
-                true
-            }
-            ty::Array(..) => {
-                debug!(
-                    "place_contents_drop_state_cannot_differ place: {:?} ty: {:?} => false",
-                    place, ty
-                );
-                false
-            }
-            ty::Slice(..) | ty::Ref(..) | ty::RawPtr(..) => {
-                debug!(
-                    "place_contents_drop_state_cannot_differ place: {:?} ty: {:?} refd => true",
-                    place, ty
-                );
-                true
-            }
-            _ => false,
-        }
-    }
-
     fn on_all_children_bits<'tcx, F>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
@@ -119,10 +65,6 @@ pub fn on_all_children_bits<'tcx, F>(
         F: FnMut(MovePathIndex),
     {
         each_child(move_path_index);
-
-        if is_terminal_path(tcx, body, move_data, move_path_index) {
-            return;
-        }
 
         let mut next_child_index = move_data.move_paths[move_path_index].first_child;
         while let Some(child_index) = next_child_index {
