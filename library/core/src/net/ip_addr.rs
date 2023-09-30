@@ -2171,29 +2171,6 @@ impl Not for &'_ Ipv6Addr {
     }
 }
 
-#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
-impl Not for IpAddr {
-    type Output = IpAddr;
-
-    #[inline]
-    fn not(self) -> IpAddr {
-        match self {
-            IpAddr::V4(v4) => IpAddr::V4(!v4),
-            IpAddr::V6(v6) => IpAddr::V6(!v6),
-        }
-    }
-}
-
-#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
-impl Not for &'_ IpAddr {
-    type Output = IpAddr;
-
-    #[inline]
-    fn not(self) -> IpAddr {
-        !*self
-    }
-}
-
 macro_rules! bitop_impls {
     ($(
         $(#[$attr:meta])*
