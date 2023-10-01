@@ -3,6 +3,7 @@ use clippy_utils::is_doc_hidden;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{self, VisibilityKind};
+use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -158,7 +159,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
             let mut iter = def.variants.iter().filter_map(|v| {
                 (matches!(v.data, hir::VariantData::Unit(_, _))
                     && v.ident.as_str().starts_with('_')
-                    && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id)))
+                    && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id))
+                    && !attr::contains_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive))
                 .then_some((v.def_id, v.span))
             });
             if let Some((id, span)) = iter.next()
