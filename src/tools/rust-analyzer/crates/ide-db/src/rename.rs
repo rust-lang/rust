@@ -71,12 +71,29 @@ impl Definition {
         sema: &Semantics<'_, RootDatabase>,
         new_name: &str,
     ) -> Result<SourceChange> {
+        // self.krate() returns None if
+        // self is a built-in attr, built-in type or tool module.
+        // it is not allowed for these defs to be renamed.
+        // cases where self.krate() is None is handled below.
+        if let Some(krate) = self.krate(sema.db) {
+            if !krate.origin(sema.db).is_local() {
+                bail!("Cannot rename a non-local definition.")
+            }
+        }
+
         match *self {
             Definition::Module(module) => rename_mod(sema, module, new_name),
+            Definition::ToolModule(_) => {
+                bail!("Cannot rename a tool module")
+            }
             Definition::BuiltinType(_) => {
                 bail!("Cannot rename builtin type")
             }
+            Definition::BuiltinAttr(_) => {
+                bail!("Cannot rename a builtin attr.")
+            }
             Definition::SelfType(_) => bail!("Cannot rename `Self`"),
+            Definition::Macro(mac) => rename_reference(sema, Definition::Macro(mac), new_name),
             def => rename_reference(sema, def, new_name),
         }
     }

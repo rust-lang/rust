@@ -462,7 +462,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(..) = &fn_abi.ret.mode {
+            if let PassMode::Cast { .. } = &fn_abi.ret.mode {
                 bx.store(llval, result.llval, result.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)

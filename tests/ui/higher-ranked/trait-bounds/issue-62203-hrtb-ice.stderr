@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<L<[closure@issue-62203-hrtb-ice.rs:42:16]> as T0<'r, (&u8,)>>::O == <_ as Ty<'r>>::V`
+error[E0271]: type mismatch resolving `<L<{closure@issue-62203-hrtb-ice.rs:42:16}> as T0<'r, (&u8,)>>::O == <_ as Ty<'r>>::V`
   --> $DIR/issue-62203-hrtb-ice.rs:39:9
    |
 LL |       let v = Unit2.m(
@@ -10,7 +10,7 @@ LL | |             f: |x| {
 ...  |
 LL | |             },
 LL | |         },
-   | |_________^ type mismatch resolving `<L<[closure@issue-62203-hrtb-ice.rs:42:16]> as T0<'r, (&u8,)>>::O == <_ as Ty<'r>>::V`
+   | |_________^ type mismatch resolving `<L<{closure@issue-62203-hrtb-ice.rs:42:16}> as T0<'r, (&u8,)>>::O == <_ as Ty<'r>>::V`
    |
 note: expected this to be `<_ as Ty<'_>>::V`
   --> $DIR/issue-62203-hrtb-ice.rs:21:14
@@ -30,7 +30,7 @@ LL |     where
 LL |         F: for<'r> T0<'r, (<Self as Ty<'r>>::V,), O = <B as Ty<'r>>::V>,
    |                                                   ^^^^^^^^^^^^^^^^^^^^ required by this bound in `T1::m`
 
-error[E0271]: expected `[closure@issue-62203-hrtb-ice.rs:42:16]` to be a closure that returns `Unit3`, but it returns `Unit4`
+error[E0271]: expected `{closure@issue-62203-hrtb-ice.rs:42:16}` to be a closure that returns `Unit3`, but it returns `Unit4`
   --> $DIR/issue-62203-hrtb-ice.rs:39:9
    |
 LL |       let v = Unit2.m(
@@ -44,7 +44,7 @@ LL | |             },
 LL | |         },
    | |_________^ expected `Unit3`, found `Unit4`
    |
-note: required for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]>` to implement `for<'r> T0<'r, (&'r u8,)>`
+note: required for `L<{closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19}>` to implement `for<'r> T0<'r, (&'r u8,)>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16
    |
 LL | impl<'a, A, T> T0<'a, A> for L<T>

@@ -213,14 +213,10 @@ impl AttrTokenStream {
                         .into_iter()
                 }
                 AttrTokenTree::Attributes(data) => {
-                    let mut outer_attrs = Vec::new();
-                    let mut inner_attrs = Vec::new();
-                    for attr in &data.attrs {
-                        match attr.style {
-                            crate::AttrStyle::Outer => outer_attrs.push(attr),
-                            crate::AttrStyle::Inner => inner_attrs.push(attr),
-                        }
-                    }
+                    let idx = data
+                        .attrs
+                        .partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
+                    let (outer_attrs, inner_attrs) = data.attrs.split_at(idx);
 
                     let mut target_tokens: Vec<_> = data
                         .tokens
@@ -265,10 +261,10 @@ impl AttrTokenStream {
                             "Failed to find trailing delimited group in: {target_tokens:?}"
                         );
                     }
-                    let mut flat: SmallVec<[_; 1]> = SmallVec::new();
+                    let mut flat: SmallVec<[_; 1]> =
+                        SmallVec::with_capacity(target_tokens.len() + outer_attrs.len());
                     for attr in outer_attrs {
-                        // FIXME: Make this more efficient
-                        flat.extend(attr.tokens().0.clone().iter().cloned());
+                        flat.extend(attr.tokens().0.iter().cloned());
                     }
                     flat.extend(target_tokens);
                     flat.into_iter()

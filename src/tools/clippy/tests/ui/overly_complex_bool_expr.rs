@@ -9,8 +9,10 @@ fn main() {
     let d: bool = unimplemented!();
     let e: bool = unimplemented!();
     let _ = a && b || a;
+    //~^ ERROR: this boolean expression contains a logic bug
     let _ = !(a && b);
     let _ = false && a;
+    //~^ ERROR: this boolean expression contains a logic bug
     // don't lint on cfgs
     let _ = cfg!(you_shall_not_not_pass) && a;
     let _ = a || !b || !c || !d || !e;
@@ -21,8 +23,11 @@ fn equality_stuff() {
     let a: i32 = unimplemented!();
     let b: i32 = unimplemented!();
     let _ = a == b && a != b;
+    //~^ ERROR: this boolean expression contains a logic bug
     let _ = a < b && a >= b;
+    //~^ ERROR: this boolean expression contains a logic bug
     let _ = a > b && a <= b;
+    //~^ ERROR: this boolean expression contains a logic bug
     let _ = a > b && a == b;
 }
 

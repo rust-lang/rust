@@ -242,7 +242,7 @@ impl HygieneFrame {
                 krate,
                 call_site: None,
                 def_site: None,
-            }
+            };
         };
 
         let def_site = info.attr_input_or_mac_def_start.map(|it| db.hygiene_frame(it.file_id));

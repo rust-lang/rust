@@ -3,6 +3,7 @@ pub mod io;
 use crate::environment::Environment;
 use crate::utils::io::{delete_directory, get_files_from_dir};
 use humansize::{format_size, BINARY};
+use std::time::Duration;
 use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 pub fn format_env_variables() -> String {
@@ -25,7 +26,7 @@ pub fn print_free_disk_space() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn print_binary_sizes(env: &dyn Environment) -> anyhow::Result<()> {
+pub fn print_binary_sizes(env: &Environment) -> anyhow::Result<()> {
     use std::fmt::Write;
 
     let root = env.build_artifacts().join("stage2");
@@ -47,7 +48,7 @@ pub fn print_binary_sizes(env: &dyn Environment) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn clear_llvm_files(env: &dyn Environment) -> anyhow::Result<()> {
+pub fn clear_llvm_files(env: &Environment) -> anyhow::Result<()> {
     // Bootstrap currently doesn't support rebuilding LLVM when PGO options
     // change (or any other llvm-related options); so just clear out the relevant
     // directories ourselves.
@@ -68,6 +69,24 @@ pub fn with_log_group<F: FnOnce() -> R, R>(group: &str, func: F) -> R {
     } else {
         func()
     }
+}
+
+#[allow(unused)]
+pub fn retry_action<F: Fn() -> anyhow::Result<R>, R>(
+    action: F,
+    name: &str,
+    count: u64,
+) -> anyhow::Result<R> {
+    for attempt in 0..count {
+        match action() {
+            Ok(result) => return Ok(result),
+            Err(error) => {
+                log::error!("Failed to perform action `{name}`, attempt #{attempt}: {error:?}");
+                std::thread::sleep(Duration::from_secs(5));
+            }
+        }
+    }
+    Err(anyhow::anyhow!("Failed to perform action `{name}` after {count} retries"))
 }
 
 fn is_in_ci() -> bool {

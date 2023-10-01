@@ -8,8 +8,9 @@ use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
-use rustc_middle::traits::solve::inspect::CandidateKind;
-use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::traits::solve::{
+    CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
+};
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
@@ -58,7 +59,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
             DefKind::AnonConst => self.normalize_anon_const(goal),
             DefKind::OpaqueTy => self.normalize_opaque_type(goal),
-            DefKind::TyAlias { .. } => self.normalize_weak_type(goal),
+            DefKind::TyAlias => self.normalize_weak_type(goal),
             kind => bug!("unknown DefKind {} in projection goal: {goal:#?}", kind.descr(def_id)),
         }
     }
@@ -113,7 +114,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
             if projection_pred.projection_def_id() == goal.predicate.def_id() {
                 let tcx = ecx.tcx();
-                ecx.probe_candidate("assumption").enter(|ecx| {
+                ecx.probe_misc_candidate("assumption").enter(|ecx| {
                     let assumption_projection_pred =
                         ecx.instantiate_binder_with_infer(projection_pred);
                     ecx.eq(
@@ -155,7 +156,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        ecx.probe(|r| CandidateKind::Candidate { name: "impl".into(), result: *r }).enter(|ecx| {
+        ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
 
@@ -244,7 +245,21 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             // Finally we construct the actual value of the associated type.
             let term = match assoc_def.item.kind {
                 ty::AssocKind::Type => tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into()),
-                ty::AssocKind::Const => bug!("associated const projection is not supported yet"),
+                ty::AssocKind::Const => {
+                    if tcx.features().associated_const_equality {
+                        bug!("associated const projection is not supported yet")
+                    } else {
+                        ty::EarlyBinder::bind(
+                            ty::Const::new_error_with_message(
+                                tcx,
+                                tcx.type_of(assoc_def.item.def_id).instantiate_identity(),
+                                DUMMY_SP,
+                                "associated const projection is not supported yet",
+                            )
+                            .into(),
+                        )
+                    }
+                }
                 ty::AssocKind::Fn => unreachable!("we should never project to a fn"),
             };
 
@@ -331,13 +346,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
         });
 
-        let pred = tupled_inputs_and_output
-            .map_bound(|(inputs, output)| ty::ProjectionPredicate {
+        let pred = ty::Clause::from_projection_clause(
+            tcx,
+            tupled_inputs_and_output.map_bound(|(inputs, output)| ty::ProjectionPredicate {
                 projection_ty: tcx
                     .mk_alias_ty(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs]),
                 term: output.into(),
-            })
-            .to_predicate(tcx);
+            }),
+        );
+
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::consider_implied_clause(ecx, goal, pred, [goal.with(tcx, output_is_sized_pred)])
@@ -355,7 +372,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
-        ecx.probe_candidate("builtin pointee").enter(|ecx| {
+        ecx.probe_misc_candidate("builtin pointee").enter(|ecx| {
             let metadata_ty = match goal.predicate.self_ty().kind() {
                 ty::Bool
                 | ty::Char
@@ -371,7 +388,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
                 | ty::Generator(..)
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Never
                 | ty::Foreign(..) => tcx.types.unit,
 
@@ -539,7 +555,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Foreign(..)
             | ty::Adt(_, _)
@@ -564,7 +579,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ),
         };
 
-        ecx.probe_candidate("builtin discriminant kind").enter(|ecx| {
+        ecx.probe_misc_candidate("builtin discriminant kind").enter(|ecx| {
             ecx.eq(goal.param_env, goal.predicate.term, discriminant_ty.into())
                 .expect("expected goal term to be fully unconstrained");
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

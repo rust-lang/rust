@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 
 use rustc_hir::LangItem;
-use rustc_middle::mir::interpret::ConstValue;
+use rustc_middle::mir;
 use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -194,10 +194,10 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn asm_const_to_str<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
-    const_value: ConstValue<'tcx>,
+    const_value: mir::ConstValue<'tcx>,
     ty_and_layout: TyAndLayout<'tcx>,
 ) -> String {
-    let ConstValue::Scalar(scalar) = const_value else {
+    let mir::ConstValue::Scalar(scalar) = const_value else {
         span_bug!(sp, "expected Scalar for promoted asm const, but got {:#?}", const_value)
     };
     let value = scalar.assert_bits(ty_and_layout.size);

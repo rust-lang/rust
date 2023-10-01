@@ -5,6 +5,7 @@ LL | /// OAuth and LaTeX are inside Clippy's default list.
    |     ^^^^^
    |
    = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 help: try
    |
 LL | /// `OAuth` and LaTeX are inside Clippy's default list.

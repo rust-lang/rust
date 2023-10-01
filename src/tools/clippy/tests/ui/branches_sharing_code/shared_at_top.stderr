@@ -2,6 +2,7 @@ error: all if blocks contain the same code at the start
   --> $DIR/shared_at_top.rs:11:5
    |
 LL | /     if true {
+LL | |
 LL | |         println!("Hello World!");
    | |_________________________________^
    |
@@ -17,9 +18,10 @@ LL +     if true {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:20:5
+  --> $DIR/shared_at_top.rs:21:5
    |
 LL | /     if x == 0 {
+LL | |
 LL | |         let y = 9;
 LL | |         println!("The value y was set to: `{}`", y);
 LL | |         let _z = y;
@@ -35,9 +37,10 @@ LL +     if x == 0 {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:41:5
+  --> $DIR/shared_at_top.rs:43:5
    |
 LL | /     let _ = if x == 7 {
+LL | |
 LL | |         let y = 16;
    | |___________________^
    |
@@ -48,9 +51,10 @@ LL +     let _ = if x == 7 {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:59:5
+  --> $DIR/shared_at_top.rs:62:5
    |
 LL | /     if x == 10 {
+LL | |
 LL | |         let used_value_name = "Different type";
 LL | |         println!("Str: {}", used_value_name);
    | |_____________________________________________^
@@ -64,9 +68,10 @@ LL +     if x == 10 {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:73:5
+  --> $DIR/shared_at_top.rs:77:5
    |
 LL | /     if x == 11 {
+LL | |
 LL | |         let can_be_overridden = "Move me";
 LL | |         println!("I'm also moveable");
    | |______________________________________^
@@ -80,9 +85,10 @@ LL +     if x == 11 {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:89:5
+  --> $DIR/shared_at_top.rs:94:5
    |
 LL | /     if x == 2020 {
+LL | |
 LL | |         println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
 LL | |         println!("Because `IF_SAME_THEN_ELSE` is allowed here");
    | |________________________________________________________________^
@@ -95,16 +101,17 @@ LL +     if x == 2020 {
    |
 
 error: this `if` has identical blocks
-  --> $DIR/shared_at_top.rs:97:18
+  --> $DIR/shared_at_top.rs:103:18
    |
 LL |       if x == 2019 {
    |  __________________^
+LL | |
 LL | |         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/shared_at_top.rs:99:12
+  --> $DIR/shared_at_top.rs:106:12
    |
 LL |       } else {
    |  ____________^

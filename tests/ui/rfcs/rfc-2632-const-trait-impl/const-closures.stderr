@@ -1,39 +1,26 @@
-error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/const-closures.rs:12:5
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closures.rs:8:19
    |
-LL |     f() * 7
-   |     ^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
-   |
-LL |         F: ~const FnOnce() -> u8 + ~const std::ops::Fn<()>,
-   |                                  +++++++++++++++++++++++++
+LL |         F: ~const FnOnce() -> u8,
+   |                   ^^^^^^^^^^^^^^
 
-error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/const-closures.rs:24:5
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closures.rs:9:19
    |
-LL |     f() + f()
-   |     ^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
-   |
-LL | const fn answer<F: ~const Fn() -> u8 + ~const std::ops::Fn<()>>(f: &F) -> u8 {
-   |                                      +++++++++++++++++++++++++
+LL |         F: ~const FnMut() -> u8,
+   |                   ^^^^^^^^^^^^^
 
-error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/const-closures.rs:24:11
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closures.rs:10:19
    |
-LL |     f() + f()
-   |           ^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
-   |
-LL | const fn answer<F: ~const Fn() -> u8 + ~const std::ops::Fn<()>>(f: &F) -> u8 {
-   |                                      +++++++++++++++++++++++++
+LL |         F: ~const Fn() -> u8,
+   |                   ^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closures.rs:23:27
+   |
+LL | const fn answer<F: ~const Fn() -> u8>(f: &F) -> u8 {
+   |                           ^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 4 previous errors
+

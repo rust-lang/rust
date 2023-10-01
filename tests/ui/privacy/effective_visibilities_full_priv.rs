@@ -1,5 +1,5 @@
 #![feature(rustc_attrs)]
-#![allow(private_in_public)]
+#![allow(private_interfaces)]
 
 struct SemiPriv;
 

@@ -21,7 +21,7 @@ use std::iter;
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
 pub enum Constant<'tcx> {
-    Adt(rustc_middle::mir::ConstantKind<'tcx>),
+    Adt(rustc_middle::mir::Const<'tcx>),
     /// A `String` (e.g., "abc").
     Str(String),
     /// A binary string (e.g., `b"abc"`).
@@ -482,7 +482,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     .tcx
                     .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), None)
                     .ok()
-                    .map(|val| rustc_middle::mir::ConstantKind::from_value(val, ty))?;
+                    .map(|val| rustc_middle::mir::Const::from_value(val, ty))?;
                 let result = miri_to_const(self.lcx, result)?;
                 self.source = ConstantSource::Constant;
                 Some(result)
@@ -655,10 +655,10 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     }
 }
 
-pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'tcx>) -> Option<Constant<'tcx>> {
-    use rustc_middle::mir::interpret::ConstValue;
+pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> Option<Constant<'tcx>> {
+    use rustc_middle::mir::ConstValue;
     match result {
-        mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(int)), _) => match result.ty().kind() {
+        mir::Const::Val(ConstValue::Scalar(Scalar::Int(int)), _) => match result.ty().kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
             ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
@@ -671,47 +671,42 @@ pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'t
             ty::RawPtr(_) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
             _ => None,
         },
-        mir::ConstantKind::Val(ConstValue::Slice { data, start, end }, _) => match result.ty().kind() {
-            ty::Ref(_, tam, _) => match tam.kind() {
-                ty::Str => String::from_utf8(
-                    data.inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(start..end)
-                        .to_owned(),
-                )
-                .ok()
-                .map(Constant::Str),
-                _ => None,
-            },
-            _ => None,
+        mir::Const::Val(cv, _) if matches!(result.ty().kind(), ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Str)) =>
+        {
+            let data = cv.try_get_slice_bytes_for_diagnostics(lcx.tcx)?;
+            String::from_utf8(data.to_owned()).ok().map(Constant::Str)
         },
-        mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
-            ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
-            ty::Array(sub_type, len) => match sub_type.kind() {
-                ty::Float(FloatTy::F32) => match len.try_to_target_usize(lcx.tcx) {
-                    Some(len) => alloc
-                        .inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * usize::try_from(len).unwrap()))
-                        .to_owned()
-                        .array_chunks::<4>()
-                        .map(|&chunk| Some(Constant::F32(f32::from_le_bytes(chunk))))
-                        .collect::<Option<Vec<Constant<'tcx>>>>()
-                        .map(Constant::Vec),
-                    _ => None,
-                },
-                ty::Float(FloatTy::F64) => match len.try_to_target_usize(lcx.tcx) {
-                    Some(len) => alloc
-                        .inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * usize::try_from(len).unwrap()))
-                        .to_owned()
-                        .array_chunks::<8>()
-                        .map(|&chunk| Some(Constant::F64(f64::from_le_bytes(chunk))))
-                        .collect::<Option<Vec<Constant<'tcx>>>>()
-                        .map(Constant::Vec),
+        mir::Const::Val(ConstValue::Indirect { alloc_id, offset: _ }, _) => {
+            let alloc = lcx.tcx.global_alloc(alloc_id).unwrap_memory();
+            match result.ty().kind() {
+                ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
+                ty::Array(sub_type, len) => match sub_type.kind() {
+                    ty::Float(FloatTy::F32) => match len.try_to_target_usize(lcx.tcx) {
+                        Some(len) => alloc
+                            .inner()
+                            .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * usize::try_from(len).unwrap()))
+                            .to_owned()
+                            .array_chunks::<4>()
+                            .map(|&chunk| Some(Constant::F32(f32::from_le_bytes(chunk))))
+                            .collect::<Option<Vec<Constant<'tcx>>>>()
+                            .map(Constant::Vec),
+                        _ => None,
+                    },
+                    ty::Float(FloatTy::F64) => match len.try_to_target_usize(lcx.tcx) {
+                        Some(len) => alloc
+                            .inner()
+                            .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * usize::try_from(len).unwrap()))
+                            .to_owned()
+                            .array_chunks::<8>()
+                            .map(|&chunk| Some(Constant::F64(f64::from_le_bytes(chunk))))
+                            .collect::<Option<Vec<Constant<'tcx>>>>()
+                            .map(Constant::Vec),
+                        _ => None,
+                    },
                     _ => None,
                 },
                 _ => None,
-            },
-            _ => None,
+            }
         },
         _ => None,
     }
@@ -720,17 +715,17 @@ pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'t
 fn field_of_struct<'tcx>(
     adt_def: ty::AdtDef<'tcx>,
     lcx: &LateContext<'tcx>,
-    result: mir::ConstantKind<'tcx>,
+    result: mir::Const<'tcx>,
     field: &Ident,
-) -> Option<mir::ConstantKind<'tcx>> {
-    if let mir::ConstantKind::Val(result, ty) = result
-        && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_diagnostics((result, ty))
+) -> Option<mir::Const<'tcx>> {
+    if let mir::Const::Val(result, ty) = result
+        && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_diagnostics(result, ty)
         && let Some(dc_variant) = dc.variant
         && let Some(variant) = adt_def.variants().get(dc_variant)
         && let Some(field_idx) = variant.fields.iter().position(|el| el.name == field.name)
         && let Some(&(val, ty)) = dc.fields.get(field_idx)
     {
-        Some(mir::ConstantKind::Val(val, ty))
+        Some(mir::Const::Val(val, ty))
     }
     else {
         None

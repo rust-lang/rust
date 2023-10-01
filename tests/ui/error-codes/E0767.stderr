@@ -19,7 +19,7 @@ LL | |         }
    | |_________^ expected `()`, found closure
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/E0767.rs:3:9: 3:11]`
+                found closure `{closure@$DIR/E0767.rs:3:9: 3:11}`
 
 error: aborting due to 2 previous errors
 

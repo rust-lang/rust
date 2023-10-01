@@ -26,7 +26,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let mut twins = vec!((1, 1), (2, 2));
+    /// let mut twins = vec![(1, 1), (2, 2)];
     /// twins.sort_by_key(|x| { x.1; });
     /// ```
     #[clippy::version = "1.47.0"]

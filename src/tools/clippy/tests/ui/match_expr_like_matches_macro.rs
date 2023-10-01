@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::match_like_matches_macro)]
 #![allow(
     unreachable_patterns,

@@ -19,9 +19,9 @@ codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$e
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
-codegen_ssa_erroneous_constant = erroneous constant encountered
-
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
+
+codegen_ssa_expected_coverage_symbol = expected `coverage(off)` or `coverage(on)`
 
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
@@ -35,6 +35,8 @@ codegen_ssa_extract_bundled_libs_parse_archive = failed to parse archive '{$rlib
 codegen_ssa_extract_bundled_libs_read_entry = failed to read entry '{$rlib}': {$error}
 codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$error}
 
+codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
+
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
@@ -43,8 +45,6 @@ codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files w
 
 codegen_ssa_illegal_link_ordinal_format = illegal ordinal format in `link_ordinal`
     .note = an unsuffixed integer value, e.g., `1`, is expected
-
-codegen_ssa_incompatible_linking_modifiers = link modifiers combination `+bundle,+whole-archive` is unstable when generating rlibs
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
@@ -169,8 +169,6 @@ codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple time
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_option_gcc_only = option `-Z gcc-ld` is used even though linker flavor is not gcc
-
-codegen_ssa_polymorphic_constant_too_generic = codegen encountered polymorphic constant: TooGeneric
 
 codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` failed: {$status}
     .note = {$output}

@@ -1,6 +1,6 @@
 // check-fail
 // known-bug: #103705
-// normalize-stderr-test "\[closure@.*\]" -> "[closure@]"
+// normalize-stderr-test "\{closure@.*\}" -> "{closure@}"
 // normalize-stderr-test "\+* ~" -> "+++ ~"
 
 // The output of this currently suggests writing a closure in the qualified path.

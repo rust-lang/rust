@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/assoc-type-const-bound-usage.rs:12:5
+  --> $DIR/assoc-type-const-bound-usage.rs:12:6
    |
 LL |     <T as Foo>::Assoc::foo();
-   |     ^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |      ^ the trait `Foo` is not implemented for `T`
    |
 help: consider further restricting this bound
    |

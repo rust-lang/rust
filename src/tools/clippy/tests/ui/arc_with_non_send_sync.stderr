@@ -8,6 +8,7 @@ LL |     let _ = Arc::new(RefCell::new(42));
    = note: required for `Arc<RefCell<i32>>` to implement `Send` and `Sync`
    = help: consider using an `Rc` instead or wrapping the inner type with a `Mutex`
    = note: `-D clippy::arc-with-non-send-sync` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arc_with_non_send_sync)]`
 
 error: usage of an `Arc` that is not `Send` or `Sync`
   --> $DIR/arc_with_non_send_sync.rs:40:13

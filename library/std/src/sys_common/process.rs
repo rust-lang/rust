@@ -80,6 +80,10 @@ impl CommandEnv {
         self.vars.clear();
     }
 
+    pub fn does_clear(&self) -> bool {
+        self.clear
+    }
+
     pub fn have_changed_path(&self) -> bool {
         self.saw_path || self.clear
     }

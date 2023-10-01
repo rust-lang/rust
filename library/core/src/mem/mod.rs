@@ -930,7 +930,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// This function is not magic; it is literally defined as
 ///
 /// ```
-/// pub fn drop<T>(_x: T) { }
+/// pub fn drop<T>(_x: T) {}
 /// ```
 ///
 /// Because `_x` is moved into the function, it is automatically dropped before
@@ -1051,7 +1051,7 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
+#[rustc_const_stable(feature = "const_transmute_copy", since = "CURRENT_RUSTC_VERSION")]
 pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
     assert!(
         size_of::<Src>() >= size_of::<Dst>(),
@@ -1125,6 +1125,11 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// for more information.
 ///
 /// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
+///
+/// The value of a [`Discriminant<T>`] is independent of any *lifetimes* in `T`. As such, reading
+/// or writing a `Discriminant<Foo<'a>>` as a `Discriminant<Foo<'b>>` (whether via [`transmute`] or
+/// otherwise) is always sound. Note that this is **not** true for other kinds of generic
+/// parameters; `Discriminant<Foo<A>>` and `Discriminant<Foo<B>>` might be incompatible.
 ///
 /// # Examples
 ///

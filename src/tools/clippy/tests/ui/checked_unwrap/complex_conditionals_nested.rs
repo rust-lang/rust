@@ -4,14 +4,18 @@
     clippy::branches_sharing_code,
     clippy::unnecessary_literal_unwrap
 )]
-
+//@no-rustfix
 fn test_nested() {
     fn nested() {
         let x = Some(());
         if x.is_some() {
-            x.unwrap(); // unnecessary
+            // unnecessary
+            x.unwrap();
+            //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_some`
         } else {
-            x.unwrap(); // will panic
+            // will panic
+            x.unwrap();
+            //~^ ERROR: this call to `unwrap()` will always panic
         }
     }
 }

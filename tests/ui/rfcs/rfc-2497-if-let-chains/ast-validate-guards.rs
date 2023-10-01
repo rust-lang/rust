@@ -3,7 +3,7 @@
 fn let_or_guard(x: Result<Option<i32>, ()>) {
     match x {
         Ok(opt) if let Some(4) = opt || false  => {}
-        //~^ ERROR `let` expressions are not supported here
+        //~^ ERROR expected expression, found `let` statement
         _ => {}
     }
 }

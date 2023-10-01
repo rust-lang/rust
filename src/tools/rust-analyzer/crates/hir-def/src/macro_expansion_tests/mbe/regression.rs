@@ -929,8 +929,8 @@ fn main() {
 macro_rules! format_args {}
 
 fn main() {
-    /* error: expected field name or number *//* parse error: expected field name or number */
-::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(line.1.), ::core::fmt::Display::fmt), ]);
+    /* parse error: expected field name or number */
+builtin #format_args ("{}", line.1.);
 }
 
 "##]],
@@ -956,19 +956,15 @@ fn main() {
 macro_rules! format_args {}
 
 fn main() {
-    /* error: expected COMMA, expected R_BRACK, expected COMMA, expected COMMA, expected expression, expected R_PAREN *//* parse error: expected COMMA */
+    /* parse error: expected COMMA */
 /* parse error: expected R_BRACK */
 /* parse error: expected COMMA */
 /* parse error: expected COMMA */
 /* parse error: expected expression */
 /* parse error: expected R_PAREN */
-/* parse error: expected R_PAREN */
 /* parse error: expected expression, item or let statement */
 /* parse error: expected expression, item or let statement */
-/* parse error: expected expression, item or let statement */
-/* parse error: expected expression, item or let statement */
-/* parse error: expected expression, item or let statement */
-::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(&[0 2]), ::core::fmt::Display::fmt), ]);
+builtin #format_args ("{}", &[0 2]);
 }
 
 "##]],

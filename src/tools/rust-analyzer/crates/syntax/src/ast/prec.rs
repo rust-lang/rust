@@ -130,7 +130,8 @@ impl Expr {
             //
             ContinueExpr(_) => (0, 0),
 
-            ClosureExpr(_) | ReturnExpr(_) | YieldExpr(_) | YeetExpr(_) | BreakExpr(_) => (0, 1),
+            ClosureExpr(_) | ReturnExpr(_) | YieldExpr(_) | YeetExpr(_) | BreakExpr(_)
+            | OffsetOfExpr(_) | FormatArgsExpr(_) | AsmExpr(_) => (0, 1),
 
             RangeExpr(_) => (5, 5),
 
@@ -160,7 +161,7 @@ impl Expr {
 
             CastExpr(_) => (25, 26),
 
-            BoxExpr(_) | RefExpr(_) | LetExpr(_) | PrefixExpr(_) => (0, 27),
+            RefExpr(_) | LetExpr(_) | PrefixExpr(_) => (0, 27),
 
             AwaitExpr(_) | CallExpr(_) | MethodCallExpr(_) | IndexExpr(_) | TryExpr(_)
             | MacroExpr(_) => (29, 0),
@@ -202,7 +203,6 @@ impl Expr {
             let rhs = match self {
                 RefExpr(e) => e.expr(),
                 BinExpr(e) => e.rhs(),
-                BoxExpr(e) => e.expr(),
                 BreakExpr(e) => e.expr(),
                 LetExpr(e) => e.expr(),
                 RangeExpr(e) => e.end(),
@@ -279,7 +279,6 @@ impl Expr {
                 CastExpr(e) => e.as_token(),
                 FieldExpr(e) => e.dot_token(),
                 AwaitExpr(e) => e.dot_token(),
-                BoxExpr(e) => e.box_token(),
                 BreakExpr(e) => e.break_token(),
                 CallExpr(e) => e.arg_list().and_then(|args| args.l_paren_token()),
                 ClosureExpr(e) => e.param_list().and_then(|params| params.l_paren_token()),
@@ -293,7 +292,9 @@ impl Expr {
                 YieldExpr(e) => e.yield_token(),
                 YeetExpr(e) => e.do_token(),
                 LetExpr(e) => e.let_token(),
-
+                OffsetOfExpr(e) => e.builtin_token(),
+                FormatArgsExpr(e) => e.builtin_token(),
+                AsmExpr(e) => e.builtin_token(),
                 ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_)
                 | IfExpr(_) | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_)
                 | BlockExpr(_) | RecordExpr(_) | UnderscoreExpr(_) | MacroExpr(_) => None,
@@ -310,12 +311,12 @@ impl Expr {
             ArrayExpr(_) | AwaitExpr(_) | BlockExpr(_) | CallExpr(_) | CastExpr(_)
             | ClosureExpr(_) | FieldExpr(_) | IndexExpr(_) | Literal(_) | LoopExpr(_)
             | MacroExpr(_) | MethodCallExpr(_) | ParenExpr(_) | PathExpr(_) | RecordExpr(_)
-            | TryExpr(_) | TupleExpr(_) | UnderscoreExpr(_) => false,
+            | TryExpr(_) | TupleExpr(_) | UnderscoreExpr(_) | OffsetOfExpr(_)
+            | FormatArgsExpr(_) | AsmExpr(_) => false,
 
             // For BinExpr and RangeExpr this is technically wrong -- the child can be on the left...
-            BinExpr(_) | RangeExpr(_) | BoxExpr(_) | BreakExpr(_) | ContinueExpr(_)
-            | PrefixExpr(_) | RefExpr(_) | ReturnExpr(_) | YieldExpr(_) | YeetExpr(_)
-            | LetExpr(_) => self
+            BinExpr(_) | RangeExpr(_) | BreakExpr(_) | ContinueExpr(_) | PrefixExpr(_)
+            | RefExpr(_) | ReturnExpr(_) | YieldExpr(_) | YeetExpr(_) | LetExpr(_) => self
                 .syntax()
                 .parent()
                 .and_then(Expr::cast)

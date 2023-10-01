@@ -1,39 +1,40 @@
 error: missing `#[inline]` for a function
-  --> $DIR/missing_inline.rs:19:1
+  --> $DIR/missing_inline.rs:20:1
    |
-LL | pub fn pub_foo() {} // missing #[inline]
+LL | pub fn pub_foo() {}
    | ^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::missing-inline-in-public-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_inline_in_public_items)]`
 
 error: missing `#[inline]` for a default trait method
-  --> $DIR/missing_inline.rs:35:5
+  --> $DIR/missing_inline.rs:39:5
    |
-LL |     fn PubBar_b() {} // missing #[inline]
+LL |     fn PubBar_b() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:49:5
+  --> $DIR/missing_inline.rs:55:5
    |
-LL |     fn PubBar_a() {} // missing #[inline]
+LL |     fn PubBar_a() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:50:5
+  --> $DIR/missing_inline.rs:58:5
    |
-LL |     fn PubBar_b() {} // missing #[inline]
-   |     ^^^^^^^^^^^^^^^^
-
-error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:51:5
-   |
-LL |     fn PubBar_c() {} // missing #[inline]
+LL |     fn PubBar_b() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
   --> $DIR/missing_inline.rs:61:5
    |
-LL |     pub fn PubFooImpl() {} // missing #[inline]
+LL |     fn PubBar_c() {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> $DIR/missing_inline.rs:73:5
+   |
+LL |     pub fn PubFooImpl() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors

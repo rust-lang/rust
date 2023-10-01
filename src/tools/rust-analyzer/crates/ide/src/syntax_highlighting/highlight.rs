@@ -617,6 +617,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         CONST => SymbolKind::Const,
         STATIC => SymbolKind::Static,
         IDENT_PAT => SymbolKind::Local,
+        FORMAT_ARGS_ARG => SymbolKind::Local,
         _ => return default.into(),
     };
 

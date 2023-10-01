@@ -6,9 +6,10 @@ LL | const C: LinkedList<i32> = LinkedList::new();
    |
    = help: a `VecDeque` might work
    = note: `-D clippy::linkedlist` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::linkedlist)]`
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:9:11
+  --> $DIR/linkedlist.rs:10:11
    |
 LL | static S: LinkedList<i32> = LinkedList::new();
    |           ^^^^^^^^^^^^^^^
@@ -16,7 +17,7 @@ LL | static S: LinkedList<i32> = LinkedList::new();
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:12:16
+  --> $DIR/linkedlist.rs:14:16
    |
 LL |     type Baz = LinkedList<u8>;
    |                ^^^^^^^^^^^^^^
@@ -24,7 +25,7 @@ LL |     type Baz = LinkedList<u8>;
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:13:15
+  --> $DIR/linkedlist.rs:16:15
    |
 LL |     fn foo(_: LinkedList<u8>);
    |               ^^^^^^^^^^^^^^
@@ -32,7 +33,7 @@ LL |     fn foo(_: LinkedList<u8>);
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:14:23
+  --> $DIR/linkedlist.rs:18:23
    |
 LL |     const BAR: Option<LinkedList<u8>>;
    |                       ^^^^^^^^^^^^^^
@@ -40,7 +41,7 @@ LL |     const BAR: Option<LinkedList<u8>>;
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:24:29
+  --> $DIR/linkedlist.rs:29:29
    |
 LL |     priv_linked_list_field: LinkedList<u8>,
    |                             ^^^^^^^^^^^^^^
@@ -48,7 +49,7 @@ LL |     priv_linked_list_field: LinkedList<u8>,
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:28:15
+  --> $DIR/linkedlist.rs:34:15
    |
 LL |     fn foo(_: LinkedList<u8>) {}
    |               ^^^^^^^^^^^^^^
@@ -56,7 +57,7 @@ LL |     fn foo(_: LinkedList<u8>) {}
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:33:34
+  --> $DIR/linkedlist.rs:40:34
    |
 LL | fn test(my_favorite_linked_list: LinkedList<u8>) {}
    |                                  ^^^^^^^^^^^^^^
@@ -64,7 +65,7 @@ LL | fn test(my_favorite_linked_list: LinkedList<u8>) {}
    = help: a `VecDeque` might work
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
-  --> $DIR/linkedlist.rs:34:25
+  --> $DIR/linkedlist.rs:42:25
    |
 LL | fn test_ret() -> Option<LinkedList<u8>> {
    |                         ^^^^^^^^^^^^^^

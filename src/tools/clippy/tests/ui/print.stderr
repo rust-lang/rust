@@ -5,47 +5,49 @@ LL |         write!(f, "{:?}", 43.1415)
    |                    ^^^^
    |
    = note: `-D clippy::use-debug` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_debug)]`
 
 error: use of `println!`
-  --> $DIR/print.rs:23:5
+  --> $DIR/print.rs:25:5
    |
 LL |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::print-stdout` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_stdout)]`
 
 error: use of `print!`
-  --> $DIR/print.rs:24:5
+  --> $DIR/print.rs:28:5
    |
 LL |     print!("Hello");
    |     ^^^^^^^^^^^^^^^
 
 error: use of `print!`
-  --> $DIR/print.rs:26:5
+  --> $DIR/print.rs:31:5
    |
 LL |     print!("Hello {}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `print!`
-  --> $DIR/print.rs:28:5
+  --> $DIR/print.rs:34:5
    |
 LL |     print!("Hello {:?}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
-  --> $DIR/print.rs:28:19
+  --> $DIR/print.rs:34:19
    |
 LL |     print!("Hello {:?}", "World");
    |                   ^^^^
 
 error: use of `print!`
-  --> $DIR/print.rs:30:5
+  --> $DIR/print.rs:38:5
    |
 LL |     print!("Hello {:#?}", "#orld");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
-  --> $DIR/print.rs:30:19
+  --> $DIR/print.rs:38:19
    |
 LL |     print!("Hello {:#?}", "#orld");
    |                   ^^^^^

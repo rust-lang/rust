@@ -59,11 +59,16 @@ error[E0605]: non-primitive cast: `u8` as `Vec<u8>`
 LL |     x as Vec<u8>;
    |     ^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
-error[E0054]: cannot cast as `bool`
+error[E0054]: cannot cast `{integer}` as `bool`
   --> $DIR/error-festival.rs:33:24
    |
 LL |     let x_is_nonzero = x as bool;
-   |                        ^^^^^^^^^ help: compare with zero instead: `x != 0`
+   |                        ^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL |     let x_is_nonzero = x != 0;
+   |                          ~~~~
 
 error[E0606]: casting `&u8` as `u32` is invalid
   --> $DIR/error-festival.rs:37:18

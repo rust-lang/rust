@@ -6,6 +6,7 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
 use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::GenericArgsRef;
@@ -559,30 +560,31 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                     let stalled_on = &mut pending_obligation.stalled_on;
 
-                    let mut evaluate =
-                        |c: Const<'tcx>| {
-                            if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
-                                match self.selcx.infcx.try_const_eval_resolve(
-                                    obligation.param_env,
-                                    unevaluated,
-                                    c.ty(),
-                                    Some(obligation.cause.span),
-                                ) {
-                                    Ok(val) => Ok(val),
-                                    Err(e) => match e {
-                                        ErrorHandled::TooGeneric => {
+                    let mut evaluate = |c: Const<'tcx>| {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                            match self.selcx.infcx.try_const_eval_resolve(
+                                obligation.param_env,
+                                unevaluated,
+                                c.ty(),
+                                Some(obligation.cause.span),
+                            ) {
+                                Ok(val) => Ok(val),
+                                Err(e) => {
+                                    match e {
+                                        ErrorHandled::TooGeneric(..) => {
                                             stalled_on.extend(unevaluated.args.iter().filter_map(
                                                 TyOrConstInferVar::maybe_from_generic_arg,
                                             ));
-                                            Err(ErrorHandled::TooGeneric)
                                         }
-                                        _ => Err(e),
-                                    },
+                                        _ => {}
+                                    }
+                                    Err(e)
                                 }
-                            } else {
-                                Ok(c)
                             }
-                        };
+                        } else {
+                            Ok(c)
+                        }
+                    };
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
@@ -602,13 +604,14 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ),
                             }
                         }
-                        (Err(ErrorHandled::Reported(reported)), _)
-                        | (_, Err(ErrorHandled::Reported(reported))) => ProcessResult::Error(
+                        (Err(ErrorHandled::Reported(reported, _)), _)
+                        | (_, Err(ErrorHandled::Reported(reported, _))) => ProcessResult::Error(
                             CodeSelectionError(SelectionError::NotConstEvaluatable(
                                 NotConstEvaluatable::Error(reported.into()),
                             )),
                         ),
-                        (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        (Err(ErrorHandled::TooGeneric(_)), _)
+                        | (_, Err(ErrorHandled::TooGeneric(_))) => {
                             if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 ProcessResult::Unchanged
                             } else {
@@ -623,9 +626,27 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                ty::PredicateKind::AliasRelate(..)
+                    if matches!(self.selcx.infcx.defining_use_anchor, DefiningAnchor::Bubble) =>
+                {
+                    ProcessResult::Unchanged
                 }
+                ty::PredicateKind::AliasRelate(a, b, relate) => match relate {
+                    ty::AliasRelationDirection::Equate => match self
+                        .selcx
+                        .infcx
+                        .at(&obligation.cause, obligation.param_env)
+                        .eq(DefineOpaqueTypes::Yes, a, b)
+                    {
+                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
+                        Err(_) => ProcessResult::Error(FulfillmentErrorCode::CodeSelectionError(
+                            SelectionError::Unimplemented,
+                        )),
+                    },
+                    ty::AliasRelationDirection::Subtype => {
+                        bug!("AliasRelate with subtyping is only used for new solver")
+                    }
+                },
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
                         DefineOpaqueTypes::No,

@@ -6,9 +6,10 @@ LL |         pub paths: HashMap<u32, String>,
    |
    = help: consider using private field here
    = note: `-D clippy::partial-pub-fields` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::partial_pub_fields)]`
 
 error: mixed usage of pub and non-pub fields
-  --> $DIR/partial_pub_fields.rs:16:9
+  --> $DIR/partial_pub_fields.rs:17:9
    |
 LL |         b: u8,
    |         ^
@@ -16,7 +17,7 @@ LL |         b: u8,
    = help: consider using public field here
 
 error: mixed usage of pub and non-pub fields
-  --> $DIR/partial_pub_fields.rs:19:27
+  --> $DIR/partial_pub_fields.rs:21:27
    |
 LL |     pub struct Point(i32, pub i32);
    |                           ^^^
@@ -24,7 +25,7 @@ LL |     pub struct Point(i32, pub i32);
    = help: consider using private field here
 
 error: mixed usage of pub and non-pub fields
-  --> $DIR/partial_pub_fields.rs:23:9
+  --> $DIR/partial_pub_fields.rs:26:9
    |
 LL |         pub pos: u32,
    |         ^^^

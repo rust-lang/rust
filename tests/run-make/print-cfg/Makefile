@@ -13,19 +13,19 @@ all: default output_to_file
 
 output_to_file:
 	# Backend-independent, printed by rustc_driver_impl/src/lib.rs
-	$(RUSTC) --target x86_64-pc-windows-gnu --print cfg=$(TMPDIR)/cfg.txt -Z unstable-options
+	$(RUSTC) --target x86_64-pc-windows-gnu --print cfg=$(TMPDIR)/cfg.txt
 	$(CGREP) windows < $(TMPDIR)/cfg.txt
 
 	# Printed from CodegenBackend trait impl in rustc_codegen_llvm/src/lib.rs
-	$(RUSTC) --print relocation-models=$(TMPDIR)/relocation-models.txt -Z unstable-options
+	$(RUSTC) --print relocation-models=$(TMPDIR)/relocation-models.txt
 	$(CGREP) dynamic-no-pic < $(TMPDIR)/relocation-models.txt
 
 	# Printed by compiler/rustc_codegen_llvm/src/llvm_util.rs
-	$(RUSTC) --target wasm32-unknown-unknown --print target-features=$(TMPDIR)/target-features.txt -Z unstable-options
+	$(RUSTC) --target wasm32-unknown-unknown --print target-features=$(TMPDIR)/target-features.txt
 	$(CGREP) reference-types < $(TMPDIR)/target-features.txt
 
 	# Printed by C++ code in rustc_llvm/llvm-wrapper/PassWrapper.cpp
-	$(RUSTC) --target wasm32-unknown-unknown --print target-cpus=$(TMPDIR)/target-cpus.txt -Z unstable-options
+	$(RUSTC) --target wasm32-unknown-unknown --print target-cpus=$(TMPDIR)/target-cpus.txt
 	$(CGREP) generic < $(TMPDIR)/target-cpus.txt
 
 ifdef IS_WINDOWS

@@ -217,7 +217,7 @@ pub fn expand_include_bytes(
     };
     match cx.source_map().load_binary_file(&file) {
         Ok(bytes) => {
-            let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(bytes.into()));
+            let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(bytes));
             base::MacEager::expr(expr)
         }
         Err(e) => {

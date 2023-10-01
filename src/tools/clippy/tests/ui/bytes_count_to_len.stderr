@@ -1,25 +1,26 @@
 error: using long and hard to read `.bytes().count()`
-  --> $DIR/bytes_count_to_len.rs:8:13
+  --> $DIR/bytes_count_to_len.rs:7:13
    |
 LL |     let _ = String::from("foo").bytes().count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `String::from("foo").len()`
    |
    = note: `-D clippy::bytes-count-to-len` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bytes_count_to_len)]`
 
 error: using long and hard to read `.bytes().count()`
-  --> $DIR/bytes_count_to_len.rs:11:13
+  --> $DIR/bytes_count_to_len.rs:10:13
    |
 LL |     let _ = s1.bytes().count();
    |             ^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `s1.len()`
 
 error: using long and hard to read `.bytes().count()`
-  --> $DIR/bytes_count_to_len.rs:14:13
+  --> $DIR/bytes_count_to_len.rs:13:13
    |
 LL |     let _ = "foo".bytes().count();
    |             ^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `"foo".len()`
 
 error: using long and hard to read `.bytes().count()`
-  --> $DIR/bytes_count_to_len.rs:17:13
+  --> $DIR/bytes_count_to_len.rs:16:13
    |
 LL |     let _ = s2.bytes().count();
    |             ^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `s2.len()`

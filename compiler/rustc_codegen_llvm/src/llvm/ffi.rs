@@ -83,12 +83,17 @@ pub enum LLVMModFlagBehavior {
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 /// LLVM CallingConv::ID. Should we wrap this?
+///
+/// See <https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/CallingConv.h>
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub enum CallConv {
     CCallConv = 0,
     FastCallConv = 8,
     ColdCallConv = 9,
+    PreserveMost = 14,
+    PreserveAll = 15,
+    Tail = 18,
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,
     ArmAapcsCallConv = 67,
@@ -2107,6 +2112,8 @@ extern "C" {
     );
 
     pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
+
+    // This function makes copies of pointed to data, so the data's lifetime may end after this function returns
     pub fn LLVMRustCreateTargetMachine(
         Triple: *const c_char,
         CPU: *const c_char,
@@ -2126,9 +2133,14 @@ extern "C" {
         RelaxELFRelocations: bool,
         UseInitArray: bool,
         SplitDwarfFile: *const c_char,
+        OutputObjFile: *const c_char,
+        DebugInfoCompression: *const c_char,
         ForceEmulatedTls: bool,
-    ) -> Option<&'static mut TargetMachine>;
-    pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
+        ArgsCstrBuff: *const c_char,
+        ArgsCstrBuffLen: usize,
+    ) -> *mut TargetMachine;
+
+    pub fn LLVMRustDisposeTargetMachine(T: *mut TargetMachine);
     pub fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,
         M: &'a Module,
@@ -2314,6 +2326,12 @@ extern "C" {
         len: usize,
         out_len: &mut usize,
     ) -> *const u8;
+    pub fn LLVMRustGetSliceFromObjectDataByName(
+        data: *const u8,
+        len: usize,
+        name: *const u8,
+        out_len: &mut usize,
+    ) -> *const u8;
 
     pub fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub fn LLVMRustLinkerAdd(
@@ -2351,6 +2369,10 @@ extern "C" {
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
 
     pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
+
+    pub fn LLVMRustLLVMHasZlibCompressionForDebugSymbols() -> bool;
+
+    pub fn LLVMRustLLVMHasZstdCompressionForDebugSymbols() -> bool;
 
     pub fn LLVMRustGetSymbols(
         buf_ptr: *const u8,

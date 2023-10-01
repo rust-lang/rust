@@ -4,6 +4,11 @@ error[E0277]: the trait bound `for<'a> &'a mut (): Foo<&'a mut ()>` is not satis
 LL |     (&mut EmptyIter).consume(());
    |                      ^^^^^^^ the trait `for<'a> Foo<&'a mut ()>` is not implemented for `&'a mut ()`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-101020.rs:28:1
+   |
+LL | trait Foo<T> {}
+   | ^^^^^^^^^^^^
 note: required for `&'a mut ()` to implement `for<'a> FuncInput<'a, &'a mut ()>`
   --> $DIR/issue-101020.rs:27:20
    |

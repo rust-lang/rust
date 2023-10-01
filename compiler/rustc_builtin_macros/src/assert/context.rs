@@ -241,7 +241,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
             }
-            ExprKind::Let(_, local_expr, _) => {
+            ExprKind::Let(_, local_expr, _, _) => {
                 self.manage_cond_expr(local_expr);
             }
             ExprKind::Match(local_expr, _) => {

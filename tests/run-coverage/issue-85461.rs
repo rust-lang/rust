@@ -1,4 +1,5 @@
 // Regression test for #85461: MSVC sometimes fail to link with dead code and #[inline(always)]
+
 // aux-build:inline_always_with_dead_code.rs
 extern crate inline_always_with_dead_code;
 

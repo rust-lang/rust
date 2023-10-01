@@ -3,12 +3,24 @@ error[E0277]: the trait bound `Bar<'a, T>: Foo` is not satisfied
    |
 LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bar<'a, T>`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/hir-wf-canonicalized.rs:3:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
 
 error[E0277]: the trait bound `(dyn Callback<Bar<'a, T>, for<'b, 'c, 'd> Output = ()> + 'static): Foo` is not satisfied
   --> $DIR/hir-wf-canonicalized.rs:10:15
    |
 LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `(dyn Callback<Bar<'a, T>, for<'b, 'c, 'd> Output = ()> + 'static)`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/hir-wf-canonicalized.rs:3:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
 
 error[E0277]: the size for values of type `(dyn Callback<Bar<'a, T>, for<'b, 'c, 'd> Output = ()> + 'static)` cannot be known at compilation time
   --> $DIR/hir-wf-canonicalized.rs:10:15

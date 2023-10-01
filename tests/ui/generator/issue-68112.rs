@@ -1,6 +1,3 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 #![feature(generators, generator_trait)]
 
 use std::{
@@ -39,7 +36,7 @@ fn test1() {
         yield;
         //~^ NOTE yield occurs here
         //~| NOTE value is used across a yield
-    }; //[no_drop_tracking,drop_tracking]~ NOTE later dropped here
+    };
     require_send(send_gen);
     //~^ ERROR generator cannot be sent between threads
     //~| NOTE not `Send`
@@ -68,7 +65,6 @@ fn test2() {
     //~^ ERROR `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE required for
-    //[no_drop_tracking,drop_tracking]~| NOTE required by a bound introduced by this call
     //~| NOTE captures the following types
     //~| NOTE use `std::sync::RwLock` instead
 }

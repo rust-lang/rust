@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::case_sensitive_file_extension_comparisons)]
 
 use std::string::String;

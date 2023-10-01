@@ -1,7 +1,10 @@
 //! Renderer for `enum` variants.
 
-use hir::{db::HirDatabase, Documentation, HasAttrs, StructKind};
-use ide_db::SymbolKind;
+use hir::{db::HirDatabase, StructKind};
+use ide_db::{
+    documentation::{Documentation, HasDocs},
+    SymbolKind,
+};
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx, PathKind},

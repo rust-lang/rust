@@ -1,6 +1,7 @@
 use super::needless_pass_by_value::requires_exact_signature;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
+use clippy_utils::visitors::for_each_expr_with_closures;
 use clippy_utils::{get_parent_node, inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
@@ -9,7 +10,7 @@ use rustc_hir::{
     Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node, PatKind, QPath,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::associated_body;
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -20,6 +21,8 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
+
+use core::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -95,6 +98,30 @@ fn should_skip<'tcx>(
     is_from_proc_macro(cx, &input)
 }
 
+fn check_closures<'tcx>(
+    ctx: &mut MutablyUsedVariablesCtxt<'tcx>,
+    cx: &LateContext<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    checked_closures: &mut FxHashSet<LocalDefId>,
+    closures: FxHashSet<LocalDefId>,
+) {
+    let hir = cx.tcx.hir();
+    for closure in closures {
+        if !checked_closures.insert(closure) {
+            continue;
+        }
+        ctx.prev_bind = None;
+        ctx.prev_move_to_closure.clear();
+        if let Some(body) = hir
+            .find_by_def_id(closure)
+            .and_then(associated_body)
+            .map(|(_, body_id)| hir.body(body_id))
+        {
+            euv::ExprUseVisitor::new(ctx, infcx, closure, cx.param_env, cx.typeck_results()).consume_body(body);
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
     fn check_fn(
         &mut self,
@@ -161,25 +188,22 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
             if is_async {
                 let mut checked_closures = FxHashSet::default();
-                while !ctx.async_closures.is_empty() {
-                    let closures = ctx.async_closures.clone();
-                    ctx.async_closures.clear();
-                    let hir = cx.tcx.hir();
-                    for closure in closures {
-                        if !checked_closures.insert(closure) {
-                            continue;
-                        }
-                        ctx.prev_bind = None;
-                        ctx.prev_move_to_closure.clear();
-                        if let Some(body) = hir
-                            .find_by_def_id(closure)
-                            .and_then(associated_body)
-                            .map(|(_, body_id)| hir.body(body_id))
-                        {
-                            euv::ExprUseVisitor::new(&mut ctx, &infcx, closure, cx.param_env, cx.typeck_results())
-                                .consume_body(body);
-                        }
+
+                // We retrieve all the closures declared in the async function because they will
+                // not be found by `euv::Delegate`.
+                let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
+                for_each_expr_with_closures(cx, body, |expr| {
+                    if let ExprKind::Closure(closure) = expr.kind {
+                        closures.insert(closure.def_id);
                     }
+                    ControlFlow::<()>::Continue(())
+                });
+                check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
+
+                while !ctx.async_closures.is_empty() {
+                    let async_closures = ctx.async_closures.clone();
+                    ctx.async_closures.clear();
+                    check_closures(&mut ctx, cx, &infcx, &mut checked_closures, async_closures);
                 }
             }
             ctx
@@ -244,6 +268,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
 struct MutablyUsedVariablesCtxt<'tcx> {
     mutably_used_vars: HirIdSet,
     prev_bind: Option<HirId>,
+    /// In async functions, the inner AST is composed of multiple layers until we reach the code
+    /// defined by the user. Because of that, some variables are marked as mutably borrowed even
+    /// though they're not. This field lists the `HirId` that should not be considered as mutable
+    /// use of a variable.
     prev_move_to_closure: HirIdSet,
     aliases: HirIdMap<HirId>,
     async_closures: FxHashSet<LocalDefId>,
@@ -308,7 +336,12 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
     fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _id: HirId, borrow: ty::BorrowKind) {
         self.prev_bind = None;
         if let euv::Place {
-            base: euv::PlaceBase::Local(vid),
+            base:
+                euv::PlaceBase::Local(vid)
+                | euv::PlaceBase::Upvar(UpvarId {
+                    var_path: UpvarPath { hir_id: vid },
+                    ..
+                }),
             base_ty,
             ..
         } = &cmt.place

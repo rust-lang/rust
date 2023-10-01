@@ -1,13 +1,14 @@
 error: used `flat_map` where `filter_map` could be used instead
-  --> $DIR/flat_map_option.rs:8:24
+  --> $DIR/flat_map_option.rs:7:24
    |
 LL |     let _ = [1].iter().flat_map(c);
    |                        ^^^^^^^^ help: try: `filter_map`
    |
    = note: `-D clippy::flat-map-option` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::flat_map_option)]`
 
 error: used `flat_map` where `filter_map` could be used instead
-  --> $DIR/flat_map_option.rs:9:24
+  --> $DIR/flat_map_option.rs:8:24
    |
 LL |     let _ = [1].iter().flat_map(Some);
    |                        ^^^^^^^^ help: try: `filter_map`

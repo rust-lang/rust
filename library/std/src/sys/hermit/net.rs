@@ -33,13 +33,7 @@ pub fn cvt_gai(err: i32) -> io::Result<()> {
     ))
 }
 
-/// Checks whether the HermitCore's socket interface has been started already, and
-/// if not, starts it.
-pub fn init() {
-    if unsafe { netc::network_init() } < 0 {
-        panic!("Unable to initialize network interface");
-    }
-}
+pub fn init() {}
 
 #[derive(Debug)]
 pub struct Socket(FileDesc);
@@ -108,7 +102,7 @@ impl Socket {
             match unsafe { netc::poll(&mut pollfd, 1, timeout) } {
                 -1 => {
                     let err = io::Error::last_os_error();
-                    if err.kind() != io::ErrorKind::Interrupted {
+                    if !err.is_interrupted() {
                         return Err(err);
                     }
                 }

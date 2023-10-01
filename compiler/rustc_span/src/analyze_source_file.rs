@@ -11,26 +11,19 @@ mod tests;
 /// is detected at runtime.
 pub fn analyze_source_file(
     src: &str,
-    source_file_start_pos: BytePos,
-) -> (Vec<BytePos>, Vec<MultiByteChar>, Vec<NonNarrowChar>) {
-    let mut lines = vec![source_file_start_pos];
+) -> (Vec<RelativeBytePos>, Vec<MultiByteChar>, Vec<NonNarrowChar>) {
+    let mut lines = vec![RelativeBytePos::from_u32(0)];
     let mut multi_byte_chars = vec![];
     let mut non_narrow_chars = vec![];
 
     // Calls the right implementation, depending on hardware support available.
-    analyze_source_file_dispatch(
-        src,
-        source_file_start_pos,
-        &mut lines,
-        &mut multi_byte_chars,
-        &mut non_narrow_chars,
-    );
+    analyze_source_file_dispatch(src, &mut lines, &mut multi_byte_chars, &mut non_narrow_chars);
 
     // The code above optimistically registers a new line *after* each \n
     // it encounters. If that point is already outside the source_file, remove
     // it again.
     if let Some(&last_line_start) = lines.last() {
-        let source_file_end = source_file_start_pos + BytePos::from_usize(src.len());
+        let source_file_end = RelativeBytePos::from_usize(src.len());
         assert!(source_file_end >= last_line_start);
         if last_line_start == source_file_end {
             lines.pop();
@@ -43,14 +36,12 @@ pub fn analyze_source_file(
 cfg_if::cfg_if! {
     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
         fn analyze_source_file_dispatch(src: &str,
-                                    source_file_start_pos: BytePos,
-                                    lines: &mut Vec<BytePos>,
+                                    lines: &mut Vec<RelativeBytePos>,
                                     multi_byte_chars: &mut Vec<MultiByteChar>,
                                     non_narrow_chars: &mut Vec<NonNarrowChar>) {
             if is_x86_feature_detected!("sse2") {
                 unsafe {
                     analyze_source_file_sse2(src,
-                                         source_file_start_pos,
                                          lines,
                                          multi_byte_chars,
                                          non_narrow_chars);
@@ -58,7 +49,7 @@ cfg_if::cfg_if! {
             } else {
                 analyze_source_file_generic(src,
                                         src.len(),
-                                        source_file_start_pos,
+                                        RelativeBytePos::from_u32(0),
                                         lines,
                                         multi_byte_chars,
                                         non_narrow_chars);
@@ -72,8 +63,7 @@ cfg_if::cfg_if! {
         /// SSE2 intrinsics to quickly find all newlines.
         #[target_feature(enable = "sse2")]
         unsafe fn analyze_source_file_sse2(src: &str,
-                                       output_offset: BytePos,
-                                       lines: &mut Vec<BytePos>,
+                                       lines: &mut Vec<RelativeBytePos>,
                                        multi_byte_chars: &mut Vec<MultiByteChar>,
                                        non_narrow_chars: &mut Vec<NonNarrowChar>) {
             #[cfg(target_arch = "x86")]
@@ -129,8 +119,7 @@ cfg_if::cfg_if! {
                         if control_char_mask == newlines_mask {
                             // All control characters are newlines, record them
                             let mut newlines_mask = 0xFFFF0000 | newlines_mask as u32;
-                            let output_offset = output_offset +
-                                BytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
+                            let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
 
                             loop {
                                 let index = newlines_mask.trailing_zeros();
@@ -140,7 +129,7 @@ cfg_if::cfg_if! {
                                     break
                                 }
 
-                                lines.push(BytePos(index) + output_offset);
+                                lines.push(RelativeBytePos(index) + output_offset);
 
                                 // Clear the bit, so we can find the next one.
                                 newlines_mask &= (!1) << index;
@@ -165,7 +154,7 @@ cfg_if::cfg_if! {
                 intra_chunk_offset = analyze_source_file_generic(
                     &src[scan_start .. ],
                     CHUNK_SIZE - intra_chunk_offset,
-                    BytePos::from_usize(scan_start) + output_offset,
+                    RelativeBytePos::from_usize(scan_start),
                     lines,
                     multi_byte_chars,
                     non_narrow_chars
@@ -177,7 +166,7 @@ cfg_if::cfg_if! {
             if tail_start < src.len() {
                 analyze_source_file_generic(&src[tail_start ..],
                                         src.len() - tail_start,
-                                        output_offset + BytePos::from_usize(tail_start),
+                                        RelativeBytePos::from_usize(tail_start),
                                         lines,
                                         multi_byte_chars,
                                         non_narrow_chars);
@@ -187,13 +176,12 @@ cfg_if::cfg_if! {
 
         // The target (or compiler version) does not support SSE2 ...
         fn analyze_source_file_dispatch(src: &str,
-                                    source_file_start_pos: BytePos,
-                                    lines: &mut Vec<BytePos>,
+                                    lines: &mut Vec<RelativeBytePos>,
                                     multi_byte_chars: &mut Vec<MultiByteChar>,
                                     non_narrow_chars: &mut Vec<NonNarrowChar>) {
             analyze_source_file_generic(src,
                                     src.len(),
-                                    source_file_start_pos,
+                                    RelativeBytePos::from_u32(0),
                                     lines,
                                     multi_byte_chars,
                                     non_narrow_chars);
@@ -207,8 +195,8 @@ cfg_if::cfg_if! {
 fn analyze_source_file_generic(
     src: &str,
     scan_len: usize,
-    output_offset: BytePos,
-    lines: &mut Vec<BytePos>,
+    output_offset: RelativeBytePos,
+    lines: &mut Vec<RelativeBytePos>,
     multi_byte_chars: &mut Vec<MultiByteChar>,
     non_narrow_chars: &mut Vec<NonNarrowChar>,
 ) -> usize {
@@ -230,11 +218,11 @@ fn analyze_source_file_generic(
             // This is an ASCII control character, it could be one of the cases
             // that are interesting to us.
 
-            let pos = BytePos::from_usize(i) + output_offset;
+            let pos = RelativeBytePos::from_usize(i) + output_offset;
 
             match byte {
                 b'\n' => {
-                    lines.push(pos + BytePos(1));
+                    lines.push(pos + RelativeBytePos(1));
                 }
                 b'\t' => {
                     non_narrow_chars.push(NonNarrowChar::Tab(pos));
@@ -250,7 +238,7 @@ fn analyze_source_file_generic(
             let c = src[i..].chars().next().unwrap();
             char_len = c.len_utf8();
 
-            let pos = BytePos::from_usize(i) + output_offset;
+            let pos = RelativeBytePos::from_usize(i) + output_offset;
 
             if char_len > 1 {
                 assert!((2..=4).contains(&char_len));

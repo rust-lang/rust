@@ -194,6 +194,7 @@ where
     D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
 {
+    #[instrument(level = "trace", skip(self), ret)]
     fn place_ty(&self, place: Place<'tcx>) -> Ty<'tcx> {
         place.ty(self.elaborator.body(), self.tcx()).ty
     }
@@ -220,11 +221,9 @@ where
     //
     // FIXME: I think we should just control the flags externally,
     // and then we do not need this machinery.
+    #[instrument(level = "debug")]
     pub fn elaborate_drop(&mut self, bb: BasicBlock) {
-        debug!("elaborate_drop({:?}, {:?})", bb, self);
-        let style = self.elaborator.drop_style(self.path, DropFlagMode::Deep);
-        debug!("elaborate_drop({:?}, {:?}): live - {:?}", bb, self, style);
-        match style {
+        match self.elaborator.drop_style(self.path, DropFlagMode::Deep) {
             DropStyle::Dead => {
                 self.elaborator
                     .patch()
@@ -973,10 +972,10 @@ where
     }
 
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {
-        Operand::Constant(Box::new(Constant {
+        Operand::Constant(Box::new(ConstOperand {
             span: self.source_info.span,
             user_ty: None,
-            literal: ConstantKind::from_usize(self.tcx(), val.into()),
+            const_: Const::from_usize(self.tcx(), val.into()),
         }))
     }
 

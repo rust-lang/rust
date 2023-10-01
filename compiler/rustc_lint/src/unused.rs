@@ -816,8 +816,7 @@ trait UnusedDelimLint {
         let (value, ctx, followed_by_block, left_pos, right_pos, is_kw) = match e.kind {
             // Do not lint `unused_braces` in `if let` expressions.
             If(ref cond, ref block, _)
-                if !matches!(cond.kind, Let(_, _, _))
-                    || Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
+                if !matches!(cond.kind, Let(..)) || Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
             {
                 let left = e.span.lo() + rustc_span::BytePos(2);
                 let right = block.span.lo();
@@ -826,8 +825,7 @@ trait UnusedDelimLint {
 
             // Do not lint `unused_braces` in `while let` expressions.
             While(ref cond, ref block, ..)
-                if !matches!(cond.kind, Let(_, _, _))
-                    || Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
+                if !matches!(cond.kind, Let(..)) || Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
             {
                 let left = e.span.lo() + rustc_span::BytePos(5);
                 let right = block.span.lo();
@@ -955,11 +953,14 @@ declare_lint! {
 
 pub struct UnusedParens {
     with_self_ty_parens: bool,
+    /// `1 as (i32) < 2` parses to ExprKind::Lt
+    /// `1 as i32 < 2` parses to i32::<2[missing angle bracket]
+    parens_in_cast_in_lt: Vec<ast::NodeId>,
 }
 
 impl UnusedParens {
     pub fn new() -> Self {
-        Self { with_self_ty_parens: false }
+        Self { with_self_ty_parens: false, parens_in_cast_in_lt: Vec::new() }
     }
 }
 
@@ -1000,7 +1001,7 @@ impl UnusedDelimLint for UnusedParens {
                     self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
                 }
             }
-            ast::ExprKind::Let(_, ref expr, _) => {
+            ast::ExprKind::Let(_, ref expr, _, _) => {
                 self.check_unused_delims_expr(
                     cx,
                     expr,
@@ -1055,8 +1056,16 @@ impl UnusedParens {
 impl EarlyLintPass for UnusedParens {
     #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
+        if let ExprKind::Binary(op, lhs, _rhs) = &e.kind &&
+            (op.node == ast::BinOpKind::Lt || op.node == ast::BinOpKind::Shl) &&
+            let ExprKind::Cast(_expr, ty) = &lhs.kind &&
+            let ast::TyKind::Paren(_) = &ty.kind
+        {
+            self.parens_in_cast_in_lt.push(ty.id);
+        }
+
         match e.kind {
-            ExprKind::Let(ref pat, _, _) | ExprKind::ForLoop(ref pat, ..) => {
+            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop(ref pat, ..) => {
                 self.check_unused_parens_pat(cx, pat, false, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already
@@ -1101,6 +1110,17 @@ impl EarlyLintPass for UnusedParens {
         <Self as UnusedDelimLint>::check_expr(self, cx, e)
     }
 
+    fn check_expr_post(&mut self, _cx: &EarlyContext<'_>, e: &ast::Expr) {
+        if let ExprKind::Binary(op, lhs, _rhs) = &e.kind &&
+            (op.node == ast::BinOpKind::Lt || op.node == ast::BinOpKind::Shl) &&
+            let ExprKind::Cast(_expr, ty) = &lhs.kind &&
+            let ast::TyKind::Paren(_) = &ty.kind
+        {
+            let id = self.parens_in_cast_in_lt.pop().expect("check_expr and check_expr_post must balance");
+            assert_eq!(id, ty.id, "check_expr, check_ty, and check_expr_post are called, in that order, by the visitor");
+        }
+    }
+
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
         use ast::{Mutability, PatKind::*};
         let keep_space = (false, false);
@@ -1141,6 +1161,11 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let ast::TyKind::Paren(_) = ty.kind &&
+            Some(&ty.id) == self.parens_in_cast_in_lt.last()
+        {
+            return;
+        }
         match &ty.kind {
             ast::TyKind::Array(_, len) => {
                 self.check_unused_delims_expr(
@@ -1284,7 +1309,7 @@ impl UnusedDelimLint for UnusedBraces {
                     }
                 }
             }
-            ast::ExprKind::Let(_, ref expr, _) => {
+            ast::ExprKind::Let(_, ref expr, _, _) => {
                 self.check_unused_delims_expr(
                     cx,
                     expr,

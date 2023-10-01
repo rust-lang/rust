@@ -11,7 +11,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
@@ -28,7 +28,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Copy, Clone, Debug, TypeVisitable, Lift, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, TypeVisitable, PartialEq, Eq)]
 #[rustc_pass_by_value]
 pub enum TypeError<'tcx> {
     Mismatch,
@@ -242,8 +242,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
             ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
-            ty::GeneratorWitness(..) |
-            ty::GeneratorWitnessMIR(..) => "generator witness".into(),
+            ty::GeneratorWitness(..) => "generator witness".into(),
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
             ty::Infer(ty::IntVar(_)) => "integer".into(),
             ty::Infer(ty::FloatVar(_)) => "floating-point number".into(),
@@ -295,7 +294,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
             ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
-            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => "generator witness".into(),
+            ty::GeneratorWitness(..) => "generator witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),

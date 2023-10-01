@@ -891,18 +891,32 @@ impl<'a> Parser<'a> {
             // that we do not use the try operator when parsing the type because
             // if it fails then we get a parser error which we don't want (we're trying
             // to recover from errors, not make more).
-            let path = if self.may_recover()
-                && matches!(ty.kind, TyKind::Ptr(..) | TyKind::Ref(..))
-                && let TyKind::Path(_, path) = &ty.peel_refs().kind {
-                // Just get the indirection part of the type.
-                let span = ty.span.until(path.span);
+            let path = if self.may_recover() {
+                let (span, message, sugg, path, applicability) = match &ty.kind {
+                    TyKind::Ptr(..) | TyKind::Ref(..) if let TyKind::Path(_, path) = &ty.peel_refs().kind => {
+                        (
+                            ty.span.until(path.span),
+                            "consider removing the indirection",
+                            "",
+                            path,
+                            Applicability::MaybeIncorrect
+                        )
+                    }
+                    TyKind::ImplTrait(_, bounds)
+                        if let [GenericBound::Trait(tr, ..), ..] = bounds.as_slice() =>
+                    {
+                        (
+                            ty.span.until(tr.span),
+                            "use the trait bounds directly",
+                            "",
+                            &tr.trait_ref.path,
+                            Applicability::MachineApplicable
+                        )
+                    }
+                    _ => return Err(err)
+                };
 
-                err.span_suggestion_verbose(
-                    span,
-                    "consider removing the indirection",
-                    "",
-                    Applicability::MaybeIncorrect,
-                );
+                err.span_suggestion_verbose(span, message, sugg, applicability);
 
                 path.clone()
             } else {

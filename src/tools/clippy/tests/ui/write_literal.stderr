@@ -5,6 +5,7 @@ LL |     write!(v, "Hello {}", "world");
    |                           ^^^^^^^
    |
    = note: `-D clippy::write-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::write_literal)]`
 help: try
    |
 LL -     write!(v, "Hello {}", "world");
@@ -12,7 +13,7 @@ LL +     write!(v, "Hello world");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:32:39
+  --> $DIR/write_literal.rs:34:39
    |
 LL |     writeln!(v, "Hello {} {}", world, "world");
    |                                       ^^^^^^^
@@ -24,7 +25,7 @@ LL +     writeln!(v, "Hello {} world", world);
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:33:29
+  --> $DIR/write_literal.rs:36:29
    |
 LL |     writeln!(v, "Hello {}", "world");
    |                             ^^^^^^^
@@ -36,7 +37,7 @@ LL +     writeln!(v, "Hello world");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:34:29
+  --> $DIR/write_literal.rs:38:29
    |
 LL |     writeln!(v, "{} {:.4}", "a literal", 5);
    |                             ^^^^^^^^^^^
@@ -48,7 +49,7 @@ LL +     writeln!(v, "a literal {:.4}", 5);
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:39:28
+  --> $DIR/write_literal.rs:44:28
    |
 LL |     writeln!(v, "{0} {1}", "hello", "world");
    |                            ^^^^^^^
@@ -60,7 +61,7 @@ LL +     writeln!(v, "hello {1}", "world");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:39:37
+  --> $DIR/write_literal.rs:44:37
    |
 LL |     writeln!(v, "{0} {1}", "hello", "world");
    |                                     ^^^^^^^
@@ -72,7 +73,7 @@ LL +     writeln!(v, "{0} world", "hello");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:40:37
+  --> $DIR/write_literal.rs:47:37
    |
 LL |     writeln!(v, "{1} {0}", "hello", "world");
    |                                     ^^^^^^^
@@ -84,7 +85,7 @@ LL +     writeln!(v, "world {0}", "hello");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:40:28
+  --> $DIR/write_literal.rs:47:28
    |
 LL |     writeln!(v, "{1} {0}", "hello", "world");
    |                            ^^^^^^^
@@ -96,7 +97,7 @@ LL +     writeln!(v, "{1} hello", "world");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:43:38
+  --> $DIR/write_literal.rs:52:38
    |
 LL |     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
    |                                      ^^^^^^^
@@ -108,7 +109,7 @@ LL +     writeln!(v, "hello {bar}", bar = "world");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:43:53
+  --> $DIR/write_literal.rs:52:53
    |
 LL |     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
    |                                                     ^^^^^^^
@@ -120,7 +121,7 @@ LL +     writeln!(v, "{foo} world", foo = "hello");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:44:53
+  --> $DIR/write_literal.rs:55:53
    |
 LL |     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
    |                                                     ^^^^^^^
@@ -132,7 +133,7 @@ LL +     writeln!(v, "world {foo}", foo = "hello");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:44:38
+  --> $DIR/write_literal.rs:55:38
    |
 LL |     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
    |                                      ^^^^^^^

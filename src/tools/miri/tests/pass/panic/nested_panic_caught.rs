@@ -1,6 +1,6 @@
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
-//@normalize-stderr-test: "\n  +[0-9]+:[^\n]+" -> "$1"
-//@normalize-stderr-test: "\n at [^\n]+" -> "$1"
+//@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
+//@normalize-stderr-test: "\n +at [^\n]+" -> ""
 
 // Checks that nested panics work correctly.
 

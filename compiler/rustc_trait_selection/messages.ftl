@@ -27,6 +27,8 @@ trait_selection_inherent_projection_normalization_overflow = overflow evaluating
 trait_selection_invalid_on_clause_in_rustc_on_unimplemented = invalid `on`-clause in `#[rustc_on_unimplemented]`
     .label = invalid on-clause here
 
+trait_selection_malformed_on_unimplemented_attr = malformed `on_unimplemented` attribute
+
 trait_selection_negative_positive_conflict = found both positive and negative implementation of trait `{$trait_desc}`{$self_desc ->
         [none] {""}
        *[default] {" "}for type `{$self_desc}`
@@ -40,4 +42,7 @@ trait_selection_no_value_in_rustc_on_unimplemented = this attribute must have a 
     .label = expected value here
     .note = eg `#[rustc_on_unimplemented(message="foo")]`
 
+trait_selection_trait_has_no_impls = this trait has no implementations, consider adding one
+
+trait_selection_ty_alias_overflow = in case this is a recursive type alias, consider using a struct, enum, or union instead
 trait_selection_unable_to_construct_constant_value = unable to construct a constant value for the unevaluated constant {$unevaluated}

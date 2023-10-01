@@ -3,10 +3,16 @@
 
 fn main() {
     eprint!("Hello\n");
+    //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
+    //~| NOTE: `-D clippy::print-with-newline` implied by `-D warnings`
     eprint!("Hello {}\n", "world");
+    //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
     eprint!("Hello {} {}\n", "world", "#2");
+    //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
     eprint!("{}\n", 1265);
+    //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
     eprint!("\n");
+    //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
 
     // these are all fine
     eprint!("");
@@ -20,23 +26,30 @@ fn main() {
     eprint!("\n\n");
     eprint!("like eof\n\n");
     eprint!("Hello {} {}\n\n", "world", "#2");
-    eprintln!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
-    eprintln!("\nbla\n\n"); // #3126
+    // #3126
+    eprintln!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n");
+    // #3126
+    eprintln!("\nbla\n\n");
 
     // Escaping
-    eprint!("\\n"); // #3514
-    eprint!("\\\n"); // should fail
+    // #3514
+    eprint!("\\n");
+    eprint!("\\\n");
+    //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
     eprint!("\\\\n");
 
     // Raw strings
-    eprint!(r"\n"); // #3778
+    // #3778
+    eprint!(r"\n");
 
     // Literal newlines should also fail
     eprint!(
+        //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
         "
 "
     );
     eprint!(
+        //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
         r"
 "
     );
@@ -45,6 +58,7 @@ fn main() {
     eprint!("\r\n");
     eprint!("foo\r\n");
     eprint!("\\r\n");
+    //~^ ERROR: using `eprint!()` with a format string that ends in a single newline
     eprint!("foo\rbar\n");
 
     // Ignore expanded format strings

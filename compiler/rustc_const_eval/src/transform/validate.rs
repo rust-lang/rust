@@ -6,19 +6,15 @@ use rustc_index::IndexVec;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{
-    traversal, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping, Local, Location,
-    MirPass, MirPhase, NonDivergingIntrinsic, NullOp, Operand, Place, PlaceElem, PlaceRef,
-    ProjectionElem, RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind,
-    Terminator, TerminatorKind, UnOp, UnwindAction, UnwindTerminateReason, VarDebugInfo,
-    VarDebugInfoContents, START_BLOCK,
-};
+use rustc_middle::mir::*;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
+
+use crate::util::is_within_packed;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -93,6 +89,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         cfg_checker.visit_body(body);
         cfg_checker.check_cleanup_control_flow();
 
+        // Also run the TypeChecker.
         for (location, msg) in validate_types(tcx, self.mir_phase, param_env, body) {
             cfg_checker.fail(location, msg);
         }
@@ -427,14 +424,34 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_unwind_edge(location, *unwind);
 
                 // The call destination place and Operand::Move place used as an argument might be
-                // passed by a reference to the callee. Consequently they must be non-overlapping.
-                // Currently this simply checks for duplicate places.
+                // passed by a reference to the callee. Consequently they must be non-overlapping
+                // and cannot be packed. Currently this simply checks for duplicate places.
                 self.place_cache.clear();
                 self.place_cache.insert(destination.as_ref());
+                if is_within_packed(self.tcx, &self.body.local_decls, *destination).is_some() {
+                    // This is bad! The callee will expect the memory to be aligned.
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered packed place in `Call` terminator destination: {:?}",
+                            terminator.kind,
+                        ),
+                    );
+                }
                 let mut has_duplicates = false;
                 for arg in args {
                     if let Operand::Move(place) = arg {
                         has_duplicates |= !self.place_cache.insert(place.as_ref());
+                        if is_within_packed(self.tcx, &self.body.local_decls, *place).is_some() {
+                            // This is bad! The callee will expect the memory to be aligned.
+                            self.fail(
+                                location,
+                                format!(
+                                    "encountered `Move` of a packed place in `Call` terminator: {:?}",
+                                    terminator.kind,
+                                ),
+                            );
+                        }
                     }
                 }
 
@@ -442,7 +459,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(
                         location,
                         format!(
-                            "encountered overlapping memory in `Call` terminator: {:?}",
+                            "encountered overlapping memory in `Move` arguments to `Call` terminator: {:?}",
                             terminator.kind,
                         ),
                     );
@@ -541,6 +558,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
     }
 }
 
+/// A faster version of the validation pass that only checks those things which may break when
+/// instantiating any generic parameters.
 pub fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,
@@ -614,6 +633,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         location: Location,
     ) {
         match elem {
+            ProjectionElem::OpaqueCast(ty)
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
+            {
+                self.fail(
+                    location,
+                    format!("explicit opaque type cast to `{ty}` after `RevealAll`"),
+                )
+            }
             ProjectionElem::Index(index) => {
                 let index_ty = self.body.local_decls[index].ty;
                 if index_ty != self.tcx.types.usize {
@@ -732,37 +759,37 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &VarDebugInfo<'tcx>) {
-        let check_place = |this: &mut Self, place: Place<'_>| {
-            if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
-                this.fail(
+        if let Some(box VarDebugInfoFragment { ty, ref projection }) = debuginfo.composite {
+            if ty.is_union() || ty.is_enum() {
+                self.fail(
                     START_BLOCK.start_location(),
-                    format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
+                    format!("invalid type {ty:?} in debuginfo for {:?}", debuginfo.name),
                 );
             }
-        };
+            if projection.is_empty() {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    format!("invalid empty projection in debuginfo for {:?}", debuginfo.name),
+                );
+            }
+            if projection.iter().any(|p| !matches!(p, PlaceElem::Field(..))) {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    format!(
+                        "illegal projection {:?} in debuginfo for {:?}",
+                        projection, debuginfo.name
+                    ),
+                );
+            }
+        }
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
-                check_place(self, place);
-            }
-            VarDebugInfoContents::Composite { ty, ref fragments } => {
-                for f in fragments {
-                    check_place(self, f.contents);
-                    if ty.is_union() || ty.is_enum() {
-                        self.fail(
-                            START_BLOCK.start_location(),
-                            format!("invalid type {ty:?} for composite debuginfo"),
-                        );
-                    }
-                    if f.projection.iter().any(|p| !matches!(p, PlaceElem::Field(..))) {
-                        self.fail(
-                            START_BLOCK.start_location(),
-                            format!(
-                                "illegal projection {:?} in debuginfo for {:?}",
-                                f.projection, debuginfo.name
-                            ),
-                        );
-                    }
+                if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
+                    self.fail(
+                        START_BLOCK.start_location(),
+                        format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
+                    );
                 }
             }
         }

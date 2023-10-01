@@ -28,6 +28,7 @@ pub struct PanicInfo<'a> {
     message: Option<&'a fmt::Arguments<'a>>,
     location: &'a Location<'a>,
     can_unwind: bool,
+    force_no_backtrace: bool,
 }
 
 impl<'a> PanicInfo<'a> {
@@ -42,9 +43,10 @@ impl<'a> PanicInfo<'a> {
         message: Option<&'a fmt::Arguments<'a>>,
         location: &'a Location<'a>,
         can_unwind: bool,
+        force_no_backtrace: bool,
     ) -> Self {
         struct NoPayload;
-        PanicInfo { location, message, payload: &NoPayload, can_unwind }
+        PanicInfo { location, message, payload: &NoPayload, can_unwind, force_no_backtrace }
     }
 
     #[unstable(
@@ -140,6 +142,17 @@ impl<'a> PanicInfo<'a> {
     #[unstable(feature = "panic_can_unwind", issue = "92988")]
     pub fn can_unwind(&self) -> bool {
         self.can_unwind
+    }
+
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` and related macros",
+        issue = "none"
+    )]
+    #[doc(hidden)]
+    #[inline]
+    pub fn force_no_backtrace(&self) -> bool {
+        self.force_no_backtrace
     }
 }
 

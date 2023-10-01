@@ -16,10 +16,6 @@
 
 use self::TargetLint::*;
 
-use crate::errors::{
-    CheckNameDeprecated, CheckNameRemoved, CheckNameRenamed, CheckNameUnknown,
-    CheckNameUnknownTool, RequestedLevel, UnsupportedGroup,
-};
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
@@ -328,58 +324,6 @@ impl LintStore {
                 };
             },
         }
-    }
-
-    /// Checks the validity of lint names derived from the command line.
-    pub fn check_lint_name_cmdline(
-        &self,
-        sess: &Session,
-        lint_name: &str,
-        level: Level,
-        registered_tools: &RegisteredTools,
-    ) {
-        let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
-        if lint_name_only == crate::WARNINGS.name_lower() && matches!(level, Level::ForceWarn(_)) {
-            sess.emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
-            return;
-        }
-        match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
-            CheckLintNameResult::Renamed(replace) => {
-                sess.emit_warning(CheckNameRenamed {
-                    lint_name,
-                    replace: &replace,
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            CheckLintNameResult::Removed(reason) => {
-                sess.emit_warning(CheckNameRemoved {
-                    lint_name,
-                    reason: &reason,
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            CheckLintNameResult::NoLint(suggestion) => {
-                sess.emit_err(CheckNameUnknown {
-                    lint_name,
-                    suggestion,
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            CheckLintNameResult::Tool(Err((Some(_), new_name))) => {
-                sess.emit_warning(CheckNameDeprecated {
-                    lint_name,
-                    new_name: &new_name,
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            CheckLintNameResult::NoTool => {
-                sess.emit_err(CheckNameUnknownTool {
-                    tool_name: tool_name.unwrap(),
-                    sub: RequestedLevel { level, lint_name },
-                });
-            }
-            _ => {}
-        };
     }
 
     /// True if this symbol represents a lint group name.
@@ -1371,6 +1315,91 @@ impl<'tcx> LateContext<'tcx> {
                 tcx.try_normalize_erasing_regions(self.param_env, proj).ok()
             })
     }
+
+    /// If the given expression is a local binding, find the initializer expression.
+    /// If that initializer expression is another local binding, find its initializer again.
+    ///
+    /// This process repeats as long as possible (but usually no more than once).
+    /// Type-check adjustments are not taken in account in this function.
+    ///
+    /// Examples:
+    /// ```
+    /// let abc = 1;
+    /// let def = abc + 2;
+    /// //        ^^^^^^^ output
+    /// let def = def;
+    /// dbg!(def);
+    /// //   ^^^ input
+    /// ```
+    pub fn expr_or_init<'a>(&self, mut expr: &'a hir::Expr<'tcx>) -> &'a hir::Expr<'tcx> {
+        expr = expr.peel_blocks();
+
+        while let hir::ExprKind::Path(ref qpath) = expr.kind
+            && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
+                Res::Local(hir_id) => self.tcx.hir().find_parent(hir_id),
+                _ => None,
+            }
+            && let Some(init) = match parent_node {
+                hir::Node::Expr(expr) => Some(expr),
+                hir::Node::Local(hir::Local { init, .. }) => *init,
+                _ => None
+            }
+        {
+            expr = init.peel_blocks();
+        }
+        expr
+    }
+
+    /// If the given expression is a local binding, find the initializer expression.
+    /// If that initializer expression is another local or **outside** (`const`/`static`)
+    /// binding, find its initializer again.
+    ///
+    /// This process repeats as long as possible (but usually no more than once).
+    /// Type-check adjustments are not taken in account in this function.
+    ///
+    /// Examples:
+    /// ```
+    /// const ABC: i32 = 1;
+    /// //               ^ output
+    /// let def = ABC;
+    /// dbg!(def);
+    /// //   ^^^ input
+    ///
+    /// // or...
+    /// let abc = 1;
+    /// let def = abc + 2;
+    /// //        ^^^^^^^ output
+    /// dbg!(def);
+    /// //   ^^^ input
+    /// ```
+    pub fn expr_or_init_with_outside_body<'a>(
+        &self,
+        mut expr: &'a hir::Expr<'tcx>,
+    ) -> &'a hir::Expr<'tcx> {
+        expr = expr.peel_blocks();
+
+        while let hir::ExprKind::Path(ref qpath) = expr.kind
+            && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
+                Res::Local(hir_id) => self.tcx.hir().find_parent(hir_id),
+                Res::Def(_, def_id) => self.tcx.hir().get_if_local(def_id),
+                _ => None,
+            }
+            && let Some(init) = match parent_node {
+                hir::Node::Expr(expr) => Some(expr),
+                hir::Node::Local(hir::Local { init, .. }) => *init,
+                hir::Node::Item(item) => match item.kind {
+                    hir::ItemKind::Const(.., body_id) | hir::ItemKind::Static(.., body_id) => {
+                        Some(self.tcx.hir().body(body_id).value)
+                    }
+                    _ => None
+                }
+                _ => None
+            }
+        {
+            expr = init.peel_blocks();
+        }
+        expr
+    }
 }
 
 impl<'tcx> abi::HasDataLayout for LateContext<'tcx> {
@@ -1400,16 +1429,5 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LateContext<'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
         err
-    }
-}
-
-pub fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
-    match lint_name.split_once("::") {
-        Some((tool_name, lint_name)) => {
-            let tool_name = Symbol::intern(tool_name);
-
-            (Some(tool_name), lint_name)
-        }
-        None => (None, lint_name),
     }
 }

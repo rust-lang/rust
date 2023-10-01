@@ -5,57 +5,58 @@ LL |             fn foo() {}
    |             ^^^^^^^^^^^
    |
 note: existing `foo` defined here
-  --> $DIR/same_name_method.rs:25:13
+  --> $DIR/same_name_method.rs:26:13
    |
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
    = note: `-D clippy::same-name-method` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::same_name_method)]`
 
 error: method's name is the same as an existing method in a trait
-  --> $DIR/same_name_method.rs:35:13
+  --> $DIR/same_name_method.rs:36:13
    |
 LL |             fn clone() {}
    |             ^^^^^^^^^^^^^
    |
 note: existing `clone` defined here
-  --> $DIR/same_name_method.rs:31:18
+  --> $DIR/same_name_method.rs:32:18
    |
 LL |         #[derive(Clone)]
    |                  ^^^^^
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: method's name is the same as an existing method in a trait
-  --> $DIR/same_name_method.rs:45:13
+  --> $DIR/same_name_method.rs:47:13
    |
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
    |
 note: existing `foo` defined here
-  --> $DIR/same_name_method.rs:49:13
+  --> $DIR/same_name_method.rs:52:13
    |
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
 
 error: method's name is the same as an existing method in a trait
-  --> $DIR/same_name_method.rs:59:13
+  --> $DIR/same_name_method.rs:62:13
    |
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
    |
 note: existing `foo` defined here
-  --> $DIR/same_name_method.rs:62:9
+  --> $DIR/same_name_method.rs:66:9
    |
 LL |         impl T1 for S {}
    |         ^^^^^^^^^^^^^^^^
 
 error: method's name is the same as an existing method in a trait
-  --> $DIR/same_name_method.rs:71:13
+  --> $DIR/same_name_method.rs:75:13
    |
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
    |
 note: existing `foo` defined here
-  --> $DIR/same_name_method.rs:74:9
+  --> $DIR/same_name_method.rs:79:9
    |
 LL |         impl T1 for S {}
    |         ^^^^^^^^^^^^^^^^

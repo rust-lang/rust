@@ -5,7 +5,7 @@ LL | struct ConstString<const T: &'static str>;
    |                             ^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: `&'static [u8]` is forbidden as the type of a const generic parameter
   --> $DIR/slice-const-param-mismatch.rs:9:28
@@ -14,7 +14,7 @@ LL | struct ConstBytes<const T: &'static [u8]>;
    |                            ^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: aborting due to 2 previous errors
 

@@ -14,15 +14,33 @@ pub enum Abi {
     // hashing tests. These are used in many places, so giving them stable values reduces test
     // churn. The specific values are meaningless.
     Rust,
-    C { unwind: bool },
-    Cdecl { unwind: bool },
-    Stdcall { unwind: bool },
-    Fastcall { unwind: bool },
-    Vectorcall { unwind: bool },
-    Thiscall { unwind: bool },
-    Aapcs { unwind: bool },
-    Win64 { unwind: bool },
-    SysV64 { unwind: bool },
+    C {
+        unwind: bool,
+    },
+    Cdecl {
+        unwind: bool,
+    },
+    Stdcall {
+        unwind: bool,
+    },
+    Fastcall {
+        unwind: bool,
+    },
+    Vectorcall {
+        unwind: bool,
+    },
+    Thiscall {
+        unwind: bool,
+    },
+    Aapcs {
+        unwind: bool,
+    },
+    Win64 {
+        unwind: bool,
+    },
+    SysV64 {
+        unwind: bool,
+    },
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
@@ -32,11 +50,16 @@ pub enum Abi {
     AvrNonBlockingInterrupt,
     CCmseNonSecureCall,
     Wasm,
-    System { unwind: bool },
+    System {
+        unwind: bool,
+    },
     RustIntrinsic,
     RustCall,
     PlatformIntrinsic,
     Unadjusted,
+    /// For things unlikely to be called, where reducing register pressure in
+    /// `extern "Rust"` callers is worth paying extra cost in the callee.
+    /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
     RustCold,
     RiscvInterruptM,
     RiscvInterruptS,
@@ -45,7 +68,7 @@ pub enum Abi {
 impl Abi {
     pub fn supports_varargs(self) -> bool {
         // * C and Cdecl obviously support varargs.
-        // * C can be based on SysV64 or Win64, so they must support varargs.
+        // * C can be based on Aapcs, SysV64 or Win64, so they must support varargs.
         // * EfiApi is based on Win64 or C, so it also supports it.
         //
         // * Stdcall does not, because it would be impossible for the callee to clean
@@ -56,6 +79,7 @@ impl Abi {
         match self {
             Self::C { .. }
             | Self::Cdecl { .. }
+            | Self::Aapcs { .. }
             | Self::Win64 { .. }
             | Self::SysV64 { .. }
             | Self::EfiApi => true,

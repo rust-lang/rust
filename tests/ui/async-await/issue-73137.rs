@@ -2,9 +2,6 @@
 
 // run-pass
 // edition:2018
-// revisions: normal drop-tracking
-// [normal]compile-flags: -Zdrop-tracking=no
-// [drop-tracking]compile-flags: -Zdrop-tracking
 
 #![allow(dead_code)]
 use std::future::Future;

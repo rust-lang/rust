@@ -1,0 +1,8 @@
+error: cannot capture late-bound lifetime in type alias impl trait
+  --> $DIR/escaping-bound-var.rs:9:57
+   |
+LL | pub type Foo = impl for<'a> Trait<'a, Assoc = impl Test<'a>>;
+   |                         -- lifetime defined here        ^^
+
+error: aborting due to previous error
+

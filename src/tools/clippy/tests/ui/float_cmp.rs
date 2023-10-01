@@ -6,7 +6,7 @@
     clippy::unnecessary_operation,
     clippy::cast_lossless
 )]
-
+//@no-rustfix
 use std::ops::Add;
 
 const ZERO: f32 = 0.0;
@@ -41,12 +41,25 @@ impl PartialEq for X {
     }
 }
 
+impl PartialEq<f32> for X {
+    fn eq(&self, o: &f32) -> bool {
+        if self.val.is_nan() {
+            o.is_nan()
+        } else {
+            self.val == *o // no error, inside "eq" fn
+        }
+    }
+}
+
 fn main() {
     ZERO == 0f32; //no error, comparison with zero is ok
     1.0f32 != f32::INFINITY; // also comparison with infinity
     1.0f32 != f32::NEG_INFINITY; // and negative infinity
     ZERO == 0.0; //no error, comparison with zero is ok
     ZERO + ZERO != 1.0; //no error, comparison with zero is ok
+
+    let x = X { val: 1.0 };
+    x == 1.0; // no error, custom type that implement PartialOrder for float is not checked
 
     ONE == 1f32;
     ONE == 1.0 + 0.0;
@@ -55,14 +68,20 @@ fn main() {
     ONE != 0.0; // no error, comparison with zero is ok
     twice(ONE) != ONE;
     ONE as f64 != 2.0;
+    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
     ONE as f64 != 0.0; // no error, comparison with zero is ok
 
     let x: f64 = 1.0;
 
     x == 1.0;
+    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
     x != 0f64; // no error, comparison with zero is ok
 
     twice(x) != twice(ONE as f64);
+    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
     x < 0.0; // no errors, lower or greater comparisons need no fuzzyness
     x > 0.0;
@@ -83,12 +102,18 @@ fn main() {
 
     ZERO_ARRAY[i] == NON_ZERO_ARRAY[j]; // ok, because lhs is zero regardless of i
     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
+    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
     let a1: [f32; 1] = [0.0];
     let a2: [f32; 1] = [1.1];
 
     a1 == a2;
+    //~^ ERROR: strict comparison of `f32` or `f64` arrays
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
     a1[0] == a2[0];
+    //~^ ERROR: strict comparison of `f32` or `f64`
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
     // no errors - comparing signums is ok
     let x32 = 3.21f32;

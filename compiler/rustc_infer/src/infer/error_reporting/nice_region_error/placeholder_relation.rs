@@ -36,15 +36,13 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                     ty::BrNamed(def_id, symbol) => {
                         (Some(self.tcx().def_span(def_id)), Some(symbol))
                     }
-                    ty::BrAnon(span) => (*span, None),
-                    ty::BrEnv => (None, None),
+                    ty::BrAnon | ty::BrEnv => (None, None),
                 };
                 let (sup_span, sup_symbol) = match sup_name {
                     ty::BrNamed(def_id, symbol) => {
                         (Some(self.tcx().def_span(def_id)), Some(symbol))
                     }
-                    ty::BrAnon(span) => (*span, None),
-                    ty::BrEnv => (None, None),
+                    ty::BrAnon | ty::BrEnv => (None, None),
                 };
                 let diag = match (sub_span, sup_span, sub_symbol, sup_symbol) {
                     (Some(sub_span), Some(sup_span), Some(&sub_symbol), Some(&sup_symbol)) => {

@@ -12,9 +12,7 @@ mod tests {
     use super::*;
 
     fn test_thing() {
-        let thing: crate::thing::Thing = Thing::Bar;
-        // FIXME: `thing` should refer to `crate::Thing`,
-        // FIXME: but doesn't currently refer to it due to backward compatibility
+        let thing: crate::Thing = Thing::Foo;
     }
 }
 

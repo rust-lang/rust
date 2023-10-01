@@ -1,4 +1,4 @@
-//@aux-build:../../ui/auxiliary/proc_macros.rs:proc-macro
+//@aux-build:../../ui/auxiliary/proc_macros.rs
 //@aux-build:helper.rs
 //@revisions: allow_crates disallow_crates
 //@[allow_crates] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_crates

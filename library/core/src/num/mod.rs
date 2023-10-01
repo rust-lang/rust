@@ -44,11 +44,10 @@ mod uint_macros; // import uint_impl!
 mod error;
 mod int_log10;
 mod nonzero;
-#[unstable(feature = "saturating_int_impl", issue = "87920")]
 mod saturating;
 mod wrapping;
 
-#[unstable(feature = "saturating_int_impl", issue = "87920")]
+#[stable(feature = "saturating_int_impl", since = "CURRENT_RUSTC_VERSION")]
 pub use saturating::Saturating;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use wrapping::Wrapping;

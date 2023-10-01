@@ -7,8 +7,10 @@ async fn bad() -> u32 {
 }
 
 async fn bad_reason() -> u32 {
-    let _x = Ipv4Addr::new(127, 0, 0, 1);
-    baz().await
+    let x = Ipv4Addr::new(127, 0, 0, 1);
+    let y = baz().await;
+    let _x = x;
+    y
 }
 
 async fn good() -> u32 {

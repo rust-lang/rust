@@ -3,7 +3,7 @@ import * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import { type Ctx, type Cmd, type CtxInit, discoverWorkspace } from "./ctx";
+import type { Ctx, Cmd, CtxInit } from "./ctx";
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { type RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
@@ -871,22 +871,16 @@ export function rebuildProcMacros(ctx: CtxInit): Cmd {
 
 export function addProject(ctx: CtxInit): Cmd {
     return async () => {
-        const discoverProjectCommand = ctx.config.discoverProjectCommand;
-        if (!discoverProjectCommand) {
+        const extensionName = ctx.config.discoverProjectRunner;
+        // this command shouldn't be enabled in the first place if this isn't set.
+        if (!extensionName) {
             return;
         }
 
-        const workspaces: JsonProject[] = await Promise.all(
-            vscode.workspace.textDocuments
-                .filter(isRustDocument)
-                .map(async (file): Promise<JsonProject> => {
-                    return discoverWorkspace([file], discoverProjectCommand, {
-                        cwd: path.dirname(file.uri.fsPath),
-                    });
-                }),
-        );
+        const command = `${extensionName}.discoverWorkspaceCommand`;
+        const project: JsonProject = await vscode.commands.executeCommand(command);
 
-        ctx.addToDiscoveredWorkspaces(workspaces);
+        ctx.addToDiscoveredWorkspaces([project]);
 
         // this is a workaround to avoid needing writing the `rust-project.json` into
         // a workspace-level VS Code-specific settings folder. We'd like to keep the

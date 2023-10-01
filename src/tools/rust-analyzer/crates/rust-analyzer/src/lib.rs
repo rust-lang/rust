@@ -23,18 +23,13 @@ mod cargo_target_spec;
 mod diagnostics;
 mod diff;
 mod dispatch;
-mod from_proto;
 mod global_state;
 mod line_index;
-mod lsp_utils;
 mod main_loop;
-mod markdown;
 mod mem_docs;
 mod op_queue;
 mod reload;
-mod semantic_tokens;
 mod task_pool;
-mod to_proto;
 mod version;
 
 mod handlers {
@@ -43,12 +38,11 @@ mod handlers {
 }
 
 pub mod config;
-pub mod lsp_ext;
+pub mod lsp;
+use self::lsp::ext as lsp_ext;
 
 #[cfg(test)]
 mod integrated_benchmarks;
-
-use std::fmt;
 
 use serde::de::DeserializeOwned;
 
@@ -61,23 +55,3 @@ pub fn from_json<T: DeserializeOwned>(
     serde_json::from_value(json.clone())
         .map_err(|e| anyhow::format_err!("Failed to deserialize {what}: {e}; {json}"))
 }
-
-#[derive(Debug)]
-struct LspError {
-    code: i32,
-    message: String,
-}
-
-impl LspError {
-    fn new(code: i32, message: String) -> LspError {
-        LspError { code, message }
-    }
-}
-
-impl fmt::Display for LspError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Language Server request failed with {}. ({})", self.code, self.message)
-    }
-}
-
-impl std::error::Error for LspError {}

@@ -101,7 +101,7 @@ pub(crate) struct IndexItem {
     pub(crate) path: String,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
-    pub(crate) parent_idx: Option<usize>,
+    pub(crate) parent_idx: Option<isize>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
     pub(crate) deprecation: Option<Deprecation>,
@@ -122,7 +122,10 @@ impl Serialize for RenderType {
         let id = match &self.id {
             // 0 is a sentinel, everything else is one-indexed
             None => 0,
-            Some(RenderTypeId::Index(idx)) => idx + 1,
+            // concrete type
+            Some(RenderTypeId::Index(idx)) if *idx >= 0 => idx + 1,
+            // generic type parameter
+            Some(RenderTypeId::Index(idx)) => *idx,
             _ => panic!("must convert render types to indexes before serializing"),
         };
         if let Some(generics) = &self.generics {
@@ -140,7 +143,7 @@ impl Serialize for RenderType {
 pub(crate) enum RenderTypeId {
     DefId(DefId),
     Primitive(clean::PrimitiveType),
-    Index(usize),
+    Index(isize),
 }
 
 /// Full type of functions/methods in the search index.
@@ -148,6 +151,7 @@ pub(crate) enum RenderTypeId {
 pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
+    where_clause: Vec<Vec<RenderType>>,
 }
 
 impl Serialize for IndexItemFunctionType {
@@ -170,9 +174,16 @@ impl Serialize for IndexItemFunctionType {
                 _ => seq.serialize_element(&self.inputs)?,
             }
             match &self.output[..] {
-                [] => {}
+                [] if self.where_clause.is_empty() => {}
                 [one] if one.generics.is_none() => seq.serialize_element(one)?,
                 _ => seq.serialize_element(&self.output)?,
+            }
+            for constraint in &self.where_clause {
+                if let [one] = &constraint[..] && one.generics.is_none() {
+                    seq.serialize_element(one)?;
+                } else {
+                    seq.serialize_element(constraint)?;
+                }
             }
             seq.end()
         }
@@ -403,7 +414,8 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
             error_codes: shared.codes,
             edition: shared.edition(),
             playground: &shared.playground,
-            heading_offset: HeadingOffset::H1
+            heading_offset: HeadingOffset::H1,
+            custom_code_classes_in_docs: false,
         }
         .into_string()
     )
@@ -437,6 +449,7 @@ fn render_markdown<'a, 'cx: 'a>(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(move |f| {
+        let custom_code_classes_in_docs = cx.tcx().features().custom_code_classes_in_docs;
         write!(
             f,
             "<div class=\"docblock\">{}</div>",
@@ -448,6 +461,7 @@ fn render_markdown<'a, 'cx: 'a>(
                 edition: cx.shared.edition(),
                 playground: &cx.shared.playground,
                 heading_offset,
+                custom_code_classes_in_docs,
             }
             .into_string()
         )
@@ -1117,13 +1131,13 @@ pub(crate) fn render_all_impls(
 fn render_assoc_items<'a, 'cx: 'a>(
     cx: &'a mut Context<'cx>,
     containing_item: &'a clean::Item,
-    it: DefId,
+    did: DefId,
     what: AssocItemRender<'a>,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     let mut derefs = DefIdSet::default();
-    derefs.insert(it);
+    derefs.insert(did);
     display_fn(move |f| {
-        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs);
+        render_assoc_items_inner(f, cx, containing_item, did, what, &mut derefs);
         Ok(())
     })
 }
@@ -1132,15 +1146,17 @@ fn render_assoc_items_inner(
     mut w: &mut dyn fmt::Write,
     cx: &mut Context<'_>,
     containing_item: &clean::Item,
-    it: DefId,
+    did: DefId,
     what: AssocItemRender<'_>,
     derefs: &mut DefIdSet,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
-    let cache = &shared.cache;
-    let Some(v) = cache.impls.get(&it) else { return };
-    let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
+    let v = shared.all_impls_for_item(containing_item, did);
+    let v = v.as_slice();
+    let (non_trait, traits): (Vec<&Impl>, _) =
+        v.iter().partition(|i| i.inner_impl().trait_.is_none());
+    let mut saw_impls = FxHashSet::default();
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::html();
         let (render_mode, id, class_html) = match what {
@@ -1169,6 +1185,9 @@ fn render_assoc_items_inner(
         };
         let mut impls_buf = Buffer::html();
         for i in &non_trait {
+            if !saw_impls.insert(i.def_id()) {
+                continue;
+            }
             render_impl(
                 &mut impls_buf,
                 cx,
@@ -1214,8 +1233,10 @@ fn render_assoc_items_inner(
 
         let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
             traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
+        let (blanket_impl, concrete): (Vec<&Impl>, _) = concrete
+            .into_iter()
+            .filter(|t| saw_impls.insert(t.def_id()))
+            .partition(|t| t.inner_impl().kind.is_blanket());
 
         render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl);
     }
@@ -1771,6 +1792,7 @@ fn render_impl(
                      </div>",
                 );
             }
+            let custom_code_classes_in_docs = cx.tcx().features().custom_code_classes_in_docs;
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",
@@ -1781,7 +1803,8 @@ fn render_impl(
                     error_codes: cx.shared.codes,
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
-                    heading_offset: HeadingOffset::H4
+                    heading_offset: HeadingOffset::H4,
+                    custom_code_classes_in_docs,
                 }
                 .into_string()
             );

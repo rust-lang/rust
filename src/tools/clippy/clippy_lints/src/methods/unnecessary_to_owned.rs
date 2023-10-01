@@ -401,7 +401,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                     = get_callee_generic_args_and_args(cx, parent_expr)
                 {
                     // FIXME: the `instantiate_identity()` below seems incorrect, since we eventually
-                    // call `tcx.try_subst_and_normalize_erasing_regions` further down
+                    // call `tcx.try_instantiate_and_normalize_erasing_regions` further down
                     // (i.e., we are explicitly not in the identity context).
                     let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder();
                     if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
@@ -452,7 +452,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 
                         let output_ty = fn_sig.output();
                         if output_ty.contains(*param_ty) {
-                            if let Ok(new_ty)  = cx.tcx.try_subst_and_normalize_erasing_regions(
+                            if let Ok(new_ty)  = cx.tcx.try_instantiate_and_normalize_erasing_regions(
                                 new_subst, cx.param_env, EarlyBinder::bind(output_ty)) {
                                 expr = parent_expr;
                                 ty = new_ty;

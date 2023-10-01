@@ -5,53 +5,55 @@ LL |         Foo(self.0 - other.0)
    |                    ^
    |
    = note: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_arithmetic_impl)]`
 
 error: suspicious use of `-` in `AddAssign` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:19:23
+  --> $DIR/suspicious_arithmetic_impl.rs:21:23
    |
 LL |         *self = *self - other;
    |                       ^
    |
    = note: `-D clippy::suspicious-op-assign-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_op_assign_impl)]`
 
 error: suspicious use of `/` in `MulAssign` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:32:16
+  --> $DIR/suspicious_arithmetic_impl.rs:36:16
    |
 LL |         self.0 /= other.0;
    |                ^^
 
 error: suspicious use of `/` in `Rem` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:70:20
+  --> $DIR/suspicious_arithmetic_impl.rs:75:20
    |
 LL |         Foo(self.0 / other.0)
    |                    ^
 
 error: suspicious use of `|` in `BitAnd` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:78:20
+  --> $DIR/suspicious_arithmetic_impl.rs:84:20
    |
 LL |         Foo(self.0 | other.0)
    |                    ^
 
 error: suspicious use of `^` in `BitOr` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:86:20
+  --> $DIR/suspicious_arithmetic_impl.rs:93:20
    |
 LL |         Foo(self.0 ^ other.0)
    |                    ^
 
 error: suspicious use of `&` in `BitXor` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:94:20
+  --> $DIR/suspicious_arithmetic_impl.rs:102:20
    |
 LL |         Foo(self.0 & other.0)
    |                    ^
 
 error: suspicious use of `>>` in `Shl` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:102:20
+  --> $DIR/suspicious_arithmetic_impl.rs:111:20
    |
 LL |         Foo(self.0 >> other.0)
    |                    ^^
 
 error: suspicious use of `<<` in `Shr` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:110:20
+  --> $DIR/suspicious_arithmetic_impl.rs:120:20
    |
 LL |         Foo(self.0 << other.0)
    |                    ^^

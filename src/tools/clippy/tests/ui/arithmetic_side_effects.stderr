@@ -5,6 +5,7 @@ LL |     _n += 1;
    |     ^^^^^^^
    |
    = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arithmetic_side_effects)]`
 
 error: arithmetic operation that can potentially result in unexpected side-effects
   --> $DIR/arithmetic_side_effects.rs:305:5
@@ -702,5 +703,17 @@ error: arithmetic operation that can potentially result in unexpected side-effec
 LL |     10 / a
    |     ^^^^^^
 
-error: aborting due to 117 previous errors
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:512:9
+   |
+LL |         x / maybe_zero
+   |         ^^^^^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:516:9
+   |
+LL |         x % maybe_zero
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 119 previous errors
 

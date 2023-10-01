@@ -647,21 +647,15 @@ impl<'tcx> Cx<'tcx> {
                             out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
                         },
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let value = mir::ConstantKind::from_anon_const(
-                                tcx,
-                                anon_const.def_id,
-                                self.param_env,
-                            );
+                            let value =
+                                mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let value = mir::ConstantKind::from_anon_const(
-                                tcx,
-                                anon_const.def_id,
-                                self.param_env,
-                            );
+                            let value =
+                                mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }
@@ -950,7 +944,7 @@ impl<'tcx> Cx<'tcx> {
                 let kind = if self.tcx.is_thread_local_static(id) {
                     ExprKind::ThreadLocalRef(id)
                 } else {
-                    let alloc_id = self.tcx.create_static_alloc(id);
+                    let alloc_id = self.tcx.reserve_and_set_static_alloc(id);
                     ExprKind::StaticRef { alloc_id, ty, def_id: id }
                 };
                 ExprKind::Deref {

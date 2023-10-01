@@ -1,24 +1,31 @@
+//@no-rustfix: overlapping suggestions
 #![allow(unused)]
 #![warn(clippy::no_mangle_with_rust_abi)]
 
 #[no_mangle]
 fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
+//~^ ERROR: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+//~| NOTE: `-D clippy::no-mangle-with-rust-abi` implied by `-D warnings`
 
 #[no_mangle]
 pub fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
+//~^ ERROR: `#[no_mangle]` set on a function with the default (`Rust`) ABI
 
 /// # Safety
 /// This function shouldn't be called unless the horsemen are ready
 #[no_mangle]
 pub unsafe fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
+//~^ ERROR: `#[no_mangle]` set on a function with the default (`Rust`) ABI
 
 /// # Safety
 /// This function shouldn't be called unless the horsemen are ready
 #[no_mangle]
 unsafe fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
+//~^ ERROR: `#[no_mangle]` set on a function with the default (`Rust`) ABI
 
 #[no_mangle]
 fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
+    //~^ ERROR: `#[no_mangle]` set on a function with the default (`Rust`) ABI
     arg_one: u32,
     arg_two: usize,
 ) -> u32 {

@@ -68,7 +68,7 @@ impl EarlyLintPass for UnnestedOrPatterns {
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if self.msrv.meets(msrvs::OR_PATTERNS) {
-            if let ast::ExprKind::Let(pat, _, _) = &e.kind {
+            if let ast::ExprKind::Let(pat, _, _, _) = &e.kind {
                 lint_unnested_or_patterns(cx, pat);
             }
         }

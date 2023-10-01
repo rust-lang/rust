@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::unwrap_or_default)]
 #![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps, clippy::unnecessary_literal_unwrap)]
@@ -130,6 +128,36 @@ fn method_call_with_deref() {
     let inner_map = outer_map.get_mut(&option.unwrap()).unwrap();
 
     let _ = inner_map.entry(0).or_insert_with(Default::default);
+}
+
+fn missing_suggested_method() {
+    #[derive(Copy, Clone)]
+    struct S<T>(T);
+
+    impl<T> S<T> {
+        fn or_insert_with(&mut self, default: impl FnOnce() -> T) -> &mut T {
+            &mut self.0
+        }
+
+        fn or_insert(&mut self, default: T) -> &mut T {
+            &mut self.0
+        }
+
+        fn unwrap_or_else(self, default: impl FnOnce() -> T) -> T {
+            self.0
+        }
+
+        fn unwrap_or(self, default: T) -> T {
+            self.0
+        }
+    }
+
+    // Don't lint when or_default/unwrap_or_default do not exist on the type
+    let mut s = S(1);
+    s.or_insert_with(Default::default);
+    s.or_insert(Default::default());
+    s.unwrap_or_else(Default::default);
+    s.unwrap_or(Default::default());
 }
 
 fn main() {}

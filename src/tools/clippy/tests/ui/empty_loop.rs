@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![warn(clippy::empty_loop)]
 
@@ -7,10 +7,12 @@ use proc_macros::{external, inline_macros};
 
 fn should_trigger() {
     loop {}
+    #[allow(clippy::never_loop)]
     loop {
         loop {}
     }
 
+    #[allow(clippy::never_loop)]
     'outer: loop {
         'inner: loop {}
     }
@@ -18,6 +20,7 @@ fn should_trigger() {
 
 #[inline_macros]
 fn should_not_trigger() {
+    #[allow(clippy::never_loop)]
     loop {
         panic!("This is fine")
     }

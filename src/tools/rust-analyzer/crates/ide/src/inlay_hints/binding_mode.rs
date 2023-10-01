@@ -50,9 +50,10 @@ pub(super) fn hints(
             _ => return,
         };
         acc.push(InlayHint {
+            needs_resolve: false,
             range,
             kind: InlayKind::BindingMode,
-            label: r.to_string().into(),
+            label: r.into(),
             text_edit: None,
             position: InlayHintPosition::Before,
             pad_left: false,
@@ -68,9 +69,10 @@ pub(super) fn hints(
                 hir::BindingMode::Ref(Mutability::Shared) => "ref",
             };
             acc.push(InlayHint {
+                needs_resolve: false,
                 range: pat.syntax().text_range(),
                 kind: InlayKind::BindingMode,
-                label: bm.to_string().into(),
+                label: bm.into(),
                 text_edit: None,
                 position: InlayHintPosition::Before,
                 pad_left: false,

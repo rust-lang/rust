@@ -1,70 +1,74 @@
 error: integer type suffix should not be separated by an underscore
-  --> $DIR/literals.rs:12:15
+  --> $DIR/literals.rs:13:15
    |
 LL |     let ok4 = 0xab_cd_i32;
    |               ^^^^^^^^^^^ help: remove the underscore: `0xab_cdi32`
    |
    = note: `-D clippy::separated-literal-suffix` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::separated_literal_suffix)]`
 
 error: integer type suffix should not be separated by an underscore
-  --> $DIR/literals.rs:13:15
+  --> $DIR/literals.rs:16:15
    |
 LL |     let ok5 = 0xAB_CD_u32;
    |               ^^^^^^^^^^^ help: remove the underscore: `0xAB_CDu32`
 
 error: integer type suffix should not be separated by an underscore
-  --> $DIR/literals.rs:14:15
+  --> $DIR/literals.rs:18:15
    |
 LL |     let ok5 = 0xAB_CD_isize;
    |               ^^^^^^^^^^^^^ help: remove the underscore: `0xAB_CDisize`
 
 error: inconsistent casing in hexadecimal literal
-  --> $DIR/literals.rs:15:17
+  --> $DIR/literals.rs:20:17
    |
 LL |     let fail1 = 0xabCD;
    |                 ^^^^^^
    |
    = note: `-D clippy::mixed-case-hex-literals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mixed_case_hex_literals)]`
 
 error: integer type suffix should not be separated by an underscore
-  --> $DIR/literals.rs:16:17
+  --> $DIR/literals.rs:23:17
    |
 LL |     let fail2 = 0xabCD_u32;
    |                 ^^^^^^^^^^ help: remove the underscore: `0xabCDu32`
 
 error: inconsistent casing in hexadecimal literal
-  --> $DIR/literals.rs:16:17
+  --> $DIR/literals.rs:23:17
    |
 LL |     let fail2 = 0xabCD_u32;
    |                 ^^^^^^^^^^
 
 error: integer type suffix should not be separated by an underscore
-  --> $DIR/literals.rs:17:17
+  --> $DIR/literals.rs:26:17
    |
 LL |     let fail2 = 0xabCD_isize;
    |                 ^^^^^^^^^^^^ help: remove the underscore: `0xabCDisize`
 
 error: inconsistent casing in hexadecimal literal
-  --> $DIR/literals.rs:17:17
+  --> $DIR/literals.rs:26:17
    |
 LL |     let fail2 = 0xabCD_isize;
    |                 ^^^^^^^^^^^^
 
 error: integer type suffix should be separated by an underscore
-  --> $DIR/literals.rs:18:27
+  --> $DIR/literals.rs:29:27
    |
 LL |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^ help: add an underscore: `000_123_usize`
    |
    = note: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unseparated_literal_suffix)]`
 
 error: this is a decimal constant
-  --> $DIR/literals.rs:18:27
+  --> $DIR/literals.rs:29:27
    |
 LL |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^
    |
    = note: `-D clippy::zero-prefixed-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_prefixed_literal)]`
 help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
 LL |     let fail_multi_zero = 123usize;
@@ -75,13 +79,13 @@ LL |     let fail_multi_zero = 0o123usize;
    |                           ~~~~~~~~~~
 
 error: integer type suffix should not be separated by an underscore
-  --> $DIR/literals.rs:21:16
+  --> $DIR/literals.rs:36:16
    |
 LL |     let ok10 = 0_i64;
    |                ^^^^^ help: remove the underscore: `0i64`
 
 error: this is a decimal constant
-  --> $DIR/literals.rs:22:17
+  --> $DIR/literals.rs:38:17
    |
 LL |     let fail8 = 0123;
    |                 ^^^^
@@ -96,41 +100,43 @@ LL |     let fail8 = 0o123;
    |                 ~~~~~
 
 error: integer type suffix should not be separated by an underscore
-  --> $DIR/literals.rs:31:16
+  --> $DIR/literals.rs:48:16
    |
 LL |     let ok17 = 0x123_4567_8901_usize;
    |                ^^^^^^^^^^^^^^^^^^^^^ help: remove the underscore: `0x123_4567_8901usize`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:34:18
+  --> $DIR/literals.rs:52:18
    |
 LL |     let fail19 = 12_3456_21;
    |                  ^^^^^^^^^^ help: consider: `12_345_621`
    |
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inconsistent_digit_grouping)]`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:35:18
+  --> $DIR/literals.rs:55:18
    |
 LL |     let fail22 = 3__4___23;
    |                  ^^^^^^^^^ help: consider: `3_423`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:36:18
+  --> $DIR/literals.rs:57:18
    |
 LL |     let fail23 = 3__16___23;
    |                  ^^^^^^^^^^ help: consider: `31_623`
 
 error: digits of hex, binary or octal literal not in groups of equal size
-  --> $DIR/literals.rs:38:18
+  --> $DIR/literals.rs:60:18
    |
 LL |     let fail24 = 0xAB_ABC_AB;
    |                  ^^^^^^^^^^^ help: consider: `0x0ABA_BCAB`
    |
    = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unusual_byte_groupings)]`
 
 error: this is a decimal constant
-  --> $DIR/literals.rs:46:13
+  --> $DIR/literals.rs:70:13
    |
 LL |     let _ = 08;
    |             ^^
@@ -141,7 +147,7 @@ LL |     let _ = 8;
    |             ~
 
 error: this is a decimal constant
-  --> $DIR/literals.rs:47:13
+  --> $DIR/literals.rs:72:13
    |
 LL |     let _ = 09;
    |             ^^
@@ -152,7 +158,7 @@ LL |     let _ = 9;
    |             ~
 
 error: this is a decimal constant
-  --> $DIR/literals.rs:48:13
+  --> $DIR/literals.rs:74:13
    |
 LL |     let _ = 089;
    |             ^^^

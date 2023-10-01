@@ -8,7 +8,7 @@ use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
+use rustc_data_structures::sync::{Lrc, OnceLock, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
@@ -18,11 +18,11 @@ use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintSto
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
-use rustc_passes::{self, hir_stats, layout_test};
+use rustc_passes::{self, abi_test, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
@@ -584,7 +584,7 @@ fn resolver_for_lowering<'tcx>(
     let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
 
     // Make sure we don't mutate the cstore from here on.
-    tcx.untracked().cstore.leak();
+    tcx.untracked().cstore.freeze();
 
     let ty::ResolverOutputs {
         global_ctxt: untracked_resolutions,
@@ -675,13 +675,6 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock::new(|| {
-    let mut extern_providers = ExternProviders::default();
-    rustc_metadata::provide_extern(&mut extern_providers);
-    rustc_codegen_ssa::provide_extern(&mut extern_providers);
-    extern_providers
-});
-
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     crate_types: Vec<CrateType>,
@@ -689,7 +682,7 @@ pub fn create_global_ctxt<'tcx>(
     lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
-    gcx_cell: &'tcx OnceCell<GlobalCtxt<'tcx>>,
+    gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
     hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
 ) -> &'tcx GlobalCtxt<'tcx> {
@@ -702,14 +695,11 @@ pub fn create_global_ctxt<'tcx>(
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
-    let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
-    codegen_backend.provide(&mut local_providers);
-
-    let mut extern_providers = *DEFAULT_EXTERN_QUERY_PROVIDERS;
-    codegen_backend.provide_extern(&mut extern_providers);
+    let mut providers = *DEFAULT_QUERY_PROVIDERS;
+    codegen_backend.provide(&mut providers);
 
     if let Some(callback) = compiler.override_queries {
-        callback(sess, &mut local_providers, &mut extern_providers);
+        callback(sess, &mut providers);
     }
 
     let incremental = dep_graph.is_fully_enabled();
@@ -727,11 +717,12 @@ pub fn create_global_ctxt<'tcx>(
                 dep_graph,
                 rustc_query_impl::query_callbacks(arena),
                 rustc_query_impl::query_system(
-                    local_providers,
-                    extern_providers,
+                    providers.queries,
+                    providers.extern_queries,
                     query_result_on_disk_cache,
                     incremental,
                 ),
+                providers.hooks,
             )
         })
     })
@@ -743,12 +734,11 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     rustc_passes::hir_id_validator::check_crate(tcx);
 
     let sess = tcx.sess;
-    let mut entry_point = None;
 
     sess.time("misc_checking_1", || {
         parallel!(
             {
-                entry_point = sess.time("looking_for_entry_point", || tcx.entry_fn(()));
+                sess.time("looking_for_entry_point", || tcx.ensure().entry_fn(()));
 
                 sess.time("looking_for_derive_registrar", || {
                     tcx.ensure().proc_macro_decls_static(())
@@ -808,16 +798,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         }
     });
 
-    if tcx.sess.opts.unstable_opts.drop_tracking_mir {
-        tcx.hir().par_body_owners(|def_id| {
-            if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
-                tcx.ensure().mir_generator_witnesses(def_id);
-                tcx.ensure().check_generator_obligations(def_id);
-            }
-        });
-    }
+    tcx.hir().par_body_owners(|def_id| {
+        if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
+            tcx.ensure().mir_generator_witnesses(def_id);
+            tcx.ensure().check_generator_obligations(def_id);
+        }
+    });
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
+    sess.time("abi_testing", || abi_test::test_abi(tcx));
 
     // Avoid overwhelming user with errors if borrow checking failed.
     // I'm not sure how helpful this is, to be honest, but it avoids a
@@ -862,7 +851,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
         // This check has to be run after all lints are done processing. We don't
         // define a lint filter, as all lint checks should have finished at this point.
-        sess.time("check_lint_expectations", || tcx.check_expectations(None));
+        sess.time("check_lint_expectations", || tcx.ensure().check_expectations(None));
     });
 
     if sess.opts.unstable_opts.print_vtable_sizes {

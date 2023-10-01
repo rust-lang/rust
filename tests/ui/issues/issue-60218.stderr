@@ -6,6 +6,11 @@ LL |     trigger_error(vec![], |x: &u32| x)
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-60218.rs:7:1
+   |
+LL | pub trait Foo {}
+   | ^^^^^^^^^^^^^
 note: required by a bound in `trigger_error`
   --> $DIR/issue-60218.rs:13:72
    |

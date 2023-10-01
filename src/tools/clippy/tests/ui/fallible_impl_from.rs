@@ -4,6 +4,7 @@
 // docs example
 struct Foo(i32);
 impl From<String> for Foo {
+    //~^ ERROR: consider implementing `TryFrom` instead
     fn from(s: String) -> Self {
         Foo(s.parse().unwrap())
     }
@@ -25,6 +26,7 @@ impl From<usize> for Valid {
 struct Invalid;
 
 impl From<usize> for Invalid {
+    //~^ ERROR: consider implementing `TryFrom` instead
     fn from(i: usize) -> Invalid {
         if i != 42 {
             panic!();
@@ -34,6 +36,7 @@ impl From<usize> for Invalid {
 }
 
 impl From<Option<String>> for Invalid {
+    //~^ ERROR: consider implementing `TryFrom` instead
     fn from(s: Option<String>) -> Invalid {
         let s = s.unwrap();
         if !s.is_empty() {
@@ -52,6 +55,7 @@ impl<T> ProjStrTrait for Box<T> {
     type ProjString = String;
 }
 impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
+    //~^ ERROR: consider implementing `TryFrom` instead
     fn from(s: &'a mut <Box<u32> as ProjStrTrait>::ProjString) -> Invalid {
         if s.parse::<u32>().ok().unwrap() != 42 {
             panic!("{:?}", s);

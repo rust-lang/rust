@@ -1,3 +1,6 @@
+// revisions: old next
+//[next] compile-flags: -Ztrait-solver=next
+
 // Tests that we consider `Box<U>: !Sugar` to be ambiguous, even
 // though we see no impl of `Sugar` for `Box`. Therefore, an overlap
 // error is reported for the following pair of impls (#23516).

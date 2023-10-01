@@ -347,12 +347,18 @@ pub struct FutureIncompatibleInfo {
 /// The reason for future incompatibility
 #[derive(Copy, Clone, Debug)]
 pub enum FutureIncompatibilityReason {
-    /// This will be an error in a future release
-    /// for all editions
-    FutureReleaseError,
+    /// This will be an error in a future release for all editions
+    ///
+    /// This will *not* show up in cargo's future breakage report.
+    /// The warning will hence only be seen in local crates, not in dependencies.
+    FutureReleaseErrorDontReportInDeps,
     /// This will be an error in a future release, and
     /// Cargo should create a report even for dependencies
-    FutureReleaseErrorReportNow,
+    ///
+    /// This is the *only* reason that will make future incompatibility warnings show up in cargo's
+    /// reports. All other future incompatibility warnings are not visible when they occur in a
+    /// dependency.
+    FutureReleaseErrorReportInDeps,
     /// Code that changes meaning in some way in a
     /// future release.
     FutureReleaseSemanticsChange,
@@ -380,7 +386,7 @@ impl FutureIncompatibleInfo {
     pub const fn default_fields_for_macro() -> Self {
         FutureIncompatibleInfo {
             reference: "",
-            reason: FutureIncompatibilityReason::FutureReleaseError,
+            reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
             explain_reason: true,
         }
     }
@@ -718,35 +724,27 @@ macro_rules! declare_lint {
     );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $(@feature_gate = $gate:expr;)?
-     $(@future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
+     $(@future_incompatible = FutureIncompatibleInfo {
+        reason: $reason:expr,
+        $($field:ident : $val:expr),* $(,)*
+     }; )?
+     $(@edition $lint_edition:ident => $edition_level:ident;)?
      $($v:ident),*) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
             name: stringify!($NAME),
             default_level: $crate::$Level,
             desc: $desc,
-            edition_lint_opts: None,
             is_plugin: false,
             $($v: true,)*
-            $(feature_gate: Some($gate),)*
+            $(feature_gate: Some($gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
+                reason: $reason,
                 $($field: $val,)*
                 ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
-            }),)*
+            }),)?
+            $(edition_lint_opts: Some(($crate::Edition::$lint_edition, $crate::$edition_level)),)?
             ..$crate::Lint::default_fields_for_macro()
-        };
-    );
-    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $lint_edition: expr => $edition_level: ident
-    ) => (
-        $(#[$attr])*
-        $vis static $NAME: &$crate::Lint = &$crate::Lint {
-            name: stringify!($NAME),
-            default_level: $crate::$Level,
-            desc: $desc,
-            edition_lint_opts: Some(($lint_edition, $crate::Level::$edition_level)),
-            report_in_external_macro: false,
-            is_plugin: false,
         };
     );
 }
@@ -787,16 +785,7 @@ macro_rules! declare_tool_lint {
     );
 }
 
-/// Declares a static `LintArray` and return it as an expression.
-#[macro_export]
-macro_rules! lint_array {
-    ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
-    ($( $lint:expr ),*) => {{
-        vec![$($lint),*]
-    }}
-}
-
-pub type LintArray = Vec<&'static Lint>;
+pub type LintVec = Vec<&'static Lint>;
 
 pub trait LintPass {
     fn name(&self) -> &'static str;
@@ -810,7 +799,7 @@ macro_rules! impl_lint_pass {
             fn name(&self) -> &'static str { stringify!($ty) }
         }
         impl $ty {
-            pub fn get_lints() -> $crate::LintArray { $crate::lint_array!($($lint),*) }
+            pub fn get_lints() -> $crate::LintVec { vec![$($lint),*] }
         }
     };
 }

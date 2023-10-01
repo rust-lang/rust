@@ -3,7 +3,7 @@ use rustc_hir::{LangItem, CRATE_HIR_ID};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::INVALID_ALIGNMENT;
 use std::borrow::Borrow;
 use std::hash::Hash;
@@ -207,7 +207,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let def_id = instance.def_id();
 
-        if Some(def_id) == self.tcx.lang_items().panic_display()
+        if self.tcx.has_attr(def_id, sym::rustc_const_panic_str)
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
         {
             let args = self.copy_fn_args(args)?;
@@ -596,7 +596,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _bin_op: mir::BinOp,
         _left: &ImmTy<'tcx>,
         _right: &ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
+    ) -> InterpResult<'tcx, (ImmTy<'tcx>, bool)> {
         throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 

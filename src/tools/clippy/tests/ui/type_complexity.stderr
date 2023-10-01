@@ -5,87 +5,88 @@ LL | const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::type-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:8:12
+  --> $DIR/type_complexity.rs:10:12
    |
 LL | static ST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:11:8
+  --> $DIR/type_complexity.rs:14:8
    |
 LL |     f: Vec<Vec<Box<(u32, u32, u32, u32)>>>,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:14:11
+  --> $DIR/type_complexity.rs:18:11
    |
 LL | struct Ts(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:17:11
+  --> $DIR/type_complexity.rs:22:11
    |
 LL |     Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>),
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:18:17
+  --> $DIR/type_complexity.rs:24:17
    |
 LL |     Struct { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> },
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:22:14
+  --> $DIR/type_complexity.rs:29:14
    |
 LL |     const A: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:23:30
+  --> $DIR/type_complexity.rs:31:30
    |
 LL |     fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:27:14
+  --> $DIR/type_complexity.rs:36:14
    |
 LL |     const A: Vec<Vec<Box<(u32, u32, u32, u32)>>>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:28:14
+  --> $DIR/type_complexity.rs:38:14
    |
 LL |     type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:29:25
+  --> $DIR/type_complexity.rs:40:25
    |
 LL |     fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:30:29
+  --> $DIR/type_complexity.rs:42:29
    |
 LL |     fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:42:15
+  --> $DIR/type_complexity.rs:55:15
    |
 LL | fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:46:14
+  --> $DIR/type_complexity.rs:60:14
    |
 LL | fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:49:13
+  --> $DIR/type_complexity.rs:64:13
    |
 LL |     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

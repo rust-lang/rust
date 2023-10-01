@@ -29,17 +29,30 @@ fn main() {
 
     // these should throw warnings
     write!(v, "Hello {}", "world");
+    //~^ ERROR: literal with an empty format string
+    //~| NOTE: `-D clippy::write-literal` implied by `-D warnings`
     writeln!(v, "Hello {} {}", world, "world");
+    //~^ ERROR: literal with an empty format string
     writeln!(v, "Hello {}", "world");
+    //~^ ERROR: literal with an empty format string
     writeln!(v, "{} {:.4}", "a literal", 5);
+    //~^ ERROR: literal with an empty format string
 
     // positional args don't change the fact
     // that we're using a literal -- this should
     // throw a warning
     writeln!(v, "{0} {1}", "hello", "world");
+    //~^ ERROR: literal with an empty format string
+    //~| ERROR: literal with an empty format string
     writeln!(v, "{1} {0}", "hello", "world");
+    //~^ ERROR: literal with an empty format string
+    //~| ERROR: literal with an empty format string
 
     // named args shouldn't change anything either
     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
+    //~^ ERROR: literal with an empty format string
+    //~| ERROR: literal with an empty format string
     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
+    //~^ ERROR: literal with an empty format string
+    //~| ERROR: literal with an empty format string
 }

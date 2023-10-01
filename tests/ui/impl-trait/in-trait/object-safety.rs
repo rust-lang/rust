@@ -8,7 +8,7 @@ trait Foo {
 }
 
 impl Foo for u32 {
-    fn baz(&self) -> u32 {
+    fn baz(&self) -> impl Debug {
         32
     }
 }
@@ -19,4 +19,5 @@ fn main() {
     //~| ERROR the trait `Foo` cannot be made into an object
     let s = i.baz();
     //~^ ERROR the trait `Foo` cannot be made into an object
+    //~| ERROR the trait `Foo` cannot be made into an object
 }

@@ -112,9 +112,9 @@ pub trait Write {
     ///
     /// # Errors
     ///
-    /// This function will return an instance of [`Error`] on error.
+    /// This function will return an instance of [`std::fmt::Error`][Error] on error.
     ///
-    /// The purpose of std::fmt::Error is to abort the formatting operation when the underlying
+    /// The purpose of that error is to abort the formatting operation when the underlying
     /// destination encounters some error preventing it from accepting more text; it should
     /// generally be propagated rather than handled, at least when implementing formatting traits.
     ///
@@ -188,8 +188,28 @@ pub trait Write {
     /// assert_eq!(&buf, "world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(mut self: &mut Self, args: Arguments<'_>) -> Result {
-        write(&mut self, args)
+    fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
+        // We use a specialization for `Sized` types to avoid an indirection
+        // through `&mut self`
+        trait SpecWriteFmt {
+            fn spec_write_fmt(self, args: Arguments<'_>) -> Result;
+        }
+
+        impl<W: Write + ?Sized> SpecWriteFmt for &mut W {
+            #[inline]
+            default fn spec_write_fmt(mut self, args: Arguments<'_>) -> Result {
+                write(&mut self, args)
+            }
+        }
+
+        impl<W: Write> SpecWriteFmt for &mut W {
+            #[inline]
+            fn spec_write_fmt(self, args: Arguments<'_>) -> Result {
+                write(self, args)
+            }
+        }
+
+        self.spec_write_fmt(args)
     }
 }
 

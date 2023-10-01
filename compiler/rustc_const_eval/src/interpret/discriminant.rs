@@ -76,7 +76,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                     let variant_index_relative_val =
                         ImmTy::from_uint(variant_index_relative, tag_layout);
-                    let tag_val = self.binary_op(
+                    let tag_val = self.wrapping_binary_op(
                         mir::BinOp::Add,
                         &variant_index_relative_val,
                         &niche_start_val,
@@ -153,19 +153,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Figure out which discriminant and variant this corresponds to.
         let index = match *tag_encoding {
             TagEncoding::Direct => {
-                let scalar = tag_val.to_scalar();
                 // Generate a specific error if `tag_val` is not an integer.
                 // (`tag_bits` itself is only used for error messages below.)
-                let tag_bits = scalar
+                let tag_bits = tag_val
+                    .to_scalar()
                     .try_to_int()
                     .map_err(|dbg_val| err_ub!(InvalidTag(dbg_val)))?
                     .assert_bits(tag_layout.size);
                 // Cast bits from tag layout to discriminant layout.
                 // After the checks we did above, this cannot fail, as
                 // discriminants are int-like.
-                let discr_val =
-                    self.cast_from_int_like(scalar, tag_val.layout, discr_layout.ty).unwrap();
-                let discr_bits = discr_val.assert_bits(discr_layout.size);
+                let discr_val = self.int_to_int_or_float(&tag_val, discr_layout).unwrap();
+                let discr_bits = discr_val.to_scalar().assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match *ty.kind() {
                     ty::Adt(adt, _) => {
@@ -208,7 +207,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let tag_val = ImmTy::from_uint(tag_bits, tag_layout);
                         let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                         let variant_index_relative_val =
-                            self.binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
+                            self.wrapping_binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
                         let variant_index_relative =
                             variant_index_relative_val.to_scalar().assert_bits(tag_val.layout.size);
                         // Check if this is in the range that indicates an actual discriminant.
@@ -247,9 +246,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         layout: TyAndLayout<'tcx>,
         variant: VariantIdx,
-    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         let discr_layout = self.layout_of(layout.ty.discriminant_ty(*self.tcx))?;
-        Ok(match layout.ty.discriminant_for_variant(*self.tcx, variant) {
+        let discr_value = match layout.ty.discriminant_for_variant(*self.tcx, variant) {
             Some(discr) => {
                 // This type actually has discriminants.
                 assert_eq!(discr.ty, discr_layout.ty);
@@ -260,6 +259,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(variant.as_u32(), 0);
                 Scalar::from_uint(variant.as_u32(), discr_layout.size)
             }
-        })
+        };
+        Ok(ImmTy::from_scalar(discr_value, discr_layout))
     }
 }

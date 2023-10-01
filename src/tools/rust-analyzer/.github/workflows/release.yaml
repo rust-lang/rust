@@ -128,6 +128,8 @@ jobs:
 
       - name: Run analysis-stats on rust std library
         if: matrix.target == 'x86_64-unknown-linux-gnu'
+        env:
+          RUSTC_BOOTSTRAP: 1
         run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
 
       - name: Upload artifacts

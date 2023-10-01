@@ -83,6 +83,17 @@ where
             }
             FieldsShape::Union(_) => {
                 if !arg_layout.is_zst() {
+                    if arg_layout.is_transparent() {
+                        let non_1zst_elem = arg_layout.non_1zst_field(cx).expect("not exactly one non-1-ZST field in non-ZST repr(transparent) union").1;
+                        return should_use_fp_conv_helper(
+                            cx,
+                            &non_1zst_elem,
+                            xlen,
+                            flen,
+                            field1_kind,
+                            field2_kind,
+                        );
+                    }
                     return Err(CannotUseFpConv);
                 }
             }

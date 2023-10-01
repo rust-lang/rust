@@ -1,6 +1,6 @@
 // run-pass
 // compile-flags:--test
-#![deny(private_in_public)]
+#![deny(private_interfaces)]
 
 #[test] fn foo() {}
 mod foo {}

@@ -1,12 +1,12 @@
-error[E0401]: can't use generic parameters from outer function
+error[E0401]: can't use generic parameters from outer item
   --> $DIR/issue-3214.rs:3:12
    |
 LL | fn foo<T>() {
-   |        - type parameter from outer function
+   |        - type parameter from outer item
 LL |     struct Foo {
-   |               - help: try using a local generic parameter instead: `<T>`
+   |               - help: try introducing a local generic parameter here: `<T>`
 LL |         x: T,
-   |            ^ use of generic parameter from outer function
+   |            ^ use of generic parameter from outer item
 
 error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-3214.rs:6:22

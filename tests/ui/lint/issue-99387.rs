@@ -2,7 +2,7 @@
 //! opaque types.
 
 #![feature(type_alias_impl_trait)]
-#![allow(private_in_public)]
+#![allow(private_interfaces)]
 
 pub type Successors<'a> = impl Iterator<Item = &'a ()>;
 

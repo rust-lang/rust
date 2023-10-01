@@ -4,6 +4,8 @@ use std::collections::BTreeMap;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
+//~^ ERROR: this trait bound is already specified in the where clause
+//~| ERROR: this trait bound is already specified in the where clause
 where
     T: Clone,
     T: Default,
@@ -33,6 +35,7 @@ trait T: Default {
     fn f()
     where
         Self: Default;
+    //~^ ERROR: this trait bound is already specified in trait declaration
 }
 
 trait U: Default {
@@ -47,15 +50,19 @@ trait ZZ: Default {
     fn f()
     where
         Self: Default + Clone;
+    //~^ ERROR: this trait bound is already specified in trait declaration
 }
 
 trait BadTrait: Default + Clone {
     fn f()
     where
         Self: Default + Clone;
+    //~^ ERROR: this trait bound is already specified in trait declaration
+    //~| ERROR: this trait bound is already specified in trait declaration
     fn g()
     where
         Self: Default;
+    //~^ ERROR: this trait bound is already specified in trait declaration
     fn h()
     where
         Self: Copy;
@@ -91,6 +98,7 @@ trait FooIter: Iterator<Item = Foo> {
     fn bar()
     where
         Self: Iterator<Item = Foo>,
+        //~^ ERROR: this trait bound is already specified in trait declaration
     {
     }
 }

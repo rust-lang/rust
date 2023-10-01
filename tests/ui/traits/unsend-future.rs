@@ -13,6 +13,7 @@ fn require_handler<H: Handler>(h: H) {}
 async fn handler() {
     let a = &1 as *const i32;
     async {}.await;
+    let b = a;
 }
 
 fn main() {

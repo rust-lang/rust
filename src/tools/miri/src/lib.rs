@@ -8,7 +8,6 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(round_ties_even)]
-#![feature(os_str_bytes)]
 #![feature(lint_reasons)]
 #![feature(trait_upcasting)]
 // Configure clippy and other lints

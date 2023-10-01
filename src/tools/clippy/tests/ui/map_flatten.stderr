@@ -3,18 +3,21 @@ error: called `map(..).flatten()` on `Option`
    |
 LL |           .map(|x| {
    |  __________^
+LL | |
+LL | |
 LL | |             if x <= 5 {
-LL | |                 Some(x)
-LL | |             } else {
 ...  |
 LL | |         })
 LL | |         .flatten();
    | |__________________^
    |
    = note: `-D clippy::map-flatten` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_flatten)]`
 help: try replacing `map` with `and_then` and remove the `.flatten()`
    |
 LL ~         .and_then(|x| {
+LL +
+LL +
 LL +             if x <= 5 {
 LL +                 Some(x)
 LL +             } else {
@@ -24,13 +27,13 @@ LL ~         });
    |
 
 error: called `map(..).flatten()` on `Result`
-  --> $DIR/map_flatten.rs:18:10
+  --> $DIR/map_flatten.rs:20:10
    |
 LL |           .map(|x| {
    |  __________^
+LL | |
 LL | |             if x == 1 {
 LL | |                 Ok(x)
-LL | |             } else {
 ...  |
 LL | |         })
 LL | |         .flatten();
@@ -39,6 +42,7 @@ LL | |         .flatten();
 help: try replacing `map` with `and_then` and remove the `.flatten()`
    |
 LL ~         .and_then(|x| {
+LL +
 LL +             if x == 1 {
 LL +                 Ok(x)
 LL +             } else {
@@ -48,13 +52,13 @@ LL ~         });
    |
 
 error: called `map(..).flatten()` on `Result`
-  --> $DIR/map_flatten.rs:30:10
+  --> $DIR/map_flatten.rs:33:10
    |
 LL |           .map(|res| {
    |  __________^
+LL | |
 LL | |             if res > 0 {
 LL | |                 do_something();
-LL | |                 Ok(res)
 ...  |
 LL | |         })
 LL | |         .flatten();
@@ -63,6 +67,7 @@ LL | |         .flatten();
 help: try replacing `map` with `and_then` and remove the `.flatten()`
    |
 LL ~         .and_then(|res| {
+LL +
 LL +             if res > 0 {
 LL +                 do_something();
 LL +                 Ok(res)
@@ -73,13 +78,13 @@ LL ~         });
    |
 
 error: called `map(..).flatten()` on `Iterator`
-  --> $DIR/map_flatten.rs:42:10
+  --> $DIR/map_flatten.rs:46:10
    |
 LL |           .map(|some_value| {
    |  __________^
+LL | |
 LL | |             if some_value > 3 {
 LL | |                 Some(some_value)
-LL | |             } else {
 ...  |
 LL | |         })
 LL | |         .flatten()
@@ -88,6 +93,7 @@ LL | |         .flatten()
 help: try replacing `map` with `filter_map` and remove the `.flatten()`
    |
 LL ~         .filter_map(|some_value| {
+LL +
 LL +             if some_value > 3 {
 LL +                 Some(some_value)
 LL +             } else {

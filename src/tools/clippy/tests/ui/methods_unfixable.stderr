@@ -10,6 +10,7 @@ help: you will also need to make `iter` mutable, because `find` takes `&mut self
 LL |     let iter = (0..10);
    |         ^^^^
    = note: `-D clippy::filter-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
 
 error: aborting due to previous error
 

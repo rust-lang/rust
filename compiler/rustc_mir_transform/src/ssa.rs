@@ -13,7 +13,6 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 
-#[derive(Debug)]
 pub struct SsaLocals {
     /// Assignments to each local. This defines whether the local is SSA.
     assignments: IndexVec<Local, Set1<LocationExtended>>,
@@ -79,14 +78,10 @@ impl SsaLocals {
             visitor.assignments[local] = Set1::One(LocationExtended::Arg);
         }
 
-        if body.basic_blocks.len() > 2 {
-            for (bb, data) in traversal::reverse_postorder(body) {
-                visitor.visit_basic_block_data(bb, data);
-            }
-        } else {
-            for (bb, data) in body.basic_blocks.iter_enumerated() {
-                visitor.visit_basic_block_data(bb, data);
-            }
+        // For SSA assignments, a RPO visit will see the assignment before it sees any use.
+        // We only visit reachable nodes: computing `dominates` on an unreachable node ICEs.
+        for (bb, data) in traversal::reverse_postorder(body) {
+            visitor.visit_basic_block_data(bb, data);
         }
 
         for var_debug_info in &body.var_debug_info {
@@ -129,6 +124,25 @@ impl SsaLocals {
         self.direct_uses[local]
     }
 
+    pub fn assignment_dominates(
+        &self,
+        dominators: &Dominators<BasicBlock>,
+        local: Local,
+        location: Location,
+    ) -> bool {
+        match self.assignments[local] {
+            Set1::One(LocationExtended::Arg) => true,
+            Set1::One(LocationExtended::Plain(ass)) => {
+                if ass.block == location.block {
+                    ass.statement_index < location.statement_index
+                } else {
+                    dominators.dominates(ass.block, location.block)
+                }
+            }
+            _ => false,
+        }
+    }
+
     pub fn assignments<'a, 'tcx>(
         &'a self,
         body: &'a Body<'tcx>,
@@ -144,6 +158,24 @@ impl SsaLocals {
                 None
             }
         })
+    }
+
+    pub fn for_each_assignment_mut<'tcx>(
+        &self,
+        basic_blocks: &mut BasicBlocks<'tcx>,
+        mut f: impl FnMut(Local, &mut Rvalue<'tcx>, Location),
+    ) {
+        for &local in &self.assignment_order {
+            if let Set1::One(LocationExtended::Plain(loc)) = self.assignments[local] {
+                // `loc` must point to a direct assignment to `local`.
+                let bbs = basic_blocks.as_mut_preserves_cfg();
+                let bb = &mut bbs[loc.block];
+                let stmt = &mut bb.statements[loc.statement_index];
+                let StatementKind::Assign(box (target, ref mut rvalue)) = stmt.kind else { bug!() };
+                assert_eq!(target.as_local(), Some(local));
+                f(local, rvalue, loc)
+            }
+        }
     }
 
     /// Compute the equivalence classes for locals, based on copy statements.

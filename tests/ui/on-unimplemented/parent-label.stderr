@@ -8,6 +8,11 @@ LL |         f(Foo {});
    |         |
    |         required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/parent-label.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 note: required by a bound in `f`
   --> $DIR/parent-label.rs:10:9
    |
@@ -24,6 +29,11 @@ LL |             f(Foo {});
    |             |
    |             required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/parent-label.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 note: required by a bound in `f`
   --> $DIR/parent-label.rs:10:9
    |
@@ -41,6 +51,11 @@ LL |             f(Foo {});
    |             |
    |             required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/parent-label.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 note: required by a bound in `f`
   --> $DIR/parent-label.rs:10:9
    |
@@ -58,6 +73,11 @@ LL |     f(Foo {});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/parent-label.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 note: required by a bound in `f`
   --> $DIR/parent-label.rs:10:9
    |

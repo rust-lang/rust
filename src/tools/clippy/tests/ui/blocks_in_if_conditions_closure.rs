@@ -21,6 +21,8 @@ fn pred_test() {
         && sky == "blue"
         && predicate(
             |x| {
+                //~^ ERROR: in an `if` condition, avoid complex blocks or closures with blocks
+                //~| NOTE: `-D clippy::blocks-in-if-conditions` implied by `-D warnings`
                 let target = 3;
                 x == target
             },
@@ -30,6 +32,7 @@ fn pred_test() {
 
     if predicate(
         |x| {
+            //~^ ERROR: in an `if` condition, avoid complex blocks or closures with blocks; in
             let target = 3;
             x == target
         },

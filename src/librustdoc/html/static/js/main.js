@@ -49,10 +49,12 @@ window.currentCrate = getVar("current-crate");
 function setMobileTopbar() {
     // FIXME: It would be nicer to generate this text content directly in HTML,
     // but with the current code it's hard to get the right information in the right place.
-    const mobileLocationTitle = document.querySelector(".mobile-topbar h2");
+    const mobileTopbar = document.querySelector(".mobile-topbar");
     const locationTitle = document.querySelector(".sidebar h2.location");
-    if (mobileLocationTitle && locationTitle) {
-        mobileLocationTitle.innerHTML = locationTitle.innerHTML;
+    if (mobileTopbar && locationTitle) {
+        const mobileTitle = document.createElement("h2");
+        mobileTitle.innerHTML = locationTitle.innerHTML;
+        mobileTopbar.appendChild(mobileTitle);
     }
 }
 
@@ -176,13 +178,6 @@ function browserSupportsHistoryApi() {
     return window.history && typeof window.history.pushState === "function";
 }
 
-function loadCss(cssUrl) {
-    const link = document.createElement("link");
-    link.href = cssUrl;
-    link.rel = "stylesheet";
-    document.getElementsByTagName("head")[0].appendChild(link);
-}
-
 function preLoadCss(cssUrl) {
     // https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types/preload
     const link = document.createElement("link");
@@ -210,11 +205,7 @@ function preLoadCss(cssUrl) {
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
-        loadCss(getVar("static-root-path") + getVar("settings-css"));
         loadScript(getVar("static-root-path") + getVar("settings-js"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-light-css"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-dark-css"));
-        preLoadCss(getVar("static-root-path") + getVar("theme-ayu-css"));
         // Pre-load all theme CSS files, so that switching feels seamless.
         //
         // When loading settings.html as a standalone page, the equivalent HTML is
@@ -852,14 +843,14 @@ function preLoadCss(cssUrl) {
         window.CURRENT_TOOLTIP_ELEMENT = wrapper;
         window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE = e;
         clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
-        wrapper.onpointerenter = function(ev) {
+        wrapper.onpointerenter = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
                 return;
             }
             clearTooltipHoverTimeout(e);
         };
-        wrapper.onpointerleave = function(ev) {
+        wrapper.onpointerleave = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
                 return;
@@ -963,38 +954,38 @@ function preLoadCss(cssUrl) {
     }
 
     onEachLazy(document.getElementsByClassName("tooltip"), e => {
-        e.onclick = function() {
-            this.TOOLTIP_FORCE_VISIBLE = this.TOOLTIP_FORCE_VISIBLE ? false : true;
-            if (window.CURRENT_TOOLTIP_ELEMENT && !this.TOOLTIP_FORCE_VISIBLE) {
+        e.onclick = () => {
+            e.TOOLTIP_FORCE_VISIBLE = e.TOOLTIP_FORCE_VISIBLE ? false : true;
+            if (window.CURRENT_TOOLTIP_ELEMENT && !e.TOOLTIP_FORCE_VISIBLE) {
                 hideTooltip(true);
             } else {
-                showTooltip(this);
+                showTooltip(e);
                 window.CURRENT_TOOLTIP_ELEMENT.setAttribute("tabindex", "0");
                 window.CURRENT_TOOLTIP_ELEMENT.focus();
                 window.CURRENT_TOOLTIP_ELEMENT.onblur = tooltipBlurHandler;
             }
             return false;
         };
-        e.onpointerenter = function(ev) {
+        e.onpointerenter = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            setTooltipHoverTimeout(this, true);
+            setTooltipHoverTimeout(e, true);
         };
-        e.onpointermove = function(ev) {
+        e.onpointermove = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            setTooltipHoverTimeout(this, true);
+            setTooltipHoverTimeout(e, true);
         };
-        e.onpointerleave = function(ev) {
+        e.onpointerleave = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            if (!this.TOOLTIP_FORCE_VISIBLE &&
+            if (!e.TOOLTIP_FORCE_VISIBLE &&
                 !elemIsInParent(ev.relatedTarget, window.CURRENT_TOOLTIP_ELEMENT)) {
                 // Tooltip pointer leave gesture:
                 //
@@ -1139,7 +1130,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
      *
      * Pass "true" to reset focus for tooltip popovers.
      */
-    window.hideAllModals = function(switchFocus) {
+    window.hideAllModals = switchFocus => {
         hideSidebar();
         window.hidePopoverMenus();
         hideTooltip(switchFocus);
@@ -1148,7 +1139,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
     /**
      * Hide all the popover menus.
      */
-    window.hidePopoverMenus = function() {
+    window.hidePopoverMenus = () => {
         onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
             elem.style.display = "none";
         });

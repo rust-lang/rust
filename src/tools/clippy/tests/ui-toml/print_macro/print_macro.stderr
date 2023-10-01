@@ -5,6 +5,7 @@ LL |     print!("{n}");
    |     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::print-stdout` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_stdout)]`
 
 error: use of `eprint!`
   --> $DIR/print_macro.rs:7:5
@@ -13,6 +14,7 @@ LL |     eprint!("{n}");
    |     ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::print-stderr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_stderr)]`
 
 error: aborting due to 2 previous errors
 

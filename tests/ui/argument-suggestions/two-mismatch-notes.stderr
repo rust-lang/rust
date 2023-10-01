@@ -11,7 +11,6 @@ LL |     foo(f, w);
    |         ^
    = note: expected fn pointer `fn(i32)`
                  found fn item `fn(u32) {f}`
-   = note: when the arguments and return types match, functions can be coerced to function pointers
 note: expected `Wrapper<i32>`, found `Wrapper<isize>`
   --> $DIR/two-mismatch-notes.rs:10:12
    |

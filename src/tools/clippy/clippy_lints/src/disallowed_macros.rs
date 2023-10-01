@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::macro_backtrace;
+use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefIdMap;
-use rustc_hir::{Expr, ForeignItem, HirId, ImplItem, Item, Pat, Path, Stmt, TraitItem, Ty};
+use rustc_hir::{Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, Pat, Path, Stmt, TraitItem, Ty};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{ExpnId, Span};
@@ -111,6 +112,10 @@ impl LateLintPass<'_> for DisallowedMacros {
 
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         self.check(cx, expr.span);
+        // `$t + $t` can have the context of $t, check also the span of the binary operator
+        if let ExprKind::Binary(op, ..) = expr.kind {
+            self.check(cx, op.span);
+        }
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) {
@@ -146,5 +151,9 @@ impl LateLintPass<'_> for DisallowedMacros {
 
     fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, _: HirId) {
         self.check(cx, path.span);
+    }
+
+    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &Attribute) {
+        self.check(cx, attr.span);
     }
 }

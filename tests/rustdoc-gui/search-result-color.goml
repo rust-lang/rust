@@ -151,7 +151,7 @@ assert-css: (
 )
 assert-css: (
     "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
-    {"color": "#fff", "background-color": "rgb(60, 60, 60)"},
+    {"color": "#fff", "background-color": "#3c3c3c"},
 )
 
 // Dark theme

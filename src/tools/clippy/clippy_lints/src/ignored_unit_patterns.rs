@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use hir::PatKind;
+use hir::{Node, PatKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -37,6 +37,17 @@ declare_lint_pass!(IgnoredUnitPatterns => [IGNORED_UNIT_PATTERNS]);
 
 impl<'tcx> LateLintPass<'tcx> for IgnoredUnitPatterns {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
+        match cx.tcx.hir().get_parent(pat.hir_id) {
+            Node::Param(param) if matches!(cx.tcx.hir().get_parent(param.hir_id), Node::Item(_)) => {
+                // Ignore function parameters
+                return;
+            },
+            Node::Local(local) if local.ty.is_some() => {
+                // Ignore let bindings with explicit type
+                return;
+            },
+            _ => {},
+        }
         if matches!(pat.kind, PatKind::Wild) && cx.typeck_results().pat_ty(pat).is_unit() {
             span_lint_and_sugg(
                 cx,

@@ -63,6 +63,11 @@ use self::Ordering::*;
 /// (transitive) impls are not forced to exist, but these requirements apply
 /// whenever they do exist.
 ///
+/// Violating these requirements is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
+///
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, two
@@ -250,6 +255,11 @@ pub macro PartialEq($item:item) {
 /// This property cannot be checked by the compiler, and therefore `Eq` implies
 /// [`PartialEq`], and has no extra methods.
 ///
+/// Violating this property is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
+///
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]`. When `derive`d, because `Eq` has
@@ -281,15 +291,16 @@ pub macro PartialEq($item:item) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
 pub trait Eq: PartialEq<Self> {
-    // this method is used solely by #[deriving] to assert
-    // that every component of a type implements #[deriving]
-    // itself, the current deriving infrastructure means doing this
+    // this method is used solely by #[derive(Eq)] to assert
+    // that every component of a type implements `Eq`
+    // itself. The current deriving infrastructure means doing this
     // assertion without using a method on this trait is nearly
     // impossible.
     //
     // This should never be implemented by hand.
     #[doc(hidden)]
-    #[no_coverage] // rust-lang/rust#84605
+    #[cfg_attr(bootstrap, no_coverage)] // rust-lang/rust#84605
+    #[cfg_attr(not(bootstrap), coverage(off))] //
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
@@ -298,7 +309,9 @@ pub trait Eq: PartialEq<Self> {
 /// Derive macro generating an impl of the trait [`Eq`].
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match, no_coverage)]
+#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
+#[cfg_attr(bootstrap, allow_internal_unstable(no_coverage))]
+#[cfg_attr(not(bootstrap), allow_internal_unstable(coverage_attribute))]
 pub macro Eq($item:item) {
     /* compiler built-in */
 }
@@ -656,6 +669,11 @@ impl<T: Clone> Clone for Reverse<T> {
 /// It's easy to accidentally make `cmp` and `partial_cmp` disagree by
 /// deriving some of the traits and manually implementing others.
 ///
+/// Violating these requirements is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
+///
 /// ## Corollaries
 ///
 /// From the above and the requirements of `PartialOrd`, it follows that `<` defines a strict total order.
@@ -888,6 +906,11 @@ pub macro Ord($item:item) {
 /// Note that these requirements mean that the trait itself must be implemented symmetrically and
 /// transitively: if `T: PartialOrd<U>` and `U: PartialOrd<V>` then `U: PartialOrd<T>` and `T:
 /// PartialOrd<V>`.
+///
+/// Violating these requirements is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
 ///
 /// ## Corollaries
 ///
@@ -1264,6 +1287,91 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+}
+
+/// Compares and sorts two values, returning minimum and maximum.
+///
+/// Returns `[v1, v2]` if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_minmax)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::minmax(1, 2), [1, 2]);
+/// assert_eq!(cmp::minmax(2, 2), [2, 2]);
+///
+/// // You can destructure the result using array patterns
+/// let [min, max] = cmp::minmax(42, 17);
+/// assert_eq!(min, 17);
+/// assert_eq!(max, 42);
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
+pub fn minmax<T>(v1: T, v2: T) -> [T; 2]
+where
+    T: Ord,
+{
+    if v1 <= v2 { [v1, v2] } else { [v2, v1] }
+}
+
+/// Returns minimum and maximum values with respect to the specified comparison function.
+///
+/// Returns `[v1, v2]` if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_minmax)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::minmax_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), [1, -2]);
+/// assert_eq!(cmp::minmax_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), [-2, 2]);
+///
+/// // You can destructure the result using array patterns
+/// let [min, max] = cmp::minmax_by(-42, 17, |x: &i32, y: &i32| x.abs().cmp(&y.abs()));
+/// assert_eq!(min, 17);
+/// assert_eq!(max, -42);
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
+pub fn minmax_by<T, F>(v1: T, v2: T, compare: F) -> [T; 2]
+where
+    F: FnOnce(&T, &T) -> Ordering,
+{
+    if compare(&v1, &v2).is_le() { [v1, v2] } else { [v2, v1] }
+}
+
+/// Returns minimum and maximum values with respect to the specified key function.
+///
+/// Returns `[v1, v2]` if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_minmax)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::minmax_by_key(-2, 1, |x: &i32| x.abs()), [1, -2]);
+/// assert_eq!(cmp::minmax_by_key(-2, 2, |x: &i32| x.abs()), [-2, 2]);
+///
+/// // You can destructure the result using array patterns
+/// let [min, max] = cmp::minmax_by_key(-42, 17, |x: &i32| x.abs());
+/// assert_eq!(min, 17);
+/// assert_eq!(max, -42);
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_minmax", issue = "115939")]
+pub fn minmax_by_key<T, F, K>(v1: T, v2: T, mut f: F) -> [T; 2]
+where
+    F: FnMut(&T) -> K,
+    K: Ord,
+{
+    minmax_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types

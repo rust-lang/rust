@@ -4,7 +4,7 @@ use core::ops::ControlFlow;
 use hir::def::Res;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, HirIdSet};
-use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -35,6 +35,17 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
 
 pub fn is_potentially_mutated<'tcx>(variable: HirId, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
     mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&variable))
+}
+
+pub fn is_potentially_local_place(local_id: HirId, place: &Place<'_>) -> bool {
+    match place.base {
+        PlaceBase::Local(id) => id == local_id,
+        PlaceBase::Upvar(_) => {
+            // Conservatively assume yes.
+            true
+        },
+        _ => false,
+    }
 }
 
 struct MutVarsDelegate {

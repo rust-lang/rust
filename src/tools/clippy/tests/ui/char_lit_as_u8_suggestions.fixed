@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::char_lit_as_u8)]
 
 fn main() {

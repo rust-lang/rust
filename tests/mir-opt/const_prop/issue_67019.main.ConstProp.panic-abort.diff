@@ -23,5 +23,17 @@
           StorageDead(_2);
           return;
       }
++ }
++ 
++ alloc12 (size: 2, align: 1) {
++     01 02                                           │ ..
++ }
++ 
++ alloc11 (size: 2, align: 1) {
++     01 02                                           │ ..
++ }
++ 
++ alloc8 (size: 2, align: 1) {
++     01 02                                           │ ..
   }
   

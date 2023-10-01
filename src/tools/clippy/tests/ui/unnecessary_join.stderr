@@ -1,5 +1,5 @@
 error: called `.collect::<Vec<String>>().join("")` on an iterator
-  --> $DIR/unnecessary_join.rs:11:10
+  --> $DIR/unnecessary_join.rs:10:10
    |
 LL |           .collect::<Vec<String>>()
    |  __________^
@@ -7,9 +7,10 @@ LL | |         .join("");
    | |_________________^ help: try using: `collect::<String>()`
    |
    = note: `-D clippy::unnecessary-join` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_join)]`
 
 error: called `.collect::<Vec<String>>().join("")` on an iterator
-  --> $DIR/unnecessary_join.rs:20:10
+  --> $DIR/unnecessary_join.rs:19:10
    |
 LL |           .collect::<Vec<_>>()
    |  __________^

@@ -5,6 +5,7 @@ LL |     println!("one");
    |     ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::disallowed-macros` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
 
 error: use of a disallowed macro `std::println`
   --> $DIR/disallowed_macros.rs:11:5
@@ -62,23 +63,37 @@ error: use of a disallowed macro `macros::item`
 LL |     macros::item!();
    |     ^^^^^^^^^^^^^^^
 
+error: use of a disallowed macro `macros::binop`
+  --> $DIR/disallowed_macros.rs:23:13
+   |
+LL |     let _ = macros::binop!(1);
+   |             ^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed macro `macros::attr`
+  --> $DIR/disallowed_macros.rs:28:1
+   |
+LL | / macros::attr! {
+LL | |     struct S;
+LL | | }
+   | |_^
+
 error: use of a disallowed macro `macros::item`
-  --> $DIR/disallowed_macros.rs:30:5
+  --> $DIR/disallowed_macros.rs:33:5
    |
 LL |     macros::item!();
    |     ^^^^^^^^^^^^^^^
 
 error: use of a disallowed macro `macros::item`
-  --> $DIR/disallowed_macros.rs:34:5
+  --> $DIR/disallowed_macros.rs:37:5
    |
 LL |     macros::item!();
    |     ^^^^^^^^^^^^^^^
 
 error: use of a disallowed macro `macros::item`
-  --> $DIR/disallowed_macros.rs:38:5
+  --> $DIR/disallowed_macros.rs:41:5
    |
 LL |     macros::item!();
    |     ^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 15 previous errors
 

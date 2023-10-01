@@ -1,6 +1,6 @@
 # `loongarch*-unknown-none*`
 
-**Tier: 3**
+**Tier: 2**
 
 Freestanding/bare-metal LoongArch64 binaries in ELF format: firmware, kernels, etc.
 

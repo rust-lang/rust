@@ -4,7 +4,7 @@ use std::io::Lines;
 
 pub trait MyTrait { fn dummy(&self) { } }
 
-// @has foo/struct.Alpha.html '//pre' "pub struct Alpha<A>(_) where A: MyTrait"
+// @has foo/struct.Alpha.html '//pre' "pub struct Alpha<A>(/* private fields */) where A: MyTrait"
 // @snapshot alpha_trait_decl - '//*[@class="rust item-decl"]/code'
 pub struct Alpha<A>(A) where A: MyTrait;
 // @has foo/trait.Bravo.html '//pre' "pub trait Bravo<B>where B: MyTrait"

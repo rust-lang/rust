@@ -3,6 +3,7 @@ error: this `match` can be collapsed into the outer `match`
    |
 LL |           Ok(val) => match val {
    |  ____________________^
+LL | |
 LL | |             Some(n) => foo(n),
 LL | |             _ => return,
 LL | |         },
@@ -13,38 +14,43 @@ help: the outer pattern can be modified to include the inner pattern
    |
 LL |         Ok(val) => match val {
    |            ^^^ replace this binding
+LL |
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
    = note: `-D clippy::collapsible-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
 
 error: this `match` can be collapsed into the outer `match`
-  --> $DIR/collapsible_match.rs:22:20
+  --> $DIR/collapsible_match.rs:23:20
    |
 LL |           Ok(val) => match val {
    |  ____________________^
+LL | |
 LL | |             Some(n) => foo(n),
 LL | |             _ => return,
 LL | |         },
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:22:12
+  --> $DIR/collapsible_match.rs:23:12
    |
 LL |         Ok(val) => match val {
    |            ^^^ replace this binding
+LL |
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
 error: this `if let` can be collapsed into the outer `if let`
-  --> $DIR/collapsible_match.rs:31:9
+  --> $DIR/collapsible_match.rs:33:9
    |
 LL | /         if let Some(n) = val {
+LL | |
 LL | |             take(n);
 LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:30:15
+  --> $DIR/collapsible_match.rs:32:15
    |
 LL |     if let Ok(val) = res_opt {
    |               ^^^ replace this binding
@@ -52,9 +58,10 @@ LL |         if let Some(n) = val {
    |                ^^^^^^^ with this pattern
 
 error: this `if let` can be collapsed into the outer `if let`
-  --> $DIR/collapsible_match.rs:38:9
+  --> $DIR/collapsible_match.rs:41:9
    |
 LL | /         if let Some(n) = val {
+LL | |
 LL | |             take(n);
 LL | |         } else {
 LL | |             return;
@@ -62,7 +69,7 @@ LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:37:15
+  --> $DIR/collapsible_match.rs:40:15
    |
 LL |     if let Ok(val) = res_opt {
    |               ^^^ replace this binding
@@ -70,33 +77,35 @@ LL |         if let Some(n) = val {
    |                ^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `if let`
-  --> $DIR/collapsible_match.rs:49:9
+  --> $DIR/collapsible_match.rs:53:9
    |
 LL | /         match val {
+LL | |
 LL | |             Some(n) => foo(n),
 LL | |             _ => (),
 LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:48:15
+  --> $DIR/collapsible_match.rs:52:15
    |
 LL |     if let Ok(val) = res_opt {
    |               ^^^ replace this binding
-LL |         match val {
+...
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
 error: this `if let` can be collapsed into the outer `match`
-  --> $DIR/collapsible_match.rs:58:13
+  --> $DIR/collapsible_match.rs:63:13
    |
 LL | /             if let Some(n) = val {
+LL | |
 LL | |                 take(n);
 LL | |             }
    | |_____________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:57:12
+  --> $DIR/collapsible_match.rs:62:12
    |
 LL |         Ok(val) => {
    |            ^^^ replace this binding
@@ -104,27 +113,29 @@ LL |             if let Some(n) = val {
    |                    ^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `if let`
-  --> $DIR/collapsible_match.rs:67:9
+  --> $DIR/collapsible_match.rs:73:9
    |
 LL | /         match val {
+LL | |
 LL | |             Some(n) => foo(n),
 LL | |             _ => return,
 LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:66:15
+  --> $DIR/collapsible_match.rs:72:15
    |
 LL |     if let Ok(val) = res_opt {
    |               ^^^ replace this binding
-LL |         match val {
+...
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
 error: this `if let` can be collapsed into the outer `match`
-  --> $DIR/collapsible_match.rs:78:13
+  --> $DIR/collapsible_match.rs:85:13
    |
 LL | /             if let Some(n) = val {
+LL | |
 LL | |                 take(n);
 LL | |             } else {
 LL | |                 return;
@@ -132,7 +143,7 @@ LL | |             }
    | |_____________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:77:12
+  --> $DIR/collapsible_match.rs:84:12
    |
 LL |         Ok(val) => {
    |            ^^^ replace this binding
@@ -140,51 +151,56 @@ LL |             if let Some(n) = val {
    |                    ^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `match`
-  --> $DIR/collapsible_match.rs:89:20
+  --> $DIR/collapsible_match.rs:97:20
    |
 LL |           Ok(val) => match val {
    |  ____________________^
+LL | |
 LL | |             Some(n) => foo(n),
 LL | |             None => return,
 LL | |         },
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:89:12
+  --> $DIR/collapsible_match.rs:97:12
    |
 LL |         Ok(val) => match val {
    |            ^^^ replace this binding
+LL |
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `match`
-  --> $DIR/collapsible_match.rs:98:22
+  --> $DIR/collapsible_match.rs:107:22
    |
 LL |           Some(val) => match val {
    |  ______________________^
+LL | |
 LL | |             Some(n) => foo(n),
 LL | |             _ => return,
 LL | |         },
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:98:14
+  --> $DIR/collapsible_match.rs:107:14
    |
 LL |         Some(val) => match val {
    |              ^^^ replace this binding
+LL |
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
 error: this `if let` can be collapsed into the outer `if let`
-  --> $DIR/collapsible_match.rs:263:9
+  --> $DIR/collapsible_match.rs:273:9
    |
 LL | /         if let Some(u) = a {
+LL | |
 LL | |             println!("{u:?}")
 LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:262:27
+  --> $DIR/collapsible_match.rs:272:27
    |
 LL |     if let Issue9647::A { a, .. } = x {
    |                           ^ replace this binding
@@ -192,15 +208,16 @@ LL |         if let Some(u) = a {
    |                ^^^^^^^ with this pattern, prefixed by a:
 
 error: this `if let` can be collapsed into the outer `if let`
-  --> $DIR/collapsible_match.rs:271:9
+  --> $DIR/collapsible_match.rs:282:9
    |
 LL | /         if let Some(u) = a {
+LL | |
 LL | |             println!("{u}")
 LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> $DIR/collapsible_match.rs:270:35
+  --> $DIR/collapsible_match.rs:281:35
    |
 LL |     if let Issue9647::A { a: Some(a), .. } = x {
    |                                   ^ replace this binding

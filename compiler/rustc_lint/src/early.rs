@@ -228,6 +228,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
             }) => self.check_id(closure_id),
             _ => {}
         }
+        lint_callback!(self, check_expr_post, e);
     }
 
     fn visit_generic_arg(&mut self, arg: &'a ast::GenericArg) {

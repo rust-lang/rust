@@ -8,7 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt};
-use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable};
 use std::ops::ControlFlow;
 
 /// Defines the `TermsContext` basically houses an arena where we can
@@ -56,9 +56,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
             let crate_map = tcx.crate_variances(());
             return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
         }
-        DefKind::TyAlias { lazy }
-            if lazy || tcx.type_of(item_def_id).instantiate_identity().has_opaque_types() =>
-        {
+        DefKind::TyAlias if tcx.type_alias_is_lazy(item_def_id) => {
             // These are inferred.
             let crate_map = tcx.crate_variances(());
             return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
@@ -129,7 +127,15 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
 
     // By default, RPIT are invariant wrt type and const generics, but they are bivariant wrt
     // lifetime generics.
-    let mut variances: Vec<_> = std::iter::repeat(ty::Invariant).take(generics.count()).collect();
+    let variances = std::iter::repeat(ty::Invariant).take(generics.count());
+
+    let mut variances: Vec<_> = match tcx.opaque_type_origin(item_def_id) {
+        rustc_hir::OpaqueTyOrigin::FnReturn(_) | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {
+            variances.collect()
+        }
+        // But TAIT are invariant for all generics
+        rustc_hir::OpaqueTyOrigin::TyAlias { .. } => return tcx.arena.alloc_from_iter(variances),
+    };
 
     // Mark all lifetimes from parent generics as unused (Bivariant).
     // This will be overridden later if required.

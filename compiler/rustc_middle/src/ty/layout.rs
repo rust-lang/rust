@@ -4,7 +4,9 @@ use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ConstKind, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_error_messages::DiagnosticMessage;
-use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
+use rustc_errors::{
+    DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
@@ -262,6 +264,12 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
             LayoutError::Cycle => write!(f, "a cycle occurred during layout computation"),
             LayoutError::ReferencesError(_) => write!(f, "the type has an unknown layout"),
         }
+    }
+}
+
+impl<'tcx> IntoDiagnosticArg for LayoutError<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
     }
 }
 
@@ -802,7 +810,6 @@ where
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Foreign(..)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
@@ -1109,6 +1116,10 @@ where
 
     fn is_unit(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Tuple(list) if list.len() == 0)
+    }
+
+    fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
     }
 }
 

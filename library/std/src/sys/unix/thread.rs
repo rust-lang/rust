@@ -182,6 +182,9 @@ impl Thread {
         }
 
         if let Some(f) = pthread_setname_np.get() {
+            #[cfg(target_os = "nto")]
+            let name = truncate_cstr::<{ libc::_NTO_THREAD_NAME_MAX as usize }>(name);
+
             let res = unsafe { f(libc::pthread_self(), name.as_ptr()) };
             debug_assert_eq!(res, 0);
         }
@@ -213,7 +216,8 @@ impl Thread {
         target_os = "l4re",
         target_os = "emscripten",
         target_os = "redox",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "hurd",
     ))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.
@@ -290,6 +294,7 @@ impl Drop for Thread {
     target_os = "ios",
     target_os = "tvos",
     target_os = "watchos",
+    target_os = "nto",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];
@@ -305,6 +310,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             target_os = "android",
             target_os = "emscripten",
             target_os = "fuchsia",
+            target_os = "hurd",
             target_os = "ios",
             target_os = "tvos",
             target_os = "linux",
@@ -312,23 +318,38 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             target_os = "solaris",
             target_os = "illumos",
         ))] {
+            #[allow(unused_assignments)]
+            #[allow(unused_mut)]
+            let mut quota = usize::MAX;
+
             #[cfg(any(target_os = "android", target_os = "linux"))]
             {
-                let quota = cgroups::quota().max(1);
+                quota = cgroups::quota().max(1);
                 let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
                 unsafe {
                     if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         let count = count.min(quota);
-                        // SAFETY: affinity mask can't be empty and the quota gets clamped to a minimum of 1
-                        return Ok(NonZeroUsize::new_unchecked(count));
+
+                        // According to sched_getaffinity's API it should always be non-zero, but
+                        // some old MIPS kernels were buggy and zero-initialized the mask if
+                        // none was explicitly set.
+                        // In that case we use the sysconf fallback.
+                        if let Some(count) = NonZeroUsize::new(count) {
+                            return Ok(count)
+                        }
                     }
                 }
             }
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
                 0 => Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform")),
-                cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) }),
+                cpus => {
+                    let count = cpus as usize;
+                    // Cover the unusual situation where we were able to get the quota but not the affinity mask
+                    let count = count.min(quota);
+                    Ok(unsafe { NonZeroUsize::new_unchecked(count) })
+                }
             }
         } else if #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))] {
             use crate::ptr;
@@ -686,6 +707,7 @@ mod cgroups {
 #[cfg(all(
     not(target_os = "linux"),
     not(target_os = "freebsd"),
+    not(target_os = "hurd"),
     not(target_os = "macos"),
     not(target_os = "netbsd"),
     not(target_os = "openbsd"),
@@ -706,6 +728,7 @@ pub mod guard {
 #[cfg(any(
     target_os = "linux",
     target_os = "freebsd",
+    target_os = "hurd",
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
@@ -762,6 +785,7 @@ pub mod guard {
     #[cfg(any(
         target_os = "android",
         target_os = "freebsd",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "l4re"
@@ -899,6 +923,7 @@ pub mod guard {
     #[cfg(any(
         target_os = "android",
         target_os = "freebsd",
+        target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
         target_os = "l4re"
@@ -930,7 +955,7 @@ pub mod guard {
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackptr, &mut size), 0);
 
             let stackaddr = stackptr.addr();
-            ret = if cfg!(any(target_os = "freebsd", target_os = "netbsd")) {
+            ret = if cfg!(any(target_os = "freebsd", target_os = "netbsd", target_os = "hurd")) {
                 Some(stackaddr - guardsize..stackaddr)
             } else if cfg!(all(target_os = "linux", target_env = "musl")) {
                 Some(stackaddr - guardsize..stackaddr)

@@ -41,7 +41,7 @@ pub fn expand_deriving_const_param_ty(
         path: path_std!(marker::ConstParamTy),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: false,
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![ty::Ty::Path(path_std!(cmp::Eq))],
         supports_unions: false,
         methods: Vec::new(),
         associated_types: Vec::new(),

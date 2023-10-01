@@ -3505,8 +3505,8 @@ This serves two purposes:
 "##,
     },
     Lint {
-        label: "no_coverage",
-        description: r##"# `no_coverage`
+        label: "coverage",
+        description: r##"# `coverage`
 
 The tracking issue for this feature is: [#84605]
 
@@ -3514,7 +3514,7 @@ The tracking issue for this feature is: [#84605]
 
 ---
 
-The `no_coverage` attribute can be used to selectively disable coverage
+The `coverage` attribute can be used to selectively disable coverage
 instrumentation in an annotated function. This might be useful to:
 
 -   Avoid instrumentation overhead in a performance critical function
@@ -3524,14 +3524,14 @@ instrumentation in an annotated function. This might be useful to:
 ## Example
 
 ```rust
-#![feature(no_coverage)]
+#![feature(coverage)]
 
 // `foo()` will get coverage instrumentation (by default)
 fn foo() {
   // ...
 }
 
-#[no_coverage]
+#[coverage(off)]
 fn bar() {
   // ...
 }

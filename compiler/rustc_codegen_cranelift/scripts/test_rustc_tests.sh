@@ -45,6 +45,7 @@ rm tests/ui/proc-macro/quote-debug.rs
 rm tests/ui/proc-macro/no-missing-docs.rs
 rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs
 rm tests/ui/proc-macro/allowed-signatures.rs
+rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
 
 # vendor intrinsics
 rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
@@ -114,6 +115,7 @@ rm tests/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/layout/valid_range_oob.rs # different ICE message
+rm tests/ui/const-generics/generic_const_exprs/issue-80742.rs # gives error instead of ICE with cg_clif
 
 rm tests/ui/consts/issue-miri-1910.rs # different error message
 rm tests/ui/consts/offset_ub.rs # same

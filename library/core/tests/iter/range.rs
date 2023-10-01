@@ -1,5 +1,6 @@
-use core::num::NonZeroUsize;
 use super::*;
+use core::ascii::Char as AsciiChar;
+use core::num::NonZeroUsize;
 
 #[test]
 fn test_range() {
@@ -37,6 +38,21 @@ fn test_char_range() {
     assert_eq!(('\u{D7FF}'..='\u{E000}').size_hint(), (2, Some(2)));
     assert_eq!(('\u{D7FF}'..'\u{E000}').count(), 1);
     assert_eq!(('\u{D7FF}'..'\u{E000}').size_hint(), (1, Some(1)));
+}
+
+#[test]
+fn test_ascii_char_range() {
+    let from = AsciiChar::Null;
+    let to = AsciiChar::Delete;
+    assert!((from..=to).eq((from as u8..=to as u8).filter_map(AsciiChar::from_u8)));
+    assert!((from..=to).rev().eq((from as u8..=to as u8).filter_map(AsciiChar::from_u8).rev()));
+
+    assert_eq!((AsciiChar::CapitalA..=AsciiChar::CapitalZ).count(), 26);
+    assert_eq!((AsciiChar::CapitalA..=AsciiChar::CapitalZ).size_hint(), (26, Some(26)));
+    assert_eq!((AsciiChar::SmallA..=AsciiChar::SmallZ).count(), 26);
+    assert_eq!((AsciiChar::SmallA..=AsciiChar::SmallZ).size_hint(), (26, Some(26)));
+    assert_eq!((AsciiChar::Digit0..=AsciiChar::Digit9).count(), 10);
+    assert_eq!((AsciiChar::Digit0..=AsciiChar::Digit9).size_hint(), (10, Some(10)));
 }
 
 #[test]

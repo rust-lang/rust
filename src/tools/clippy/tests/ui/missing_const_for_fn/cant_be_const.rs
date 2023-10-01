@@ -3,7 +3,7 @@
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.
 
 //@aux-build:helper.rs
-//@aux-build:../auxiliary/proc_macros.rs:proc-macro
+//@aux-build:../auxiliary/proc_macros.rs
 
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]

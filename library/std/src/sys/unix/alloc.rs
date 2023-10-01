@@ -86,7 +86,11 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "wasi")] {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
-            libc::aligned_alloc(layout.align(), layout.size()) as *mut u8
+            // C11 aligned_alloc requires that the size be a multiple of the alignment.
+            // Layout already checks that the size rounded up doesn't overflow isize::MAX.
+            let align = layout.align();
+            let size = layout.size().next_multiple_of(align);
+            libc::aligned_alloc(align, size) as *mut u8
         }
     } else {
         #[inline]

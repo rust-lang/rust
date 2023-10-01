@@ -1,0 +1,14 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/signature-mismatch.rs:79:10
+   |
+LL |         &'a self,
+   |         -------- this parameter and the return type are declared with different lifetimes...
+...
+LL |     ) -> impl Future<Output = Vec<u8>> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          ...but data from `buff` is returned here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

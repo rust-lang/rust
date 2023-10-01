@@ -137,16 +137,16 @@ impl IntRange {
     fn from_constant<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: mir::ConstantKind<'tcx>,
+        value: mir::Const<'tcx>,
     ) -> Option<IntRange> {
         let ty = value.ty();
         let (target_size, bias) = Self::integral_size_and_signed_bias(tcx, ty)?;
         let val = match value {
-            mir::ConstantKind::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
+            mir::Const::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
                 valtree.unwrap_leaf().to_bits(target_size).ok()
             },
             // This is a more general form of the previous case.
-            _ => value.try_eval_bits(tcx, param_env, ty),
+            _ => value.try_eval_bits(tcx, param_env),
         }?;
 
         let val = val ^ bias;
@@ -225,8 +225,8 @@ impl IntRange {
         let (lo, hi) = (lo ^ bias, hi ^ bias);
 
         let env = ty::ParamEnv::empty().and(ty);
-        let lo_const = mir::ConstantKind::from_bits(tcx, lo, env);
-        let hi_const = mir::ConstantKind::from_bits(tcx, hi, env);
+        let lo_const = mir::Const::from_bits(tcx, lo, env);
+        let hi_const = mir::Const::from_bits(tcx, hi, env);
 
         let kind = if lo == hi {
             PatKind::Constant { value: lo_const }
@@ -619,9 +619,9 @@ pub(super) enum Constructor<'tcx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    FloatRange(mir::ConstantKind<'tcx>, mir::ConstantKind<'tcx>, RangeEnd),
+    FloatRange(mir::Const<'tcx>, mir::Const<'tcx>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
-    Str(mir::ConstantKind<'tcx>),
+    Str(mir::Const<'tcx>),
     /// Array and slice patterns.
     Slice(Slice),
     /// Constants that must not be matched structurally. They are treated as black
@@ -1379,8 +1379,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 let ty = lo.ty();
                 ctor = if let Some(int_range) = IntRange::from_range(
                     cx.tcx,
-                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty()),
-                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty()),
+                    lo.eval_bits(cx.tcx, cx.param_env),
+                    hi.eval_bits(cx.tcx, cx.param_env),
                     ty,
                     &end,
                 ) {

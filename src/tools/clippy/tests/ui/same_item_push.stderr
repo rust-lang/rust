@@ -6,9 +6,10 @@ LL |         vec.push(item);
    |
    = help: try using vec![item;SIZE] or vec.resize(NEW_SIZE, item)
    = note: `-D clippy::same-item-push` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::same_item_push)]`
 
 error: it looks like the same item is being pushed into this Vec
-  --> $DIR/same_item_push.rs:29:9
+  --> $DIR/same_item_push.rs:30:9
    |
 LL |         vec.push(item);
    |         ^^^
@@ -16,7 +17,7 @@ LL |         vec.push(item);
    = help: try using vec![item;SIZE] or vec.resize(NEW_SIZE, item)
 
 error: it looks like the same item is being pushed into this Vec
-  --> $DIR/same_item_push.rs:34:9
+  --> $DIR/same_item_push.rs:36:9
    |
 LL |         vec.push(13);
    |         ^^^
@@ -24,7 +25,7 @@ LL |         vec.push(13);
    = help: try using vec![13;SIZE] or vec.resize(NEW_SIZE, 13)
 
 error: it looks like the same item is being pushed into this Vec
-  --> $DIR/same_item_push.rs:39:9
+  --> $DIR/same_item_push.rs:42:9
    |
 LL |         vec.push(VALUE);
    |         ^^^
@@ -32,7 +33,7 @@ LL |         vec.push(VALUE);
    = help: try using vec![VALUE;SIZE] or vec.resize(NEW_SIZE, VALUE)
 
 error: it looks like the same item is being pushed into this Vec
-  --> $DIR/same_item_push.rs:45:9
+  --> $DIR/same_item_push.rs:49:9
    |
 LL |         vec.push(item);
    |         ^^^

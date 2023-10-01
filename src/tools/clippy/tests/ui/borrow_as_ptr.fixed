@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::borrow_as_ptr)]
 #![allow(clippy::useless_vec)]
 

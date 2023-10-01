@@ -53,9 +53,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     fn parent(&self) -> Option<LocalDefId> {
         match self.tcx.def_kind(self.item) {
-            DefKind::AnonConst | DefKind::InlineConst | DefKind::Fn | DefKind::TyAlias { .. } => {
-                None
-            }
+            DefKind::AnonConst | DefKind::InlineConst | DefKind::Fn | DefKind::TyAlias => None,
             DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
                 Some(self.tcx.local_parent(self.item))
             }
@@ -118,7 +116,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             #[instrument(level = "trace", skip(self))]
             fn visit_nested_item(&mut self, id: rustc_hir::ItemId) {
                 let id = id.owner_id.def_id;
-                if let DefKind::TyAlias { .. } = self.collector.tcx.def_kind(id) {
+                if let DefKind::TyAlias = self.collector.tcx.def_kind(id) {
                     let items = self.collector.tcx.opaque_types_defined_by(id);
                     self.collector.opaques.extend(items);
                 }
@@ -297,7 +295,7 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
             collector.collect_body_and_predicate_taits();
         }
         // We're also doing this for `AssocTy` for the wf checks in `check_opaque_meets_bounds`
-        DefKind::TyAlias { .. } | DefKind::AssocTy => {
+        DefKind::TyAlias | DefKind::AssocTy => {
             tcx.type_of(item).instantiate_identity().visit_with(&mut collector);
         }
         DefKind::OpaqueTy => {

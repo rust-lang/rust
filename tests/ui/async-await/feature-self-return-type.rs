@@ -1,5 +1,4 @@
 // edition:2018
-#![feature(impl_trait_projections)]
 
 // This test checks that we emit the correct borrowck error when `Self` is used as a return type.
 // See #61949 for context.

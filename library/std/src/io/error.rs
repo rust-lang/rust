@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(target_pointer_width = "64")]
+#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 mod repr_bitpacked;
-#[cfg(target_pointer_width = "64")]
+#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 use repr_bitpacked::Repr;
 
-#[cfg(not(target_pointer_width = "64"))]
+#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 mod repr_unpacked;
-#[cfg(not(target_pointer_width = "64"))]
+#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 use repr_unpacked::Repr;
 
 use crate::error;
@@ -102,7 +102,7 @@ enum ErrorData<C> {
 ///
 /// [`into`]: Into::into
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub type RawOsError = i32;
+pub type RawOsError = sys::RawOsError;
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or
 // higher already. We include it just because repr_bitpacked.rs's encoding
@@ -511,6 +511,7 @@ impl Error {
     /// let eof_error = Error::from(ErrorKind::UnexpectedEof);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline(never)]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
     where
         E: Into<Box<dyn error::Error + Send + Sync>>,
@@ -527,8 +528,6 @@ impl Error {
     /// # Examples
     ///
     /// ```
-    /// #![feature(io_error_other)]
-    ///
     /// use std::io::Error;
     ///
     /// // errors can be created from strings
@@ -537,7 +536,7 @@ impl Error {
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::other(custom_error);
     /// ```
-    #[unstable(feature = "io_error_other", issue = "91946")]
+    #[stable(feature = "io_error_other", since = "CURRENT_RUSTC_VERSION")]
     pub fn other<E>(error: E) -> Error
     where
         E: Into<Box<dyn error::Error + Send + Sync>>,

@@ -5,7 +5,7 @@ pub mod builtin;
 #[cfg(test)]
 mod tests;
 
-use std::{hash::Hash, ops};
+use std::{hash::Hash, ops, slice::Iter as SliceIter};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -14,12 +14,11 @@ use hir_expand::{
     attrs::{collect_attrs, Attr, AttrId, RawAttrs},
     HirFileId, InFile,
 };
-use itertools::Itertools;
 use la_arena::{ArenaMap, Idx, RawIdx};
 use mbe::DelimiterKind;
 use syntax::{
-    ast::{self, HasAttrs, IsString},
-    AstPtr, AstToken, SmolStr, TextRange, TextSize,
+    ast::{self, HasAttrs},
+    AstPtr, SmolStr,
 };
 use triomphe::Arc;
 
@@ -32,26 +31,6 @@ use crate::{
     AdtId, AssocItemLoc, AttrDefId, EnumId, GenericParamId, ItemLoc, LocalEnumVariantId,
     LocalFieldId, Lookup, MacroId, VariantId,
 };
-
-/// Holds documentation
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Documentation(String);
-
-impl Documentation {
-    pub fn new(s: String) -> Self {
-        Documentation(s)
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<Documentation> for String {
-    fn from(Documentation(string): Documentation) -> Self {
-        string
-    }
-}
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Attrs(RawAttrs);
@@ -221,33 +200,6 @@ impl Attrs {
         self.by_key("lang").string_value().and_then(|it| LangItem::from_str(it))
     }
 
-    pub fn docs(&self) -> Option<Documentation> {
-        let docs = self.by_key("doc").attrs().filter_map(|attr| attr.string_value());
-        let indent = doc_indent(self);
-        let mut buf = String::new();
-        for doc in docs {
-            // str::lines doesn't yield anything for the empty string
-            if !doc.is_empty() {
-                buf.extend(Itertools::intersperse(
-                    doc.lines().map(|line| {
-                        line.char_indices()
-                            .nth(indent)
-                            .map_or(line, |(offset, _)| &line[offset..])
-                            .trim_end()
-                    }),
-                    "\n",
-                ));
-            }
-            buf.push('\n');
-        }
-        buf.pop();
-        if buf.is_empty() {
-            None
-        } else {
-            Some(Documentation(buf))
-        }
-    }
-
     pub fn has_doc_hidden(&self) -> bool {
         self.by_key("doc").tt_values().any(|tt| {
             tt.delimiter.kind == DelimiterKind::Parenthesis &&
@@ -299,7 +251,6 @@ impl Attrs {
     }
 }
 
-use std::slice::Iter as SliceIter;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum DocAtom {
     /// eg. `#[doc(hidden)]`
@@ -313,7 +264,6 @@ pub enum DocAtom {
 
 // Adapted from `CfgExpr` parsing code
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-// #[cfg_attr(test, derive(derive_arbitrary::Arbitrary))]
 pub enum DocExpr {
     Invalid,
     /// eg. `#[doc(hidden)]`, `#[doc(alias = "x")]`
@@ -574,62 +524,6 @@ impl AttrsWithOwner {
 
         AttrSourceMap::new(owner.as_ref().map(|node| node as &dyn HasAttrs))
     }
-
-    pub fn docs_with_rangemap(
-        &self,
-        db: &dyn DefDatabase,
-    ) -> Option<(Documentation, DocsRangeMap)> {
-        let docs =
-            self.by_key("doc").attrs().filter_map(|attr| attr.string_value().map(|s| (s, attr.id)));
-        let indent = doc_indent(self);
-        let mut buf = String::new();
-        let mut mapping = Vec::new();
-        for (doc, idx) in docs {
-            if !doc.is_empty() {
-                let mut base_offset = 0;
-                for raw_line in doc.split('\n') {
-                    let line = raw_line.trim_end();
-                    let line_len = line.len();
-                    let (offset, line) = match line.char_indices().nth(indent) {
-                        Some((offset, _)) => (offset, &line[offset..]),
-                        None => (0, line),
-                    };
-                    let buf_offset = buf.len();
-                    buf.push_str(line);
-                    mapping.push((
-                        TextRange::new(buf_offset.try_into().ok()?, buf.len().try_into().ok()?),
-                        idx,
-                        TextRange::at(
-                            (base_offset + offset).try_into().ok()?,
-                            line_len.try_into().ok()?,
-                        ),
-                    ));
-                    buf.push('\n');
-                    base_offset += raw_line.len() + 1;
-                }
-            } else {
-                buf.push('\n');
-            }
-        }
-        buf.pop();
-        if buf.is_empty() {
-            None
-        } else {
-            Some((Documentation(buf), DocsRangeMap { mapping, source_map: self.source_map(db) }))
-        }
-    }
-}
-
-fn doc_indent(attrs: &Attrs) -> usize {
-    attrs
-        .by_key("doc")
-        .attrs()
-        .filter_map(|attr| attr.string_value())
-        .flat_map(|s| s.lines())
-        .filter(|line| !line.chars().all(|c| c.is_whitespace()))
-        .map(|line| line.chars().take_while(|c| c.is_whitespace()).count())
-        .min()
-        .unwrap_or(0)
 }
 
 #[derive(Debug)]
@@ -673,7 +567,7 @@ impl AttrSourceMap {
         self.source_of_id(attr.id)
     }
 
-    fn source_of_id(&self, id: AttrId) -> InFile<&Either<ast::Attr, ast::Comment>> {
+    pub fn source_of_id(&self, id: AttrId) -> InFile<&Either<ast::Attr, ast::Comment>> {
         let ast_idx = id.ast_index();
         let file_id = match self.mod_def_site_file_id {
             Some((file_id, def_site_cut)) if def_site_cut <= ast_idx => file_id,
@@ -684,69 +578,6 @@ impl AttrSourceMap {
             .get(ast_idx)
             .map(|it| InFile::new(file_id, it))
             .unwrap_or_else(|| panic!("cannot find attr at index {id:?}"))
-    }
-}
-
-/// A struct to map text ranges from [`Documentation`] back to TextRanges in the syntax tree.
-#[derive(Debug)]
-pub struct DocsRangeMap {
-    source_map: AttrSourceMap,
-    // (docstring-line-range, attr_index, attr-string-range)
-    // a mapping from the text range of a line of the [`Documentation`] to the attribute index and
-    // the original (untrimmed) syntax doc line
-    mapping: Vec<(TextRange, AttrId, TextRange)>,
-}
-
-impl DocsRangeMap {
-    /// Maps a [`TextRange`] relative to the documentation string back to its AST range
-    pub fn map(&self, range: TextRange) -> Option<InFile<TextRange>> {
-        let found = self.mapping.binary_search_by(|(probe, ..)| probe.ordering(range)).ok()?;
-        let (line_docs_range, idx, original_line_src_range) = self.mapping[found];
-        if !line_docs_range.contains_range(range) {
-            return None;
-        }
-
-        let relative_range = range - line_docs_range.start();
-
-        let InFile { file_id, value: source } = self.source_map.source_of_id(idx);
-        match source {
-            Either::Left(attr) => {
-                let string = get_doc_string_in_attr(attr)?;
-                let text_range = string.open_quote_text_range()?;
-                let range = TextRange::at(
-                    text_range.end() + original_line_src_range.start() + relative_range.start(),
-                    string.syntax().text_range().len().min(range.len()),
-                );
-                Some(InFile { file_id, value: range })
-            }
-            Either::Right(comment) => {
-                let text_range = comment.syntax().text_range();
-                let range = TextRange::at(
-                    text_range.start()
-                        + TextSize::try_from(comment.prefix().len()).ok()?
-                        + original_line_src_range.start()
-                        + relative_range.start(),
-                    text_range.len().min(range.len()),
-                );
-                Some(InFile { file_id, value: range })
-            }
-        }
-    }
-}
-
-fn get_doc_string_in_attr(it: &ast::Attr) -> Option<ast::String> {
-    match it.expr() {
-        // #[doc = lit]
-        Some(ast::Expr::Literal(lit)) => match lit.kind() {
-            ast::LiteralKind::String(it) => Some(it),
-            _ => None,
-        },
-        // #[cfg_attr(..., doc = "", ...)]
-        None => {
-            // FIXME: See highlight injection for what to do here
-            None
-        }
-        _ => None,
     }
 }
 

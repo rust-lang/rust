@@ -134,8 +134,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// in-scope substitutions and then normalizing any associated
     /// types.
     /// Panics if normalization fails. In case normalization might fail
-    /// use `try_subst_and_normalize_erasing_regions` instead.
-    pub fn subst_and_normalize_erasing_regions<T>(
+    /// use `try_instantiate_and_normalize_erasing_regions` instead.
+    #[instrument(level = "debug", skip(self))]
+    pub fn instantiate_and_normalize_erasing_regions<T>(
         self,
         param_args: GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -144,22 +145,16 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        debug!(
-            "subst_and_normalize_erasing_regions(\
-             param_args={:?}, \
-             value={:?}, \
-             param_env={:?})",
-            param_args, value, param_env,
-        );
         let substituted = value.instantiate(self, param_args);
         self.normalize_erasing_regions(param_env, substituted)
     }
 
     /// Monomorphizes a type from the AST by first applying the
     /// in-scope substitutions and then trying to normalize any associated
-    /// types. Contrary to `subst_and_normalize_erasing_regions` this does
+    /// types. Contrary to `instantiate_and_normalize_erasing_regions` this does
     /// not assume that normalization succeeds.
-    pub fn try_subst_and_normalize_erasing_regions<T>(
+    #[instrument(level = "debug", skip(self))]
+    pub fn try_instantiate_and_normalize_erasing_regions<T>(
         self,
         param_args: GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -168,13 +163,6 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        debug!(
-            "subst_and_normalize_erasing_regions(\
-             param_args={:?}, \
-             value={:?}, \
-             param_env={:?})",
-            param_args, value, param_env,
-        );
         let substituted = value.instantiate(self, param_args);
         self.try_normalize_erasing_regions(param_env, substituted)
     }

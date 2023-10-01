@@ -7,7 +7,7 @@
     <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true" />
     <volume-check>
         <allowed-os-versions>
-            <os-version min="10.7"/>
+            <os-version min="10.12"/>
         </allowed-os-versions>
     </volume-check>
     <choices-outline>

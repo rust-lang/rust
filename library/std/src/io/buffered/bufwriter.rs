@@ -237,7 +237,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
                     ));
                 }
                 Ok(n) => guard.consume(n),
-                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }

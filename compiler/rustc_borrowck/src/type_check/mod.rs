@@ -50,7 +50,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
-use crate::session_diagnostics::MoveUnsized;
+use crate::session_diagnostics::{MoveUnsized, SimdShuffleLastConst};
 use crate::{
     borrow_set::BorrowSet,
     constraints::{OutlivesConstraint, OutlivesConstraintSet},
@@ -162,10 +162,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
     );
 
     debug!(?normalized_inputs_and_output);
-
-    for u in ty::UniverseIndex::ROOT..=infcx.universe() {
-        constraints.universe_causes.insert(u, UniverseInfo::other());
-    }
 
     let mut borrowck_context = BorrowCheckContext {
         universal_regions,
@@ -306,11 +302,11 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         self.sanitize_place(place, location, context);
     }
 
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         debug!(?constant, ?location, "visit_constant");
 
         self.super_constant(constant, location);
-        let ty = self.sanitize_type(constant, constant.literal.ty());
+        let ty = self.sanitize_type(constant, constant.const_.ty());
 
         self.cx.infcx.tcx.for_each_free_region(&ty, |live_region| {
             let live_region_vid =
@@ -332,7 +328,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
-                constant.literal.ty(),
+                constant.const_.ty(),
                 ty::Variance::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
                 locations,
@@ -344,20 +340,20 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     constant,
                     "bad constant user type {:?} vs {:?}: {:?}",
                     annotation,
-                    constant.literal.ty(),
+                    constant.const_.ty(),
                     terr,
                 );
             }
         } else {
             let tcx = self.tcx();
-            let maybe_uneval = match constant.literal {
-                ConstantKind::Ty(ct) => match ct.kind() {
+            let maybe_uneval = match constant.const_ {
+                Const::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Unevaluated(_) => {
-                        bug!("should not encounter unevaluated ConstantKind::Ty here, got {:?}", ct)
+                        bug!("should not encounter unevaluated Const::Ty here, got {:?}", ct)
                     }
                     _ => None,
                 },
-                ConstantKind::Unevaluated(uv, _) => Some(uv),
+                Const::Unevaluated(uv, _) => Some(uv),
                 _ => None,
             };
 
@@ -388,7 +384,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     check_err(self, promoted_body, ty, promoted_ty);
                 } else {
                     self.cx.ascribe_user_type(
-                        constant.literal.ty(),
+                        constant.const_.ty(),
                         UserType::TypeOf(uv.def, UserArgs { args: uv.args, user_self_ty: None }),
                         locations.span(&self.cx.body),
                     );
@@ -396,7 +392,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
                 let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
-                let literal_ty = constant.literal.ty().builtin_deref(true).unwrap().ty;
+                let literal_ty = constant.const_.ty().builtin_deref(true).unwrap().ty;
 
                 if let Err(terr) = self.cx.eq_types(
                     literal_ty,
@@ -408,7 +404,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
 
-            if let ty::FnDef(def_id, args) = *constant.literal.ty().kind() {
+            if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
                 self.cx.normalize_and_prove_instantiated_predicates(
                     def_id,
@@ -1011,7 +1007,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     pub(super) fn register_predefined_opaques_in_new_solver(&mut self) {
-        // OK to use the identity substitutions for each opaque type key, since
+        // OK to use the identity arguments for each opaque type key, since
         // we remap opaques from HIR typeck back to their definition params.
         let opaques: Vec<_> = self
             .infcx
@@ -1371,14 +1367,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 };
                 let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
-                    use crate::renumber::{BoundRegionInfo, RegionCtxt};
+                    use crate::renumber::RegionCtxt;
 
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
-                            ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
-                            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(sym::anon),
-                            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-                            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
+                            ty::BoundRegionKind::BrAnon => sym::anon,
+                            ty::BoundRegionKind::BrNamed(_, name) => name,
+                            ty::BoundRegionKind::BrEnv => sym::env,
                         };
 
                         RegionCtxt::LateBound(reg_info)
@@ -1430,7 +1425,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         .add_element(region_vid, term_location);
                 }
 
-                self.check_call_inputs(body, term, &sig, args, term_location, *call_source);
+                self.check_call_inputs(body, term, func, &sig, args, term_location, *call_source);
             }
             TerminatorKind::Assert { cond, msg, .. } => {
                 self.check_operand(cond, term_location);
@@ -1550,25 +1545,36 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, body, term, func, term_location, call_source))]
     fn check_call_inputs(
         &mut self,
         body: &Body<'tcx>,
         term: &Terminator<'tcx>,
+        func: &Operand<'tcx>,
         sig: &ty::FnSig<'tcx>,
         args: &[Operand<'tcx>],
         term_location: Location,
         call_source: CallSource,
     ) {
-        debug!("check_call_inputs({:?}, {:?})", sig, args);
         if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.c_variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
 
-        let func_ty = if let TerminatorKind::Call { func, .. } = &term.kind {
-            Some(func.ty(body, self.infcx.tcx))
-        } else {
-            None
-        };
+        let func_ty = func.ty(body, self.infcx.tcx);
+        if let ty::FnDef(def_id, _) = *func_ty.kind() {
+            if self.tcx().is_intrinsic(def_id) {
+                match self.tcx().item_name(def_id) {
+                    sym::simd_shuffle => {
+                        if !matches!(args[2], Operand::Constant(_)) {
+                            self.tcx()
+                                .sess
+                                .emit_err(SimdShuffleLastConst { span: term.source_info.span });
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
         debug!(?func_ty);
 
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
@@ -1576,7 +1582,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if call_source.from_hir_call() {
-                ConstraintCategory::CallArgument(self.infcx.tcx.erase_regions(func_ty))
+                ConstraintCategory::CallArgument(Some(self.infcx.tcx.erase_regions(func_ty)))
             } else {
                 ConstraintCategory::Boring
             };
@@ -1794,9 +1800,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?op, ?location, "check_operand");
 
         if let Operand::Constant(constant) = op {
-            let maybe_uneval = match constant.literal {
-                ConstantKind::Val(..) | ConstantKind::Ty(_) => None,
-                ConstantKind::Unevaluated(uv, _) => Some(uv),
+            let maybe_uneval = match constant.const_ {
+                Const::Val(..) | Const::Ty(_) => None,
+                Const::Unevaluated(uv, _) => Some(uv),
             };
 
             if let Some(uv) = maybe_uneval {

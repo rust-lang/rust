@@ -1,19 +1,22 @@
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_unfixable.rs:7:5
+  --> $DIR/needless_for_each_unfixable.rs:8:5
    |
 LL | /     v.iter().for_each(|v| {
+LL | |
+LL | |
 LL | |         if *v == 10 {
-LL | |             return;
-LL | |         } else {
-LL | |             println!("{}", v);
+...  |
 LL | |         }
 LL | |     });
    | |_______^
    |
    = note: `-D clippy::needless-for-each` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_for_each)]`
 help: try
    |
 LL ~     for v in v.iter() {
+LL +
+LL +
 LL +         if *v == 10 {
 LL +             return;
 LL +         } else {

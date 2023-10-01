@@ -38,6 +38,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
+use std::ops::Bound;
 
 mod generics_of;
 mod item_bounds;
@@ -56,6 +57,8 @@ pub fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
     *providers = Providers {
         type_of: type_of::type_of,
+        type_of_opaque: type_of::type_of_opaque,
+        type_alias_is_lazy: type_of::type_alias_is_lazy,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
         generics_of: generics_of::generics_of,
@@ -1143,15 +1146,15 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
-            let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id)).instantiate_identity();
+            let adt_def_id = tcx.hir().get_parent_item(hir_id).def_id.to_def_id();
+            let ty = tcx.type_of(adt_def_id).instantiate_identity();
             let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id).instantiate_identity());
-            ty::Binder::dummy(tcx.mk_fn_sig(
-                inputs,
-                ty,
-                false,
-                hir::Unsafety::Normal,
-                abi::Abi::Rust,
-            ))
+            // constructors for structs with `layout_scalar_valid_range` are unsafe to call
+            let safety = match tcx.layout_scalar_valid_range(adt_def_id) {
+                (Bound::Unbounded, Bound::Unbounded) => hir::Unsafety::Normal,
+                _ => hir::Unsafety::Unsafe,
+            };
+            ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, abi::Abi::Rust))
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
@@ -1371,7 +1374,7 @@ fn impl_trait_ref(
                 // make astconv happy.
                 let mut path_segments = ast_trait_ref.path.segments.to_vec();
                 let last_segment = path_segments.len() - 1;
-                let mut args = path_segments[last_segment].args().clone();
+                let mut args = *path_segments[last_segment].args();
                 let last_arg = args.args.len() - 1;
                 assert!(matches!(args.args[last_arg], hir::GenericArg::Const(anon_const) if tcx.has_attr(anon_const.value.def_id, sym::rustc_host)));
                 args.args = &args.args[..args.args.len() - 1];

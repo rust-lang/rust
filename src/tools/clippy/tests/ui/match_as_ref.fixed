@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused)]
 #![warn(clippy::match_as_ref)]
 

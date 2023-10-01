@@ -1,11 +1,11 @@
-use crate::environment::Environment;
+use crate::environment::{executable_extension, Environment};
 use crate::exec::cmd;
 use crate::utils::io::{copy_directory, find_file_in_dir, unpack_archive};
 use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 
 /// Run tests on optimized dist artifacts.
-pub fn run_tests(env: &dyn Environment) -> anyhow::Result<()> {
+pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     // After `dist` is executed, we extract its archived components into a sysroot directory,
     // and then use that extracted rustc as a stage0 compiler.
     // Then we run a subset of tests using that compiler, to have a basic smoke test which checks
@@ -33,8 +33,8 @@ pub fn run_tests(env: &dyn Environment) -> anyhow::Result<()> {
 
     // We need to manually copy libstd to the extracted rustc sysroot
     copy_directory(
-        &libstd_dir.join("lib").join("rustlib").join(&host_triple).join("lib"),
-        &rustc_dir.join("lib").join("rustlib").join(&host_triple).join("lib"),
+        &libstd_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
+        &rustc_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
     )?;
 
     // Extract sources - they aren't in the `rustc-nightly-{host}` tarball, so we need to manually copy libstd
@@ -45,9 +45,9 @@ pub fn run_tests(env: &dyn Environment) -> anyhow::Result<()> {
         &rustc_dir.join("lib").join("rustlib").join("src"),
     )?;
 
-    let rustc_path = rustc_dir.join("bin").join(format!("rustc{}", env.executable_extension()));
+    let rustc_path = rustc_dir.join("bin").join(format!("rustc{}", executable_extension()));
     assert!(rustc_path.is_file());
-    let cargo_path = cargo_dir.join("bin").join(format!("cargo{}", env.executable_extension()));
+    let cargo_path = cargo_dir.join("bin").join(format!("cargo{}", executable_extension()));
     assert!(cargo_path.is_file());
 
     // Specify path to a LLVM config so that LLVM is not rebuilt.
@@ -56,7 +56,7 @@ pub fn run_tests(env: &dyn Environment) -> anyhow::Result<()> {
         .build_artifacts()
         .join("llvm")
         .join("bin")
-        .join(format!("llvm-config{}", env.executable_extension()));
+        .join(format!("llvm-config{}", executable_extension()));
     assert!(llvm_config.is_file());
 
     let config_content = format!(
@@ -109,6 +109,6 @@ fn find_dist_version(directory: &Utf8Path) -> anyhow::Result<String> {
         .unwrap()
         .to_string();
     let (version, _) =
-        archive.strip_prefix("reproducible-artifacts-").unwrap().split_once("-").unwrap();
+        archive.strip_prefix("reproducible-artifacts-").unwrap().split_once('-').unwrap();
     Ok(version.to_string())
 }

@@ -2,6 +2,8 @@
 #![feature(array_chunks)]
 #![feature(array_methods)]
 #![feature(array_windows)]
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
 #![feature(const_align_offset)]
@@ -54,6 +56,7 @@
 #![feature(min_specialization)]
 #![feature(numfmt)]
 #![feature(num_midpoint)]
+#![feature(isqrt)]
 #![feature(step_trait)]
 #![feature(str_internals)]
 #![feature(std_internals)]
@@ -94,6 +97,7 @@
 #![feature(const_option_ext)]
 #![feature(const_result)]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+#![cfg_attr(test, feature(cfg_match))]
 #![feature(int_roundings)]
 #![feature(slice_group_by)]
 #![feature(split_array)]
@@ -137,6 +141,7 @@ mod hash;
 mod intrinsics;
 mod iter;
 mod lazy;
+#[cfg(test)]
 mod macros;
 mod manually_drop;
 mod mem;

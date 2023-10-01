@@ -1,4 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, Path, PathSegment};
@@ -99,17 +100,17 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
             && let Some(first_segment) = get_first_segment(path)
             && is_stable(cx, def_id)
         {
-            let (lint, msg, help) = match first_segment.ident.name {
+            let (lint, used_mod, replace_with) = match first_segment.ident.name {
                 sym::std => match cx.tcx.crate_name(def_id.krate) {
                     sym::core => (
                         STD_INSTEAD_OF_CORE,
-                        "used import from `std` instead of `core`",
-                        "consider importing the item from `core`",
+                        "std",
+                        "core",
                     ),
                     sym::alloc => (
                         STD_INSTEAD_OF_ALLOC,
-                        "used import from `std` instead of `alloc`",
-                        "consider importing the item from `alloc`",
+                        "std",
+                        "alloc",
                     ),
                     _ => {
                         self.prev_span = path.span;
@@ -120,8 +121,8 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     if cx.tcx.crate_name(def_id.krate) == sym::core {
                         (
                             ALLOC_INSTEAD_OF_CORE,
-                            "used import from `alloc` instead of `core`",
-                            "consider importing the item from `core`",
+                            "alloc",
+                            "core",
                         )
                     } else {
                         self.prev_span = path.span;
@@ -131,7 +132,14 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                 _ => return,
             };
             if path.span != self.prev_span {
-                span_lint_and_help(cx, lint, path.span, msg, None, help);
+                span_lint_and_sugg(
+                    cx,
+                    lint,
+                    first_segment.ident.span,
+                    &format!("used import from `{used_mod}` instead of `{replace_with}`"),
+                    &format!("consider importing the item from `{replace_with}`"),
+                    replace_with.to_string(),
+                    Applicability::MachineApplicable);
                 self.prev_span = path.span;
             }
         }

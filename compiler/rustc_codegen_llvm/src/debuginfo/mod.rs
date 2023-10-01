@@ -263,11 +263,11 @@ impl CodegenCx<'_, '_> {
     pub fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
         let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
             Ok(SourceFileAndLine { sf: file, line }) => {
-                let line_pos = file.lines(|lines| lines[line]);
+                let line_pos = file.lines()[line];
 
                 // Use 1-based indexing.
                 let line = (line + 1) as u32;
-                let col = (pos - line_pos).to_u32() + 1;
+                let col = (file.relative_position(pos) - line_pos).to_u32() + 1;
 
                 (file, line, col)
             }
@@ -292,7 +292,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: &'ll Value,
         mir: &mir::Body<'tcx>,
-    ) -> Option<FunctionDebugContext<&'ll DIScope, &'ll DILocation>> {
+    ) -> Option<FunctionDebugContext<'tcx, &'ll DIScope, &'ll DILocation>> {
         if self.sess().opts.debuginfo == DebugInfo::None {
             return None;
         }
@@ -304,8 +304,10 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             file_start_pos: BytePos(0),
             file_end_pos: BytePos(0),
         };
-        let mut fn_debug_context =
-            FunctionDebugContext { scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes) };
+        let mut fn_debug_context = FunctionDebugContext {
+            scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes),
+            inlined_function_scopes: Default::default(),
+        };
 
         // Fill in all the scopes, with the information from the MIR body.
         compute_mir_scopes(self, instance, mir, &mut fn_debug_context);
@@ -347,6 +349,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         type_names::push_generic_params(
             tcx,
             tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args),
+            enclosing_fn_def_id,
             &mut name,
         );
 
@@ -526,7 +529,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             if let Some(impl_def_id) = cx.tcx.impl_of_method(instance.def_id()) {
                 // If the method does *not* belong to a trait, proceed
                 if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
-                    let impl_self_ty = cx.tcx.subst_and_normalize_erasing_regions(
+                    let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
                         instance.args,
                         ty::ParamEnv::reveal_all(),
                         cx.tcx.type_of(impl_def_id),

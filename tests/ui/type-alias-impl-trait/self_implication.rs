@@ -22,9 +22,9 @@ fn bar() {
     }
 
     // desugared
-    type FooX<'a> = impl Sized;
+    type FooX = impl Sized;
     impl<'a> Foo<'a> {
-        fn foo(&self) -> FooX<'a> {}
+        fn foo(&self) -> FooX {}
     }
 
     // use site

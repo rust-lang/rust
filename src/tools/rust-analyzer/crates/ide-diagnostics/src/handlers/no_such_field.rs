@@ -1,3 +1,4 @@
+use either::Either;
 use hir::{db::ExpandDatabase, HasSource, HirDisplay, Semantics};
 use ide_db::{base_db::FileId, source_change::SourceChange, RootDatabase};
 use syntax::{
@@ -12,22 +13,39 @@ use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered if created structure does not have field provided in record.
 pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
-    Diagnostic::new_with_syntax_node_ptr(
-        ctx,
-        DiagnosticCode::RustcHardError("E0559"),
-        "no such field",
-        d.field.clone().map(|it| it.into()),
-    )
-    .with_fixes(fixes(ctx, d))
+    let node = d.field.clone().map(|it| it.either(Into::into, Into::into));
+    if d.private {
+        // FIXME: quickfix to add required visibility
+        Diagnostic::new_with_syntax_node_ptr(
+            ctx,
+            DiagnosticCode::RustcHardError("E0451"),
+            "field is private",
+            node,
+        )
+    } else {
+        Diagnostic::new_with_syntax_node_ptr(
+            ctx,
+            DiagnosticCode::RustcHardError("E0559"),
+            "no such field",
+            node,
+        )
+        .with_fixes(fixes(ctx, d))
+    }
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.field.file_id);
-    missing_record_expr_field_fixes(
-        &ctx.sema,
-        d.field.file_id.original_file(ctx.sema.db),
-        &d.field.value.to_node(&root),
-    )
+    // FIXME: quickfix for pattern
+    match &d.field.value {
+        Either::Left(ptr) => {
+            let root = ctx.sema.db.parse_or_expand(d.field.file_id);
+            missing_record_expr_field_fixes(
+                &ctx.sema,
+                d.field.file_id.original_file(ctx.sema.db),
+                &ptr.to_node(&root),
+            )
+        }
+        _ => None,
+    }
 }
 
 fn missing_record_expr_field_fixes(
@@ -118,13 +136,34 @@ mod tests {
             r#"
 struct S { foo: i32, bar: () }
 impl S {
-    fn new() -> S {
+    fn new(
+        s@S {
+        //^ 💡 error: missing structure fields:
+        //|    - bar
+            foo,
+            baz: baz2,
+          //^^^^^^^^^ error: no such field
+            qux
+          //^^^ error: no such field
+        }: S
+    ) -> S {
+        S {
+      //^ 💡 error: missing structure fields:
+      //|    - bar
+            foo,
+            baz: baz2,
+          //^^^^^^^^^ error: no such field
+            qux
+          //^^^ error: no such field
+        } = s;
         S {
       //^ 💡 error: missing structure fields:
       //|    - bar
             foo: 92,
             baz: 62,
           //^^^^^^^ 💡 error: no such field
+            qux
+          //^^^ error: no such field
         }
     }
 }
@@ -291,6 +330,40 @@ fn main() {
     Struct {
         0$0: 0
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_struct_field_private() {
+        check_diagnostics(
+            r#"
+mod m {
+    pub struct Struct {
+        field: u32,
+        field2: u32,
+    }
+}
+fn f(s@m::Struct {
+    field: f,
+  //^^^^^^^^ error: field is private
+    field2
+  //^^^^^^ error: field is private
+}: m::Struct) {
+    // assignee expression
+    m::Struct {
+        field: 0,
+      //^^^^^^^^ error: field is private
+        field2
+      //^^^^^^ error: field is private
+    } = s;
+    m::Struct {
+        field: 0,
+      //^^^^^^^^ error: field is private
+        field2
+      //^^^^^^ error: field is private
+    };
 }
 "#,
         )

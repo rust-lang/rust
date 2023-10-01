@@ -570,6 +570,9 @@ fn copy_sanitizers(
         let dst = libdir.join(&runtime.name);
         builder.copy(&runtime.path, &dst);
 
+        // The `aarch64-apple-ios-macabi` and `x86_64-apple-ios-macabi` are also supported for
+        // sanitizers, but they share a sanitizer runtime with `${arch}-apple-darwin`, so we do
+        // not list them here to rename and sign the runtime library.
         if target == "x86_64-apple-darwin"
             || target == "aarch64-apple-darwin"
             || target == "aarch64-apple-ios"
@@ -876,10 +879,8 @@ impl Step for Rustc {
                     cargo.rustflag("-Clto=off");
                 }
             }
-        } else {
-            if builder.config.rust_lto == RustcLto::Off {
-                cargo.rustflag("-Clto=off");
-            }
+        } else if builder.config.rust_lto == RustcLto::Off {
+            cargo.rustflag("-Clto=off");
         }
 
         for krate in &*self.crates {
@@ -1788,7 +1789,10 @@ pub fn run_cargo(
                 // During check builds we need to keep crate metadata
                 keep = true;
             } else if rlib_only_metadata {
-                if filename.contains("jemalloc_sys") || filename.contains("rustc_smir") {
+                if filename.contains("jemalloc_sys")
+                    || filename.contains("rustc_smir")
+                    || filename.contains("stable_mir")
+                {
                     // jemalloc_sys and rustc_smir are not linked into librustc_driver.so,
                     // so we need to distribute them as rlib to be able to use them.
                     keep |= filename.ends_with(".rlib");

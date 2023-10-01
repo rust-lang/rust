@@ -1,3 +1,4 @@
+use hir::InFile;
 use ide_db::{base_db::FileId, source_change::SourceChange};
 use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxNode};
@@ -39,6 +40,7 @@ pub(crate) fn useless_braces(
                 "Unnecessary braces in use statement".to_string(),
                 use_range,
             )
+            .with_main_node(InFile::new(file_id.into(), node.clone()))
             .with_fixes(Some(vec![fix(
                 "remove_braces",
                 "Remove unnecessary braces",
@@ -153,6 +155,25 @@ use a::{c, d::{e$0}};
             r#"
 mod a { pub mod c {} pub mod d { pub mod e {} } }
 use a::{c, d::e};
+"#,
+        );
+    }
+
+    #[test]
+    fn respect_lint_attributes_for_unused_braces() {
+        check_diagnostics(
+            r#"
+mod b {}
+#[allow(unused_braces)]
+use {b};
+"#,
+        );
+        check_diagnostics(
+            r#"
+mod b {}
+#[deny(unused_braces)]
+use {b};
+  //^^^ 💡 error: Unnecessary braces in use statement
 "#,
         );
     }

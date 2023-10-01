@@ -24,6 +24,7 @@ use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_middle::query::Providers;
 
+pub mod abi_test;
 mod check_attr;
 mod check_const;
 pub mod dead;

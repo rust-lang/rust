@@ -10,7 +10,7 @@ use crate::ops;
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_unstable(feature = "const_slice_is_ascii", issue = "111090")]
+    #[rustc_const_stable(feature = "const_slice_is_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn is_ascii(&self) -> bool {

@@ -1,7 +1,6 @@
 // run-pass
 // compile-flags: -C relocation-model=pic
-// ignore-emscripten no pic
-// ignore-wasm
+// needs-relocation-model-pic
 
 #![feature(cfg_relocation_model)]
 

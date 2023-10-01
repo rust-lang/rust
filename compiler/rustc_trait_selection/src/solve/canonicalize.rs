@@ -269,7 +269,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             self.primitive_var_infos.push(CanonicalVarInfo { kind });
             var
         });
-        let br = ty::BoundRegion { var, kind: BrAnon(None) };
+        let br = ty::BoundRegion { var, kind: BrAnon };
         ty::Region::new_late_bound(self.interner(), self.binder_index, br)
     }
 
@@ -330,8 +330,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(..)
+            | ty::GeneratorWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Alias(_, _)
@@ -364,6 +363,17 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 };
                 // FIXME: we should fold this ty eventually
                 CanonicalVarKind::Const(ui, c.ty())
+            }
+            ty::ConstKind::Infer(ty::InferConst::EffectVar(vid)) => {
+                assert_eq!(
+                    self.infcx.root_effect_var(vid),
+                    vid,
+                    "effect var should have been resolved"
+                );
+                let None = self.infcx.probe_effect_var(vid) else {
+                    bug!("effect var should have been resolved");
+                };
+                CanonicalVarKind::Effect
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(_)) => {
                 bug!("fresh var during canonicalization: {c:?}")

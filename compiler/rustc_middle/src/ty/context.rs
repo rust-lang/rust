@@ -39,7 +39,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, Lock, Lrc, MappedReadGuard, ReadGuard, WorkerLocal};
+use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, Lrc, WorkerLocal};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
@@ -50,7 +50,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Constness, HirId, Node, TraitCandidate};
+use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::dep_graph::DepNodeIndex;
@@ -82,6 +82,7 @@ use std::ops::{Bound, Deref};
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
     type GenericArgsRef = ty::GenericArgsRef<'tcx>;
+    type GenericArg = ty::GenericArg<'tcx>;
     type DefId = DefId;
     type Binder<T> = Binder<'tcx, T>;
     type Ty = Ty<'tcx>;
@@ -317,7 +318,7 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon(None) })`
+    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon })`
     /// for small values of `i` and `v`.
     pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
 }
@@ -394,7 +395,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
                     .map(|v| {
                         mk(ty::ReLateBound(
                             ty::DebruijnIndex::from(i),
-                            ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BrAnon(None) },
+                            ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BrAnon },
                         ))
                     })
                     .collect()
@@ -553,6 +554,10 @@ pub struct GlobalCtxt<'tcx> {
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
 
+    /// Hooks to be able to register functions in other crates that can then still
+    /// be called from rustc_middle.
+    pub(crate) hooks: crate::hooks::Providers,
+
     untracked: Untracked,
 
     pub query_system: QuerySystem<'tcx>,
@@ -647,7 +652,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
         let alloc = self.mk_const_alloc(alloc);
-        self.create_memory_alloc(alloc)
+        self.reserve_and_set_memory_alloc(alloc)
     }
 
     /// Returns a range of the start/end indices specified with the
@@ -702,6 +707,7 @@ impl<'tcx> TyCtxt<'tcx> {
         dep_graph: DepGraph,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
         query_system: QuerySystem<'tcx>,
+        hooks: crate::hooks::Providers,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
@@ -720,6 +726,7 @@ impl<'tcx> TyCtxt<'tcx> {
             hir_arena,
             interners,
             dep_graph,
+            hooks,
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
@@ -964,8 +971,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 i += 1;
             }
 
-            // Leak a read lock once we finish iterating on definitions, to prevent adding new ones.
-            definitions.leak();
+            // Freeze definitions once we finish iterating on them, to prevent adding new ones.
+            definitions.freeze();
         })
     }
 
@@ -974,10 +981,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // definitions change.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
-        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
+        // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.untracked.definitions.leak();
-        definitions.def_path_table()
+        self.untracked.definitions.freeze().def_path_table()
     }
 
     pub fn def_path_hash_to_def_index_map(
@@ -986,17 +992,16 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
+        // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.untracked.definitions.leak();
-        definitions.def_path_hash_to_def_index_map()
+        self.untracked.definitions.freeze().def_path_hash_to_def_index_map()
     }
 
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     #[inline]
-    pub fn cstore_untracked(self) -> MappedReadGuard<'tcx, CrateStoreDyn> {
-        ReadGuard::map(self.untracked.cstore.read(), |c| &**c)
+    pub fn cstore_untracked(self) -> FreezeReadGuard<'tcx, CrateStoreDyn> {
+        FreezeReadGuard::map(self.untracked.cstore.read(), |c| &**c)
     }
 
     /// Give out access to the untracked data without any sanity checks.
@@ -1006,7 +1011,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     #[inline]
-    pub fn definitions_untracked(self) -> ReadGuard<'tcx, Definitions> {
+    pub fn definitions_untracked(self) -> FreezeReadGuard<'tcx, Definitions> {
         self.untracked.definitions.read()
     }
 
@@ -1109,7 +1114,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir().fn_decl_by_hir_id(hir_id)
             && let hir::TyKind::Path(hir::QPath::Resolved(
                 None,
-                hir::Path { res: hir::def::Res::Def(DefKind::TyAlias { .. }, def_id), .. }, )) = hir_output.kind
+                hir::Path { res: hir::def::Res::Def(DefKind::TyAlias, def_id), .. }, )) = hir_output.kind
             && let Some(local_id) = def_id.as_local()
             && let Some(alias_ty) = self.hir().get_by_def_id(local_id).alias_ty() // it is type alias
             && let Some(alias_generics) = self.hir().get_by_def_id(local_id).generics()
@@ -1216,6 +1221,25 @@ macro_rules! nop_lift {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+                // Assert that the set has the right type.
+                // Given an argument that has an interned type, the return type has the type of
+                // the corresponding interner set. This won't actually return anything, we're
+                // just doing this to compute said type!
+                fn _intern_set_ty_from_interned_ty<'tcx, Inner>(
+                    _x: Interned<'tcx, Inner>,
+                ) -> InternedSet<'tcx, Inner> {
+                    unreachable!()
+                }
+                fn _type_eq<T>(_x: &T, _y: &T) {}
+                fn _test<'tcx>(x: $lifted, tcx: TyCtxt<'tcx>) {
+                    // If `x` is a newtype around an `Interned<T>`, then `interner` is an
+                    // interner of appropriate type. (Ideally we'd also check that `x` is a
+                    // newtype with just that one field. Not sure how to do that.)
+                    let interner = _intern_set_ty_from_interned_ty(x.0);
+                    // Now check that this is the same type as `interners.$set`.
+                    _type_eq(&interner, &tcx.interners.$set);
+                }
+
                 tcx.interners
                     .$set
                     .contains_pointer_to(&InternedInSet(&*self.0.0))
@@ -1232,6 +1256,11 @@ macro_rules! nop_list_lift {
         impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
             type Lifted = &'tcx List<$lifted>;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+                // Assert that the set has the right type.
+                if false {
+                    let _x: &InternedSet<'tcx, List<$lifted>> = &tcx.interners.$set;
+                }
+
                 if self.is_empty() {
                     return Some(List::empty());
                 }
@@ -1253,19 +1282,13 @@ nop_lift! {predicate; Clause<'a> => Clause<'tcx>}
 
 nop_list_lift! {type_lists; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>}
-nop_list_lift! {clauses; Clause<'a> => Clause<'tcx>}
-nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
-nop_list_lift! {projs; ProjectionKind => ProjectionKind}
 nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind}
 
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! {args; GenericArg<'a> => GenericArg<'tcx>}
 
-CloneLiftImpls! {
-    Constness,
-    traits::WellFormedLoc,
+TrivialLiftImpls! {
     ImplPolarity,
-    crate::mir::ReturnConstraint,
 }
 
 macro_rules! sty_debug_print {
@@ -1296,25 +1319,26 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-                let shards = tcx.interners.type_.lock_shards();
-                let types = shards.iter().flat_map(|shard| shard.keys());
-                for &InternedInSet(t) in types {
-                    let variant = match t.internee {
-                        ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
-                            ty::Float(..) | ty::Str | ty::Never => continue,
-                        ty::Error(_) => /* unimportant */ continue,
-                        $(ty::$variant(..) => &mut $variant,)*
-                    };
-                    let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
-                    let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
-                    let ct = t.flags.intersects(ty::TypeFlags::HAS_CT_INFER);
+                for shard in tcx.interners.type_.lock_shards() {
+                    let types = shard.keys();
+                    for &InternedInSet(t) in types {
+                        let variant = match t.internee {
+                            ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
+                                ty::Float(..) | ty::Str | ty::Never => continue,
+                            ty::Error(_) => /* unimportant */ continue,
+                            $(ty::$variant(..) => &mut $variant,)*
+                        };
+                        let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
+                        let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
+                        let ct = t.flags.intersects(ty::TypeFlags::HAS_CT_INFER);
 
-                    variant.total += 1;
-                    total.total += 1;
-                    if lt { total.lt_infer += 1; variant.lt_infer += 1 }
-                    if ty { total.ty_infer += 1; variant.ty_infer += 1 }
-                    if ct { total.ct_infer += 1; variant.ct_infer += 1 }
-                    if lt && ty && ct { total.all_infer += 1; variant.all_infer += 1 }
+                        variant.total += 1;
+                        total.total += 1;
+                        if lt { total.lt_infer += 1; variant.lt_infer += 1 }
+                        if ty { total.ty_infer += 1; variant.ty_infer += 1 }
+                        if ct { total.ct_infer += 1; variant.ct_infer += 1 }
+                        if lt && ty && ct { total.all_infer += 1; variant.all_infer += 1 }
+                    }
                 }
                 writeln!(fmt, "Ty interner             total           ty lt ct all")?;
                 $(writeln!(fmt, "    {:18}: {uses:6} {usespc:4.1}%, \
@@ -1360,7 +1384,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     Placeholder,
                     Generator,
                     GeneratorWitness,
-                    GeneratorWitnessMIR,
                     Dynamic,
                     Closure,
                     Tuple,

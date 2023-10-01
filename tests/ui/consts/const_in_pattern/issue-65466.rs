@@ -15,7 +15,8 @@ const C: &[O<B>] = &[O::None];
 fn main() {
     let x = O::None;
     match &[x][..] {
-        C => (),
+        C => (), //~WARN: the type must implement `PartialEq`
+        //~| previously accepted
         _ => (),
     }
 }

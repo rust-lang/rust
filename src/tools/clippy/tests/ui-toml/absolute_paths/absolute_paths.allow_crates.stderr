@@ -5,6 +5,7 @@ LL |     std::f32::MAX;
    |     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::absolute-paths` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::absolute_paths)]`
 
 error: consider bringing this path into scope with the `use` keyword
   --> $DIR/absolute_paths.rs:41:5

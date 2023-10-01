@@ -7,6 +7,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, AdtDef, EarlyBinder, GenericArgsRef, ReprOptions, Ty, TyCtxt, TypeVisitableExt,
 };
@@ -35,6 +36,9 @@ fn layout_of<'tcx>(
     let (param_env, ty) = query.into_parts();
     debug!(?ty);
 
+    // Optimization: We convert to RevealAll and convert opaque types in the where bounds
+    // to their hidden types. This reduces overall uncached invocations of `layout_of` and
+    // is thus a small performance improvement.
     let param_env = param_env.with_reveal_all_normalized(tcx);
     let unnormalized_ty = ty;
 
@@ -192,7 +196,7 @@ fn layout_of_uncached<'tcx>(
 
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.
-                if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
+                if metadata_layout.is_1zst() {
                     return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
                 }
 
@@ -573,11 +577,7 @@ fn layout_of_uncached<'tcx>(
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
 
-        ty::Bound(..)
-        | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
-        | ty::Infer(_)
-        | ty::Error(_) => {
+        ty::Bound(..) | ty::GeneratorWitness(..) | ty::Infer(_) | ty::Error(_) => {
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 
@@ -937,7 +937,7 @@ fn record_layout_for_printing_outlined<'tcx>(
 
     // (delay format until we actually need it)
     let record = |kind, packed, opt_discr_size, variants| {
-        let type_desc = format!("{:?}", layout.ty);
+        let type_desc = with_no_trimmed_paths!(format!("{}", layout.ty));
         cx.tcx.sess.code_stats.record_type_size(
             kind,
             type_desc,

@@ -6,6 +6,7 @@ LL |     other_function()?;
    |
    = help: consider using a custom macro or match expression
    = note: `-D clippy::question-mark-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::question_mark_used)]`
 
 error: aborting due to previous error
 

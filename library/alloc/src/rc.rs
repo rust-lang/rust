@@ -1304,6 +1304,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
+    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
     pub fn into_raw(this: Self) -> *const T {
         let ptr = Self::as_ptr(&this);
         mem::forget(this);
@@ -1327,6 +1328,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
+    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
 
@@ -2403,6 +2405,27 @@ impl<T> From<T> for Rc<T> {
     /// ```
     fn from(t: T) -> Self {
         Rc::new(t)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_array", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> From<[T; N]> for Rc<[T]> {
+    /// Converts a [`[T; N]`](prim@array) into an `Rc<[T]>`.
+    ///
+    /// The conversion moves the array into a newly allocated `Rc`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let original: [i32; 3] = [1, 2, 3];
+    /// let shared: Rc<[i32]> = Rc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: [T; N]) -> Rc<[T]> {
+        Rc::<[T; N]>::from(v)
     }
 }
 

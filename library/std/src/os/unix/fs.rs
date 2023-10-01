@@ -123,7 +123,7 @@ pub trait FileExt {
                     buf = &mut tmp[n..];
                     offset += n as u64;
                 }
-                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }
@@ -155,7 +155,7 @@ pub trait FileExt {
     /// flag fail to respect the offset parameter, always appending to the end
     /// of the file instead.
     ///
-    /// It is possible to inadvertantly set this flag, like in the example below.
+    /// It is possible to inadvertently set this flag, like in the example below.
     /// Therefore, it is important to be vigilant while changing options to mitigate
     /// unexpected behaviour.
     ///
@@ -258,7 +258,7 @@ pub trait FileExt {
                     buf = &buf[n..];
                     offset += n as u64
                 }
-                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }

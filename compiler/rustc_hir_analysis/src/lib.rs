@@ -99,7 +99,6 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::middle;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -107,8 +106,7 @@ use rustc_middle::util;
 use rustc_session::parse::feature_err;
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits;
 
 use astconv::{AstConv, OnlySelfBounds};
 use bounds::Bounds;
@@ -117,7 +115,7 @@ use rustc_hir::def::DefKind;
 fluent_messages! { "../messages.ftl" }
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
-    const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `win64`, `sysv64` or `efiapi`";
+    const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `aapcs`, `win64`, `sysv64` or `efiapi`";
     const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
     const UNSTABLE_EXPLAIN: &str =
         "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
@@ -149,28 +147,6 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
     };
 
     tcx.sess.emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
-}
-
-fn require_same_types<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    cause: &ObligationCause<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    expected: Ty<'tcx>,
-    actual: Ty<'tcx>,
-) {
-    let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
-    match ocx.eq(cause, param_env, expected, actual) {
-        Ok(()) => {
-            let errors = ocx.select_all_or_error();
-            if !errors.is_empty() {
-                infcx.err_ctxt().report_fulfillment_errors(&errors);
-            }
-        }
-        Err(err) => {
-            infcx.err_ctxt().report_mismatched_types(cause, expected, actual, err).emit();
-        }
-    }
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -236,6 +212,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     tcx.sess.time("item_types_checking", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
+
+    // Freeze definitions as we don't add new ones at this point. This improves performance by
+    // allowing lock-free access to them.
+    tcx.untracked().definitions.freeze();
 
     // FIXME: Remove this when we implement creating `DefId`s
     // for anon constants during their parents' typeck.

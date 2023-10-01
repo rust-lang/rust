@@ -65,9 +65,9 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_hir::{HirId, ItemLocalId, OwnerId};
 use rustc_query_system::dep_graph::FingerprintStyle;
 use rustc_span::symbol::Symbol;
-use std::hash::Hash;
 
-pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
+pub use rustc_query_system::dep_graph::dep_node::DepKind;
+pub use rustc_query_system::dep_graph::{DepContext, DepNode, DepNodeParams};
 
 macro_rules! define_dep_nodes {
     (
@@ -80,15 +80,43 @@ macro_rules! define_dep_nodes {
         }
 
         /// This enum serves as an index into arrays built by `make_dep_kind_array`.
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+        // This enum has more than u8::MAX variants so we need some kind of multi-byte
+        // encoding. The derived Encodable/Decodable uses leb128 encoding which is
+        // dense when only considering this enum. But DepKind is encoded in a larger
+        // struct, and there we can take advantage of the unused bits in the u16.
         #[allow(non_camel_case_types)]
-        pub enum DepKind {
+        #[repr(u16)] // Must be kept in sync with the inner type of `DepKind`.
+        enum DepKindDefs {
             $( $( #[$attr] )* $variant),*
         }
 
+        #[allow(non_upper_case_globals)]
+        pub mod dep_kinds {
+            use super::*;
+
+            $(
+                // The `as u16` cast must be kept in sync with the inner type of `DepKind`.
+                pub const $variant: DepKind = DepKind::new(DepKindDefs::$variant as u16);
+            )*
+        }
+
+        // This checks that the discriminants of the variants have been assigned consecutively
+        // from 0 so that they can be used as a dense index.
+        pub const DEP_KIND_VARIANTS: u16 = {
+            let deps = &[$(dep_kinds::$variant,)*];
+            let mut i = 0;
+            while i < deps.len() {
+                if i != deps[i].as_usize() {
+                    panic!();
+                }
+                i += 1;
+            }
+            deps.len() as u16
+        };
+
         pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
-                $(stringify!($variant) => Ok(DepKind::$variant),)*
+                $(stringify!($variant) => Ok(dep_kinds::$variant),)*
                 _ => Err(()),
             }
         }
@@ -117,7 +145,7 @@ rustc_query_append!(define_dep_nodes![
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!
 pub(crate) fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
-    DepNode::construct(tcx, DepKind::CompileCodegenUnit, &name)
+    DepNode::construct(tcx, dep_kinds::CompileCodegenUnit, &name)
 }
 
 // WARNING: `construct` is generic and does not know that `CompileMonoItem` takes `MonoItem`s as keys.
@@ -126,19 +154,8 @@ pub(crate) fn make_compile_mono_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
 ) -> DepNode {
-    DepNode::construct(tcx, DepKind::CompileMonoItem, mono_item)
+    DepNode::construct(tcx, dep_kinds::CompileMonoItem, mono_item)
 }
-
-pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
-
-// We keep a lot of `DepNode`s in memory during compilation. It's not
-// required that their size stay the same, but we don't want to change
-// it inadvertently. This assert just ensures we're aware of any change.
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-static_assert_size!(DepNode, 18);
-
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-static_assert_size!(DepNode, 24);
 
 pub trait DepNodeExt: Sized {
     /// Extracts the DefId corresponding to this DepNode. This will work

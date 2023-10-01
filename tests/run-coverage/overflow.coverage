@@ -12,7 +12,7 @@
    LL|      4|    result
    LL|      4|}
    LL|       |
-   LL|      1|fn main() -> Result<(),u8> {
+   LL|      1|fn main() -> Result<(), u8> {
    LL|      1|    let mut countdown = 10;
    LL|     11|    while countdown > 0 {
    LL|     11|        if countdown == 1 {

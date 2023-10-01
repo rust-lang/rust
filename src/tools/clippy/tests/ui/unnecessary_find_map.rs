@@ -2,18 +2,23 @@
 
 fn main() {
     let _ = (0..4).find_map(|x| if x > 1 { Some(x) } else { None });
+    //~^ ERROR: this `.find_map` can be written more simply using `.find`
+    //~| NOTE: `-D clippy::unnecessary-find-map` implied by `-D warnings`
     let _ = (0..4).find_map(|x| {
+        //~^ ERROR: this `.find_map` can be written more simply using `.find`
         if x > 1 {
             return Some(x);
         };
         None
     });
     let _ = (0..4).find_map(|x| match x {
+        //~^ ERROR: this `.find_map` can be written more simply using `.find`
         0 | 1 => None,
         _ => Some(x),
     });
 
     let _ = (0..4).find_map(|x| Some(x + 1));
+    //~^ ERROR: this `.find_map` can be written more simply using `.map(..).next()`
 
     let _ = (0..4).find_map(i32::checked_abs);
 }

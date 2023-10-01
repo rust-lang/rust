@@ -3,18 +3,21 @@ error: redundant else block
    |
 LL |           } else {
    |  ________________^
+LL | |
 LL | |             println!("yet don't pull down your hedge.");
 LL | |         }
    | |_________^
    |
    = help: remove the `else` block and move the contents out
    = note: `-D clippy::redundant-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_else)]`
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:17:16
+  --> $DIR/redundant_else.rs:18:16
    |
 LL |           } else {
    |  ________________^
+LL | |
 LL | |             println!("shall rise up with fleas.");
 LL | |         }
    | |_________^
@@ -22,10 +25,11 @@ LL | |         }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:26:16
+  --> $DIR/redundant_else.rs:28:16
    |
 LL |           } else {
    |  ________________^
+LL | |
 LL | |             println!("You may delay, but time will not.");
 LL | |         }
    | |_________^
@@ -33,10 +37,11 @@ LL | |         }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:35:12
+  --> $DIR/redundant_else.rs:38:12
    |
 LL |       } else {
    |  ____________^
+LL | |
 LL | |         println!("A fat kitchen makes a lean will.");
 LL | |     }
    | |_____^
@@ -44,10 +49,11 @@ LL | |     }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:42:16
+  --> $DIR/redundant_else.rs:46:16
    |
 LL |           } else {
    |  ________________^
+LL | |
 LL | |             1
 LL | |         }
    | |_________^
@@ -55,10 +61,11 @@ LL | |         }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:52:16
+  --> $DIR/redundant_else.rs:57:16
    |
 LL |           } else {
    |  ________________^
+LL | |
 LL | |             2
 LL | |         }
    | |_________^
@@ -66,10 +73,11 @@ LL | |         }
    = help: remove the `else` block and move the contents out
 
 error: redundant else block
-  --> $DIR/redundant_else.rs:61:16
+  --> $DIR/redundant_else.rs:67:16
    |
 LL |           } else {
    |  ________________^
+LL | |
 LL | |             1
 LL | |         }
    | |_________^

@@ -107,7 +107,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
-    MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
+    MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
     MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple atomic data_race env/var
     MIRI_TEST_TARGET=aarch64-linux-android run_tests_minimal hello integer vec panic/panic
     MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal no_std integer strings
@@ -116,7 +116,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std # JSON target file
     ;;
   x86_64-apple-darwin)
-    MIRI_TEST_TARGET=mips64-unknown-linux-gnuabi64 run_tests # big-endian architecture
+    MIRI_TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture
     MIRI_TEST_TARGET=x86_64-pc-windows-msvc run_tests
     ;;
   i686-pc-windows-msvc)

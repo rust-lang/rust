@@ -170,8 +170,9 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
                 }
             }
             FieldsShape::Array { .. } => {
-                for (idx, field) in self.ecx().project_array_fields(v)?.enumerate() {
-                    self.visit_field(v, idx, &field?)?;
+                let mut iter = self.ecx().project_array_fields(v)?;
+                while let Some((idx, field)) = iter.next(self.ecx())? {
+                    self.visit_field(v, idx.try_into().unwrap(), &field)?;
                 }
             }
         }

@@ -116,7 +116,7 @@ pub const VERSION: usize = 2;
 
 /// Extra --check-cfg to add when building
 /// (Mode restriction, config name, config values (if any))
-const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)] = &[
+const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
@@ -133,7 +133,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // #[cfg(bootstrap)]
     (Some(Mode::Std), "target_vendor", Some(&["unikraft"])),
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
-    (Some(Mode::Std), "target_os", Some(&["teeos"])),
+    // #[cfg(bootstrap)] hurd
+    (Some(Mode::Std), "target_os", Some(&["teeos", "hurd"])),
+    (Some(Mode::Rustc), "target_os", Some(&["hurd"])),
     // #[cfg(bootstrap)] mips32r6, mips64r6
     (
         Some(Mode::Std),
@@ -1019,7 +1021,7 @@ impl Build {
 
     fn info(&self, msg: &str) {
         match self.config.dry_run {
-            DryRun::SelfCheck => return,
+            DryRun::SelfCheck => (),
             DryRun::Disabled | DryRun::UserSelected => {
                 println!("{msg}");
             }
@@ -1757,10 +1759,11 @@ to download LLVM rather than building it.
         //
         // In these cases we automatically enable Ninja if we find it in the
         // environment.
-        if !self.config.ninja_in_file && self.config.build.contains("msvc") {
-            if cmd_finder.maybe_have("ninja").is_some() {
-                return true;
-            }
+        if !self.config.ninja_in_file
+            && self.config.build.contains("msvc")
+            && cmd_finder.maybe_have("ninja").is_some()
+        {
+            return true;
         }
 
         self.config.ninja_in_file

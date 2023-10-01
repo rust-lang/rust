@@ -52,6 +52,8 @@ middle_drop_check_overflow =
     overflow while adding drop-check rules for {$ty}
     .note = overflowed on {$overflow_ty}
 
+middle_erroneous_constant = erroneous constant encountered
+
 middle_layout_references_error =
     the type has an unknown layout
 

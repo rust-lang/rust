@@ -1,9 +1,8 @@
-use std::fmt;
+use std::fmt::{self, Write};
 use std::num::NonZeroU64;
 
 use log::trace;
 
-use rustc_const_eval::ReportErrorExt;
 use rustc_errors::DiagnosticMessage;
 use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
@@ -200,6 +199,7 @@ pub fn report_error<'tcx, 'mir>(
     e: InterpErrorInfo<'tcx>,
 ) -> Option<(i64, bool)> {
     use InterpError::*;
+    use UndefinedBehaviorInfo::*;
 
     let mut msg = vec![];
 
@@ -271,33 +271,36 @@ pub fn report_error<'tcx, 'mir>(
         };
         (title, helps)
     } else {
-        #[rustfmt::skip]
         let title = match e.kind() {
-            UndefinedBehavior(UndefinedBehaviorInfo::ValidationError(e)) if matches!(e.kind, ValidationErrorKind::PointerAsInt { .. } | ValidationErrorKind::PartialPointer) =>
-                bug!("This validation error should be impossible in Miri: {:?}", e.kind),
-            UndefinedBehavior(_) =>
-                "Undefined Behavior",
-            ResourceExhaustion(_) =>
-                "resource exhaustion",
+            UndefinedBehavior(ValidationError(validation_err))
+                if matches!(
+                    validation_err.kind,
+                    ValidationErrorKind::PointerAsInt { .. } | ValidationErrorKind::PartialPointer
+                ) =>
+            {
+                ecx.handle_ice(); // print interpreter backtrace
+                bug!("This validation error should be impossible in Miri: {}", ecx.format_error(e));
+            }
+            UndefinedBehavior(_) => "Undefined Behavior",
+            ResourceExhaustion(_) => "resource exhaustion",
             Unsupported(
                 // We list only the ones that can actually happen.
-                UnsupportedOpInfo::Unsupported(_)
-            ) =>
-                "unsupported operation",
+                UnsupportedOpInfo::Unsupported(_) | UnsupportedOpInfo::UnsizedLocal,
+            ) => "unsupported operation",
             InvalidProgram(
                 // We list only the ones that can actually happen.
-                InvalidProgramInfo::AlreadyReported(_) |
-                InvalidProgramInfo::Layout(..)
-            ) =>
-                "post-monomorphization error",
-            kind =>
-                bug!("This error should be impossible in Miri: {kind:?}"),
+                InvalidProgramInfo::AlreadyReported(_) | InvalidProgramInfo::Layout(..),
+            ) => "post-monomorphization error",
+            _ => {
+                ecx.handle_ice(); // print interpreter backtrace
+                bug!("This error should be impossible in Miri: {}", ecx.format_error(e));
+            }
         };
         #[rustfmt::skip]
         let helps = match e.kind() {
             Unsupported(_) =>
                 vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
-            UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
+            UndefinedBehavior(AlignmentCheckFailed { .. })
                 if ecx.machine.check_alignment == AlignmentCheck::Symbolic
             =>
                 vec![
@@ -309,13 +312,20 @@ pub fn report_error<'tcx, 'mir>(
                     (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
                     (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
                 ];
-                if let UndefinedBehaviorInfo::PointerUseAfterFree(alloc_id, _) | UndefinedBehaviorInfo::PointerOutOfBounds { alloc_id, .. } = info {
-                    if let Some(span) = ecx.machine.allocated_span(*alloc_id) {
-                        helps.push((Some(span), format!("{:?} was allocated here:", alloc_id)));
+                match info {
+                    PointerUseAfterFree(alloc_id, _) | PointerOutOfBounds { alloc_id, .. } => {
+                        if let Some(span) = ecx.machine.allocated_span(*alloc_id) {
+                            helps.push((Some(span), format!("{:?} was allocated here:", alloc_id)));
+                        }
+                        if let Some(span) = ecx.machine.deallocated_span(*alloc_id) {
+                            helps.push((Some(span), format!("{:?} was deallocated here:", alloc_id)));
+                        }
                     }
-                    if let Some(span) = ecx.machine.deallocated_span(*alloc_id) {
-                        helps.push((Some(span), format!("{:?} was deallocated here:", alloc_id)));
+                    AbiMismatchArgument { .. } | AbiMismatchReturn { .. } => {
+                        helps.push((None, format!("this means these two types are not *guaranteed* to be ABI-compatible across all targets")));
+                        helps.push((None, format!("if you think this code should be accepted anyway, please report an issue")));
                     }
+                    _ => {},
                 }
                 helps
             }
@@ -333,30 +343,23 @@ pub fn report_error<'tcx, 'mir>(
 
     let stacktrace = ecx.generate_stacktrace();
     let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
-    let (e, backtrace) = e.into_parts();
-    backtrace.print_backtrace();
 
-    // We want to dump the allocation if this is `InvalidUninitBytes`. Since `add_args` consumes
-    // the `InterpError`, we extract the variables it before that.
-    let extra = match e {
-        UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some((alloc_id, access)))) =>
-            Some((alloc_id, access)),
-        _ => None,
-    };
+    // We want to dump the allocation if this is `InvalidUninitBytes`. Since `format_error` consumes `e`, we compute the outut early.
+    let mut extra = String::new();
+    match e.kind() {
+        UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {
+            writeln!(
+                extra,
+                "Uninitialized memory occurred at {alloc_id:?}{range:?}, in this allocation:",
+                range = access.bad,
+            )
+            .unwrap();
+            writeln!(extra, "{:?}", ecx.dump_alloc(*alloc_id)).unwrap();
+        }
+        _ => {}
+    }
 
-    // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
-    // label and arguments from the InterpError.
-    let e = {
-        let handler = &ecx.tcx.sess.parse_sess.span_diagnostic;
-        let mut diag = ecx.tcx.sess.struct_allow("");
-        let msg = e.diagnostic_message();
-        e.add_args(handler, &mut diag);
-        let s = handler.eagerly_translate_to_string(msg, diag.args());
-        diag.cancel();
-        s
-    };
-
-    msg.insert(0, e);
+    msg.insert(0, ecx.format_error(e));
 
     report_msg(
         DiagLevel::Error,
@@ -375,23 +378,16 @@ pub fn report_error<'tcx, 'mir>(
         );
     }
 
+    eprint!("{extra}"); // newlines are already in the string
+
     // Debug-dump all locals.
     for (i, frame) in ecx.active_thread_stack().iter().enumerate() {
         trace!("-------------------");
         trace!("Frame {}", i);
-        trace!("    return: {:?}", *frame.return_place);
+        trace!("    return: {:?}", frame.return_place);
         for (i, local) in frame.locals.iter().enumerate() {
-            trace!("    local {}: {:?}", i, local.value);
+            trace!("    local {}: {:?}", i, local);
         }
-    }
-
-    // Extra output to help debug specific issues.
-    if let Some((alloc_id, access)) = extra {
-        eprintln!(
-            "Uninitialized memory occurred at {alloc_id:?}{range:?}, in this allocation:",
-            range = access.bad,
-        );
-        eprintln!("{:?}", ecx.dump_alloc(alloc_id));
     }
 
     None

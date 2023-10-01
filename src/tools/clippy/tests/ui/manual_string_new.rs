@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::manual_string_new)]
 
 macro_rules! create_strings_from_macro {

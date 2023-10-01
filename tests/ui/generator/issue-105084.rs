@@ -1,11 +1,3 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
-// [no_drop_tracking] known-bug: #105084
-// [no_drop_tracking] check-pass
-// [drop_tracking] known-bug: #105084
-// [drop_tracking] check-pass
-
 #![feature(generators)]
 #![feature(generator_clone)]
 #![feature(generator_trait)]
@@ -37,13 +29,13 @@ fn main() {
     // As it is not taken into account for trait computation,
     // the generator is `Copy`.
     let mut h = copy(g);
-    //[drop_tracking_mir]~^ ERROR the trait bound `Box<(i32, ())>: Copy` is not satisfied in
+    //~^ ERROR the trait bound `Box<(i32, ())>: Copy` is not satisfied in
 
     // We now have 2 boxes with the same backing allocation:
     // one inside `g` and one inside `h`.
     // Proceed and drop `t` in `g`.
     Pin::new(&mut g).resume(());
-    //[drop_tracking_mir]~^ ERROR borrow of moved value: `g`
+    //~^ ERROR borrow of moved value: `g`
 
     // Proceed and drop `t` in `h` -> double free!
     Pin::new(&mut h).resume(());

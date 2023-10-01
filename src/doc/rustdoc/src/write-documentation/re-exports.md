@@ -86,7 +86,7 @@ pub use self::Hidden as InlinedHidden;
 ```
 
 The same applies on re-exports themselves: if you have multiple re-exports and some of them have
-`#[doc(hidden)]`, then these ones (and only these) own't appear in the documentation:
+`#[doc(hidden)]`, then these ones (and only these) won't appear in the documentation:
 
 ```rust,ignore (inline)
 mod private_mod {

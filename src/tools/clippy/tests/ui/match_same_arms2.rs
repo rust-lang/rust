@@ -4,7 +4,7 @@
     clippy::diverging_sub_expression,
     clippy::uninlined_format_args
 )]
-
+//@no-rustfix
 fn bar<T>(_: T) {}
 fn foo() -> bool {
     unimplemented!()

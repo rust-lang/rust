@@ -3,6 +3,12 @@ error[E0277]: the trait bound `(): Project` is not satisfied
    |
 LL | pub fn uwu() -> <() as Project>::Assoc {}
    |                 ^^^^^^^^^^^^^^^^^^^^^^ the trait `Project` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/bad-projection.rs:9:1
+   |
+LL | trait Project {
+   | ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

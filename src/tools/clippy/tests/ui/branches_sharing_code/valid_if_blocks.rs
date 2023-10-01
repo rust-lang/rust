@@ -107,6 +107,7 @@ fn valid_examples() {
 
     // Let's test empty blocks
     if false {
+        //~^ ERROR: this `if` has identical blocks
     } else {
     }
 }
@@ -118,6 +119,7 @@ fn trigger_other_lint() {
 
     // Same block
     if x == 0 {
+        //~^ ERROR: this `if` has identical blocks
         let u = 19;
         println!("How are u today?");
         let _ = "This is a string";
@@ -129,12 +131,14 @@ fn trigger_other_lint() {
 
     // Only same expression
     let _ = if x == 6 { 7 } else { 7 };
+    //~^ ERROR: this `if` has identical blocks
 
     // Same in else if block
     let _ = if x == 67 {
         println!("Well I'm the most important block");
         "I'm a pretty string"
     } else if x == 68 {
+        //~^ ERROR: this `if` has identical blocks
         println!("I'm a doppelgänger");
         // Don't listen to my clone below
 
@@ -149,6 +153,7 @@ fn trigger_other_lint() {
     if x == 0 {
         println!("I'm single");
     } else if x == 68 {
+        //~^ ERROR: this `if` has identical blocks
         println!("I'm a doppelgänger");
         // Don't listen to my clone below
     } else {

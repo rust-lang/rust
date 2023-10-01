@@ -5,6 +5,7 @@ LL |     S { a: 1, b: 1, ..base };
    |                       ^^^^
    |
    = note: `-D clippy::needless-update` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_update)]`
 
 error: aborting due to previous error
 

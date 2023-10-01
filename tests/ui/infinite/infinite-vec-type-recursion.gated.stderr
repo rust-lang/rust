@@ -1,0 +1,26 @@
+error[E0391]: cycle detected when expanding type alias `X`
+  --> $DIR/infinite-vec-type-recursion.rs:6:14
+   |
+LL | type X = Vec<X>;
+   |              ^
+   |
+   = note: ...which immediately requires expanding type alias `X` again
+   = note: type aliases cannot be recursive
+   = help: consider using a struct, enum, or union instead to break the cycle
+   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+note: cycle used when collecting item types in top-level module
+  --> $DIR/infinite-vec-type-recursion.rs:3:1
+   |
+LL | / #![cfg_attr(feature, feature(lazy_type_alias))]
+LL | | #![allow(incomplete_features)]
+LL | |
+LL | | type X = Vec<X>;
+...  |
+LL | | #[rustfmt::skip]
+LL | | fn main() { let b: X = Vec::new(); }
+   | |____________________________________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

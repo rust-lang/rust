@@ -1,4 +1,4 @@
-use crate::context::parse_lint_and_tool_name;
+use crate::levels::parse_lint_and_tool_name;
 use rustc_span::{create_default_session_globals_then, Symbol};
 
 #[test]

@@ -189,6 +189,8 @@ pub(crate) mod rustc {
         Unspecified,
         /// This error will be surfaced elsewhere by rustc, so don't surface it.
         UnknownLayout,
+        /// Overflow size
+        SizeOverflow,
         TypeError(ErrorGuaranteed),
     }
 
@@ -196,6 +198,7 @@ pub(crate) mod rustc {
         fn from(err: &LayoutError<'tcx>) -> Self {
             match err {
                 LayoutError::Unknown(..) | LayoutError::ReferencesError(..) => Self::UnknownLayout,
+                LayoutError::SizeOverflow(..) => Self::SizeOverflow,
                 err => unimplemented!("{:?}", err),
             }
         }

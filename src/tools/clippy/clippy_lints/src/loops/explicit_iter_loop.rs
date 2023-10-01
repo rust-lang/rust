@@ -13,8 +13,14 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMut
 use rustc_middle::ty::{self, EarlyBinder, Ty, TypeAndMut};
 use rustc_span::sym;
 
-pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<'_>, msrv: &Msrv) {
-    let Some((adjust, ty)) = is_ref_iterable(cx, self_arg, call_expr) else {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    self_arg: &Expr<'_>,
+    call_expr: &Expr<'_>,
+    msrv: &Msrv,
+    enforce_iter_loop_reborrow: bool,
+) {
+    let Some((adjust, ty)) = is_ref_iterable(cx, self_arg, call_expr, enforce_iter_loop_reborrow) else {
         return;
     };
     if let ty::Array(_, count) = *ty.peel_refs().kind() {
@@ -102,6 +108,7 @@ fn is_ref_iterable<'tcx>(
     cx: &LateContext<'tcx>,
     self_arg: &Expr<'_>,
     call_expr: &Expr<'_>,
+    enforce_iter_loop_reborrow: bool,
 ) -> Option<(AdjustKind, Ty<'tcx>)> {
     let typeck = cx.typeck_results();
     if let Some(trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
@@ -142,7 +149,8 @@ fn is_ref_iterable<'tcx>(
                 {
                     return Some((AdjustKind::None, self_ty));
                 }
-            } else if let ty::Ref(region, ty, Mutability::Mut) = *self_ty.kind()
+            } else if enforce_iter_loop_reborrow
+                && let ty::Ref(region, ty, Mutability::Mut) = *self_ty.kind()
                 && let Some(mutbl) = mutbl
             {
                 // Attempt to reborrow the mutable reference
@@ -186,7 +194,8 @@ fn is_ref_iterable<'tcx>(
                 },
                 ..
             ] => {
-                if target != self_ty
+                if enforce_iter_loop_reborrow
+                    && target != self_ty
                     && implements_trait(cx, target, trait_id, &[])
                     && let Some(ty) =
                         make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])

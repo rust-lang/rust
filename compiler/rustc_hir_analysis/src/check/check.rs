@@ -5,20 +5,17 @@ use super::compare_impl_item::check_type_bounds;
 use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
 use super::*;
 use rustc_attr as attr;
-use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ItemKind, Node, PathSegment};
-use rustc_infer::infer::opaque_types::ConstrainOpaqueTypeRegionVisitor;
+use rustc_hir::Node;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitEngineExt as _};
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
-use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::traits::DefiningAnchor;
+use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, IntTypeExt};
@@ -218,9 +215,6 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     let args = GenericArgs::identity_for_item(tcx, item.owner_id);
     let span = tcx.def_span(item.owner_id.def_id);
 
-    if !tcx.features().impl_trait_projections {
-        check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
-    }
     if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
         return;
     }
@@ -229,129 +223,6 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     }
 
     let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, &origin);
-}
-
-/// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
-/// in "inheriting lifetimes".
-#[instrument(level = "debug", skip(tcx, span))]
-pub(super) fn check_opaque_for_inheriting_lifetimes(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-    span: Span,
-) {
-    let item = tcx.hir().expect_item(def_id);
-    debug!(?item, ?span);
-
-    struct ProhibitOpaqueVisitor<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        opaque_identity_ty: Ty<'tcx>,
-        parent_count: u32,
-        references_parent_regions: bool,
-        selftys: Vec<(Span, Option<String>)>,
-    }
-
-    impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueVisitor<'tcx> {
-        type BreakTy = Ty<'tcx>;
-
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            debug!(?t, "root_visit_ty");
-            if t == self.opaque_identity_ty {
-                ControlFlow::Continue(())
-            } else {
-                t.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-                    tcx: self.tcx,
-                    op: |region| {
-                        if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *region
-                            && index < self.parent_count
-                        {
-                            self.references_parent_regions= true;
-                        }
-                    },
-                });
-                if self.references_parent_regions {
-                    ControlFlow::Break(t)
-                } else {
-                    ControlFlow::Continue(())
-                }
-            }
-        }
-    }
-
-    impl<'tcx> Visitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
-        type NestedFilter = nested_filter::OnlyBodies;
-
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.tcx.hir()
-        }
-
-        fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
-            match arg.kind {
-                hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
-                    [PathSegment { res: Res::SelfTyParam { .. }, .. }] => {
-                        let impl_ty_name = None;
-                        self.selftys.push((path.span, impl_ty_name));
-                    }
-                    [PathSegment { res: Res::SelfTyAlias { alias_to: def_id, .. }, .. }] => {
-                        let impl_ty_name = Some(self.tcx.def_path_str(*def_id));
-                        self.selftys.push((path.span, impl_ty_name));
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-            hir::intravisit::walk_ty(self, arg);
-        }
-    }
-
-    if let ItemKind::OpaqueTy(&hir::OpaqueTy {
-        origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
-        ..
-    }) = item.kind
-    {
-        let args = GenericArgs::identity_for_item(tcx, def_id);
-        let opaque_identity_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-        let mut visitor = ProhibitOpaqueVisitor {
-            opaque_identity_ty,
-            parent_count: tcx.generics_of(def_id).parent_count as u32,
-            references_parent_regions: false,
-            tcx,
-            selftys: vec![],
-        };
-        let prohibit_opaque = tcx
-            .explicit_item_bounds(def_id)
-            .instantiate_identity_iter_copied()
-            .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
-
-        if let Some(ty) = prohibit_opaque.break_value() {
-            visitor.visit_item(&item);
-            let is_async = match item.kind {
-                ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
-                    matches!(origin, hir::OpaqueTyOrigin::AsyncFn(..))
-                }
-                _ => unreachable!(),
-            };
-
-            let mut err = feature_err(
-                &tcx.sess.parse_sess,
-                sym::impl_trait_projections,
-                span,
-                format!(
-                    "`{}` return type cannot contain a projection or `Self` that references \
-                    lifetimes from a parent scope",
-                    if is_async { "async fn" } else { "impl Trait" },
-                ),
-            );
-            for (span, name) in visitor.selftys {
-                err.span_suggestion(
-                    span,
-                    "consider spelling out the type instead",
-                    name.unwrap_or_else(|| format!("{ty:?}")),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            err.emit();
-        }
-    }
 }
 
 /// Checks that an opaque type does not contain cycles.
@@ -461,7 +332,15 @@ fn check_opaque_meets_bounds<'tcx>(
     }
     match origin {
         // Checked when type checking the function containing them.
-        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
+        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {
+            // HACK: this should also fall through to the hidden type check below, but the original
+            // implementation had a bug where equivalent lifetimes are not identical. This caused us
+            // to reject existing stable code that is otherwise completely fine. The real fix is to
+            // compare the hidden types via our type equivalence/relation infra instead of doing an
+            // identity check.
+            let _ = infcx.take_opaque_types();
+            return Ok(());
+        }
         // Nested opaque types occur only in associated types:
         // ` type Opaque<T> = impl Trait<&'static T, AssocTy = impl Nested>; `
         // They can only be referenced as `<Opaque<T> as Trait<&'static T>>::AssocTy`.
@@ -632,7 +511,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                 check_opaque(tcx, id);
             }
         }
-        DefKind::TyAlias { .. } => {
+        DefKind::TyAlias => {
             let pty_ty = tcx.type_of(id.owner_id).instantiate_identity();
             let generics = tcx.generics_of(id.owner_id);
             check_type_params_are_used(tcx, &generics, pty_ty);
@@ -823,7 +702,7 @@ fn check_impl_items_against_trait<'tcx>(
         };
         match ty_impl_item.kind {
             ty::AssocKind::Const => {
-                let _ = tcx.compare_impl_const((
+                tcx.ensure().compare_impl_const((
                     impl_item.expect_local(),
                     ty_impl_item.trait_item_def_id.unwrap(),
                 ));
@@ -1130,19 +1009,19 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
-    // For each field, figure out if it's known to be a ZST and align(1), with "known"
-    // respecting #[non_exhaustive] attributes.
+    // For each field, figure out if it's known to have "trivial" layout (i.e., is a 1-ZST), with
+    // "known" respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
-        let zst = layout.is_ok_and(|layout| layout.is_zst());
-        let align = layout.ok().map(|layout| layout.align.abi.bytes());
-        if !zst {
-            return (span, zst, align, None);
+        let trivial = layout.is_ok_and(|layout| layout.is_1zst());
+        if !trivial {
+            return (span, trivial, None);
         }
+        // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive`.
 
         fn check_non_exhaustive<'tcx>(
             tcx: TyCtxt<'tcx>,
@@ -1176,58 +1055,52 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             }
         }
 
-        (span, zst, align, check_non_exhaustive(tcx, ty).break_value())
+        (span, trivial, check_non_exhaustive(tcx, ty).break_value())
     });
 
-    let non_zst_fields = field_infos
+    let non_trivial_fields = field_infos
         .clone()
-        .filter_map(|(span, zst, _align, _non_exhaustive)| if !zst { Some(span) } else { None });
-    let non_zst_count = non_zst_fields.clone().count();
-    if non_zst_count >= 2 {
-        bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, tcx.def_span(adt.did()));
+        .filter_map(|(span, trivial, _non_exhaustive)| if !trivial { Some(span) } else { None });
+    let non_trivial_count = non_trivial_fields.clone().count();
+    if non_trivial_count >= 2 {
+        bad_non_zero_sized_fields(
+            tcx,
+            adt,
+            non_trivial_count,
+            non_trivial_fields,
+            tcx.def_span(adt.did()),
+        );
+        return;
     }
-    let incompatible_zst_fields =
-        field_infos.clone().filter(|(_, _, _, opt)| opt.is_some()).count();
-    let incompat = incompatible_zst_fields + non_zst_count >= 2 && non_zst_count < 2;
-    for (span, zst, align, non_exhaustive) in field_infos {
-        if zst && align != Some(1) {
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0691,
-                "zero-sized field in transparent {} has alignment larger than 1",
-                adt.descr(),
-            );
-
-            if let Some(align_bytes) = align {
-                err.span_label(
+    let mut prev_non_exhaustive_1zst = false;
+    for (span, _trivial, non_exhaustive_1zst) in field_infos {
+        if let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive_1zst {
+            // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
+            // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
+            if non_trivial_count > 0 || prev_non_exhaustive_1zst {
+                tcx.struct_span_lint_hir(
+                    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+                    tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
                     span,
-                    format!("has alignment of {align_bytes}, which is larger than 1"),
-                );
+                    "zero-sized fields in `repr(transparent)` cannot \
+                    contain external non-exhaustive types",
+                    |lint| {
+                        let note = if non_exhaustive {
+                            "is marked with `#[non_exhaustive]`"
+                        } else {
+                            "contains private fields"
+                        };
+                        let field_ty = tcx.def_path_str_with_args(def_id, args);
+                        lint.note(format!(
+                            "this {descr} contains `{field_ty}`, which {note}, \
+                                and makes it not a breaking change to become \
+                                non-zero-sized in the future."
+                        ))
+                    },
+                )
             } else {
-                err.span_label(span, "may have alignment larger than 1");
+                prev_non_exhaustive_1zst = true;
             }
-
-            err.emit();
-        }
-        if incompat && let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive {
-            tcx.struct_span_lint_hir(
-                REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
-                tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
-                span,
-                "zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types",
-                |lint| {
-                    let note = if non_exhaustive {
-                        "is marked with `#[non_exhaustive]`"
-                    } else {
-                        "contains private fields"
-                    };
-                    let field_ty = tcx.def_path_str_with_args(def_id, args);
-                    lint
-                        .note(format!("this {descr} contains `{field_ty}`, which {note}, \
-                            and makes it not a breaking change to become non-zero-sized in the future."))
-                },
-            )
         }
     }
 }
@@ -1577,13 +1450,7 @@ fn opaque_type_cycle_error(
                         label_match(capture.place.ty(), capture.get_path_span(tcx));
                     }
                     // Label any generator locals that capture the opaque
-                    for interior_ty in
-                        typeck_results.generator_interior_types.as_ref().skip_binder()
-                    {
-                        label_match(interior_ty.ty, interior_ty.span);
-                    }
-                    if tcx.sess.opts.unstable_opts.drop_tracking_mir
-                        && let DefKind::Generator = tcx.def_kind(closure_def_id)
+                    if let DefKind::Generator = tcx.def_kind(closure_def_id)
                         && let Some(generator_layout) = tcx.mir_generator_witnesses(closure_def_id)
                     {
                         for interior_ty in &generator_layout.field_tys {
@@ -1601,7 +1468,6 @@ fn opaque_type_cycle_error(
 }
 
 pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    debug_assert!(tcx.sess.opts.unstable_opts.drop_tracking_mir);
     debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Generator));
 
     let typeck = tcx.typeck(def_id);
@@ -1624,6 +1490,25 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let obligation = Obligation::new(tcx, cause.clone(), param_env, *predicate);
         fulfillment_cx.register_predicate_obligation(&infcx, obligation);
     }
+
+    if (tcx.features().unsized_locals || tcx.features().unsized_fn_params)
+        && let Some(generator) = tcx.mir_generator_witnesses(def_id)
+    {
+        for field_ty in generator.field_tys.iter() {
+            fulfillment_cx.register_bound(
+                &infcx,
+                param_env,
+                field_ty.ty,
+                tcx.require_lang_item(hir::LangItem::Sized, Some(field_ty.source_info.span)),
+                ObligationCause::new(
+                    field_ty.source_info.span,
+                    def_id,
+                    ObligationCauseCode::SizedGeneratorInterior(def_id),
+                ),
+            );
+        }
+    }
+
     let errors = fulfillment_cx.select_all_or_error(&infcx);
     debug!(?errors);
     if !errors.is_empty() {

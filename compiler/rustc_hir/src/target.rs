@@ -101,7 +101,7 @@ impl Target {
             DefKind::Mod => Target::Mod,
             DefKind::ForeignMod => Target::ForeignMod,
             DefKind::GlobalAsm => Target::GlobalAsm,
-            DefKind::TyAlias { .. } => Target::TyAlias,
+            DefKind::TyAlias => Target::TyAlias,
             DefKind::OpaqueTy => Target::OpaqueTy,
             DefKind::Enum => Target::Enum,
             DefKind::Struct => Target::Struct,

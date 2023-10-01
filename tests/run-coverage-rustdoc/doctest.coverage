@@ -10,6 +10,8 @@ $DIR/auxiliary/doctest_crate.rs:
    LL|      3|}
 
 $DIR/doctest.rs:
+   LL|       |// aux-build:doctest_crate.rs
+   LL|       |
    LL|       |//! This test ensures that code from doctests is properly re-mapped.
    LL|       |//! See <https://github.com/rust-lang/rust/issues/79417> for more info.
    LL|       |//!
@@ -78,7 +80,7 @@ $DIR/doctest.rs:
    LL|       |//!     doctest_main()
    LL|       |//! }
    LL|       |//! ```
-   LL|       |// aux-build:doctest_crate.rs
+   LL|       |
    LL|       |/// doctest attached to fn testing external code:
    LL|       |/// ```
    LL|      1|/// extern crate doctest_crate;

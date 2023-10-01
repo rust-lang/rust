@@ -6,8 +6,11 @@ mod warn_intel {
     pub(super) unsafe fn use_asm() {
         use std::arch::asm;
         asm!("");
+        //~^ ERROR: Intel x86 assembly syntax used
         asm!("", options());
+        //~^ ERROR: Intel x86 assembly syntax used
         asm!("", options(nostack));
+        //~^ ERROR: Intel x86 assembly syntax used
         asm!("", options(att_syntax));
         asm!("", options(nostack, att_syntax));
     }
@@ -21,7 +24,9 @@ mod warn_att {
         asm!("", options());
         asm!("", options(nostack));
         asm!("", options(att_syntax));
+        //~^ ERROR: AT&T x86 assembly syntax used
         asm!("", options(nostack, att_syntax));
+        //~^ ERROR: AT&T x86 assembly syntax used
     }
 }
 

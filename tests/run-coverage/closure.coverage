@@ -1,11 +1,16 @@
    LL|       |#![allow(unused_assignments, unused_variables)]
    LL|       |// compile-flags: -C opt-level=2
-   LL|      1|fn main() { // ^^ fix described in rustc_middle/mir/mono.rs
+   LL|       |
+   LL|       |// This test used to be sensitive to certain coverage-specific hacks in
+   LL|       |// `rustc_middle/mir/mono.rs`, but those hacks were later cleaned up by
+   LL|       |// <https://github.com/rust-lang/rust/pull/83666>.
+   LL|       |
+   LL|      1|fn main() {
    LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
    LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
    LL|      1|    // dependent conditions.
    LL|      1|    let is_true = std::env::args().len() == 1;
-   LL|      1|    let is_false = ! is_true;
+   LL|      1|    let is_false = !is_true;
    LL|      1|
    LL|      1|    let mut some_string = Some(String::from("the string content"));
    LL|      1|    println!(
@@ -71,8 +76,8 @@
    LL|      1|    some_string = None;
    LL|      1|    let
    LL|      1|        a
-   LL|      1|    =
-   LL|      1|        ||
+   LL|       |    =
+   LL|       |        ||
    LL|      1|    {
    LL|      1|        let mut countdown = 0;
    LL|      1|        if is_false {
@@ -93,8 +98,8 @@
    LL|      1|
    LL|      1|    let
    LL|      1|        quote_closure
-   LL|      1|    =
-   LL|      1|        |val|
+   LL|       |    =
+   LL|       |        |val|
    LL|      5|    {
    LL|      5|        let mut countdown = 0;
    LL|      5|        if is_false {
@@ -181,7 +186,7 @@
    LL|       |    ;
    LL|       |
    LL|      1|    let short_used_not_covered_closure_line_break_block_embedded_branch =
-   LL|      1|        | _unused_arg: u8 |
+   LL|       |        | _unused_arg: u8 |
    LL|      0|        {
    LL|      0|            println!(
    LL|      0|                "not called: {}",
@@ -191,7 +196,7 @@
    LL|       |    ;
    LL|       |
    LL|      1|    let short_used_covered_closure_line_break_no_block_embedded_branch =
-   LL|      1|        | _unused_arg: u8 |
+   LL|       |        | _unused_arg: u8 |
    LL|      1|            println!(
    LL|      1|                "not called: {}",
    LL|      1|                if is_true { "check" } else { "me" }
@@ -200,7 +205,7 @@
    LL|       |    ;
    LL|       |
    LL|      1|    let short_used_covered_closure_line_break_block_embedded_branch =
-   LL|      1|        | _unused_arg: u8 |
+   LL|       |        | _unused_arg: u8 |
    LL|      1|        {
    LL|      1|            println!(
    LL|      1|                "not called: {}",

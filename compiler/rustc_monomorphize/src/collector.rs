@@ -170,8 +170,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::interpret::{AllocId, ConstValue};
-use rustc_middle::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Local, Location};
@@ -179,8 +178,8 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
-    VtblEntry,
+    self, AssocKind, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
@@ -188,11 +187,13 @@ use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
+use rustc_span::symbol::{sym, Ident};
 use rustc_target::abi::Size;
 use std::path::PathBuf;
 
 use crate::errors::{
-    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, RecursionLimit, TypeLengthLimit,
+    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
+    TypeLengthLimit,
 };
 
 #[derive(PartialEq)]
@@ -431,7 +432,7 @@ fn collect_items_rec<'tcx>(
                         hir::InlineAsmOperand::SymFn { anon_const } => {
                             let fn_ty =
                                 tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);
+                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items, &[]);
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);
@@ -457,7 +458,7 @@ fn collect_items_rec<'tcx>(
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
     if tcx.sess.diagnostic().err_count() > error_count
-        && starting_item.node.is_generic_fn()
+        && starting_item.node.is_generic_fn(tcx)
         && starting_item.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
@@ -590,6 +591,13 @@ struct MirUsedCollector<'a, 'tcx> {
     body: &'a mir::Body<'tcx>,
     output: &'a mut MonoItems<'tcx>,
     instance: Instance<'tcx>,
+    /// Spans for move size lints already emitted. Helps avoid duplicate lints.
+    move_size_spans: Vec<Span>,
+    /// If true, we should temporarily skip move size checks, because we are
+    /// processing an operand to a `skip_move_check_fns` function call.
+    skip_move_size_check: bool,
+    /// Set of functions for which it is OK to move large data into.
+    skip_move_check_fns: Vec<DefId>,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -598,11 +606,50 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!("monomorphize: self.instance={:?}", self.instance);
-        self.instance.subst_mir_and_normalize_erasing_regions(
+        self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
             ty::ParamEnv::reveal_all(),
             ty::EarlyBinder::bind(value),
         )
+    }
+
+    fn check_move_size(&mut self, limit: usize, operand: &mir::Operand<'tcx>, location: Location) {
+        let limit = Size::from_bytes(limit);
+        let ty = operand.ty(self.body, self.tcx);
+        let ty = self.monomorphize(ty);
+        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else { return };
+        if layout.size <= limit {
+            return;
+        }
+        debug!(?layout);
+        let source_info = self.body.source_info(location);
+        debug!(?source_info);
+        for span in &self.move_size_spans {
+            if span.overlaps(source_info.span) {
+                return;
+            }
+        }
+        let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
+        debug!(?lint_root);
+        let Some(lint_root) = lint_root else {
+            // This happens when the issue is in a function from a foreign crate that
+            // we monomorphized in the current crate. We can't get a `HirId` for things
+            // in other crates.
+            // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
+            // but correct span? This would make the lint at least accept crate-level lint attributes.
+            return;
+        };
+        self.tcx.emit_spanned_lint(
+            LARGE_ASSIGNMENTS,
+            lint_root,
+            source_info.span,
+            LargeAssignmentsLint {
+                span: source_info.span,
+                size: layout.size.bytes(),
+                limit: limit.bytes(),
+            },
+        );
+        self.move_size_spans.push(source_info.span);
     }
 }
 
@@ -649,7 +696,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             ) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
                 let fn_ty = self.monomorphize(fn_ty);
-                visit_fn_use(self.tcx, fn_ty, false, span, &mut self.output);
+                visit_fn_use(
+                    self.tcx,
+                    fn_ty,
+                    false,
+                    span,
+                    &mut self.output,
+                    &self.skip_move_check_fns,
+                );
             }
             mir::Rvalue::Cast(
                 mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
@@ -692,44 +746,20 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     /// to walk it would attempt to evaluate the `ty::Const` inside, which doesn't necessarily
     /// work, as some constants cannot be represented in the type system.
     #[instrument(skip(self), level = "debug")]
-    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
-        let literal = self.monomorphize(constant.literal);
-        let val = match literal {
-            mir::ConstantKind::Val(val, _) => val,
-            mir::ConstantKind::Ty(ct) => match ct.kind() {
-                ty::ConstKind::Value(val) => self.tcx.valtree_to_const_val((ct.ty(), val)),
-                ty::ConstKind::Unevaluated(ct) => {
-                    debug!(?ct);
-                    let param_env = ty::ParamEnv::reveal_all();
-                    match self.tcx.const_eval_resolve(param_env, ct.expand(), None) {
-                        // The `monomorphize` call should have evaluated that constant already.
-                        Ok(val) => val,
-                        Err(ErrorHandled::Reported(_)) => return,
-                        Err(ErrorHandled::TooGeneric) => span_bug!(
-                            self.body.source_info(location).span,
-                            "collection encountered polymorphic constant: {:?}",
-                            literal
-                        ),
-                    }
-                }
-                _ => return,
-            },
-            mir::ConstantKind::Unevaluated(uv, _) => {
-                let param_env = ty::ParamEnv::reveal_all();
-                match self.tcx.const_eval_resolve(param_env, uv, None) {
-                    // The `monomorphize` call should have evaluated that constant already.
-                    Ok(val) => val,
-                    Err(ErrorHandled::Reported(_)) => return,
-                    Err(ErrorHandled::TooGeneric) => span_bug!(
-                        self.body.source_info(location).span,
-                        "collection encountered polymorphic constant: {:?}",
-                        literal
-                    ),
-                }
-            }
+    fn visit_constant(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
+        let const_ = self.monomorphize(constant.const_);
+        let param_env = ty::ParamEnv::reveal_all();
+        let val = match const_.eval(self.tcx, param_env, None) {
+            Ok(v) => v,
+            Err(ErrorHandled::Reported(..)) => return,
+            Err(ErrorHandled::TooGeneric(..)) => span_bug!(
+                self.body.source_info(location).span,
+                "collection encountered polymorphic constant: {:?}",
+                const_
+            ),
         };
         collect_const_value(self.tcx, val, self.output);
-        MirVisitor::visit_ty(self, literal.ty(), TyContext::Location(location));
+        MirVisitor::visit_ty(self, const_.ty(), TyContext::Location(location));
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
@@ -748,7 +778,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
+                self.skip_move_size_check = visit_fn_use(
+                    self.tcx,
+                    callee_ty,
+                    true,
+                    source,
+                    &mut self.output,
+                    &self.skip_move_check_fns,
+                )
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -759,8 +796,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 for op in operands {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
-                            let fn_ty = self.monomorphize(value.literal.ty());
-                            visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output);
+                            let fn_ty = self.monomorphize(value.const_.ty());
+                            visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output, &[]);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
                             let instance = Instance::mono(self.tcx, def_id);
@@ -799,44 +836,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
+        self.skip_move_size_check = false;
     }
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
-        let limit = self.tcx.move_size_limit().0;
-        if limit == 0 {
-            return;
-        }
-        let limit = Size::from_bytes(limit);
-        let ty = operand.ty(self.body, self.tcx);
-        let ty = self.monomorphize(ty);
-        let layout = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty));
-        if let Ok(layout) = layout {
-            if layout.size > limit {
-                debug!(?layout);
-                let source_info = self.body.source_info(location);
-                debug!(?source_info);
-                let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
-                debug!(?lint_root);
-                let Some(lint_root) = lint_root else {
-                    // This happens when the issue is in a function from a foreign crate that
-                    // we monomorphized in the current crate. We can't get a `HirId` for things
-                    // in other crates.
-                    // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
-                    // but correct span? This would make the lint at least accept crate-level lint attributes.
-                    return;
-                };
-                self.tcx.emit_spanned_lint(
-                    LARGE_ASSIGNMENTS,
-                    lint_root,
-                    source_info.span,
-                    LargeAssignmentsLint {
-                        span: source_info.span,
-                        size: layout.size.bytes(),
-                        limit: limit.bytes(),
-                    },
-                )
-            }
+        let move_size_limit = self.tcx.move_size_limit().0;
+        if move_size_limit > 0 && !self.skip_move_size_check {
+            self.check_move_size(move_size_limit, operand, location);
         }
     }
 
@@ -866,8 +873,11 @@ fn visit_fn_use<'tcx>(
     is_direct_call: bool,
     source: Span,
     output: &mut MonoItems<'tcx>,
-) {
+    skip_move_check_fns: &[DefId],
+) -> bool {
+    let mut skip_move_size_check = false;
     if let ty::FnDef(def_id, args) = *ty.kind() {
+        skip_move_size_check = skip_move_check_fns.contains(&def_id);
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
         } else {
@@ -878,6 +888,7 @@ fn visit_fn_use<'tcx>(
         };
         visit_instance_use(tcx, instance, is_direct_call, source, output);
     }
+    skip_move_size_check
 }
 
 fn visit_instance_use<'tcx>(
@@ -950,7 +961,10 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
     }
 
     if !tcx.is_mir_available(def_id) {
-        bug!("no MIR available for {:?}", def_id);
+        tcx.sess.emit_fatal(NoOptimizedMir {
+            span: tcx.def_span(def_id),
+            crate_name: tcx.crate_name(def_id.krate),
+        });
     }
 
     true
@@ -1276,6 +1290,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     // it, to validate whether or not the impl is legal to instantiate at all.
     let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
         GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Const { is_host_effect: true, .. } => tcx.consts.true_.into(),
         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
             unreachable!(
                 "`own_requires_monomorphization` check means that \
@@ -1355,6 +1370,31 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
     }
 }
 
+fn add_assoc_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: Option<DefId>,
+    fn_ident: Ident,
+    skip_move_check_fns: &mut Vec<DefId>,
+) {
+    if let Some(def_id) = def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, fn_ident)) {
+        skip_move_check_fns.push(def_id);
+    }
+}
+
+fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
+    for impl_def_id in tcx.inherent_impls(def_id) {
+        if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
+            tcx,
+            fn_ident,
+            AssocKind::Fn,
+            def_id,
+        ) {
+            return Some(new.def_id);
+        }
+    }
+    return None;
+}
+
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
 #[instrument(skip(tcx, output), level = "debug")]
 fn collect_used_items<'tcx>(
@@ -1363,19 +1403,54 @@ fn collect_used_items<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     let body = tcx.instance_mir(instance.def);
-    MirUsedCollector { tcx, body: &body, output, instance }.visit_body(&body);
+
+    let mut skip_move_check_fns = vec![];
+    if tcx.move_size_limit().0 > 0 {
+        add_assoc_fn(
+            tcx,
+            tcx.lang_items().owned_box(),
+            Ident::from_str("new"),
+            &mut skip_move_check_fns,
+        );
+        add_assoc_fn(
+            tcx,
+            tcx.get_diagnostic_item(sym::Arc),
+            Ident::from_str("new"),
+            &mut skip_move_check_fns,
+        );
+        add_assoc_fn(
+            tcx,
+            tcx.get_diagnostic_item(sym::Rc),
+            Ident::from_str("new"),
+            &mut skip_move_check_fns,
+        );
+    }
+
+    MirUsedCollector {
+        tcx,
+        body: &body,
+        output,
+        instance,
+        move_size_spans: vec![],
+        skip_move_size_check: false,
+        skip_move_check_fns,
+    }
+    .visit_body(&body);
 }
 
 #[instrument(skip(tcx, output), level = "debug")]
 fn collect_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
-    value: ConstValue<'tcx>,
+    value: mir::ConstValue<'tcx>,
     output: &mut MonoItems<'tcx>,
 ) {
     match value {
-        ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_alloc(tcx, ptr.provenance, output),
-        ConstValue::Slice { data: alloc, start: _, end: _ } | ConstValue::ByRef { alloc, .. } => {
-            for &id in alloc.inner().provenance().ptrs().values() {
+        mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
+            collect_alloc(tcx, ptr.provenance, output)
+        }
+        mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
+        mir::ConstValue::Slice { data, meta: _ } => {
+            for &id in data.inner().provenance().ptrs().values() {
                 collect_alloc(tcx, id, output);
             }
         }

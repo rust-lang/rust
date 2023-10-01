@@ -6,9 +6,10 @@ LL |     fn baz(&self) -> Box<usize>;
    |
    = help: changing this also requires a change to the return expressions in this function
    = note: `-D clippy::unnecessary-box-returns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_box_returns)]`
 
 error: boxed return of the sized type `usize`
-  --> $DIR/unnecessary_box_returns.rs:18:22
+  --> $DIR/unnecessary_box_returns.rs:19:22
    |
 LL |     fn baz(&self) -> Box<usize> {
    |                      ^^^^^^^^^^ help: try: `usize`
@@ -16,7 +17,7 @@ LL |     fn baz(&self) -> Box<usize> {
    = help: changing this also requires a change to the return expressions in this function
 
 error: boxed return of the sized type `usize`
-  --> $DIR/unnecessary_box_returns.rs:25:20
+  --> $DIR/unnecessary_box_returns.rs:27:20
    |
 LL | fn bxed_usize() -> Box<usize> {
    |                    ^^^^^^^^^^ help: try: `usize`
@@ -24,7 +25,7 @@ LL | fn bxed_usize() -> Box<usize> {
    = help: changing this also requires a change to the return expressions in this function
 
 error: boxed return of the sized type `Foo`
-  --> $DIR/unnecessary_box_returns.rs:30:19
+  --> $DIR/unnecessary_box_returns.rs:33:19
    |
 LL | fn _bxed_foo() -> Box<Foo> {
    |                   ^^^^^^^^ help: try: `Foo`

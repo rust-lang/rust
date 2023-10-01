@@ -46,10 +46,6 @@ pub use FD_SET as fd_set;
 pub use LINGER as linger;
 pub use TIMEVAL as timeval;
 
-pub type CONDITION_VARIABLE = RTL_CONDITION_VARIABLE;
-pub type SRWLOCK = RTL_SRWLOCK;
-pub type INIT_ONCE = RTL_RUN_ONCE;
-
 pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE { Ptr: ptr::null_mut() };
 pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { Ptr: ptr::null_mut() };
 pub const INIT_ONCE_STATIC_INIT: INIT_ONCE = INIT_ONCE { Ptr: ptr::null_mut() };
@@ -224,7 +220,7 @@ pub unsafe extern "system" fn ReadFileEx(
 ) -> BOOL {
     windows_sys::ReadFileEx(
         hFile.as_raw_handle(),
-        lpBuffer,
+        lpBuffer.cast::<u8>(),
         nNumberOfBytesToRead,
         lpOverlapped,
         lpCompletionRoutine,

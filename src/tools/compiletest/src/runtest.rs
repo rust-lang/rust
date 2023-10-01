@@ -6,13 +6,13 @@ use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJs
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
 use crate::common::{Config, TestPaths};
-use crate::common::{Pretty, RunCoverage, RunPassValgrind};
-use crate::common::{UI_COVERAGE, UI_RUN_STDERR, UI_RUN_STDOUT};
+use crate::common::{CoverageMap, Pretty, RunCoverage, RunPassValgrind};
+use crate::common::{UI_COVERAGE, UI_COVERAGE_MAP, UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
-use crate::read2::read2_abbreviated;
+use crate::read2::{read2_abbreviated, Truncated};
 use crate::util::{add_dylib_path, dylib_env_var, logv, PathBufExt};
 use crate::ColorConfig;
 use regex::{Captures, Regex};
@@ -254,6 +254,7 @@ impl<'test> TestCx<'test> {
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
             JsDocTest => self.run_js_doc_test(),
+            CoverageMap => self.run_coverage_map_test(),
             RunCoverage => self.run_coverage_test(),
         }
     }
@@ -467,6 +468,46 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn run_coverage_map_test(&self) {
+        let Some(coverage_dump_path) = &self.config.coverage_dump_path else {
+            self.fatal("missing --coverage-dump");
+        };
+
+        let proc_res = self.compile_test_and_save_ir();
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+        drop(proc_res);
+
+        let llvm_ir_path = self.output_base_name().with_extension("ll");
+
+        let mut dump_command = Command::new(coverage_dump_path);
+        dump_command.arg(llvm_ir_path);
+        let proc_res = self.run_command_to_procres(&mut dump_command);
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("coverage-dump failed!", &proc_res);
+        }
+
+        let kind = UI_COVERAGE_MAP;
+
+        let expected_coverage_dump = self.load_expected_output(kind);
+        let actual_coverage_dump = self.normalize_output(&proc_res.stdout, &[]);
+
+        let coverage_dump_errors = self.compare_output(
+            kind,
+            &actual_coverage_dump,
+            &expected_coverage_dump,
+            self.props.compare_output_lines_by_subset,
+        );
+
+        if coverage_dump_errors > 0 {
+            self.fatal_proc_rec(
+                &format!("{coverage_dump_errors} errors occurred comparing coverage output."),
+                &proc_res,
+            );
+        }
+    }
+
     fn run_coverage_test(&self) {
         let should_run = self.run_if_enabled();
         let proc_res = self.compile_test(should_run, Emit::None);
@@ -650,12 +691,17 @@ impl<'test> TestCx<'test> {
         let mut cmd = Command::new(tool_path);
         configure_cmd_fn(&mut cmd);
 
-        let output = cmd.output().unwrap_or_else(|_| panic!("failed to exec `{cmd:?}`"));
+        self.run_command_to_procres(&mut cmd)
+    }
+
+    fn run_command_to_procres(&self, cmd: &mut Command) -> ProcRes {
+        let output = cmd.output().unwrap_or_else(|e| panic!("failed to exec `{cmd:?}`: {e:?}"));
 
         let proc_res = ProcRes {
             status: output.status,
             stdout: String::from_utf8(output.stdout).unwrap(),
             stderr: String::from_utf8(output.stderr).unwrap(),
+            truncated: Truncated::No,
             cmdline: format!("{cmd:?}"),
         };
         self.dump_output(&proc_res.stdout, &proc_res.stderr);
@@ -1170,12 +1216,12 @@ impl<'test> TestCx<'test> {
                 .arg(&exe_file)
                 .arg(&self.config.adb_test_dir)
                 .status()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
             Command::new(adb_path)
                 .args(&["forward", "tcp:5039", "tcp:5039"])
                 .status()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
             let adb_arg = format!(
                 "export LD_LIBRARY_PATH={}; \
@@ -1192,7 +1238,7 @@ impl<'test> TestCx<'test> {
                 .stdout(Stdio::piped())
                 .stderr(Stdio::inherit())
                 .spawn()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
             // Wait for the gdbserver to print out "Listening on port ..."
             // at which point we know that it's started and then we can
@@ -1217,7 +1263,7 @@ impl<'test> TestCx<'test> {
             let Output { status, stdout, stderr } = Command::new(&gdb_path)
                 .args(debugger_opts)
                 .output()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", gdb_path));
+                .unwrap_or_else(|e| panic!("failed to exec `{gdb_path:?}`: {e:?}"));
             let cmdline = {
                 let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
                 gdb.args(debugger_opts);
@@ -1230,6 +1276,7 @@ impl<'test> TestCx<'test> {
                 status,
                 stdout: String::from_utf8(stdout).unwrap(),
                 stderr: String::from_utf8(stderr).unwrap(),
+                truncated: Truncated::No,
                 cmdline,
             };
             if adb.kill().is_err() {
@@ -1430,6 +1477,15 @@ impl<'test> TestCx<'test> {
             "^core::num::([a-z_]+::)*NonZero.+$",
         ];
 
+        // In newer versions of lldb, persistent results (the `$N =` part at the start of
+        // expressions you have evaluated that let you re-use the result) aren't printed, but lots
+        // of rustc's debuginfo tests rely on these, so re-enable this.
+        // See <https://reviews.llvm.org/rG385496385476fc9735da5fa4acabc34654e8b30d>.
+        script_str.push_str("command unalias print\n");
+        script_str.push_str("command alias print expr --\n");
+        script_str.push_str("command unalias p\n");
+        script_str.push_str("command alias p expr --\n");
+
         script_str
             .push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[..]);
         script_str.push_str("type synthetic add -l lldb_lookup.synthetic_lookup -x '.*' ");
@@ -1512,7 +1568,13 @@ impl<'test> TestCx<'test> {
         };
 
         self.dump_output(&out, &err);
-        ProcRes { status, stdout: out, stderr: err, cmdline: format!("{:?}", cmd) }
+        ProcRes {
+            status,
+            stdout: out,
+            stderr: err,
+            truncated: Truncated::No,
+            cmdline: format!("{:?}", cmd),
+        }
     }
 
     fn cleanup_debug_info_options(&self, options: &Vec<String>) -> Vec<String> {
@@ -2173,7 +2235,7 @@ impl<'test> TestCx<'test> {
         dylib
     }
 
-    fn read2_abbreviated(&self, child: Child) -> Output {
+    fn read2_abbreviated(&self, child: Child) -> (Output, Truncated) {
         let mut filter_paths_from_len = Vec::new();
         let mut add_path = |path: &Path| {
             let path = path.display().to_string();
@@ -2215,17 +2277,18 @@ impl<'test> TestCx<'test> {
         add_dylib_path(&mut command, iter::once(lib_path).chain(aux_path));
 
         let mut child = disable_error_reporting(|| command.spawn())
-            .unwrap_or_else(|_| panic!("failed to exec `{:?}`", &command));
+            .unwrap_or_else(|e| panic!("failed to exec `{command:?}`: {e:?}"));
         if let Some(input) = input {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
 
-        let Output { status, stdout, stderr } = self.read2_abbreviated(child);
+        let (Output { status, stdout, stderr }, truncated) = self.read2_abbreviated(child);
 
         let result = ProcRes {
             status,
             stdout: String::from_utf8_lossy(&stdout).into_owned(),
             stderr: String::from_utf8_lossy(&stderr).into_owned(),
+            truncated,
             cmdline,
         };
 
@@ -2271,6 +2334,18 @@ impl<'test> TestCx<'test> {
         // fact.
         rustc.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
         rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
+
+        // #[cfg(not(bootstrap))]: After beta bump, this should **always** run.
+        if !(self.config.stage_id.starts_with("stage1-") && self.config.suite == "ui-fulldeps") {
+            // Hide Cargo dependency sources from ui tests to make sure the error message doesn't
+            // change depending on whether $CARGO_HOME is remapped or not. If this is not present,
+            // when $CARGO_HOME is remapped the source won't be shown, and when it's not remapped the
+            // source will be shown, causing a blessing hell.
+            rustc.arg("-Z").arg(format!(
+                "ignore-directory-in-diagnostics-source-blocks={}",
+                home::cargo_home().expect("failed to find cargo home").to_str().unwrap()
+            ));
+        }
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
@@ -2321,9 +2396,11 @@ impl<'test> TestCx<'test> {
                     }
                 }
                 DebugInfo => { /* debuginfo tests must be unoptimized */ }
-                RunCoverage => {
-                    // Coverage reports are affected by optimization level, and
-                    // the current snapshots assume no optimization by default.
+                CoverageMap | RunCoverage => {
+                    // Coverage mappings and coverage reports are affected by
+                    // optimization level, so they ignore the optimize-tests
+                    // setting and set an optimization level in their mode's
+                    // compile flags (below) or in per-test `compile-flags`.
                 }
                 _ => {
                     rustc.arg("-O");
@@ -2392,8 +2469,22 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
+            CoverageMap => {
+                rustc.arg("-Cinstrument-coverage");
+                // These tests only compile to MIR, so they don't need the
+                // profiler runtime to be present.
+                rustc.arg("-Zno-profiler-runtime");
+                // Coverage mappings are sensitive to MIR optimizations, and
+                // the current snapshots assume `opt-level=2` unless overridden
+                // by `compile-flags`.
+                rustc.arg("-Copt-level=2");
+            }
             RunCoverage => {
                 rustc.arg("-Cinstrument-coverage");
+                // Coverage reports are sometimes sensitive to optimizations,
+                // and the current snapshots assume no optimization unless
+                // overridden by `compile-flags`.
+                rustc.arg("-Copt-level=0");
             }
             RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
             | CodegenUnits | JsDocTest | Assembly => {
@@ -3540,12 +3631,14 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let output = self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
+        let (output, truncated) =
+            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
         if !output.status.success() {
             let res = ProcRes {
                 status: output.status,
                 stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                 stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+                truncated,
                 cmdline: format!("{:?}", cmd),
             };
             self.fatal_proc_rec("make failed", &res);
@@ -3707,6 +3800,15 @@ impl<'test> TestCx<'test> {
         let emit_metadata = self.should_emit_metadata(pm);
         let proc_res = self.compile_test(should_run, emit_metadata);
         self.check_if_test_should_compile(&proc_res, pm);
+        if matches!(proc_res.truncated, Truncated::Yes)
+            && !self.props.dont_check_compiler_stdout
+            && !self.props.dont_check_compiler_stderr
+        {
+            self.fatal_proc_rec(
+                &format!("compiler output got truncated, cannot compare with reference file"),
+                &proc_res,
+            );
+        }
 
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
@@ -3748,8 +3850,8 @@ impl<'test> TestCx<'test> {
                     .open(coverage_file_path.as_path())
                     .expect("could not create or open file");
 
-                if writeln!(file, "{}", self.testpaths.file.display()).is_err() {
-                    panic!("couldn't write to {}", coverage_file_path.display());
+                if let Err(e) = writeln!(file, "{}", self.testpaths.file.display()) {
+                    panic!("couldn't write to {}: {e:?}", coverage_file_path.display());
                 }
             }
         } else if self.props.run_rustfix {
@@ -4398,6 +4500,7 @@ pub struct ProcRes {
     status: ExitStatus,
     stdout: String,
     stderr: String,
+    truncated: Truncated,
     cmdline: String,
 }
 

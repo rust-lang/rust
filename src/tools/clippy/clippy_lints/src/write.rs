@@ -304,7 +304,7 @@ impl<'tcx> LateLintPass<'tcx> for Write {
             _ => return,
         }
 
-        find_format_args(cx, expr, macro_call.expn, |format_args| {
+        if let Some(format_args) = find_format_args(cx, expr, macro_call.expn) {
             // ignore `writeln!(w)` and `write!(v, some_macro!())`
             if format_args.span.from_expansion() {
                 return;
@@ -312,15 +312,15 @@ impl<'tcx> LateLintPass<'tcx> for Write {
 
             match diag_name {
                 sym::print_macro | sym::eprint_macro | sym::write_macro => {
-                    check_newline(cx, format_args, &macro_call, name);
+                    check_newline(cx, &format_args, &macro_call, name);
                 },
                 sym::println_macro | sym::eprintln_macro | sym::writeln_macro => {
-                    check_empty_string(cx, format_args, &macro_call, name);
+                    check_empty_string(cx, &format_args, &macro_call, name);
                 },
                 _ => {},
             }
 
-            check_literal(cx, format_args, name);
+            check_literal(cx, &format_args, name);
 
             if !self.in_debug_impl {
                 for piece in &format_args.template {
@@ -334,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for Write {
                     }
                 }
             }
-        });
+        }
     }
 }
 

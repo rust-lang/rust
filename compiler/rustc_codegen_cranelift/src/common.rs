@@ -359,7 +359,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        self.instance.subst_mir_and_normalize_erasing_regions(
+        self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
             ty::ParamEnv::reveal_all(),
             ty::EarlyBinder::bind(value),
@@ -480,7 +480,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
             self.0.sess.span_fatal(span, err.to_string())
         } else {
-            span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+            self.0.sess.span_fatal(span, format!("failed to get layout for `{}`: {}", ty, err))
         }
     }
 }

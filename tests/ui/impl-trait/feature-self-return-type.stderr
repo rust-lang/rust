@@ -1,5 +1,5 @@
 error[E0597]: `bar` does not live long enough
-  --> $DIR/feature-self-return-type.rs:23:22
+  --> $DIR/feature-self-return-type.rs:22:22
    |
 LL |         let x = {
    |             - borrow later stored here
@@ -12,7 +12,7 @@ LL |         };
    |         - `bar` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/feature-self-return-type.rs:63:17
+  --> $DIR/feature-self-return-type.rs:62:17
    |
 LL |         let x = {
    |             - borrow later stored here
@@ -25,7 +25,7 @@ LL |         };
    |         - `y` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/feature-self-return-type.rs:95:17
+  --> $DIR/feature-self-return-type.rs:94:17
    |
 LL |         let x = {
    |             - borrow later stored here

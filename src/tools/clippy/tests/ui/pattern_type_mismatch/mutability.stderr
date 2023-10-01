@@ -6,9 +6,10 @@ LL |         Some(_) => (),
    |
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
    = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
 
 error: type of pattern does not match the expression type
-  --> $DIR/mutability.rs:15:9
+  --> $DIR/mutability.rs:16:9
    |
 LL |         Some(_) => (),
    |         ^^^^^^^

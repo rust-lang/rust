@@ -156,6 +156,21 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
                     .known();
                 self.freshen_const(opt_ct, ty::InferConst::Var(v), ty::InferConst::Fresh, ct.ty())
             }
+            ty::ConstKind::Infer(ty::InferConst::EffectVar(v)) => {
+                let opt_ct = self
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .effect_unification_table()
+                    .probe_value(v)
+                    .map(|effect| effect.as_const(self.infcx.tcx));
+                self.freshen_const(
+                    opt_ct,
+                    ty::InferConst::EffectVar(v),
+                    ty::InferConst::Fresh,
+                    ct.ty(),
+                )
+            }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
                     bug!(

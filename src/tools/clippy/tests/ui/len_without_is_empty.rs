@@ -5,6 +5,8 @@ pub struct PubOne;
 
 impl PubOne {
     pub fn len(&self) -> isize {
+        //~^ ERROR: struct `PubOne` has a public `len` method, but no `is_empty` method
+        //~| NOTE: `-D clippy::len-without-is-empty` implied by `-D warnings`
         1
     }
 }
@@ -53,6 +55,7 @@ impl PubAllowedStruct {
 }
 
 pub trait PubTraitsToo {
+    //~^ ERROR: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty`
     fn len(&self) -> isize;
 }
 
@@ -66,6 +69,7 @@ pub struct HasIsEmpty;
 
 impl HasIsEmpty {
     pub fn len(&self) -> isize {
+        //~^ ERROR: struct `HasIsEmpty` has a public `len` method, but a private `is_empty` me
         1
     }
 
@@ -78,6 +82,7 @@ pub struct HasWrongIsEmpty;
 
 impl HasWrongIsEmpty {
     pub fn len(&self) -> isize {
+        //~^ ERROR: struct `HasWrongIsEmpty` has a public `len` method, but the `is_empty` met
         1
     }
 
@@ -90,6 +95,7 @@ pub struct MismatchedSelf;
 
 impl MismatchedSelf {
     pub fn len(self) -> isize {
+        //~^ ERROR: struct `MismatchedSelf` has a public `len` method, but the `is_empty` meth
         1
     }
 
@@ -169,6 +175,7 @@ pub trait InheritingEmpty: Empty {
 pub trait Foo: Sized {}
 
 pub trait DependsOnFoo: Foo {
+    //~^ ERROR: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_empty`
     fn len(&mut self) -> usize;
 }
 
@@ -214,6 +221,7 @@ impl OptionalLen2 {
 pub struct OptionalLen3;
 impl OptionalLen3 {
     pub fn len(&self) -> usize {
+        //~^ ERROR: struct `OptionalLen3` has a public `len` method, but the `is_empty` method
         0
     }
 
@@ -226,6 +234,8 @@ impl OptionalLen3 {
 pub struct ResultLen;
 impl ResultLen {
     pub fn len(&self) -> Result<usize, ()> {
+        //~^ ERROR: struct `ResultLen` has a public `len` method, but the `is_empty` method ha
+        //~| ERROR: this returns a `Result<_, ()>`
         Ok(0)
     }
 
@@ -238,10 +248,12 @@ impl ResultLen {
 pub struct ResultLen2;
 impl ResultLen2 {
     pub fn len(&self) -> Result<usize, ()> {
+        //~^ ERROR: this returns a `Result<_, ()>`
         Ok(0)
     }
 
     pub fn is_empty(&self) -> Result<bool, ()> {
+        //~^ ERROR: this returns a `Result<_, ()>`
         Ok(true)
     }
 }
@@ -249,6 +261,7 @@ impl ResultLen2 {
 pub struct ResultLen3;
 impl ResultLen3 {
     pub fn len(&self) -> Result<usize, ()> {
+        //~^ ERROR: this returns a `Result<_, ()>`
         Ok(0)
     }
 
@@ -290,6 +303,7 @@ impl AsyncLenWithoutIsEmpty {
     }
 
     pub async fn len(&self) -> usize {
+        //~^ ERROR: struct `AsyncLenWithoutIsEmpty` has a public `len` method, but no `is_empt
         usize::from(!self.async_task().await)
     }
 }
@@ -302,6 +316,7 @@ impl AsyncOptionLenWithoutIsEmpty {
     }
 
     pub async fn len(&self) -> Option<usize> {
+        //~^ ERROR: struct `AsyncOptionLenWithoutIsEmpty` has a public `len` method, but no `i
         None
     }
 }
@@ -323,6 +338,7 @@ impl AsyncResultLenWithoutIsEmpty {
     }
 
     pub async fn len(&self) -> Result<usize, ()> {
+        //~^ ERROR: struct `AsyncResultLenWithoutIsEmpty` has a public `len` method, but no `i
         Err(())
     }
 }
@@ -417,6 +433,29 @@ impl DifferingErrors {
 
     pub fn is_empty(&self) -> Result<bool, u16> {
         Ok(true)
+    }
+}
+
+// Issue #11165
+pub struct Aliased1;
+pub type Alias1 = Aliased1;
+
+impl Alias1 {
+    pub fn len(&self) -> usize {
+        todo!()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        todo!()
+    }
+}
+
+pub struct Aliased2;
+pub type Alias2 = Aliased2;
+impl Alias2 {
+    pub fn len(&self) -> usize {
+        //~^ ERROR: type `Alias2` has a public `len` method, but no `is_empty` method
+        todo!()
     }
 }
 

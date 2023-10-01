@@ -153,6 +153,11 @@ mod sip;
 /// Thankfully, you won't need to worry about upholding this property when
 /// deriving both [`Eq`] and `Hash` with `#[derive(PartialEq, Eq, Hash)]`.
 ///
+/// Violating this property is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
+///
 /// ## Prefix collisions
 ///
 /// Implementations of `hash` should ensure that the data they

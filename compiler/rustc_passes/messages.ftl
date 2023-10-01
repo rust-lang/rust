@@ -4,11 +4,14 @@
 -passes_see_issue =
     see issue #{$issue} <https://github.com/rust-lang/rust/issues/{$issue}> for more information
 
-passes_abi =
-    abi: {$abi}
-
-passes_align =
-    align: {$align}
+passes_abi_invalid_attribute =
+    `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
+passes_abi_ne =
+    ABIs are not compatible
+    left ABI = {$left}
+    right ABI = {$right}
+passes_abi_of =
+    fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_allow_incoherent_impl =
     `rustc_allow_incoherent_impl` attribute should be applied to impl items.
@@ -101,14 +104,23 @@ passes_collapse_debuginfo =
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
 
-passes_const_impl_const_trait =
-    const `impl`s must be for traits marked with `#[const_trait]`
-    .note = this trait must be annotated with `#[const_trait]`
-
 passes_continue_labeled_block =
     `continue` pointing to a labeled block
     .label = labeled blocks cannot be `continue`'d
     .block_label = labeled block the `continue` points to
+
+passes_coverage_fn_defn =
+    `#[coverage]` may only be applied to function definitions
+
+passes_coverage_ignored_function_prototype =
+    `#[coverage]` is ignored on function prototypes
+
+passes_coverage_not_coverable =
+    `#[coverage]` must be applied to coverable code
+    .label = not coverable code
+
+passes_coverage_propagate =
+    `#[coverage]` does not propagate into items and must be applied to the contained functions directly
 
 passes_dead_codes =
     { $multiple ->
@@ -140,6 +152,9 @@ passes_deprecated_annotation_has_no_effect =
 
 passes_deprecated_attribute =
     deprecated attribute must be paired with either stable or unstable attribute
+
+passes_diagnostic_diagnostic_on_unimplemented_only_for_traits =
+    `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
 
 passes_diagnostic_item_first_defined =
     the diagnostic item is first defined here
@@ -315,9 +330,6 @@ passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.
     .label = only adts, extern types and traits are supported
 
-passes_homogeneous_aggregate =
-    homogeneous_aggregate: {$homogeneous_aggregate}
-
 passes_ignored_attr =
     `#[{$sym}]` is ignored on struct fields and match arms
     .warn = {-passes_previously_accepted}
@@ -395,15 +407,28 @@ passes_invalid_stability =
     .label = invalid stability version
     .item = the stability attribute annotates this item
 
+passes_lang_item_fn_with_target_feature =
+    `{$name}` language item function is not allowed to have `#[target_feature]`
+    .label = `{$name}` language item function is not allowed to have `#[target_feature]`
+
 passes_lang_item_on_incorrect_target =
     `{$name}` language item must be applied to a {$expected_target}
     .label = attribute should be applied to a {$expected_target}, not a {$actual_target}
 
 passes_layout =
     layout error: {$layout_error}
-
+passes_layout_abi =
+    abi: {$abi}
+passes_layout_align =
+    align: {$align}
+passes_layout_homogeneous_aggregate =
+    homogeneous_aggregate: {$homogeneous_aggregate}
+passes_layout_invalid_attribute =
+    `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
 passes_layout_of =
     layout_of({$normalized_ty}) = {$ty_layout}
+passes_layout_size =
+    size: {$size}
 
 passes_link =
     attribute should be applied to an `extern` block with non-Rust ABI
@@ -493,19 +518,6 @@ passes_naked_functions_operands =
 
 passes_naked_tracked_caller =
     cannot use `#[track_caller]` with `#[naked]`
-
-passes_no_coverage_fn_defn =
-    `#[no_coverage]` may only be applied to function definitions
-
-passes_no_coverage_ignored_function_prototype =
-    `#[no_coverage]` is ignored on function prototypes
-
-passes_no_coverage_not_coverable =
-    `#[no_coverage]` must be applied to coverable code
-    .label = not coverable code
-
-passes_no_coverage_propagate =
-    `#[no_coverage]` does not propagate into items and must be applied to the contained functions directly
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
@@ -636,6 +648,10 @@ passes_rustc_lint_opt_ty =
     `#[rustc_lint_opt_ty]` should be applied to a struct
     .label = not a struct
 
+passes_rustc_safe_intrinsic =
+    attribute should be applied to intrinsic functions
+    .label = not an intrinsic function
+
 passes_rustc_std_internal_symbol =
     attribute should be applied to functions or statics
     .label = not a function or static
@@ -658,9 +674,6 @@ passes_should_be_applied_to_struct_enum =
 passes_should_be_applied_to_trait =
     attribute should be applied to a trait
     .label = not a trait
-
-passes_size =
-    size: {$size}
 
 passes_skipping_const_checks = skipping const checks
 

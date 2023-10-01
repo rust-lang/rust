@@ -89,14 +89,13 @@ pub enum CandidateSource {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    /// Determines whether the type `self_ty` supports a method name `method_name` or not.
+    /// Determines whether the type `self_ty` supports a visible method named `method_name` or not.
     #[instrument(level = "debug", skip(self))]
     pub fn method_exists(
         &self,
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr_id: hir::HirId,
-        allow_private: bool,
         return_type: Option<Ty<'tcx>>,
     ) -> bool {
         match self.probe_for_name(
@@ -118,7 +117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
-            Err(PrivateMatch(..)) => allow_private,
+            Err(PrivateMatch(..)) => false,
             Err(IllegalSizedBound { .. }) => true,
             Err(BadReturnType) => false,
         }

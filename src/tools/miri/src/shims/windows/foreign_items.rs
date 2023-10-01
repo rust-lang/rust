@@ -190,7 +190,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.deref_pointer_as(system_info, this.windows_ty_layout("SYSTEM_INFO"))?;
                 // Initialize with `0`.
                 this.write_bytes_ptr(
-                    system_info.ptr,
+                    system_info.ptr(),
                     iter::repeat(0u8).take(system_info.layout.size.bytes_usize()),
                 )?;
                 // Set selected fields.
@@ -235,7 +235,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "GetCommandLineW" => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.write_pointer(
-                    this.machine.cmd_line.expect("machine must be initialized").ptr,
+                    this.machine.cmd_line.expect("machine must be initialized"),
                     dest,
                 )?;
             }
@@ -335,7 +335,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.read_target_isize(hModule)?;
                 let name = this.read_c_str(this.read_pointer(lpProcName)?)?;
                 if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.os)? {
-                    let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
+                    let ptr = this.fn_ptr(FnVal::Other(dlsym));
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;

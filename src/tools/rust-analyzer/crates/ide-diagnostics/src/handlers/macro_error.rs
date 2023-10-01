@@ -157,6 +157,7 @@ struct S;
     fn macro_diag_builtin() {
         check_diagnostics(
             r#"
+//- minicore: fmt
 #[rustc_builtin_macro]
 macro_rules! env {}
 
@@ -165,9 +166,6 @@ macro_rules! include {}
 
 #[rustc_builtin_macro]
 macro_rules! compile_error {}
-
-#[rustc_builtin_macro]
-macro_rules! format_args { () => {} }
 
 fn main() {
     // Test a handful of built-in (eager) macros:
@@ -189,7 +187,7 @@ fn main() {
     // Lazy:
 
     format_args!();
-  //^^^^^^^^^^^ error: no rule matches input tokens
+  //^^^^^^^^^^^ error: Syntax Error in Expansion: expected expression
 }
 "#,
         );

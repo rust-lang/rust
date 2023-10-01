@@ -1,7 +1,7 @@
 #![feature(auto_traits)]
 #![feature(negative_impls)]
 
-#[allow(private_in_public)]
+#[allow(private_interfaces)]
 mod m {
     pub trait PubPrincipal {}
     auto trait PrivNonPrincipal {}

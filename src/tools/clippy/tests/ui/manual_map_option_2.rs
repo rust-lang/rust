@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::manual_map)]
 #![allow(clippy::toplevel_ref_arg)]
 

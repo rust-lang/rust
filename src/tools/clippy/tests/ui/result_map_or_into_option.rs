@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::result_map_or_into_option)]
 
 fn main() {

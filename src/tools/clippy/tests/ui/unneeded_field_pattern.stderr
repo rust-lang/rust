@@ -6,6 +6,7 @@ LL |         Foo { a: _, b: 0, .. } => {},
    |
    = help: try with `Foo { b: 0, .. }`
    = note: `-D clippy::unneeded-field-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unneeded_field_pattern)]`
 
 error: all the struct fields are matched to a wildcard pattern, consider using `..`
   --> $DIR/unneeded_field_pattern.rs:20:9

@@ -88,13 +88,14 @@ use triomphe::Arc;
 use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
-    attrs::{DocLinkDef, HasAttrs},
+    attrs::{resolve_doc_path_on, HasAttrs},
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, CaseType, ExpectedFunction, InactiveCode,
         IncoherentImpl, IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError,
-        MacroExpansionParseError, MalformedDerive, MismatchedArgCount, MissingFields,
-        MissingMatchArms, MissingUnsafe, MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem,
-        PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
+        MacroExpansionParseError, MalformedDerive, MismatchedArgCount,
+        MismatchedTupleStructPatArgCount, MissingFields, MissingMatchArms, MissingUnsafe,
+        MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
+        ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
         UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
         UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
         UnresolvedProcMacro, UnusedMut,
@@ -115,7 +116,7 @@ pub use crate::{
 pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
-        attr::{builtin::AttributeTemplate, Attrs, AttrsWithOwner, Documentation},
+        attr::{builtin::AttributeTemplate, AttrSourceMap, Attrs, AttrsWithOwner},
         data::adt::StructKind,
         find_path::PrefixKind,
         import_map,
@@ -130,7 +131,7 @@ pub use {
         {AdtId, ModuleDefId},
     },
     hir_expand::{
-        attrs::Attr,
+        attrs::{Attr, AttrId},
         name::{known, Name},
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
@@ -563,8 +564,8 @@ impl Module {
             emit_def_diagnostic(db, acc, diag);
         }
 
-        for decl in self.declarations(db) {
-            match decl {
+        for def in self.declarations(db) {
+            match def {
                 ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
@@ -575,7 +576,7 @@ impl Module {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag);
                     }
-                    acc.extend(decl.diagnostics(db))
+                    acc.extend(def.diagnostics(db))
                 }
                 ModuleDef::Adt(adt) => {
                     match adt {
@@ -599,10 +600,10 @@ impl Module {
                             }
                         }
                     }
-                    acc.extend(decl.diagnostics(db))
+                    acc.extend(def.diagnostics(db))
                 }
                 ModuleDef::Macro(m) => emit_macro_def_diagnostics(db, acc, m),
-                _ => acc.extend(decl.diagnostics(db)),
+                _ => acc.extend(def.diagnostics(db)),
             }
         }
         self.legacy_macros(db).into_iter().for_each(|m| emit_macro_def_diagnostics(db, acc, m));
@@ -1446,6 +1447,7 @@ impl DefWithBody {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
+        db.unwind_if_cancelled();
         let krate = self.module(db).id.krate();
 
         let (body, source_map) = db.body_with_source_map(self.into());
@@ -1501,11 +1503,19 @@ impl DefWithBody {
         let infer = db.infer(self.into());
         let source_map = Lazy::new(|| db.body_with_source_map(self.into()).1);
         let expr_syntax = |expr| source_map.expr_syntax(expr).expect("unexpected synthetic");
+        let pat_syntax = |pat| source_map.pat_syntax(pat).expect("unexpected synthetic");
         for d in &infer.diagnostics {
             match d {
-                &hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
-                    let field = source_map.field_syntax(expr);
-                    acc.push(NoSuchField { field }.into())
+                &hir_ty::InferenceDiagnostic::NoSuchField { field: expr, private } => {
+                    let expr_or_pat = match expr {
+                        ExprOrPatId::ExprId(expr) => {
+                            source_map.field_syntax(expr).map(Either::Left)
+                        }
+                        ExprOrPatId::PatId(pat) => {
+                            source_map.pat_field_syntax(pat).map(Either::Right)
+                        }
+                    };
+                    acc.push(NoSuchField { field: expr_or_pat, private }.into())
                 }
                 &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
                     acc.push(
@@ -1521,10 +1531,7 @@ impl DefWithBody {
                 &hir_ty::InferenceDiagnostic::PrivateAssocItem { id, item } => {
                     let expr_or_pat = match id {
                         ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(Either::Left),
-                        ExprOrPatId::PatId(pat) => source_map
-                            .pat_syntax(pat)
-                            .expect("unexpected synthetic")
-                            .map(Either::Right),
+                        ExprOrPatId::PatId(pat) => pat_syntax(pat).map(Either::Right),
                     };
                     let item = item.into();
                     acc.push(PrivateAssocItem { expr_or_pat, item }.into())
@@ -1594,6 +1601,23 @@ impl DefWithBody {
                             expected: Type::new(db, DefWithBodyId::from(self), expected.clone()),
                         }
                         .into(),
+                    )
+                }
+                &hir_ty::InferenceDiagnostic::MismatchedTupleStructPatArgCount {
+                    pat,
+                    expected,
+                    found,
+                } => {
+                    let expr_or_pat = match pat {
+                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(Either::Left),
+                        ExprOrPatId::PatId(pat) => source_map
+                            .pat_syntax(pat)
+                            .expect("unexpected synthetic")
+                            .map(|it| it.unwrap_left())
+                            .map(Either::Right),
+                    };
+                    acc.push(
+                        MismatchedTupleStructPatArgCount { expr_or_pat, expected, found }.into(),
                     )
                 }
             }
@@ -4837,4 +4861,11 @@ pub enum ItemContainer {
     Module(Module),
     ExternBlock(),
     Crate(CrateId),
+}
+
+/// Subset of `ide_db::Definition` that doc links can resolve to.
+pub enum DocLinkDef {
+    ModuleDef(ModuleDef),
+    Field(Field),
+    SelfType(Trait),
 }

@@ -16,7 +16,6 @@ use rustc_hir::{
     ImplItemKind, ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind,
     TyKind, Unsafety,
 };
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::{LateContext, LateLintPass};
@@ -172,13 +171,8 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
             for arg in check_fn_args(
                 cx,
-                cx.tcx
-                    .fn_sig(item.owner_id)
-                    .instantiate_identity()
-                    .skip_binder()
-                    .inputs(),
+                cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder(),
                 sig.decl.inputs,
-                &sig.decl.output,
                 &[],
             )
             .filter(|arg| arg.mutability() == Mutability::Not)
@@ -237,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         let decl = sig.decl;
         let sig = cx.tcx.fn_sig(item_id).instantiate_identity().skip_binder();
-        let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, &decl.output, body.params)
+        let lint_args: Vec<_> = check_fn_args(cx, sig, decl.inputs, body.params)
             .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
             .collect();
         let results = check_ptr_arg_usage(cx, body, &lint_args);
@@ -278,7 +272,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
 fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     // (fn_path, arg_indices) - `arg_indices` are the `arg` positions where null would cause U.B.
-    const INVALID_NULL_PTR_USAGE_TABLE: [(&[&str], &[usize]); 16] = [
+    const INVALID_NULL_PTR_USAGE_TABLE: [(&[&str], &[usize]); 13] = [
         (&paths::SLICE_FROM_RAW_PARTS, &[0]),
         (&paths::SLICE_FROM_RAW_PARTS_MUT, &[0]),
         (&paths::PTR_COPY, &[0, 1]),
@@ -291,10 +285,12 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         (&paths::PTR_SLICE_FROM_RAW_PARTS_MUT, &[0]),
         (&paths::PTR_SWAP, &[0, 1]),
         (&paths::PTR_SWAP_NONOVERLAPPING, &[0, 1]),
-        (&paths::PTR_WRITE, &[0]),
-        (&paths::PTR_WRITE_UNALIGNED, &[0]),
-        (&paths::PTR_WRITE_VOLATILE, &[0]),
         (&paths::PTR_WRITE_BYTES, &[0]),
+    ];
+    let invalid_null_ptr_usage_table_diag_items: [(Option<DefId>, &[usize]); 3] = [
+        (cx.tcx.get_diagnostic_item(sym::ptr_write), &[0]),
+        (cx.tcx.get_diagnostic_item(sym::ptr_write_unaligned), &[0]),
+        (cx.tcx.get_diagnostic_item(sym::ptr_write_volatile), &[0]),
     ];
 
     if_chain! {
@@ -302,9 +298,20 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Path(ref qpath) = fun.kind;
         if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
         let fun_def_path = cx.get_def_path(fun_def_id).into_iter().map(Symbol::to_ident_string).collect::<Vec<_>>();
-        if let Some(&(_, arg_indices)) = INVALID_NULL_PTR_USAGE_TABLE
+        if let Some(arg_indices) = INVALID_NULL_PTR_USAGE_TABLE
             .iter()
-            .find(|&&(fn_path, _)| fn_path == fun_def_path);
+            .find_map(|&(fn_path, indices)| if fn_path == fun_def_path { Some(indices) } else { None })
+            .or_else(|| {
+                invalid_null_ptr_usage_table_diag_items
+                    .iter()
+                    .find_map(|&(def_id, indices)| {
+                        if def_id == Some(fun_def_id) {
+                            Some(indices)
+                        } else {
+                            None
+                        }
+                    })
+            });
         then {
             for &arg_idx in arg_indices {
                 if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg)) {
@@ -430,12 +437,13 @@ impl<'tcx> DerefTy<'tcx> {
 #[expect(clippy::too_many_lines)]
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
-    tys: &'tcx [Ty<'tcx>],
+    fn_sig: ty::FnSig<'tcx>,
     hir_tys: &'tcx [hir::Ty<'tcx>],
-    ret_ty: &'tcx FnRetTy<'tcx>,
     params: &'tcx [Param<'tcx>],
 ) -> impl Iterator<Item = PtrArg<'tcx>> + 'cx {
-    tys.iter()
+    fn_sig
+        .inputs()
+        .iter()
         .zip(hir_tys.iter())
         .enumerate()
         .filter_map(move |(i, (ty, hir_ty))| {
@@ -481,9 +489,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 })
                             {
                                 if !lifetime.is_anonymous()
-                                    && let FnRetTy::Return(ret_ty) = ret_ty
-                                    && let ret_ty = hir_ty_to_ty(cx.tcx, ret_ty)
-                                    && ret_ty
+                                    && fn_sig.output()
                                         .walk()
                                         .filter_map(|arg| {
                                             arg.as_region().and_then(|lifetime| {

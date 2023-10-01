@@ -128,7 +128,7 @@ LL |     let _ = &baz as &dyn Fn(i32);
    |
    = help: cast can be replaced by coercion; this might require a temporary variable
 
-error: trivial cast: `&[closure@$DIR/trivial_casts.rs:72:13: 72:22]` as `&dyn Fn(i32)`
+error: trivial cast: `&{closure@$DIR/trivial_casts.rs:72:13: 72:22}` as `&dyn Fn(i32)`
   --> $DIR/trivial_casts.rs:73:13
    |
 LL |     let _ = &x as &dyn Fn(i32);

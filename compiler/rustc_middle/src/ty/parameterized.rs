@@ -62,6 +62,7 @@ trivially_parameterized_over_tcx! {
     crate::middle::resolve_bound_vars::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
     ty::AssocItemContainer,
+    ty::Asyncness,
     ty::DeducedParamAttrs,
     ty::Generics,
     ty::ImplPolarity,
@@ -131,5 +132,4 @@ parameterized_over_tcx! {
     ty::Predicate,
     ty::Clause,
     ty::ClauseKind,
-    ty::GeneratorDiagnosticData,
 }

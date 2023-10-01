@@ -9,6 +9,7 @@ fn syntax_match() {
     // not ok
     match ref_value {
         Some(_) => (),
+        //~^ ERROR: type of pattern does not match the expression type
         None => (),
     }
 
@@ -28,6 +29,7 @@ fn syntax_if_let() {
 
     // not ok
     if let Some(_) = ref_value {}
+    //~^ ERROR: type of pattern does not match the expression type
 
     // ok
     if let &Some(_) = ref_value {}
@@ -39,6 +41,7 @@ fn syntax_while_let() {
 
     // not ok
     while let Some(_) = ref_value {
+        //~^ ERROR: type of pattern does not match the expression type
         break;
     }
 
@@ -57,6 +60,7 @@ fn syntax_for() {
 
     // not ok
     for (_a, _b) in slice.iter() {}
+    //~^ ERROR: type of pattern does not match the expression type
 
     // ok
     for &(_a, _b) in slice.iter() {}
@@ -67,6 +71,7 @@ fn syntax_let() {
 
     // not ok
     let (_n, _m) = ref_value;
+    //~^ ERROR: type of pattern does not match the expression type
 
     // ok
     let &(_n, _m) = ref_value;
@@ -76,6 +81,7 @@ fn syntax_let() {
 fn syntax_fn() {
     // not ok
     fn foo((_a, _b): &(i32, i32)) {}
+    //~^ ERROR: type of pattern does not match the expression type
 
     // ok
     fn foo_ok_1(&(_a, _b): &(i32, i32)) {}
@@ -90,6 +96,7 @@ fn syntax_closure() {
 
     // not ok
     foo(|(_a, _b)| ());
+    //~^ ERROR: type of pattern does not match the expression type
 
     // ok
     foo(|&(_a, _b)| ());
@@ -106,6 +113,7 @@ fn macro_with_expression() {
     // not ok
     matching_macro!(match value {
         Some(_) => (),
+        //~^ ERROR: type of pattern does not match the expression type
         _ => (),
     });
 

@@ -37,7 +37,7 @@ Most lang items are defined by `core`, but if you're trying to build
 an executable without the `std` crate, you might run into the need
 for lang item definitions.
 
-[personality]: https://github.com/rust-lang/rust/blob/master/library/std/src/personality/gcc.rs
+[personality]: https://github.com/rust-lang/rust/blob/master/library/std/src/sys/personality/gcc.rs
 
 ## Example: Implementing a `Box`
 

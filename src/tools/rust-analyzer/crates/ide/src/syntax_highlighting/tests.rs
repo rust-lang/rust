@@ -401,17 +401,12 @@ fn test_string_highlighting() {
     // thus, we have to copy the macro definition from `std`
     check_highlighting(
         r#"
+//- minicore: fmt
 macro_rules! println {
     ($($arg:tt)*) => ({
-        $crate::io::_print($crate::format_args_nl!($($arg)*));
+        $crate::io::_print(format_args_nl!($($arg)*));
     })
 }
-#[rustc_builtin_macro]
-#[macro_export]
-macro_rules! format_args {}
-#[rustc_builtin_macro]
-#[macro_export]
-macro_rules! const_format_args {}
 #[rustc_builtin_macro]
 #[macro_export]
 macro_rules! format_args_nl {}
@@ -433,7 +428,7 @@ mod panic {
             $crate::panicking::panic_display(&$arg)
         ),
         ($fmt:expr, $($arg:tt)+) => (
-            $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
+            $crate::panicking::panic_fmt(const_format_args!($fmt, $($arg)+))
         ),
     }
 }
@@ -450,7 +445,7 @@ macro_rules! concat {}
 
 macro_rules! toho {
     () => ($crate::panic!("not yet implemented"));
-    ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
+    ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", format_args!($($arg)+)));
 }
 
 fn main() {
@@ -534,7 +529,15 @@ fn main() {
     assert!(true, "{}", 1);
     assert!(true, "{} asdasd", 1);
     toho!("{}fmt", 0);
-    asm!("mov eax, {0}");
+    let i: u64 = 3;
+    let o: u64;
+    asm!(
+        "mov {0}, {1}",
+        "add {0}, 5",
+        out(reg) o,
+        in(reg) i,
+    );
+
     format_args!(concat!("{}"), "{}");
     format_args!("{} {} {} {} {} {}", backslash, format_args!("{}", 0), foo, "bar", toho!(), backslash);
 }"#,

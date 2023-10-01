@@ -1,0 +1,19 @@
+error[E0391]: cycle detected when computing layout of `{async block@$DIR/indirect-recursion-issue-112047.rs:23:9: 23:42}`
+   |
+   = note: ...which requires computing layout of `core::mem::maybe_uninit::MaybeUninit<{async fn body@$DIR/indirect-recursion-issue-112047.rs:15:31: 17:2}>`...
+   = note: ...which requires computing layout of `core::mem::manually_drop::ManuallyDrop<{async fn body@$DIR/indirect-recursion-issue-112047.rs:15:31: 17:2}>`...
+   = note: ...which requires computing layout of `{async fn body@$DIR/indirect-recursion-issue-112047.rs:15:31: 17:2}`...
+   = note: ...which requires computing layout of `core::mem::maybe_uninit::MaybeUninit<<() as Recur>::Recur>`...
+   = note: ...which requires computing layout of `core::mem::maybe_uninit::MaybeUninit<{async block@$DIR/indirect-recursion-issue-112047.rs:23:9: 23:42}>`...
+   = note: ...which requires computing layout of `core::mem::manually_drop::ManuallyDrop<{async block@$DIR/indirect-recursion-issue-112047.rs:23:9: 23:42}>`...
+   = note: ...which again requires computing layout of `{async block@$DIR/indirect-recursion-issue-112047.rs:23:9: 23:42}`, completing the cycle
+note: cycle used when elaborating drops for `<impl at $DIR/indirect-recursion-issue-112047.rs:19:1: 19:18>::recur`
+  --> $DIR/indirect-recursion-issue-112047.rs:22:5
+   |
+LL |     fn recur(self) -> Self::Recur {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

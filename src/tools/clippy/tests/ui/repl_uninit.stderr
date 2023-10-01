@@ -5,15 +5,16 @@ LL |         let taken_v = mem::replace(&mut v, mem::uninitialized());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::ptr::read(&mut v)`
    |
    = note: `-D clippy::mem-replace-with-uninit` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_uninit)]`
 
 error: replacing with `mem::MaybeUninit::uninit().assume_init()`
-  --> $DIR/repl_uninit.rs:21:23
+  --> $DIR/repl_uninit.rs:23:23
    |
 LL |         let taken_v = mem::replace(&mut v, mem::MaybeUninit::uninit().assume_init());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::ptr::read(&mut v)`
 
 error: replacing with `mem::zeroed()`
-  --> $DIR/repl_uninit.rs:27:23
+  --> $DIR/repl_uninit.rs:30:23
    |
 LL |         let taken_v = mem::replace(&mut v, mem::zeroed());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +22,7 @@ LL |         let taken_v = mem::replace(&mut v, mem::zeroed());
    = help: consider using a default value or the `take_mut` crate instead
 
 error: replacing with `mem::uninitialized()`
-  --> $DIR/repl_uninit.rs:39:28
+  --> $DIR/repl_uninit.rs:43:28
    |
 LL |     let taken_u = unsafe { mem::replace(uref, mem::uninitialized()) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::ptr::read(uref)`

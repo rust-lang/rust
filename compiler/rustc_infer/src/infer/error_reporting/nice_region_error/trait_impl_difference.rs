@@ -35,14 +35,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
             && let CompareImplItemObligation { trait_item_def_id, .. } = sub_trace.cause.code()
             && sub_trace.values == sup_trace.values
-            && let ValuePairs::Sigs(ExpectedFound { expected, found }) = sub_trace.values
+            && let ValuePairs::PolySigs(ExpectedFound { expected, found }) = sub_trace.values
         {
             // FIXME(compiler-errors): Don't like that this needs `Ty`s, but
             // all of the region highlighting machinery only deals with those.
             let guar = self.emit_err(
                 var_origin.span(),
-                Ty::new_fn_ptr(self.cx.tcx,ty::Binder::dummy(expected)),
-                Ty::new_fn_ptr(self.cx.tcx,ty::Binder::dummy(found)),
+                Ty::new_fn_ptr(self.cx.tcx, expected),
+                Ty::new_fn_ptr(self.cx.tcx, found),
                 *trait_item_def_id,
             );
             return Some(guar);
@@ -67,9 +67,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         impl<'tcx> HighlightBuilder<'tcx> {
-            fn build(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> RegionHighlightMode<'tcx> {
+            fn build(ty: Ty<'tcx>) -> RegionHighlightMode<'tcx> {
                 let mut builder =
-                    HighlightBuilder { highlight: RegionHighlightMode::new(tcx), counter: 1 };
+                    HighlightBuilder { highlight: RegionHighlightMode::default(), counter: 1 };
                 builder.visit_ty(ty);
                 builder.highlight
             }
@@ -85,12 +85,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
 
-        let expected_highlight = HighlightBuilder::build(self.tcx(), expected);
+        let expected_highlight = HighlightBuilder::build(expected);
         let expected = self
             .cx
             .extract_inference_diagnostics_data(expected.into(), Some(expected_highlight))
             .name;
-        let found_highlight = HighlightBuilder::build(self.tcx(), found);
+        let found_highlight = HighlightBuilder::build(found);
         let found =
             self.cx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
 

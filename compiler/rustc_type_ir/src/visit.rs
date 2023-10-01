@@ -8,7 +8,7 @@
 //! visitation. These are the ones containing the most important type-related
 //! information, such as `Ty`, `Predicate`, `Region`, and `Const`.
 //!
-//! There are three groups of traits involved in each traversal.
+//! There are three traits involved in each traversal.
 //! - `TypeVisitable`. This is implemented once for many types, including:
 //!   - Types of interest, for which the methods delegate to the visitor.
 //!   - All other types, including generic containers like `Vec` and `Option`.
@@ -17,7 +17,6 @@
 //!   interest, and defines the visiting "skeleton" for these types. (This
 //!   excludes `Region` because it is non-recursive, i.e. it never contains
 //!   other types of interest.)
-//!
 //! - `TypeVisitor`. This is implemented for each visitor. This defines how
 //!   types of interest are visited.
 //!
@@ -60,7 +59,7 @@ pub trait TypeVisitable<I: Interner>: fmt::Debug + Clone {
     ///
     /// For types of interest (such as `Ty`), the implementation of this method
     /// that calls a visitor method specifically for that type (such as
-    /// `V::visit_ty`). This is where control transfers from `TypeFoldable` to
+    /// `V::visit_ty`). This is where control transfers from `TypeVisitable` to
     /// `TypeVisitor`.
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
 }

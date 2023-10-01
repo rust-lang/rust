@@ -553,43 +553,40 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         resolution_error: ResolutionError<'a>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterFunction(outer_res, has_generic_params) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
+            ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params) => {
+                use errs::GenericParamsFromOuterItemLabel as Label;
+                let mut err = errs::GenericParamsFromOuterItem {
                     span,
-                    E0401,
-                    "can't use generic parameters from outer function",
-                );
-                err.span_label(span, "use of generic parameter from outer function");
+                    label: None,
+                    refer_to_type_directly: None,
+                    sugg: None,
+                };
 
                 let sm = self.tcx.sess.source_map();
                 let def_id = match outer_res {
                     Res::SelfTyParam { .. } => {
-                        err.span_label(span, "can't use `Self` here");
-                        return err;
+                        err.label = Some(Label::SelfTyParam(span));
+                        return self.tcx.sess.create_err(err);
                     }
                     Res::SelfTyAlias { alias_to: def_id, .. } => {
-                        err.span_label(
-                            reduce_impl_span_to_impl_keyword(sm, self.def_span(def_id)),
-                            "`Self` type implicitly declared here, by this `impl`",
-                        );
-                        err.span_label(span, "use a type here instead");
-                        return err;
+                        err.label = Some(Label::SelfTyAlias(reduce_impl_span_to_impl_keyword(
+                            sm,
+                            self.def_span(def_id),
+                        )));
+                        err.refer_to_type_directly = Some(span);
+                        return self.tcx.sess.create_err(err);
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
-                        err.span_label(self.def_span(def_id), "type parameter from outer function");
+                        err.label = Some(Label::TyParam(self.def_span(def_id)));
                         def_id
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        err.span_label(
-                            self.def_span(def_id),
-                            "const parameter from outer function",
-                        );
+                        err.label = Some(Label::ConstParam(self.def_span(def_id)));
                         def_id
                     }
                     _ => {
                         bug!(
-                            "GenericParamsFromOuterFunction should only be used with \
+                            "GenericParamsFromOuterItem should only be used with \
                             Res::SelfTyParam, Res::SelfTyAlias, DefKind::TyParam or \
                             DefKind::ConstParam"
                         );
@@ -597,9 +594,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
 
                 if let HasGenericParams::Yes(span) = has_generic_params {
-                    // Try to retrieve the span of the function signature and generate a new
-                    // message with a local type or const parameter.
-                    let sugg_msg = "try using a local generic parameter instead";
                     let name = self.tcx.item_name(def_id);
                     let (span, snippet) = if span.is_empty() {
                         let snippet = format!("<{name}>");
@@ -609,11 +603,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let snippet = format!("{name}, ");
                         (span, snippet)
                     };
-                    // Suggest the modification to the user
-                    err.span_suggestion(span, sugg_msg, snippet, Applicability::MaybeIncorrect);
+                    err.sugg = Some(errs::GenericParamsFromOuterItemSugg { span, snippet });
                 }
 
-                err
+                self.tcx.sess.create_err(err)
             }
             ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => self
                 .tcx
@@ -1173,6 +1166,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
                 // avoid non-importable candidates
                 if !name_binding.is_importable() {
+                    return;
+                }
+
+                if ident.name == kw::Underscore {
                     return;
                 }
 
@@ -2603,7 +2600,9 @@ fn show_candidates(
             );
             if let [first, .., last] = &path[..] {
                 let sp = first.ident.span.until(last.ident.span);
-                if sp.can_be_used_for_suggestions() {
+                // Our suggestion is empty, so make sure the span is not empty (or we'd ICE).
+                // Can happen for derive-generated spans.
+                if sp.can_be_used_for_suggestions() && !sp.is_empty() {
                     err.span_suggestion_verbose(
                         sp,
                         format!("if you import `{}`, refer to it directly", last.ident),
@@ -2753,7 +2752,13 @@ fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
     for item in items {
         if let ItemKind::Use(..) = item.kind {
             if is_span_suitable_for_use_injection(item.span) {
-                return Some(item.span.shrink_to_lo());
+                let mut lo = item.span.lo();
+                for attr in &item.attrs {
+                    if attr.span.eq_ctxt(item.span) {
+                        lo = std::cmp::min(lo, attr.span.lo());
+                    }
+                }
+                return Some(Span::new(lo, lo, item.span.ctxt(), item.span.parent()));
             }
         }
     }

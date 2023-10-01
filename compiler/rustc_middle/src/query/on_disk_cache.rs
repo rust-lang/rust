@@ -22,7 +22,7 @@ use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
-use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, SourceFile, Span};
+use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span};
 use rustc_span::{CachingSourceMapView, Symbol};
 use std::collections::hash_map::Entry;
 use std::io;
@@ -688,11 +688,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
 
         let file_lo_index = SourceFileIndex::decode(decoder);
         let line_lo = usize::decode(decoder);
-        let col_lo = BytePos::decode(decoder);
+        let col_lo = RelativeBytePos::decode(decoder);
         let len = BytePos::decode(decoder);
 
         let file_lo = decoder.file_index_to_file(file_lo_index);
-        let lo = file_lo.lines(|lines| lines[line_lo - 1] + col_lo);
+        let lo = file_lo.lines()[line_lo - 1] + col_lo;
+        let lo = file_lo.absolute_position(lo);
         let hi = lo + len;
 
         Span::new(lo, hi, ctxt, parent)
@@ -895,7 +896,7 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Span {
         }
 
         if let Some(parent) = span_data.parent {
-            let enclosing = s.tcx.source_span(parent).data_untracked();
+            let enclosing = s.tcx.source_span_untracked(parent).data_untracked();
             if enclosing.contains(span_data) {
                 TAG_RELATIVE_SPAN.encode(s);
                 (span_data.lo - enclosing.lo).to_u32().encode(s);

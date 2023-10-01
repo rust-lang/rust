@@ -1,12 +1,10 @@
 import * as vscode from "vscode";
 import type * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
-import * as path from "path";
 
 import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
 import {
-    executeDiscoverProject,
     isDocumentInWorkspace,
     isRustDocument,
     isRustEditor,
@@ -24,7 +22,6 @@ import {
 import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
-import type { ExecOptions } from "child_process";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -56,17 +53,6 @@ export function fetchWorkspace(): Workspace {
                   files: rustDocuments,
               }
         : { kind: "Workspace Folder" };
-}
-
-export async function discoverWorkspace(
-    files: readonly vscode.TextDocument[],
-    command: string[],
-    options: ExecOptions,
-): Promise<JsonProject> {
-    const paths = files.map((f) => `"${f.uri.fsPath}"`).join(" ");
-    const joinedCommand = command.join(" ");
-    const data = await executeDiscoverProject(`${joinedCommand} ${paths}`, options);
-    return JSON.parse(data) as JsonProject;
 }
 
 export type CommandFactory = {
@@ -200,27 +186,18 @@ export class Ctx {
             };
 
             let rawInitializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
+            if (this.config.discoverProjectRunner) {
+                const command = `${this.config.discoverProjectRunner}.discoverWorkspaceCommand`;
+                log.info(`running command: ${command}`);
+                const project: JsonProject = await vscode.commands.executeCommand(command);
+                this.addToDiscoveredWorkspaces([project]);
+            }
 
             if (this.workspace.kind === "Detached Files") {
                 rawInitializationOptions = {
                     detachedFiles: this.workspace.files.map((file) => file.uri.fsPath),
                     ...rawInitializationOptions,
                 };
-            }
-
-            const discoverProjectCommand = this.config.discoverProjectCommand;
-            if (discoverProjectCommand) {
-                const workspaces: JsonProject[] = await Promise.all(
-                    vscode.workspace.textDocuments
-                        .filter(isRustDocument)
-                        .map(async (file): Promise<JsonProject> => {
-                            return discoverWorkspace([file], discoverProjectCommand, {
-                                cwd: path.dirname(file.uri.fsPath),
-                            });
-                        }),
-                );
-
-                this.addToDiscoveredWorkspaces(workspaces);
             }
 
             const initializationOptions = prepareVSCodeConfig(

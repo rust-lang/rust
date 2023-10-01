@@ -899,32 +899,90 @@ pub mod fmt {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
 
-    extern "C" {
-        type Opaque;
-    }
+    mod rt {
 
-    #[lang = "format_argument"]
-    pub struct Argument<'a> {
-        value: &'a Opaque,
-        formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
-    }
+        extern "C" {
+            type Opaque;
+        }
 
-    impl<'a> Argument<'a> {
-        pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
-            use crate::mem::transmute;
-            unsafe { Argument { formatter: transmute(f), value: transmute(x) } }
+        #[lang = "format_argument"]
+        pub struct Argument<'a> {
+            value: &'a Opaque,
+            formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
+        }
+
+        impl<'a> Argument<'a> {
+            pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
+                use crate::mem::transmute;
+                unsafe { Argument { formatter: transmute(f), value: transmute(x) } }
+            }
+        }
+
+        #[lang = "format_alignment"]
+        pub enum Alignment {
+            Left,
+            Right,
+            Center,
+            Unknown,
+        }
+
+        #[lang = "format_count"]
+        pub enum Count {
+            Is(usize),
+            Param(usize),
+            Implied,
+        }
+
+        #[lang = "format_placeholder"]
+        pub struct Placeholder {
+            pub position: usize,
+            pub fill: char,
+            pub align: Alignment,
+            pub flags: u32,
+            pub precision: Count,
+            pub width: Count,
+        }
+
+        impl Placeholder {
+            pub const fn new(
+                position: usize,
+                fill: char,
+                align: Alignment,
+                flags: u32,
+                precision: Count,
+                width: Count,
+            ) -> Self;
+        }
+
+        #[lang = "format_unsafe_arg"]
+        pub struct UnsafeArg {
+            _private: (),
+        }
+
+        impl UnsafeArg {
+            pub unsafe fn new() -> Self;
         }
     }
 
     #[lang = "format_arguments"]
     pub struct Arguments<'a> {
         pieces: &'a [&'static str],
-        args: &'a [Argument<'a>],
+        fmt: Option<&'a [rt::Placeholder]>,
+        args: &'a [rt::Argument<'a>],
     }
 
     impl<'a> Arguments<'a> {
         pub const fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
-            Arguments { pieces, args }
+            Arguments { pieces, fmt: None, args }
+        }
+
+        pub fn new_v1_formatted(
+            pieces: &'a [&'static str],
+            args: &'a [rt::Argument<'a>],
+            fmt: &'a [rt::Placeholder],
+            _unsafe_arg: rt::UnsafeArg,
+        ) -> Arguments<'a> {
+            Arguments { pieces, fmt: Some(fmt), args }
         }
     }
 
@@ -1294,8 +1352,6 @@ mod macros {
             /* compiler built-in */
         };
     }
-
-    pub(crate) use panic;
     // endregion:panic
 
     // region:fmt
@@ -1306,7 +1362,20 @@ mod macros {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
-    pub(crate) use const_format_args;
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! format_args {
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+    }
+
+    #[macro_export]
+    macro_rules! print {
+        ($($arg:tt)*) => {{
+            $crate::io::_print($crate::format_args!($($arg)*));
+        }};
+    }
+
     // endregion:fmt
 
     // region:derive

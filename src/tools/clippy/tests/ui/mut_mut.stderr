@@ -5,6 +5,7 @@ LL | fn fun(x: &mut &mut u32) -> bool {
    |           ^^^^^^^^^^^^^
    |
    = note: `-D clippy::mut-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
 
 error: generally you want to avoid `&mut &mut _` if possible
   --> $DIR/mut_mut.rs:31:17

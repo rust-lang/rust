@@ -7,36 +7,45 @@ LL |     struct Priv;
 LL |         type A = Priv;
    |         ^^^^^^ can't leak private type
 
-warning: private trait `PrivTr` in public interface (error E0445)
+warning: trait `PrivTr` is more private than the item `PubTr::Alias1`
   --> $DIR/private-in-public-assoc-ty.rs:24:9
    |
 LL |         type Alias1: PrivTr;
-   |         ^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^ associated type `PubTr::Alias1` is reachable at visibility `pub(crate)`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
-   = note: `#[warn(private_in_public)]` on by default
+note: but trait `PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-assoc-ty.rs:9:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+   = note: `#[warn(private_bounds)]` on by default
 
-warning: private type `Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-assoc-ty.rs:27:9
+warning: type `Priv` is more private than the item `PubTr::Alias2`
+  --> $DIR/private-in-public-assoc-ty.rs:26:9
    |
 LL |         type Alias2: PubTrAux1<Priv> = u8;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated type `PubTr::Alias2` is reachable at visibility `pub(crate)`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+note: but type `Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-assoc-ty.rs:8:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
 
-warning: private type `Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-assoc-ty.rs:30:9
+warning: type `Priv` is more private than the item `PubTr::Alias3`
+  --> $DIR/private-in-public-assoc-ty.rs:28:9
    |
 LL |         type Alias3: PubTrAux2<A = Priv> = u8;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated type `PubTr::Alias3` is reachable at visibility `pub(crate)`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+note: but type `Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-assoc-ty.rs:8:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
 
 error[E0446]: private type `Priv` in public interface
-  --> $DIR/private-in-public-assoc-ty.rs:34:9
+  --> $DIR/private-in-public-assoc-ty.rs:31:9
    |
 LL |     struct Priv;
    |     ----------- `Priv` declared as private
@@ -45,7 +54,7 @@ LL |         type Alias4 = Priv;
    |         ^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `Priv` in public interface
-  --> $DIR/private-in-public-assoc-ty.rs:41:9
+  --> $DIR/private-in-public-assoc-ty.rs:38:9
    |
 LL |     struct Priv;
    |     ----------- `Priv` declared as private
@@ -53,8 +62,8 @@ LL |     struct Priv;
 LL |         type Alias1 = Priv;
    |         ^^^^^^^^^^^ can't leak private type
 
-error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/private-in-public-assoc-ty.rs:44:9
+error[E0446]: private trait `PrivTr` in public interface
+  --> $DIR/private-in-public-assoc-ty.rs:41:9
    |
 LL |     trait PrivTr {}
    |     ------------ `PrivTr` declared as private
@@ -64,5 +73,4 @@ LL |         type Exist = impl PrivTr;
 
 error: aborting due to 4 previous errors; 3 warnings emitted
 
-Some errors have detailed explanations: E0445, E0446.
-For more information about an error, try `rustc --explain E0445`.
+For more information about this error, try `rustc --explain E0446`.

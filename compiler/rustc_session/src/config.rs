@@ -381,6 +381,24 @@ pub enum DebugInfo {
     Full,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum DebugInfoCompression {
+    None,
+    Zlib,
+    Zstd,
+}
+
+impl ToString for DebugInfoCompression {
+    fn to_string(&self) -> String {
+        match self {
+            DebugInfoCompression::None => "none",
+            DebugInfoCompression::Zlib => "zlib",
+            DebugInfoCompression::Zstd => "zstd",
+        }
+        .to_owned()
+    }
+}
+
 /// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
 /// debug-information is enabled (in either `Packed` or `Unpacked` modes), and the platform
 /// uses DWARF for debug-information.
@@ -880,6 +898,9 @@ impl OutFileName {
 #[derive(Clone, Hash, Debug, HashStable_Generic)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
+    /// Crate name. Never contains '-'.
+    crate_stem: String,
+    /// Typically based on `.rs` input file name. Any '-' is preserved.
     filestem: String,
     pub single_output_file: Option<OutFileName>,
     pub temps_directory: Option<PathBuf>,
@@ -893,6 +914,7 @@ pub const DWARF_OBJECT_EXT: &str = "dwo";
 impl OutputFilenames {
     pub fn new(
         out_directory: PathBuf,
+        out_crate_name: String,
         out_filestem: String,
         single_output_file: Option<OutFileName>,
         temps_directory: Option<PathBuf>,
@@ -904,6 +926,7 @@ impl OutputFilenames {
             single_output_file,
             temps_directory,
             outputs,
+            crate_stem: format!("{out_crate_name}{extra}"),
             filestem: format!("{out_filestem}{extra}"),
         }
     }
@@ -920,7 +943,12 @@ impl OutputFilenames {
     /// should be placed on disk.
     pub fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
-        self.with_directory_and_extension(&self.out_directory, extension)
+        match flavor {
+            OutputType::Metadata => {
+                self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
+            }
+            _ => self.with_directory_and_extension(&self.out_directory, extension),
+        }
     }
 
     /// Gets the path where a compilation artifact of the given type for the
@@ -1015,6 +1043,7 @@ impl Default for Options {
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
+            debuginfo_compression: DebugInfoCompression::None,
             lint_opts: Vec::new(),
             lint_cap: None,
             describe_lints: false,
@@ -1067,7 +1096,7 @@ impl Options {
     /// Returns `true` if there will be an output file generated.
     pub fn will_create_output_file(&self) -> bool {
         !self.unstable_opts.parse_only && // The file is just being parsed
-            !self.unstable_opts.ls // The file is just being queried
+            self.unstable_opts.ls.is_empty() // The file is just being queried
     }
 
     #[inline]
@@ -1083,12 +1112,6 @@ impl Options {
 
     pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
         self.cg.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
-    }
-
-    #[allow(rustc::bad_opt_access)]
-    pub fn incremental_relative_spans(&self) -> bool {
-        self.unstable_opts.incremental_relative_spans
-            || (self.unstable_features.is_nightly_build() && self.incremental.is_some())
     }
 }
 
@@ -2160,12 +2183,6 @@ fn collect_print_requests(
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
-        if out.is_some() && !unstable_opts.unstable_options {
-            handler.early_error(
-                "the `-Z unstable-options` flag must also be passed to \
-                 enable the path print option",
-            );
-        }
         let kind = match PRINT_KINDS.iter().find(|&&(name, _)| name == req) {
             Some((_, PrintKind::TargetSpec)) => {
                 if unstable_opts.unstable_options {
@@ -2281,6 +2298,13 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
         })
         .max();
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
+}
+
+fn select_debuginfo_compression(
+    _handler: &EarlyErrorHandler,
+    unstable_opts: &UnstableOptions,
+) -> DebugInfoCompression {
+    unstable_opts.debuginfo_compression
 }
 
 pub(crate) fn parse_assert_incr_state(
@@ -2450,6 +2474,19 @@ pub fn parse_externs(
             None => (None, name),
             Some((opts, name)) => (Some(opts), name.to_string()),
         };
+
+        if !crate::utils::is_ascii_ident(&name) {
+            let mut error = handler.early_struct_error(format!(
+                "crate name `{name}` passed to `--extern` is not a valid ASCII identifier"
+            ));
+            let adjusted_name = name.replace("-", "_");
+            if crate::utils::is_ascii_ident(&adjusted_name) {
+                error.help(format!(
+                    "consider replacing the dashes with underscores: `{adjusted_name}`"
+                ));
+            }
+            error.emit();
+        }
 
         let path = path.map(|p| CanonicalizedPath::new(p));
 
@@ -2758,6 +2795,8 @@ pub fn build_session_options(
     // for more details.
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg);
+    let debuginfo_compression: DebugInfoCompression =
+        select_debuginfo_compression(handler, &unstable_opts);
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
@@ -2834,6 +2873,7 @@ pub fn build_session_options(
         crate_types,
         optimize: opt_level,
         debuginfo,
+        debuginfo_compression,
         lint_opts,
         lint_cap,
         describe_lints,
@@ -2959,6 +2999,7 @@ pub mod nightly_options {
     ) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
         let really_allows_unstable_options = match_is_nightly_build(matches);
+        let mut nightly_options_on_stable = 0;
 
         for opt in flags.iter() {
             if opt.stability == OptionStability::Stable {
@@ -2979,19 +3020,26 @@ pub mod nightly_options {
             }
             match opt.stability {
                 OptionStability::Unstable => {
+                    nightly_options_on_stable += 1;
                     let msg = format!(
                         "the option `{}` is only accepted on the nightly compiler",
                         opt.name
                     );
                     let _ = handler.early_error_no_abort(msg);
-                    handler.early_note("selecting a toolchain with `+toolchain` arguments require a rustup proxy; see <https://rust-lang.github.io/rustup/concepts/index.html>");
-                    handler.early_help(
-                        "consider switching to a nightly toolchain: `rustup default nightly`",
-                    );
-                    handler.early_note("for more information about Rust's stability policy, see <https://doc.rust-lang.org/book/appendix-07-nightly-rust.html#unstable-features>");
                 }
                 OptionStability::Stable => {}
             }
+        }
+        if nightly_options_on_stable > 0 {
+            handler
+                .early_help("consider switching to a nightly toolchain: `rustup default nightly`");
+            handler.early_note("selecting a toolchain with `+toolchain` arguments require a rustup proxy; see <https://rust-lang.github.io/rustup/concepts/index.html>");
+            handler.early_note("for more information about Rust's stability policy, see <https://doc.rust-lang.org/book/appendix-07-nightly-rust.html#unstable-features>");
+            handler.early_error(format!(
+                "{} nightly option{} were parsed",
+                nightly_options_on_stable,
+                if nightly_options_on_stable > 1 { "s" } else { "" }
+            ));
         }
     }
 }
@@ -3119,11 +3167,11 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
     use super::{
-        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
-        InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto, LocationDetail, LtoCli,
-        OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Passes, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        TraitSolver, TrimmedDefPaths,
+        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
+        ErrorOutputType, InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto,
+        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
+        Passes, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -3201,6 +3249,7 @@ pub(crate) mod dep_tracking {
         OptLevel,
         LtoCli,
         DebugInfo,
+        DebugInfoCompression,
         UnstableFeatures,
         NativeLib,
         NativeLibKind,

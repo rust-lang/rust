@@ -24,7 +24,7 @@ note: inside closure
    |
 LL |             || drop(Box::from_raw(ptr)),
    |                     ^^^^^^^^^^^^^^^^^^
-note: inside `dealloc_while_running::<[closure@$DIR/newtype_pair_retagging.rs:LL:CC]>`
+note: inside `dealloc_while_running::<{closure@$DIR/newtype_pair_retagging.rs:LL:CC}>`
   --> $DIR/newtype_pair_retagging.rs:LL:CC
    |
 LL |     dealloc();

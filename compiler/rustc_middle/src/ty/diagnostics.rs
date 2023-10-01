@@ -70,10 +70,10 @@ impl<'tcx> Ty<'tcx> {
     /// description in error messages. This is used in the primary span label. Beyond what
     /// `is_simple_ty` includes, it also accepts ADTs with no type arguments and references to
     /// ADTs with no type arguments.
-    pub fn is_simple_text(self) -> bool {
+    pub fn is_simple_text(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
-            Adt(_, args) => args.non_erasable_generics().next().is_none(),
-            Ref(_, ty, _) => ty.is_simple_text(),
+            Adt(def, args) => args.non_erasable_generics(tcx, def.did()).next().is_none(),
+            Ref(_, ty, _) => ty.is_simple_text(tcx),
             _ => self.is_simple_ty(),
         }
     }
@@ -493,7 +493,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
                 let parent_ty = self.tcx.type_of(parent).instantiate_identity();
-                if let DefKind::TyAlias { .. } | DefKind::AssocTy = self.tcx.def_kind(parent)
+                if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
@@ -577,7 +577,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
                 let parent_ty = self.tcx.type_of(parent).instantiate_identity();
-                if let hir::def::DefKind::TyAlias { .. } | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
+                if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {

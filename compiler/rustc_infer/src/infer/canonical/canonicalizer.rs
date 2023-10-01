@@ -459,7 +459,6 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -517,6 +516,17 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                         }
                         return self.canonicalize_const_var(
                             CanonicalVarInfo { kind: CanonicalVarKind::Const(ui, ct.ty()) },
+                            ct,
+                        );
+                    }
+                }
+            }
+            ty::ConstKind::Infer(InferConst::EffectVar(vid)) => {
+                match self.infcx.probe_effect_var(vid) {
+                    Some(value) => return self.fold_const(value.as_const(self.infcx.tcx)),
+                    None => {
+                        return self.canonicalize_const_var(
+                            CanonicalVarInfo { kind: CanonicalVarKind::Effect },
                             ct,
                         );
                     }
@@ -690,7 +700,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .iter()
             .map(|v| CanonicalVarInfo {
                 kind: match v.kind {
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float) => {
+                    CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float)
+                    | CanonicalVarKind::Effect => {
                         return *v;
                     }
                     CanonicalVarKind::Ty(CanonicalTyVarKind::General(u)) => {
@@ -764,7 +775,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        let br = ty::BoundRegion { var, kind: ty::BrAnon(None) };
+        let br = ty::BoundRegion { var, kind: ty::BrAnon };
         ty::Region::new_late_bound(self.interner(), self.binder_index, br)
     }
 

@@ -2,23 +2,26 @@ error: manual implementation of `Iterator::find`
   --> $DIR/manual_find.rs:5:5
    |
 LL | /     for s in strings {
+LL | |
+LL | |
 LL | |         if s == String::new() {
-LL | |             return Some(s);
-LL | |         }
+...  |
 LL | |     }
 LL | |     None
    | |________^ help: replace with an iterator: `strings.into_iter().find(|s| s == String::new())`
    |
    = note: you may need to dereference some variables
    = note: `-D clippy::manual-find` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_find)]`
 
 error: manual implementation of `Iterator::find`
-  --> $DIR/manual_find.rs:14:5
+  --> $DIR/manual_find.rs:16:5
    |
 LL | /     for (s, _) in arr {
+LL | |
+LL | |
 LL | |         if s == String::new() {
-LL | |             return Some(s);
-LL | |         }
+...  |
 LL | |     }
 LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().map(|(s, _)| s).find(|s| s == String::new())`

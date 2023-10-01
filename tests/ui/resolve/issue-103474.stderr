@@ -19,7 +19,7 @@ error[E0425]: cannot find function `first` in this scope
 LL |         first()
    |         ^^^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the method on `Self`
    |
 LL |         self.first()
    |         +++++

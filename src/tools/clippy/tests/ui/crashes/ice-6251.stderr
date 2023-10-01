@@ -27,7 +27,7 @@ LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
    |                                            ^^^^^^^^^^^ expected `usize`, found closure
    |
    = note: expected type `usize`
-           found closure `[closure@$DIR/ice-6251.rs:4:44: 4:53]`
+           found closure `{closure@$DIR/ice-6251.rs:4:44: 4:53}`
 
 error: aborting due to 3 previous errors
 

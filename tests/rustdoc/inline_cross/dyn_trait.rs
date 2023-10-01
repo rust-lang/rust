@@ -128,3 +128,18 @@ pub use dyn_trait::BareAmbiguousBoundEarly1;
 // @has user/type.BareAmbiguousBoundStatic.html
 // @has - '//*[@class="rust item-decl"]//code' "dyn AmbiguousBoundTrait<'o, 'o> + 'static;"
 pub use dyn_trait::BareAmbiguousBoundStatic;
+
+// Regression test for issue #115179:
+
+// @has user/type.NestedTraitObjects.html
+// @has - '//*[@class="rust item-decl"]//code' "dyn Outer<dyn Inner>;"
+pub use dyn_trait::NestedTraitObjects;
+
+// @has user/fn.apit_rpit.html
+// @has - '//pre[@class="rust item-decl"]' \
+//     "apit_rpit(o: impl Outer<dyn Inner>) -> impl Outer<dyn Inner>"
+pub use dyn_trait::apit_rpit;
+
+// @has user/type.AssocTy.html
+// @has - '//*[@class="rust item-decl"]//code' "<() as Base>::Type<dyn Inner>"
+pub use dyn_trait::AssocTy;

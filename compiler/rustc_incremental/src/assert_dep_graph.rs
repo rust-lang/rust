@@ -42,7 +42,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::dep_graph::{
-    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter,
+    dep_kinds, DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -129,7 +129,7 @@ impl<'tcx> IfThisChanged<'tcx> {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     None => {
-                        DepNode::from_def_path_hash(self.tcx, def_path_hash, DepKind::hir_owner)
+                        DepNode::from_def_path_hash(self.tcx, def_path_hash, dep_kinds::hir_owner)
                     }
                     Some(n) => {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {

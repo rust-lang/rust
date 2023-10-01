@@ -157,6 +157,12 @@ pub(crate) struct Options {
     /// Note: this field is duplicated in `RenderOptions` because it's useful
     /// to have it in both places.
     pub(crate) unstable_features: rustc_feature::UnstableFeatures,
+
+    /// All commandline args used to invoke the compiler, with @file args fully expanded.
+    /// This will only be used within debug info, e.g. in the pdb file on windows
+    /// This is mainly useful for other tools that reads that debuginfo to figure out
+    /// how to call the compiler with the same arguments.
+    pub(crate) expanded_args: Vec<String>,
 }
 
 impl fmt::Debug for Options {
@@ -404,9 +410,15 @@ impl Options {
 
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
-            let paths = match theme::load_css_paths(
-                std::str::from_utf8(static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
-            ) {
+            let mut content =
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+            if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
+                content = inside;
+            }
+            if let Some((inside, _)) = content.split_once("/* End theme: light */") {
+                content = inside;
+            }
+            let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
                     diag.struct_err(e).emit();
@@ -544,9 +556,15 @@ impl Options {
 
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
-            let paths = match theme::load_css_paths(
-                std::str::from_utf8(static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
-            ) {
+            let mut content =
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+            if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
+                content = inside;
+            }
+            if let Some((inside, _)) = content.split_once("/* End theme: light */") {
+                content = inside;
+            }
+            let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
                     diag.struct_err(e).emit();
@@ -744,6 +762,7 @@ impl Options {
             json_unused_externs,
             scrape_examples_options,
             unstable_features,
+            expanded_args: args,
         };
         let render_options = RenderOptions {
             output,

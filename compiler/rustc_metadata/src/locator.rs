@@ -903,10 +903,11 @@ pub fn list_file_metadata(
     path: &Path,
     metadata_loader: &dyn MetadataLoader,
     out: &mut dyn Write,
+    ls_kinds: &[String],
 ) -> IoResult<()> {
     let flavor = get_flavor_from_path(path);
     match get_metadata_section(target, flavor, path, metadata_loader) {
-        Ok(metadata) => metadata.list_crate_metadata(out),
+        Ok(metadata) => metadata.list_crate_metadata(out, ls_kinds),
         Err(msg) => write!(out, "{msg}\n"),
     }
 }

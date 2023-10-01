@@ -48,6 +48,12 @@ error[E0277]: the trait bound `(): Foo` is not satisfied
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-59324.rs:3:1
+   |
+LL | pub trait Foo: NotFoo {
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
   --> $DIR/issue-59324.rs:19:10

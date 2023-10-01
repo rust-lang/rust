@@ -170,6 +170,7 @@ fn saturating_mul() {
 fn div() {
     assert_eq!(Duration::new(0, 1) / 2, Duration::new(0, 0));
     assert_eq!(Duration::new(1, 1) / 3, Duration::new(0, 333_333_333));
+    assert_eq!(Duration::new(1, 1) / 7, Duration::new(0, 142_857_143));
     assert_eq!(Duration::new(99, 999_999_000) / 100, Duration::new(0, 999_999_990));
 }
 

@@ -6,6 +6,7 @@ LL |       struct S {
    |       |
    |  _____help: add the attribute: `#[non_exhaustive] struct S`
    | |
+LL | |
 LL | |         pub a: i32,
 LL | |         pub b: i32,
 LL | |         _c: (),
@@ -13,16 +14,18 @@ LL | |     }
    | |_____^
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:8:9
+  --> $DIR/manual_non_exhaustive_struct.rs:9:9
    |
 LL |         _c: (),
    |         ^^^^^^
    = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_struct.rs:13:5
+  --> $DIR/manual_non_exhaustive_struct.rs:14:5
    |
 LL | /     struct Sp {
+LL | |
 LL | |         pub a: i32,
 LL | |         pub b: i32,
 LL | |         _c: (),
@@ -30,13 +33,13 @@ LL | |     }
    | |_____^
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:16:9
+  --> $DIR/manual_non_exhaustive_struct.rs:18:9
    |
 LL |         _c: (),
    |         ^^^^^^
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_struct.rs:54:5
+  --> $DIR/manual_non_exhaustive_struct.rs:56:5
    |
 LL |     struct T(pub i32, pub i32, ());
    |     --------^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,19 +47,19 @@ LL |     struct T(pub i32, pub i32, ());
    |     help: add the attribute: `#[non_exhaustive] struct T`
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:54:32
+  --> $DIR/manual_non_exhaustive_struct.rs:56:32
    |
 LL |     struct T(pub i32, pub i32, ());
    |                                ^^
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_struct.rs:58:5
+  --> $DIR/manual_non_exhaustive_struct.rs:61:5
    |
 LL |     struct Tp(pub i32, pub i32, ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:58:33
+  --> $DIR/manual_non_exhaustive_struct.rs:61:33
    |
 LL |     struct Tp(pub i32, pub i32, ());
    |                                 ^^

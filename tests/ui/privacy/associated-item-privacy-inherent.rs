@@ -1,5 +1,5 @@
 #![feature(decl_macro, associated_type_defaults)]
-#![allow(unused, private_in_public)]
+#![allow(private_interfaces)]
 
 mod priv_nominal {
     pub struct Pub;

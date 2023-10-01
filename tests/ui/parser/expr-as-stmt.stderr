@@ -217,7 +217,7 @@ LL |     { true } || { true }
    |              ^^^^^^^^^^^ expected `bool`, found closure
    |
    = note: expected type `bool`
-           found closure `[closure@$DIR/expr-as-stmt.rs:51:14: 51:16]`
+           found closure `{closure@$DIR/expr-as-stmt.rs:51:14: 51:16}`
 help: parentheses are required to parse this as an expression
    |
 LL |     ({ true }) || { true }

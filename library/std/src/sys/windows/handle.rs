@@ -143,13 +143,8 @@ impl Handle {
     ) -> io::Result<Option<usize>> {
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let mut amt = 0;
-        let res = cvt(c::ReadFile(
-            self.as_raw_handle(),
-            buf.as_ptr() as c::LPVOID,
-            len,
-            &mut amt,
-            overlapped,
-        ));
+        let res =
+            cvt(c::ReadFile(self.as_raw_handle(), buf.as_mut_ptr(), len, &mut amt, overlapped));
         match res {
             Ok(_) => Ok(Some(amt as usize)),
             Err(e) => {

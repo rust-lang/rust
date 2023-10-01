@@ -156,7 +156,7 @@ program, no matter your host OS. This is particularly useful if you are using
 Windows, as the Linux target is much better supported than Windows targets.
 
 You can also use this to test platforms with different properties than your host
-platform. For example `cargo miri test --target mips64-unknown-linux-gnuabi64`
+platform. For example `cargo miri test --target s390x-unknown-linux-gnu`
 will run your test suite on a big-endian target, which is useful for testing
 endian-sensitive code.
 
@@ -220,20 +220,18 @@ using `--target`!
 The following targets are tested on CI and thus should always work (to the
 degree documented below):
 
-- The best-supported target is `x86_64-unknown-linux-gnu`. Miri releases are
-  blocked on things working with this target. Most other Linux targets should
-  also work well; we do run the test suite on `i686-unknown-linux-gnu` as a
-  32bit target and `mips64-unknown-linux-gnuabi64` as a big-endian target, as
-  well as the ARM targets `aarch64-unknown-linux-gnu` and
-  `arm-unknown-linux-gnueabi`.
-- `x86_64-apple-darwin` should work basically as well as Linux. We also test
-  `aarch64-apple-darwin`. However, we might ship Miri with a nightly even when
-  some features on these targets regress.
-- `x86_64-pc-windows-msvc` works, but supports fewer features than the Linux and
-  Apple targets. For example, file system access and concurrency are not
-  supported on Windows. We also test `i686-pc-windows-msvc`, with the same
-  reduced feature set. We might ship Miri with a nightly even when some features
-  on these targets regress.
+- All Rust [Tier 1 targets](https://doc.rust-lang.org/rustc/platform-support.html) are supported by
+  Miri. They are all checked on Miri's CI, and some (at least one per OS) are even checked on every
+  Rust PR, so the shipped Miri should always work on these targets.
+- We also support `s390x-unknown-linux-gnu` as our "big-endian target of choice".
+- For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
+  make no promises.
+- For targets on other operating systems, even basic operations such as printing to the standard
+  output might not work, and Miri might fail before even reaching the `main` function.
+
+However, even for targets that we do support, the degree of support for accessing platform APIs
+(such as the file system) differs between targets: generally, Linux targets have the best support,
+and macOS targets are usually on par. Windows is supported less well.
 
 ### Running tests in parallel
 
@@ -364,7 +362,7 @@ Some of these are **unsound**, which means they can lead
 to Miri failing to detect cases of undefined behavior in a program.
 
 * `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
-  is **unsound**.
+  is **unsound**. This flag is **deprecated**.
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
   can focus on other failures, but it means Miri can miss bugs in your program.
   Using this flag is **unsound**.
@@ -480,6 +478,8 @@ Moreover, Miri recognizes some environment variables:
 * `MIRI_TEST_TARGET` (recognized by the test suite and the `./miri` script) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target` flag for the same
   purpose.
+* `MIRI_TEST_THREADS` (recognized by the test suite): set the number of threads to use for running tests.
+  By default the number of cores is used.
 * `MIRI_NO_STD` (recognized by `cargo miri` and the test suite) makes sure that the target's
   sysroot is built without libstd. This allows testing and running no_std programs.
 * `RUSTC_BLESS` (recognized by the test suite and `cargo-miri-test/run-test.py`): overwrite all

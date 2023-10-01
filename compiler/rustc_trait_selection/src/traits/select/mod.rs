@@ -35,8 +35,10 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::traits::TraitObligation;
-use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
+use rustc_middle::dep_graph::dep_kinds;
+use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::relate::TypeRelation;
@@ -988,9 +990,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
-                        (Err(ErrorHandled::Reported(_)), _)
-                        | (_, Err(ErrorHandled::Reported(_))) => Ok(EvaluatedToErr),
-                        (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        (Err(ErrorHandled::Reported(..)), _)
+                        | (_, Err(ErrorHandled::Reported(..))) => Ok(EvaluatedToErr),
+                        (Err(ErrorHandled::TooGeneric(..)), _)
+                        | (_, Err(ErrorHandled::TooGeneric(..))) => {
                             if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 Ok(EvaluatedToAmbig)
                             } else {
@@ -1000,9 +1003,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                ty::PredicateKind::AliasRelate(..)
+                    if matches!(self.infcx.defining_use_anchor, DefiningAnchor::Bubble) =>
+                {
+                    Ok(EvaluatedToAmbig)
                 }
+                ty::PredicateKind::AliasRelate(a, b, relate) => match relate {
+                    ty::AliasRelationDirection::Equate => match self
+                        .infcx
+                        .at(&obligation.cause, obligation.param_env)
+                        .eq(DefineOpaqueTypes::Yes, a, b)
+                    {
+                        Ok(inf_ok) => self.evaluate_predicates_recursively(
+                            previous_stack,
+                            inf_ok.into_obligations(),
+                        ),
+                        Err(_) => Ok(EvaluatedToErr),
+                    },
+                    ty::AliasRelationDirection::Subtype => {
+                        bug!("AliasRelate subtyping is only used for new solver")
+                    }
+                },
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
@@ -1415,7 +1436,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         OP: FnOnce(&mut Self) -> R,
     {
         let (result, dep_node) =
-            self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, || op(self));
+            self.tcx().dep_graph.with_anon_task(self.tcx(), dep_kinds::TraitSelect, || op(self));
         self.tcx().dep_graph.read_index(dep_node);
         (result, dep_node)
     }
@@ -2110,7 +2131,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2209,22 +2229,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            ty::GeneratorWitness(binder) => {
-                let witness_tys = binder.skip_binder();
-                for witness_ty in witness_tys.iter() {
-                    let resolved = self.infcx.shallow_resolve(witness_ty);
-                    if resolved.is_ty_var() {
-                        return Ambiguous;
-                    }
-                }
-                // (*) binder moved here
-                let all_vars = self.tcx().mk_bound_variable_kinds_from_iter(
-                    obligation.predicate.bound_vars().iter().chain(binder.bound_vars().iter()),
-                );
-                Where(ty::Binder::bind_with_vars(witness_tys.to_vec(), all_vars))
-            }
-
-            ty::GeneratorWitnessMIR(def_id, ref args) => {
+            ty::GeneratorWitness(def_id, ref args) => {
                 let hidden_types = bind_generator_hidden_types_above(
                     self.infcx,
                     def_id,
@@ -2329,12 +2334,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
             }
 
-            ty::GeneratorWitness(types) => {
-                debug_assert!(!types.has_escaping_bound_vars());
-                types.map_bound(|types| types.to_vec())
-            }
-
-            ty::GeneratorWitnessMIR(def_id, ref args) => {
+            ty::GeneratorWitness(def_id, ref args) => {
                 bind_generator_hidden_types_above(self.infcx, def_id, args, t.bound_vars())
             }
 
@@ -2346,14 +2346,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                let ty = self.tcx().type_of(def_id);
-                if ty.skip_binder().references_error() {
-                    return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
-                }
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                t.rebind(vec![ty.instantiate(self.tcx(), args)])
+                match self.tcx().type_of_opaque(def_id) {
+                    Ok(ty) => t.rebind(vec![ty.instantiate(self.tcx(), args)]),
+                    Err(_) => {
+                        return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
+                    }
+                }
             }
         })
     }
@@ -3093,32 +3094,33 @@ fn bind_generator_hidden_types_above<'tcx>(
         .generator_hidden_types(def_id)
         // Deduplicate tys to avoid repeated work.
         .filter(|bty| seen_tys.insert(*bty))
-        .map(|bty| {
-            let mut ty = bty.instantiate(tcx, args);
-
+        .map(|mut bty| {
             // Only remap erased regions if we use them.
             if considering_regions {
-                ty = tcx.fold_regions(ty, |r, current_depth| match r.kind() {
-                    ty::ReErased => {
-                        let br = ty::BoundRegion {
-                            var: ty::BoundVar::from_u32(counter),
-                            kind: ty::BrAnon(None),
-                        };
-                        counter += 1;
-                        ty::Region::new_late_bound(tcx, current_depth, br)
-                    }
-                    r => bug!("unexpected region: {r:?}"),
+                bty = bty.map_bound(|ty| {
+                    tcx.fold_regions(ty, |r, current_depth| match r.kind() {
+                        ty::ReErased => {
+                            let br = ty::BoundRegion {
+                                var: ty::BoundVar::from_u32(counter),
+                                kind: ty::BrAnon,
+                            };
+                            counter += 1;
+                            ty::Region::new_late_bound(tcx, current_depth, br)
+                        }
+                        r => bug!("unexpected region: {r:?}"),
+                    })
                 })
             }
 
-            ty
+            bty.instantiate(tcx, args)
         })
         .collect();
     if considering_regions {
         debug_assert!(!hidden_types.has_erased_regions());
     }
-    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
-        (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon(None))),
-    ));
+    let bound_vars =
+        tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
+            (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon)),
+        ));
     ty::Binder::bind_with_vars(hidden_types, bound_vars)
 }

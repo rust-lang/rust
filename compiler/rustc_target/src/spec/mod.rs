@@ -61,6 +61,8 @@ mod aix_base;
 mod android_base;
 mod apple_base;
 pub use apple_base::deployment_target as current_apple_deployment_target;
+pub use apple_base::platform as current_apple_platform;
+pub use apple_base::sdk_version as current_apple_sdk_version;
 mod avr_gnu_base;
 pub use avr_gnu_base::ef_avr_arch;
 mod bpf_base;
@@ -69,6 +71,8 @@ mod freebsd_base;
 mod fuchsia_base;
 mod haiku_base;
 mod hermit_base;
+mod hurd_base;
+mod hurd_gnu_base;
 mod illumos_base;
 mod l4re_base;
 mod linux_base;
@@ -1365,6 +1369,8 @@ supported_targets! {
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
 
+    ("i686-unknown-hurd-gnu", i686_unknown_hurd_gnu),
+
     ("aarch64-apple-darwin", aarch64_apple_darwin),
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("x86_64h-apple-darwin", x86_64h_apple_darwin),
@@ -1388,7 +1394,6 @@ supported_targets! {
     ("i386-apple-ios", i386_apple_ios),
     ("x86_64-apple-ios", x86_64_apple_ios),
     ("aarch64-apple-ios", aarch64_apple_ios),
-    ("armv7-apple-ios", armv7_apple_ios),
     ("armv7s-apple-ios", armv7s_apple_ios),
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
@@ -1418,6 +1423,7 @@ supported_targets! {
     ("x86_64-uwp-windows-gnu", x86_64_uwp_windows_gnu),
 
     ("aarch64-pc-windows-gnullvm", aarch64_pc_windows_gnullvm),
+    ("i686-pc-windows-gnullvm", i686_pc_windows_gnullvm),
     ("x86_64-pc-windows-gnullvm", x86_64_pc_windows_gnullvm),
 
     ("aarch64-pc-windows-msvc", aarch64_pc_windows_msvc),
@@ -2216,7 +2222,7 @@ impl Default for TargetOptions {
             mcount: "mcount".into(),
             llvm_mcount_intrinsic: None,
             llvm_abiname: "".into(),
-            relax_elf_relocations: true,
+            relax_elf_relocations: false,
             llvm_args: cvs![],
             use_ctors_section: false,
             eh_frame_header: true,
@@ -2275,6 +2281,13 @@ impl Target {
             Abi::Fastcall { .. } if self.arch == "x86" => abi,
             Abi::Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
             Abi::Fastcall { unwind } | Abi::Vectorcall { unwind } => Abi::C { unwind },
+
+            // The Windows x64 calling convention we use for `extern "Rust"`
+            // <https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions#register-volatility-and-preservation>
+            // expects the callee to save `xmm6` through `xmm15`, but `PreserveMost`
+            // (that we use by default for `extern "rust-cold"`) doesn't save any of those.
+            // So to avoid bloating callers, just use the Rust convention here.
+            Abi::RustCold if self.is_like_windows && self.arch == "x86_64" => Abi::Rust,
 
             abi => abi,
         }

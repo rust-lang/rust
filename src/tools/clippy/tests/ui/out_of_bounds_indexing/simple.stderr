@@ -5,33 +5,34 @@ LL |     &x[..=4];
    |           ^
    |
    = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::out_of_bounds_indexing)]`
 
 error: range is out of bounds
-  --> $DIR/simple.rs:8:11
+  --> $DIR/simple.rs:10:11
    |
 LL |     &x[1..5];
    |           ^
 
 error: range is out of bounds
-  --> $DIR/simple.rs:9:8
+  --> $DIR/simple.rs:12:8
    |
 LL |     &x[5..];
    |        ^
 
 error: range is out of bounds
-  --> $DIR/simple.rs:10:10
+  --> $DIR/simple.rs:14:10
    |
 LL |     &x[..5];
    |          ^
 
 error: range is out of bounds
-  --> $DIR/simple.rs:11:8
+  --> $DIR/simple.rs:16:8
    |
 LL |     &x[5..].iter().map(|x| 2 * x).collect::<Vec<i32>>();
    |        ^
 
 error: range is out of bounds
-  --> $DIR/simple.rs:12:12
+  --> $DIR/simple.rs:18:12
    |
 LL |     &x[0..=4];
    |            ^

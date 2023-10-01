@@ -183,8 +183,7 @@ pub(super) fn error_name(er: abi::ER) -> Option<&'static str> {
 
 #[inline]
 pub fn is_interrupted(er: abi::ER) -> bool {
-    let errno = netc::SOLID_NET_ERR_BASE - er;
-    errno as libc::c_int == libc::EINTR
+    er == netc::SOLID_NET_ERR_BASE - libc::EINTR
 }
 
 pub(super) fn decode_error_kind(er: abi::ER) -> ErrorKind {

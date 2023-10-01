@@ -1,3 +1,5 @@
+   LL|       |#![allow(dead_code, unused_assignments, unused_must_use, unused_variables)]
+   LL|       |
    LL|      2|fn foo<T>(x: T) {
    LL|      2|    let mut i = 0;
    LL|     22|    while i < 10 {

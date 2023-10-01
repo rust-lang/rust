@@ -1,8 +1,0 @@
-error: unable to determine layout for `<[E] as ToOwned>::Owned` because `<[E] as ToOwned>::Owned` cannot be normalized
-  --> $DIR/issue-85103.rs:6:1
-   |
-LL | type Edges<'a, E> = Cow<'a, [E]>;
-   | ^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-

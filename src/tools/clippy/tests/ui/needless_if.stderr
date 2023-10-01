@@ -1,19 +1,20 @@
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:27:5
+  --> $DIR/needless_if.rs:26:5
    |
 LL |     if (true) {}
    |     ^^^^^^^^^^^^ help: you can remove it
    |
    = note: `-D clippy::needless-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_if)]`
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:29:5
+  --> $DIR/needless_if.rs:28:5
    |
 LL |     if maybe_side_effect() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `maybe_side_effect();`
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:34:5
+  --> $DIR/needless_if.rs:33:5
    |
 LL | /     if {
 LL | |         return;
@@ -28,7 +29,7 @@ LL +     });
    |
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:46:5
+  --> $DIR/needless_if.rs:45:5
    |
 LL | /     if {
 LL | |         if let true = true && true { true } else { false }
@@ -44,19 +45,19 @@ LL +     } && true);
    |
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:84:5
+  --> $DIR/needless_if.rs:83:5
    |
 LL |     if { maybe_side_effect() } {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() });`
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:86:5
+  --> $DIR/needless_if.rs:85:5
    |
 LL |     if { maybe_side_effect() } && true {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() } && true);`
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:90:5
+  --> $DIR/needless_if.rs:89:5
    |
 LL |     if true {}
    |     ^^^^^^^^^^ help: you can remove it: `true;`

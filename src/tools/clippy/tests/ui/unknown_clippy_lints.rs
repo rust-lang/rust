@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::pedantic)]
 // Should suggest lowercase
 #![allow(clippy::All)]

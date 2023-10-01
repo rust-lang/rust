@@ -6,7 +6,7 @@ LL |     q.lol(||());
    |
 help: try using a fully qualified path to specify the expected types
    |
-LL |     <Qqq as MyTrait<T>>::lol::<[closure@]>(&q, ||());
+LL |     <Qqq as MyTrait<T>>::lol::<{closure@}>(&q, ||());
    |     +++ ~
 
 error[E0283]: type annotations needed
@@ -25,7 +25,7 @@ LL | impl MyTrait<u64> for Qqq{
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try using a fully qualified path to specify the expected types
    |
-LL |     <Qqq as MyTrait<T>>::lol::<[closure@]>(&q, ||());
+LL |     <Qqq as MyTrait<T>>::lol::<{closure@}>(&q, ||());
    |     +++ ~
 
 error: aborting due to 2 previous errors

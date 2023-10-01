@@ -19,6 +19,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::{def_id::LocalDefId, BytePos, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
@@ -1415,6 +1416,9 @@ pub struct Let<'hir> {
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
     pub init: &'hir Expr<'hir>,
+    /// `Some` when this let expressions is not in a syntanctically valid location.
+    /// Used to prevent building MIR in such situations.
+    pub is_recovered: Option<ErrorGuaranteed>,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -1577,8 +1581,8 @@ pub enum BodyOwnerKind {
     /// Closures
     Closure,
 
-    /// Constants and associated constants.
-    Const,
+    /// Constants and associated constants, also including inline constants.
+    Const { inline: bool },
 
     /// Initializer of a `static` item.
     Static(Mutability),
@@ -1588,7 +1592,7 @@ impl BodyOwnerKind {
     pub fn is_fn_or_closure(self) -> bool {
         match self {
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => true,
-            BodyOwnerKind::Const | BodyOwnerKind::Static(_) => false,
+            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(_) => false,
         }
     }
 }
@@ -1611,7 +1615,7 @@ pub enum ConstContext {
     ///
     /// For the most part, other contexts are treated just like a regular `const`, so they are
     /// lumped into the same category.
-    Const,
+    Const { inline: bool },
 }
 
 impl ConstContext {
@@ -1620,7 +1624,7 @@ impl ConstContext {
     /// E.g. `const` or `static mut`.
     pub fn keyword_name(self) -> &'static str {
         match self {
-            Self::Const => "const",
+            Self::Const { .. } => "const",
             Self::Static(Mutability::Not) => "static",
             Self::Static(Mutability::Mut) => "static mut",
             Self::ConstFn => "const fn",
@@ -1633,7 +1637,7 @@ impl ConstContext {
 impl fmt::Display for ConstContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Self::Const => write!(f, "constant"),
+            Self::Const { .. } => write!(f, "constant"),
             Self::Static(_) => write!(f, "static"),
             Self::ConstFn => write!(f, "constant function"),
         }
@@ -2849,13 +2853,13 @@ impl ImplicitSelfKind {
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
 #[derive(HashStable_Generic)]
 pub enum IsAsync {
-    Async,
+    Async(Span),
     NotAsync,
 }
 
 impl IsAsync {
     pub fn is_async(self) -> bool {
-        self == IsAsync::Async
+        matches!(self, IsAsync::Async(_))
     }
 }
 
@@ -3292,7 +3296,7 @@ pub struct FnHeader {
 
 impl FnHeader {
     pub fn is_async(&self) -> bool {
-        matches!(&self.asyncness, IsAsync::Async)
+        matches!(&self.asyncness, IsAsync::Async(_))
     }
 
     pub fn is_const(&self) -> bool {
@@ -3729,6 +3733,8 @@ impl<'hir> Node<'hir> {
             Node::Lifetime(lt) => Some(lt.ident),
             Node::GenericParam(p) => Some(p.name.ident()),
             Node::TypeBinding(b) => Some(b.ident),
+            Node::PatField(f) => Some(f.ident),
+            Node::ExprField(f) => Some(f.ident),
             Node::Param(..)
             | Node::AnonConst(..)
             | Node::ConstBlock(..)
@@ -3737,8 +3743,6 @@ impl<'hir> Node<'hir> {
             | Node::Block(..)
             | Node::Ctor(..)
             | Node::Pat(..)
-            | Node::PatField(..)
-            | Node::ExprField(..)
             | Node::Arm(..)
             | Node::Local(..)
             | Node::Crate(..)
@@ -4087,10 +4091,10 @@ mod size_asserts {
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
-    static_assert_size!(ImplItem<'_>, 80);
-    static_assert_size!(ImplItemKind<'_>, 32);
-    static_assert_size!(Item<'_>, 80);
-    static_assert_size!(ItemKind<'_>, 48);
+    static_assert_size!(ImplItem<'_>, 88);
+    static_assert_size!(ImplItemKind<'_>, 40);
+    static_assert_size!(Item<'_>, 88);
+    static_assert_size!(ItemKind<'_>, 56);
     static_assert_size!(Local<'_>, 64);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
@@ -4101,8 +4105,8 @@ mod size_asserts {
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
-    static_assert_size!(TraitItem<'_>, 80);
-    static_assert_size!(TraitItemKind<'_>, 40);
+    static_assert_size!(TraitItem<'_>, 88);
+    static_assert_size!(TraitItemKind<'_>, 48);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end

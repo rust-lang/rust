@@ -340,10 +340,10 @@ ExprStmt =
 
 Expr =
   ArrayExpr
+| AsmExpr
 | AwaitExpr
 | BinExpr
 | BlockExpr
-| BoxExpr
 | BreakExpr
 | CallExpr
 | CastExpr
@@ -351,6 +351,7 @@ Expr =
 | ContinueExpr
 | FieldExpr
 | ForExpr
+| FormatArgsExpr
 | IfExpr
 | IndexExpr
 | Literal
@@ -358,6 +359,7 @@ Expr =
 | MacroExpr
 | MatchExpr
 | MethodCallExpr
+| OffsetOfExpr
 | ParenExpr
 | PathExpr
 | PrefixExpr
@@ -372,6 +374,21 @@ Expr =
 | YeetExpr
 | LetExpr
 | UnderscoreExpr
+
+OffsetOfExpr =
+  Attr* 'builtin' '#' 'offset_of' '(' Type ',' fields:(NameRef ('.' NameRef)* ) ')'
+
+AsmExpr =
+  Attr* 'builtin' '#' 'asm' '(' Expr ')'
+
+FormatArgsExpr =
+  Attr* 'builtin' '#' 'format_args' '('
+  template:Expr
+  (',' args:(FormatArgsArg (',' FormatArgsArg)* ','?)? )?
+  ')'
+
+FormatArgsArg =
+  (Name '=')? Expr
 
 MacroExpr =
   MacroCall
@@ -525,9 +542,6 @@ UnderscoreExpr =
 
 AwaitExpr =
   Attr* Expr '.' 'await'
-
-BoxExpr =
-  Attr* 'box' Expr
 
 //*************************//
 //          Types          //

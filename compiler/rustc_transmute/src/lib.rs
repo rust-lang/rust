@@ -64,6 +64,10 @@ pub enum Reason {
     SrcLayoutUnknown,
     /// The layout of dst is unknown
     DstLayoutUnknown,
+    /// The size of src is overflow
+    SrcSizeOverflow,
+    /// The size of dst is overflow
+    DstSizeOverflow,
 }
 
 #[cfg(feature = "rustc")]
@@ -125,19 +129,16 @@ mod rustc {
             c: Const<'tcx>,
         ) -> Option<Self> {
             use rustc_middle::ty::ScalarInt;
-            use rustc_middle::ty::TypeVisitableExt;
             use rustc_span::symbol::sym;
 
-            let c = c.eval(tcx, param_env);
-
-            if let Err(err) = c.error_reported() {
+            let Ok(cv) = c.eval(tcx, param_env, None) else {
                 return Some(Self {
                     alignment: true,
                     lifetimes: true,
                     safety: true,
                     validity: true,
                 });
-            }
+            };
 
             let adt_def = c.ty().ty_adt_def()?;
 
@@ -149,8 +150,8 @@ mod rustc {
             );
 
             let variant = adt_def.non_enum_variant();
-            let fields = match c.try_to_valtree() {
-                Some(ValTree::Branch(branch)) => branch,
+            let fields = match cv {
+                ValTree::Branch(branch) => branch,
                 _ => {
                     return Some(Self {
                         alignment: true,

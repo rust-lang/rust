@@ -4,7 +4,7 @@ error[E0080]: evaluation of `<A<()> as Foo<()>>::BAR` failed
 LL |     const BAR: usize = [5, 6, 7][T::BOO];
    |                        ^^^^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 42
 
-note: erroneous constant used
+note: erroneous constant encountered
   --> $DIR/issue-50814-2.rs:18:6
    |
 LL |     &<A<T> as Foo<T>>::BAR

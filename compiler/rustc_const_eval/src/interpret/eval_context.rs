@@ -7,7 +7,7 @@ use hir::CRATE_HIR_ID;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpError, InvalidMetaKind, ReportedErrorInfo};
+use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
@@ -21,12 +21,12 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 
 use super::{
     AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
-    Scalar, StackPopJump,
+    MemPlaceMeta, Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic,
+    Projectable, Provenance, Scalar, StackPopJump,
 };
-use crate::errors::{self, ErroneousConstUsed};
-use crate::fluent_generated as fluent;
+use crate::errors;
 use crate::util;
+use crate::{fluent_generated as fluent, ReportErrorExt};
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -155,16 +155,26 @@ pub enum StackPopCleanup {
 }
 
 /// State of a local variable including a memoized layout
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
-    pub value: LocalValue<Prov>,
-    /// Don't modify if `Some`, this is only used to prevent computing the layout twice
-    pub layout: Cell<Option<TyAndLayout<'tcx>>>,
+    value: LocalValue<Prov>,
+    /// Don't modify if `Some`, this is only used to prevent computing the layout twice.
+    /// Avoids computing the layout of locals that are never actually initialized.
+    layout: Cell<Option<TyAndLayout<'tcx>>>,
+}
+
+impl<Prov: Provenance> std::fmt::Debug for LocalState<'_, Prov> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalState")
+            .field("value", &self.value)
+            .field("ty", &self.layout.get().map(|l| l.ty))
+            .finish()
+    }
 }
 
 /// Current value of a local variable
 #[derive(Copy, Clone, Debug)] // Miri debug-prints these
-pub enum LocalValue<Prov: Provenance = AllocId> {
+pub(super) enum LocalValue<Prov: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// A normal, live local.
@@ -175,10 +185,27 @@ pub enum LocalValue<Prov: Provenance = AllocId> {
     Live(Operand<Prov>),
 }
 
-impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
+impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
+    pub fn make_live_uninit(&mut self) {
+        self.value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
+    }
+
+    /// This is a hack because Miri needs a way to visit all the provenance in a `LocalState`
+    /// without having a layout or `TyCtxt` available, and we want to keep the `Operand` type
+    /// private.
+    pub fn as_mplace_or_imm(
+        &self,
+    ) -> Option<Either<(Pointer<Option<Prov>>, MemPlaceMeta<Prov>), Immediate<Prov>>> {
+        match self.value {
+            LocalValue::Dead => None,
+            LocalValue::Live(Operand::Indirect(mplace)) => Some(Left((mplace.ptr, mplace.meta))),
+            LocalValue::Live(Operand::Immediate(imm)) => Some(Right(imm)),
+        }
+    }
+
     /// Read the local's value or error if the local is not yet live or not live anymore.
-    #[inline]
-    pub fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
+    #[inline(always)]
+    pub(super) fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
@@ -188,10 +215,10 @@ impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     /// Overwrite the local. If the local can be overwritten in place, return a reference
     /// to do so; otherwise return the `MemPlace` to consult instead.
     ///
-    /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
-    /// anywhere else. You may be invalidating machine invariants if you do!
-    #[inline]
-    pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
+    /// Note: Before calling this, call the `before_access_local_mut` machine hook! You may be
+    /// invalidating machine invariants otherwise!
+    #[inline(always)]
+    pub(super) fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
@@ -389,7 +416,7 @@ pub(super) fn from_known_layout<'tcx>(
                 if !mir_assign_valid_types(tcx.tcx, param_env, check_layout, known_layout) {
                     span_bug!(
                         tcx.span,
-                        "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
+                        "expected type differs from actual type.\nexpected: {}\nactual: {}",
                         known_layout.ty,
                         check_layout.ty,
                     );
@@ -432,6 +459,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .map_or(CRATE_HIR_ID, |def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
     }
 
+    /// Turn the given error into a human-readable string. Expects the string to be printed, so if
+    /// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
+    /// triggered the error.
+    ///
+    /// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
+    /// However, this is useful when error messages appear in ICEs.
+    pub fn format_error(&self, e: InterpErrorInfo<'tcx>) -> String {
+        let (e, backtrace) = e.into_parts();
+        backtrace.print_backtrace();
+        // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
+        // label and arguments from the InterpError.
+        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
+        #[allow(rustc::untranslatable_diagnostic)]
+        let mut diag = self.tcx.sess.struct_allow("");
+        let msg = e.diagnostic_message();
+        e.add_args(handler, &mut diag);
+        let s = handler.eagerly_translate_to_string(msg, diag.args());
+        diag.cancel();
+        s
+    }
+
     #[inline(always)]
     pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>] {
         M::stack(self)
@@ -462,7 +510,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub(super) fn body(&self) -> &'mir mir::Body<'tcx> {
+    pub fn body(&self) -> &'mir mir::Body<'tcx> {
         self.frame().body
     }
 
@@ -508,7 +556,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     >(
         &self,
         value: T,
-    ) -> Result<T, InterpError<'tcx>> {
+    ) -> Result<T, ErrorHandled> {
         self.subst_from_frame_and_normalize_erasing_regions(self.frame(), value)
     }
 
@@ -518,15 +566,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         value: T,
-    ) -> Result<T, InterpError<'tcx>> {
+    ) -> Result<T, ErrorHandled> {
         frame
             .instance
-            .try_subst_mir_and_normalize_erasing_regions(
+            .try_instantiate_mir_and_normalize_erasing_regions(
                 *self.tcx,
                 self.param_env,
                 ty::EarlyBinder::bind(value),
             )
-            .map_err(|_| err_inval!(TooGeneric))
+            .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
     }
 
     /// The `args` are assumed to already be in our interpreter "universe" (param_env).
@@ -664,7 +712,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             ty::Foreign(_) => Ok(None),
 
-            _ => span_bug!(self.cur_span(), "size_and_align_of::<{:?}> not supported", layout.ty),
+            _ => span_bug!(self.cur_span(), "size_and_align_of::<{}> not supported", layout.ty),
         }
     }
     #[inline]
@@ -672,7 +720,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(&mplace.meta, &mplace.layout)
+        self.size_and_align_of(&mplace.meta(), &mplace.layout)
     }
 
     #[instrument(skip(self, body, return_place, return_to_block), level = "debug")]
@@ -684,15 +732,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
+        let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
+        let locals = IndexVec::from_elem(dead_local, &body.local_decls);
         // First push a stack frame so we have access to the local args
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
             return_place: return_place.clone(),
-            // empty local array, we fill it in below, after we are inside the stack frame and
-            // all methods actually know about the frame
-            locals: IndexVec::new(),
+            locals,
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),
@@ -701,25 +749,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.stack_mut().push(frame);
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
-        for ct in &body.required_consts {
-            let span = ct.span;
-            let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
-            self.eval_mir_constant(&ct, Some(span), None)?;
+        if M::POST_MONO_CHECKS {
+            // `ctfe_query` does some error message decoration that we want to be in effect here.
+            self.ctfe_query(None, |tcx| {
+                body.post_mono_checks(*tcx, self.param_env, |c| {
+                    self.subst_from_current_frame_and_normalize_erasing_regions(c)
+                })
+            })?;
         }
 
-        // Most locals are initially dead.
-        let dummy = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
-        let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
-
-        // Now mark those locals as live that have no `Storage*` annotations.
-        let always_live = always_storage_live_locals(self.body());
-        for local in locals.indices() {
-            if always_live.contains(local) {
-                locals[local].value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
-            }
-        }
         // done
-        self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
         self.frame_mut().loc = Left(mir::Location::START);
 
@@ -816,7 +855,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
             let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);
-            trace!("return value: {:?}", self.dump_place(*dest));
+            trace!("return value: {:?}", self.dump_place(&dest));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines
             // this transmute.
@@ -886,18 +925,107 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Mark a storage as live, killing the previous content.
-    pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
-        assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
+    /// In the current stack frame, mark all locals as live that are not arguments and don't have
+    /// `Storage*` annotations (this includes the return place).
+    pub fn storage_live_for_always_live_locals(&mut self) -> InterpResult<'tcx> {
+        self.storage_live(mir::RETURN_PLACE)?;
+
+        let body = self.body();
+        let always_live = always_storage_live_locals(body);
+        for local in body.vars_and_temps_iter() {
+            if always_live.contains(local) {
+                self.storage_live(local)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn storage_live_dyn(
+        &mut self,
+        local: mir::Local,
+        meta: MemPlaceMeta<M::Provenance>,
+    ) -> InterpResult<'tcx> {
         trace!("{:?} is now live", local);
 
-        let local_val = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
+        // We avoid `ty.is_trivially_sized` since that (a) cannot assume WF, so it recurses through
+        // all fields of a tuple, and (b) does something expensive for ADTs.
+        fn is_very_trivially_sized(ty: Ty<'_>) -> bool {
+            match ty.kind() {
+                ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+                | ty::Uint(_)
+                | ty::Int(_)
+                | ty::Bool
+                | ty::Float(_)
+                | ty::FnDef(..)
+                | ty::FnPtr(_)
+                | ty::RawPtr(..)
+                | ty::Char
+                | ty::Ref(..)
+                | ty::Generator(..)
+                | ty::GeneratorWitness(..)
+                | ty::Array(..)
+                | ty::Closure(..)
+                | ty::Never
+                | ty::Error(_) => true,
+
+                ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
+
+                ty::Tuple(tys) => tys.last().iter().all(|ty| is_very_trivially_sized(**ty)),
+
+                // We don't want to do any queries, so there is not much we can do with ADTs.
+                ty::Adt(..) => false,
+
+                ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
+
+                ty::Infer(ty::TyVar(_)) => false,
+
+                ty::Bound(..)
+                | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                    bug!("`is_very_trivially_sized` applied to unexpected type: {}", ty)
+                }
+            }
+        }
+
+        // This is a hot function, we avoid computing the layout when possible.
+        // `unsized_` will be `None` for sized types and `Some(layout)` for unsized types.
+        let unsized_ = if is_very_trivially_sized(self.body().local_decls[local].ty) {
+            None
+        } else {
+            // We need the layout.
+            let layout = self.layout_of_local(self.frame(), local, None)?;
+            if layout.is_sized() { None } else { Some(layout) }
+        };
+
+        let local_val = LocalValue::Live(if let Some(layout) = unsized_ {
+            if !meta.has_meta() {
+                throw_unsup!(UnsizedLocal);
+            }
+            // Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
+            let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
+            Operand::Indirect(*dest_place.mplace())
+        } else {
+            assert!(!meta.has_meta()); // we're dropping the metadata
+            // Just make this an efficient immediate.
+            // Note that not calling `layout_of` here does have one real consequence:
+            // if the type is too big, we'll only notice this when the local is actually initialized,
+            // which is a bit too late -- we should ideally notice this alreayd here, when the memory
+            // is conceptually allocated. But given how rare that error is and that this is a hot function,
+            // we accept this downside for now.
+            Operand::Immediate(Immediate::Uninit)
+        });
+
         // StorageLive expects the local to be dead, and marks it live.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
         if !matches!(old, LocalValue::Dead) {
             throw_ub_custom!(fluent::const_eval_double_storage_live);
         }
         Ok(())
+    }
+
+    /// Mark a storage as live, killing the previous content.
+    #[inline(always)]
+    pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
+        self.storage_live_dyn(local, MemPlaceMeta::None)
     }
 
     pub fn storage_dead(&mut self, local: mir::Local) -> InterpResult<'tcx> {
@@ -931,28 +1059,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         span: Option<Span>,
         query: impl FnOnce(TyCtxtAt<'tcx>) -> Result<T, ErrorHandled>,
-    ) -> InterpResult<'tcx, T> {
+    ) -> Result<T, ErrorHandled> {
         // Use a precise span for better cycle errors.
         query(self.tcx.at(span.unwrap_or_else(|| self.cur_span()))).map_err(|err| {
-            match err {
-                ErrorHandled::Reported(err) => {
-                    if !err.is_tainted_by_errors() && let Some(span) = span {
-                        // To make it easier to figure out where this error comes from, also add a note at the current location.
-                        self.tcx.sess.emit_note(ErroneousConstUsed { span });
-                    }
-                    err_inval!(AlreadyReported(err))
-                }
-                ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-            }
-            .into()
+            err.emit_note(*self.tcx);
+            err
         })
     }
 
     pub fn eval_global(
         &self,
-        gid: GlobalId<'tcx>,
-        span: Option<Span>,
+        instance: ty::Instance<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+        let gid = GlobalId { instance, promoted: None };
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
         // `self.param_env`, that would mean we invoke the query to evaluate the static
@@ -963,13 +1082,26 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        let val = self.ctfe_query(span, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
+        let val = self.ctfe_query(None, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
         self.raw_const_to_mplace(val)
     }
 
+    pub fn eval_mir_constant(
+        &self,
+        val: &mir::Const<'tcx>,
+        span: Option<Span>,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let const_val = self.ctfe_query(span, |tcx| val.eval(*tcx, self.param_env, span))?;
+        self.const_val_to_op(const_val, val.ty(), layout)
+    }
+
     #[must_use]
-    pub fn dump_place(&self, place: Place<M::Provenance>) -> PlacePrinter<'_, 'mir, 'tcx, M> {
-        PlacePrinter { ecx: self, place }
+    pub fn dump_place(
+        &self,
+        place: &PlaceTy<'tcx, M::Provenance>,
+    ) -> PlacePrinter<'_, 'mir, 'tcx, M> {
+        PlacePrinter { ecx: self, place: *place.place() }
     }
 
     #[must_use]

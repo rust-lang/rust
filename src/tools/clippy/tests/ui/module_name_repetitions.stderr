@@ -5,27 +5,28 @@ LL |     pub fn foo_bar() {}
    |            ^^^^^^^
    |
    = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::module_name_repetitions)]`
 
 error: item name ends with its containing module's name
-  --> $DIR/module_name_repetitions.rs:9:12
+  --> $DIR/module_name_repetitions.rs:11:12
    |
 LL |     pub fn bar_foo() {}
    |            ^^^^^^^
 
 error: item name starts with its containing module's name
-  --> $DIR/module_name_repetitions.rs:10:16
+  --> $DIR/module_name_repetitions.rs:13:16
    |
 LL |     pub struct FooCake;
    |                ^^^^^^^
 
 error: item name ends with its containing module's name
-  --> $DIR/module_name_repetitions.rs:11:14
+  --> $DIR/module_name_repetitions.rs:15:14
    |
 LL |     pub enum CakeFoo {}
    |              ^^^^^^^
 
 error: item name starts with its containing module's name
-  --> $DIR/module_name_repetitions.rs:12:16
+  --> $DIR/module_name_repetitions.rs:17:16
    |
 LL |     pub struct Foo7Bar;
    |                ^^^^^^^

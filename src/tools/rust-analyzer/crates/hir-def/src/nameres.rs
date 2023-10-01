@@ -93,7 +93,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefMap {
     _c: Count<Self>,
-    /// When this is a block def map, this will hold the block id of the the block and module that
+    /// When this is a block def map, this will hold the block id of the block and module that
     /// contains this block.
     block: Option<BlockInfo>,
     /// The modules and their data declared in this crate.

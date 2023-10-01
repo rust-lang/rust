@@ -14,6 +14,11 @@
 /// For similar reasons, **this trait should never fail**. Failure during
 /// dereferencing can be extremely confusing when `Deref` is invoked implicitly.
 ///
+/// Violating these requirements is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of this
+/// method.
+///
 /// # More on `Deref` coercion
 ///
 /// If `T` implements `Deref<Target = U>`, and `x` is a value of type `T`, then:
@@ -113,6 +118,11 @@ impl<T: ?Sized> Deref for &mut T {
 /// For similar reasons, **this trait should never fail**. Failure during
 /// dereferencing can be extremely confusing when `DerefMut` is invoked
 /// implicitly.
+///
+/// Violating these requirements is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of this
+/// method.
 ///
 /// # More on `Deref` coercion
 ///

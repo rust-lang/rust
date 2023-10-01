@@ -7,31 +7,38 @@
     clippy::needless_pass_by_ref_mut
 )]
 #![warn(clippy::ptr_arg)]
-
+//@no-rustfix
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 fn do_vec(x: &Vec<i64>) {
+    //~^ ERROR: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+    //~| NOTE: `-D clippy::ptr-arg` implied by `-D warnings`
     //Nothing here
 }
 
 fn do_vec_mut(x: &mut Vec<i64>) {
+    //~^ ERROR: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice w
     //Nothing here
 }
 
 fn do_str(x: &String) {
+    //~^ ERROR: writing `&String` instead of `&str` involves a new object where a slice will d
     //Nothing here either
 }
 
 fn do_str_mut(x: &mut String) {
+    //~^ ERROR: writing `&mut String` instead of `&mut str` involves a new object where a slic
     //Nothing here either
 }
 
 fn do_path(x: &PathBuf) {
+    //~^ ERROR: writing `&PathBuf` instead of `&Path` involves a new object where a slice will
     //Nothing here either
 }
 
 fn do_path_mut(x: &mut PathBuf) {
+    //~^ ERROR: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a sl
     //Nothing here either
 }
 
@@ -40,6 +47,7 @@ fn main() {}
 trait Foo {
     type Item;
     fn do_vec(x: &Vec<i64>);
+    //~^ ERROR: writing `&Vec` instead of `&[_]` involves a new object where a slice will
     fn do_item(x: &Self::Item);
 }
 
@@ -53,6 +61,7 @@ impl Foo for Bar {
 }
 
 fn cloned(x: &Vec<u8>) -> Vec<u8> {
+    //~^ ERROR: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
     let e = x.clone();
     let f = e.clone(); // OK
     let g = x;
@@ -62,6 +71,7 @@ fn cloned(x: &Vec<u8>) -> Vec<u8> {
 }
 
 fn str_cloned(x: &String) -> String {
+    //~^ ERROR: writing `&String` instead of `&str` involves a new object where a slice will d
     let a = x.clone();
     let b = x.clone();
     let c = b.clone();
@@ -70,6 +80,7 @@ fn str_cloned(x: &String) -> String {
 }
 
 fn path_cloned(x: &PathBuf) -> PathBuf {
+    //~^ ERROR: writing `&PathBuf` instead of `&Path` involves a new object where a slice will
     let a = x.clone();
     let b = x.clone();
     let c = b.clone();
@@ -78,6 +89,7 @@ fn path_cloned(x: &PathBuf) -> PathBuf {
 }
 
 fn false_positive_capacity(x: &Vec<u8>, y: &String) {
+    //~^ ERROR: writing `&String` instead of `&str` involves a new object where a slice will d
     let a = x.capacity();
     let b = y.clone();
     let c = y.as_str();
@@ -92,6 +104,7 @@ fn false_positive_capacity_too(x: &String) -> String {
 
 #[allow(dead_code)]
 fn test_cow_with_ref(c: &Cow<[i32]>) {}
+//~^ ERROR: using a reference to `Cow` is not recommended
 
 fn test_cow(c: Cow<[i32]>) {
     let _c = c;
@@ -121,6 +134,7 @@ mod issue_5644 {
     }
 
     fn some_allowed(#[allow(clippy::ptr_arg)] _v: &Vec<u32>, _s: &String) {}
+    //~^ ERROR: writing `&String` instead of `&str` involves a new object where a slice wi
 
     struct S;
     impl S {
@@ -150,22 +164,26 @@ mod issue6509 {
     use std::path::PathBuf;
 
     fn foo_vec(vec: &Vec<u8>) {
+        //~^ ERROR: writing `&Vec` instead of `&[_]` involves a new object where a slice will
         let _ = vec.clone().pop();
         let _ = vec.clone().clone();
     }
 
     fn foo_path(path: &PathBuf) {
+        //~^ ERROR: writing `&PathBuf` instead of `&Path` involves a new object where a slice
         let _ = path.clone().pop();
         let _ = path.clone().clone();
     }
 
     fn foo_str(str: &PathBuf) {
+        //~^ ERROR: writing `&PathBuf` instead of `&Path` involves a new object where a slice
         let _ = str.clone().pop();
         let _ = str.clone().clone();
     }
 }
 
 fn mut_vec_slice_methods(v: &mut Vec<u32>) {
+    //~^ ERROR: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice w
     v.copy_within(1..5, 10);
 }
 
@@ -228,6 +246,9 @@ fn dyn_trait_ok(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
 }
 
 fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+    //~^ ERROR: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice w
+    //~| ERROR: writing `&mut String` instead of `&mut str` involves a new object where a slic
+    //~| ERROR: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a sl
     trait T {}
     impl<U> T for Vec<U> {}
     impl<U> T for [U] {}
@@ -251,14 +272,17 @@ mod issue_9218 {
 
     // This one has an anonymous lifetime so it's not okay
     fn cow_elided_lifetime<'a>(input: &'a Cow<str>) -> &'a str {
+        //~^ ERROR: using a reference to `Cow` is not recommended
         todo!()
     }
 
     // These two's return types don't use use 'a so it's not okay
     fn cow_bad_ret_ty_1<'a>(input: &'a Cow<'a, str>) -> &'static str {
+        //~^ ERROR: using a reference to `Cow` is not recommended
         todo!()
     }
     fn cow_bad_ret_ty_2<'a, 'b>(input: &'a Cow<'a, str>) -> &'b str {
+        //~^ ERROR: using a reference to `Cow` is not recommended
         todo!()
     }
 

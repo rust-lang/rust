@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::needless_bool)]
 #![allow(
     unused,

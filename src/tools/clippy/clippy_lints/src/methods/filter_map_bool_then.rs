@@ -8,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::Binder;
 use rustc_span::{sym, Span};
 
@@ -36,6 +37,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
         && let Some(def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
         && match_def_path(cx, def_id, &BOOL_THEN)
         && !is_from_proc_macro(cx, expr)
+        // Count the number of derefs needed to get to the bool because we need those in the suggestion
+        && let needed_derefs = cx.typeck_results().expr_adjustments(recv)
+            .iter()
+            .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
+            .count()
         && let Some(param_snippet) = snippet_opt(cx, param.span)
         && let Some(filter) = snippet_opt(cx, recv.span)
         && let Some(map) = snippet_opt(cx, then_body.span)
@@ -46,7 +52,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
             call_span,
             "usage of `bool::then` in `filter_map`",
             "use `filter` then `map` instead",
-            format!("filter(|&{param_snippet}| {filter}).map(|{param_snippet}| {map})"),
+            format!(
+                "filter(|&{param_snippet}| {derefs}{filter}).map(|{param_snippet}| {map})",
+                derefs="*".repeat(needed_derefs)
+            ),
             Applicability::MachineApplicable,
         );
     }

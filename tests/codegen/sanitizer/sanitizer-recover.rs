@@ -6,6 +6,7 @@
 // revisions:ASAN ASAN-RECOVER MSAN MSAN-RECOVER MSAN-RECOVER-LTO
 // no-prefer-dynamic
 //
+//                   compile-flags: -Ctarget-feature=-crt-static
 //[ASAN]             compile-flags: -Zsanitizer=address -Copt-level=0
 //[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
 //[MSAN]             compile-flags: -Zsanitizer=memory

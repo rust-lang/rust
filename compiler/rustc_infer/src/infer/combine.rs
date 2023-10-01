@@ -30,7 +30,7 @@ use super::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::infer::generalize::{self, CombineDelegate, Generalization};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::infer::canonical::OriginalQueryValues;
-use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
+use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVarValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
@@ -91,7 +91,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .borrow_mut()
                     .float_unification_table()
                     .unify_var_var(a_id, b_id)
-                    .map_err(|e| float_unification_error(relation.a_is_expected(), e))?;
+                    .map_err(|e| float_unification_error(a_is_expected, e))?;
                 Ok(a)
             }
             (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
@@ -210,10 +210,30 @@ impl<'tcx> InferCtxt<'tcx> {
                 return Ok(a);
             }
 
+            (
+                ty::ConstKind::Infer(InferConst::EffectVar(a_vid)),
+                ty::ConstKind::Infer(InferConst::EffectVar(b_vid)),
+            ) => {
+                self.inner
+                    .borrow_mut()
+                    .effect_unification_table()
+                    .unify_var_var(a_vid, b_vid)
+                    .map_err(|a| effect_unification_error(self.tcx, relation.a_is_expected(), a))?;
+                return Ok(a);
+            }
+
             // All other cases of inference with other variables are errors.
-            (ty::ConstKind::Infer(InferConst::Var(_)), ty::ConstKind::Infer(_))
-            | (ty::ConstKind::Infer(_), ty::ConstKind::Infer(InferConst::Var(_))) => {
-                bug!("tried to combine ConstKind::Infer/ConstKind::Infer(InferConst::Var)")
+            (
+                ty::ConstKind::Infer(InferConst::Var(_) | InferConst::EffectVar(_)),
+                ty::ConstKind::Infer(_),
+            )
+            | (
+                ty::ConstKind::Infer(_),
+                ty::ConstKind::Infer(InferConst::Var(_) | InferConst::EffectVar(_)),
+            ) => {
+                bug!(
+                    "tried to combine ConstKind::Infer/ConstKind::Infer(InferConst::Var): {a:?} and {b:?}"
+                )
             }
 
             (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
@@ -223,6 +243,23 @@ impl<'tcx> InferCtxt<'tcx> {
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(vid, a, relation.param_env());
             }
+
+            (ty::ConstKind::Infer(InferConst::EffectVar(vid)), _) => {
+                return self.unify_effect_variable(
+                    relation.a_is_expected(),
+                    vid,
+                    EffectVarValue::Const(b),
+                );
+            }
+
+            (_, ty::ConstKind::Infer(InferConst::EffectVar(vid))) => {
+                return self.unify_effect_variable(
+                    !relation.a_is_expected(),
+                    vid,
+                    EffectVarValue::Const(a),
+                );
+            }
+
             (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
                 if self.tcx.features().generic_const_exprs || self.next_trait_solver() =>
             {
@@ -339,6 +376,20 @@ impl<'tcx> InferCtxt<'tcx> {
             .unify_var_value(vid, Some(ty::FloatVarValue(val)))
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
         Ok(Ty::new_float(self.tcx, val))
+    }
+
+    fn unify_effect_variable(
+        &self,
+        vid_is_expected: bool,
+        vid: ty::EffectVid<'tcx>,
+        val: EffectVarValue<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        self.inner
+            .borrow_mut()
+            .effect_unification_table()
+            .unify_var_value(vid, Some(val))
+            .map_err(|e| effect_unification_error(self.tcx, vid_is_expected, e))?;
+        Ok(val.as_const(self.tcx))
     }
 }
 
@@ -492,4 +543,12 @@ fn float_unification_error<'tcx>(
 ) -> TypeError<'tcx> {
     let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
     TypeError::FloatMismatch(ExpectedFound::new(a_is_expected, a, b))
+}
+
+fn effect_unification_error<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    _a_is_expected: bool,
+    (_a, _b): (EffectVarValue<'tcx>, EffectVarValue<'tcx>),
+) -> TypeError<'tcx> {
+    bug!("unexpected effect unification error")
 }

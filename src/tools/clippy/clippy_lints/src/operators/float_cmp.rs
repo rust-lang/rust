@@ -17,7 +17,7 @@ pub(crate) fn check<'tcx>(
     left: &'tcx Expr<'_>,
     right: &'tcx Expr<'_>,
 ) {
-    if (op == BinOpKind::Eq || op == BinOpKind::Ne) && (is_float(cx, left) || is_float(cx, right)) {
+    if (op == BinOpKind::Eq || op == BinOpKind::Ne) && is_float(cx, left) {
         let left_is_local = match constant_with_source(cx, cx.typeck_results(), left) {
             Some((c, s)) if !is_allowed(&c) => s.is_local(),
             Some(_) => return,

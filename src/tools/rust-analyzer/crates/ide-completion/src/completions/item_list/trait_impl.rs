@@ -33,8 +33,8 @@
 
 use hir::{self, HasAttrs};
 use ide_db::{
-    path_transform::PathTransform, syntax_helpers::insert_whitespace_into_node,
-    traits::get_missing_assoc_items, SymbolKind,
+    documentation::HasDocs, path_transform::PathTransform,
+    syntax_helpers::insert_whitespace_into_node, traits::get_missing_assoc_items, SymbolKind,
 };
 use syntax::{
     ast::{self, edit_in_place::AttrsOwnerEdit, HasTypeBounds},

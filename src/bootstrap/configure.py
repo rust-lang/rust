@@ -58,6 +58,7 @@ o("clang", "llvm.clang", "build clang")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++")
 o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard")
+o("patch-binaries-for-nix", "build.patch-binaries-for-nix", "whether patch binaries for usage with Nix toolchains")
 
 v("llvm-cflags", "llvm.cflags", "build LLVM with these extra compiler flags")
 v("llvm-cxxflags", "llvm.cxxflags", "build LLVM with these extra compiler flags")

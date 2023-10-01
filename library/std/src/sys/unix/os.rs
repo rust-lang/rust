@@ -46,7 +46,8 @@ extern "C" {
             target_os = "linux",
             target_os = "emscripten",
             target_os = "fuchsia",
-            target_os = "l4re"
+            target_os = "l4re",
+            target_os = "hurd",
         ),
         link_name = "__errno_location"
     )]
@@ -121,7 +122,10 @@ pub fn set_errno(e: i32) {
 pub fn error_string(errno: i32) -> String {
     extern "C" {
         #[cfg_attr(
-            all(any(target_os = "linux", target_env = "newlib"), not(target_env = "ohos")),
+            all(
+                any(target_os = "linux", target_os = "hurd", target_env = "newlib"),
+                not(target_env = "ohos")
+            ),
             link_name = "__xpg_strerror_r"
         )]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t) -> c_int;
@@ -359,7 +363,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "android", target_os = "emscripten"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "hurd",
+    target_os = "android",
+    target_os = "emscripten"
+))]
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
         Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::const_io_error!(

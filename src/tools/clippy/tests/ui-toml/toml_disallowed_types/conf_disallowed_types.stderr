@@ -5,6 +5,7 @@ LL | use std::sync::atomic::AtomicU32;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::disallowed-types` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_types)]`
 
 error: `std::time::Instant` is not allowed according to config
   --> $DIR/conf_disallowed_types.rs:8:1

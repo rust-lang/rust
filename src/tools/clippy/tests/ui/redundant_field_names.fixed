@@ -1,10 +1,9 @@
-//@run-rustfix
-
+//@aux-build:proc_macros.rs
 #![warn(clippy::redundant_field_names)]
 #![allow(clippy::extra_unused_type_parameters, clippy::no_effect, dead_code, unused_variables)]
 
 #[macro_use]
-extern crate derive_new;
+extern crate proc_macros;
 
 use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 
@@ -20,7 +19,6 @@ struct Person {
     foo: u8,
 }
 
-#[derive(new)]
 pub struct S {
     v: String,
 }
@@ -59,6 +57,13 @@ fn main() {
     let _ = Range { start, end };
     let _ = RangeInclusive::new(start, end);
     let _ = RangeToInclusive { end };
+
+    external! {
+        let v = String::new();
+        let _ = S {
+            v: v
+        };
+    }
 }
 
 fn issue_3476() {

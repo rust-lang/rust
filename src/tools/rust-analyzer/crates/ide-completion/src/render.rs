@@ -12,7 +12,10 @@ pub(crate) mod literal;
 
 use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
 use ide_db::{
-    helpers::item_name, imports::import_assets::LocatedImport, RootDatabase, SnippetCap, SymbolKind,
+    documentation::{Documentation, HasDocs},
+    helpers::item_name,
+    imports::import_assets::LocatedImport,
+    RootDatabase, SnippetCap, SymbolKind,
 };
 use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
 
@@ -114,7 +117,7 @@ impl<'a> RenderContext<'a> {
     }
 
     // FIXME: remove this
-    fn docs(&self, def: impl HasAttrs) -> Option<hir::Documentation> {
+    fn docs(&self, def: impl HasDocs) -> Option<Documentation> {
         def.docs(self.db())
     }
 }
@@ -409,7 +412,7 @@ fn res_to_kind(resolution: ScopeDef) -> CompletionItemKind {
     }
 }
 
-fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<hir::Documentation> {
+fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<Documentation> {
     use hir::ModuleDef::*;
     match resolution {
         ScopeDef::ModuleDef(Module(it)) => it.docs(db),

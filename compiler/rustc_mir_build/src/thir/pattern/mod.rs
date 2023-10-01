@@ -18,9 +18,9 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
-    ConstValue, ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
+    ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
 };
-use rustc_middle::mir::{self, ConstantKind, UserTypeProjection};
+use rustc_middle::mir::{self, Const, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
@@ -100,8 +100,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_range(
         &mut self,
         ty: Ty<'tcx>,
-        lo: mir::ConstantKind<'tcx>,
-        hi: mir::ConstantKind<'tcx>,
+        lo: mir::Const<'tcx>,
+        hi: mir::Const<'tcx>,
         end: RangeEnd,
         span: Span,
         lo_expr: Option<&hir::Expr<'tcx>>,
@@ -131,7 +131,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
-                    if lo.eval_bits(self.tcx, self.param_env, ty) != val {
+                    if lo.eval_bits(self.tcx, self.param_env) != val {
                         lower_overflow = true;
                         self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
                     }
@@ -139,7 +139,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
-                    if hi.eval_bits(self.tcx, self.param_env, ty) != val {
+                    if hi.eval_bits(self.tcx, self.param_env) != val {
                         higher_overflow = true;
                         self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
                     }
@@ -162,7 +162,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
-                    if lo.eval_bits(self.tcx, self.param_env, ty) != val {
+                    if lo.eval_bits(self.tcx, self.param_env) != val {
                         lower_overflow = true;
                         self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
                     }
@@ -170,7 +170,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
-                    if hi.eval_bits(self.tcx, self.param_env, ty) != val {
+                    if hi.eval_bits(self.tcx, self.param_env) != val {
                         higher_overflow = true;
                         self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
                     }
@@ -191,18 +191,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         lo: Option<&PatKind<'tcx>>,
         hi: Option<&PatKind<'tcx>>,
-    ) -> Option<(mir::ConstantKind<'tcx>, mir::ConstantKind<'tcx>)> {
+    ) -> Option<(mir::Const<'tcx>, mir::Const<'tcx>)> {
         match (lo, hi) {
             (Some(PatKind::Constant { value: lo }), Some(PatKind::Constant { value: hi })) => {
                 Some((*lo, *hi))
             }
             (Some(PatKind::Constant { value: lo }), None) => {
                 let hi = ty.numeric_max_val(self.tcx)?;
-                Some((*lo, mir::ConstantKind::from_const(hi, self.tcx)))
+                Some((*lo, mir::Const::from_ty_const(hi, self.tcx)))
             }
             (None, Some(PatKind::Constant { value: hi })) => {
                 let lo = ty.numeric_min_val(self.tcx)?;
-                Some((mir::ConstantKind::from_const(lo, self.tcx), *hi))
+                Some((mir::Const::from_ty_const(lo, self.tcx), *hi))
             }
             _ => None,
         }
@@ -439,7 +439,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 DefKind::Struct
                 | DefKind::Ctor(CtorOf::Struct, ..)
                 | DefKind::Union
-                | DefKind::TyAlias { .. }
+                | DefKind::TyAlias
                 | DefKind::AssocTy,
                 _,
             )
@@ -525,8 +525,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .tcx
             .const_eval_global_id_for_typeck(param_env_reveal_all, cid, Some(span))
             .map(|val| match val {
-                Some(valtree) => mir::ConstantKind::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
-                None => mir::ConstantKind::Val(
+                Some(valtree) => mir::Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
+                None => mir::Const::Val(
                     self.tcx
                         .const_eval_global_id(param_env_reveal_all, cid, Some(span))
                         .expect("const_eval_global_id_for_typeck should have already failed"),
@@ -555,8 +555,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                             subpattern: pattern,
                             ascription: Ascription {
                                 annotation,
-                                /// Note that use `Contravariant` here. See the
-                                /// `variance` field documentation for details.
+                                // Note that use `Contravariant` here. See the
+                                // `variance` field documentation for details.
                                 variance: ty::Variance::Contravariant,
                             },
                         },
@@ -566,7 +566,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     pattern
                 }
             }
-            Err(ErrorHandled::TooGeneric) => {
+            Err(ErrorHandled::TooGeneric(_)) => {
                 // While `Reported | Linted` cases will have diagnostics emitted already
                 // it is not true for TooGeneric case, so we need to give user more information.
                 self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
@@ -608,7 +608,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         };
         if let Some(lit_input) = lit_input {
             match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return self.const_to_pat(ConstantKind::Ty(c), id, span, None).kind,
+                Ok(c) => return self.const_to_pat(Const::Ty(c), id, span, None).kind,
                 // If an error occurred, ignore that it's a literal
                 // and leave reporting the error up to const eval of
                 // the unevaluated constant below.
@@ -626,11 +626,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args: args };
         // First try using a valtree in order to destructure the constant into a pattern.
+        // FIXME: replace "try to do a thing, then fall back to another thing"
+        // but something more principled, like a trait query checking whether this can be turned into a valtree.
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
             self.const_to_pat(
-                ConstantKind::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
+                Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
                 id,
                 span,
                 None,
@@ -638,14 +640,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .kind
         } else {
             // If that fails, convert it to an opaque constant pattern.
-            match tcx.const_eval_resolve(self.param_env, uneval, None) {
-                Ok(val) => self.const_to_pat(mir::ConstantKind::Val(val, ty), id, span, None).kind,
-                Err(ErrorHandled::TooGeneric) => {
+            match tcx.const_eval_resolve(self.param_env, uneval, Some(span)) {
+                Ok(val) => self.const_to_pat(mir::Const::Val(val, ty), id, span, None).kind,
+                Err(ErrorHandled::TooGeneric(_)) => {
                     // If we land here it means the const can't be evaluated because it's `TooGeneric`.
                     self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
                     PatKind::Wild
                 }
-                Err(ErrorHandled::Reported(_)) => PatKind::Wild,
+                Err(ErrorHandled::Reported(..)) => PatKind::Wild,
             }
         }
     }
@@ -676,7 +678,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
             Ok(constant) => {
-                self.const_to_pat(ConstantKind::Ty(constant), expr.hir_id, lit.span, None).kind
+                self.const_to_pat(Const::Ty(constant), expr.hir_id, lit.span, None).kind
             }
             Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
@@ -836,8 +838,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
-    a: mir::ConstantKind<'tcx>,
-    b: mir::ConstantKind<'tcx>,
+    a: mir::Const<'tcx>,
+    b: mir::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> Option<Ordering> {
     assert_eq!(a.ty(), b.ty());
@@ -853,18 +855,18 @@ pub(crate) fn compare_const_vals<'tcx>(
         ty::Float(_) | ty::Int(_) => {} // require special handling, see below
         _ => match (a, b) {
             (
-                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(a)), _a_ty),
-                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(b)), _b_ty),
+                mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(a)), _a_ty),
+                mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(b)), _b_ty),
             ) => return Some(a.cmp(&b)),
-            (mir::ConstantKind::Ty(a), mir::ConstantKind::Ty(b)) => {
+            (mir::Const::Ty(a), mir::Const::Ty(b)) => {
                 return Some(a.kind().cmp(&b.kind()));
             }
             _ => {}
         },
     }
 
-    let a = a.eval_bits(tcx, param_env, ty);
-    let b = b.eval_bits(tcx, param_env, ty);
+    let a = a.eval_bits(tcx, param_env);
+    let b = b.eval_bits(tcx, param_env);
 
     use rustc_apfloat::Float;
     match *ty.kind() {

@@ -2,13 +2,13 @@
 #![deny(drop_bounds)]
 // As a special exemption, `impl Drop` in the return position raises no error.
 // This allows a convenient way to return an unnamed drop guard.
-fn voldemort_type() -> impl Drop {
-  struct Voldemort;
-  impl Drop for Voldemort {
+fn unnameable_type() -> impl Drop {
+  struct Unnameable;
+  impl Drop for Unnameable {
     fn drop(&mut self) {}
   }
-  Voldemort
+  Unnameable
 }
 fn main() {
-  let _ = voldemort_type();
+  let _ = unnameable_type();
 }

@@ -618,10 +618,15 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                 let new_witnesses = if let Constructor::Missing { .. } = ctor {
                     // We got the special `Missing` constructor, so each of the missing constructors
                     // gives a new pattern that is not caught by the match. We list those patterns.
-                    let new_patterns = if pcx.is_non_exhaustive {
-                        // Here we don't want the user to try to list all variants, we want them to add
-                        // a wildcard, so we only suggest that.
-                        vec![DeconstructedPat::wildcard(pcx.ty, pcx.span)]
+                    if pcx.is_non_exhaustive {
+                        witnesses
+                            .into_iter()
+                            // Here we don't want the user to try to list all variants, we want them to add
+                            // a wildcard, so we only suggest that.
+                            .map(|witness| {
+                                witness.apply_constructor(pcx, &Constructor::NonExhaustive)
+                            })
+                            .collect()
                     } else {
                         let mut split_wildcard = SplitWildcard::new(pcx);
                         split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
@@ -633,7 +638,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                         // constructor, that matches everything that can be built with
                         // it. For example, if `ctor` is a `Constructor::Variant` for
                         // `Option::Some`, we get the pattern `Some(_)`.
-                        let mut new: Vec<DeconstructedPat<'_, '_>> = split_wildcard
+                        let mut new_patterns: Vec<DeconstructedPat<'_, '_>> = split_wildcard
                             .iter_missing(pcx)
                             .filter_map(|missing_ctor| {
                                 // Check if this variant is marked `doc(hidden)`
@@ -648,27 +653,25 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                             .collect();
 
                         if hide_variant_show_wild {
-                            new.push(DeconstructedPat::wildcard(pcx.ty, pcx.span));
+                            new_patterns.push(DeconstructedPat::wildcard(pcx.ty, pcx.span));
                         }
 
-                        new
-                    };
-
-                    witnesses
-                        .into_iter()
-                        .flat_map(|witness| {
-                            new_patterns.iter().map(move |pat| {
-                                Witness(
-                                    witness
-                                        .0
-                                        .iter()
-                                        .chain(once(pat))
-                                        .map(DeconstructedPat::clone_and_forget_reachability)
-                                        .collect(),
-                                )
+                        witnesses
+                            .into_iter()
+                            .flat_map(|witness| {
+                                new_patterns.iter().map(move |pat| {
+                                    Witness(
+                                        witness
+                                            .0
+                                            .iter()
+                                            .chain(once(pat))
+                                            .map(DeconstructedPat::clone_and_forget_reachability)
+                                            .collect(),
+                                    )
+                                })
                             })
-                        })
-                        .collect()
+                            .collect()
+                    }
                 } else {
                     witnesses
                         .into_iter()

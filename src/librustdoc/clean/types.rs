@@ -22,20 +22,23 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::IndexVec;
+use rustc_metadata::rendered_const;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
-use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
+use rustc_resolve::rustdoc::{
+    add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments, DocFragment,
+};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, FileName, Loc};
+use rustc_span::{self, FileName, Loc, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
-use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
+use crate::clean::utils::{is_literal_expr, print_evaluated_const};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -396,7 +399,7 @@ impl Item {
     }
 
     pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
-        crate::passes::span_of_attrs(&self.attrs)
+        span_of_fragments(&self.attrs.doc_strings)
             .unwrap_or_else(|| self.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner()))
     }
 
@@ -619,7 +622,7 @@ impl Item {
         fn build_fn_header(
             def_id: DefId,
             tcx: TyCtxt<'_>,
-            asyncness: hir::IsAsync,
+            asyncness: ty::Asyncness,
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
             let constness =
@@ -628,6 +631,10 @@ impl Item {
                 } else {
                     hir::Constness::NotConst
                 };
+            let asyncness = match asyncness {
+                ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
+                ty::Asyncness::No => hir::IsAsync::NotAsync,
+            };
             hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
         }
         let header = match *self.kind {
@@ -1377,28 +1384,6 @@ impl FnDecl {
     pub(crate) fn self_type(&self) -> Option<SelfTy> {
         self.inputs.values.get(0).and_then(|v| v.to_self())
     }
-
-    /// Returns the sugared return type for an async function.
-    ///
-    /// For example, if the return type is `impl std::future::Future<Output = i32>`, this function
-    /// will return `i32`.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the return type does not match the expected sugaring for async
-    /// functions.
-    pub(crate) fn sugared_async_return_type(&self) -> Type {
-        if let Type::ImplTrait(v) = &self.output &&
-            let [GenericBound::TraitBound(PolyTrait { trait_, .. }, _ )] = &v[..]
-        {
-            let bindings = trait_.bindings().unwrap();
-            let ret_ty = bindings[0].term();
-            let ty = ret_ty.ty().expect("Unexpected constant return term");
-            ty.clone()
-        } else {
-            panic!("unexpected desugaring of async function")
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1610,6 +1595,30 @@ impl Type {
         }
     }
 
+    /// Returns the sugared return type for an async function.
+    ///
+    /// For example, if the return type is `impl std::future::Future<Output = i32>`, this function
+    /// will return `i32`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the return type does not match the expected sugaring for async
+    /// functions.
+    pub(crate) fn sugared_async_return_type(self) -> Type {
+        if let Type::ImplTrait(mut v) = self
+            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _ )) = v.pop()
+            && let Some(segment) = trait_.segments.pop()
+            && let GenericArgs::AngleBracketed { mut bindings, .. } = segment.args
+            && let Some(binding) = bindings.pop()
+            && let TypeBindingKind::Equality { term } = binding.kind
+            && let Term::Type(ty) = term
+        {
+            ty
+        } else {
+            panic!("unexpected async fn return type")
+        }
+    }
+
     /// Checks if this is a `T::Name` path for an associated type.
     pub(crate) fn is_assoc_ty(&self) -> bool {
         match self {
@@ -1634,10 +1643,6 @@ impl Type {
 
     pub(crate) fn is_full_generic(&self) -> bool {
         matches!(self, Type::Generic(_))
-    }
-
-    pub(crate) fn is_impl_trait(&self) -> bool {
-        matches!(self, Type::ImplTrait(_))
     }
 
     pub(crate) fn is_unit(&self) -> bool {
@@ -2086,7 +2091,7 @@ impl Discriminant {
     /// Will be `None` in the case of cross-crate reexports, and may be
     /// simplified
     pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.expr.map(|body| print_const_expr(tcx, body))
+        self.expr.map(|body| rendered_const(tcx, body))
     }
     /// Will always be a machine readable number, without underscores or suffixes.
     pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> String {
@@ -2186,16 +2191,6 @@ impl Path {
             }
         })
     }
-
-    pub(crate) fn bindings(&self) -> Option<&[TypeBinding]> {
-        self.segments.last().and_then(|seg| {
-            if let GenericArgs::AngleBracketed { ref bindings, .. } = seg.args {
-                Some(&**bindings)
-            } else {
-                None
-            }
-        })
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -2230,9 +2225,19 @@ pub(crate) struct PathSegment {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) enum TypeAliasInnerType {
+    Enum { variants: IndexVec<VariantIdx, Item>, is_non_exhaustive: bool },
+    Union { fields: Vec<Item> },
+    Struct { ctor_kind: Option<CtorKind>, fields: Vec<Item> },
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct TypeAlias {
     pub(crate) type_: Type,
     pub(crate) generics: Generics,
+    /// Inner `AdtDef` type, ie `type TyKind = IrTyKind<Adt, Ty>`,
+    /// to be shown directly on the typedef page.
+    pub(crate) inner_type: Option<TypeAliasInnerType>,
     /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type
     /// alias instead of the final type. This will always have the final type, regardless of whether
     /// `type_` came from HIR or from metadata.
@@ -2326,7 +2331,7 @@ impl ConstantKind {
             ConstantKind::TyConst { ref expr } => expr.to_string(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
-                print_const_expr(tcx, body)
+                rendered_const(tcx, body)
             }
         }
     }
@@ -2463,15 +2468,6 @@ pub(crate) struct TypeBinding {
 pub(crate) enum TypeBindingKind {
     Equality { term: Term },
     Constraint { bounds: Vec<GenericBound> },
-}
-
-impl TypeBinding {
-    pub(crate) fn term(&self) -> &Term {
-        match self.kind {
-            TypeBindingKind::Equality { ref term } => term,
-            _ => panic!("expected equality type binding for parenthesized generic args"),
-        }
-    }
 }
 
 /// The type, lifetime, or constant that a private type alias's parameter should be

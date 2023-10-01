@@ -1,26 +1,36 @@
 // edition:2021
+// revisions: success failure
+//[success] check-pass
 
-#![feature(return_position_impl_trait_in_trait)]
-#![allow(incomplete_features)]
+#![feature(return_position_impl_trait_in_trait, lint_reasons)]
 
 use std::future::Future;
 
-trait Captures<'a> {}
+pub trait Captures<'a> {}
 impl<T> Captures<'_> for T {}
 
-trait Captures2<'a, 'b> {}
+pub trait Captures2<'a, 'b> {}
 impl<T> Captures2<'_, '_> for T {}
 
 pub trait AsyncTrait {
+    #[cfg(success)]
     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
+
+    #[cfg(success)]
     fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>>;
+
+    #[cfg(success)]
     fn async_fn_multiple<'a>(&'a self, buff: &[u8])
-        -> impl Future<Output = Vec<u8>> + Captures<'a>;
+    -> impl Future<Output = Vec<u8>> + Captures<'a>;
+
+    #[cfg(failure)]
     fn async_fn_reduce_outlive<'a, T>(
         &'a self,
         buff: &[u8],
         t: T,
     ) -> impl Future<Output = Vec<u8>> + 'a;
+
+    #[cfg(success)]
     fn async_fn_reduce<'a, T>(
         &'a self,
         buff: &[u8],
@@ -31,38 +41,52 @@ pub trait AsyncTrait {
 pub struct Struct;
 
 impl AsyncTrait for Struct {
+    // Does not capture more lifetimes that trait def'n, since trait def'n
+    // implicitly captures all in-scope lifetimes.
+    #[cfg(success)]
+    #[expect(refining_impl_trait)]
     fn async_fn<'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
-        //~^ ERROR return type captures more lifetimes than trait definition
         async move { buff.to_vec() }
     }
 
+    // Does not capture more lifetimes that trait def'n, since trait def'n
+    // implicitly captures all in-scope lifetimes.
+    #[cfg(success)]
+    #[expect(refining_impl_trait)]
     fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
-        //~^ ERROR return type captures more lifetimes than trait definition
         async move { buff.to_vec() }
     }
 
+    // Does not capture more lifetimes that trait def'n, since trait def'n
+    // implicitly captures all in-scope lifetimes.
+    #[cfg(success)]
+    #[expect(refining_impl_trait)]
     fn async_fn_multiple<'a, 'b>(
         &'a self,
         buff: &'b [u8],
     ) -> impl Future<Output = Vec<u8>> + Captures2<'a, 'b> {
-        //~^ ERROR return type captures more lifetimes than trait definition
         async move { buff.to_vec() }
     }
 
+    // This error message is awkward, but `impl Future<Output = Vec<u8>>`
+    // cannot outlive `'a` (from the trait signature) because it captures
+    // both `T` and `'b`.
+    #[cfg(failure)]
     fn async_fn_reduce_outlive<'a, 'b, T>(
         &'a self,
         buff: &'b [u8],
         t: T,
     ) -> impl Future<Output = Vec<u8>> {
-        //~^ ERROR the parameter type `T` may not live long enough
+        //[failure]~^ ERROR lifetime mismatch
         async move {
             let _t = t;
             vec![]
         }
     }
 
-    // OK: We remove the `Captures<'a>`, providing a guarantee that we don't capture `'a`,
-    // but we still fulfill the `Captures<'a>` trait bound.
+    // Does not capture fewer lifetimes that trait def'n (not that it matters),
+    // since impl also captures all in-scope lifetimes.
+    #[cfg(success)]
     fn async_fn_reduce<'a, 'b, T>(&'a self, buff: &'b [u8], t: T) -> impl Future<Output = Vec<u8>> {
         async move {
             let _t = t;

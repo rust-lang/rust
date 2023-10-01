@@ -5,6 +5,7 @@ LL |     should_warn().await;
    |     ^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(should_warn())`
    |
    = note: `-D clippy::large-futures` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_futures)]`
 
 error: aborting due to previous error
 

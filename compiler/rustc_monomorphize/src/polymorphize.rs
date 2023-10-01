@@ -9,13 +9,13 @@ use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
 use rustc_middle::mir::{
     self,
     visit::{TyContext, Visitor},
-    Constant, ConstantKind, Local, LocalDecl, Location,
+    Local, LocalDecl, Location,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor},
-    Const, GenericArgsRef, Ty, TyCtxt, UnusedGenericParams,
+    GenericArgsRef, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_span::symbol::sym;
 use std::ops::ControlFlow;
@@ -143,7 +143,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -261,12 +261,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
     }
 
-    fn visit_constant(&mut self, ct: &Constant<'tcx>, location: Location) {
-        match ct.literal {
-            ConstantKind::Ty(c) => {
+    fn visit_constant(&mut self, ct: &mir::ConstOperand<'tcx>, location: Location) {
+        match ct.const_ {
+            mir::Const::Ty(c) => {
                 c.visit_with(self);
             }
-            ConstantKind::Unevaluated(mir::UnevaluatedConst { def, args: _, promoted }, ty) => {
+            mir::Const::Unevaluated(mir::UnevaluatedConst { def, args: _, promoted }, ty) => {
                 // Avoid considering `T` unused when constants are of the form:
                 //   `<Self as Foo<T>>::foo::promoted[p]`
                 if let Some(p) = promoted {
@@ -280,7 +280,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
                 Visitor::visit_ty(self, ty, TyContext::Location(location));
             }
-            ConstantKind::Val(_, ty) => Visitor::visit_ty(self, ty, TyContext::Location(location)),
+            mir::Const::Val(_, ty) => Visitor::visit_ty(self, ty, TyContext::Location(location)),
         }
     }
 
@@ -291,7 +291,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !c.has_non_region_param() {
             return ControlFlow::Continue(());
         }

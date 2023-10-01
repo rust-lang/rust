@@ -63,17 +63,19 @@ fn int_range(_1: usize, _2: usize) -> () {
         _7 = Lt(move _5, move _6);
         StorageDead(_6);
         StorageDead(_5);
-        StorageDead(_16);
-        StorageDead(_15);
         switchInt(move _7) -> [0: bb2, otherwise: bb3];
     }
 
     bb2: {
+        StorageDead(_16);
+        StorageDead(_15);
         _8 = Option::<usize>::None;
         goto -> bb5;
     }
 
     bb3: {
+        StorageDead(_16);
+        StorageDead(_15);
         _9 = (_4.0: usize);
         StorageLive(_10);
         _10 = <usize as Step>::forward_unchecked(_9, const 1_usize) -> [return: bb4, unwind continue];

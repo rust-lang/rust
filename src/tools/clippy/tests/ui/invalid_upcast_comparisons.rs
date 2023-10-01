@@ -19,36 +19,61 @@ fn main() {
 
     // always false, since no u8 can be > 300
     (u8 as u32) > 300;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
+    //~| NOTE: `-D clippy::invalid-upcast-comparisons` implied by `-D warnings`
     (u8 as i32) > 300;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     (u8 as u32) == 300;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     (u8 as i32) == 300;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     300 < (u8 as u32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     300 < (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     300 == (u8 as u32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     300 == (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     // inverted of the above
     (u8 as u32) <= 300;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     (u8 as i32) <= 300;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     (u8 as u32) != 300;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     (u8 as i32) != 300;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     300 >= (u8 as u32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     300 >= (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     300 != (u8 as u32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     300 != (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
 
     // always false, since u8 -> i32 doesn't wrap
     (u8 as i32) < 0;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     -5 != (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     // inverted of the above
     (u8 as i32) >= 0;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     -5 == (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
 
     // always false, since no u8 can be 1337
     1337 == (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     1337 == (u8 as u32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     // inverted of the above
     1337 != (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     1337 != (u8 as u32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
 
     // Those are Ok:
     (u8 as u32) > 20;
@@ -63,7 +88,9 @@ fn main() {
     (u8 as i8) == -1;
     (u8 as i8) != -1;
     (u8 as i32) > -1;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     (u8 as i32) < -1;
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
     (u32 as i32) < -5;
     (u32 as i32) < 10;
 
@@ -80,6 +107,7 @@ fn main() {
 
     -5 > (u32 as i32);
     -5 >= (u8 as i32);
+    //~^ ERROR: because of the numeric bounds on `u8` prior to casting, this expression is
 
     -5 == (u32 as i32);
 }

@@ -4,6 +4,11 @@ error[E0277]: the trait bound `for<'a> &'a _: Trait` is not satisfied
 LL |     test(&|| 0);
    |     ^^^^ the trait `for<'a> Trait` is not implemented for `&'a _`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-89333.rs:9:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 note: required by a bound in `test`
   --> $DIR/issue-89333.rs:11:55
    |

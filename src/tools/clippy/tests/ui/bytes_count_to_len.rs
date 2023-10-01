@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::bytes_count_to_len)]
 use std::fs::File;
 use std::io::Read;

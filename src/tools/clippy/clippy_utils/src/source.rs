@@ -8,7 +8,7 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_session::Session;
 use rustc_span::source_map::{original_sp, SourceMap};
-use rustc_span::{hygiene, BytePos, Pos, SourceFile, Span, SpanData, SyntaxContext, DUMMY_SP};
+use rustc_span::{hygiene, BytePos, SourceFileAndLine, Pos, SourceFile, Span, SpanData, SyntaxContext, DUMMY_SP};
 use std::borrow::Cow;
 use std::ops::Range;
 
@@ -117,9 +117,9 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 /// ```
 fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     let span = original_sp(span, DUMMY_SP);
-    let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
-    let line_no = source_map_and_line.line;
-    let line_start = source_map_and_line.sf.lines(|lines| lines[line_no]);
+    let SourceFileAndLine { sf, line } = cx.sess().source_map().lookup_line(span.lo()).unwrap();
+    let line_start = sf.lines()[line];
+    let line_start = sf.absolute_position(line_start);
     span.with_lo(line_start)
 }
 
@@ -362,7 +362,7 @@ pub fn snippet_block_with_context<'a>(
 }
 
 /// Same as `snippet_with_applicability`, but first walks the span up to the given context. This
-/// will result in the macro call, rather then the expansion, if the span is from a child context.
+/// will result in the macro call, rather than the expansion, if the span is from a child context.
 /// If the span is not from a child context, it will be used directly instead.
 ///
 /// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR node

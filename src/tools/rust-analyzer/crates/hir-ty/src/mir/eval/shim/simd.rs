@@ -45,7 +45,9 @@ impl Evaluator<'_> {
                 };
                 match try_const_usize(self.db, len) {
                     Some(len) => {
-                        let Some(ty) = subst.as_slice(Interner).get(0).and_then(|it| it.ty(Interner)) else {
+                        let Some(ty) =
+                            subst.as_slice(Interner).get(0).and_then(|it| it.ty(Interner))
+                        else {
                             return Err(MirEvalError::TypeError("simd type with no ty param"));
                         };
                         Ok((len as usize, ty.clone()))

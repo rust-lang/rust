@@ -9,6 +9,7 @@ LL |     Void(Void),
    |
    = note: `Foo` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
    = note: `-W dead-code` implied by `-W unused`
+   = help: to override `-W unused` add `#[allow(dead_code)]`
 
 warning: 1 warning emitted
 

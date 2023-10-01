@@ -1,5 +1,5 @@
 error: empty string literal in `writeln!`
-  --> $DIR/writeln_empty_string.rs:11:5
+  --> $DIR/writeln_empty_string.rs:9:5
    |
 LL |     writeln!(v, "");
    |     ^^^^^^^^^^----^
@@ -7,9 +7,10 @@ LL |     writeln!(v, "");
    |               help: remove the empty string
    |
    = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::writeln_empty_string)]`
 
 error: empty string literal in `writeln!`
-  --> $DIR/writeln_empty_string.rs:14:5
+  --> $DIR/writeln_empty_string.rs:12:5
    |
 LL |     writeln!(suggestion, "");
    |     ^^^^^^^^^^^^^^^^^^^----^

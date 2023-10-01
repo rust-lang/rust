@@ -12,7 +12,7 @@ error[E0308]: mismatched types
   --> $DIR/specialization-default-types.rs:15:9
    |
 LL |     default type Output = Box<T>;
-   |     ----------------------------- expected this associated type
+   |     ----------------------------- associated type is `default` and may be overridden
 LL |     default fn generate(self) -> Self::Output {
    |                                  ------------ expected `<T as Example>::Output` because of return type
 LL |         Box::new(self)

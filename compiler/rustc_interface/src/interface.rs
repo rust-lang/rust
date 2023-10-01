@@ -9,7 +9,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_lint::LintStore;
-use rustc_middle::query::{ExternProviders, Providers};
+use rustc_middle::util::Providers;
 use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
@@ -37,7 +37,7 @@ pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<dyn CodegenBackend>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
-    pub(crate) override_queries: Option<fn(&Session, &mut Providers, &mut ExternProviders)>,
+    pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
 }
 
 impl Compiler {
@@ -271,7 +271,7 @@ pub struct Config {
     /// the list of queries.
     ///
     /// The second parameter is local providers and the third parameter is external providers.
-    pub override_queries: Option<fn(&Session, &mut Providers, &mut ExternProviders)>,
+    pub override_queries: Option<fn(&Session, &mut Providers)>,
 
     /// This is a callback from the driver that is called to create a codegen backend.
     pub make_codegen_backend:
@@ -279,6 +279,12 @@ pub struct Config {
 
     /// Registry of diagnostics codes.
     pub registry: Registry,
+
+    /// All commandline args used to invoke the compiler, with @file args fully expanded.
+    /// This will only be used within debug info, e.g. in the pdb file on windows
+    /// This is mainly useful for other tools that reads that debuginfo to figure out
+    /// how to call the compiler with the same arguments.
+    pub expanded_args: Vec<String>,
 }
 
 // JUSTIFICATION: before session exists, only config
@@ -317,6 +323,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.make_codegen_backend,
                 registry.clone(),
                 config.ice_file,
+                config.expanded_args,
             );
 
             if let Some(parse_sess_created) = config.parse_sess_created {

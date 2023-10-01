@@ -5,10 +5,9 @@ use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::Item;
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, FloatTy};
+use rustc_middle::ty::FloatTy;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 
@@ -34,25 +33,20 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
         let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
         if_chain! {
             if mod_name.as_str() == "paths";
-            if let hir::ItemKind::Const(ty, _, body_id) = item.kind;
-            let ty = hir_ty_to_ty(cx.tcx, ty);
-            if let ty::Array(el_ty, _) = &ty.kind();
-            if let ty::Ref(_, el_ty, _) = &el_ty.kind();
-            if el_ty.is_str();
+            if let hir::ItemKind::Const(.., body_id) = item.kind;
             let body = cx.tcx.hir().body(body_id);
             let typeck_results = cx.tcx.typeck_body(body_id);
             if let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value);
-            let path: Vec<&str> = path
+            if let Some(path) = path
                 .iter()
                 .map(|x| {
                     if let Constant::Str(s) = x {
-                        s.as_str()
+                        Some(s.as_str())
                     } else {
-                        // We checked the type of the constant above
-                        unreachable!()
+                        None
                     }
                 })
-                .collect();
+                .collect::<Option<Vec<&str>>>();
             if !check_path(cx, &path[..]);
             then {
                 span_lint(cx, INVALID_PATHS, item.span, "invalid path");

@@ -2,6 +2,7 @@ error: consider implementing `TryFrom` instead
   --> $DIR/fallible_impl_from.rs:6:1
    |
 LL | / impl From<String> for Foo {
+LL | |
 LL | |     fn from(s: String) -> Self {
 LL | |         Foo(s.parse().unwrap())
 LL | |     }
@@ -10,7 +11,7 @@ LL | | }
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> $DIR/fallible_impl_from.rs:8:13
+  --> $DIR/fallible_impl_from.rs:9:13
    |
 LL |         Foo(s.parse().unwrap())
    |             ^^^^^^^^^^^^^^^^^^
@@ -21,12 +22,12 @@ LL | #![deny(clippy::fallible_impl_from)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: consider implementing `TryFrom` instead
-  --> $DIR/fallible_impl_from.rs:27:1
+  --> $DIR/fallible_impl_from.rs:28:1
    |
 LL | / impl From<usize> for Invalid {
+LL | |
 LL | |     fn from(i: usize) -> Invalid {
 LL | |         if i != 42 {
-LL | |             panic!();
 ...  |
 LL | |     }
 LL | | }
@@ -34,19 +35,19 @@ LL | | }
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> $DIR/fallible_impl_from.rs:30:13
+  --> $DIR/fallible_impl_from.rs:32:13
    |
 LL |             panic!();
    |             ^^^^^^^^
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
-  --> $DIR/fallible_impl_from.rs:36:1
+  --> $DIR/fallible_impl_from.rs:38:1
    |
 LL | / impl From<Option<String>> for Invalid {
+LL | |
 LL | |     fn from(s: Option<String>) -> Invalid {
 LL | |         let s = s.unwrap();
-LL | |         if !s.is_empty() {
 ...  |
 LL | |     }
 LL | | }
@@ -54,7 +55,7 @@ LL | | }
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> $DIR/fallible_impl_from.rs:38:17
+  --> $DIR/fallible_impl_from.rs:41:17
    |
 LL |         let s = s.unwrap();
    |                 ^^^^^^^^^^
@@ -68,12 +69,12 @@ LL |             panic!("{:?}", s);
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
-  --> $DIR/fallible_impl_from.rs:54:1
+  --> $DIR/fallible_impl_from.rs:57:1
    |
 LL | / impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
+LL | |
 LL | |     fn from(s: &'a mut <Box<u32> as ProjStrTrait>::ProjString) -> Invalid {
 LL | |         if s.parse::<u32>().ok().unwrap() != 42 {
-LL | |             panic!("{:?}", s);
 ...  |
 LL | |     }
 LL | | }
@@ -81,7 +82,7 @@ LL | | }
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> $DIR/fallible_impl_from.rs:56:12
+  --> $DIR/fallible_impl_from.rs:60:12
    |
 LL |         if s.parse::<u32>().ok().unwrap() != 42 {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

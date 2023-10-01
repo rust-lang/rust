@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::cast_abs_to_unsigned)]
 #![allow(clippy::uninlined_format_args, unused)]
 

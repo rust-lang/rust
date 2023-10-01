@@ -7,7 +7,7 @@ trait Trait: SuperTrait<A = <Self as SuperTrait>::B> {}
 
 fn transmute<A, B>(x: A) -> B {
     foo::<A, B, dyn Trait<A = A, B = B>>(x)
-    //~^ ERROR type mismatch resolving `<dyn Trait<B = B, A = A> as SuperTrait>::A == B`
+    //~^ ERROR type mismatch resolving `<dyn Trait<A = A, B = B> as SuperTrait>::A == B`
 }
 
 fn foo<A, B, T: ?Sized>(x: T::A) -> B

@@ -249,7 +249,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                         let mut comparer = |range: u128, bin_op: BinOp| -> Place<'tcx> {
                             let range_val =
-                                ConstantKind::from_bits(this.tcx, range, ty::ParamEnv::empty().and(unsigned_ty));
+                                Const::from_bits(this.tcx, range, ty::ParamEnv::empty().and(unsigned_ty));
                             let lit_op = this.literal_operand(expr.span, range_val);
                             let is_bin_op = this.temp(bool_ty, expr_span);
                             this.cfg.push_assign(
@@ -485,10 +485,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = unpack!(this.stmt_expr(block, expr, None));
-                block.and(Rvalue::Use(Operand::Constant(Box::new(Constant {
+                block.and(Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                     span: expr_span,
                     user_ty: None,
-                    literal: ConstantKind::zero_sized(this.tcx.types.unit),
+                    const_: Const::zero_sized(this.tcx.types.unit),
                 }))))
             }
 
@@ -817,7 +817,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
         let size = self.tcx.layout_of(param_ty).unwrap().size;
-        let literal = ConstantKind::from_bits(self.tcx, size.unsigned_int_max(), param_ty);
+        let literal = Const::from_bits(self.tcx, size.unsigned_int_max(), param_ty);
 
         self.literal_operand(span, literal)
     }
@@ -828,7 +828,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
         let bits = self.tcx.layout_of(param_ty).unwrap().size.bits();
         let n = 1 << (bits - 1);
-        let literal = ConstantKind::from_bits(self.tcx, n, param_ty);
+        let literal = Const::from_bits(self.tcx, n, param_ty);
 
         self.literal_operand(span, literal)
     }

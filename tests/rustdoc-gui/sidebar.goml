@@ -25,24 +25,24 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
-        "color": "rgb(197, 197, 197)",
-        "background_color": "rgb(20, 25, 31)",
+        "color": "#c5c5c5",
+        "background_color": "#14191f",
     }
 )
 call-function: (
     "check-colors",
     {
         "theme": "dark",
-        "color": "rgb(221, 221, 221)",
-        "background_color": "rgb(80, 80, 80)",
+        "color": "#ddd",
+        "background_color": "#505050",
     }
 )
 call-function: (
     "check-colors",
     {
         "theme": "light",
-        "color": "rgb(0, 0, 0)",
-        "background_color": "rgb(245, 245, 245)",
+        "color": "black",
+        "background_color": "#f5f5f5",
     }
 )
 
@@ -55,7 +55,7 @@ assert-text: (".sidebar > .location", "Crate test_docs")
 assert-count: (".sidebar .location", 1)
 assert-count: (".sidebar h2", 1)
 assert-text: ("#all-types", "All Items")
-assert-css: ("#all-types", {"color": "rgb(53, 109, 164)"})
+assert-css: ("#all-types", {"color": "#356da4"})
 // We check that we have the crates list and that the "current" on is "test_docs".
 assert-text: (".sidebar-elems ul.crate > li > a.current", "test_docs")
 // And we're also supposed to have the list of items in the current module.
@@ -88,7 +88,7 @@ assert-property: ("html", {"scrollTop": "0"})
 // We now go back to the crate page to click on the "lib2" crate link.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
-assert-css: (".sidebar-elems ul.crate > li:first-child > a", {"color": "rgb(53, 109, 164)"})
+assert-css: (".sidebar-elems ul.crate > li:first-child > a", {"color": "#356da4"})
 click: ".sidebar-elems ul.crate > li:first-child > a"
 
 // PAGE: lib2/index.html
@@ -140,7 +140,7 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
 click: "//ul[@class='block mod']/preceding-sibling::h3/a"
 // PAGE: index.html
-assert-css: ("#modules", {"background-color": "rgb(253, 255, 211)"})
+assert-css: ("#modules", {"background-color": "#fdffd3"})
 
 // Finally, assert that the `[+]/[−]` toggle doesn't affect sidebar width.
 click: "#toggle-all-docs"

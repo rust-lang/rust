@@ -163,25 +163,56 @@ impl<'a> DeclValidator<'a> {
                         || allows.contains(allow::NONSTANDARD_STYLE)
                 })
         };
-
-        is_allowed(id)
-            // go upwards one step or give up
-            || match id {
-                AttrDefId::ModuleId(m) => m.containing_module(self.db.upcast()).map(|v| v.into()),
-                AttrDefId::FunctionId(f) => Some(f.lookup(self.db.upcast()).container.into()),
-                AttrDefId::StaticId(sid) => Some(sid.lookup(self.db.upcast()).container.into()),
-                AttrDefId::ConstId(cid) => Some(cid.lookup(self.db.upcast()).container.into()),
-                AttrDefId::TraitId(tid) => Some(tid.lookup(self.db.upcast()).container.into()),
-                AttrDefId::TraitAliasId(taid) => Some(taid.lookup(self.db.upcast()).container.into()),
-                AttrDefId::ImplId(iid) => Some(iid.lookup(self.db.upcast()).container.into()),
-                AttrDefId::ExternBlockId(id) => Some(id.lookup(self.db.upcast()).container.into()),
-                AttrDefId::ExternCrateId(id) =>  Some(id.lookup(self.db.upcast()).container.into()),
-                AttrDefId::UseId(id) =>  Some(id.lookup(self.db.upcast()).container.into()),
+        let db = self.db.upcast();
+        let file_id_is_derive = || {
+            match id {
+                AttrDefId::ModuleId(m) => {
+                    m.def_map(db)[m.local_id].origin.file_id().map(Into::into)
+                }
+                AttrDefId::FunctionId(f) => Some(f.lookup(db).id.file_id()),
+                AttrDefId::StaticId(sid) => Some(sid.lookup(db).id.file_id()),
+                AttrDefId::ConstId(cid) => Some(cid.lookup(db).id.file_id()),
+                AttrDefId::TraitId(tid) => Some(tid.lookup(db).id.file_id()),
+                AttrDefId::TraitAliasId(taid) => Some(taid.lookup(db).id.file_id()),
+                AttrDefId::ImplId(iid) => Some(iid.lookup(db).id.file_id()),
+                AttrDefId::ExternBlockId(id) => Some(id.lookup(db).id.file_id()),
+                AttrDefId::ExternCrateId(id) => Some(id.lookup(db).id.file_id()),
+                AttrDefId::UseId(id) => Some(id.lookup(db).id.file_id()),
                 // These warnings should not explore macro definitions at all
                 AttrDefId::MacroId(_) => None,
                 AttrDefId::AdtId(aid) => match aid {
-                    AdtId::StructId(sid) => Some(sid.lookup(self.db.upcast()).container.into()),
-                    AdtId::EnumId(eid) => Some(eid.lookup(self.db.upcast()).container.into()),
+                    AdtId::StructId(sid) => Some(sid.lookup(db).id.file_id()),
+                    AdtId::EnumId(eid) => Some(eid.lookup(db).id.file_id()),
+                    // Unions aren't yet supported
+                    AdtId::UnionId(_) => None,
+                },
+                AttrDefId::FieldId(_) => None,
+                AttrDefId::EnumVariantId(_) => None,
+                AttrDefId::TypeAliasId(_) => None,
+                AttrDefId::GenericParamId(_) => None,
+            }
+            .map_or(false, |file_id| {
+                file_id.is_custom_derive(db.upcast()) || file_id.is_builtin_derive(db.upcast())
+            })
+        };
+
+        let parent = || {
+            match id {
+                AttrDefId::ModuleId(m) => m.containing_module(db).map(|v| v.into()),
+                AttrDefId::FunctionId(f) => Some(f.lookup(db).container.into()),
+                AttrDefId::StaticId(sid) => Some(sid.lookup(db).container.into()),
+                AttrDefId::ConstId(cid) => Some(cid.lookup(db).container.into()),
+                AttrDefId::TraitId(tid) => Some(tid.lookup(db).container.into()),
+                AttrDefId::TraitAliasId(taid) => Some(taid.lookup(db).container.into()),
+                AttrDefId::ImplId(iid) => Some(iid.lookup(db).container.into()),
+                AttrDefId::ExternBlockId(id) => Some(id.lookup(db).container.into()),
+                AttrDefId::ExternCrateId(id) => Some(id.lookup(db).container.into()),
+                AttrDefId::UseId(id) => Some(id.lookup(db).container.into()),
+                // These warnings should not explore macro definitions at all
+                AttrDefId::MacroId(_) => None,
+                AttrDefId::AdtId(aid) => match aid {
+                    AdtId::StructId(sid) => Some(sid.lookup(db).container.into()),
+                    AdtId::EnumId(eid) => Some(eid.lookup(db).container.into()),
                     // Unions aren't yet supported
                     AdtId::UnionId(_) => None,
                 },
@@ -191,6 +222,12 @@ impl<'a> DeclValidator<'a> {
                 AttrDefId::GenericParamId(_) => None,
             }
             .is_some_and(|mid| self.allowed(mid, allow_name, true))
+        };
+        is_allowed(id)
+            // FIXME: this is a hack to avoid false positives in derive macros currently
+            || file_id_is_derive()
+            // go upwards one step or give up
+            || parent()
     }
 
     fn validate_func(&mut self, func: FunctionId) {

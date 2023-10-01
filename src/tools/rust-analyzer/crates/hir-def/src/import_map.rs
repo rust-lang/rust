@@ -32,6 +32,8 @@ pub struct ImportInfo {
     pub is_trait_assoc_item: bool,
     /// Whether this item is annotated with `#[doc(hidden)]`.
     pub is_doc_hidden: bool,
+    /// Whether this item is annotated with `#[unstable(..)]`.
+    pub is_unstable: bool,
 }
 
 /// A map from publicly exported items to its name.
@@ -113,7 +115,6 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
 
         for (name, per_ns) in visible_items {
             for (item, import) in per_ns.iter_items() {
-                // FIXME: Not yet used, but will be once we handle doc(hidden) import sources
                 let attr_id = if let Some(import) = import {
                     match import {
                         ImportOrExternCrate::ExternCrate(id) => Some(id.into()),
@@ -125,28 +126,59 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
                         ItemInNs::Macros(id) => Some(id.into()),
                     }
                 };
-                let is_doc_hidden =
-                    attr_id.map_or(false, |attr_id| db.attrs(attr_id).has_doc_hidden());
+                let status @ (is_doc_hidden, is_unstable) =
+                    attr_id.map_or((false, false), |attr_id| {
+                        let attrs = db.attrs(attr_id);
+                        (attrs.has_doc_hidden(), attrs.is_unstable())
+                    });
 
                 let import_info = ImportInfo {
                     name: name.clone(),
                     container: module,
                     is_trait_assoc_item: false,
                     is_doc_hidden,
+                    is_unstable,
                 };
 
                 match depth_map.entry(item) {
-                    Entry::Vacant(entry) => _ = entry.insert((depth, is_doc_hidden)),
+                    Entry::Vacant(entry) => _ = entry.insert((depth, status)),
                     Entry::Occupied(mut entry) => {
-                        let &(occ_depth, occ_is_doc_hidden) = entry.get();
-                        // Prefer the one that is not doc(hidden),
-                        // Otherwise, if both have the same doc(hidden)-ness and the new path is shorter, prefer that one.
-                        let overwrite_entry = occ_is_doc_hidden && !is_doc_hidden
-                            || occ_is_doc_hidden == is_doc_hidden && depth < occ_depth;
-                        if !overwrite_entry {
+                        let &(occ_depth, (occ_is_doc_hidden, occ_is_unstable)) = entry.get();
+                        (depth, occ_depth);
+                        let overwrite = match (
+                            is_doc_hidden,
+                            occ_is_doc_hidden,
+                            is_unstable,
+                            occ_is_unstable,
+                        ) {
+                            // no change of hiddeness or unstableness
+                            (true, true, true, true)
+                            | (true, true, false, false)
+                            | (false, false, true, true)
+                            | (false, false, false, false) => depth < occ_depth,
+
+                            // either less hidden or less unstable, accept
+                            (true, true, false, true)
+                            | (false, true, true, true)
+                            | (false, true, false, true)
+                            | (false, true, false, false)
+                            | (false, false, false, true) => true,
+                            // more hidden or unstable, discard
+                            (true, true, true, false)
+                            | (true, false, true, true)
+                            | (true, false, true, false)
+                            | (true, false, false, false)
+                            | (false, false, true, false) => false,
+
+                            // exchanges doc(hidden) for unstable (and vice-versa),
+                            (true, false, false, true) | (false, true, true, false) => {
+                                depth < occ_depth
+                            }
+                        };
+                        if !overwrite {
                             continue;
                         }
-                        entry.insert((depth, is_doc_hidden));
+                        entry.insert((depth, status));
                     }
                 }
 
@@ -171,7 +203,7 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
             }
         }
     }
-
+    map.shrink_to_fit();
     map
 }
 
@@ -200,11 +232,13 @@ fn collect_trait_assoc_items(
             ItemInNs::Values(module_def_id)
         };
 
+        let attrs = &db.attrs(item.into());
         let assoc_item_info = ImportInfo {
             container: trait_import_info.container,
             name: assoc_item_name.clone(),
             is_trait_assoc_item: true,
-            is_doc_hidden: db.attrs(item.into()).has_doc_hidden(),
+            is_doc_hidden: attrs.has_doc_hidden(),
+            is_unstable: attrs.is_unstable(),
         };
         map.insert(assoc_item, assoc_item_info);
     }

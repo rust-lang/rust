@@ -76,12 +76,8 @@ macro marker_impls {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
 #[rustc_on_unimplemented(
-    on(_Self = "std::rc::Rc<T, A>", note = "use `std::sync::Arc` instead of `std::rc::Rc`"),
-    on(_Self = "alloc::rc::Rc<T, A>", note = "use `alloc::sync::Arc` instead of `alloc::rc::Rc`"),
     message = "`{Self}` cannot be sent between threads safely",
-    label = "`{Self}` cannot be sent between threads safely",
-    note = "consider using `std::sync::Arc<{Self}>`; for more information visit \
-            <https://doc.rust-lang.org/book/ch16-03-shared-state.html>"
+    label = "`{Self}` cannot be sent between threads safely"
 )]
 pub unsafe auto trait Send {
     // empty.
@@ -632,12 +628,8 @@ impl<T: ?Sized> Copy for &T {}
         any(_Self = "core::cell::RefCell<T>", _Self = "std::cell::RefCell<T>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead",
     ),
-    on(_Self = "std::rc::Rc<T, A>", note = "use `std::sync::Arc` instead of `std::rc::Rc`"),
-    on(_Self = "alloc::rc::Rc<T, A>", note = "use `alloc::sync::Arc` instead of `alloc::rc::Rc`"),
     message = "`{Self}` cannot be shared between threads safely",
-    label = "`{Self}` cannot be shared between threads safely",
-    note = "consider using `std::sync::Arc<{Self}>`; for more information visit \
-            <https://doc.rust-lang.org/book/ch16-03-shared-state.html>"
+    label = "`{Self}` cannot be shared between threads safely"
 )]
 pub unsafe auto trait Sync {
     // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
@@ -994,11 +986,16 @@ pub trait Tuple {}
 pub trait PointerLike {}
 
 /// A marker for types which can be used as types of `const` generic parameters.
+///
+/// These types must have a proper equivalence relation (`Eq`) and it must be automatically
+/// derived (`StructuralPartialEq`). There's a hard-coded check in the compiler ensuring
+/// that all fields are also `ConstParamTy`, which implies that recursively, all fields
+/// are `StructuralPartialEq`.
 #[lang = "const_param_ty"]
 #[unstable(feature = "adt_const_params", issue = "95174")]
 #[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 #[allow(multiple_supertrait_upcastable)]
-pub trait ConstParamTy: StructuralEq + StructuralPartialEq {}
+pub trait ConstParamTy: StructuralEq + StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]

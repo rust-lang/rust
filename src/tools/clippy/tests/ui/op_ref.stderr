@@ -5,13 +5,14 @@ LL |     let foo = &5 - &6;
    |               ^^^^^^^
    |
    = note: `-D clippy::op-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::op_ref)]`
 help: use the values directly
    |
 LL |     let foo = 5 - 6;
    |               ~   ~
 
 error: taken reference of right operand
-  --> $DIR/op_ref.rs:56:13
+  --> $DIR/op_ref.rs:58:13
    |
 LL |     let z = x & &y;
    |             ^^^^--
@@ -19,7 +20,7 @@ LL |     let z = x & &y;
    |                 help: use the right value directly: `y`
 
 error: taken reference of right operand
-  --> $DIR/op_ref.rs:89:17
+  --> $DIR/op_ref.rs:92:17
    |
 LL |         let _ = one * &self;
    |                 ^^^^^^-----
@@ -27,7 +28,7 @@ LL |         let _ = one * &self;
    |                       help: use the right value directly: `self`
 
 error: taken reference of right operand
-  --> $DIR/op_ref.rs:90:17
+  --> $DIR/op_ref.rs:94:17
    |
 LL |         let _ = two + &three;
    |                 ^^^^^^------

@@ -34,7 +34,7 @@ use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArg
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{Lrc, MappedReadGuard};
+use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
 use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
 };
@@ -186,8 +186,8 @@ struct BindingError {
 
 #[derive(Debug)]
 enum ResolutionError<'a> {
-    /// Error E0401: can't use type or const parameters from outer function.
-    GenericParamsFromOuterFunction(Res, HasGenericParams),
+    /// Error E0401: can't use type or const parameters from outer item.
+    GenericParamsFromOuterItem(Res, HasGenericParams),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
     NameAlreadyUsedInParameterList(Symbol, Span),
@@ -881,6 +881,19 @@ impl<'a> NameBindingData<'a> {
             invoc_parent_expansion.is_descendant_of(self_parent_expansion);
         !(certainly_before_other_or_simultaneously || certainly_before_invoc_or_simultaneously)
     }
+
+    // Its purpose is to postpone the determination of a single binding because
+    // we can't predict whether it will be overwritten by recently expanded macros.
+    // FIXME: How can we integrate it with the `update_resolution`?
+    fn determined(&self) -> bool {
+        match &self.kind {
+            NameBindingKind::Import { binding, import, .. } if import.is_glob() => {
+                import.parent_scope.module.unexpanded_invocations.borrow().is_empty()
+                    && binding.determined()
+            }
+            _ => true,
+        }
+    }
 }
 
 #[derive(Default, Clone)]
@@ -989,7 +1002,6 @@ pub struct Resolver<'a, 'tcx> {
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Visibilities in "lowered" form, for all entities that have them.
     visibilities: FxHashMap<LocalDefId, ty::Visibility>,
-    has_pub_restricted: bool,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
@@ -1342,7 +1354,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             glob_map: Default::default(),
             visibilities,
-            has_pub_restricted: false,
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
 
@@ -1486,7 +1497,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let expn_that_defined = self.expn_that_defined;
         let visibilities = self.visibilities;
-        let has_pub_restricted = self.has_pub_restricted;
         let extern_crate_map = self.extern_crate_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let glob_map = self.glob_map;
@@ -1504,7 +1514,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
             visibilities,
-            has_pub_restricted,
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
@@ -1548,7 +1557,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ))
     }
 
-    fn cstore(&self) -> MappedReadGuard<'_, CStore> {
+    fn cstore(&self) -> FreezeReadGuard<'_, CStore> {
         CStore::from_tcx(self.tcx)
     }
 
@@ -1603,7 +1612,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         });
 
         // Make sure we don't mutate the cstore from here on.
-        self.tcx.untracked().cstore.leak();
+        self.tcx.untracked().cstore.freeze();
     }
 
     fn traits_in_scope(

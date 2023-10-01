@@ -6,11 +6,11 @@ use std::{
     fmt::{self, Debug, Display},
     hash::{BuildHasherDefault, Hash, Hasher},
     ops::Deref,
+    sync::OnceLock,
 };
 
 use dashmap::{DashMap, SharedValue};
 use hashbrown::{hash_map::RawEntryMut, HashMap};
-use once_cell::sync::OnceCell;
 use rustc_hash::FxHasher;
 use triomphe::Arc;
 
@@ -177,12 +177,12 @@ impl<T: Display + Internable + ?Sized> Display for Interned<T> {
 }
 
 pub struct InternStorage<T: ?Sized> {
-    map: OnceCell<InternMap<T>>,
+    map: OnceLock<InternMap<T>>,
 }
 
 impl<T: ?Sized> InternStorage<T> {
     pub const fn new() -> Self {
-        Self { map: OnceCell::new() }
+        Self { map: OnceLock::new() }
     }
 }
 

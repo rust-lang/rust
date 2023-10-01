@@ -78,9 +78,11 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn is_generic_fn(&self) -> bool {
-        match *self {
-            MonoItem::Fn(ref instance) => instance.args.non_erasable_generics().next().is_some(),
+    pub fn is_generic_fn(&self, tcx: TyCtxt<'tcx>) -> bool {
+        match self {
+            MonoItem::Fn(instance) => {
+                instance.args.non_erasable_generics(tcx, instance.def_id()).next().is_some()
+            }
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
         }
     }

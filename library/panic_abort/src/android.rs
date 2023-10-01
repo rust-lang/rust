@@ -1,6 +1,6 @@
 use alloc::string::String;
 use core::mem::transmute;
-use core::panic::BoxMeUp;
+use core::panic::PanicPayload;
 use core::ptr::copy_nonoverlapping;
 
 const ANDROID_SET_ABORT_MESSAGE: &[u8] = b"android_set_abort_message\0";
@@ -15,7 +15,7 @@ type SetAbortMessageType = unsafe extern "C" fn(*const libc::c_char) -> ();
 //
 // Weakly resolve the symbol for android_set_abort_message. This function is only available
 // for API >= 21.
-pub(crate) unsafe fn android_set_abort_message(payload: &mut dyn BoxMeUp) {
+pub(crate) unsafe fn android_set_abort_message(payload: &mut dyn PanicPayload) {
     let func_addr =
         libc::dlsym(libc::RTLD_DEFAULT, ANDROID_SET_ABORT_MESSAGE.as_ptr() as *const libc::c_char)
             as usize;

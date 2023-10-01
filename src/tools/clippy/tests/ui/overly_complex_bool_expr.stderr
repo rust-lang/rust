@@ -10,51 +10,52 @@ help: this expression can be optimized out by applying boolean operations to the
 LL |     let _ = a && b || a;
    |                  ^
    = note: `-D clippy::overly-complex-bool-expr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::overly_complex_bool_expr)]`
 
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:13:13
+  --> $DIR/overly_complex_bool_expr.rs:14:13
    |
 LL |     let _ = false && a;
    |             ^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:13:22
+  --> $DIR/overly_complex_bool_expr.rs:14:22
    |
 LL |     let _ = false && a;
    |                      ^
 
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:23:13
+  --> $DIR/overly_complex_bool_expr.rs:25:13
    |
 LL |     let _ = a == b && a != b;
    |             ^^^^^^^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:23:13
+  --> $DIR/overly_complex_bool_expr.rs:25:13
    |
 LL |     let _ = a == b && a != b;
    |             ^^^^^^
 
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:24:13
+  --> $DIR/overly_complex_bool_expr.rs:27:13
    |
 LL |     let _ = a < b && a >= b;
    |             ^^^^^^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:24:13
+  --> $DIR/overly_complex_bool_expr.rs:27:13
    |
 LL |     let _ = a < b && a >= b;
    |             ^^^^^
 
 error: this boolean expression contains a logic bug
-  --> $DIR/overly_complex_bool_expr.rs:25:13
+  --> $DIR/overly_complex_bool_expr.rs:29:13
    |
 LL |     let _ = a > b && a <= b;
    |             ^^^^^^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/overly_complex_bool_expr.rs:25:13
+  --> $DIR/overly_complex_bool_expr.rs:29:13
    |
 LL |     let _ = a > b && a <= b;
    |             ^^^^^

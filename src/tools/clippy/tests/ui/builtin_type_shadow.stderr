@@ -5,6 +5,7 @@ LL | fn foo<u32>(a: u32) -> u32 {
    |        ^^^
    |
    = note: `-D clippy::builtin-type-shadow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::builtin_type_shadow)]`
 
 error[E0308]: mismatched types
   --> $DIR/builtin_type_shadow.rs:5:5

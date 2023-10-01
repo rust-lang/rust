@@ -1,10 +1,11 @@
 #![warn(clippy::manual_strip)]
-
+//@no-rustfix
 fn main() {
     let s = "abc";
 
     if s.starts_with("ab") {
         str::to_string(&s["ab".len()..]);
+        //~^ ERROR: stripping a prefix manually
         s["ab".len()..].to_string();
 
         str::to_string(&s[2..]);
@@ -13,6 +14,7 @@ fn main() {
 
     if s.ends_with("bc") {
         str::to_string(&s[..s.len() - "bc".len()]);
+        //~^ ERROR: stripping a suffix manually
         s[..s.len() - "bc".len()].to_string();
 
         str::to_string(&s[..s.len() - 2]);
@@ -22,6 +24,7 @@ fn main() {
     // Character patterns
     if s.starts_with('a') {
         str::to_string(&s[1..]);
+        //~^ ERROR: stripping a prefix manually
         s[1..].to_string();
     }
 
@@ -29,12 +32,14 @@ fn main() {
     let prefix = "ab";
     if s.starts_with(prefix) {
         str::to_string(&s[prefix.len()..]);
+        //~^ ERROR: stripping a prefix manually
     }
 
     // Constant prefix
     const PREFIX: &str = "ab";
     if s.starts_with(PREFIX) {
         str::to_string(&s[PREFIX.len()..]);
+        //~^ ERROR: stripping a prefix manually
         str::to_string(&s[2..]);
     }
 
@@ -42,12 +47,14 @@ fn main() {
     const TARGET: &str = "abc";
     if TARGET.starts_with(prefix) {
         str::to_string(&TARGET[prefix.len()..]);
+        //~^ ERROR: stripping a prefix manually
     }
 
     // String target - not mutated.
     let s1: String = "abc".into();
     if s1.starts_with("ab") {
         s1[2..].to_uppercase();
+        //~^ ERROR: stripping a prefix manually
     }
 
     // String target - mutated. (Don't lint.)
@@ -78,5 +85,6 @@ fn msrv_1_45() {
     let s = "abc";
     if s.starts_with('a') {
         s[1..].to_string();
+        //~^ ERROR: stripping a prefix manually
     }
 }

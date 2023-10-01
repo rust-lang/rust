@@ -5,63 +5,64 @@ LL | static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
    |                       ^^^^^^^^^^^^^ help: try: `Option<&i32>`
    |
    = note: `-D clippy::ref-option-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ref_option_ref)]`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:12:18
+  --> $DIR/ref_option_ref.rs:14:18
    |
 LL | const REF_CONST: &Option<&i32> = &Some(CONST_THRESHOLD);
    |                  ^^^^^^^^^^^^^ help: try: `Option<&i32>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:14:25
+  --> $DIR/ref_option_ref.rs:17:25
    |
 LL | type RefOptRefU32<'a> = &'a Option<&'a u32>;
    |                         ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:15:25
+  --> $DIR/ref_option_ref.rs:19:25
    |
 LL | type RefOptRef<'a, T> = &'a Option<&'a T>;
    |                         ^^^^^^^^^^^^^^^^^ help: try: `Option<&'a T>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:17:14
+  --> $DIR/ref_option_ref.rs:22:14
    |
 LL | fn foo(data: &Option<&u32>) {}
    |              ^^^^^^^^^^^^^ help: try: `Option<&u32>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:19:23
+  --> $DIR/ref_option_ref.rs:25:23
    |
 LL | fn bar(data: &u32) -> &Option<&u32> {
    |                       ^^^^^^^^^^^^^ help: try: `Option<&u32>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:24:11
+  --> $DIR/ref_option_ref.rs:31:11
    |
 LL |     data: &'a Option<&'a u32>,
    |           ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:27:32
+  --> $DIR/ref_option_ref.rs:35:32
    |
 LL | struct StructTupleRef<'a>(u32, &'a Option<&'a u32>);
    |                                ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:31:14
+  --> $DIR/ref_option_ref.rs:40:14
    |
 LL |     Variant2(&'a Option<&'a u32>),
    |              ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:40:14
+  --> $DIR/ref_option_ref.rs:50:14
    |
 LL |     type A = &'static Option<&'static Self>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'static Self>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
-  --> $DIR/ref_option_ref.rs:46:12
+  --> $DIR/ref_option_ref.rs:57:12
    |
 LL |     let x: &Option<&u32> = &None;
    |            ^^^^^^^^^^^^^ help: try: `Option<&u32>`

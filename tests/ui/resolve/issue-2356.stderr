@@ -1,8 +1,11 @@
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:39:5
    |
+LL |   whiskers: isize,
+   |   --------------- a field by that name exists in `Self`
+...
 LL |     whiskers -= other;
-   |     ^^^^^^^^ a field by this name exists in `Self`
+   |     ^^^^^^^^
 
 error[E0424]: expected value, found module `self`
   --> $DIR/issue-2356.rs:65:8
@@ -21,13 +24,21 @@ error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:79:5
    |
 LL |     whiskers = 0;
-   |     ^^^^^^^^ help: you might have meant to use the available field: `self.whiskers`
+   |     ^^^^^^^^
+   |
+help: you might have meant to use the available field
+   |
+LL |     self.whiskers = 0;
+   |     +++++
 
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:84:5
    |
+LL |   whiskers: isize,
+   |   --------------- a field by that name exists in `Self`
+...
 LL |     whiskers = 4;
-   |     ^^^^^^^^ a field by this name exists in `Self`
+   |     ^^^^^^^^
 
 error[E0424]: expected value, found module `self`
   --> $DIR/issue-2356.rs:92:5
@@ -47,19 +58,34 @@ error[E0425]: cannot find function `clone` in this scope
   --> $DIR/issue-2356.rs:24:5
    |
 LL |     clone();
-   |     ^^^^^ help: you might have meant to call the method: `self.clone`
+   |     ^^^^^
+   |
+help: you might have meant to call the method
+   |
+LL |     self.clone();
+   |     +++++
 
 error[E0425]: cannot find function `default` in this scope
   --> $DIR/issue-2356.rs:31:5
    |
 LL |     default();
-   |     ^^^^^^^ help: you might have meant to call the associated function: `Self::default`
+   |     ^^^^^^^
+   |
+help: you might have meant to call the associated function
+   |
+LL |     Self::default();
+   |     ++++++
 
 error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:41:5
    |
 LL |     shave(4);
-   |     ^^^^^ help: you might have meant to call the associated function: `Self::shave`
+   |     ^^^^^
+   |
+help: you might have meant to call the associated function
+   |
+LL |     Self::shave(4);
+   |     ++++++
 
 error[E0425]: cannot find function `purr` in this scope
   --> $DIR/issue-2356.rs:43:5
@@ -73,7 +99,7 @@ error[E0425]: cannot find function `static_method` in this scope
 LL |         static_method();
    |         ^^^^^^^^^^^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the associated function on `Self`
    |
 LL |         Self::static_method();
    |         ++++++
@@ -102,7 +128,7 @@ error[E0425]: cannot find function `grow_older` in this scope
 LL |     grow_older();
    |     ^^^^^^^^^^ not found in this scope
    |
-help: consider using the associated function
+help: consider using the associated function on `Self`
    |
 LL |     Self::grow_older();
    |     ++++++

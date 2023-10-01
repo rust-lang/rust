@@ -6,11 +6,13 @@ LL |     fn what(&self) -> Self;
    |
    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
    = note: `-D clippy::return-self-not-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::return_self_not_must_use)]`
 
 error: missing `#[must_use]` attribute on a method returning `Self`
-  --> $DIR/return_self_not_must_use.rs:18:5
+  --> $DIR/return_self_not_must_use.rs:19:5
    |
 LL | /     pub fn foo(&self) -> Self {
+LL | |
 LL | |         Self
 LL | |     }
    | |_____^
@@ -18,9 +20,10 @@ LL | |     }
    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
 
 error: missing `#[must_use]` attribute on a method returning `Self`
-  --> $DIR/return_self_not_must_use.rs:21:5
+  --> $DIR/return_self_not_must_use.rs:23:5
    |
 LL | /     pub fn bar(self) -> Self {
+LL | |
 LL | |         self
 LL | |     }
    | |_____^

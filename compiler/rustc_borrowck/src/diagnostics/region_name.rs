@@ -27,7 +27,7 @@ pub(crate) struct RegionName {
 /// This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone)]
 pub(crate) enum RegionNameSource {
-    /// A bound (not free) region that was substituted at the def site (not an HRTB).
+    /// A bound (not free) region that was instantiated at the def site (not an HRTB).
     NamedEarlyBoundRegion(Span),
     /// A free region that the user has a name (`'a`) for.
     NamedFreeRegion(Span),
@@ -302,7 +302,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     if free_region.bound_region.is_named() {
                         // A named region that is actually named.
                         Some(RegionName { name, source: RegionNameSource::NamedFreeRegion(span) })
-                    } else if let hir::IsAsync::Async = tcx.asyncness(self.mir_hir_id().owner) {
+                    } else if tcx.asyncness(self.mir_hir_id().owner).is_async() {
                         // If we spuriously thought that the region is named, we should let the
                         // system generate a true name for error messages. Currently this can
                         // happen if we have an elided name in an async fn for example: the
@@ -354,7 +354,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     })
                 }
 
-                ty::BoundRegionKind::BrAnon(..) => None,
+                ty::BoundRegionKind::BrAnon => None,
             },
 
             ty::ReLateBound(..)
@@ -442,8 +442,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         span: Span,
         counter: usize,
     ) -> RegionNameHighlight {
-        let mut highlight = RegionHighlightMode::new(self.infcx.tcx);
-        highlight.highlighting_region_vid(needle_fr, counter);
+        let mut highlight = RegionHighlightMode::default();
+        highlight.highlighting_region_vid(self.infcx.tcx, needle_fr, counter);
         let type_name =
             self.infcx.extract_inference_diagnostics_data(ty.into(), Some(highlight)).name;
 
@@ -516,7 +516,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         // be the same as those of the ADT.
                         // FIXME: We should be able to do something similar to
                         // match_adt_and_segment in this case.
-                        Res::Def(DefKind::TyAlias { .. }, _) => (),
+                        Res::Def(DefKind::TyAlias, _) => (),
                         _ => {
                             if let Some(last_segment) = path.segments.last() {
                                 if let Some(highlight) = self.match_adt_and_segment(
@@ -619,7 +619,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     // programs, so we need to use delay_span_bug here. See #82126.
                     self.infcx.tcx.sess.delay_span_bug(
                         hir_arg.span(),
-                        format!("unmatched subst and hir arg: found {kind:?} vs {hir_arg:?}"),
+                        format!("unmatched arg and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );
                 }
             }
@@ -804,8 +804,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             return None;
         }
 
-        let mut highlight = RegionHighlightMode::new(tcx);
-        highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
+        let mut highlight = RegionHighlightMode::default();
+        highlight.highlighting_region_vid(tcx, fr, *self.next_region_name.try_borrow().unwrap());
         let type_name =
             self.infcx.extract_inference_diagnostics_data(yield_ty.into(), Some(highlight)).name;
 

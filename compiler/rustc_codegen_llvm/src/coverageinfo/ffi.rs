@@ -1,4 +1,4 @@
-use rustc_middle::mir::coverage::{CounterId, MappedExpressionIndex};
+use rustc_middle::mir::coverage::{CounterId, ExpressionId, Operand};
 
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
@@ -30,11 +30,8 @@ pub struct Counter {
 }
 
 impl Counter {
-    /// Constructs a new `Counter` of kind `Zero`. For this `CounterKind`, the
-    /// `id` is not used.
-    pub fn zero() -> Self {
-        Self { kind: CounterKind::Zero, id: 0 }
-    }
+    /// A `Counter` of kind `Zero`. For this counter kind, the `id` is not used.
+    pub(crate) const ZERO: Self = Self { kind: CounterKind::Zero, id: 0 };
 
     /// Constructs a new `Counter` of kind `CounterValueReference`.
     pub fn counter_value_reference(counter_id: CounterId) -> Self {
@@ -42,20 +39,16 @@ impl Counter {
     }
 
     /// Constructs a new `Counter` of kind `Expression`.
-    pub fn expression(mapped_expression_index: MappedExpressionIndex) -> Self {
-        Self { kind: CounterKind::Expression, id: mapped_expression_index.into() }
+    pub(crate) fn expression(expression_id: ExpressionId) -> Self {
+        Self { kind: CounterKind::Expression, id: expression_id.as_u32() }
     }
 
-    /// Returns true if the `Counter` kind is `Zero`.
-    pub fn is_zero(&self) -> bool {
-        matches!(self.kind, CounterKind::Zero)
-    }
-
-    /// An explicitly-named function to get the ID value, making it more obvious
-    /// that the stored value is now 0-based.
-    pub fn zero_based_id(&self) -> u32 {
-        debug_assert!(!self.is_zero(), "`id` is undefined for CounterKind::Zero");
-        self.id
+    pub(crate) fn from_operand(operand: Operand) -> Self {
+        match operand {
+            Operand::Zero => Self::ZERO,
+            Operand::Counter(id) => Self::counter_value_reference(id),
+            Operand::Expression(id) => Self::expression(id),
+        }
     }
 }
 
@@ -81,6 +74,11 @@ pub struct CounterExpression {
 }
 
 impl CounterExpression {
+    /// The dummy expression `(0 - 0)` has a representation of all zeroes,
+    /// making it marginally more efficient to initialize than `(0 + 0)`.
+    pub(crate) const DUMMY: Self =
+        Self { lhs: Counter::ZERO, kind: ExprKind::Subtract, rhs: Counter::ZERO };
+
     pub fn new(lhs: Counter, kind: ExprKind, rhs: Counter) -> Self {
         Self { kind, lhs, rhs }
     }
@@ -172,7 +170,7 @@ impl CounterMappingRegion {
     ) -> Self {
         Self {
             counter,
-            false_counter: Counter::zero(),
+            false_counter: Counter::ZERO,
             file_id,
             expanded_file_id: 0,
             start_line,
@@ -220,8 +218,8 @@ impl CounterMappingRegion {
         end_col: u32,
     ) -> Self {
         Self {
-            counter: Counter::zero(),
-            false_counter: Counter::zero(),
+            counter: Counter::ZERO,
+            false_counter: Counter::ZERO,
             file_id,
             expanded_file_id,
             start_line,
@@ -243,8 +241,8 @@ impl CounterMappingRegion {
         end_col: u32,
     ) -> Self {
         Self {
-            counter: Counter::zero(),
-            false_counter: Counter::zero(),
+            counter: Counter::ZERO,
+            false_counter: Counter::ZERO,
             file_id,
             expanded_file_id: 0,
             start_line,
@@ -268,7 +266,7 @@ impl CounterMappingRegion {
     ) -> Self {
         Self {
             counter,
-            false_counter: Counter::zero(),
+            false_counter: Counter::ZERO,
             file_id,
             expanded_file_id: 0,
             start_line,

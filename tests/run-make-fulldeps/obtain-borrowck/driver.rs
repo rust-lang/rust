@@ -25,9 +25,9 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
 use rustc_middle::query::queries::mir_borrowck::ProvidedValue;
-use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::{Session, EarlyErrorHandler};
+use rustc_middle::util::Providers;
+use rustc_session::Session;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::thread_local;
@@ -58,7 +58,6 @@ impl rustc_driver::Callbacks for CompilerCalls {
     // the result.
     fn after_analysis<'tcx>(
         &mut self,
-        _handler: &EarlyErrorHandler,
         compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
@@ -111,7 +110,7 @@ impl rustc_driver::Callbacks for CompilerCalls {
     }
 }
 
-fn override_queries(_session: &Session, local: &mut Providers, _external: &mut ExternProviders) {
+fn override_queries(_session: &Session, local: &mut Providers) {
     local.mir_borrowck = mir_borrowck;
 }
 

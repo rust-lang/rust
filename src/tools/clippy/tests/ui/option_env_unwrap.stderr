@@ -6,6 +6,7 @@ LL |     let _ = option_env!("PATH").unwrap();
    |
    = help: consider using the `env!` macro instead
    = note: `-D clippy::option-env-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_env_unwrap)]`
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
   --> $DIR/option_env_unwrap.rs:11:13

@@ -10,6 +10,8 @@
 //!   and the relative position of the access;
 //! - idempotency properties asserted in `perms.rs` (for optimizations)
 
+use std::fmt;
+
 use smallvec::SmallVec;
 
 use rustc_const_eval::interpret::InterpResult;
@@ -26,8 +28,10 @@ use crate::borrow_tracker::tree_borrows::{
 use crate::borrow_tracker::{AccessKind, GlobalState, ProtectorKind};
 use crate::*;
 
+mod tests;
+
 /// Data for a single *location*.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) struct LocationState {
     /// A location is initialized when it is child-accessed for the first time (and the initial
     /// retag initializes the location for the range covered by the type), and it then stays
@@ -65,8 +69,23 @@ impl LocationState {
         self
     }
 
+    /// Check if the location has been initialized, i.e. if it has
+    /// ever been accessed through a child pointer.
     pub fn is_initialized(&self) -> bool {
         self.initialized
+    }
+
+    /// Check if the state can exist as the initial permission of a pointer.
+    ///
+    /// Do not confuse with `is_initialized`, the two are almost orthogonal
+    /// as apart from `Active` which is not initial and must be initialized,
+    /// any other permission can have an arbitrary combination of being
+    /// initial/initialized.
+    /// FIXME: when the corresponding `assert` in `tree_borrows/mod.rs` finally
+    /// passes and can be uncommented, remove this `#[allow(dead_code)]`.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn is_initial(&self) -> bool {
+        self.permission.is_initial()
     }
 
     pub fn permission(&self) -> Permission {
@@ -169,6 +188,16 @@ impl LocationState {
             self.latest_foreign_access = None;
             ContinueTraversal::Recurse
         }
+    }
+}
+
+impl fmt::Display for LocationState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.permission)?;
+        if !self.initialized {
+            write!(f, "?")?;
+        }
+        Ok(())
     }
 }
 
@@ -662,90 +691,6 @@ impl AccessRelatedness {
         match self {
             AncestorAccess | This => AncestorAccess,
             StrictChildAccess | DistantAccess => DistantAccess,
-        }
-    }
-}
-
-#[cfg(test)]
-mod commutation_tests {
-    use super::*;
-    impl LocationState {
-        pub fn all() -> impl Iterator<Item = Self> {
-            // We keep `latest_foreign_access` at `None` as that's just a cache.
-            Permission::all().flat_map(|permission| {
-                [false, true].into_iter().map(move |initialized| {
-                    Self { permission, initialized, latest_foreign_access: None }
-                })
-            })
-        }
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    // Exhaustive check that for any starting configuration loc,
-    // for any two read accesses r1 and r2, if `loc + r1 + r2` is not UB
-    // and results in `loc'`, then `loc + r2 + r1` is also not UB and results
-    // in the same final state `loc'`.
-    // This lets us justify arbitrary read-read reorderings.
-    fn all_read_accesses_commute() {
-        let kind = AccessKind::Read;
-        // Two of the four combinations of `AccessRelatedness` are trivial,
-        // but we might as well check them all.
-        for rel1 in AccessRelatedness::all() {
-            for rel2 in AccessRelatedness::all() {
-                // Any protector state works, but we can't move reads across function boundaries
-                // so the two read accesses occur under the same protector.
-                for &protected in &[true, false] {
-                    for loc in LocationState::all() {
-                        // Apply 1 then 2. Failure here means that there is UB in the source
-                        // and we skip the check in the target.
-                        let mut loc12 = loc;
-                        let Ok(_) = loc12.perform_access(kind, rel1, protected) else { continue };
-                        let Ok(_) = loc12.perform_access(kind, rel2, protected) else { continue };
-
-                        // If 1 followed by 2 succeeded, then 2 followed by 1 must also succeed...
-                        let mut loc21 = loc;
-                        loc21.perform_access(kind, rel2, protected).unwrap();
-                        loc21.perform_access(kind, rel1, protected).unwrap();
-
-                        // ... and produce the same final result.
-                        assert_eq!(
-                            loc12, loc21,
-                            "Read accesses {:?} followed by {:?} do not commute !",
-                            rel1, rel2
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    // Ensure that of 2 accesses happen, one foreign and one a child, and we are protected, that we
-    // get UB unless they are both reads.
-    fn protected_enforces_noalias() {
-        for rel1 in AccessRelatedness::all() {
-            for rel2 in AccessRelatedness::all() {
-                if rel1.is_foreign() == rel2.is_foreign() {
-                    // We want to check pairs of accesses where one is foreign and one is not.
-                    continue;
-                }
-                for kind1 in AccessKind::all() {
-                    for kind2 in AccessKind::all() {
-                        for mut state in LocationState::all() {
-                            let protected = true;
-                            let Ok(_) = state.perform_access(kind1, rel1, protected) else { continue };
-                            let Ok(_) = state.perform_access(kind2, rel2, protected) else { continue };
-                            // If these were both allowed, it must have been two reads.
-                            assert!(
-                                kind1 == AccessKind::Read && kind2 == AccessKind::Read,
-                                "failed to enforce noalias between two accesses that are not both reads"
-                            );
-                        }
-                    }
-                }
-            }
         }
     }
 }

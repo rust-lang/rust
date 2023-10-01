@@ -71,6 +71,7 @@ pub fn create_session(
     >,
     descriptions: Registry,
     ice_file: Option<PathBuf>,
+    expanded_args: Vec<String>,
 ) -> (Session, Box<dyn CodegenBackend>) {
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
         make_codegen_backend(&sopts)
@@ -113,6 +114,7 @@ pub fn create_session(
         target_override,
         rustc_version_str().unwrap_or("unknown"),
         ice_file,
+        expanded_args,
     );
 
     codegen_backend.init(&sess);
@@ -137,10 +139,8 @@ fn get_stack_size() -> Option<usize> {
     env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
-#[cfg(not(parallel_compiler))]
-pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
-    _threads: usize,
     f: F,
 ) -> R {
     // The "thread pool" is a single spawned thread in the non-parallel
@@ -171,18 +171,37 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     })
 }
 
+#[cfg(not(parallel_compiler))]
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+    edition: Edition,
+    _threads: usize,
+    f: F,
+) -> R {
+    run_in_thread_with_globals(edition, f)
+}
+
 #[cfg(parallel_compiler)]
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     f: F,
 ) -> R {
-    use rustc_data_structures::jobserver;
+    use rustc_data_structures::{jobserver, sync::FromDyn};
     use rustc_middle::ty::tls;
     use rustc_query_impl::QueryCtxt;
     use rustc_query_system::query::{deadlock, QueryContext};
 
     let registry = sync::Registry::new(threads);
+
+    if !sync::is_dyn_thread_safe() {
+        return run_in_thread_with_globals(edition, || {
+            // Register the thread for use with the `WorkerLocal` type.
+            registry.register();
+
+            f()
+        });
+    }
+
     let mut builder = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
@@ -191,13 +210,13 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
         .deadlock_handler(|| {
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
-            let query_map = tls::with(|tcx| {
+            let query_map = FromDyn::from(tls::with(|tcx| {
                 QueryCtxt::new(tcx)
                     .try_collect_active_jobs()
                     .expect("active jobs shouldn't be locked in deadlock handler")
-            });
+            }));
             let registry = rayon_core::Registry::current();
-            thread::spawn(move || deadlock(query_map, &registry));
+            thread::spawn(move || deadlock(query_map.into_inner(), &registry));
         });
     if let Some(size) = get_stack_size() {
         builder = builder.stack_size(size);
@@ -209,6 +228,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     // `Send` in the parallel compiler.
     rustc_span::create_session_globals_then(edition, || {
         rustc_span::with_session_globals(|session_globals| {
+            let session_globals = FromDyn::from(session_globals);
             builder
                 .build_scoped(
                     // Initialize each new worker thread when created.
@@ -216,7 +236,9 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
                         // Register the thread for use with the `WorkerLocal` type.
                         registry.register();
 
-                        rustc_span::set_session_globals_then(session_globals, || thread.run())
+                        rustc_span::set_session_globals_then(session_globals.into_inner(), || {
+                            thread.run()
+                        })
                     },
                     // Run `f` on the first thread in the thread pool.
                     move |pool: &rayon::ThreadPool| pool.install(f),
@@ -546,6 +568,13 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
     ) {
         sess.emit_fatal(errors::MultipleOutputTypesToStdout);
     }
+
+    let crate_name = sess
+        .opts
+        .crate_name
+        .clone()
+        .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()));
+
     match sess.io.output_file {
         None => {
             // "-" as input file will cause the parser to read from stdin so we
@@ -554,15 +583,11 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
             let dirpath = sess.io.output_dir.clone().unwrap_or_default();
 
             // If a crate name is present, we use it as the link name
-            let stem = sess
-                .opts
-                .crate_name
-                .clone()
-                .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()))
-                .unwrap_or_else(|| sess.io.input.filestem().to_owned());
+            let stem = crate_name.clone().unwrap_or_else(|| sess.io.input.filestem().to_owned());
 
             OutputFilenames::new(
                 dirpath,
+                crate_name.unwrap_or_else(|| stem.replace('-', "_")),
                 stem,
                 None,
                 sess.io.temps_dir.clone(),
@@ -587,9 +612,12 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
                 sess.emit_warning(errors::IgnoringOutDir);
             }
 
+            let out_filestem =
+                out_file.filestem().unwrap_or_default().to_str().unwrap().to_string();
             OutputFilenames::new(
                 out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
-                out_file.filestem().unwrap_or_default().to_str().unwrap().to_string(),
+                crate_name.unwrap_or_else(|| out_filestem.replace('-', "_")),
+                out_filestem,
                 ofile,
                 sess.io.temps_dir.clone(),
                 sess.opts.cg.extra_filename.clone(),

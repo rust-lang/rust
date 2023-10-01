@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::single_component_path_imports)]
 #![allow(unused_imports)]
 

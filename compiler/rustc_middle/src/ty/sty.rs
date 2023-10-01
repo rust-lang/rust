@@ -69,7 +69,7 @@ pub struct FreeRegion {
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(Option<Span>),
+    BrAnon,
 
     /// Named region parameters for functions (a in &'a T)
     ///
@@ -351,7 +351,7 @@ impl<'tcx> ClosureArgs<'tcx> {
 }
 
 /// Similar to `ClosureArgs`; see the above documentation for more.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub struct GeneratorArgs<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
@@ -725,7 +725,7 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
                 self.rebind(tr).with_self_ty(tcx, self_ty).to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
-                self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
+                ty::Clause::from_projection_clause(tcx, self.rebind(p.with_self_ty(tcx, self_ty)))
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let generics = tcx.generics_of(did);
@@ -1223,7 +1223,7 @@ impl<'tcx> AliasTy<'tcx> {
             DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
             DefKind::AssocTy => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
-            DefKind::TyAlias { .. } => ty::Weak,
+            DefKind::TyAlias => ty::Weak,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
     }
@@ -1305,7 +1305,7 @@ impl<'tcx> AliasTy<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct GenSig<'tcx> {
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
@@ -1465,7 +1465,7 @@ impl<'tcx> Region<'tcx> {
         bound_region: ty::BoundRegion,
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BrAnon(None) } = bound_region
+        if let ty::BoundRegion { var, kind: ty::BrAnon } = bound_region
             && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
@@ -1573,6 +1573,20 @@ impl fmt::Debug for EarlyBoundRegion {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct ConstVid<'tcx> {
+    pub index: u32,
+    pub phantom: PhantomData<&'tcx ()>,
+}
+
+/// An **effect** **v**ariable **ID**.
+///
+/// Handling effect infer variables happens separately from const infer variables
+/// because we do not want to reuse any of the const infer machinery. If we try to
+/// relate an effect variable with a normal one, we would ICE, which can catch bugs
+/// where we are not correctly using the effect var for an effect param. Fallback
+/// is also implemented on top of having separate effect and normal const variables.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(TyEncodable, TyDecodable)]
+pub struct EffectVid<'tcx> {
     pub index: u32,
     pub phantom: PhantomData<&'tcx ()>,
 }
@@ -1945,7 +1959,7 @@ impl<'tcx> Ty<'tcx> {
             (kind, tcx.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
                 | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Weak, DefKind::TyAlias { .. })
+                | (ty::Weak, DefKind::TyAlias)
         );
         Ty::new(tcx, Alias(kind, alias_ty))
     }
@@ -2151,18 +2165,10 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_generator_witness(
         tcx: TyCtxt<'tcx>,
-        types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>,
-    ) -> Ty<'tcx> {
-        Ty::new(tcx, GeneratorWitness(types))
-    }
-
-    #[inline]
-    pub fn new_generator_witness_mir(
-        tcx: TyCtxt<'tcx>,
         id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        Ty::new(tcx, GeneratorWitnessMIR(id, args))
+        Ty::new(tcx, GeneratorWitness(id, args))
     }
 
     // misc
@@ -2536,7 +2542,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Checks whether a type recursively contains any closure
     ///
-    /// Example: `Option<[closure@file.rs:4:20]>` returns true
+    /// Example: `Option<{closure@file.rs:4:20}>` returns true
     pub fn contains_closure(self) -> bool {
         struct ContainsClosureVisitor;
 
@@ -2692,7 +2698,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_)
@@ -2728,13 +2733,14 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
             | ty::Error(_)
             // Extern types have metadata = ().
             | ty::Foreign(..)
+            // `dyn*` has no metadata
+            | ty::Dynamic(_, _, DynKind::DynStar)
             // If returned by `struct_tail_without_normalization` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
@@ -2743,7 +2749,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Tuple(..) => (tcx.types.unit, false),
 
             ty::Str | ty::Slice(_) => (tcx.types.usize, false),
-            ty::Dynamic(..) => {
+            ty::Dynamic(_, _, DynKind::Dyn) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                 (tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]), false)
             },
@@ -2815,7 +2821,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2857,7 +2862,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Uint(..)
             | ty::Float(..) => true,
 
-            // The voldemort ZSTs are fine.
+            // ZST which can't be named are fine.
             ty::FnDef(..) => true,
 
             ty::Array(element_ty, _len) => element_ty.is_trivially_pure_clone_copy(),
@@ -2878,7 +2883,7 @@ impl<'tcx> Ty<'tcx> {
             // anything with custom metadata it might be more complicated.
             ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
 
-            ty::Generator(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => false,
+            ty::Generator(..) | ty::GeneratorWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
             ty::Adt(..) | ty::Closure(..) => false,
@@ -2929,6 +2934,37 @@ impl<'tcx> Ty<'tcx> {
             _ => false,
         }
     }
+
+    /// Returns `true` when the outermost type cannot be further normalized,
+    /// resolved, or substituted. This includes all primitive types, but also
+    /// things like ADTs and trait objects, sice even if their arguments or
+    /// nested types may be further simplified, the outermost [`TyKind`] or
+    /// type constructor remains the same.
+    pub fn is_known_rigid(self) -> bool {
+        match self.kind() {
+            Bool
+            | Char
+            | Int(_)
+            | Uint(_)
+            | Float(_)
+            | Adt(_, _)
+            | Foreign(_)
+            | Str
+            | Array(_, _)
+            | Slice(_)
+            | RawPtr(_)
+            | Ref(_, _, _)
+            | FnDef(_, _)
+            | FnPtr(_)
+            | Dynamic(_, _, _)
+            | Closure(_, _)
+            | Generator(_, _, _)
+            | GeneratorWitness(..)
+            | Never
+            | Tuple(_) => true,
+            Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
+        }
+    }
 }
 
 /// Extra information about why we ended up with a particular variance.
@@ -2974,7 +3010,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(RegionKind<'_>, 28);
+    static_assert_size!(RegionKind<'_>, 24);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
 }

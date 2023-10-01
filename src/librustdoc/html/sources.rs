@@ -134,7 +134,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
             let filename = span.filename(sess);
             let span = span.inner();
             let pos = sess.source_map().lookup_source_file(span.lo());
-            let file_span = span.with_lo(pos.start_pos).with_hi(pos.end_pos);
+            let file_span = span.with_lo(pos.start_pos).with_hi(pos.end_position());
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
             // something like that), so just don't include sources for the

@@ -11,7 +11,7 @@
 // Note, however, that we run on lots older linuxes, as well as cross
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
-#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox"))]
+#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox", target_os = "hurd"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::mem;
     use crate::sys_common::thread_local_dtor::register_dtor_fallback;
@@ -48,7 +48,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 // workaround below is to register, via _tlv_atexit, a custom DTOR list once per
 // thread. thread_local dtors are pushed to the DTOR list without calling
 // _tlv_atexit.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::cell::Cell;
     use crate::mem;

@@ -3,6 +3,7 @@ pub use Primitive::*;
 
 use crate::json::{Json, ToJson};
 
+use std::fmt;
 use std::ops::Deref;
 
 use rustc_macros::HashStable_Generic;
@@ -24,10 +25,20 @@ impl ToJson for Endian {
 /// to that obtained from `layout_of(ty)`, as we need to produce
 /// layouts for which Rust types do not exist, such as enum variants
 /// or synthetic fields of enums (i.e., discriminants) and fat pointers.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
     pub layout: Layout<'a>,
+}
+
+impl<'a, Ty: fmt::Display> fmt::Debug for TyAndLayout<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Print the type in a readable way, not its debug representation.
+        f.debug_struct("TyAndLayout")
+            .field("ty", &format_args!("{}", self.ty))
+            .field("layout", &self.layout)
+            .finish()
+    }
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
@@ -55,6 +66,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {
     fn is_never(this: TyAndLayout<'a, Self>) -> bool;
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
@@ -125,6 +137,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::is_unit(self)
     }
 
+    pub fn is_transparent<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_transparent(self)
+    }
+
     pub fn offset_of_subfield<C>(self, cx: &C, indices: impl Iterator<Item = usize>) -> Size
     where
         Ty: TyAbiInterface<'a, C>,
@@ -143,5 +162,26 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         }
 
         offset
+    }
+
+    /// Finds the one field that is not a 1-ZST.
+    /// Returns `None` if there are multiple non-1-ZST fields or only 1-ZST-fields.
+    pub fn non_1zst_field<C>(&self, cx: &C) -> Option<(usize, Self)>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let mut found = None;
+        for field_idx in 0..self.fields.count() {
+            let field = self.field(cx, field_idx);
+            if field.is_1zst() {
+                continue;
+            }
+            if found.is_some() {
+                // More than one non-1-ZST field.
+                return None;
+            }
+            found = Some((field_idx, field));
+        }
+        found
     }
 }

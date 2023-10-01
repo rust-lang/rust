@@ -403,6 +403,7 @@ where
                     }
                 }
             }
+            ty::ConstKind::Infer(InferConst::EffectVar(_)) => Ok(c),
             // FIXME: remove this branch once `structurally_relate_consts` is fully
             // structural.
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {

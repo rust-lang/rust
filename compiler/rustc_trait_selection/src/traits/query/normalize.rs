@@ -358,7 +358,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
             self.infcx,
             &mut self.universes,
             constant,
-            |constant| constant.eval(self.infcx.tcx, self.param_env),
+            |constant| constant.normalize(self.infcx.tcx, self.param_env),
         ))
     }
 

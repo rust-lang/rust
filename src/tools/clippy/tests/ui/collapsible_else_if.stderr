@@ -1,5 +1,5 @@
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_else_if.rs:14:12
+  --> $DIR/collapsible_else_if.rs:13:12
    |
 LL |       } else {
    |  ____________^
@@ -10,6 +10,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::collapsible-else-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_else_if)]`
 help: collapse nested if block
    |
 LL ~     } else if y == "world" {
@@ -18,7 +19,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_else_if.rs:22:12
+  --> $DIR/collapsible_else_if.rs:21:12
    |
 LL |       } else {
    |  ____________^
@@ -36,7 +37,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_else_if.rs:30:12
+  --> $DIR/collapsible_else_if.rs:29:12
    |
 LL |       } else {
    |  ____________^
@@ -59,7 +60,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_else_if.rs:41:12
+  --> $DIR/collapsible_else_if.rs:40:12
    |
 LL |       } else {
    |  ____________^
@@ -82,7 +83,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_else_if.rs:52:12
+  --> $DIR/collapsible_else_if.rs:51:12
    |
 LL |       } else {
    |  ____________^
@@ -105,7 +106,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_else_if.rs:63:12
+  --> $DIR/collapsible_else_if.rs:62:12
    |
 LL |       } else {
    |  ____________^
@@ -128,7 +129,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_else_if.rs:74:12
+  --> $DIR/collapsible_else_if.rs:73:12
    |
 LL |       } else {
    |  ____________^
@@ -151,7 +152,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> $DIR/collapsible_else_if.rs:97:10
+  --> $DIR/collapsible_else_if.rs:96:10
    |
 LL |       }else{
    |  __________^

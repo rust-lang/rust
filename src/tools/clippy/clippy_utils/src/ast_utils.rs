@@ -166,7 +166,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Unary(lo, l), Unary(ro, r)) => mem::discriminant(lo) == mem::discriminant(ro) && eq_expr(l, r),
         (Lit(l), Lit(r)) => l == r,
         (Cast(l, lt), Cast(r, rt)) | (Type(l, lt), Type(r, rt)) => eq_expr(l, r) && eq_ty(lt, rt),
-        (Let(lp, le, _), Let(rp, re, _)) => eq_pat(lp, rp) && eq_expr(le, re),
+        (Let(lp, le, _, _), Let(rp, re, _, _)) => eq_pat(lp, rp) && eq_expr(le, re),
         (If(lc, lt, le), If(rc, rt, re)) => eq_expr(lc, rc) && eq_block(lt, rt) && eq_expr_opt(le, re),
         (While(lc, lt, ll), While(rc, rt, rl)) => eq_label(ll, rl) && eq_expr(lc, rc) && eq_block(lt, rt),
         (ForLoop(lp, li, lt, ll), ForLoop(rp, ri, rt, rl)) => {

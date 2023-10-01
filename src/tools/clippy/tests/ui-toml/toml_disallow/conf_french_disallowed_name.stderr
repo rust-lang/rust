@@ -5,6 +5,7 @@ LL | fn test(toto: ()) {}
    |         ^^^^
    |
    = note: `-D clippy::disallowed-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_names)]`
 
 error: use of a disallowed/placeholder name `toto`
   --> $DIR/conf_french_disallowed_name.rs:9:9

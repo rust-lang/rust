@@ -7,12 +7,15 @@ fn test() -> i32 {
     let _y = 0; // no warning
     let x = 5;
     x
+    //~^ ERROR: returning the result of a `let` binding from a block
+    //~| NOTE: `-D clippy::let-and-return` implied by `-D warnings`
 }
 
 fn test_inner() -> i32 {
     if true {
         let x = 5;
         x
+        //~^ ERROR: returning the result of a `let` binding from a block
     } else {
         0
     }
@@ -75,6 +78,7 @@ fn issue_3792() -> String {
     // https://github.com/rust-lang/rust/pull/93965
     let line = stdin.lock().lines().next().unwrap().unwrap();
     line
+    //~^ ERROR: returning the result of a `let` binding from a block
 }
 
 tuple_encode!(T0, T1, T2, T3, T4, T5, T6, T7);
@@ -165,6 +169,7 @@ mod issue_5729 {
         fn foo_cloned(&self) -> Arc<dyn Foo> {
             let clone = Arc::clone(&self.foo);
             clone
+            //~^ ERROR: returning the result of a `let` binding from a block
         }
     }
 }

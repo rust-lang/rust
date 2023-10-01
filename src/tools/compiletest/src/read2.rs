@@ -9,7 +9,16 @@ use std::io::{self, Write};
 use std::mem::replace;
 use std::process::{Child, Output};
 
-pub fn read2_abbreviated(mut child: Child, filter_paths_from_len: &[String]) -> io::Result<Output> {
+#[derive(Copy, Clone, Debug)]
+pub enum Truncated {
+    Yes,
+    No,
+}
+
+pub fn read2_abbreviated(
+    mut child: Child,
+    filter_paths_from_len: &[String],
+) -> io::Result<(Output, Truncated)> {
     let mut stdout = ProcOutput::new();
     let mut stderr = ProcOutput::new();
 
@@ -24,11 +33,12 @@ pub fn read2_abbreviated(mut child: Child, filter_paths_from_len: &[String]) -> 
     )?;
     let status = child.wait()?;
 
-    Ok(Output { status, stdout: stdout.into_bytes(), stderr: stderr.into_bytes() })
+    let truncated =
+        if stdout.truncated() || stderr.truncated() { Truncated::Yes } else { Truncated::No };
+    Ok((Output { status, stdout: stdout.into_bytes(), stderr: stderr.into_bytes() }, truncated))
 }
 
-const HEAD_LEN: usize = 160 * 1024;
-const TAIL_LEN: usize = 256 * 1024;
+const MAX_OUT_LEN: usize = 512 * 1024;
 
 // Whenever a path is filtered when counting the length of the output, we need to add some
 // placeholder length to ensure a compiler emitting only filtered paths doesn't cause a OOM.
@@ -39,12 +49,16 @@ const FILTERED_PATHS_PLACEHOLDER_LEN: usize = 32;
 
 enum ProcOutput {
     Full { bytes: Vec<u8>, filtered_len: usize },
-    Abbreviated { head: Vec<u8>, skipped: usize, tail: Box<[u8]> },
+    Abbreviated { head: Vec<u8>, skipped: usize },
 }
 
 impl ProcOutput {
     fn new() -> Self {
         ProcOutput::Full { bytes: Vec::new(), filtered_len: 0 }
+    }
+
+    fn truncated(&self) -> bool {
+        matches!(self, Self::Abbreviated { .. })
     }
 
     fn extend(&mut self, data: &[u8], filter_paths_from_len: &[String]) {
@@ -83,24 +97,21 @@ impl ProcOutput {
                 }
 
                 let new_len = bytes.len();
-                if (*filtered_len).min(new_len) <= HEAD_LEN + TAIL_LEN {
+                if (*filtered_len).min(new_len) <= MAX_OUT_LEN {
                     return;
                 }
 
                 let mut head = replace(bytes, Vec::new());
-                let mut middle = head.split_off(HEAD_LEN);
-                let tail = middle.split_off(middle.len() - TAIL_LEN).into_boxed_slice();
-                let skipped = new_len - HEAD_LEN - TAIL_LEN;
-                ProcOutput::Abbreviated { head, skipped, tail }
-            }
-            ProcOutput::Abbreviated { ref mut skipped, ref mut tail, .. } => {
-                *skipped += data.len();
-                if data.len() <= TAIL_LEN {
-                    tail[..data.len()].copy_from_slice(data);
-                    tail.rotate_left(data.len());
-                } else {
-                    tail.copy_from_slice(&data[(data.len() - TAIL_LEN)..]);
+                // Don't truncate if this as a whole line.
+                // That should make it less likely that we cut a JSON line in half.
+                if head.last() != Some(&('\n' as u8)) {
+                    head.truncate(MAX_OUT_LEN);
                 }
+                let skipped = new_len - head.len();
+                ProcOutput::Abbreviated { head, skipped }
+            }
+            ProcOutput::Abbreviated { ref mut skipped, .. } => {
+                *skipped += data.len();
                 return;
             }
         };
@@ -110,18 +121,12 @@ impl ProcOutput {
     fn into_bytes(self) -> Vec<u8> {
         match self {
             ProcOutput::Full { bytes, .. } => bytes,
-            ProcOutput::Abbreviated { mut head, mut skipped, tail } => {
-                let mut tail = &*tail;
-
-                // Skip over '{' at the start of the tail, so we don't later wrongfully consider this as json.
-                // See <https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp/topic/Weird.20CI.20failure/near/321797811>
-                while tail.get(0) == Some(&b'{') {
-                    tail = &tail[1..];
-                    skipped += 1;
-                }
-
-                write!(&mut head, "\n\n<<<<<< SKIPPED {} BYTES >>>>>>\n\n", skipped).unwrap();
-                head.extend_from_slice(tail);
+            ProcOutput::Abbreviated { mut head, skipped } => {
+                let head_note =
+                    format!("<<<<<< TRUNCATED, SHOWING THE FIRST {} BYTES >>>>>>\n\n", head.len());
+                head.splice(0..0, head_note.into_bytes());
+                write!(&mut head, "\n\n<<<<<< TRUNCATED, DROPPED {} BYTES >>>>>>", skipped)
+                    .unwrap();
                 head
             }
         }

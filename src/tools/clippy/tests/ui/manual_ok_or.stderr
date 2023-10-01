@@ -1,25 +1,26 @@
 error: this pattern reimplements `Option::ok_or`
-  --> $DIR/manual_ok_or.rs:12:5
+  --> $DIR/manual_ok_or.rs:11:5
    |
 LL |     foo.map_or(Err("error"), |v| Ok(v));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `foo.ok_or("error")`
    |
    = note: `-D clippy::manual-ok-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_ok_or)]`
 
 error: this pattern reimplements `Option::ok_or`
-  --> $DIR/manual_ok_or.rs:15:5
+  --> $DIR/manual_ok_or.rs:14:5
    |
 LL |     foo.map_or(Err("error"), Ok);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `foo.ok_or("error")`
 
 error: this pattern reimplements `Option::ok_or`
-  --> $DIR/manual_ok_or.rs:18:5
+  --> $DIR/manual_ok_or.rs:17:5
    |
 LL |     None::<i32>.map_or(Err("error"), |v| Ok(v));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `None::<i32>.ok_or("error")`
 
 error: this pattern reimplements `Option::ok_or`
-  --> $DIR/manual_ok_or.rs:22:5
+  --> $DIR/manual_ok_or.rs:21:5
    |
 LL | /     foo.map_or(Err::<i32, &str>(
 LL | |         &format!(

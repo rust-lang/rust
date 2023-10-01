@@ -17,26 +17,20 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// async fn wait(f: impl std::future::Future<Output = ()>) {}
+    /// async fn large_future(_x: [u8; 16 * 1024]) {}
     ///
-    /// async fn big_fut(arg: [u8; 1024]) {}
-    ///
-    /// pub async fn test() {
-    ///     let fut = big_fut([0u8; 1024]);
-    ///     wait(fut).await;
+    /// pub async fn trigger() {
+    ///     large_future([0u8; 16 * 1024]).await;
     /// }
     /// ```
     ///
     /// `Box::pin` the big future instead.
     ///
     /// ```rust
-    /// async fn wait(f: impl std::future::Future<Output = ()>) {}
+    /// async fn large_future(_x: [u8; 16 * 1024]) {}
     ///
-    /// async fn big_fut(arg: [u8; 1024]) {}
-    ///
-    /// pub async fn test() {
-    ///     let fut = Box::pin(big_fut([0u8; 1024]));
-    ///     wait(fut).await;
+    /// pub async fn trigger() {
+    ///     Box::pin(large_future([0u8; 16 * 1024])).await;
     /// }
     /// ```
     #[clippy::version = "1.70.0"]

@@ -1,5 +1,5 @@
 #![allow(unused_variables, dead_code)]
-
+//@no-rustfix
 fn takes_an_immutable_reference(a: &i32) {}
 fn takes_a_mutable_reference(a: &mut i32) {}
 
@@ -22,18 +22,24 @@ impl MyStruct {
     fn takes_an_immutable_reference(&self, a: &i32) {}
 
     fn takes_a_mutable_reference(&self, a: &mut i32) {}
+    //~^ ERROR: this argument is a mutable reference, but not used mutably
+    //~| NOTE: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
 }
 
 #[warn(clippy::unnecessary_mut_passed)]
 fn main() {
     // Functions
     takes_an_immutable_reference(&mut 42);
+    //~^ ERROR: the function `takes_an_immutable_reference` doesn't need a mutable referen
+    //~| NOTE: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
     let as_ptr: fn(&i32) = takes_an_immutable_reference;
     as_ptr(&mut 42);
+    //~^ ERROR: the function `as_ptr` doesn't need a mutable reference
 
     // Methods
     let my_struct = MyStruct;
     my_struct.takes_an_immutable_reference(&mut 42);
+    //~^ ERROR: the method `takes_an_immutable_reference` doesn't need a mutable reference
 
     // No error
 

@@ -15,6 +15,10 @@ pub mod diagnostics;
 mod perms;
 mod tree;
 mod unimap;
+
+#[cfg(test)]
+mod exhaustive;
+
 use perms::Permission;
 pub use tree::Tree;
 
@@ -172,7 +176,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         this.check_ptr_access_align(
-            place.ptr,
+            place.ptr(),
             ptr_size,
             Align::ONE,
             CheckInAllocMsg::InboundsTest,
@@ -197,7 +201,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
-        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr) {
+        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr()) {
             Ok(data) => {
                 // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
                 // After all, the pointer may be lazily initialized outside this initial range.
@@ -210,18 +214,18 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 trace!(
                     "reborrow of size 0: reference {:?} derived from {:?} (pointee {})",
                     new_tag,
-                    place.ptr,
+                    place.ptr(),
                     place.layout.ty,
                 );
                 log_creation(this, None)?;
                 // Keep original provenance.
-                return Ok(place.ptr.provenance);
+                return Ok(place.ptr().provenance);
             }
         };
         log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
 
         let orig_tag = match parent_prov {
-            ProvenanceExtra::Wildcard => return Ok(place.ptr.provenance), // TODO: handle wildcard pointers
+            ProvenanceExtra::Wildcard => return Ok(place.ptr().provenance), // TODO: handle wildcard pointers
             ProvenanceExtra::Concrete(tag) => tag,
         };
 
@@ -271,6 +275,10 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             diagnostics::AccessCause::Reborrow,
         )?;
         // Record the parent-child pair in the tree.
+        // FIXME: We should eventually ensure that the following `assert` holds, because
+        // some "exhaustive" tests consider only the initial configurations that satisfy it.
+        // The culprit is `Permission::new_active` in `tb_protect_place`.
+        //assert!(new_perm.initial_state.is_initial());
         tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;
         drop(tree_borrows);
 
@@ -283,7 +291,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 // interleaving, but wether UB happens can depend on whether a write occurs in the
                 // future...
                 let is_write = new_perm.initial_state.is_active()
-                    || (new_perm.initial_state.is_reserved() && new_perm.protector.is_some());
+                    || (new_perm.initial_state.is_reserved(None) && new_perm.protector.is_some());
                 if is_write {
                     // Need to get mutable access to alloc_extra.
                     // (Cannot always do this as we can do read-only reborrowing on read-only allocations.)

@@ -1,0 +1,68 @@
+error: [o]
+  --> $DIR/variance.rs:8:29
+   |
+LL | type NotCapturedEarly<'a> = impl Sized;
+   |                             ^^^^^^^^^^
+
+error: [o]
+  --> $DIR/variance.rs:10:26
+   |
+LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o]
+  --> $DIR/variance.rs:13:56
+   |
+LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
+   |                                                        ^^^^^^^^^^
+
+error: [o]
+  --> $DIR/variance.rs:16:49
+   |
+LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o, o]
+  --> $DIR/variance.rs:18:27
+   |
+LL | type Bar<'a, 'b: 'b, T> = impl Sized;
+   |                           ^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:29:32
+   |
+LL |     type ImplicitCapture<'a> = impl Sized;
+   |                                ^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:31:42
+   |
+LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:33:39
+   |
+LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:37:32
+   |
+LL |     type ImplicitCapture<'a> = impl Sized;
+   |                                ^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:39:42
+   |
+LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o]
+  --> $DIR/variance.rs:41:39
+   |
+LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+

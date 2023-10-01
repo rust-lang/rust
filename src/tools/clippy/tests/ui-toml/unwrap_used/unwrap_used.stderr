@@ -5,6 +5,7 @@ LL |         let _ = boxed_slice.get(1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&boxed_slice[1]`
    |
    = note: `-D clippy::get-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::get_unwrap)]`
 
 error: used `unwrap()` on an `Option` value
   --> $DIR/unwrap_used.rs:38:17
@@ -15,6 +16,7 @@ LL |         let _ = boxed_slice.get(1).unwrap();
    = note: if this value is `None`, it will panic
    = help: consider using `expect()` to provide a better panic message
    = note: `-D clippy::unwrap-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
   --> $DIR/unwrap_used.rs:39:17

@@ -1,4 +1,3 @@
-// compile-flags: -Zdrop-tracking
 // incremental
 // edition: 2021
 
@@ -98,8 +97,6 @@ impl<St: ?Sized + Stream + Unpin> Future for Next<'_, St> {
 fn main() {
     send(async {
         //~^ ERROR implementation of `FnOnce` is not general enough
-        //~| ERROR implementation of `FnOnce` is not general enough
-        //~| ERROR implementation of `FnOnce` is not general enough
         //~| ERROR implementation of `FnOnce` is not general enough
         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
     });

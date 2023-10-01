@@ -5,6 +5,7 @@ LL | struct Foo(Vec<Box<u8>>);
    |            ^^^^^^^^^^^^ help: try: `Vec<u8>`
    |
    = note: `-D clippy::vec-box` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::vec_box)]`
 
 error: `Vec<T>` is already on the heap, the boxing is unnecessary
   --> $DIR/test.rs:10:12

@@ -246,8 +246,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for TypeWalker<'cx, 'tcx> {
                 {
                     self.ty_params.remove(&def_id);
                 }
+            } else {
+                // If the bounded type isn't a generic param, but is instead a concrete generic
+                // type, any params we find nested inside of it are being used as concrete types,
+                // and can therefore can be considered used. So, we're fine to walk the left-hand
+                // side of the where bound.
+                walk_ty(self, predicate.bounded_ty);
             }
-            // Only walk the right-hand side of where bounds
             for bound in predicate.bounds {
                 walk_param_bound(self, bound);
             }

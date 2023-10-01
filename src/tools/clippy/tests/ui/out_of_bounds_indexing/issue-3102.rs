@@ -6,6 +6,9 @@ fn main() {
 
     // issue 3102
     let num = 1;
-    &x[num..10]; // should trigger out of bounds error
-    &x[10..num]; // should trigger out of bounds error
+    &x[num..10];
+    //~^ ERROR: range is out of bounds
+    //~| NOTE: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+    &x[10..num];
+    //~^ ERROR: range is out of bounds
 }

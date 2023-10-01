@@ -58,6 +58,11 @@ error[E0277]: the trait bound `(): Foo<Self>` is not satisfied
 LL |     type Assoc: Foo<Self> = ();
    |                             ^^ the trait `Foo<Self>` is not implemented for `()`
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/defaults-suitability.rs:27:1
+   |
+LL | trait Foo<T> {
+   | ^^^^^^^^^^^^
 note: required by a bound in `Bar::Assoc`
   --> $DIR/defaults-suitability.rs:34:17
    |

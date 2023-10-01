@@ -117,13 +117,11 @@ LL |     if (&mut 8 as *mut i32).is_null() {}
    |         |
    |         expression has type `&mut i32`
 
-warning: references are not nullable, so checking them for null will always return false
+warning: returned pointer of `from_mut` call is never null, so checking it for null will always return false
   --> $DIR/ptr_null_checks.rs:40:8
    |
 LL |     if ptr::from_mut(&mut 8).is_null() {}
-   |        ^^^^^^^^^^^^^^------^^^^^^^^^^^
-   |                      |
-   |                      expression has type `&mut i32`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: references are not nullable, so checking them for null will always return false
   --> $DIR/ptr_null_checks.rs:42:8
@@ -133,29 +131,23 @@ LL |     if (&8 as *const i32).is_null() {}
    |         |
    |         expression has type `&i32`
 
-warning: references are not nullable, so checking them for null will always return false
+warning: returned pointer of `from_ref` call is never null, so checking it for null will always return false
   --> $DIR/ptr_null_checks.rs:44:8
    |
 LL |     if ptr::from_ref(&8).is_null() {}
-   |        ^^^^^^^^^^^^^^--^^^^^^^^^^^
-   |                      |
-   |                      expression has type `&i32`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: references are not nullable, so checking them for null will always return false
+warning: returned pointer of `from_ref` call is never null, so checking it for null will always return false
   --> $DIR/ptr_null_checks.rs:46:8
    |
 LL |     if ptr::from_ref(&8).cast_mut().is_null() {}
-   |        ^^^^^^^^^^^^^^--^^^^^^^^^^^^^^^^^^^^^^
-   |                      |
-   |                      expression has type `&i32`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: references are not nullable, so checking them for null will always return false
+warning: returned pointer of `from_ref` call is never null, so checking it for null will always return false
   --> $DIR/ptr_null_checks.rs:48:8
    |
 LL |     if (ptr::from_ref(&8).cast_mut() as *mut i32).is_null() {}
-   |        ^^^^^^^^^^^^^^^--^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                       |
-   |                       expression has type `&i32`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: references are not nullable, so checking them for null will always return false
   --> $DIR/ptr_null_checks.rs:50:8
@@ -221,5 +213,17 @@ LL |     if (&*{ static_i32() } as *const i32).is_null() {}
    |         |
    |         expression has type `&i32`
 
-warning: 25 warnings emitted
+warning: returned pointer of `as_ptr` call is never null, so checking it for null will always return false
+  --> $DIR/ptr_null_checks.rs:69:8
+   |
+LL |     if ptr::NonNull::new(&mut 8).unwrap().as_ptr().is_null() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: returned pointer of `as_ptr` call is never null, so checking it for null will always return false
+  --> $DIR/ptr_null_checks.rs:71:8
+   |
+LL |     if ptr::NonNull::<u8>::dangling().as_ptr().is_null() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 27 warnings emitted
 

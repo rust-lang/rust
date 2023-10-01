@@ -7,7 +7,6 @@
 #![allow(unused_parens)]
 
 use crate::dep_graph;
-use crate::dep_graph::DepKind;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -21,12 +20,12 @@ use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{
-    ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+    EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::query::erase::{erase, restore, Erase};
-use crate::query::plumbing::{query_ensure, query_get_at, DynamicQuery};
+use crate::query::plumbing::{query_ensure, query_get_at, CyclePlaceholder, DynamicQuery};
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -45,7 +44,6 @@ use crate::traits::{
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
 use crate::ty::util::AlwaysRequiresDrop;
-use crate::ty::GeneratorDiagnosticData;
 use crate::ty::TyCtxtFeed;
 use crate::ty::{
     self, print::describe_as_module, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt,
@@ -231,7 +229,7 @@ rustc_queries! {
             action = {
                 use rustc_hir::def::DefKind;
                 match tcx.def_kind(key) {
-                    DefKind::TyAlias { .. } => "expanding type alias",
+                    DefKind::TyAlias => "expanding type alias",
                     DefKind::TraitAlias => "expanding trait alias",
                     _ => "computing type of",
                 }
@@ -241,6 +239,24 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
         feedable
+    }
+
+    /// Specialized instance of `type_of` that detects cycles that are due to
+    /// revealing opaque because of an auto trait bound. Unless `CyclePlaceholder` needs
+    /// to be handled separately, call `type_of` instead.
+    query type_of_opaque(key: DefId) -> Result<ty::EarlyBinder<Ty<'tcx>>, CyclePlaceholder> {
+        desc { |tcx|
+            "computing type of opaque `{path}`",
+            path = tcx.def_path_str(key),
+        }
+    }
+
+    query type_alias_is_lazy(key: DefId) -> bool {
+        desc { |tcx|
+            "computing whether `{path}` is a lazy type alias",
+            path = tcx.def_path_str(key),
+        }
+        separate_provide_extern
     }
 
     query collect_return_position_impl_trait_in_trait_tys(key: DefId)
@@ -721,7 +737,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query asyncness(key: DefId) -> hir::IsAsync {
+    query asyncness(key: DefId) -> ty::Asyncness {
         desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
@@ -1081,7 +1097,7 @@ rustc_queries! {
     }
 
     /// Converts a type level constant value into `ConstValue`
-    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> ConstValue<'tcx> {
+    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> mir::ConstValue<'tcx> {
         desc { "converting type-level constant value to mir constant value"}
     }
 
@@ -1091,17 +1107,7 @@ rustc_queries! {
         desc { "destructuring type level constant"}
     }
 
-    /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
-    /// and its field values. This should only be used for pretty printing.
-    query try_destructure_mir_constant_for_diagnostics(
-        key: (ConstValue<'tcx>, Ty<'tcx>)
-    ) -> Option<mir::DestructuredConstant<'tcx>> {
-        desc { "destructuring MIR constant"}
-        no_hash
-        eval_always
-    }
-
-    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
+    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> mir::ConstValue<'tcx> {
         desc { "getting a &core::panic::Location referring to a span" }
     }
 
@@ -1130,6 +1136,7 @@ rustc_queries! {
     query reachable_set(_: ()) -> &'tcx LocalDefIdSet {
         arena_cache
         desc { "reachability" }
+        cache_on_disk_if { true }
     }
 
     /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
@@ -2147,12 +2154,6 @@ rustc_queries! {
         arena_cache
         eval_always
         desc { "computing the backend features for CLI flags" }
-    }
-
-    query generator_diagnostic_data(key: DefId) -> &'tcx Option<GeneratorDiagnosticData<'tcx>> {
-        arena_cache
-        desc { |tcx| "looking up generator diagnostic data of `{}`", tcx.def_path_str(key) }
-        separate_provide_extern
     }
 
     query check_validity_requirement(key: (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>)) -> Result<bool, &'tcx ty::layout::LayoutError<'tcx>> {

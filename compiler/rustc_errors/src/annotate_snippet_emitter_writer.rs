@@ -91,7 +91,7 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
         }
         Level::Warning(_) => AnnotationType::Warning,
         Level::Note | Level::OnceNote => AnnotationType::Note,
-        Level::Help => AnnotationType::Help,
+        Level::Help | Level::OnceHelp => AnnotationType::Help,
         // FIXME(#59346): Not sure how to map this level
         Level::FailureNote => AnnotationType::Error,
         Level::Allow => panic!("Should not call with Allow"),
@@ -169,7 +169,8 @@ impl AnnotateSnippetEmitterWriter {
                         .map(|line| {
                             // Ensure the source file is present before we try
                             // to load a string from it.
-                            source_map.ensure_source_file_source_present(file.clone());
+                            // FIXME(#115869): support -Z ignore-directory-in-diagnostics-source-blocks
+                            source_map.ensure_source_file_source_present(&file);
                             (
                                 format!("{}", source_map.filename_for_diagnostics(&file.name)),
                                 source_string(file.clone(), &line),

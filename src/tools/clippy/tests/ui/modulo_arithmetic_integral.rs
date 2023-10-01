@@ -6,43 +6,77 @@ fn main() {
     let a = -1;
     let mut b = 2;
     a % b;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b % a;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b %= a;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
 
     let a_i8: i8 = 1;
     let mut b_i8: i8 = 2;
     a_i8 % b_i8;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b_i8 %= a_i8;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
 
     let a_i16: i16 = 1;
     let mut b_i16: i16 = 2;
     a_i16 % b_i16;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b_i16 %= a_i16;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
 
     let a_i32: i32 = 1;
     let mut b_i32: i32 = 2;
     a_i32 % b_i32;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b_i32 %= a_i32;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
 
     let a_i64: i64 = 1;
     let mut b_i64: i64 = 2;
     a_i64 % b_i64;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b_i64 %= a_i64;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
 
     let a_i128: i128 = 1;
     let mut b_i128: i128 = 2;
     a_i128 % b_i128;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b_i128 %= a_i128;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
 
     let a_isize: isize = 1;
     let mut b_isize: isize = 2;
     a_isize % b_isize;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b_isize %= a_isize;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
 
     let a = 1;
     let mut b = 2;
     a % b;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
     b %= a;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
 
     // No lint on unsigned integral value
     let a_u8: u8 = 17;

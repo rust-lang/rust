@@ -1,7 +1,4 @@
 // edition:2021
-// revisions: no_drop_tracking drop_tracking
-// [drop_tracking] compile-flags: -Zdrop-tracking=yes
-// [no_drop_tracking] compile-flags: -Zdrop-tracking=no
 #![feature(negative_impls)]
 #![allow(unused)]
 
@@ -12,7 +9,6 @@ fn main() {
     //~| NOTE bound introduced by
     //~| NOTE appears within the type
     //~| NOTE captures the following types
-    //~| NOTE consider using `std::sync::Arc<NotSend>`
 }
 
 fn gimme_send<T: Send>(t: T) {

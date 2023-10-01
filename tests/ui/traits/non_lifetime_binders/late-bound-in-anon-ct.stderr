@@ -15,7 +15,7 @@ LL | #![feature(non_lifetime_binders, generic_const_exprs)]
    |
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
 
-error: cannot capture late-bound type parameter in a constant
+error: cannot capture late-bound type parameter in constant
   --> $DIR/late-bound-in-anon-ct.rs:7:27
    |
 LL |     for<T> [i32; { let _: T = todo!(); 0 }]:,

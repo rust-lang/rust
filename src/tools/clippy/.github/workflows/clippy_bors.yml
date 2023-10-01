@@ -52,24 +52,14 @@ jobs:
     needs: changelog
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        host: [x86_64-unknown-linux-gnu, i686-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-msvc]
-        exclude:
+        include:
         - os: ubuntu-latest
-          host: x86_64-apple-darwin
+          host: x86_64-unknown-linux-gnu
         - os: ubuntu-latest
-          host: x86_64-pc-windows-msvc
-        - os: macos-latest
-          host: x86_64-unknown-linux-gnu
-        - os: macos-latest
-          host: i686-unknown-linux-gnu
-        - os: macos-latest
-          host: x86_64-pc-windows-msvc
-        - os: windows-latest
-          host: x86_64-unknown-linux-gnu
-        - os: windows-latest
           host: i686-unknown-linux-gnu
         - os: windows-latest
+          host: x86_64-pc-windows-msvc
+        - os: macos-latest
           host: x86_64-apple-darwin
 
     runs-on: ${{ matrix.os }}
@@ -84,8 +74,17 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Install i686 dependencies
+      if: matrix.host == 'i686-unknown-linux-gnu'
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install gcc-multilib zlib1g-dev:i386
+
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        rustup set default-host ${{ matrix.host }}
+        rustup show active-toolchain
 
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
@@ -109,11 +108,11 @@ jobs:
       run: cargo build --tests --features deny-warnings,internal
 
     - name: Test
-      if: runner.os == 'Linux'
+      if: matrix.host == 'x86_64-unknown-linux-gnu'
       run: cargo test --features deny-warnings,internal
 
     - name: Test
-      if: runner.os != 'Linux'
+      if: matrix.host != 'x86_64-unknown-linux-gnu'
       run: cargo test --features deny-warnings,internal -- --skip dogfood
 
     - name: Test clippy_lints

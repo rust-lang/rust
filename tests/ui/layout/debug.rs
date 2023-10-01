@@ -1,4 +1,4 @@
-// normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
+// normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 #![feature(never_type, rustc_attrs, type_alias_impl_trait, repr_simd)]
 #![crate_type = "lib"]
 
@@ -17,6 +17,9 @@ type Test = Result<i32, i32>; //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
 type T = impl std::fmt::Debug; //~ ERROR: layout_of
+fn f() -> T {
+    0i32
+}
 
 #[rustc_layout(debug)]
 pub union V { //~ ERROR: layout_of
@@ -63,6 +66,13 @@ union P5 { zst: [u16; 0], byte: u8 } //~ ERROR: layout_of
 #[rustc_layout(debug)]
 type X = std::mem::MaybeUninit<u8>; //~ ERROR: layout_of
 
-fn f() -> T {
-    0i32
+#[rustc_layout(debug)]
+const C: () = (); //~ ERROR: can only be applied to
+
+impl S {
+    #[rustc_layout(debug)]
+    const C: () = (); //~ ERROR: can only be applied to
 }
+
+#[rustc_layout(debug)]
+type Impossible = (str, str); //~ ERROR: cannot be known at compilation time

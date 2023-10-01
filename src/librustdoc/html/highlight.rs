@@ -52,8 +52,9 @@ pub(crate) fn render_example_with_highlighting(
     out: &mut Buffer,
     tooltip: Tooltip,
     playground_button: Option<&str>,
+    extra_classes: &[String],
 ) {
-    write_header(out, "rust-example-rendered", None, tooltip);
+    write_header(out, "rust-example-rendered", None, tooltip, extra_classes);
     write_code(out, src, None, None);
     write_footer(out, playground_button);
 }
@@ -65,7 +66,13 @@ pub(crate) fn render_item_decl_with_highlighting(src: &str, out: &mut Buffer) {
     write!(out, "</pre>");
 }
 
-fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>, tooltip: Tooltip) {
+fn write_header(
+    out: &mut Buffer,
+    class: &str,
+    extra_content: Option<Buffer>,
+    tooltip: Tooltip,
+    extra_classes: &[String],
+) {
     write!(
         out,
         "<div class=\"example-wrap{}\">",
@@ -100,9 +107,19 @@ fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>, to
         out.push_buffer(extra);
     }
     if class.is_empty() {
-        write!(out, "<pre class=\"rust\">");
+        write!(
+            out,
+            "<pre class=\"rust{}{}\">",
+            if extra_classes.is_empty() { "" } else { " " },
+            extra_classes.join(" "),
+        );
     } else {
-        write!(out, "<pre class=\"rust {class}\">");
+        write!(
+            out,
+            "<pre class=\"rust {class}{}{}\">",
+            if extra_classes.is_empty() { "" } else { " " },
+            extra_classes.join(" "),
+        );
     }
     write!(out, "<code>");
 }

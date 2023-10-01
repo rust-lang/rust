@@ -2,24 +2,30 @@ error: this is an outer doc comment and does not apply to the parent module or c
   --> $DIR/suspicious_doc_comments_unfixable.rs:4:1
    |
 LL | / ///! a
+LL | |
+LL | |
 LL | | ///! b
 LL | | /// c
 LL | | ///! d
    | |______^
    |
    = note: `-D clippy::suspicious-doc-comments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_doc_comments)]`
 help: use an inner doc comment to document the parent module or crate
    |
 LL + //! a
+LL |
+LL |
 LL + //! b
 LL | /// c
 LL + //! d
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> $DIR/suspicious_doc_comments_unfixable.rs:10:1
+  --> $DIR/suspicious_doc_comments_unfixable.rs:12:1
    |
 LL | / ///! a
+LL | |
 LL | | ///! b
 LL | | /// c
 LL | | ///! d
@@ -28,6 +34,7 @@ LL | | ///! d
 help: use an inner doc comment to document the parent module or crate
    |
 LL + //! a
+LL |
 LL + //! b
 LL | /// c
 LL + //! d

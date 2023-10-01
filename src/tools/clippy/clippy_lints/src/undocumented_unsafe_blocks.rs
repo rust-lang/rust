@@ -12,7 +12,7 @@ use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{BytePos, Pos, Span, SyntaxContext};
+use rustc_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -341,44 +341,21 @@ fn block_parents_have_safety_comment(
     id: hir::HirId,
 ) -> bool {
     if let Some(node) = get_parent_node(cx.tcx, id) {
-        return match node {
-            Node::Expr(expr) => {
-                if let Some(
-                    Node::Local(hir::Local { span, .. })
-                    | Node::Item(hir::Item {
-                        kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
-                        span,
-                        ..
-                    }),
-                ) = get_parent_node(cx.tcx, expr.hir_id)
-                {
-                    let hir_id = match get_parent_node(cx.tcx, expr.hir_id) {
-                        Some(Node::Local(hir::Local { hir_id, .. })) => *hir_id,
-                        Some(Node::Item(hir::Item { owner_id, .. })) => {
-                            cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id)
-                        },
-                        _ => unreachable!(),
-                    };
-
-                    // if unsafe block is part of a let/const/static statement,
-                    // and accept_comment_above_statement is set to true
-                    // we accept the safety comment in the line the precedes this statement.
-                    accept_comment_above_statement
-                        && span_with_attrs_in_body_has_safety_comment(
-                            cx,
-                            *span,
-                            hir_id,
-                            accept_comment_above_attributes,
-                        )
-                } else {
-                    !is_branchy(expr)
-                        && span_with_attrs_in_body_has_safety_comment(
-                            cx,
-                            expr.span,
-                            expr.hir_id,
-                            accept_comment_above_attributes,
-                        )
-                }
+        let (span, hir_id) = match node {
+            Node::Expr(expr) => match get_parent_node(cx.tcx, expr.hir_id) {
+                Some(Node::Local(hir::Local { span, hir_id, .. })) => (*span, *hir_id),
+                Some(Node::Item(hir::Item {
+                    kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
+                    span,
+                    owner_id,
+                    ..
+                })) => (*span, cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id)),
+                _ => {
+                    if is_branchy(expr) {
+                        return false;
+                    }
+                    (expr.span, expr.hir_id)
+                },
             },
             Node::Stmt(hir::Stmt {
                 kind:
@@ -387,28 +364,27 @@ fn block_parents_have_safety_comment(
                     | hir::StmtKind::Semi(hir::Expr { span, hir_id, .. }),
                 ..
             })
-            | Node::Local(hir::Local { span, hir_id, .. }) => {
-                span_with_attrs_in_body_has_safety_comment(cx, *span, *hir_id, accept_comment_above_attributes)
-            },
+            | Node::Local(hir::Local { span, hir_id, .. }) => (*span, *hir_id),
             Node::Item(hir::Item {
                 kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
                 span,
                 owner_id,
                 ..
-            }) => span_with_attrs_in_body_has_safety_comment(
-                cx,
-                *span,
-                cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id),
-                accept_comment_above_attributes,
-            ),
-            _ => false,
+            }) => (*span, cx.tcx.hir().local_def_id_to_hir_id(owner_id.def_id)),
+            _ => return false,
         };
+        // if unsafe block is part of a let/const/static statement,
+        // and accept_comment_above_statement is set to true
+        // we accept the safety comment in the line the precedes this statement.
+        accept_comment_above_statement
+            && span_with_attrs_has_safety_comment(cx, span, hir_id, accept_comment_above_attributes)
+    } else {
+        false
     }
-    false
 }
 
 /// Extends `span` to also include its attributes, then checks if that span has a safety comment.
-fn span_with_attrs_in_body_has_safety_comment(
+fn span_with_attrs_has_safety_comment(
     cx: &LateContext<'_>,
     span: Span,
     hir_id: HirId,
@@ -420,7 +396,7 @@ fn span_with_attrs_in_body_has_safety_comment(
         span
     };
 
-    span_in_body_has_safety_comment(cx, span)
+    span_has_safety_comment(cx, span)
 }
 
 /// Checks if an expression is "branchy", e.g. loop, match/if/etc.
@@ -444,7 +420,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
     matches!(
         span_from_macro_expansion_has_safety_comment(cx, span),
         HasSafetyComment::Yes(_)
-    ) || span_in_body_has_safety_comment(cx, span)
+    ) || span_has_safety_comment(cx, span)
 }
 
 fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Span {
@@ -507,20 +483,18 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
             && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
-            return unsafe_line.sf.lines(|lines| {
-                if comment_start_line.line >= unsafe_line.line {
-                    HasSafetyComment::No
-                } else {
-                    match text_has_safety_comment(
-                        src,
-                        &lines[comment_start_line.line + 1..=unsafe_line.line],
-                        unsafe_line.sf.start_pos.to_usize(),
-                    ) {
-                        Some(b) => HasSafetyComment::Yes(b),
-                        None => HasSafetyComment::No,
-                    }
+            return if comment_start_line.line >= unsafe_line.line {
+                HasSafetyComment::No
+            } else {
+                match text_has_safety_comment(
+                    src,
+                    &unsafe_line.sf.lines()[comment_start_line.line + 1..=unsafe_line.line],
+                    unsafe_line.sf.start_pos,
+                ) {
+                    Some(b) => HasSafetyComment::Yes(b),
+                    None => HasSafetyComment::No,
                 }
-            });
+            };
         }
     }
     HasSafetyComment::Maybe
@@ -551,20 +525,18 @@ fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> H
             && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
-            return unsafe_line.sf.lines(|lines| {
-                if comment_start_line.line >= unsafe_line.line {
-                    HasSafetyComment::No
-                } else {
-                    match text_has_safety_comment(
-                        src,
-                        &lines[comment_start_line.line + 1..=unsafe_line.line],
-                        unsafe_line.sf.start_pos.to_usize(),
-                    ) {
-                        Some(b) => HasSafetyComment::Yes(b),
-                        None => HasSafetyComment::No,
-                    }
+            return if comment_start_line.line >= unsafe_line.line {
+                HasSafetyComment::No
+            } else {
+                match text_has_safety_comment(
+                    src,
+                    &unsafe_line.sf.lines()[comment_start_line.line + 1..=unsafe_line.line],
+                    unsafe_line.sf.start_pos,
+                ) {
+                    Some(b) => HasSafetyComment::Yes(b),
+                    None => HasSafetyComment::No,
                 }
-            });
+            };
         }
     }
     HasSafetyComment::Maybe
@@ -614,20 +586,18 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
             && Lrc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
-            unsafe_line.sf.lines(|lines| {
-                if macro_line.line < unsafe_line.line {
-                    match text_has_safety_comment(
-                        src,
-                        &lines[macro_line.line + 1..=unsafe_line.line],
-                        unsafe_line.sf.start_pos.to_usize(),
-                    ) {
-                        Some(b) => HasSafetyComment::Yes(b),
-                        None => HasSafetyComment::No,
-                    }
-                } else {
-                    HasSafetyComment::No
+            if macro_line.line < unsafe_line.line {
+                match text_has_safety_comment(
+                    src,
+                    &unsafe_line.sf.lines()[macro_line.line + 1..=unsafe_line.line],
+                    unsafe_line.sf.start_pos,
+                ) {
+                    Some(b) => HasSafetyComment::Yes(b),
+                    None => HasSafetyComment::No,
                 }
-            })
+            } else {
+                HasSafetyComment::No
+            }
         } else {
             // Problem getting source text. Pretend a comment was found.
             HasSafetyComment::Maybe
@@ -639,29 +609,36 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     let body = cx.enclosing_body?;
     let map = cx.tcx.hir();
     let mut span = map.body(body).value.span;
+    let mut maybe_global_var = false;
     for (_, node) in map.parent_iter(body.hir_id) {
         match node {
             Node::Expr(e) => span = e.span,
-            Node::Block(_)
-            | Node::Arm(_)
-            | Node::Stmt(_)
-            | Node::Local(_)
-            | Node::Item(hir::Item {
+            Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::Local(_) => (),
+            Node::Item(hir::Item {
                 kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
                 ..
-            }) => (),
+            }) => maybe_global_var = true,
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Mod(_),
+                span: item_span,
+                ..
+            }) => {
+                span = *item_span;
+                break;
+            },
+            Node::Crate(mod_) if maybe_global_var => {
+                span = mod_.spans.inner_span;
+            },
             _ => break,
         }
     }
     Some(span)
 }
 
-fn span_in_body_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
+fn span_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
     let source_map = cx.sess().source_map();
     let ctxt = span.ctxt();
-    if ctxt == SyntaxContext::root()
-        && let Some(search_span) = get_body_search_span(cx)
-    {
+    if ctxt.is_root() && let Some(search_span) = get_body_search_span(cx) {
         if let Ok(unsafe_line) = source_map.lookup_line(span.lo())
             && let Some(body_span) = walk_span_to_context(search_span, SyntaxContext::root())
             && let Ok(body_line) = source_map.lookup_line(body_span.lo())
@@ -671,13 +648,11 @@ fn span_in_body_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
             // Get the text from the start of function body to the unsafe block.
             //     fn foo() { some_stuff; unsafe { stuff }; other_stuff; }
             //              ^-------------^
-            unsafe_line.sf.lines(|lines| {
-                body_line.line < unsafe_line.line && text_has_safety_comment(
-                    src,
-                    &lines[body_line.line + 1..=unsafe_line.line],
-                    unsafe_line.sf.start_pos.to_usize(),
-                ).is_some()
-            })
+            body_line.line < unsafe_line.line && text_has_safety_comment(
+                src,
+                &unsafe_line.sf.lines()[body_line.line + 1..=unsafe_line.line],
+                unsafe_line.sf.start_pos,
+            ).is_some()
         } else {
             // Problem getting source text. Pretend a comment was found.
             true
@@ -688,13 +663,13 @@ fn span_in_body_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
 }
 
 /// Checks if the given text has a safety comment for the immediately proceeding line.
-fn text_has_safety_comment(src: &str, line_starts: &[BytePos], offset: usize) -> Option<BytePos> {
+fn text_has_safety_comment(src: &str, line_starts: &[RelativeBytePos], start_pos: BytePos) -> Option<BytePos> {
     let mut lines = line_starts
         .array_windows::<2>()
         .rev()
         .map_while(|[start, end]| {
-            let start = start.to_usize() - offset;
-            let end = end.to_usize() - offset;
+            let start = start.to_usize();
+            let end = end.to_usize();
             let text = src.get(start..end)?;
             let trimmed = text.trim_start();
             Some((start + (text.len() - trimmed.len()), trimmed))
@@ -709,9 +684,7 @@ fn text_has_safety_comment(src: &str, line_starts: &[BytePos], offset: usize) ->
         let (mut line, mut line_start) = (line, line_start);
         loop {
             if line.to_ascii_uppercase().contains("SAFETY:") {
-                return Some(BytePos(
-                    u32::try_from(line_start).unwrap() + u32::try_from(offset).unwrap(),
-                ));
+                return Some(start_pos + BytePos(u32::try_from(line_start).unwrap()));
             }
             match lines.next() {
                 Some((s, x)) if x.starts_with("//") => (line, line_start) = (x, s),
@@ -724,15 +697,13 @@ fn text_has_safety_comment(src: &str, line_starts: &[BytePos], offset: usize) ->
     let (mut line_start, mut line) = (line_start, line);
     loop {
         if line.starts_with("/*") {
-            let src = &src[line_start..line_starts.last().unwrap().to_usize() - offset];
+            let src = &src[line_start..line_starts.last().unwrap().to_usize()];
             let mut tokens = tokenize(src);
             return (src[..tokens.next().unwrap().len as usize]
                 .to_ascii_uppercase()
                 .contains("SAFETY:")
                 && tokens.all(|t| t.kind == TokenKind::Whitespace))
-            .then_some(BytePos(
-                u32::try_from(line_start).unwrap() + u32::try_from(offset).unwrap(),
-            ));
+            .then_some(start_pos + BytePos(u32::try_from(line_start).unwrap()));
         }
         match lines.next() {
             Some(x) => (line_start, line) = x,

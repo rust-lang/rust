@@ -6,9 +6,10 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>(
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
    = note: `-D clippy::size-of-in-element-count` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::size_of_in_element_count)]`
 
 error: found a count of bytes instead of a count of elements of `T`
-  --> $DIR/expressions.rs:18:62
+  --> $DIR/expressions.rs:19:62
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * size_of_val(&x[0]) * 2) };
    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +17,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * si
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
 error: found a count of bytes instead of a count of elements of `T`
-  --> $DIR/expressions.rs:21:47
+  --> $DIR/expressions.rs:23:47
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u8>() / 2) };
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +25,7 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u8>()
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
 error: found a count of bytes instead of a count of elements of `T`
-  --> $DIR/expressions.rs:30:47
+  --> $DIR/expressions.rs:33:47
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / (2 / size_of::<u8>())) };
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

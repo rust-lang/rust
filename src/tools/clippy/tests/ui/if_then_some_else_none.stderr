@@ -3,6 +3,7 @@ error: this could be simplified with `bool::then`
    |
 LL |       let _ = if foo() {
    |  _____________^
+LL | |
 LL | |         println!("true!");
 LL | |         Some("foo")
 LL | |     } else {
@@ -12,12 +13,14 @@ LL | |     };
    |
    = help: consider using `bool::then` like: `foo().then(|| { /* snippet */ "foo" })`
    = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
 
 error: this could be simplified with `bool::then`
-  --> $DIR/if_then_some_else_none.rs:13:13
+  --> $DIR/if_then_some_else_none.rs:14:13
    |
 LL |       let _ = if matches!(true, true) {
    |  _____________^
+LL | |
 LL | |         println!("true!");
 LL | |         Some(matches!(true, false))
 LL | |     } else {
@@ -28,7 +31,7 @@ LL | |     };
    = help: consider using `bool::then` like: `matches!(true, true).then(|| { /* snippet */ matches!(true, false) })`
 
 error: this could be simplified with `bool::then_some`
-  --> $DIR/if_then_some_else_none.rs:22:28
+  --> $DIR/if_then_some_else_none.rs:24:28
    |
 LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +39,7 @@ LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
    = help: consider using `bool::then_some` like: `(o < 32).then_some(o)`
 
 error: this could be simplified with `bool::then_some`
-  --> $DIR/if_then_some_else_none.rs:26:13
+  --> $DIR/if_then_some_else_none.rs:29:13
    |
 LL |     let _ = if !x { Some(0) } else { None };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,10 +47,11 @@ LL |     let _ = if !x { Some(0) } else { None };
    = help: consider using `bool::then_some` like: `(!x).then_some(0)`
 
 error: this could be simplified with `bool::then`
-  --> $DIR/if_then_some_else_none.rs:81:13
+  --> $DIR/if_then_some_else_none.rs:85:13
    |
 LL |       let _ = if foo() {
    |  _____________^
+LL | |
 LL | |         println!("true!");
 LL | |         Some(150)
 LL | |     } else {

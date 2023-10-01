@@ -5,237 +5,244 @@ LL |     let _: *const T = core::intrinsics::transmute(t);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T`
    |
    = note: `-D clippy::useless-transmute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_transmute)]`
 
 error: transmute from a reference to a pointer
-  --> $DIR/transmute.rs:26:21
+  --> $DIR/transmute.rs:28:21
    |
 LL |     let _: *mut T = core::intrinsics::transmute(t);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *mut T`
 
 error: transmute from a reference to a pointer
-  --> $DIR/transmute.rs:28:23
+  --> $DIR/transmute.rs:31:23
    |
 LL |     let _: *const U = core::intrinsics::transmute(t);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *const U`
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> $DIR/transmute.rs:34:27
+  --> $DIR/transmute.rs:38:27
    |
 LL |         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> $DIR/transmute.rs:36:27
+  --> $DIR/transmute.rs:41:27
    |
 LL |         let _: Vec<i32> = core::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> $DIR/transmute.rs:38:27
+  --> $DIR/transmute.rs:44:27
    |
 LL |         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> $DIR/transmute.rs:40:27
+  --> $DIR/transmute.rs:47:27
    |
 LL |         let _: Vec<i32> = std::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> $DIR/transmute.rs:42:27
+  --> $DIR/transmute.rs:50:27
    |
 LL |         let _: Vec<i32> = my_transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from an integer to a pointer
-  --> $DIR/transmute.rs:44:31
+  --> $DIR/transmute.rs:53:31
    |
 LL |         let _: *const usize = std::mem::transmute(5_isize);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `5_isize as *const usize`
 
 error: transmute from an integer to a pointer
-  --> $DIR/transmute.rs:48:31
+  --> $DIR/transmute.rs:58:31
    |
 LL |         let _: *const usize = std::mem::transmute(1 + 1usize);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(1 + 1usize) as *const usize`
 
 error: transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
-  --> $DIR/transmute.rs:79:24
+  --> $DIR/transmute.rs:90:24
    |
 LL |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::crosspointer-transmute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::crosspointer_transmute)]`
 
 error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
-  --> $DIR/transmute.rs:81:24
+  --> $DIR/transmute.rs:94:24
    |
 LL |         let _: Usize = core::intrinsics::transmute(int_mut_ptr);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
-  --> $DIR/transmute.rs:83:31
+  --> $DIR/transmute.rs:97:31
    |
 LL |         let _: *const Usize = core::intrinsics::transmute(my_int());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
-  --> $DIR/transmute.rs:85:29
+  --> $DIR/transmute.rs:100:29
    |
 LL |         let _: *mut Usize = core::intrinsics::transmute(my_int());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a `u32` to a `char`
-  --> $DIR/transmute.rs:91:28
+  --> $DIR/transmute.rs:107:28
    |
 LL |     let _: char = unsafe { std::mem::transmute(0_u32) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_u32).unwrap()`
    |
    = note: `-D clippy::transmute-int-to-char` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_int_to_char)]`
 
 error: transmute from a `i32` to a `char`
-  --> $DIR/transmute.rs:92:28
+  --> $DIR/transmute.rs:110:28
    |
 LL |     let _: char = unsafe { std::mem::transmute(0_i32) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_i32 as u32).unwrap()`
 
 error: transmute from a `u8` to a `bool`
-  --> $DIR/transmute.rs:101:28
+  --> $DIR/transmute.rs:120:28
    |
 LL |     let _: bool = unsafe { std::mem::transmute(0_u8) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `0_u8 != 0`
    |
    = note: `-D clippy::transmute-int-to-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_int_to_bool)]`
 
 error: transmute from a `u32` to a `f32`
-  --> $DIR/transmute.rs:107:31
+  --> $DIR/transmute.rs:128:31
    |
 LL |         let _: f32 = unsafe { std::mem::transmute(0_u32) };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f32::from_bits(0_u32)`
    |
    = note: `-D clippy::transmute-int-to-float` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_int_to_float)]`
 
 error: transmute from a `i32` to a `f32`
-  --> $DIR/transmute.rs:108:31
+  --> $DIR/transmute.rs:131:31
    |
 LL |         let _: f32 = unsafe { std::mem::transmute(0_i32) };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f32::from_bits(0_i32 as u32)`
 
 error: transmute from a `u64` to a `f64`
-  --> $DIR/transmute.rs:109:31
+  --> $DIR/transmute.rs:133:31
    |
 LL |         let _: f64 = unsafe { std::mem::transmute(0_u64) };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f64::from_bits(0_u64)`
 
 error: transmute from a `i64` to a `f64`
-  --> $DIR/transmute.rs:110:31
+  --> $DIR/transmute.rs:135:31
    |
 LL |         let _: f64 = unsafe { std::mem::transmute(0_i64) };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f64::from_bits(0_i64 as u64)`
 
 error: transmute from a `u8` to a `[u8; 1]`
-  --> $DIR/transmute.rs:130:30
+  --> $DIR/transmute.rs:156:30
    |
 LL |             let _: [u8; 1] = std::mem::transmute(0u8);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0u8.to_ne_bytes()`
    |
    = note: `-D clippy::transmute-num-to-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_num_to_bytes)]`
 
 error: transmute from a `u32` to a `[u8; 4]`
-  --> $DIR/transmute.rs:131:30
+  --> $DIR/transmute.rs:159:30
    |
 LL |             let _: [u8; 4] = std::mem::transmute(0u32);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0u32.to_ne_bytes()`
 
 error: transmute from a `u128` to a `[u8; 16]`
-  --> $DIR/transmute.rs:132:31
+  --> $DIR/transmute.rs:161:31
    |
 LL |             let _: [u8; 16] = std::mem::transmute(0u128);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0u128.to_ne_bytes()`
 
 error: transmute from a `i8` to a `[u8; 1]`
-  --> $DIR/transmute.rs:133:30
+  --> $DIR/transmute.rs:163:30
    |
 LL |             let _: [u8; 1] = std::mem::transmute(0i8);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0i8.to_ne_bytes()`
 
 error: transmute from a `i32` to a `[u8; 4]`
-  --> $DIR/transmute.rs:134:30
+  --> $DIR/transmute.rs:165:30
    |
 LL |             let _: [u8; 4] = std::mem::transmute(0i32);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0i32.to_ne_bytes()`
 
 error: transmute from a `i128` to a `[u8; 16]`
-  --> $DIR/transmute.rs:135:31
+  --> $DIR/transmute.rs:167:31
    |
 LL |             let _: [u8; 16] = std::mem::transmute(0i128);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0i128.to_ne_bytes()`
 
 error: transmute from a `f32` to a `[u8; 4]`
-  --> $DIR/transmute.rs:136:30
+  --> $DIR/transmute.rs:169:30
    |
 LL |             let _: [u8; 4] = std::mem::transmute(0.0f32);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0.0f32.to_ne_bytes()`
 
 error: transmute from a `f64` to a `[u8; 8]`
-  --> $DIR/transmute.rs:137:30
+  --> $DIR/transmute.rs:171:30
    |
 LL |             let _: [u8; 8] = std::mem::transmute(0.0f64);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0.0f64.to_ne_bytes()`
 
 error: transmute from a `u8` to a `[u8; 1]`
-  --> $DIR/transmute.rs:142:30
+  --> $DIR/transmute.rs:177:30
    |
 LL |             let _: [u8; 1] = std::mem::transmute(0u8);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0u8.to_ne_bytes()`
 
 error: transmute from a `u32` to a `[u8; 4]`
-  --> $DIR/transmute.rs:143:30
+  --> $DIR/transmute.rs:179:30
    |
 LL |             let _: [u8; 4] = std::mem::transmute(0u32);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0u32.to_ne_bytes()`
 
 error: transmute from a `u128` to a `[u8; 16]`
-  --> $DIR/transmute.rs:144:31
+  --> $DIR/transmute.rs:181:31
    |
 LL |             let _: [u8; 16] = std::mem::transmute(0u128);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0u128.to_ne_bytes()`
 
 error: transmute from a `i8` to a `[u8; 1]`
-  --> $DIR/transmute.rs:145:30
+  --> $DIR/transmute.rs:183:30
    |
 LL |             let _: [u8; 1] = std::mem::transmute(0i8);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0i8.to_ne_bytes()`
 
 error: transmute from a `i32` to a `[u8; 4]`
-  --> $DIR/transmute.rs:146:30
+  --> $DIR/transmute.rs:185:30
    |
 LL |             let _: [u8; 4] = std::mem::transmute(0i32);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0i32.to_ne_bytes()`
 
 error: transmute from a `i128` to a `[u8; 16]`
-  --> $DIR/transmute.rs:147:31
+  --> $DIR/transmute.rs:187:31
    |
 LL |             let _: [u8; 16] = std::mem::transmute(0i128);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `to_ne_bytes()`: `0i128.to_ne_bytes()`
 
 error: transmute from a `&[u8]` to a `&str`
-  --> $DIR/transmute.rs:157:28
+  --> $DIR/transmute.rs:198:28
    |
 LL |     let _: &str = unsafe { std::mem::transmute(B) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8(B).unwrap()`
    |
    = note: `-D clippy::transmute-bytes-to-str` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_bytes_to_str)]`
 
 error: transmute from a `&mut [u8]` to a `&mut str`
-  --> $DIR/transmute.rs:158:32
+  --> $DIR/transmute.rs:201:32
    |
 LL |     let _: &mut str = unsafe { std::mem::transmute(mb) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_mut(mb).unwrap()`
 
 error: transmute from a `&[u8]` to a `&str`
-  --> $DIR/transmute.rs:159:30
+  --> $DIR/transmute.rs:203:30
    |
 LL |     const _: &str = unsafe { std::mem::transmute(B) };
    |                              ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_unchecked(B)`

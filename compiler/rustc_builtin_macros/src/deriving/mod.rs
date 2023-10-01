@@ -2,9 +2,9 @@
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::{GenericArg, Impl, ItemKind, MetaItem};
+use rustc_ast::{GenericArg, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
@@ -114,100 +114,6 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
         tokens: None,
         could_be_bare_literal: false,
     }))
-}
-
-// Injects `impl<...> Structural for ItemType<...> { }`. In particular,
-// does *not* add `where T: Structural` for parameters `T` in `...`.
-// (That's the main reason we cannot use TraitDef here.)
-fn inject_impl_of_structural_trait(
-    cx: &mut ExtCtxt<'_>,
-    span: Span,
-    item: &Annotatable,
-    structural_path: generic::ty::Path,
-    push: &mut dyn FnMut(Annotatable),
-) {
-    let Annotatable::Item(item) = item else {
-        unreachable!();
-    };
-
-    let generics = match &item.kind {
-        ItemKind::Struct(_, generics) | ItemKind::Enum(_, generics) => generics,
-        // Do not inject `impl Structural for Union`. (`PartialEq` does not
-        // support unions, so we will see error downstream.)
-        ItemKind::Union(..) => return,
-        _ => unreachable!(),
-    };
-
-    // Create generics param list for where clauses and impl headers
-    let mut generics = generics.clone();
-
-    let ctxt = span.ctxt();
-
-    // Create the type of `self`.
-    //
-    // in addition, remove defaults from generic params (impls cannot have them).
-    let self_params: Vec<_> = generics
-        .params
-        .iter_mut()
-        .map(|param| match &mut param.kind {
-            ast::GenericParamKind::Lifetime => ast::GenericArg::Lifetime(
-                cx.lifetime(param.ident.span.with_ctxt(ctxt), param.ident),
-            ),
-            ast::GenericParamKind::Type { default } => {
-                *default = None;
-                ast::GenericArg::Type(cx.ty_ident(param.ident.span.with_ctxt(ctxt), param.ident))
-            }
-            ast::GenericParamKind::Const { ty: _, kw_span: _, default } => {
-                *default = None;
-                ast::GenericArg::Const(
-                    cx.const_ident(param.ident.span.with_ctxt(ctxt), param.ident),
-                )
-            }
-        })
-        .collect();
-
-    let type_ident = item.ident;
-
-    let trait_ref = cx.trait_ref(structural_path.to_path(cx, span, type_ident, &generics));
-    let self_type = cx.ty_path(cx.path_all(span, false, vec![type_ident], self_params));
-
-    // It would be nice to also encode constraint `where Self: Eq` (by adding it
-    // onto `generics` cloned above). Unfortunately, that strategy runs afoul of
-    // rust-lang/rust#48214. So we perform that additional check in the compiler
-    // itself, instead of encoding it here.
-
-    // Keep the lint and stability attributes of the original item, to control
-    // how the generated implementation is linted.
-    let mut attrs = ast::AttrVec::new();
-    attrs.extend(
-        item.attrs
-            .iter()
-            .filter(|a| {
-                [sym::allow, sym::warn, sym::deny, sym::forbid, sym::stable, sym::unstable]
-                    .contains(&a.name_or_empty())
-            })
-            .cloned(),
-    );
-    // Mark as `automatically_derived` to avoid some silly lints.
-    attrs.push(cx.attr_word(sym::automatically_derived, span));
-
-    let newitem = cx.item(
-        span,
-        Ident::empty(),
-        attrs,
-        ItemKind::Impl(Box::new(Impl {
-            unsafety: ast::Unsafe::No,
-            polarity: ast::ImplPolarity::Positive,
-            defaultness: ast::Defaultness::Final,
-            constness: ast::Const::No,
-            generics,
-            of_trait: Some(trait_ref),
-            self_ty: self_type,
-            items: ThinVec::new(),
-        })),
-    );
-
-    push(Annotatable::Item(newitem));
 }
 
 fn assert_ty_bounds(

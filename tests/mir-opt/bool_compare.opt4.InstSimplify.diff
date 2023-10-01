@@ -13,16 +13,17 @@
           _3 = _1;
 -         _2 = Eq(const false, move _3);
 +         _2 = Not(move _3);
-          StorageDead(_3);
           switchInt(move _2) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
+          StorageDead(_3);
           _0 = const 0_u32;
           goto -> bb3;
       }
   
       bb2: {
+          StorageDead(_3);
           _0 = const 1_u32;
           goto -> bb3;
       }

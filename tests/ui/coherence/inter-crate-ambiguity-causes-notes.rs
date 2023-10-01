@@ -1,3 +1,6 @@
+// revisions: old next
+//[next] compile-flags: -Ztrait-solver=next
+
 struct S;
 
 impl From<()> for S {

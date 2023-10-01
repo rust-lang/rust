@@ -7,6 +7,14 @@ LL |     test(Foo);
    |     required by a bound introduced by this call
    |
    = help: the trait `Marker` is implemented for `()`
+note: this is a known limitation of the trait solver that will be lifted in the future
+  --> $DIR/issue-88460.rs:28:10
+   |
+LL |     test(Foo);
+   |     -----^^^-
+   |     |    |
+   |     |    the trait solver is unable to infer the generic types that should be inferred from this argument
+   |     add turbofish arguments to this call to specify the types manually, even if it's redundant
 note: required by a bound in `test`
   --> $DIR/issue-88460.rs:15:27
    |

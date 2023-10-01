@@ -499,24 +499,26 @@ fn offset() {
         r#"
         //- minicore: coerce_unsized, index, slice
         extern "rust-intrinsic" {
-            pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
+            pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+            pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
         }
 
-        const GOAL: u8 = unsafe {
-            let ar: &[(u8, u8, u8)] = &[
+        const GOAL: i32 = unsafe {
+            let ar: &[(i32, i32, i32)] = &[
                 (10, 11, 12),
                 (20, 21, 22),
                 (30, 31, 32),
                 (40, 41, 42),
                 (50, 51, 52),
             ];
-            let ar: *const [(u8, u8, u8)] = ar;
-            let ar = ar as *const (u8, u8, u8);
-            let element = *offset(ar, 2);
-            element.1
+            let ar: *const [(i32, i32, i32)] = ar;
+            let ar = ar as *const (i32, i32, i32);
+            let element3 = *offset(ar, 2usize);
+            let element4 = *arith_offset(ar, 3);
+            element3.1 * 100 + element4.0
         };
         "#,
-        31,
+        3140,
     );
 }
 
@@ -581,6 +583,24 @@ fn write_bytes() {
         };
         "#,
         0x05050505,
+    );
+}
+
+#[test]
+fn write_via_move() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            fn write_via_move<T>(ptr: *mut T, value: T);
+        }
+
+        const GOAL: i32 = unsafe {
+            let mut x = 2;
+            write_via_move(&mut x, 100);
+            x
+        };
+        "#,
+        100,
     );
 }
 

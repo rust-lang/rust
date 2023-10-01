@@ -8,7 +8,8 @@
 //! name resolution, and `BUILTIN_ATTRIBUTES` is almost entirely unchanged from the original, to
 //! ease updating.
 
-use once_cell::sync::OnceCell;
+use std::sync::OnceLock;
+
 use rustc_hash::FxHashMap;
 
 /// Ignored attribute namespaces used by tools.
@@ -29,7 +30,7 @@ pub struct AttributeTemplate {
 }
 
 pub fn find_builtin_attr_idx(name: &str) -> Option<usize> {
-    static BUILTIN_LOOKUP_TABLE: OnceCell<FxHashMap<&'static str, usize>> = OnceCell::new();
+    static BUILTIN_LOOKUP_TABLE: OnceLock<FxHashMap<&'static str, usize>> = OnceLock::new();
     BUILTIN_LOOKUP_TABLE
         .get_or_init(|| {
             INERT_ATTRIBUTES.iter().map(|attr| attr.name).enumerate().map(|(a, b)| (b, a)).collect()
@@ -239,7 +240,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         experimental!(no_sanitize)
     ),
-    gated!(no_coverage, Normal, template!(Word), WarnFollowing, experimental!(no_coverage)),
+    gated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing, experimental!(coverage)),
 
     ungated!(
         doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string"), DuplicatesOk

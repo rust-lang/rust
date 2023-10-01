@@ -21,18 +21,33 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
 
-hir_analysis_cannot_capture_late_bound_const_in_anon_const =
-    cannot capture late-bound const parameter in a constant
+hir_analysis_cannot_capture_late_bound_const =
+    cannot capture late-bound const parameter in {$what}
     .label = parameter defined here
 
-hir_analysis_cannot_capture_late_bound_ty_in_anon_const =
-    cannot capture late-bound type parameter in a constant
+hir_analysis_cannot_capture_late_bound_lifetime =
+    cannot capture late-bound lifetime in {$what}
+    .label = lifetime defined here
+
+hir_analysis_cannot_capture_late_bound_ty =
+    cannot capture late-bound type parameter in {$what}
     .label = parameter defined here
 
 hir_analysis_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
 
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
+
+hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
+
+hir_analysis_coerce_unsized_multi = implementing the trait `CoerceUnsized` requires multiple coercions
+    .note = `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
+    .coercions_note = currently, {$number} fields need coercions: {$coercions}
+    .label = requires multiple coercions
+
+hir_analysis_coercion_between_struct_same_note = expected coercion between the same definition; expected `{$source_path}`, found `{$target_path}`
+
+hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
 hir_analysis_const_bound_for_non_const_trait =
     ~const can only be applied to `#[const_trait]` traits
@@ -56,6 +71,15 @@ hir_analysis_copy_impl_on_non_adt =
 hir_analysis_copy_impl_on_type_with_dtor =
     the trait `Copy` cannot be implemented for this type; the type has a destructor
     .label = `Copy` not allowed on types with destructors
+
+hir_analysis_dispatch_from_dyn_multi = implementing the `DispatchFromDyn` trait requires multiple coercions
+    .note = the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
+    .coercions_note = currently, {$number} fields need coercions: {$coercions}
+
+hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
+
+hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+    .note = extra field `{$name}` of type `{$ty}` is not allowed
 
 hir_analysis_drop_impl_negative = negative `Drop` impls are not supported
 
@@ -94,6 +118,34 @@ hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a par
 
 hir_analysis_impl_not_marked_default_err = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
     .note = parent implementation is in crate `{$cname}`
+
+hir_analysis_inherent_dyn = cannot define inherent `impl` for a dyn auto trait
+    .label = impl requires at least one non-auto trait
+    .note = define and implement a new trait or type instead
+
+hir_analysis_inherent_nominal = no nominal type found for inherent implementation
+    .label = impl requires a nominal type
+    .note = either implement a trait on it or create a newtype to wrap it instead
+hir_analysis_inherent_primitive_ty = cannot define inherent `impl` for primitive types
+    .help = consider using an extension trait instead
+
+hir_analysis_inherent_primitive_ty_note = you could also try moving the reference to uses of `{$subty}` (such as `self`) within the implementation
+
+hir_analysis_inherent_ty_outside = cannot define inherent `impl` for a type outside of the crate where the type is defined
+    .help = consider moving this inherent impl into the crate defining the type if possible
+    .span_help = alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
+
+hir_analysis_inherent_ty_outside_new = cannot define inherent `impl` for a type outside of the crate where the type is defined
+    .label = impl for type defined outside of crate.
+    .note = define and implement a trait or new type instead
+
+hir_analysis_inherent_ty_outside_primitive = cannot define inherent `impl` for primitive types outside of `core`
+    .help = consider moving this inherent impl into `core` if possible
+    .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
+
+hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a type outside of the crate where the type is defined
+    .help = consider moving this inherent impl into the crate defining the type if possible
+    .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
 hir_analysis_invalid_union_field =
     field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
@@ -200,6 +252,8 @@ hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
 
+hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
+
 hir_analysis_return_type_notation_conflicting_bound =
     ambiguous associated function `{$assoc_name}` for `{$ty_name}`
     .note = `{$assoc_name}` is declared in two supertraits: `{$first_bound}` and `{$second_bound}`
@@ -222,6 +276,12 @@ hir_analysis_return_type_notation_on_non_rpitit =
     .note = function returns `{$ty}`, which is not compatible with associated type return bounds
     .label = this function must be `async` or return `impl Trait`
 
+hir_analysis_rpitit_refined = impl trait in impl method signature does not match trait method signature
+    .suggestion = replace the return type so that it matches the trait
+    .label = return type from trait method defined here
+    .unmatched_bound_label = this bound is stronger than that defined on the trait
+    .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
@@ -232,20 +292,20 @@ hir_analysis_simd_ffi_highly_experimental = use of SIMD type{$snip} in FFI is hi
 hir_analysis_specialization_trait = implementing `rustc_specialization_trait` traits is unstable
     .help = add `#![feature(min_specialization)]` to the crate attributes to enable
 
-hir_analysis_start_function_parameters = start function is not allowed to have type parameters
-    .label = start function cannot have type parameters
+hir_analysis_start_function_parameters = `#[start]` function is not allowed to have type parameters
+    .label = `#[start]` function cannot have type parameters
 
-hir_analysis_start_function_where = start function is not allowed to have a `where` clause
-    .label = start function cannot have a `where` clause
+hir_analysis_start_function_where = `#[start]` function is not allowed to have a `where` clause
+    .label = `#[start]` function cannot have a `where` clause
 
-hir_analysis_start_not_async = `start` is not allowed to be `async`
-    .label = `start` is not allowed to be `async`
+hir_analysis_start_not_async = `#[start]` function is not allowed to be `async`
+    .label = `#[start]` is not allowed to be `async`
 
-hir_analysis_start_not_target_feature = `start` is not allowed to have `#[target_feature]`
-    .label = `start` is not allowed to have `#[target_feature]`
+hir_analysis_start_not_target_feature = `#[start]` function is not allowed to have `#[target_feature]`
+    .label = `#[start]` function is not allowed to have `#[target_feature]`
 
-hir_analysis_start_not_track_caller = `start` is not allowed to be `#[track_caller]`
-    .label = `start` is not allowed to be `#[track_caller]`
+hir_analysis_start_not_track_caller = `#[start]` function is not allowed to be `#[track_caller]`
+    .label = `#[start]` function is not allowed to be `#[track_caller]`
 
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
@@ -261,6 +321,9 @@ hir_analysis_too_large_static = extern static is too large for the current archi
 hir_analysis_track_caller_on_main = `main` function is not allowed to be `#[track_caller]`
     .suggestion = remove this annotation
 
+hir_analysis_trait_cannot_impl_for_ty = the trait `{$trait_name}` cannot be implemented for this type
+    .label = this field does not implement `{$trait_name}`
+
 hir_analysis_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
     .alias_span = this alias does not contain a trait
@@ -270,13 +333,13 @@ hir_analysis_transparent_enum_variant = transparent enum needs exactly one varia
     .many_label = too many variants in `{$path}`
     .multi_label = variant here
 
-hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
-    .label = needs at most one non-zero-sized field, but has {$field_count}
-    .labels = this field is non-zero-sized
+hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .labels = this field has non-zero size or requires alignment
 
-hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
-    .label = needs at most one non-zero-sized field, but has {$field_count}
-    .labels = this field is non-zero-sized
+hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
+    .labels = this field has non-zero size or requires alignment
 
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented

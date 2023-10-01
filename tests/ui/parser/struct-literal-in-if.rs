@@ -14,4 +14,9 @@ fn main() {
     }.hi() {
         println!("yo");
     }
+    if let true = Foo { //~ ERROR struct literals are not allowed here
+        x: 3
+    }.hi() {
+        println!("yo");
+    }
 }

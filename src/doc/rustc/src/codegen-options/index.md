@@ -263,7 +263,7 @@ flavor. Valid options are:
 * `lld-link`: use the LLVM `lld` executable with the [`-flavor link`
   flag][lld-flavor] for Microsoft's `link.exe`.
 
-[lld-flavor]: https://lld.llvm.org/Driver.html
+[lld-flavor]: https://releases.llvm.org/12.0.0/tools/lld/docs/Driver.html
 
 ## linker-plugin-lto
 

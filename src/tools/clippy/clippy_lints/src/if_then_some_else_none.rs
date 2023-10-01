@@ -6,7 +6,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::{contains_return, higher, is_else_clause, is_res_lang_ctor, path_res, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
-use rustc_hir::{Expr, ExprKind, Stmt, StmtKind};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && then_expr.span.ctxt() == ctxt
             && is_res_lang_ctor(cx, path_res(cx, then_call), OptionSome)
             && is_res_lang_ctor(cx, path_res(cx, peel_blocks(els)), OptionNone)
-            && !stmts_contains_early_return(then_block.stmts)
+            && !contains_return(then_block.stmts)
         {
             let mut app = Applicability::Unspecified;
             let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app).maybe_par().to_string();
@@ -115,18 +115,4 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
     }
 
     extract_msrv_attr!(LateContext);
-}
-
-fn stmts_contains_early_return(stmts: &[Stmt<'_>]) -> bool {
-    stmts.iter().any(|stmt| {
-        let Stmt {
-            kind: StmtKind::Semi(e),
-            ..
-        } = stmt
-        else {
-            return false;
-        };
-
-        contains_return(e)
-    })
 }

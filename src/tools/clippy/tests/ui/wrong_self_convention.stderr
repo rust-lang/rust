@@ -6,9 +6,10 @@ LL |     fn from_i32(self) {}
    |
    = help: consider choosing a less ambiguous name
    = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wrong_self_convention)]`
 
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention.rs:22:21
+  --> $DIR/wrong_self_convention.rs:23:21
    |
 LL |     pub fn from_i64(self) {}
    |                     ^^^^
@@ -16,7 +17,7 @@ LL |     pub fn from_i64(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `as_*` usually take `self` by reference or `self` by mutable reference
-  --> $DIR/wrong_self_convention.rs:34:15
+  --> $DIR/wrong_self_convention.rs:36:15
    |
 LL |     fn as_i32(self) {}
    |               ^^^^
@@ -24,7 +25,7 @@ LL |     fn as_i32(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `into_*` usually take `self` by value
-  --> $DIR/wrong_self_convention.rs:36:17
+  --> $DIR/wrong_self_convention.rs:39:17
    |
 LL |     fn into_i32(&self) {}
    |                 ^^^^^
@@ -32,7 +33,7 @@ LL |     fn into_i32(&self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `is_*` usually take `self` by mutable reference or `self` by reference or no `self`
-  --> $DIR/wrong_self_convention.rs:38:15
+  --> $DIR/wrong_self_convention.rs:42:15
    |
 LL |     fn is_i32(self) {}
    |               ^^^^
@@ -40,7 +41,7 @@ LL |     fn is_i32(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods with the following characteristics: (`to_*` and `self` type is not `Copy`) usually take `self` by reference
-  --> $DIR/wrong_self_convention.rs:40:15
+  --> $DIR/wrong_self_convention.rs:45:15
    |
 LL |     fn to_i32(self) {}
    |               ^^^^
@@ -48,7 +49,7 @@ LL |     fn to_i32(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention.rs:42:17
+  --> $DIR/wrong_self_convention.rs:48:17
    |
 LL |     fn from_i32(self) {}
    |                 ^^^^
@@ -56,7 +57,7 @@ LL |     fn from_i32(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `as_*` usually take `self` by reference or `self` by mutable reference
-  --> $DIR/wrong_self_convention.rs:44:19
+  --> $DIR/wrong_self_convention.rs:51:19
    |
 LL |     pub fn as_i64(self) {}
    |                   ^^^^
@@ -64,7 +65,7 @@ LL |     pub fn as_i64(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `into_*` usually take `self` by value
-  --> $DIR/wrong_self_convention.rs:45:21
+  --> $DIR/wrong_self_convention.rs:53:21
    |
 LL |     pub fn into_i64(&self) {}
    |                     ^^^^^
@@ -72,7 +73,7 @@ LL |     pub fn into_i64(&self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `is_*` usually take `self` by mutable reference or `self` by reference or no `self`
-  --> $DIR/wrong_self_convention.rs:46:19
+  --> $DIR/wrong_self_convention.rs:55:19
    |
 LL |     pub fn is_i64(self) {}
    |                   ^^^^
@@ -80,7 +81,7 @@ LL |     pub fn is_i64(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods with the following characteristics: (`to_*` and `self` type is not `Copy`) usually take `self` by reference
-  --> $DIR/wrong_self_convention.rs:47:19
+  --> $DIR/wrong_self_convention.rs:57:19
    |
 LL |     pub fn to_i64(self) {}
    |                   ^^^^
@@ -88,7 +89,7 @@ LL |     pub fn to_i64(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention.rs:48:21
+  --> $DIR/wrong_self_convention.rs:59:21
    |
 LL |     pub fn from_i64(self) {}
    |                     ^^^^
@@ -96,7 +97,7 @@ LL |     pub fn from_i64(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `as_*` usually take `self` by reference or `self` by mutable reference
-  --> $DIR/wrong_self_convention.rs:93:19
+  --> $DIR/wrong_self_convention.rs:105:19
    |
 LL |         fn as_i32(self) {}
    |                   ^^^^
@@ -104,7 +105,7 @@ LL |         fn as_i32(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `into_*` usually take `self` by value
-  --> $DIR/wrong_self_convention.rs:96:25
+  --> $DIR/wrong_self_convention.rs:109:25
    |
 LL |         fn into_i32_ref(&self) {}
    |                         ^^^^^
@@ -112,7 +113,7 @@ LL |         fn into_i32_ref(&self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `is_*` usually take `self` by mutable reference or `self` by reference or no `self`
-  --> $DIR/wrong_self_convention.rs:98:19
+  --> $DIR/wrong_self_convention.rs:112:19
    |
 LL |         fn is_i32(self) {}
    |                   ^^^^
@@ -120,7 +121,7 @@ LL |         fn is_i32(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention.rs:102:21
+  --> $DIR/wrong_self_convention.rs:117:21
    |
 LL |         fn from_i32(self) {}
    |                     ^^^^
@@ -128,7 +129,7 @@ LL |         fn from_i32(self) {}
    = help: consider choosing a less ambiguous name
 
 error: methods called `as_*` usually take `self` by reference or `self` by mutable reference
-  --> $DIR/wrong_self_convention.rs:117:19
+  --> $DIR/wrong_self_convention.rs:133:19
    |
 LL |         fn as_i32(self);
    |                   ^^^^
@@ -136,7 +137,7 @@ LL |         fn as_i32(self);
    = help: consider choosing a less ambiguous name
 
 error: methods called `into_*` usually take `self` by value
-  --> $DIR/wrong_self_convention.rs:120:25
+  --> $DIR/wrong_self_convention.rs:137:25
    |
 LL |         fn into_i32_ref(&self);
    |                         ^^^^^
@@ -144,7 +145,7 @@ LL |         fn into_i32_ref(&self);
    = help: consider choosing a less ambiguous name
 
 error: methods called `is_*` usually take `self` by mutable reference or `self` by reference or no `self`
-  --> $DIR/wrong_self_convention.rs:122:19
+  --> $DIR/wrong_self_convention.rs:140:19
    |
 LL |         fn is_i32(self);
    |                   ^^^^
@@ -152,7 +153,7 @@ LL |         fn is_i32(self);
    = help: consider choosing a less ambiguous name
 
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention.rs:126:21
+  --> $DIR/wrong_self_convention.rs:145:21
    |
 LL |         fn from_i32(self);
    |                     ^^^^
@@ -160,7 +161,7 @@ LL |         fn from_i32(self);
    = help: consider choosing a less ambiguous name
 
 error: methods called `into_*` usually take `self` by value
-  --> $DIR/wrong_self_convention.rs:144:25
+  --> $DIR/wrong_self_convention.rs:164:25
    |
 LL |         fn into_i32_ref(&self);
    |                         ^^^^^
@@ -168,7 +169,7 @@ LL |         fn into_i32_ref(&self);
    = help: consider choosing a less ambiguous name
 
 error: methods called `from_*` usually take no `self`
-  --> $DIR/wrong_self_convention.rs:150:21
+  --> $DIR/wrong_self_convention.rs:171:21
    |
 LL |         fn from_i32(self);
    |                     ^^^^
@@ -176,7 +177,7 @@ LL |         fn from_i32(self);
    = help: consider choosing a less ambiguous name
 
 error: methods with the following characteristics: (`to_*` and `self` type is `Copy`) usually take `self` by value
-  --> $DIR/wrong_self_convention.rs:174:22
+  --> $DIR/wrong_self_convention.rs:196:22
    |
 LL |         fn to_u64_v2(&self) -> u64 {
    |                      ^^^^^
@@ -184,7 +185,7 @@ LL |         fn to_u64_v2(&self) -> u64 {
    = help: consider choosing a less ambiguous name
 
 error: methods with the following characteristics: (`to_*` and `self` type is not `Copy`) usually take `self` by reference
-  --> $DIR/wrong_self_convention.rs:183:19
+  --> $DIR/wrong_self_convention.rs:206:19
    |
 LL |         fn to_u64(self) -> u64 {
    |                   ^^^^

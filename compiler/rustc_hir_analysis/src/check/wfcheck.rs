@@ -24,6 +24,9 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::traits::misc::{
+    type_allowed_to_implement_const_param_ty, ConstParamTyImplementationError,
+};
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -246,9 +249,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => {}
         hir::ItemKind::TyAlias(hir_ty, ast_generics) => {
-            if tcx.features().lazy_type_alias
-                || tcx.type_of(item.owner_id).skip_binder().has_opaque_types()
-            {
+            if tcx.type_alias_is_lazy(item.owner_id) {
                 // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
                 // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
                 check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
@@ -867,43 +868,65 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                     );
                 });
             } else {
-                let err_ty_str;
-                let mut is_ptr = true;
-
-                let err = match ty.kind() {
+                let diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
-                    ty::FnPtr(_) => Some("function pointers"),
-                    ty::RawPtr(_) => Some("raw pointers"),
-                    _ => {
-                        is_ptr = false;
-                        err_ty_str = format!("`{ty}`");
-                        Some(err_ty_str.as_str())
-                    }
+                    ty::FnPtr(_) => Some(tcx.sess.struct_span_err(
+                        hir_ty.span,
+                        "using function pointers as const generic parameters is forbidden",
+                    )),
+                    ty::RawPtr(_) => Some(tcx.sess.struct_span_err(
+                        hir_ty.span,
+                        "using raw pointers as const generic parameters is forbidden",
+                    )),
+                    _ => Some(tcx.sess.struct_span_err(
+                        hir_ty.span,
+                        format!("`{}` is forbidden as the type of a const generic parameter", ty),
+                    )),
                 };
 
-                if let Some(unsupported_type) = err {
-                    if is_ptr {
-                        tcx.sess.span_err(
-                            hir_ty.span,
-                            format!(
-                                "using {unsupported_type} as const generic parameters is forbidden",
-                            ),
-                        );
-                    } else {
-                        let mut err = tcx.sess.struct_span_err(
-                            hir_ty.span,
-                            format!(
-                                "{unsupported_type} is forbidden as the type of a const generic parameter",
-                            ),
-                        );
-                        err.note("the only supported types are integers, `bool` and `char`");
-                        if tcx.sess.is_nightly_build() {
-                            err.help(
-                            "more complex types are supported with `#![feature(adt_const_params)]`",
-                        );
+                if let Some(mut diag) = diag {
+                    diag.note("the only supported types are integers, `bool` and `char`");
+
+                    let cause = ObligationCause::misc(hir_ty.span, param.def_id);
+                    let may_suggest_feature = match type_allowed_to_implement_const_param_ty(
+                        tcx,
+                        tcx.param_env(param.def_id),
+                        ty,
+                        cause,
+                    ) {
+                        // Can never implement `ConstParamTy`, don't suggest anything.
+                        Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => false,
+                        // May be able to implement `ConstParamTy`. Only emit the feature help
+                        // if the type is local, since the user may be able to fix the local type.
+                        Err(ConstParamTyImplementationError::InfrigingFields(..)) => {
+                            fn ty_is_local(ty: Ty<'_>) -> bool {
+                                match ty.kind() {
+                                    ty::Adt(adt_def, ..) => adt_def.did().is_local(),
+                                    // Arrays and slices use the inner type's `ConstParamTy`.
+                                    ty::Array(ty, ..) => ty_is_local(*ty),
+                                    ty::Slice(ty) => ty_is_local(*ty),
+                                    // `&` references use the inner type's `ConstParamTy`.
+                                    // `&mut` are not supported.
+                                    ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(*ty),
+                                    // Say that a tuple is local if any of its components are local.
+                                    // This is not strictly correct, but it's likely that the user can fix the local component.
+                                    ty::Tuple(tys) => tys.iter().any(|ty| ty_is_local(ty)),
+                                    _ => false,
+                                }
+                            }
+
+                            ty_is_local(ty)
                         }
-                        err.emit();
+                        // Implments `ConstParamTy`, suggest adding the feature to enable.
+                        Ok(..) => true,
+                    };
+                    if may_suggest_feature && tcx.sess.is_nightly_build() {
+                        diag.help(
+                            "add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types",
+                        );
                     }
+
+                    diag.emit();
                 }
             }
         }
@@ -1255,7 +1278,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     let is_our_default = |def: &ty::GenericParamDef| match def.kind {
         GenericParamDefKind::Type { has_default, .. }
-        | GenericParamDefKind::Const { has_default } => {
+        | GenericParamDefKind::Const { has_default, .. } => {
             has_default && def.index >= generics.parent_count as u32
         }
         GenericParamDefKind::Lifetime => unreachable!(),
@@ -1711,10 +1734,8 @@ fn check_variances_for_type_defn<'tcx>(
             }
         }
         ItemKind::TyAlias(..) => {
-            let ty = tcx.type_of(item.owner_id).instantiate_identity();
-
-            if tcx.features().lazy_type_alias || ty.has_opaque_types() {
-                if ty.references_error() {
+            if tcx.type_alias_is_lazy(item.owner_id) {
+                if tcx.type_of(item.owner_id).skip_binder().references_error() {
                     return;
                 }
             } else {
@@ -1755,6 +1776,8 @@ fn check_variances_for_type_defn<'tcx>(
             .collect::<FxHashSet<_>>()
     });
 
+    let ty_generics = tcx.generics_of(item.owner_id);
+
     for (index, _) in variances.iter().enumerate() {
         let parameter = Parameter(index as u32);
 
@@ -1762,13 +1785,27 @@ fn check_variances_for_type_defn<'tcx>(
             continue;
         }
 
-        let param = &hir_generics.params[index];
+        let ty_param = &ty_generics.params[index];
+        let hir_param = &hir_generics.params[index];
 
-        match param.name {
+        if ty_param.def_id != hir_param.def_id.into() {
+            // valid programs always have lifetimes before types in the generic parameter list
+            // ty_generics are normalized to be in this required order, and variances are built
+            // from ty generics, not from hir generics. but we need hir generics to get
+            // a span out
+            //
+            // if they aren't in the same order, then the user has written invalid code, and already
+            // got an error about it (or I'm wrong about this)
+            tcx.sess
+                .delay_span_bug(hir_param.span, "hir generics and ty generics in different order");
+            continue;
+        }
+
+        match hir_param.name {
             hir::ParamName::Error => {}
             _ => {
                 let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
-                report_bivariance(tcx, param, has_explicit_bounds);
+                report_bivariance(tcx, hir_param, has_explicit_bounds);
             }
         }
     }

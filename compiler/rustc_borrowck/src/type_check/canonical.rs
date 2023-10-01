@@ -9,7 +9,7 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use rustc_trait_selection::traits::ObligationCause;
 
-use crate::diagnostics::{ToUniverseInfo, UniverseInfo};
+use crate::diagnostics::ToUniverseInfo;
 
 use super::{Locations, NormalizeLocation, TypeChecker};
 
@@ -46,13 +46,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.push_region_constraints(locations, category, data);
         }
 
+        // If the query has created new universes and errors are going to be emitted, register the
+        // cause of these new universes for improved diagnostics.
         let universe = self.infcx.universe();
-
-        if old_universe != universe {
-            let universe_info = match error_info {
-                Some(error_info) => error_info.to_universe_info(old_universe),
-                None => UniverseInfo::other(),
-            };
+        if old_universe != universe && let Some(error_info) = error_info {
+            let universe_info = error_info.to_universe_info(old_universe);
             for u in (old_universe + 1)..=universe {
                 self.borrowck_context.constraints.universe_causes.insert(u, universe_info.clone());
             }
@@ -69,15 +67,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let old_universe = self.infcx.universe();
-
         let (instantiated, _) =
             self.infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
-
-        for u in (old_universe + 1)..=self.infcx.universe() {
-            self.borrowck_context.constraints.universe_causes.insert(u, UniverseInfo::other());
-        }
-
         instantiated
     }
 

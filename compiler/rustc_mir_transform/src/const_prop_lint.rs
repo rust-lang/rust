@@ -7,7 +7,7 @@ use either::Left;
 
 use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
-    self, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
+    InterpCx, InterpResult, MemoryKind, OpTy, Scalar, StackPopCleanup,
 };
 use rustc_const_eval::ReportErrorExt;
 use rustc_hir::def::DefKind;
@@ -39,6 +39,10 @@ pub struct ConstProp;
 
 impl<'tcx> MirLint<'tcx> for ConstProp {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+        if body.tainted_by_errors.is_some() {
+            return;
+        }
+
         // will be evaluated by miri and produce its errors there
         if body.source.promoted.is_some() {
             return;
@@ -101,25 +105,12 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
 
         trace!("ConstProp starting for {:?}", def_id);
 
-        let dummy_body = &Body::new(
-            body.source,
-            (*body.basic_blocks).to_owned(),
-            body.source_scopes.clone(),
-            body.local_decls.clone(),
-            Default::default(),
-            body.arg_count,
-            Default::default(),
-            body.span,
-            body.generator_kind(),
-            body.tainted_by_errors,
-        );
-
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
         // constants, instead of just checking for const-folding succeeding.
         // That would require a uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
-        let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx);
-        optimization_finder.visit_body(body);
+        let mut linter = ConstPropagator::new(body, tcx);
+        linter.visit_body(body);
 
         trace!("ConstProp done for {:?}", def_id);
     }
@@ -165,11 +156,7 @@ impl<'tcx> ty::layout::HasParamEnv<'tcx> for ConstPropagator<'_, 'tcx> {
 }
 
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
-    fn new(
-        body: &Body<'tcx>,
-        dummy_body: &'mir Body<'tcx>,
-        tcx: TyCtxt<'tcx>,
-    ) -> ConstPropagator<'mir, 'tcx> {
+    fn new(body: &'mir Body<'tcx>, tcx: TyCtxt<'tcx>) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
         let args = &GenericArgs::identity_for_item(tcx, def_id);
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
@@ -200,11 +187,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         ecx.push_stack_frame(
             Instance::new(def_id, args),
-            dummy_body,
+            body,
             &ret,
             StackPopCleanup::Root { cleanup: false },
         )
         .expect("failed to push initial stack frame");
+
+        for local in body.local_decls.indices() {
+            // Mark everything initially live.
+            // This is somewhat dicey since some of them might be unsized and it is incoherent to
+            // mark those as live... We rely on `local_to_place`/`local_to_op` in the interpreter
+            // stopping us before those unsized immediates can cause issues deeper in the
+            // interpreter.
+            ecx.frame_mut().locals[local].make_live_uninit();
+        }
 
         ConstPropagator {
             ecx,
@@ -226,7 +222,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         let op = match self.ecx.eval_place_to_op(place, None) {
             Ok(op) => {
-                if matches!(*op, interpret::Operand::Immediate(Immediate::Uninit)) {
+                if op
+                    .as_mplace_or_imm()
+                    .right()
+                    .is_some_and(|imm| matches!(*imm, Immediate::Uninit))
+                {
                     // Make sure nobody accidentally uses this value.
                     return None;
                 }
@@ -249,8 +249,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
     /// but not reading from them anymore.
     fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
-        ecx.frame_mut().locals[local].value =
-            LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
+        ecx.frame_mut().locals[local].make_live_uninit();
         ecx.machine.written_only_inside_own_block_locals.remove(&local);
     }
 
@@ -273,7 +272,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // dedicated error variants should be introduced instead.
                 assert!(
                     !error.kind().formatted_string(),
-                    "const-prop encountered formatting error: {error:?}",
+                    "const-prop encountered formatting error: {}",
+                    self.ecx.format_error(error),
                 );
                 None
             }
@@ -281,7 +281,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &Constant<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &ConstOperand<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.has_param() {
             return None;
@@ -293,7 +293,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // that the `RevealAll` pass has happened and that the body's consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
-        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.literal).ok()?;
+        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
 
         self.use_ecx(location, |this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
     }
@@ -322,7 +322,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn check_unary_op(&mut self, op: UnOp, arg: &Operand<'tcx>, location: Location) -> Option<()> {
         if let (val, true) = self.use_ecx(location, |this| {
             let val = this.ecx.read_immediate(&this.ecx.eval_operand(arg, None)?)?;
-            let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, &val)?;
+            let (_res, overflow) = this.ecx.overflowing_unary_op(op, &val)?;
             Ok((val, overflow))
         })? {
             // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
@@ -390,7 +390,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if let (Some(l), Some(r)) = (l, r) {
             // The remaining operators are handled through `overflowing_binary_op`.
             if self.use_ecx(location, |this| {
-                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, &l, &r)?;
+                let (_res, overflow) = this.ecx.overflowing_binary_op(op, &l, &r)?;
                 Ok(overflow)
             })? {
                 let source_info = self.body().source_info(location);
@@ -580,7 +580,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
         self.eval_constant(constant, location);
@@ -645,12 +645,12 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             }
             StatementKind::StorageLive(local) => {
                 let frame = self.ecx.frame_mut();
-                frame.locals[local].value =
-                    LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
+                frame.locals[local].make_live_uninit();
             }
             StatementKind::StorageDead(local) => {
                 let frame = self.ecx.frame_mut();
-                frame.locals[local].value = LocalValue::Dead;
+                // We don't actually track liveness, so the local remains live. But forget its value.
+                frame.locals[local].make_live_uninit();
             }
             _ => {}
         }

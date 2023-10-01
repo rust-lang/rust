@@ -21,41 +21,61 @@ fn inline_const() {
 fn panic() {
     let a = 2;
     panic!();
+    //~^ ERROR: `panic` should not be present in production code
+    //~| NOTE: `-D clippy::panic` implied by `-D warnings`
     panic!("message");
+    //~^ ERROR: `panic` should not be present in production code
     panic!("{} {}", "panic with", "multiple arguments");
+    //~^ ERROR: `panic` should not be present in production code
     let b = a + 2;
 }
 
 fn todo() {
     let a = 2;
     todo!();
+    //~^ ERROR: `todo` should not be present in production code
+    //~| NOTE: `-D clippy::todo` implied by `-D warnings`
     todo!("message");
+    //~^ ERROR: `todo` should not be present in production code
     todo!("{} {}", "panic with", "multiple arguments");
+    //~^ ERROR: `todo` should not be present in production code
     let b = a + 2;
 }
 
 fn unimplemented() {
     let a = 2;
     unimplemented!();
+    //~^ ERROR: `unimplemented` should not be present in production code
+    //~| NOTE: `-D clippy::unimplemented` implied by `-D warnings`
     unimplemented!("message");
+    //~^ ERROR: `unimplemented` should not be present in production code
     unimplemented!("{} {}", "panic with", "multiple arguments");
+    //~^ ERROR: `unimplemented` should not be present in production code
     let b = a + 2;
 }
 
 fn unreachable() {
     let a = 2;
     unreachable!();
+    //~^ ERROR: usage of the `unreachable!` macro
+    //~| NOTE: `-D clippy::unreachable` implied by `-D warnings`
     unreachable!("message");
+    //~^ ERROR: usage of the `unreachable!` macro
     unreachable!("{} {}", "panic with", "multiple arguments");
+    //~^ ERROR: usage of the `unreachable!` macro
     let b = a + 2;
 }
 
 fn core_versions() {
     use core::{panic, todo, unimplemented, unreachable};
     panic!();
+    //~^ ERROR: `panic` should not be present in production code
     todo!();
+    //~^ ERROR: `todo` should not be present in production code
     unimplemented!();
+    //~^ ERROR: `unimplemented` should not be present in production code
     unreachable!();
+    //~^ ERROR: usage of the `unreachable!` macro
 }
 
 fn assert() {

@@ -395,7 +395,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         experimental!(no_sanitize)
     ),
-    gated!(no_coverage, Normal, template!(Word), WarnFollowing, experimental!(no_coverage)),
+    gated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing, coverage_attribute, experimental!(coverage)),
 
     ungated!(
         doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string"), DuplicatesOk
@@ -537,7 +537,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
-    ungated!(rustc_safe_intrinsic, Normal, template!(Word), DuplicatesOk),
     rustc_attr!(rustc_allowed_through_unstable_modules, Normal, template!(Word), WarnFollowing,
     "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
     through unstable paths"),
@@ -667,6 +666,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_do_not_const_check, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
+    // Ensure the argument to this function is &&str during const-check.
+    rustc_attr!(
+        rustc_const_panic_str, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
+    ),
 
     // ==========================================================================
     // Internal attributes, Layout related:
@@ -698,6 +701,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
+    ),
+    rustc_attr!(
+        rustc_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
+        "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
     ),
     rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, @only_local: true,
@@ -802,6 +809,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
         r#"`rustc_doc_primitive` is a rustc internal attribute"#,
     ),
+    rustc_attr!(
+        rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
+        "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
@@ -813,7 +824,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_strict_coherence, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_variance, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_variance_of_opaques, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
+    rustc_attr!(TEST, rustc_abi, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
         TEST, rustc_error, Normal,

@@ -1,241 +1,242 @@
 error: this operation has no effect
-  --> $DIR/identity_op.rs:43:5
+  --> $DIR/identity_op.rs:42:5
    |
 LL |     x + 0;
    |     ^^^^^ help: consider reducing it to: `x`
    |
    = note: `-D clippy::identity-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::identity_op)]`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:44:5
+  --> $DIR/identity_op.rs:43:5
    |
 LL |     x + (1 - 1);
    |     ^^^^^^^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:46:5
+  --> $DIR/identity_op.rs:45:5
    |
 LL |     0 + x;
    |     ^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:49:5
+  --> $DIR/identity_op.rs:48:5
    |
 LL |     x | (0);
    |     ^^^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:52:5
+  --> $DIR/identity_op.rs:51:5
    |
 LL |     x * 1;
    |     ^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:53:5
+  --> $DIR/identity_op.rs:52:5
    |
 LL |     1 * x;
    |     ^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:59:5
+  --> $DIR/identity_op.rs:58:5
    |
 LL |     -1 & x;
    |     ^^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:62:5
+  --> $DIR/identity_op.rs:61:5
    |
 LL |     u & 255;
    |     ^^^^^^^ help: consider reducing it to: `u`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:65:5
+  --> $DIR/identity_op.rs:64:5
    |
 LL |     42 << 0;
    |     ^^^^^^^ help: consider reducing it to: `42`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:66:5
+  --> $DIR/identity_op.rs:65:5
    |
 LL |     1 >> 0;
    |     ^^^^^^ help: consider reducing it to: `1`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:67:5
+  --> $DIR/identity_op.rs:66:5
    |
 LL |     42 >> 0;
    |     ^^^^^^^ help: consider reducing it to: `42`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:68:5
+  --> $DIR/identity_op.rs:67:5
    |
 LL |     &x >> 0;
    |     ^^^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:69:5
+  --> $DIR/identity_op.rs:68:5
    |
 LL |     x >> &0;
    |     ^^^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:76:5
+  --> $DIR/identity_op.rs:75:5
    |
 LL |     2 % 3;
    |     ^^^^^ help: consider reducing it to: `2`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:77:5
+  --> $DIR/identity_op.rs:76:5
    |
 LL |     -2 % 3;
    |     ^^^^^^ help: consider reducing it to: `-2`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:78:5
+  --> $DIR/identity_op.rs:77:5
    |
 LL |     2 % -3 + x;
    |     ^^^^^^ help: consider reducing it to: `2`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:79:5
+  --> $DIR/identity_op.rs:78:5
    |
 LL |     -2 % -3 + x;
    |     ^^^^^^^ help: consider reducing it to: `-2`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:80:9
+  --> $DIR/identity_op.rs:79:9
    |
 LL |     x + 1 % 3;
    |         ^^^^^ help: consider reducing it to: `1`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:88:5
+  --> $DIR/identity_op.rs:87:5
    |
 LL |     0 + if b { 1 } else { 2 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if b { 1 } else { 2 })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:89:5
+  --> $DIR/identity_op.rs:88:5
    |
 LL |     0 + if b { 1 } else { 2 } + if b { 3 } else { 4 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if b { 1 } else { 2 })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:90:5
+  --> $DIR/identity_op.rs:89:5
    |
 LL |     0 + match a { 0 => 10, _ => 20 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(match a { 0 => 10, _ => 20 })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:91:5
+  --> $DIR/identity_op.rs:90:5
    |
 LL |     0 + match a { 0 => 10, _ => 20 } + match a { 0 => 30, _ => 40 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(match a { 0 => 10, _ => 20 })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:92:5
+  --> $DIR/identity_op.rs:91:5
    |
 LL |     0 + if b { 1 } else { 2 } + match a { 0 => 30, _ => 40 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if b { 1 } else { 2 })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:93:5
+  --> $DIR/identity_op.rs:92:5
    |
 LL |     0 + match a { 0 => 10, _ => 20 } + if b { 3 } else { 4 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(match a { 0 => 10, _ => 20 })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:94:5
+  --> $DIR/identity_op.rs:93:5
    |
 LL |     (if b { 1 } else { 2 }) + 0;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if b { 1 } else { 2 })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:96:5
+  --> $DIR/identity_op.rs:95:5
    |
 LL |     0 + { a } + 3;
    |     ^^^^^^^^^ help: consider reducing it to: `({ a })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:97:5
+  --> $DIR/identity_op.rs:96:5
    |
 LL |     0 + { a } * 2;
    |     ^^^^^^^^^^^^^ help: consider reducing it to: `({ a } * 2)`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:98:5
+  --> $DIR/identity_op.rs:97:5
    |
 LL |     0 + loop { let mut c = 0; if c == 10 { break c; } c += 1; } + { a * 2 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(loop { let mut c = 0; if c == 10 { break c; } c += 1; })`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:103:7
+  --> $DIR/identity_op.rs:102:7
    |
 LL |     f(1 * a + { 8 * 5 });
    |       ^^^^^ help: consider reducing it to: `a`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:104:7
+  --> $DIR/identity_op.rs:103:7
    |
 LL |     f(0 + if b { 1 } else { 2 } + 3);
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `if b { 1 } else { 2 }`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:105:20
+  --> $DIR/identity_op.rs:104:20
    |
 LL |     const _: i32 = { 2 * 4 } + 0 + 3;
    |                    ^^^^^^^^^^^^^ help: consider reducing it to: `{ 2 * 4 }`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:106:20
+  --> $DIR/identity_op.rs:105:20
    |
 LL |     const _: i32 = 0 + { 1 + 2 * 3 } + 3;
    |                    ^^^^^^^^^^^^^^^^^ help: consider reducing it to: `{ 1 + 2 * 3 }`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:108:5
+  --> $DIR/identity_op.rs:107:5
    |
 LL |     0 + a as usize;
    |     ^^^^^^^^^^^^^^ help: consider reducing it to: `a as usize`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:109:13
+  --> $DIR/identity_op.rs:108:13
    |
 LL |     let _ = 0 + a as usize;
    |             ^^^^^^^^^^^^^^ help: consider reducing it to: `a as usize`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:110:5
+  --> $DIR/identity_op.rs:109:5
    |
 LL |     0 + { a } as usize;
    |     ^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `({ a } as usize)`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:112:9
+  --> $DIR/identity_op.rs:111:9
    |
 LL |     2 * (0 + { a });
    |         ^^^^^^^^^^^ help: consider reducing it to: `{ a }`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:113:5
+  --> $DIR/identity_op.rs:112:5
    |
 LL |     1 * ({ a } + 4);
    |     ^^^^^^^^^^^^^^^ help: consider reducing it to: `(({ a } + 4))`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:114:5
+  --> $DIR/identity_op.rs:113:5
    |
 LL |     1 * 1;
    |     ^^^^^ help: consider reducing it to: `1`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:118:18
+  --> $DIR/identity_op.rs:117:18
    |
 LL |     let _: i32 = &x + 0;
    |                  ^^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:122:5
+  --> $DIR/identity_op.rs:121:5
    |
 LL |     0 + if a { 1 } else { 2 } + if b { 3 } else { 5 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if a { 1 } else { 2 })`

@@ -2,11 +2,14 @@ error: you should consider adding a `Default` implementation for `Foo`
   --> $DIR/new_without_default.rs:12:5
    |
 LL | /     pub fn new() -> Foo {
+LL | |
+LL | |
 LL | |         Foo
 LL | |     }
    | |_____^
    |
    = note: `-D clippy::new-without-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::new_without_default)]`
 help: try adding this
    |
 LL + impl Default for Foo {
@@ -17,9 +20,10 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `Bar`
-  --> $DIR/new_without_default.rs:20:5
+  --> $DIR/new_without_default.rs:22:5
    |
 LL | /     pub fn new() -> Self {
+LL | |
 LL | |         Bar
 LL | |     }
    | |_____^
@@ -34,9 +38,10 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
-  --> $DIR/new_without_default.rs:84:5
+  --> $DIR/new_without_default.rs:87:5
    |
 LL | /     pub fn new() -> LtKo<'c> {
+LL | |
 LL | |         unimplemented!()
 LL | |     }
    | |_____^
@@ -51,9 +56,10 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `NewNotEqualToDerive`
-  --> $DIR/new_without_default.rs:177:5
+  --> $DIR/new_without_default.rs:180:5
    |
 LL | /     pub fn new() -> Self {
+LL | |
 LL | |         NewNotEqualToDerive { foo: 1 }
 LL | |     }
    | |_____^
@@ -68,9 +74,10 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `FooGenerics<T>`
-  --> $DIR/new_without_default.rs:185:5
+  --> $DIR/new_without_default.rs:189:5
    |
 LL | /     pub fn new() -> Self {
+LL | |
 LL | |         Self(Default::default())
 LL | |     }
    | |_____^
@@ -85,9 +92,10 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `BarGenerics<T>`
-  --> $DIR/new_without_default.rs:192:5
+  --> $DIR/new_without_default.rs:197:5
    |
 LL | /     pub fn new() -> Self {
+LL | |
 LL | |         Self(Default::default())
 LL | |     }
    | |_____^
@@ -102,9 +110,10 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `Foo<T>`
-  --> $DIR/new_without_default.rs:203:9
+  --> $DIR/new_without_default.rs:209:9
    |
 LL | /         pub fn new() -> Self {
+LL | |
 LL | |             todo!()
 LL | |         }
    | |_________^
@@ -120,5 +129,25 @@ LL +
 LL ~     impl<T> Foo<T> {
    |
 
-error: aborting due to 7 previous errors
+error: you should consider adding a `Default` implementation for `MyStruct<K, V>`
+  --> $DIR/new_without_default.rs:255:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Self { _kv: None }
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl<K, V> Default for MyStruct<K, V>
+LL + where
+LL +     K: std::hash::Hash + Eq + PartialEq,
+LL +  {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: aborting due to 8 previous errors
 

@@ -1,8 +1,9 @@
 #![warn(clippy::manual_non_exhaustive)]
 #![allow(unused)]
-
+//@no-rustfix
 mod structs {
     struct S {
+        //~^ ERROR: this seems like a manual implementation of the non-exhaustive pattern
         pub a: i32,
         pub b: i32,
         _c: (),
@@ -11,6 +12,7 @@ mod structs {
     // user forgot to remove the private field
     #[non_exhaustive]
     struct Sp {
+        //~^ ERROR: this seems like a manual implementation of the non-exhaustive pattern
         pub a: i32,
         pub b: i32,
         _c: (),
@@ -52,10 +54,12 @@ mod structs {
 
 mod tuple_structs {
     struct T(pub i32, pub i32, ());
+    //~^ ERROR: this seems like a manual implementation of the non-exhaustive pattern
 
     // user forgot to remove the private field
     #[non_exhaustive]
     struct Tp(pub i32, pub i32, ());
+    //~^ ERROR: this seems like a manual implementation of the non-exhaustive pattern
 
     // some other fields are private, should be ignored
     struct PrivateFields(pub i32, i32, ());

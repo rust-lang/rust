@@ -2,7 +2,7 @@
 // This test also ensures that the checks are performed even inside private modules.
 
 #![feature(associated_type_defaults)]
-#![deny(private_in_public)]
+#![deny(private_interfaces, private_bounds)]
 #![allow(improper_ctypes)]
 
 mod types {
@@ -12,30 +12,21 @@ mod types {
         type Alias;
     }
 
-    pub type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
-    //~^ WARNING hard error
+    pub type Alias = Priv; //~ ERROR type `types::Priv` is more private than the item `types::Alias`
     pub enum E {
-        V1(Priv), //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
-        V2 { field: Priv }, //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        V1(Priv), //~ ERROR type `types::Priv` is more private than the item `E::V1::0`
+        V2 { field: Priv }, //~ ERROR type `types::Priv` is more private than the item `E::V2::field`
     }
     pub trait Tr {
-        const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        const C: Priv = Priv; //~ ERROR type `types::Priv` is more private than the item `Tr::C`
         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
-        fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
-        fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        fn f1(arg: Priv) {} //~ ERROR type `types::Priv` is more private than the item `Tr::f1`
+        fn f2() -> Priv { panic!() } //~ ERROR type `types::Priv` is more private than the item `Tr::f2`
     }
     extern "C" {
-        pub static ES: Priv; //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
-        pub fn ef1(arg: Priv); //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
-        pub fn ef2() -> Priv; //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        pub static ES: Priv; //~ ERROR type `types::Priv` is more private than the item `types::ES`
+        pub fn ef1(arg: Priv); //~ ERROR type `types::Priv` is more private than the item `types::ef1`
+        pub fn ef2() -> Priv; //~ ERROR type `types::Priv` is more private than the item `types::ef2`
     }
     impl PubTr for Pub {
         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
@@ -47,22 +38,16 @@ mod traits {
     pub struct Pub<T>(T);
     pub trait PubTr {}
 
-    pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
-    //~| WARNING hard error
-    //~| WARNING bounds on generic parameters are not enforced in type aliases
-    pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in public interface
-    //~^ WARNING hard error
-    pub trait Tr2<T: PrivTr> {} //~ ERROR private trait `traits::PrivTr` in public interface
-        //~^ WARNING hard error
+    pub type Alias<T: PrivTr> = T; //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Alias`
+    //~^ WARNING bounds on generic parameters are not enforced in type aliases
+    pub trait Tr1: PrivTr {} //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr1`
+    pub trait Tr2<T: PrivTr> {} //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr2`
     pub trait Tr3 {
         type Alias: PrivTr;
-        //~^ ERROR private trait `traits::PrivTr` in public interface
-        //~| WARNING hard error
-        fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
-        //~^ WARNING hard error
+        //~^ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr3::Alias`
+        fn f<T: PrivTr>(arg: T) {} //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr3::f`
     }
-    impl<T: PrivTr> Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
-        //~^ WARNING hard error
+    impl<T: PrivTr> Pub<T> {} //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Pub<T>`
     impl<T: PrivTr> PubTr for Pub<T> {} // OK, trait impl predicates
 }
 
@@ -72,20 +57,16 @@ mod traits_where {
     pub trait PubTr {}
 
     pub type Alias<T> where T: PrivTr = T;
-        //~^ ERROR private trait `traits_where::PrivTr` in public interface
-        //~| WARNING hard error
+        //~^ ERROR trait `traits_where::PrivTr` is more private than the item `traits_where::Alias`
         //~| WARNING where clauses are not enforced in type aliases
     pub trait Tr2<T> where T: PrivTr {}
-        //~^ ERROR private trait `traits_where::PrivTr` in public interface
-        //~| WARNING hard error
+        //~^ ERROR trait `traits_where::PrivTr` is more private than the item `traits_where::Tr2`
     pub trait Tr3 {
         fn f<T>(arg: T) where T: PrivTr {}
-        //~^ ERROR private trait `traits_where::PrivTr` in public interface
-        //~| WARNING hard error
+        //~^ ERROR trait `traits_where::PrivTr` is more private than the item `traits_where::Tr3::f`
     }
     impl<T> Pub<T> where T: PrivTr {}
-        //~^ ERROR private trait `traits_where::PrivTr` in public interface
-        //~| WARNING hard error
+        //~^ ERROR trait `traits_where::PrivTr` is more private than the item `traits_where::Pub<T>`
     impl<T> PubTr for Pub<T> where T: PrivTr {} // OK, trait impl predicates
 }
 
@@ -96,14 +77,10 @@ mod generics {
     pub trait PubTr<T> {}
 
     pub trait Tr1: PrivTr<Pub> {}
-        //~^ ERROR private trait `generics::PrivTr<generics::Pub>` in public interface
-        //~| WARNING hard error
-    pub trait Tr2: PubTr<Priv> {} //~ ERROR private type `generics::Priv` in public interface
-        //~^ WARNING hard error
-    pub trait Tr3: PubTr<[Priv; 1]> {} //~ ERROR private type `generics::Priv` in public interface
-        //~^ WARNING hard error
-    pub trait Tr4: PubTr<Pub<Priv>> {} //~ ERROR private type `generics::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ ERROR trait `generics::PrivTr<generics::Pub>` is more private than the item `generics::Tr1`
+    pub trait Tr2: PubTr<Priv> {} //~ ERROR type `generics::Priv` is more private than the item `generics::Tr2`
+    pub trait Tr3: PubTr<[Priv; 1]> {} //~ ERROR type `generics::Priv` is more private than the item `generics::Tr3`
+    pub trait Tr4: PubTr<Pub<Priv>> {} //~ ERROR type `generics::Priv` is more private than the item `Tr4`
 }
 
 mod impls {
@@ -200,8 +177,7 @@ mod aliases_pub {
     pub trait Tr2: PrivUseAliasTr<PrivAlias> {} // OK
 
     impl PrivAlias {
-        pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` in public interface
-        //~^ WARNING hard error
+        pub fn f(arg: Priv) {} //~ ERROR type `aliases_pub::Priv` is more private than the item `aliases_pub::<impl Pub2>::f`
     }
     impl PrivUseAliasTr for PrivUseAlias {
         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
@@ -244,13 +220,10 @@ mod aliases_priv {
     }
 
     pub trait Tr1: PrivUseAliasTr {}
-        //~^ ERROR private trait `PrivTr1` in public interface
-        //~| WARNING hard error
+        //~^ ERROR trait `PrivTr1` is more private than the item `aliases_priv::Tr1`
     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
-        //~^ ERROR private trait `PrivTr1<Priv2>` in public interface
-        //~| WARNING hard error
-        //~| ERROR private type `Priv2` in public interface
-        //~| WARNING hard error
+        //~^ ERROR trait `PrivTr1<Priv2>` is more private than the item `aliases_priv::Tr2`
+        //~| ERROR type `Priv2` is more private than the item `aliases_priv::Tr2`
 
     impl PrivUseAlias {
         pub fn f(arg: Priv) {} // OK

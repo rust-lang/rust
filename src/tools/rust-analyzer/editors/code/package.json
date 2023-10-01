@@ -471,16 +471,13 @@
                     "default": false,
                     "type": "boolean"
                 },
-                "rust-analyzer.discoverProjectCommand": {
-                    "markdownDescription": "Sets the command that rust-analyzer uses to generate `rust-project.json` files. This command should only be used\n if a build system like Buck or Bazel is also in use. The command must accept files as arguments and return \n a rust-project.json over stdout.",
+                "rust-analyzer.discoverProjectRunner": {
+                    "markdownDescription": "Sets the extension responsible for determining which extension the rust-analyzer extension uses to generate `rust-project.json` files. This should should only be used\n if a build system like Buck or Bazel is also in use.",
                     "default": null,
                     "type": [
                         "null",
-                        "array"
-                    ],
-                    "items": {
-                        "type": "string"
-                    }
+                        "string"
+                    ]
                 },
                 "rust-analyzer.showUnlinkedFileNotification": {
                     "markdownDescription": "Whether to show a notification for unlinked files asking the user to add the corresponding Cargo.toml to the linked projects setting.",

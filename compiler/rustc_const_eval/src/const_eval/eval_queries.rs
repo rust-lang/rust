@@ -4,9 +4,9 @@ use crate::errors::ConstEvalError;
 use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::pretty::write_allocation_bytes;
+use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -18,9 +18,8 @@ use super::{CanAccessStatics, CompileTimeEvalContext, CompileTimeInterpreter};
 use crate::errors;
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
-    RefTracking, StackPopCleanup,
+    intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate, InternKind, InterpCx,
+    InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup,
 };
 
 // Returns a pointer to where the result lives
@@ -61,6 +60,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         &ret.clone().into(),
         StackPopCleanup::Root { cleanup: false },
     )?;
+    ecx.storage_live_for_always_live_locals()?;
 
     // The main interpreter loop.
     while ecx.step()? {}
@@ -78,7 +78,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
     // we leave alignment checks off, since this `ecx` will not be used for further evaluation anyway
 
-    debug!("eval_body_using_ecx done: {:?}", *ret);
+    debug!("eval_body_using_ecx done: {:?}", ret);
     Ok(ret)
 }
 
@@ -104,91 +104,75 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
     )
 }
 
-/// This function converts an interpreter value into a constant that is meant for use in the
-/// type system.
+/// This function converts an interpreter value into a MIR constant.
 #[instrument(skip(ecx), level = "debug")]
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
 ) -> ConstValue<'tcx> {
-    // We do not have value optimizations for everything.
-    // Only scalars and slices, since they are very common.
-    // Note that further down we turn scalars of uninitialized bits back to `ByRef`. These can result
-    // from scalar unions that are initialized with one of their zero sized variants. We could
-    // instead allow `ConstValue::Scalar` to store `ScalarMaybeUninit`, but that would affect all
-    // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
-    // `Undef` situation.
-    let try_as_immediate = match op.layout.abi {
+    // Handle ZST consistently and early.
+    if op.layout.is_zst() {
+        return ConstValue::ZeroSized;
+    }
+
+    // All scalar types should be stored as `ConstValue::Scalar`. This is needed to make
+    // `ConstValue::try_to_scalar` efficient; we want that to work for *all* constants of scalar
+    // type (it's used throughout the compiler and having it work just on literals is not enough)
+    // and we want it to be fast (i.e., don't go to an `Allocation` and reconstruct the `Scalar`
+    // from its byte-serialized form).
+    let force_as_immediate = match op.layout.abi {
         Abi::Scalar(abi::Scalar::Initialized { .. }) => true,
-        Abi::ScalarPair(..) => match op.layout.ty.kind() {
-            ty::Ref(_, inner, _) => match *inner.kind() {
-                ty::Slice(elem) => elem == ecx.tcx.types.u8,
-                ty::Str => true,
-                _ => false,
-            },
-            _ => false,
-        },
+        // We don't *force* `ConstValue::Slice` for `ScalarPair`. This has the advantage that if the
+        // input `op` is a place, then turning it into a `ConstValue` and back into a `OpTy` will
+        // not have to generate any duplicate allocations (we preserve the original `AllocId` in
+        // `ConstValue::Indirect`). It means accessing the contents of a slice can be slow (since
+        // they can be stored as `ConstValue::Indirect`), but that's not relevant since we barely
+        // ever have to do this. (`try_get_slice_bytes_for_diagnostics` exists to provide this
+        // functionality.)
         _ => false,
     };
-    let immediate = if try_as_immediate {
+    let immediate = if force_as_immediate {
         Right(ecx.read_immediate(op).expect("normalization works on validated constants"))
     } else {
-        // It is guaranteed that any non-slice scalar pair is actually ByRef here.
-        // When we come back from raw const eval, we are always by-ref. The only way our op here is
-        // by-val is if we are in destructure_mir_constant, i.e., if this is (a field of) something that we
-        // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
-        // structs containing such.
         op.as_mplace_or_imm()
     };
 
     debug!(?immediate);
 
-    // We know `offset` is relative to the allocation, so we can use `into_parts`.
-    let to_const_value = |mplace: &MPlaceTy<'_>| {
-        debug!("to_const_value(mplace: {:?})", mplace);
-        match mplace.ptr.into_parts() {
-            (Some(alloc_id), offset) => {
-                let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
-                ConstValue::ByRef { alloc, offset }
-            }
-            (None, offset) => {
-                assert!(mplace.layout.is_zst());
-                assert_eq!(
-                    offset.bytes() % mplace.layout.align.abi.bytes(),
-                    0,
-                    "this MPlaceTy must come from a validated constant, thus we can assume the \
-                alignment is correct",
-                );
-                ConstValue::ZeroSized
-            }
-        }
-    };
     match immediate {
-        Left(ref mplace) => to_const_value(mplace),
-        // see comment on `let try_as_immediate` above
+        Left(ref mplace) => {
+            // We know `offset` is relative to the allocation, so we can use `into_parts`.
+            let (alloc_id, offset) = mplace.ptr().into_parts();
+            let alloc_id = alloc_id.expect("cannot have `fake` place fot non-ZST type");
+            ConstValue::Indirect { alloc_id, offset }
+        }
+        // see comment on `let force_as_immediate` above
         Right(imm) => match *imm {
-            _ if imm.layout.is_zst() => ConstValue::ZeroSized,
             Immediate::Scalar(x) => ConstValue::Scalar(x),
             Immediate::ScalarPair(a, b) => {
                 debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
-                // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                let (data, start) = match a.to_pointer(ecx).unwrap().into_parts() {
-                    (Some(alloc_id), offset) => {
-                        (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
-                    }
-                    (None, _offset) => (
-                        ecx.tcx.mk_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
-                            b"" as &[u8],
-                        )),
-                        0,
+                // This codepath solely exists for `valtree_to_const_value` to not need to generate
+                // a `ConstValue::Indirect` for wide references, so it is tightly restricted to just
+                // that case.
+                let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap().ty; // `false` = no raw ptrs
+                debug_assert!(
+                    matches!(
+                        ecx.tcx.struct_tail_without_normalization(pointee_ty).kind(),
+                        ty::Str | ty::Slice(..),
                     ),
-                };
-                let len = b.to_target_usize(ecx).unwrap();
-                let start = start.try_into().unwrap();
-                let len: usize = len.try_into().unwrap();
-                ConstValue::Slice { data, start, end: start + len }
+                    "`ConstValue::Slice` is for slice-tailed types only, but got {}",
+                    imm.layout.ty,
+                );
+                let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to the beginning of an actual allocation";
+                // We know `offset` is relative to the allocation, so we can use `into_parts`.
+                let (alloc_id, offset) = a.to_pointer(ecx).expect(msg).into_parts();
+                let alloc_id = alloc_id.expect(msg);
+                let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
+                assert!(offset == abi::Size::ZERO, "{}", msg);
+                let meta = b.to_target_usize(ecx).expect(msg);
+                ConstValue::Slice { data, meta }
             }
-            Immediate::Uninit => to_const_value(&op.assert_mem_place()),
+            Immediate::Uninit => bug!("`Uninit` is not a valid value for {}", op.layout.ty),
         },
     }
 }
@@ -234,7 +218,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         key.param_env = key.param_env.with_user_facing();
         match tcx.eval_to_const_value_raw(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
+            Err(ErrorHandled::TooGeneric(_)) => {}
             // deduplicate calls
             other => return other,
         }
@@ -281,7 +265,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         key.param_env = key.param_env.with_user_facing();
         match tcx.eval_to_allocation_raw(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
+            Err(ErrorHandled::TooGeneric(_)) => {}
             // deduplicate calls
             other => return other,
         }
@@ -369,9 +353,9 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     inner = true;
                 }
             };
-            let alloc_id = mplace.ptr.provenance.unwrap();
+            let alloc_id = mplace.ptr().provenance.unwrap();
 
-            // Validation failed, report an error. This is always a hard error.
+            // Validation failed, report an error.
             if let Err(error) = validation {
                 let (error, backtrace) = error.into_parts();
                 backtrace.print_backtrace();

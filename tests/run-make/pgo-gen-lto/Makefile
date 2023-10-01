@@ -1,5 +1,6 @@
 # needs-profiler-support
 # ignore-windows-gnu
+# ignore-cross-compile
 
 # FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
 # properly. Since we only have GCC on the CI ignore the test for now.

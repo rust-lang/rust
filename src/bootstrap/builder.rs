@@ -302,8 +302,10 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) {
-        if pathsets.iter().any(|set| self.is_excluded(builder, set)) {
+    fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<PathSet>) {
+        pathsets.retain(|set| !self.is_excluded(builder, set));
+
+        if pathsets.is_empty() {
             return;
         }
 
@@ -523,7 +525,7 @@ impl<'a> ShouldRun<'a> {
                 .iter()
                 .map(|p| {
                     // assert only if `p` isn't submodule
-                    if !submodules_paths.iter().find(|sm_p| p.contains(*sm_p)).is_some() {
+                    if submodules_paths.iter().find(|sm_p| p.contains(*sm_p)).is_none() {
                         assert!(
                             self.builder.src.join(p).exists(),
                             "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
@@ -703,7 +705,8 @@ impl<'a> Builder<'a> {
                 llvm::Lld,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
-                tool::OptimizedDist
+                tool::OptimizedDist,
+                tool::CoverageDump,
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
@@ -725,6 +728,7 @@ impl<'a> Builder<'a> {
                 test::Tidy,
                 test::Ui,
                 test::RunPassValgrind,
+                test::CoverageMap,
                 test::RunCoverage,
                 test::MirOpt,
                 test::Codegen,
@@ -733,6 +737,7 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
+                test::CodegenCranelift,
                 test::Rustdoc,
                 test::RunCoverageRustdoc,
                 test::Pretty,
@@ -1635,7 +1640,10 @@ impl<'a> Builder<'a> {
                 // flesh out rpath support more fully in the future.
                 rustflags.arg("-Zosx-rpath-install-name");
                 Some(format!("-Wl,-rpath,@loader_path/../{libdir}"))
-            } else if !target.contains("windows") && !target.contains("aix") {
+            } else if !target.contains("windows")
+                && !target.contains("aix")
+                && !target.contains("xous")
+            {
                 rustflags.arg("-Clink-args=-Wl,-z,origin");
                 Some(format!("-Wl,-rpath,$ORIGIN/../{libdir}"))
             } else {

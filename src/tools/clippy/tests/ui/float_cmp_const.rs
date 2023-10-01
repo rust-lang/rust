@@ -1,5 +1,5 @@
 // does not test any rustfixable lints
-
+//@no-rustfix
 #![warn(clippy::float_cmp_const)]
 #![allow(clippy::float_cmp)]
 #![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]
@@ -14,15 +14,29 @@ fn eq_one(x: f32) -> bool {
 fn main() {
     // has errors
     1f32 == ONE;
+    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
     TWO == ONE;
+    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
     TWO != ONE;
+    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
     ONE + ONE == TWO;
+    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
     let x = 1;
     x as f32 == ONE;
+    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
     let v = 0.9;
     v == ONE;
+    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
     v != ONE;
+    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
     // no errors, lower than or greater than comparisons
     v < ONE;
@@ -55,4 +69,6 @@ fn main() {
 
     // has errors
     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
+    //~^ ERROR: strict comparison of `f32` or `f64` constant arrays
+    //~| NOTE: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 }

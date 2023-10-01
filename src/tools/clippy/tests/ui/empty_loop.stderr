@@ -6,9 +6,10 @@ LL |     loop {}
    |
    = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
    = note: `-D clippy::empty-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_loop)]`
 
 error: empty `loop {}` wastes CPU cycles
-  --> $DIR/empty_loop.rs:11:9
+  --> $DIR/empty_loop.rs:12:9
    |
 LL |         loop {}
    |         ^^^^^^^
@@ -16,7 +17,7 @@ LL |         loop {}
    = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
 
 error: empty `loop {}` wastes CPU cycles
-  --> $DIR/empty_loop.rs:15:9
+  --> $DIR/empty_loop.rs:17:9
    |
 LL |         'inner: loop {}
    |         ^^^^^^^^^^^^^^^

@@ -10,6 +10,8 @@ pub struct Foo;
 
 impl Foo {
     pub fn new() -> Foo {
+        //~^ ERROR: you should consider adding a `Default` implementation for `Foo`
+        //~| NOTE: `-D clippy::new-without-default` implied by `-D warnings`
         Foo
     }
 }
@@ -18,6 +20,7 @@ pub struct Bar;
 
 impl Bar {
     pub fn new() -> Self {
+        //~^ ERROR: you should consider adding a `Default` implementation for `Bar`
         Bar
     }
 }
@@ -82,9 +85,9 @@ pub struct LtKo<'a> {
 
 impl<'c> LtKo<'c> {
     pub fn new() -> LtKo<'c> {
+        //~^ ERROR: you should consider adding a `Default` implementation for `LtKo<'c>`
         unimplemented!()
     }
-    // FIXME: that suggestion is missing lifetimes
 }
 
 struct Private;
@@ -175,6 +178,7 @@ pub struct NewNotEqualToDerive {
 impl NewNotEqualToDerive {
     // This `new` implementation is not equal to a derived `Default`, so do not suggest deriving.
     pub fn new() -> Self {
+        //~^ ERROR: you should consider adding a `Default` implementation for `NewNotEqualToDe
         NewNotEqualToDerive { foo: 1 }
     }
 }
@@ -183,6 +187,7 @@ impl NewNotEqualToDerive {
 pub struct FooGenerics<T>(std::marker::PhantomData<T>);
 impl<T> FooGenerics<T> {
     pub fn new() -> Self {
+        //~^ ERROR: you should consider adding a `Default` implementation for `FooGenerics<T>`
         Self(Default::default())
     }
 }
@@ -190,6 +195,7 @@ impl<T> FooGenerics<T> {
 pub struct BarGenerics<T>(std::marker::PhantomData<T>);
 impl<T: Copy> BarGenerics<T> {
     pub fn new() -> Self {
+        //~^ ERROR: you should consider adding a `Default` implementation for `BarGenerics<T>`
         Self(Default::default())
     }
 }
@@ -201,6 +207,7 @@ pub mod issue7220 {
 
     impl<T> Foo<T> {
         pub fn new() -> Self {
+            //~^ ERROR: you should consider adding a `Default` implementation for `Foo<T>`
             todo!()
         }
     }
@@ -229,5 +236,23 @@ pub struct IgnoreLifetimeNew;
 impl IgnoreLifetimeNew {
     pub fn new<'a>() -> Self {
         Self
+    }
+}
+
+// From issue #11267
+
+pub struct MyStruct<K, V>
+where
+    K: std::hash::Hash + Eq + PartialEq,
+{
+    _kv: Option<(K, V)>,
+}
+
+impl<K, V> MyStruct<K, V>
+where
+    K: std::hash::Hash + Eq + PartialEq,
+{
+    pub fn new() -> Self {
+        Self { _kv: None }
     }
 }

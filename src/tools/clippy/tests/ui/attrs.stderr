@@ -5,17 +5,19 @@ LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::inline-always` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inline_always)]`
 
 error: the since field must contain a semver-compliant version
-  --> $DIR/attrs.rs:25:14
+  --> $DIR/attrs.rs:27:14
    |
 LL | #[deprecated(since = "forever")]
    |              ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::deprecated-semver` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deprecated_semver)]`
 
 error: the since field must contain a semver-compliant version
-  --> $DIR/attrs.rs:28:14
+  --> $DIR/attrs.rs:32:14
    |
 LL | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^

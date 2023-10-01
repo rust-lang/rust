@@ -1,5 +1,5 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/issue-86465.rs:10:5
+  --> $DIR/issue-86465.rs:6:5
    |
 LL |     (a, a)
    |     ^^^^^^

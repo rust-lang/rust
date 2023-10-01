@@ -1,8 +1,9 @@
-use super::{AllocId, AllocRange, ConstAlloc, Pointer, Scalar};
+use super::{AllocId, AllocRange, Pointer, Scalar};
 
-use crate::mir::interpret::ConstValue;
+use crate::error;
+use crate::mir::{ConstAlloc, ConstValue};
 use crate::query::TyCtxtAt;
-use crate::ty::{layout, tls, Ty, ValTree};
+use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{
@@ -11,7 +12,7 @@ use rustc_errors::{
 };
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
-use rustc_span::def_id::DefId;
+use rustc_span::{def_id::DefId, Span, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
 
 use std::borrow::Cow;
@@ -21,16 +22,51 @@ use std::{any::Any, backtrace::Backtrace, fmt};
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
-    Reported(ReportedErrorInfo),
+    Reported(ReportedErrorInfo, Span),
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the args didn't fully monomorphize it.
-    TooGeneric,
+    TooGeneric(Span),
 }
 
 impl From<ErrorGuaranteed> for ErrorHandled {
     #[inline]
     fn from(error: ErrorGuaranteed) -> ErrorHandled {
-        ErrorHandled::Reported(error.into())
+        ErrorHandled::Reported(error.into(), DUMMY_SP)
+    }
+}
+
+impl ErrorHandled {
+    pub fn with_span(self, span: Span) -> Self {
+        match self {
+            ErrorHandled::Reported(err, _span) => ErrorHandled::Reported(err, span),
+            ErrorHandled::TooGeneric(_span) => ErrorHandled::TooGeneric(span),
+        }
+    }
+
+    pub fn emit_err(&self, tcx: TyCtxt<'_>) -> ErrorGuaranteed {
+        match self {
+            &ErrorHandled::Reported(err, span) => {
+                if !err.is_tainted_by_errors && !span.is_dummy() {
+                    tcx.sess.emit_err(error::ErroneousConstant { span });
+                }
+                err.error
+            }
+            &ErrorHandled::TooGeneric(span) => tcx.sess.delay_span_bug(
+                span,
+                "encountered TooGeneric error when monomorphic data was expected",
+            ),
+        }
+    }
+
+    pub fn emit_note(&self, tcx: TyCtxt<'_>) {
+        match self {
+            &ErrorHandled::Reported(err, span) => {
+                if !err.is_tainted_by_errors && !span.is_dummy() {
+                    tcx.sess.emit_note(error::ErroneousConstant { span });
+                }
+            }
+            &ErrorHandled::TooGeneric(_) => {}
+        }
     }
 }
 
@@ -44,12 +80,6 @@ impl ReportedErrorInfo {
     #[inline]
     pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
         ReportedErrorInfo { is_tainted_by_errors: true, error }
-    }
-
-    /// Returns true if evaluation failed because MIR was tainted by errors.
-    #[inline]
-    pub fn is_tainted_by_errors(self) -> bool {
-        self.is_tainted_by_errors
     }
 }
 
@@ -67,10 +97,12 @@ impl Into<ErrorGuaranteed> for ReportedErrorInfo {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! { ErrorHandled }
+TrivialTypeTraversalImpls! { ErrorHandled }
 
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
+/// `Ok(None)` indicates the constant was fine, but the valtree couldn't be constructed.
+/// This is needed in `thir::pattern::lower_inline_const`.
 pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
 
 pub fn struct_error<'tcx>(
@@ -157,6 +189,16 @@ fn print_backtrace(backtrace: &Backtrace) {
 impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
     fn from(err: ErrorGuaranteed) -> Self {
         InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err.into())).into()
+    }
+}
+
+impl From<ErrorHandled> for InterpErrorInfo<'_> {
+    fn from(err: ErrorHandled) -> Self {
+        InterpError::InvalidProgram(match err {
+            ErrorHandled::Reported(r, _span) => InvalidProgramInfo::AlreadyReported(r),
+            ErrorHandled::TooGeneric(_span) => InvalidProgramInfo::TooGeneric,
+        })
+        .into()
     }
 }
 
@@ -255,9 +297,16 @@ impl_into_diagnostic_arg_through_debug! {
 
 /// Error information for when the program caused Undefined Behavior.
 #[derive(Debug)]
-pub enum UndefinedBehaviorInfo<'a> {
+pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught! Used by miri
     Ub(String),
+    // FIXME(fee1-dead) these should all be actual variants of the enum instead of dynamically
+    // dispatched
+    /// A custom (free-form) fluent-translated error, created by `err_ub_custom!`.
+    Custom(crate::error::CustomSubdiagnostic<'tcx>),
+    /// Validation error.
+    ValidationError(ValidationErrorInfo<'tcx>),
+
     /// Unreachable code was executed.
     Unreachable,
     /// A slice/array index projection went out-of-bounds.
@@ -319,12 +368,10 @@ pub enum UndefinedBehaviorInfo<'a> {
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
     UninhabitedEnumVariantRead(VariantIdx),
-    /// Validation error.
-    ValidationError(ValidationErrorInfo<'a>),
-    // FIXME(fee1-dead) these should all be actual variants of the enum instead of dynamically
-    // dispatched
-    /// A custom (free-form) error, created by `err_ub_custom!`.
-    Custom(crate::error::CustomSubdiagnostic<'a>),
+    /// ABI-incompatible argument types.
+    AbiMismatchArgument { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
+    /// ABI-incompatible return types.
+    AbiMismatchReturn { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -415,6 +462,8 @@ pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     // FIXME still use translatable diagnostics
     Unsupported(String),
+    /// Unsized local variables.
+    UnsizedLocal,
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //

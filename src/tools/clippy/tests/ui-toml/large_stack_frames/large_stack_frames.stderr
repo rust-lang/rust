@@ -1,0 +1,15 @@
+error: this function allocates a large amount of stack space
+  --> $DIR/large_stack_frames.rs:12:1
+   |
+LL | / fn f2() {
+LL | |
+LL | |     let _x = create_array::<1001>();
+LL | | }
+   | |_^
+   |
+   = note: allocating large amounts of stack space can overflow the stack
+   = note: `-D clippy::large-stack-frames` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_stack_frames)]`
+
+error: aborting due to previous error
+

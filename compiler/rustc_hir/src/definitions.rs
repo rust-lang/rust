@@ -278,7 +278,8 @@ pub enum DefPathData {
     Ctor,
     /// A constant expression (see `{ast,hir}::AnonConst`).
     AnonConst,
-    /// An `impl Trait` type node.
+    /// An existential `impl Trait` type node.
+    /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     ImplTrait,
     /// `impl Trait` generated associated type node.
     ImplTraitAssocTy,

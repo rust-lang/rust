@@ -5,6 +5,7 @@ LL | pub(in self) fn b() {}
    | ^^^^^^^^^^^^ help: remove it: `pub(self)`
    |
    = note: `-D clippy::pub-without-shorthand` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pub_without_shorthand)]`
 
 error: usage of `pub` with `in`
   --> $DIR/pub_without_shorthand.rs:18:5

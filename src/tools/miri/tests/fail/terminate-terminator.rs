@@ -1,8 +1,8 @@
 //@compile-flags: -Zmir-opt-level=3 -Zinline-mir-hint-threshold=1000
 //@normalize-stderr-test: "unsafe \{ libc::abort\(\) \}|crate::intrinsics::abort\(\);" -> "ABORT();"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
-//@normalize-stderr-test: "\n  +[0-9]+:[^\n]+" -> "$1"
-//@normalize-stderr-test: "\n at [^\n]+" -> "$1"
+//@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
+//@normalize-stderr-test: "\n +at [^\n]+" -> ""
 //@error-in-other-file: aborted execution
 // Enable MIR inlining to ensure that `TerminatorKind::UnwindTerminate` is generated
 // instead of just `UnwindAction::Terminate`.

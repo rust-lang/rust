@@ -372,7 +372,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                     StatementKind::Assign(box (
                                         _,
                                         Rvalue::Use(Operand::Constant(c)),
-                                    )) => c.literal.try_eval_target_usize(self.tcx, self.param_env),
+                                    )) => c.const_.try_eval_target_usize(self.tcx, self.param_env),
                                     _ => None,
                                 }
                             } else {
@@ -554,7 +554,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             // Integer division: the RHS must be a non-zero const.
                             let const_val = match rhs {
                                 Operand::Constant(c) => {
-                                    c.literal.try_eval_bits(self.tcx, self.param_env, lhs_ty)
+                                    c.const_.try_eval_bits(self.tcx, self.param_env)
                                 }
                                 _ => None,
                             };
@@ -644,7 +644,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         // Everywhere else, we require `#[rustc_promotable]` on the callee.
         let promote_all_const_fn = matches!(
             self.const_kind,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const)
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { inline: false })
         );
         if !promote_all_const_fn {
             if let ty::FnDef(def_id, _) = *fn_ty.kind() {
@@ -766,10 +766,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     if self.keep_original {
                         rhs.clone()
                     } else {
-                        let unit = Rvalue::Use(Operand::Constant(Box::new(Constant {
+                        let unit = Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ConstantKind::zero_sized(self.tcx.types.unit),
+                            const_: Const::zero_sized(self.tcx.types.unit),
                         })));
                         mem::replace(rhs, unit)
                     },
@@ -844,10 +844,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 let args = tcx.erase_regions(GenericArgs::identity_for_item(tcx, def));
                 let uneval = mir::UnevaluatedConst { def, args, promoted: Some(promoted_id) };
 
-                Operand::Constant(Box::new(Constant {
+                Operand::Constant(Box::new(ConstOperand {
                     span,
                     user_ty: None,
-                    literal: ConstantKind::Unevaluated(uneval, ty),
+                    const_: Const::Unevaluated(uneval, ty),
                 }))
             };
 
@@ -1041,8 +1041,8 @@ pub fn is_const_fn_in_array_repeat_expression<'tcx>(
         if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
             &block.terminator
         {
-            if let Operand::Constant(box Constant { literal, .. }) = func {
-                if let ty::FnDef(def_id, _) = *literal.ty().kind() {
+            if let Operand::Constant(box ConstOperand { const_, .. }) = func {
+                if let ty::FnDef(def_id, _) = *const_.ty().kind() {
                     if destination == place {
                         if ccx.tcx.is_const_fn(def_id) {
                             return true;

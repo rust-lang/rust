@@ -6,8 +6,8 @@ LL |     let mut x = |c| c + 1;
 LL |     x = |c| c + 1;
    |         ^^^^^^^^^ expected closure, found a different closure
    |
-   = note: expected closure `[closure@$DIR/issue-24036.rs:2:17: 2:20]`
-              found closure `[closure@$DIR/issue-24036.rs:3:9: 3:12]`
+   = note: expected closure `{closure@$DIR/issue-24036.rs:2:17: 2:20}`
+              found closure `{closure@$DIR/issue-24036.rs:3:9: 3:12}`
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
 

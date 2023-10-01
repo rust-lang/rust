@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::lossy_float_literal)]
 #![allow(overflowing_literals, unused)]
 

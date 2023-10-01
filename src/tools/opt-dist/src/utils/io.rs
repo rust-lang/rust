@@ -7,7 +7,7 @@ use std::path::Path;
 /// Delete and re-create the directory.
 pub fn reset_directory(path: &Utf8Path) -> anyhow::Result<()> {
     log::info!("Resetting directory {path}");
-    let _ = std::fs::remove_dir(path);
+    let _ = std::fs::remove_dir_all(path);
     std::fs::create_dir_all(path)?;
     Ok(())
 }
@@ -63,7 +63,6 @@ pub fn get_files_from_dir(
     let path = format!("{dir}/*{}", suffix.unwrap_or(""));
 
     Ok(glob::glob(&path)?
-        .into_iter()
         .map(|p| p.map(|p| Utf8PathBuf::from_path_buf(p).unwrap()))
         .collect::<Result<Vec<_>, _>>()?)
 }
@@ -74,9 +73,8 @@ pub fn find_file_in_dir(
     prefix: &str,
     suffix: &str,
 ) -> anyhow::Result<Utf8PathBuf> {
-    let files = glob::glob(&format!("{directory}/{prefix}*{suffix}"))?
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
+    let files =
+        glob::glob(&format!("{directory}/{prefix}*{suffix}"))?.collect::<Result<Vec<_>, _>>()?;
     match files.len() {
         0 => Err(anyhow::anyhow!("No file with prefix {prefix} found in {directory}")),
         1 => Ok(Utf8PathBuf::from_path_buf(files[0].clone()).unwrap()),

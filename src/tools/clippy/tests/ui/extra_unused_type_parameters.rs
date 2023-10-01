@@ -1,5 +1,4 @@
-//@run-rustfix
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![allow(unused, clippy::needless_lifetimes)]
 #![warn(clippy::extra_unused_type_parameters)]
@@ -113,5 +112,20 @@ with_span!(
         unimplemented!()
     }
 );
+
+mod issue11302 {
+    use std::fmt::Debug;
+    use std::marker::PhantomData;
+
+    #[derive(Debug)]
+    struct Wrapper<T>(PhantomData<T>);
+
+    fn store<T: 'static>(v: &mut Vec<Box<dyn Debug>>)
+    where
+        Wrapper<T>: Debug,
+    {
+        v.push(Box::new(Wrapper(PhantomData)));
+    }
+}
 
 fn main() {}

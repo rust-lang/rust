@@ -149,7 +149,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     // From now on, we continue normally.
                     visitor.cx = prev_cx;
                 }
-                hir::StmtKind::Local(..) | hir::StmtKind::Item(..) => {
+                hir::StmtKind::Local(..) => {
                     // Each declaration introduces a subscope for bindings
                     // introduced by the declaration; this subscope covers a
                     // suffix of the block. Each subscope in a block has the
@@ -162,6 +162,10 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
                     visitor.visit_stmt(statement)
+                }
+                hir::StmtKind::Item(..) => {
+                    // Don't create scopes for items, since they won't be
+                    // lowered to THIR and MIR.
                 }
                 hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => visitor.visit_stmt(statement),
             }

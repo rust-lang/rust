@@ -17,6 +17,7 @@ pub fn check(cx: &LateContext<'_>, method_name: &str, expr: &hir::Expr<'_>, recv
         let return_type = cx.typeck_results().expr_ty(expr);
         let input_type = cx.typeck_results().expr_ty(recv);
         let (input_type, ref_count) = peel_mid_ty_refs(input_type);
+        if !(ref_count > 0 && is_diag_trait_item(cx, method_def_id, sym::ToOwned));
         if let Some(ty_name) = input_type.ty_adt_def().map(|adt_def| cx.tcx.item_name(adt_def.did()));
         if return_type == input_type;
         if let Some(clone_trait) = cx.tcx.lang_items().clone_trait();

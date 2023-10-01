@@ -3,6 +3,12 @@ error[E0277]: the trait bound `(): Add<A>` is not satisfied
    |
 LL |     r = r + a;
    |           ^ the trait `Add<A>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/associated-types-ICE-when-projecting-out-of-err.rs:15:1
+   |
+LL | trait Add<RHS=Self> {
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

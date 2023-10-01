@@ -162,8 +162,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     };
 
     let generics = tcx.generics_of(def_id);
-    let parent_count = generics.parent_count as u32;
-    let has_own_self = generics.has_self && parent_count == 0;
 
     // Below we'll consider the bounds on the type parameters (including `Self`)
     // and the explicit where-clauses, but to get the full set of predicates
@@ -189,17 +187,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         predicates.insert((trait_ref.to_predicate(tcx), tcx.def_span(def_id)));
     }
 
-    // Collect the region predicates that were declared inline as
-    // well. In the case of parameters declared on a fn or method, we
-    // have to be careful to only iterate over early-bound regions.
-    let mut index = parent_count
-        + has_own_self as u32
-        + super::early_bound_lifetimes_from_generics(tcx, ast_generics).count() as u32;
-
-    trace!(?predicates);
-    trace!(?ast_generics);
-    trace!(?generics);
-
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`). Also add `ConstArgHasType` predicates
     // for each const parameter.
@@ -208,10 +195,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             // We already dealt with early bound lifetimes above.
             GenericParamKind::Lifetime { .. } => (),
             GenericParamKind::Type { .. } => {
-                let name = param.name.ident().name;
-                let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
-                index += 1;
-
+                let param_ty = icx.astconv().hir_id_to_bound_ty(param.hir_id);
                 let mut bounds = Bounds::default();
                 // Params are implicitly sized unless a `?Sized` bound is found
                 icx.astconv().add_implicitly_sized(
@@ -225,23 +209,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 predicates.extend(bounds.clauses());
                 trace!(?predicates);
             }
-            GenericParamKind::Const { .. } => {
-                let name = param.name.ident().name;
-                let param_const = ty::ParamConst::new(index, name);
-
+            hir::GenericParamKind::Const { .. } => {
                 let ct_ty = tcx
                     .type_of(param.def_id.to_def_id())
                     .no_bound_vars()
                     .expect("const parameters cannot be generic");
-
-                let ct = ty::Const::new_param(tcx, param_const, ct_ty);
-
+                let ct = icx.astconv().hir_id_to_bound_const(param.hir_id, ct_ty);
                 predicates.insert((
                     ty::ClauseKind::ConstArgHasType(ct, ct_ty).to_predicate(tcx),
                     param.span,
                 ));
-
-                index += 1;
             }
         }
     }
@@ -252,8 +229,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
                 let ty = icx.to_ty(bound_pred.bounded_ty);
-                let bound_vars = icx.tcx.late_bound_vars(bound_pred.hir_id);
-
+                let bound_vars = tcx.late_bound_vars(bound_pred.hir_id);
                 // Keep the type around in a dummy predicate, in case of no bounds.
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
                 // is still checked for WF.
@@ -296,7 +272,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                         _ => bug!(),
                     };
                     let pred = ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
-                        .to_predicate(icx.tcx);
+                        .to_predicate(tcx);
                     (pred, span)
                 }))
             }

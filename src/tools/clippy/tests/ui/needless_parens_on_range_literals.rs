@@ -1,4 +1,3 @@
-//@run-rustfix
 //@edition:2018
 
 #![warn(clippy::needless_parens_on_range_literals)]

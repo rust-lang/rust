@@ -12,7 +12,6 @@ fn cycle1() -> impl Clone {
     //~^ ERROR cycle detected
     //~| ERROR cycle detected
     send(cycle2().clone());
-    //~^ ERROR: cannot check whether the hidden type of opaque type satisfies auto traits
 
     Rc::new(Cell::new(5))
 }

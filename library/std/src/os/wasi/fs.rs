@@ -82,7 +82,7 @@ pub trait FileExt {
                     buf = &mut tmp[n..];
                     offset += n as u64;
                 }
-                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }
@@ -162,7 +162,7 @@ pub trait FileExt {
                     buf = &buf[n..];
                     offset += n as u64
                 }
-                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }

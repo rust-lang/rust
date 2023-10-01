@@ -16,6 +16,7 @@ help: this `let` statement can also be in the `if_chain!`
 LL |         let x = "";
    |         ^^^^^^^^^^^
    = note: `-D clippy::if-chain-style` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_chain_style)]`
 
 error: `if a && b;` should be `if a; if b;`
   --> $DIR/if_chain_style.rs:24:12

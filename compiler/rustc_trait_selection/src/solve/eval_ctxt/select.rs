@@ -4,14 +4,14 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt};
 use rustc_infer::traits::{
     Obligation, PolyTraitObligation, PredicateObligation, Selection, SelectionResult, TraitEngine,
 };
-use rustc_middle::traits::solve::{CanonicalInput, Certainty, Goal};
+use rustc_middle::traits::solve::{CandidateSource, CanonicalInput, Certainty, Goal};
 use rustc_middle::traits::{
     BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, ObligationCause, SelectionError,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 
-use crate::solve::assembly::{Candidate, CandidateSource};
+use crate::solve::assembly::Candidate;
 use crate::solve::eval_ctxt::{EvalCtxt, GenerateProofTree};
 use crate::solve::inspect::ProofTreeBuilder;
 use crate::traits::StructurallyNormalizeExt;

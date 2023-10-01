@@ -101,7 +101,6 @@ pub extern "C" fn __rust_abort() {
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
-    let _ = net::init();
     args::init(argc, argv);
 }
 
@@ -128,6 +127,11 @@ pub unsafe extern "C" fn runtime_entry(
 
     run_dtors();
     abi::exit(result);
+}
+
+#[inline]
+pub(crate) fn is_interrupted(errno: i32) -> bool {
+    errno == abi::errno::EINTR
 }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
@@ -196,7 +200,7 @@ where
 {
     loop {
         match cvt(f()) {
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(ref e) if e.is_interrupted() => {}
             other => return other,
         }
     }

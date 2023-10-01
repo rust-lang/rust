@@ -1,5 +1,4 @@
 // edition:2021
-// compile-flags: -Zdrop-tracking-mir=yes
 #![feature(generators)]
 
 fn main() {

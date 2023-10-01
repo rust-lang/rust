@@ -5,63 +5,64 @@ LL |     CWR,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Cwr`
    |
    = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::upper_case_acronyms)]`
 
 error: name `ECE` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:10:5
+  --> $DIR/upper_case_acronyms.rs:12:5
    |
 LL |     ECE,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Ece`
 
 error: name `URG` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:11:5
+  --> $DIR/upper_case_acronyms.rs:14:5
    |
 LL |     URG,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Urg`
 
 error: name `ACK` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:12:5
+  --> $DIR/upper_case_acronyms.rs:16:5
    |
 LL |     ACK,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter (notice the capitalization): `Ack`
 
 error: name `PSH` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:13:5
+  --> $DIR/upper_case_acronyms.rs:18:5
    |
 LL |     PSH,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Psh`
 
 error: name `RST` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:14:5
+  --> $DIR/upper_case_acronyms.rs:20:5
    |
 LL |     RST,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Rst`
 
 error: name `SYN` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:15:5
+  --> $DIR/upper_case_acronyms.rs:22:5
    |
 LL |     SYN,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Syn`
 
 error: name `FIN` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:16:5
+  --> $DIR/upper_case_acronyms.rs:24:5
    |
 LL |     FIN,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Fin`
 
 error: name `WASD` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:36:5
+  --> $DIR/upper_case_acronyms.rs:45:5
    |
 LL |     WASD(u8),
    |     ^^^^ help: consider making the acronym lowercase, except the initial letter: `Wasd`
 
 error: name `JSON` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:42:8
+  --> $DIR/upper_case_acronyms.rs:52:8
    |
 LL | struct JSON;
    |        ^^^^ help: consider making the acronym lowercase, except the initial letter: `Json`
 
 error: name `YAML` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:45:6
+  --> $DIR/upper_case_acronyms.rs:56:6
    |
 LL | enum YAML {
    |      ^^^^ help: consider making the acronym lowercase, except the initial letter: `Yaml`

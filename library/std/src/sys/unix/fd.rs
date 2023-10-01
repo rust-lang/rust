@@ -13,14 +13,16 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
     target_os = "android",
     target_os = "linux",
     target_os = "emscripten",
-    target_os = "l4re"
+    target_os = "l4re",
+    target_os = "hurd",
 ))]
 use libc::off64_t;
 #[cfg(not(any(
     target_os = "linux",
     target_os = "emscripten",
     target_os = "l4re",
-    target_os = "android"
+    target_os = "android",
+    target_os = "hurd",
 )))]
 use libc::off_t as off64_t;
 
@@ -124,9 +126,9 @@ impl FileDesc {
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "hurd")))]
         use libc::pread as pread64;
-        #[cfg(any(target_os = "linux", target_os = "android"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "hurd"))]
         use libc::pread64;
 
         unsafe {
@@ -160,6 +162,7 @@ impl FileDesc {
         target_os = "emscripten",
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -181,6 +184,7 @@ impl FileDesc {
         target_os = "emscripten",
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "illumos",
         target_os = "ios",
         target_os = "tvos",
@@ -281,9 +285,9 @@ impl FileDesc {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "hurd")))]
         use libc::pwrite as pwrite64;
-        #[cfg(any(target_os = "linux", target_os = "android"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "hurd"))]
         use libc::pwrite64;
 
         unsafe {
@@ -301,6 +305,7 @@ impl FileDesc {
         target_os = "emscripten",
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -322,6 +327,7 @@ impl FileDesc {
         target_os = "emscripten",
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "illumos",
         target_os = "ios",
         target_os = "tvos",

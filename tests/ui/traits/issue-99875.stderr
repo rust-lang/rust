@@ -16,11 +16,11 @@ help: the trait `Trait` is implemented for fn pointer `fn(Argument) -> Return`, 
 LL |     takes(function as fn(Argument) -> Return);
    |                    +++++++++++++++++++++++++
 
-error[E0277]: the trait bound `[closure@$DIR/issue-99875.rs:14:11: 14:34]: Trait` is not satisfied
+error[E0277]: the trait bound `{closure@$DIR/issue-99875.rs:14:11: 14:34}: Trait` is not satisfied
   --> $DIR/issue-99875.rs:14:11
    |
 LL |     takes(|_: Argument| -> Return { todo!() });
-   |     ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for closure `[closure@$DIR/issue-99875.rs:14:11: 14:34]`
+   |     ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for closure `{closure@$DIR/issue-99875.rs:14:11: 14:34}`
    |     |
    |     required by a bound introduced by this call
    |

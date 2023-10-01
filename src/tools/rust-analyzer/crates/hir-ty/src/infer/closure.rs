@@ -452,6 +452,8 @@ impl InferenceContext<'_> {
 
     fn walk_expr_without_adjust(&mut self, tgt_expr: ExprId) {
         match &self.body[tgt_expr] {
+            Expr::OffsetOf(_) => (),
+            Expr::InlineAsm(e) => self.walk_expr_without_adjust(e.e),
             Expr::If { condition, then_branch, else_branch } => {
                 self.consume_expr(*condition);
                 self.consume_expr(*then_branch);
@@ -467,13 +469,13 @@ impl InferenceContext<'_> {
                         Statement::Let { pat, type_ref: _, initializer, else_branch } => {
                             if let Some(else_branch) = else_branch {
                                 self.consume_expr(*else_branch);
-                                if let Some(initializer) = initializer {
-                                    self.consume_expr(*initializer);
-                                }
-                                return;
                             }
                             if let Some(initializer) = initializer {
-                                self.walk_expr(*initializer);
+                                if else_branch.is_some() {
+                                    self.consume_expr(*initializer);
+                                } else {
+                                    self.walk_expr(*initializer);
+                                }
                                 if let Some(place) = self.place_of_expr(*initializer) {
                                     self.consume_with_pat(place, *pat);
                                 }
@@ -620,6 +622,7 @@ impl InferenceContext<'_> {
             | Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 self.consume_exprs(exprs.iter().copied())
             }
+
             Expr::Missing
             | Expr::Continue { .. }
             | Expr::Path(_)

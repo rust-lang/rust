@@ -14,7 +14,6 @@ fn main() {
     };
     let Some(n) = opt && let another = n else {
     //~^ ERROR a `&&` expression cannot be directly assigned in `let...else`
-    //~| ERROR `let` expressions are not supported here
     //~| ERROR mismatched types
     //~| ERROR mismatched types
     //~| ERROR expected expression, found `let` statement

@@ -139,22 +139,22 @@ fn generic_arg_mismatch_err(
     err.emit()
 }
 
-/// Creates the relevant generic argument substitutions
+/// Creates the relevant generic arguments
 /// corresponding to a set of generic parameters. This is a
 /// rather complex function. Let us try to explain the role
 /// of each of its parameters:
 ///
-/// To start, we are given the `def_id` of the thing we are
-/// creating the substitutions for, and a partial set of
-/// substitutions `parent_args`. In general, the substitutions
-/// for an item begin with substitutions for all the "parents" of
+/// To start, we are given the `def_id` of the thing whose generic
+/// parameters we are instantiating, and a partial set of
+/// arguments `parent_args`. In general, the generic arguments
+/// for an item begin with arguments for all the "parents" of
 /// that item -- e.g., for a method it might include the
 /// parameters from the impl.
 ///
 /// Therefore, the method begins by walking down these parents,
 /// starting with the outermost parent and proceed inwards until
 /// it reaches `def_id`. For each parent `P`, it will check `parent_args`
-/// first to see if the parent's substitutions are listed in there. If so,
+/// first to see if the parent's arguments are listed in there. If so,
 /// we can append those and move on. Otherwise, it invokes the
 /// three callback functions:
 ///
@@ -188,7 +188,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
         stack.push((def_id, parent_defs));
     }
 
-    // We manually build up the substitution, rather than using convenience
+    // We manually build up the generic arguments, rather than using convenience
     // methods in `subst.rs`, so that we can iterate over the arguments and
     // parameters in lock-step linearly, instead of trying to match each pair.
     let mut args: SmallVec<[ty::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
@@ -196,7 +196,8 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
     while let Some((def_id, defs)) = stack.pop() {
         let mut params = defs.params.iter().peekable();
 
-        // If we have already computed substitutions for parents, we can use those directly.
+        // If we have already computed the generic arguments for parents,
+        // we can use those directly.
         while let Some(&param) = params.peek() {
             if let Some(&kind) = parent_args.get(param.index as usize) {
                 args.push(kind);

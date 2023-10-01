@@ -9,7 +9,7 @@ use std::{
 use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
-use rust_analyzer::{config::Config, lsp_ext, main_loop};
+use rust_analyzer::{config::Config, lsp, main_loop};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
 use test_utils::FixtureWithProjectMeta;
@@ -260,9 +260,9 @@ impl Server {
             Message::Notification(n) if n.method == "experimental/serverStatus" => {
                 let status = n
                     .clone()
-                    .extract::<lsp_ext::ServerStatusParams>("experimental/serverStatus")
+                    .extract::<lsp::ext::ServerStatusParams>("experimental/serverStatus")
                     .unwrap();
-                if status.health != lsp_ext::Health::Ok {
+                if status.health != lsp::ext::Health::Ok {
                     panic!("server errored/warned while loading workspace: {:?}", status.message);
                 }
                 status.quiescent

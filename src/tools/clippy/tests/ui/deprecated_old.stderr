@@ -5,15 +5,16 @@ LL | #[warn(unstable_as_slice)]
    |        ^^^^^^^^^^^^^^^^^
    |
    = note: `-D renamed-and-removed-lints` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
 
 error: lint `unstable_as_mut_slice` has been removed: `Vec::as_mut_slice` has been stabilized in 1.7
-  --> $DIR/deprecated_old.rs:2:8
+  --> $DIR/deprecated_old.rs:4:8
    |
 LL | #[warn(unstable_as_mut_slice)]
    |        ^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `misaligned_transmute` has been removed: this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr
-  --> $DIR/deprecated_old.rs:3:8
+  --> $DIR/deprecated_old.rs:6:8
    |
 LL | #[warn(misaligned_transmute)]
    |        ^^^^^^^^^^^^^^^^^^^^

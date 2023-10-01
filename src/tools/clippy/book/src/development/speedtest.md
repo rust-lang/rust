@@ -9,16 +9,12 @@ accessed by the `SPEEDTEST` (and `SPEEDTEST_*`) environment variables.
 To do a simple speed test of a lint (e.g. `allow_attributes`), use this command.
 
 ```sh
-$ SPEEDTEST=ui TESTNAME="allow_attributes" cargo uitest -- --nocapture
+$ SPEEDTEST=ui TESTNAME="allow_attributes" cargo uitest
 ```
 
 This will test all `ui` tests (`SPEEDTEST=ui`) whose names start with `allow_attributes`. By default, `SPEEDTEST` will
 iterate your test 1000 times. But you can change this with `SPEEDTEST_ITERATIONS`.
 
 ```sh
-$ SPEEDTEST=toml SPEEDTEST_ITERATIONS=100 TESTNAME="semicolon_block" cargo uitest -- --nocapture
+$ SPEEDTEST=toml SPEEDTEST_ITERATIONS=100 TESTNAME="semicolon_block" cargo uitest
 ```
-
-> **WARNING**: Be sure to use `-- --nocapture` at the end of the command to see the average test time. If you don't
-> use `-- --nocapture` (e.g. `SPEEDTEST=ui` `TESTNAME="let_underscore_untyped" cargo uitest -- --nocapture`), this
-> will not show up.

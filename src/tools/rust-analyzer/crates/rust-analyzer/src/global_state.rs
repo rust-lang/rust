@@ -12,25 +12,27 @@ use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{
+    MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
+    RwLockWriteGuard,
+};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
 use triomphe::Arc;
-use vfs::AnchoredPathBuf;
+use vfs::{AnchoredPathBuf, Vfs};
 
 use crate::{
     config::{Config, ConfigError},
     diagnostics::{CheckFixes, DiagnosticCollection},
-    from_proto,
     line_index::{LineEndings, LineIndex},
+    lsp::{from_proto, to_proto::url_from_abs_path},
     lsp_ext,
     main_loop::Task,
     mem_docs::MemDocs,
     op_queue::OpQueue,
     reload,
     task_pool::TaskPool,
-    to_proto::url_from_abs_path,
 };
 
 // Enforces drop order
@@ -40,7 +42,7 @@ pub(crate) struct Handle<H, C> {
 }
 
 pub(crate) type ReqHandler = fn(&mut GlobalState, lsp_server::Response);
-pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
+type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 
 /// `GlobalState` is the primary mutable state of the language server
 ///
@@ -49,6 +51,7 @@ pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 /// incremental salsa database.
 ///
 /// Note that this struct has more than one impl in various modules!
+#[doc(alias = "GlobalMess")]
 pub(crate) struct GlobalState {
     sender: Sender<lsp_server::Message>,
     req_queue: ReqQueue,
@@ -66,6 +69,7 @@ pub(crate) struct GlobalState {
 
     // status
     pub(crate) shutdown_requested: bool,
+    pub(crate) send_hint_refresh_query: bool,
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
 
     // proc macros
@@ -177,6 +181,7 @@ impl GlobalState {
             mem_docs: MemDocs::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             shutdown_requested: false,
+            send_hint_refresh_query: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
             config_errors: Default::default(),
@@ -216,12 +221,15 @@ impl GlobalState {
         let mut file_changes = FxHashMap::default();
         let (change, changed_files, workspace_structure_change) = {
             let mut change = Change::new();
-            let (vfs, line_endings_map) = &mut *self.vfs.write();
-            let changed_files = vfs.take_changes();
+            let mut guard = self.vfs.write();
+            let changed_files = guard.0.take_changes();
             if changed_files.is_empty() {
                 return false;
             }
 
+            // downgrade to read lock to allow more readers while we are normalizing text
+            let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
+            let vfs: &Vfs = &guard.0;
             // We need to fix up the changed events a bit. If we have a create or modify for a file
             // id that is followed by a delete we actually skip observing the file text from the
             // earlier event, to avoid problems later on.
@@ -272,6 +280,7 @@ impl GlobalState {
             let mut workspace_structure_change = None;
             // A file was added or deleted
             let mut has_structure_changes = false;
+            let mut bytes = vec![];
             for file in &changed_files {
                 let vfs_path = &vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
@@ -293,16 +302,28 @@ impl GlobalState {
 
                 let text = if file.exists() {
                     let bytes = vfs.file_contents(file.file_id).to_vec();
+
                     String::from_utf8(bytes).ok().and_then(|text| {
+                        // FIXME: Consider doing normalization in the `vfs` instead? That allows
+                        // getting rid of some locking
                         let (text, line_endings) = LineEndings::normalize(text);
-                        line_endings_map.insert(file.file_id, line_endings);
-                        Some(Arc::from(text))
+                        Some((Arc::from(text), line_endings))
                     })
                 } else {
                     None
                 };
-                change.change_file(file.file_id, text);
+                // delay `line_endings_map` changes until we are done normalizing the text
+                // this allows delaying the re-acquisition of the write lock
+                bytes.push((file.file_id, text));
             }
+            let (vfs, line_endings_map) = &mut *RwLockUpgradableReadGuard::upgrade(guard);
+            bytes.into_iter().for_each(|(file_id, text)| match text {
+                None => change.change_file(file_id, None),
+                Some((text, line_endings)) => {
+                    line_endings_map.insert(file_id, line_endings);
+                    change.change_file(file_id, Some(text));
+                }
+            });
             if has_structure_changes {
                 let roots = self.source_root_config.partition(vfs);
                 change.set_roots(roots);
@@ -422,12 +443,16 @@ impl Drop for GlobalState {
 }
 
 impl GlobalStateSnapshot {
+    fn vfs_read(&self) -> MappedRwLockReadGuard<'_, vfs::Vfs> {
+        RwLockReadGuard::map(self.vfs.read(), |(it, _)| it)
+    }
+
     pub(crate) fn url_to_file_id(&self, url: &Url) -> anyhow::Result<FileId> {
-        url_to_file_id(&self.vfs.read().0, url)
+        url_to_file_id(&self.vfs_read(), url)
     }
 
     pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
-        file_id_to_url(&self.vfs.read().0, id)
+        file_id_to_url(&self.vfs_read(), id)
     }
 
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancellable<LineIndex> {
@@ -443,7 +468,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Url {
-        let mut base = self.vfs.read().0.file_path(path.anchor);
+        let mut base = self.vfs_read().file_path(path.anchor);
         base.pop();
         let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
@@ -451,7 +476,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn file_id_to_file_path(&self, file_id: FileId) -> vfs::VfsPath {
-        self.vfs.read().0.file_path(file_id)
+        self.vfs_read().file_path(file_id)
     }
 
     pub(crate) fn cargo_target_for_crate_root(
@@ -459,7 +484,7 @@ impl GlobalStateSnapshot {
         crate_id: CrateId,
     ) -> Option<(&CargoWorkspace, Target)> {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
-        let path = self.vfs.read().0.file_path(file_id);
+        let path = self.vfs_read().file_path(file_id);
         let path = path.as_path()?;
         self.workspaces.iter().find_map(|ws| match ws {
             ProjectWorkspace::Cargo { cargo, .. } => {
@@ -471,7 +496,11 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn vfs_memory_usage(&self) -> usize {
-        self.vfs.read().0.memory_usage()
+        self.vfs_read().memory_usage()
+    }
+
+    pub(crate) fn file_exists(&self, file_id: FileId) -> bool {
+        self.vfs.read().0.exists(file_id)
     }
 }
 

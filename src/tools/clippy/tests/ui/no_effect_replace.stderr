@@ -5,45 +5,46 @@ LL |     let _ = "12345".replace('1', "1");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::no-effect-replace` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::no_effect_replace)]`
 
 error: replacing text with itself
-  --> $DIR/no_effect_replace.rs:5:13
+  --> $DIR/no_effect_replace.rs:7:13
    |
 LL |     let _ = "12345".replace("12", "12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> $DIR/no_effect_replace.rs:6:13
+  --> $DIR/no_effect_replace.rs:9:13
    |
 LL |     let _ = String::new().replace("12", "12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> $DIR/no_effect_replace.rs:8:13
+  --> $DIR/no_effect_replace.rs:12:13
    |
 LL |     let _ = "12345".replacen('1', "1", 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> $DIR/no_effect_replace.rs:9:13
+  --> $DIR/no_effect_replace.rs:14:13
    |
 LL |     let _ = "12345".replacen("12", "12", 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> $DIR/no_effect_replace.rs:10:13
+  --> $DIR/no_effect_replace.rs:16:13
    |
 LL |     let _ = String::new().replacen("12", "12", 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> $DIR/no_effect_replace.rs:16:13
+  --> $DIR/no_effect_replace.rs:23:13
    |
 LL |     let _ = "hello".replace(&x.f(), &x.f());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: replacing text with itself
-  --> $DIR/no_effect_replace.rs:19:13
+  --> $DIR/no_effect_replace.rs:27:13
    |
 LL |     let _ = "hello".replace(&y(), &y());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^

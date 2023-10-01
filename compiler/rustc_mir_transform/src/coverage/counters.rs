@@ -1,10 +1,8 @@
 use super::Error;
 
-use super::debug;
 use super::graph;
 use super::spans;
 
-use debug::{DebugCounters, NESTED_INDENT};
 use graph::{BasicCoverageBlock, BcbBranch, CoverageGraph, TraverseCoverageGraphWithLoops};
 use spans::CoverageSpan;
 
@@ -15,6 +13,8 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::*;
 
 use std::fmt::{self, Debug};
+
+const NESTED_INDENT: &str = "    ";
 
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
@@ -75,8 +75,6 @@ pub(super) struct CoverageCounters {
     /// BCB/edge, but are needed as operands to more complex expressions.
     /// These are always [`BcbCounter::Expression`].
     pub(super) intermediate_expressions: Vec<BcbCounter>,
-
-    pub debug_counters: DebugCounters,
 }
 
 impl CoverageCounters {
@@ -91,15 +89,7 @@ impl CoverageCounters {
             bcb_edge_counters: FxHashMap::default(),
             bcb_has_incoming_edge_counters: BitSet::new_empty(num_bcbs),
             intermediate_expressions: Vec::new(),
-
-            debug_counters: DebugCounters::new(),
         }
-    }
-
-    /// Activate the `DebugCounters` data structures, to provide additional debug formatting
-    /// features when formatting [`BcbCounter`] (counter) values.
-    pub fn enable_debug(&mut self) {
-        self.debug_counters.enable();
     }
 
     /// Makes [`BcbCounter`] `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
@@ -113,44 +103,18 @@ impl CoverageCounters {
         MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(coverage_spans)
     }
 
-    fn make_counter<F>(&mut self, debug_block_label_fn: F) -> BcbCounter
-    where
-        F: Fn() -> Option<String>,
-    {
-        let counter = BcbCounter::Counter { id: self.next_counter() };
-        if self.debug_counters.is_enabled() {
-            self.debug_counters.add_counter(&counter, (debug_block_label_fn)());
-        }
-        counter
+    fn make_counter(&mut self) -> BcbCounter {
+        let id = self.next_counter();
+        BcbCounter::Counter { id }
     }
 
-    fn make_expression<F>(
-        &mut self,
-        lhs: Operand,
-        op: Op,
-        rhs: Operand,
-        debug_block_label_fn: F,
-    ) -> BcbCounter
-    where
-        F: Fn() -> Option<String>,
-    {
+    fn make_expression(&mut self, lhs: Operand, op: Op, rhs: Operand) -> BcbCounter {
         let id = self.next_expression();
-        let expression = BcbCounter::Expression { id, lhs, op, rhs };
-        if self.debug_counters.is_enabled() {
-            self.debug_counters.add_counter(&expression, (debug_block_label_fn)());
-        }
-        expression
+        BcbCounter::Expression { id, lhs, op, rhs }
     }
 
     pub fn make_identity_counter(&mut self, counter_operand: Operand) -> BcbCounter {
-        let some_debug_block_label = if self.debug_counters.is_enabled() {
-            self.debug_counters.some_block_label(counter_operand).cloned()
-        } else {
-            None
-        };
-        self.make_expression(counter_operand, Op::Add, Operand::Zero, || {
-            some_debug_block_label.clone()
-        })
+        self.make_expression(counter_operand, Op::Add, Operand::Zero)
     }
 
     /// Counter IDs start from one and go up.
@@ -367,12 +331,8 @@ impl<'a> MakeBcbCounters<'a> {
                         branch_counter_operand,
                         Op::Add,
                         sumup_counter_operand,
-                        || None,
                     );
-                    debug!(
-                        "  [new intermediate expression: {}]",
-                        self.format_counter(&intermediate_expression)
-                    );
+                    debug!("  [new intermediate expression: {:?}]", intermediate_expression);
                     let intermediate_expression_operand = intermediate_expression.as_operand();
                     self.coverage_counters.intermediate_expressions.push(intermediate_expression);
                     some_sumup_counter_operand.replace(intermediate_expression_operand);
@@ -394,9 +354,8 @@ impl<'a> MakeBcbCounters<'a> {
             branching_counter_operand,
             Op::Subtract,
             sumup_counter_operand,
-            || Some(format!("{expression_branch:?}")),
         );
-        debug!("{:?} gets an expression: {}", expression_branch, self.format_counter(&expression));
+        debug!("{:?} gets an expression: {:?}", expression_branch, expression);
         let bcb = expression_branch.target_bcb;
         if expression_branch.is_only_path_to_target() {
             self.coverage_counters.set_bcb_counter(bcb, expression)?;
@@ -418,10 +377,10 @@ impl<'a> MakeBcbCounters<'a> {
         // If the BCB already has a counter, return it.
         if let Some(counter_kind) = &self.coverage_counters.bcb_counters[bcb] {
             debug!(
-                "{}{:?} already has a counter: {}",
+                "{}{:?} already has a counter: {:?}",
                 NESTED_INDENT.repeat(debug_indent_level),
                 bcb,
-                self.format_counter(counter_kind),
+                counter_kind,
             );
             return Ok(counter_kind.as_operand());
         }
@@ -431,22 +390,22 @@ impl<'a> MakeBcbCounters<'a> {
         // program results in a tight infinite loop, but it should still compile.
         let one_path_to_target = self.bcb_has_one_path_to_target(bcb);
         if one_path_to_target || self.bcb_predecessors(bcb).contains(&bcb) {
-            let counter_kind = self.coverage_counters.make_counter(|| Some(format!("{bcb:?}")));
+            let counter_kind = self.coverage_counters.make_counter();
             if one_path_to_target {
                 debug!(
-                    "{}{:?} gets a new counter: {}",
+                    "{}{:?} gets a new counter: {:?}",
                     NESTED_INDENT.repeat(debug_indent_level),
                     bcb,
-                    self.format_counter(&counter_kind),
+                    counter_kind,
                 );
             } else {
                 debug!(
                     "{}{:?} has itself as its own predecessor. It can't be part of its own \
-                    Expression sum, so it will get its own new counter: {}. (Note, the compiled \
+                    Expression sum, so it will get its own new counter: {:?}. (Note, the compiled \
                     code will generate an infinite loop.)",
                     NESTED_INDENT.repeat(debug_indent_level),
                     bcb,
-                    self.format_counter(&counter_kind),
+                    counter_kind,
                 );
             }
             return self.coverage_counters.set_bcb_counter(bcb, counter_kind);
@@ -481,12 +440,11 @@ impl<'a> MakeBcbCounters<'a> {
                     sumup_edge_counter_operand,
                     Op::Add,
                     edge_counter_operand,
-                    || None,
                 );
                 debug!(
-                    "{}new intermediate expression: {}",
+                    "{}new intermediate expression: {:?}",
                     NESTED_INDENT.repeat(debug_indent_level),
-                    self.format_counter(&intermediate_expression)
+                    intermediate_expression
                 );
                 let intermediate_expression_operand = intermediate_expression.as_operand();
                 self.coverage_counters.intermediate_expressions.push(intermediate_expression);
@@ -497,13 +455,12 @@ impl<'a> MakeBcbCounters<'a> {
             first_edge_counter_operand,
             Op::Add,
             some_sumup_edge_counter_operand.unwrap(),
-            || Some(format!("{bcb:?}")),
         );
         debug!(
-            "{}{:?} gets a new counter (sum of predecessor counters): {}",
+            "{}{:?} gets a new counter (sum of predecessor counters): {:?}",
             NESTED_INDENT.repeat(debug_indent_level),
             bcb,
-            self.format_counter(&counter_kind)
+            counter_kind
         );
         self.coverage_counters.set_bcb_counter(bcb, counter_kind)
     }
@@ -534,24 +491,23 @@ impl<'a> MakeBcbCounters<'a> {
             self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
         {
             debug!(
-                "{}Edge {:?}->{:?} already has a counter: {}",
+                "{}Edge {:?}->{:?} already has a counter: {:?}",
                 NESTED_INDENT.repeat(debug_indent_level),
                 from_bcb,
                 to_bcb,
-                self.format_counter(counter_kind)
+                counter_kind
             );
             return Ok(counter_kind.as_operand());
         }
 
         // Make a new counter to count this edge.
-        let counter_kind =
-            self.coverage_counters.make_counter(|| Some(format!("{from_bcb:?}->{to_bcb:?}")));
+        let counter_kind = self.coverage_counters.make_counter();
         debug!(
-            "{}Edge {:?}->{:?} gets a new counter: {}",
+            "{}Edge {:?}->{:?} gets a new counter: {:?}",
             NESTED_INDENT.repeat(debug_indent_level),
             from_bcb,
             to_bcb,
-            self.format_counter(&counter_kind)
+            counter_kind
         );
         self.coverage_counters.set_bcb_edge_counter(from_bcb, to_bcb, counter_kind)
     }
@@ -709,10 +665,5 @@ impl<'a> MakeBcbCounters<'a> {
     #[inline]
     fn bcb_dominates(&self, dom: BasicCoverageBlock, node: BasicCoverageBlock) -> bool {
         self.basic_coverage_blocks.dominates(dom, node)
-    }
-
-    #[inline]
-    fn format_counter(&self, counter_kind: &BcbCounter) -> String {
-        self.coverage_counters.debug_counters.format_counter(counter_kind)
     }
 }

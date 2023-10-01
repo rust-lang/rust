@@ -2,7 +2,8 @@
 //! interface provided by `Resolver` to macro expander.
 
 use crate::errors::{
-    self, AddAsNonDerive, CannotFindIdentInThisScope, MacroExpectedFound, RemoveSurroundingDerive,
+    self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
+    MacroExpectedFound, RemoveSurroundingDerive,
 };
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
@@ -25,7 +26,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+    LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
 };
 use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -609,9 +610,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && path.segments.len() >= 2
             && path.segments[0].ident.name == sym::diagnostic
+            && path.segments[1].ident.name != sym::on_unimplemented
         {
             self.tcx.sess.parse_sess.buffer_lint(
-                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 path.segments[1].span(),
                 node_id,
                 "unknown diagnostic attribute",
@@ -719,13 +721,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // even if speculative `resolve_path` returned nothing previously, so we skip this
                 // less informative error if the privacy error is reported elsewhere.
                 if this.privacy_errors.is_empty() {
-                    let msg = format!(
-                        "cannot determine resolution for the {} `{}`",
-                        kind.descr(),
-                        Segment::names_to_string(path)
-                    );
-                    let msg_note = "import resolution is stuck, try simplifying macro imports";
-                    this.tcx.sess.struct_span_err(span, msg).note(msg_note).emit();
+                    this.tcx.sess.emit_err(CannotDetermineMacroResolution {
+                        span,
+                        kind: kind.descr(),
+                        path: Segment::names_to_string(path),
+                    });
                 }
             }
         };

@@ -690,7 +690,6 @@ fn gen_deprecated_lints_test(lints: &[DeprecatedLint]) -> String {
 fn gen_renamed_lints_test(lints: &[RenamedLint]) -> String {
     let mut seen_lints = HashSet::new();
     let mut res: String = GENERATED_FILE_COMMENT.into();
-    res.push_str("//@run-rustfix\n\n");
     for lint in lints {
         if seen_lints.insert(&lint.new_name) {
             writeln!(res, "#![allow({})]", lint.new_name).unwrap();

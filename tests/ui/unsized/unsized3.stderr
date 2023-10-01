@@ -1,12 +1,10 @@
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:7:13
+  --> $DIR/unsized3.rs:7:10
    |
 LL | fn f1<X: ?Sized>(x: &X) {
    |       - this type parameter needs to be `Sized`
 LL |     f2::<X>(x);
-   |     ------- ^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+   |          ^ doesn't have a size known at compile-time
    |
 note: required by a bound in `f2`
   --> $DIR/unsized3.rs:10:7
@@ -24,14 +22,12 @@ LL | fn f2<X: ?Sized>(x: &X) {
    |        ++++++++
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:18:13
+  --> $DIR/unsized3.rs:18:10
    |
 LL | fn f3<X: ?Sized + T>(x: &X) {
    |       - this type parameter needs to be `Sized`
 LL |     f4::<X>(x);
-   |     ------- ^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+   |          ^ doesn't have a size known at compile-time
    |
 note: required by a bound in `f4`
   --> $DIR/unsized3.rs:21:7

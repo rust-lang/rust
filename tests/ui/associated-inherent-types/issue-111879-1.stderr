@@ -4,8 +4,8 @@ error[E0580]: `main` function has wrong type
 LL | fn main(_: for<'a> fn(Foo<fn(&'a ())>::Assoc)) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: expected fn pointer `fn()`
-              found fn pointer `fn(for<'a> fn(Foo<fn(&'a ())>::Assoc))`
+   = note: expected signature `fn()`
+              found signature `fn(for<'a> fn(&'a ()))`
 
 error: aborting due to previous error
 

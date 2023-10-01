@@ -54,6 +54,12 @@ impl Name {
         Name(Repr::Text(text))
     }
 
+    // FIXME: See above, unfortunately some places really need this right now
+    #[doc(hidden)]
+    pub const fn new_text_dont_use(text: SmolStr) -> Name {
+        Name(Repr::Text(text))
+    }
+
     pub fn new_tuple_field(idx: usize) -> Name {
         Name(Repr::TupleField(idx))
     }
@@ -302,6 +308,16 @@ pub mod known {
         rust_2018,
         rust_2021,
         v1,
+        new_display,
+        new_debug,
+        new_lower_exp,
+        new_upper_exp,
+        new_octal,
+        new_pointer,
+        new_binary,
+        new_lower_hex,
+        new_upper_hex,
+        from_usize,
         // Components of known path (type name)
         Iterator,
         IntoIterator,
@@ -327,6 +343,13 @@ pub mod known {
         Not,
         None,
         Index,
+        Left,
+        Right,
+        Center,
+        Unknown,
+        Is,
+        Param,
+        Implied,
         // Components of known path (function name)
         filter_map,
         next,
@@ -335,6 +358,8 @@ pub mod known {
         is_empty,
         as_str,
         new,
+        new_v1_formatted,
+        none,
         // Builtin macros
         asm,
         assert,

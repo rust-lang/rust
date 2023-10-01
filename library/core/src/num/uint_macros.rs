@@ -1259,6 +1259,10 @@ macro_rules! uint_impl {
         /// This function exists, so that all operations
         /// are accounted for in the wrapping operations.
         ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -1284,6 +1288,10 @@ macro_rules! uint_impl {
         /// definitions of division are equal, this
         /// is exactly equal to `self.wrapping_div(rhs)`.
         ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -1306,6 +1314,10 @@ macro_rules! uint_impl {
         /// There's no way wrapping could ever happen.
         /// This function exists, so that all operations
         /// are accounted for in the wrapping operations.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
         ///
         /// # Examples
         ///
@@ -1332,6 +1344,10 @@ macro_rules! uint_impl {
         /// Since, for the positive integers, all common
         /// definitions of division are equal, this
         /// is exactly equal to `self.wrapping_rem(rhs)`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
         ///
         /// # Examples
         ///
@@ -1977,6 +1993,54 @@ macro_rules! uint_impl {
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
             acc * base
+        }
+
+        /// Returns the square root of the number, rounded down.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        /// #![feature(isqrt)]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
+        /// ```
+        #[unstable(feature = "isqrt", issue = "116226")]
+        #[rustc_const_unstable(feature = "isqrt", issue = "116226")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn isqrt(self) -> Self {
+            if self < 2 {
+                return self;
+            }
+
+            // The algorithm is based on the one presented in
+            // <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
+            // which cites as source the following C code:
+            // <https://web.archive.org/web/20120306040058/http://medialab.freaknet.org/martin/src/sqrt/sqrt.c>.
+
+            let mut op = self;
+            let mut res = 0;
+            let mut one = 1 << (self.ilog2() & !1);
+
+            while one != 0 {
+                if op >= res + one {
+                    op -= res + one;
+                    res = (res >> 1) + one;
+                } else {
+                    res >>= 1;
+                }
+                one >>= 2;
+            }
+
+            // SAFETY: the result is positive and fits in an integer with half as many bits.
+            // Inform the optimizer about it.
+            unsafe {
+                intrinsics::assume(0 < res);
+                intrinsics::assume(res < 1 << (Self::BITS / 2));
+            }
+
+            res
         }
 
         /// Performs Euclidean division.

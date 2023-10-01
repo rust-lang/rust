@@ -352,7 +352,7 @@ impl<'a> State<'a> {
                 self.end();
                 self.word(")");
             }
-            ast::ExprKind::Let(pat, scrutinee, _) => {
+            ast::ExprKind::Let(pat, scrutinee, _, _) => {
                 self.print_let(pat, scrutinee);
             }
             ast::ExprKind::If(test, blk, elseopt) => self.print_if(test, blk, elseopt.as_deref()),

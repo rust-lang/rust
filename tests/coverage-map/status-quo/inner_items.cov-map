@@ -1,0 +1,49 @@
+Function name: <inner_items::main::InStruct as inner_items::main::InTrait>::default_trait_func
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 21, 09, 03, 0a]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 33, 9) to (start + 3, 10)
+
+Function name: <inner_items::main::InStruct as inner_items::main::InTrait>::trait_func
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 28, 09, 03, 0a]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 40, 9) to (start + 3, 10)
+
+Function name: inner_items::main
+Raw bytes (53): 0x[01, 01, 07, 01, 05, 05, 02, 1b, 09, 05, 02, 09, 16, 1b, 09, 05, 02, 07, 01, 03, 01, 07, 0f, 05, 07, 10, 02, 06, 02, 02, 06, 00, 07, 1b, 24, 08, 00, 0f, 09, 00, 10, 02, 06, 16, 02, 06, 00, 07, 13, 02, 09, 05, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 7
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 2 operands: lhs = Expression(6, Add), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 4 operands: lhs = Counter(2), rhs = Expression(5, Sub)
+- expression 5 operands: lhs = Expression(6, Add), rhs = Counter(2)
+- expression 6 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 7
+- Code(Counter(0)) at (prev + 3, 1) to (start + 7, 15)
+- Code(Counter(1)) at (prev + 7, 16) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(6, Add)) at (prev + 36, 8) to (start + 0, 15)
+    = (c1 + (c0 - c1))
+- Code(Counter(2)) at (prev + 0, 16) to (start + 2, 6)
+- Code(Expression(5, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = ((c1 + (c0 - c1)) - c2)
+- Code(Expression(4, Add)) at (prev + 2, 9) to (start + 5, 2)
+    = (c2 + ((c1 + (c0 - c1)) - c2))
+
+Function name: inner_items::main::in_func
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 12, 05, 04, 06]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 18, 5) to (start + 4, 6)
+

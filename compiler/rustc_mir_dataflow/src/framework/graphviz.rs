@@ -538,7 +538,7 @@ where
 
     fn visit_block_start(
         &mut self,
-        _results: &Results<'tcx, A>,
+        _results: &mut Results<'tcx, A>,
         state: &Self::FlowState,
         _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
@@ -550,7 +550,7 @@ where
 
     fn visit_block_end(
         &mut self,
-        _results: &Results<'tcx, A>,
+        _results: &mut Results<'tcx, A>,
         state: &Self::FlowState,
         _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
@@ -562,7 +562,7 @@ where
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        results: &Results<'tcx, A>,
+        results: &mut Results<'tcx, A>,
         state: &Self::FlowState,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -575,7 +575,7 @@ where
 
     fn visit_statement_after_primary_effect(
         &mut self,
-        results: &Results<'tcx, A>,
+        results: &mut Results<'tcx, A>,
         state: &Self::FlowState,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -586,7 +586,7 @@ where
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        results: &Results<'tcx, A>,
+        results: &mut Results<'tcx, A>,
         state: &Self::FlowState,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -599,7 +599,7 @@ where
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        results: &Results<'tcx, A>,
+        results: &mut Results<'tcx, A>,
         state: &Self::FlowState,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,

@@ -7,7 +7,6 @@ use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use std::ops::{Index, IndexMut};
-
 pub(super) struct Locals<'tcx, V> {
     values: IndexVec<mir::Local, LocalRef<'tcx, V>>,
 }
@@ -36,17 +35,18 @@ impl<'tcx, V> Locals<'tcx, V> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(super) fn initialize_locals(&mut self, values: Vec<LocalRef<'tcx, Bx::Value>>) {
         assert!(self.locals.values.is_empty());
-
+        // FIXME(#115215): After #115025 get's merged this might not be necessary
         for (local, value) in values.into_iter().enumerate() {
             match value {
                 LocalRef::Place(_) | LocalRef::UnsizedPlace(_) | LocalRef::PendingOperand => (),
                 LocalRef::Operand(op) => {
                     let local = mir::Local::from_usize(local);
                     let expected_ty = self.monomorphize(self.mir.local_decls[local].ty);
-                    assert_eq!(expected_ty, op.layout.ty, "unexpected initial operand type");
+                    if expected_ty != op.layout.ty {
+                        warn!("Unexpected initial operand type. See the issues/114858");
+                    }
                 }
             }
-
             self.locals.values.push(value);
         }
     }

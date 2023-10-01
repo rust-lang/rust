@@ -54,11 +54,8 @@ impl EnumSizeOpt {
         let layout = tcx.layout_of(param_env.and(ty)).ok()?;
         let variants = match &layout.variants {
             Variants::Single { .. } => return None,
-            Variants::Multiple { tag_encoding, .. }
-                if matches!(tag_encoding, TagEncoding::Niche { .. }) =>
-            {
-                return None;
-            }
+            Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => return None,
+
             Variants::Multiple { variants, .. } if variants.len() <= 1 => return None,
             Variants::Multiple { variants, .. } => variants,
         };
@@ -114,7 +111,7 @@ impl EnumSizeOpt {
             tcx.data_layout.ptr_sized_integer().align(&tcx.data_layout).abi,
             Mutability::Not,
         );
-        let alloc = tcx.create_memory_alloc(tcx.mk_const_alloc(alloc));
+        let alloc = tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(alloc));
         Some((*adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
     }
     fn optim<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -139,7 +136,6 @@ impl EnumSizeOpt {
 
                     let (adt_def, num_variants, alloc_id) =
                         self.candidate(tcx, param_env, ty, &mut alloc_cache)?;
-                    let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
 
                     let tmp_ty = Ty::new_array(tcx, tcx.types.usize, num_variants as u64);
 
@@ -150,11 +146,11 @@ impl EnumSizeOpt {
                     };
 
                     let place = Place::from(size_array_local);
-                    let constant_vals = Constant {
+                    let constant_vals = ConstOperand {
                         span,
                         user_ty: None,
-                        literal: ConstantKind::Val(
-                            interpret::ConstValue::ByRef { alloc, offset: Size::ZERO },
+                        const_: Const::Val(
+                            ConstValue::Indirect { alloc_id, offset: Size::ZERO },
                             tmp_ty,
                         ),
                     };

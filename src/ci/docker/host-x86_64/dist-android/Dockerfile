@@ -1,4 +1,4 @@
-FROM ubuntu:22.10
+FROM ubuntu:23.04
 
 COPY scripts/android-base-apt-get.sh /scripts/
 RUN sh /scripts/android-base-apt-get.sh

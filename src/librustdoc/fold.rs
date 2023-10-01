@@ -52,10 +52,31 @@ pub(crate) trait DocFolder: Sized {
 
                 VariantItem(Variant { kind, discriminant })
             }
+            TypeAliasItem(mut typealias) => {
+                typealias.inner_type = typealias.inner_type.map(|inner_type| match inner_type {
+                    TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
+                        let variants = variants
+                            .into_iter_enumerated()
+                            .filter_map(|(_, x)| self.fold_item(x))
+                            .collect();
+
+                        TypeAliasInnerType::Enum { variants, is_non_exhaustive }
+                    }
+                    TypeAliasInnerType::Union { fields } => {
+                        let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                        TypeAliasInnerType::Union { fields }
+                    }
+                    TypeAliasInnerType::Struct { ctor_kind, fields } => {
+                        let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                        TypeAliasInnerType::Struct { ctor_kind, fields }
+                    }
+                });
+
+                TypeAliasItem(typealias)
+            }
             ExternCrateItem { src: _ }
             | ImportItem(_)
             | FunctionItem(_)
-            | TypeAliasItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_)

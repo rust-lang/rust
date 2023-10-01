@@ -86,6 +86,32 @@ impl CfgOptions {
     }
 }
 
+impl Extend<CfgAtom> for CfgOptions {
+    fn extend<T: IntoIterator<Item = CfgAtom>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|cfg_flag| _ = self.enabled.insert(cfg_flag));
+    }
+}
+
+impl IntoIterator for CfgOptions {
+    type Item = <FxHashSet<CfgAtom> as IntoIterator>::Item;
+
+    type IntoIter = <FxHashSet<CfgAtom> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        <FxHashSet<CfgAtom> as IntoIterator>::into_iter(self.enabled)
+    }
+}
+
+impl<'a> IntoIterator for &'a CfgOptions {
+    type Item = <&'a FxHashSet<CfgAtom> as IntoIterator>::Item;
+
+    type IntoIter = <&'a FxHashSet<CfgAtom> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        <&FxHashSet<CfgAtom> as IntoIterator>::into_iter(&self.enabled)
+    }
+}
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CfgDiff {
     // Invariants: No duplicates, no atom that's both in `enable` and `disable`.

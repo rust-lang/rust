@@ -14,12 +14,10 @@ LL | fn foo(i: impl std::fmt::Display) {}
    = note: `impl Trait` cannot be explicitly specified as a generic argument
 
 error[E0277]: `()` doesn't implement `std::fmt::Display`
-  --> $DIR/issue-100154.rs:4:15
+  --> $DIR/issue-100154.rs:4:11
    |
 LL |     foo::<()>(());
-   |     --------- ^^ `()` cannot be formatted with the default formatter
-   |     |
-   |     required by a bound introduced by this call
+   |           ^^ `()` cannot be formatted with the default formatter
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead

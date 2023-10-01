@@ -5,7 +5,7 @@ use rustc_ast::InlineAsmTemplatePiece;
 use super::*;
 use crate::ty;
 
-TrivialTypeTraversalAndLiftImpls! {
+TrivialTypeTraversalImpls! {
     BlockTailInfo,
     MirPhase,
     SourceInfo,

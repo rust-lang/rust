@@ -142,13 +142,13 @@ where
         for arg in fn_abi.args.iter_mut() {
             let attrs = match arg.mode {
                 PassMode::Ignore
-                | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+                | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
                     continue;
                 }
                 PassMode::Direct(ref mut attrs) => attrs,
                 PassMode::Pair(..)
-                | PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ }
-                | PassMode::Cast(..) => {
+                | PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ }
+                | PassMode::Cast { .. } => {
                     unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
                 }
             };

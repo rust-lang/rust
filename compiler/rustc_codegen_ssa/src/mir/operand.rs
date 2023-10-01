@@ -6,8 +6,8 @@ use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc_middle::mir;
-use rustc_middle::mir::interpret::{alloc_range, ConstValue, Pointer, Scalar};
+use rustc_middle::mir::interpret::{alloc_range, Pointer, Scalar};
+use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{self, Abi, Align, Size};
@@ -50,7 +50,8 @@ pub enum OperandValue<V> {
     /// from [`ConstMethods::const_poison`].
     ///
     /// An `OperandValue` *must* be this variant for any type for which
-    /// `is_zst` on its `Layout` returns `true`.
+    /// `is_zst` on its `Layout` returns `true`. Note however that
+    /// these values can still require alignment.
     ZeroSized,
 }
 
@@ -85,7 +86,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        val: ConstValue<'tcx>,
+        val: mir::ConstValue<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
         let layout = bx.layout_of(ty);
@@ -99,12 +100,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 OperandValue::Immediate(llval)
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
-            ConstValue::Slice { data, start, end } => {
+            ConstValue::Slice { data, meta } => {
                 let Abi::ScalarPair(a_scalar, _) = layout.abi else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
                 let a = Scalar::from_pointer(
-                    Pointer::new(bx.tcx().create_memory_alloc(data), Size::from_bytes(start)),
+                    Pointer::new(bx.tcx().reserve_and_set_memory_alloc(data), Size::ZERO),
                     &bx.tcx(),
                 );
                 let a_llval = bx.scalar_to_backend(
@@ -112,10 +113,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     a_scalar,
                     bx.scalar_pair_element_backend_type(layout, 0, true),
                 );
-                let b_llval = bx.const_usize((end - start) as u64);
+                let b_llval = bx.const_usize(meta);
                 OperandValue::Pair(a_llval, b_llval)
             }
-            ConstValue::ByRef { alloc, offset } => {
+            ConstValue::Indirect { alloc_id, offset } => {
+                let alloc = bx.tcx().global_alloc(alloc_id).unwrap_memory();
                 return Self::from_const_alloc(bx, layout, alloc, offset);
             }
         };
@@ -133,15 +135,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         assert_eq!(alloc_align, layout.align.abi);
 
         let read_scalar = |start, size, s: abi::Scalar, ty| {
-            let val = alloc
-                .0
-                .read_scalar(
-                    bx,
-                    alloc_range(start, size),
-                    /*read_provenance*/ matches!(s.primitive(), abi::Pointer(_)),
-                )
-                .unwrap();
-            bx.scalar_to_backend(val, s, ty)
+            match alloc.0.read_scalar(
+                bx,
+                alloc_range(start, size),
+                /*read_provenance*/ matches!(s.primitive(), abi::Pointer(_)),
+            ) {
+                Ok(val) => bx.scalar_to_backend(val, s, ty),
+                Err(_) => bx.const_poison(ty),
+            }
         };
 
         // It may seem like all types with `Scalar` or `ScalarPair` ABI are fair game at this point.
@@ -154,7 +155,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             Abi::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                let val = read_scalar(Size::ZERO, size, s, bx.type_ptr());
+                let val = read_scalar(offset, size, s, bx.backend_type(layout));
                 OperandRef { val: OperandValue::Immediate(val), layout }
             }
             Abi::ScalarPair(
@@ -162,10 +163,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 b @ abi::Scalar::Initialized { .. },
             ) => {
                 let (a_size, b_size) = (a.size(bx), b.size(bx));
-                let b_offset = a_size.align_to(b.align(bx).abi);
+                let b_offset = (offset + a_size).align_to(b.align(bx).abi);
                 assert!(b_offset.bytes() > 0);
                 let a_val = read_scalar(
-                    Size::ZERO,
+                    offset,
                     a_size,
                     a,
                     bx.scalar_pair_element_backend_type(layout, 0, true),
@@ -181,6 +182,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             _ if layout.is_zst() => OperandRef::zero_sized(layout),
             _ => {
                 // Neither a scalar nor scalar pair. Load from a place
+                // FIXME: should we cache `const_data_from_alloc` to avoid repeating this for the
+                // same `ConstAllocation`?
                 let init = bx.const_data_from_alloc(alloc);
                 let base_addr = bx.static_addr_of(init, alloc_align, None);
 
@@ -568,12 +571,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_consume(bx, place.as_ref())
             }
 
-            mir::Operand::Constant(ref constant) => {
-                // This cannot fail because we checked all required_consts in advance.
-                self.eval_mir_constant_to_operand(bx, constant).unwrap_or_else(|_err| {
-                    span_bug!(constant.span, "erroneous constant not captured by required_consts")
-                })
-            }
+            mir::Operand::Constant(ref constant) => self.eval_mir_constant_to_operand(bx, constant),
         }
     }
 }

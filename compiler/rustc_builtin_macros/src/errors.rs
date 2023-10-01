@@ -539,18 +539,29 @@ pub(crate) struct InvalidFormatStringLabel {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    builtin_macros_sugg,
-    style = "verbose",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct InvalidFormatStringSuggestion {
-    #[suggestion_part(code = "{len}")]
-    pub(crate) captured: Span,
-    pub(crate) len: String,
-    #[suggestion_part(code = ", {arg}")]
-    pub(crate) span: Span,
-    pub(crate) arg: String,
+pub(crate) enum InvalidFormatStringSuggestion {
+    #[multipart_suggestion(
+        builtin_macros_format_use_positional,
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    UsePositional {
+        #[suggestion_part(code = "{len}")]
+        captured: Span,
+        len: String,
+        #[suggestion_part(code = ", {arg}")]
+        span: Span,
+        arg: String,
+    },
+    #[suggestion(
+        builtin_macros_format_remove_raw_ident,
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    RemoveRawIdent {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]

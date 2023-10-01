@@ -152,7 +152,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
         while let Some((inner_most_trait_ref, emit_vptr, mut siblings)) = stack.pop() {
             segment_visitor(VtblSegment::TraitOwnEntries {
                 trait_ref: inner_most_trait_ref,
-                emit_vptr,
+                emit_vptr: emit_vptr && !tcx.sess.opts.unstable_opts.no_trait_vptr,
             })?;
 
             // If we've emitted (fed to `segment_visitor`) a trait that has methods present in the vtable,

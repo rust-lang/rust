@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
    |                         -----     ----------------------- opaque type defined here
    |                         |
-   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:7:27: 7:30]>` captures the anonymous lifetime defined here
+   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, {closure@$DIR/static-return-lifetime-infered.rs:7:27: 7:30}>` captures the anonymous lifetime defined here
 LL |         self.x.iter().map(|a| a.0)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -19,7 +19,7 @@ error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
    |                    --               ----------------------- opaque type defined here
    |                    |
-   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:11:27: 11:30]>` captures the lifetime `'a` as defined here
+   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, {closure@$DIR/static-return-lifetime-infered.rs:11:27: 11:30}>` captures the lifetime `'a` as defined here
 LL |         self.x.iter().map(|a| a.0)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |

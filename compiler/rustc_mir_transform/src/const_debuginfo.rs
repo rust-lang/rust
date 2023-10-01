@@ -4,7 +4,7 @@
 use rustc_middle::{
     mir::{
         visit::{PlaceContext, Visitor},
-        Body, Constant, Local, Location, Operand, Rvalue, StatementKind, VarDebugInfoContents,
+        Body, ConstOperand, Local, Location, Operand, Rvalue, StatementKind, VarDebugInfoContents,
     },
     ty::TyCtxt,
 };
@@ -45,7 +45,7 @@ struct LocalUseVisitor {
     local_assignment_locations: IndexVec<Local, Option<Location>>,
 }
 
-fn find_optimization_opportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Constant<'tcx>)> {
+fn find_optimization_opportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, ConstOperand<'tcx>)> {
     let mut visitor = LocalUseVisitor {
         local_mutating_uses: IndexVec::from_elem(0, &body.local_decls),
         local_assignment_locations: IndexVec::from_elem(None, &body.local_decls),

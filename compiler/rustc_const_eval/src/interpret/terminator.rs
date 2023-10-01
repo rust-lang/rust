@@ -2,19 +2,25 @@ use std::borrow::Cow;
 
 use either::Either;
 use rustc_ast::ast::InlineAsmOptions;
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
-use rustc_middle::ty::Instance;
 use rustc_middle::{
     mir,
-    ty::{self, Ty},
+    ty::{
+        self,
+        layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout},
+        AdtDef, Instance, Ty,
+    },
 };
-use rustc_target::abi;
-use rustc_target::abi::call::{ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMode};
+use rustc_span::sym;
+use rustc_target::abi::{self, FieldIdx};
+use rustc_target::abi::{
+    call::{ArgAbi, FnAbi, PassMode},
+    Integer,
+};
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    AllocId, FnVal, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy,
-    Operand, PlaceTy, Provenance, Scalar, StackPopCleanup,
+    AllocId, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable,
+    Provenance, Scalar, StackPopCleanup,
 };
 use crate::fluent_generated as fluent;
 
@@ -92,14 +98,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 for (const_int, target) in targets.iter() {
                     // Compare using MIR BinOp::Eq, to also support pointer values.
                     // (Avoiding `self.binary_op` as that does some redundant layout computation.)
-                    let res = self
-                        .overflowing_binary_op(
-                            mir::BinOp::Eq,
-                            &discr,
-                            &ImmTy::from_uint(const_int, discr.layout),
-                        )?
-                        .0;
-                    if res.to_bool()? {
+                    let res = self.wrapping_binary_op(
+                        mir::BinOp::Eq,
+                        &discr,
+                        &ImmTy::from_uint(const_int, discr.layout),
+                    )?;
+                    if res.to_scalar().to_bool()? {
                         target_block = target;
                         break;
                     }
@@ -145,7 +149,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     _ => span_bug!(
                         terminator.source_info.span,
-                        "invalid callee of type {:?}",
+                        "invalid callee of type {}",
                         func.layout.ty
                     ),
                 };
@@ -251,90 +255,172 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .collect()
     }
 
+    /// Find the wrapped inner type of a transparent wrapper.
+    /// Must not be called on 1-ZST (as they don't have a uniquely defined "wrapped field").
+    ///
+    /// We work with `TyAndLayout` here since that makes it much easier to iterate over all fields.
+    fn unfold_transparent(
+        &self,
+        layout: TyAndLayout<'tcx>,
+        may_unfold: impl Fn(AdtDef<'tcx>) -> bool,
+    ) -> TyAndLayout<'tcx> {
+        match layout.ty.kind() {
+            ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(*adt_def) => {
+                assert!(!adt_def.is_enum());
+                // Find the non-1-ZST field, and recurse.
+                let (_, field) = layout.non_1zst_field(self).unwrap();
+                self.unfold_transparent(field, may_unfold)
+            }
+            // Not a transparent type, no further unfolding.
+            _ => layout,
+        }
+    }
+
+    /// Unwrap types that are guaranteed a null-pointer-optimization
+    fn unfold_npo(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+        // Check if this is `Option` wrapping some type.
+        let inner = match layout.ty.kind() {
+            ty::Adt(def, args) if self.tcx.is_diagnostic_item(sym::Option, def.did()) => {
+                args[0].as_type().unwrap()
+            }
+            _ => {
+                // Not an `Option`.
+                return Ok(layout);
+            }
+        };
+        let inner = self.layout_of(inner)?;
+        // Check if the inner type is one of the NPO-guaranteed ones.
+        // For that we first unpeel transparent *structs* (but not unions).
+        let is_npo = |def: AdtDef<'tcx>| {
+            self.tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
+        };
+        let inner = self.unfold_transparent(inner, /* may_unfold */ |def| {
+            // Stop at NPO tpyes so that we don't miss that attribute in the check below!
+            def.is_struct() && !is_npo(def)
+        });
+        Ok(match inner.ty.kind() {
+            ty::Ref(..) | ty::FnPtr(..) => {
+                // Option<&T> behaves like &T, and same for fn()
+                inner
+            }
+            ty::Adt(def, _) if is_npo(*def) => {
+                // Once we found a `nonnull_optimization_guaranteed` type, further strip off
+                // newtype structs from it to find the underlying ABI type.
+                self.unfold_transparent(inner, /* may_unfold */ |def| def.is_struct())
+            }
+            _ => {
+                // Everything else we do not unfold.
+                layout
+            }
+        })
+    }
+
+    /// Check if these two layouts look like they are fn-ABI-compatible.
+    /// (We also compare the `PassMode`, so this doesn't have to check everything. But it turns out
+    /// that only checking the `PassMode` is insufficient.)
+    fn layout_compat(
+        &self,
+        caller: TyAndLayout<'tcx>,
+        callee: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx, bool> {
+        // Fast path: equal types are definitely compatible.
+        if caller.ty == callee.ty {
+            return Ok(true);
+        }
+        // 1-ZST are compatible with all 1-ZST (and with nothing else).
+        if caller.is_1zst() || callee.is_1zst() {
+            return Ok(caller.is_1zst() && callee.is_1zst());
+        }
+        // Unfold newtypes and NPO optimizations.
+        let unfold = |layout: TyAndLayout<'tcx>| {
+            self.unfold_npo(self.unfold_transparent(layout, /* may_unfold */ |_def| true))
+        };
+        let caller = unfold(caller)?;
+        let callee = unfold(callee)?;
+        // Now see if these inner types are compatible.
+
+        // Compatible pointer types. For thin pointers, we have to accept even non-`repr(transparent)`
+        // things as compatible due to `DispatchFromDyn`. For instance, `Rc<i32>` and `*mut i32`
+        // must be compatible. So we just accept everything with Pointer ABI as compatible,
+        // even if this will accept some code that is not stably guaranteed to work.
+        // This also handles function pointers.
+        let thin_pointer = |layout: TyAndLayout<'tcx>| match layout.abi {
+            abi::Abi::Scalar(s) => match s.primitive() {
+                abi::Primitive::Pointer(addr_space) => Some(addr_space),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let (Some(caller), Some(callee)) = (thin_pointer(caller), thin_pointer(callee)) {
+            return Ok(caller == callee);
+        }
+        // For wide pointers we have to get the pointee type.
+        let pointee_ty = |ty: Ty<'tcx>| -> InterpResult<'tcx, Option<Ty<'tcx>>> {
+            // We cannot use `builtin_deref` here since we need to reject `Box<T, MyAlloc>`.
+            Ok(Some(match ty.kind() {
+                ty::Ref(_, ty, _) => *ty,
+                ty::RawPtr(mt) => mt.ty,
+                // We should only accept `Box` with the default allocator.
+                // It's hard to test for that though so we accept every 1-ZST allocator.
+                ty::Adt(def, args)
+                    if def.is_box()
+                        && self.layout_of(args[1].expect_ty()).is_ok_and(|l| l.is_1zst()) =>
+                {
+                    args[0].expect_ty()
+                }
+                _ => return Ok(None),
+            }))
+        };
+        if let (Some(caller), Some(callee)) = (pointee_ty(caller.ty)?, pointee_ty(callee.ty)?) {
+            // This is okay if they have the same metadata type.
+            let meta_ty = |ty: Ty<'tcx>| {
+                let (meta, only_if_sized) = ty.ptr_metadata_ty(*self.tcx, |ty| ty);
+                assert!(
+                    !only_if_sized,
+                    "there should be no more 'maybe has that metadata' types during interpretation"
+                );
+                meta
+            };
+            return Ok(meta_ty(caller) == meta_ty(callee));
+        }
+
+        // Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
+        let int_ty = |ty: Ty<'tcx>| {
+            Some(match ty.kind() {
+                ty::Int(ity) => (Integer::from_int_ty(&self.tcx, *ity), /* signed */ true),
+                ty::Uint(uty) => (Integer::from_uint_ty(&self.tcx, *uty), /* signed */ false),
+                _ => return None,
+            })
+        };
+        if let (Some(caller), Some(callee)) = (int_ty(caller.ty), int_ty(callee.ty)) {
+            // This is okay if they are the same integer type.
+            return Ok(caller == callee);
+        }
+
+        // Fall back to exact equality.
+        // FIXME: We are missing the rules for "repr(C) wrapping compatible types".
+        Ok(caller == callee)
+    }
+
     fn check_argument_compat(
+        &self,
         caller_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-    ) -> bool {
-        // Heuristic for type comparison.
-        let layout_compat = || {
-            if caller_abi.layout.ty == callee_abi.layout.ty {
-                // No question
-                return true;
-            }
-            if caller_abi.layout.is_unsized() || callee_abi.layout.is_unsized() {
-                // No, no, no. We require the types to *exactly* match for unsized arguments. If
-                // these are somehow unsized "in a different way" (say, `dyn Trait` vs `[i32]`),
-                // then who knows what happens.
-                return false;
-            }
-            if caller_abi.layout.size != callee_abi.layout.size
-                || caller_abi.layout.align.abi != callee_abi.layout.align.abi
-            {
-                // This cannot go well...
-                return false;
-            }
-            // The rest *should* be okay, but we are extra conservative.
-            match (caller_abi.layout.abi, callee_abi.layout.abi) {
-                // Different valid ranges are okay (once we enforce validity,
-                // that will take care to make it UB to leave the range, just
-                // like for transmute).
-                (abi::Abi::Scalar(caller), abi::Abi::Scalar(callee)) => {
-                    caller.primitive() == callee.primitive()
-                }
-                (
-                    abi::Abi::ScalarPair(caller1, caller2),
-                    abi::Abi::ScalarPair(callee1, callee2),
-                ) => {
-                    caller1.primitive() == callee1.primitive()
-                        && caller2.primitive() == callee2.primitive()
-                }
-                // Be conservative
-                _ => false,
-            }
-        };
-        // When comparing the PassMode, we have to be smart about comparing the attributes.
-        let arg_attr_compat = |a1: &ArgAttributes, a2: &ArgAttributes| {
-            // There's only one regular attribute that matters for the call ABI: InReg.
-            // Everything else is things like noalias, dereferenceable, nonnull, ...
-            // (This also applies to pointee_size, pointee_align.)
-            if a1.regular.contains(ArgAttribute::InReg) != a2.regular.contains(ArgAttribute::InReg)
-            {
-                return false;
-            }
-            // We also compare the sign extension mode -- this could let the callee make assumptions
-            // about bits that conceptually were not even passed.
-            if a1.arg_ext != a2.arg_ext {
-                return false;
-            }
-            return true;
-        };
-        let mode_compat = || match (&caller_abi.mode, &callee_abi.mode) {
-            (PassMode::Ignore, PassMode::Ignore) => true,
-            (PassMode::Direct(a1), PassMode::Direct(a2)) => arg_attr_compat(a1, a2),
-            (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => {
-                arg_attr_compat(a1, a2) && arg_attr_compat(b1, b2)
-            }
-            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1 == c2 && pad1 == pad2,
-            (
-                PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
-                PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
-            ) => arg_attr_compat(a1, a2) && s1 == s2,
-            (
-                PassMode::Indirect { attrs: a1, extra_attrs: Some(e1), on_stack: s1 },
-                PassMode::Indirect { attrs: a2, extra_attrs: Some(e2), on_stack: s2 },
-            ) => arg_attr_compat(a1, a2) && arg_attr_compat(e1, e2) && s1 == s2,
-            _ => false,
-        };
-
-        if layout_compat() && mode_compat() {
-            return true;
+    ) -> InterpResult<'tcx, bool> {
+        // We do not want to accept things as ABI-compatible that just "happen to be" compatible on the current target,
+        // so we implement a type-based check that reflects the guaranteed rules for ABI compatibility.
+        if self.layout_compat(caller_abi.layout, callee_abi.layout)? {
+            // Ensure that our checks imply actual ABI compatibility for this concrete call.
+            assert!(caller_abi.eq_abi(&callee_abi));
+            return Ok(true);
+        } else {
+            trace!(
+                "check_argument_compat: incompatible ABIs:\ncaller: {:?}\ncallee: {:?}",
+                caller_abi,
+                callee_abi
+            );
+            return Ok(false);
         }
-        trace!(
-            "check_argument_compat: incompatible ABIs:\ncaller: {:?}\ncallee: {:?}",
-            caller_abi,
-            callee_abi
-        );
-        return false;
     }
 
     /// Initialize a single callee argument, checking the types for compatibility.
@@ -344,63 +430,58 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Item = (&'x FnArg<'tcx, M::Provenance>, &'y ArgAbi<'tcx, Ty<'tcx>>),
         >,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-        callee_arg: &PlaceTy<'tcx, M::Provenance>,
+        callee_arg: &mir::Place<'tcx>,
+        callee_ty: Ty<'tcx>,
+        already_live: bool,
     ) -> InterpResult<'tcx>
     where
         'tcx: 'x,
         'tcx: 'y,
     {
+        assert_eq!(callee_ty, callee_abi.layout.ty);
         if matches!(callee_abi.mode, PassMode::Ignore) {
-            // This one is skipped.
+            // This one is skipped. Still must be made live though!
+            if !already_live {
+                self.storage_live(callee_arg.as_local().unwrap())?;
+            }
             return Ok(());
         }
         // Find next caller arg.
         let Some((caller_arg, caller_abi)) = caller_args.next() else {
             throw_ub_custom!(fluent::const_eval_not_enough_caller_args);
         };
-        // Now, check
-        if !Self::check_argument_compat(caller_abi, callee_abi) {
-            let callee_ty = format!("{}", callee_arg.layout.ty);
-            let caller_ty = format!("{}", caller_arg.layout().ty);
-            throw_ub_custom!(
-                fluent::const_eval_incompatible_types,
-                callee_ty = callee_ty,
-                caller_ty = caller_ty,
-            )
+        assert_eq!(caller_arg.layout().layout, caller_abi.layout.layout);
+        // Sadly we cannot assert that `caller_arg.layout().ty` and `caller_abi.layout.ty` are
+        // equal; in closures the types sometimes differ. We just hope that `caller_abi` is the
+        // right type to print to the user.
+
+        // Check compatibility
+        if !self.check_argument_compat(caller_abi, callee_abi)? {
+            throw_ub!(AbiMismatchArgument {
+                caller_ty: caller_abi.layout.ty,
+                callee_ty: callee_abi.layout.ty
+            });
         }
         // We work with a copy of the argument for now; if this is in-place argument passing, we
         // will later protect the source it comes from. This means the callee cannot observe if we
         // did in-place of by-copy argument passing, except for pointer equality tests.
         let caller_arg_copy = self.copy_fn_arg(&caller_arg)?;
-        // Special handling for unsized parameters.
-        if caller_arg_copy.layout.is_unsized() {
-            // `check_argument_compat` ensures that both have the same type, so we know they will use the metadata the same way.
-            assert_eq!(caller_arg_copy.layout.ty, callee_arg.layout.ty);
-            // We have to properly pre-allocate the memory for the callee.
-            // So let's tear down some abstractions.
-            // This all has to be in memory, there are no immediate unsized values.
-            let src = caller_arg_copy.assert_mem_place();
-            // The destination cannot be one of these "spread args".
-            let (dest_frame, dest_local, dest_offset) = callee_arg
-                .as_mplace_or_local()
-                .right()
-                .expect("callee fn arguments must be locals");
-            // We are just initializing things, so there can't be anything here yet.
-            assert!(matches!(
-                *self.local_to_op(&self.stack()[dest_frame], dest_local, None)?,
-                Operand::Immediate(Immediate::Uninit)
-            ));
-            assert_eq!(dest_offset, None);
-            // Allocate enough memory to hold `src`.
-            let dest_place = self.allocate_dyn(src.layout, MemoryKind::Stack, src.meta)?;
-            // Update the local to be that new place.
-            *M::access_local_mut(self, dest_frame, dest_local)? = Operand::Indirect(*dest_place);
+        if !already_live {
+            let local = callee_arg.as_local().unwrap();
+            let meta = caller_arg_copy.meta();
+            // `check_argument_compat` ensures that if metadata is needed, both have the same type,
+            // so we know they will use the metadata the same way.
+            assert!(!meta.has_meta() || caller_arg_copy.layout.ty == callee_ty);
+
+            self.storage_live_dyn(local, meta)?;
         }
+        // Now we can finally actually evaluate the callee place.
+        let callee_arg = self.eval_place(*callee_arg)?;
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op(&caller_arg_copy, callee_arg, /*allow_transmute*/ true)?;
+        self.copy_op(&caller_arg_copy, &callee_arg, /*allow_transmute*/ true)?;
         // If this was an in-place pass, protect the place it comes from for the duration of the call.
         if let FnArg::InPlace(place) = caller_arg {
             M::protect_in_place_function_argument(self, place)?;
@@ -583,21 +664,50 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // taking into account the `spread_arg`. If we could write
                     // this is a single iterator (that handles `spread_arg`), then
                     // `pass_argument` would be the loop body. It takes care to
-                    // not advance `caller_iter` for ZSTs.
+                    // not advance `caller_iter` for ignored arguments.
                     let mut callee_args_abis = callee_fn_abi.args.iter();
                     for local in body.args_iter() {
-                        let dest = self.eval_place(mir::Place::from(local))?;
+                        // Construct the destination place for this argument. At this point all
+                        // locals are still dead, so we cannot construct a `PlaceTy`.
+                        let dest = mir::Place::from(local);
+                        // `layout_of_local` does more than just the substitution we need to get the
+                        // type, but the result gets cached so this avoids calling the substitution
+                        // query *again* the next time this local is accessed.
+                        let ty = self.layout_of_local(self.frame(), local, None)?.ty;
                         if Some(local) == body.spread_arg {
+                            // Make the local live once, then fill in the value field by field.
+                            self.storage_live(local)?;
                             // Must be a tuple
-                            for i in 0..dest.layout.fields.count() {
-                                let dest = self.project_field(&dest, i)?;
+                            let ty::Tuple(fields) = ty.kind() else {
+                                span_bug!(self.cur_span(), "non-tuple type for `spread_arg`: {ty}")
+                            };
+                            for (i, field_ty) in fields.iter().enumerate() {
+                                let dest = dest.project_deeper(
+                                    &[mir::ProjectionElem::Field(
+                                        FieldIdx::from_usize(i),
+                                        field_ty,
+                                    )],
+                                    *self.tcx,
+                                );
                                 let callee_abi = callee_args_abis.next().unwrap();
-                                self.pass_argument(&mut caller_args, callee_abi, &dest)?;
+                                self.pass_argument(
+                                    &mut caller_args,
+                                    callee_abi,
+                                    &dest,
+                                    field_ty,
+                                    /* already_live */ true,
+                                )?;
                             }
                         } else {
-                            // Normal argument
+                            // Normal argument. Cannot mark it as live yet, it might be unsized!
                             let callee_abi = callee_args_abis.next().unwrap();
-                            self.pass_argument(&mut caller_args, callee_abi, &dest)?;
+                            self.pass_argument(
+                                &mut caller_args,
+                                callee_abi,
+                                &dest,
+                                ty,
+                                /* already_live */ false,
+                            )?;
                         }
                     }
                     // If the callee needs a caller location, pretend we consume one more argument from the ABI.
@@ -613,14 +723,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         throw_ub_custom!(fluent::const_eval_too_many_caller_args);
                     }
                     // Don't forget to check the return type!
-                    if !Self::check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret) {
-                        let callee_ty = format!("{}", callee_fn_abi.ret.layout.ty);
-                        let caller_ty = format!("{}", caller_fn_abi.ret.layout.ty);
-                        throw_ub_custom!(
-                            fluent::const_eval_incompatible_return_types,
-                            callee_ty = callee_ty,
-                            caller_ty = caller_ty,
-                        )
+                    if !self.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
+                        throw_ub!(AbiMismatchReturn {
+                            caller_ty: caller_fn_abi.ret.layout.ty,
+                            callee_ty: callee_fn_abi.ret.layout.ty
+                        });
                     }
                     // Ensure the return place is aligned and dereferenceable, and protect it for
                     // in-place return value passing.
@@ -630,6 +737,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // Nothing to do for locals, they are always properly allocated and aligned.
                     }
                     M::protect_in_place_function_argument(self, destination)?;
+
+                    // Don't forget to mark "initially live" locals as live.
+                    self.storage_live_for_always_live_locals()?;
                 };
                 match res {
                     Err(err) => {
@@ -639,7 +749,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Ok(()) => Ok(()),
                 }
             }
-            // cannot use the shim here, because that will only result in infinite recursion
+            // `InstanceDef::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
+            // codegen'd / interpreted as virtual calls through the vtable.
             ty::InstanceDef::Virtual(def_id, idx) => {
                 let mut args = args.to_vec();
                 // We have to implement all "object safe receivers". So we have to go search for a
@@ -670,26 +781,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
                         _ => {
                             // Not there yet, search for the only non-ZST field.
-                            let mut non_zst_field = None;
-                            for i in 0..receiver.layout.fields.count() {
-                                let field = self.project_field(&receiver, i)?;
-                                let zst =
-                                    field.layout.is_zst() && field.layout.align.abi.bytes() == 1;
-                                if !zst {
-                                    assert!(
-                                        non_zst_field.is_none(),
-                                        "multiple non-ZST fields in dyn receiver type {}",
-                                        receiver.layout.ty
-                                    );
-                                    non_zst_field = Some(field);
-                                }
-                            }
-                            receiver = non_zst_field.unwrap_or_else(|| {
-                                panic!(
-                                    "no non-ZST fields in dyn receiver type {}",
-                                    receiver.layout.ty
-                                )
-                            });
+                            // (The rules for `DispatchFromDyn` ensure there's exactly one such field.)
+                            let (idx, _) = receiver.layout.non_1zst_field(self).expect(
+                                "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
+                            );
+                            receiver = self.project_field(&receiver, idx)?;
                         }
                     }
                 };
@@ -704,7 +800,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         throw_ub_custom!(fluent::const_eval_dyn_star_call_vtable_mismatch);
                     }
 
-                    (vptr, dyn_ty, recv.ptr)
+                    (vptr, dyn_ty, recv.ptr())
                 } else {
                     // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
@@ -721,7 +817,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     assert!(receiver_place.layout.is_unsized());
 
                     // Get the required information from the vtable.
-                    let vptr = receiver_place.meta.unwrap_meta().to_pointer(self)?;
+                    let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
                     let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
                     if dyn_trait != data.principal() {
                         throw_ub_custom!(fluent::const_eval_dyn_call_vtable_mismatch);
@@ -730,7 +826,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // It might be surprising that we use a pointer as the receiver even if this
                     // is a by-val case; this works because by-val passing of an unsized `dyn
                     // Trait` to a function is actually desugared to a pointer.
-                    (vptr, dyn_ty, receiver_place.ptr)
+                    (vptr, dyn_ty, receiver_place.ptr())
                 };
 
                 // Now determine the actual method to call. We can do that in two different ways and
@@ -763,18 +859,26 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 // Adjust receiver argument. Layout can be any (thin) ptr.
+                let receiver_ty = Ty::new_mut_ptr(self.tcx.tcx, dyn_ty);
                 args[0] = FnArg::Copy(
                     ImmTy::from_immediate(
                         Scalar::from_maybe_pointer(adjusted_receiver, self).into(),
-                        self.layout_of(Ty::new_mut_ptr(self.tcx.tcx, dyn_ty))?,
+                        self.layout_of(receiver_ty)?,
                     )
                     .into(),
                 );
                 trace!("Patched receiver operand to {:#?}", args[0]);
+                // Need to also adjust the type in the ABI. Strangely, the layout there is actually
+                // already fine! Just the type is bogus. This is due to what `force_thin_self_ptr`
+                // does in `fn_abi_new_uncached`; supposedly, codegen relies on having the bogus
+                // type, so we just patch this up locally.
+                let mut caller_fn_abi = caller_fn_abi.clone();
+                caller_fn_abi.args[0].layout.ty = receiver_ty;
+
                 // recurse with concrete function
                 self.eval_fn_call(
                     FnVal::Instance(fn_inst),
-                    (caller_abi, caller_fn_abi),
+                    (caller_abi, &caller_fn_abi),
                     &args,
                     with_caller_location,
                     destination,
@@ -817,7 +921,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         target: mir::BasicBlock,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
+        trace!("drop_in_place: {:?},\n  instance={:?}", place, instance);
         // We take the address of the object. This may well be unaligned, which is fine
         // for us here. However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.

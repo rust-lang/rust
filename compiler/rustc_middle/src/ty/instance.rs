@@ -18,6 +18,9 @@ use std::fmt;
 /// Monomorphization happens on-the-fly and no monomorphized MIR is ever created. Instead, this type
 /// simply couples a potentially generic `InstanceDef` with some args, and codegen and const eval
 /// will do all required substitution as they run.
+///
+/// Note: the `Lift` impl is currently not used by rustc, but is used by
+/// rustc_codegen_cranelift when the `jit` feature is enabled.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, Lift, TypeFoldable, TypeVisitable)]
 pub struct Instance<'tcx> {
@@ -115,7 +118,7 @@ impl<'tcx> Instance<'tcx> {
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.subst_and_normalize_erasing_regions(self.args, param_env, ty)
+        tcx.instantiate_and_normalize_erasing_regions(self.args, param_env, ty)
     }
 
     /// Finds a crate that contains a monomorphization of this instance that
@@ -139,7 +142,7 @@ impl<'tcx> Instance<'tcx> {
         }
 
         // If this a non-generic instance, it cannot be a shared monomorphization.
-        self.args.non_erasable_generics().next()?;
+        self.args.non_erasable_generics(tcx, self.def_id()).next()?;
 
         match self.def {
             InstanceDef::Item(def) => tcx
@@ -344,6 +347,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
         let args = GenericArgs::for_item(tcx, def_id, |param, _| match param.kind {
             ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+            ty::GenericParamDefKind::Const { is_host_effect: true, .. } => tcx.consts.true_.into(),
             ty::GenericParamDefKind::Type { .. } => {
                 bug!("Instance::mono: {:?} has type parameters", def_id)
             }
@@ -576,7 +580,7 @@ impl<'tcx> Instance<'tcx> {
         self.def.has_polymorphic_mir_body().then_some(self.args)
     }
 
-    pub fn subst_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<&T>) -> T
+    pub fn instantiate_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<&T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
@@ -589,7 +593,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     #[inline(always)]
-    pub fn subst_mir_and_normalize_erasing_regions<T>(
+    pub fn instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -599,14 +603,14 @@ impl<'tcx> Instance<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(args) = self.args_for_mir_body() {
-            tcx.subst_and_normalize_erasing_regions(args, param_env, v)
+            tcx.instantiate_and_normalize_erasing_regions(args, param_env, v)
         } else {
             tcx.normalize_erasing_regions(param_env, v.skip_binder())
         }
     }
 
     #[inline(always)]
-    pub fn try_subst_mir_and_normalize_erasing_regions<T>(
+    pub fn try_instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -616,7 +620,7 @@ impl<'tcx> Instance<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(args) = self.args_for_mir_body() {
-            tcx.try_subst_and_normalize_erasing_regions(args, param_env, v)
+            tcx.try_instantiate_and_normalize_erasing_regions(args, param_env, v)
         } else {
             tcx.try_normalize_erasing_regions(param_env, v.skip_binder())
         }

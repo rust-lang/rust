@@ -1,5 +1,5 @@
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_fixable.rs:16:5
+  --> $DIR/needless_for_each_fixable.rs:15:5
    |
 LL | /     v.iter().for_each(|elem| {
 LL | |         acc += elem;
@@ -7,6 +7,7 @@ LL | |     });
    | |_______^
    |
    = note: `-D clippy::needless-for-each` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_for_each)]`
 help: try
    |
 LL ~     for elem in v.iter() {
@@ -15,7 +16,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_fixable.rs:19:5
+  --> $DIR/needless_for_each_fixable.rs:18:5
    |
 LL | /     v.into_iter().for_each(|elem| {
 LL | |         acc += elem;
@@ -30,7 +31,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_fixable.rs:23:5
+  --> $DIR/needless_for_each_fixable.rs:22:5
    |
 LL | /     [1, 2, 3].iter().for_each(|elem| {
 LL | |         acc += elem;
@@ -45,7 +46,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_fixable.rs:28:5
+  --> $DIR/needless_for_each_fixable.rs:27:5
    |
 LL | /     hash_map.iter().for_each(|(k, v)| {
 LL | |         acc += k + v;
@@ -60,7 +61,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_fixable.rs:31:5
+  --> $DIR/needless_for_each_fixable.rs:30:5
    |
 LL | /     hash_map.iter_mut().for_each(|(k, v)| {
 LL | |         acc += *k + *v;
@@ -75,7 +76,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_fixable.rs:34:5
+  --> $DIR/needless_for_each_fixable.rs:33:5
    |
 LL | /     hash_map.keys().for_each(|k| {
 LL | |         acc += k;
@@ -90,7 +91,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_fixable.rs:37:5
+  --> $DIR/needless_for_each_fixable.rs:36:5
    |
 LL | /     hash_map.values().for_each(|v| {
 LL | |         acc += v;
@@ -105,7 +106,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> $DIR/needless_for_each_fixable.rs:44:5
+  --> $DIR/needless_for_each_fixable.rs:43:5
    |
 LL | /     my_vec().iter().for_each(|elem| {
 LL | |         acc += elem;

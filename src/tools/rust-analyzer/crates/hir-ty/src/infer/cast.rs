@@ -39,8 +39,14 @@ impl CastCheck {
 }
 
 fn check_ref_to_ptr_cast(expr_ty: Ty, cast_ty: Ty, table: &mut InferenceTable<'_>) -> bool {
-    let Some((expr_inner_ty, _, _)) = expr_ty.as_reference() else { return false; };
-    let Some((cast_inner_ty, _)) = cast_ty.as_raw_ptr() else { return false; };
-    let TyKind::Array(expr_elt_ty, _) = expr_inner_ty.kind(Interner) else { return false; };
+    let Some((expr_inner_ty, _, _)) = expr_ty.as_reference() else {
+        return false;
+    };
+    let Some((cast_inner_ty, _)) = cast_ty.as_raw_ptr() else {
+        return false;
+    };
+    let TyKind::Array(expr_elt_ty, _) = expr_inner_ty.kind(Interner) else {
+        return false;
+    };
     table.coerce(expr_elt_ty, cast_inner_ty).is_ok()
 }

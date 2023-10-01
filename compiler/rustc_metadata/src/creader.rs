@@ -8,7 +8,7 @@ use rustc_ast::expand::allocator::{alloc_error_handler_name, global_fn_name, All
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, WriteGuard};
+use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
@@ -134,14 +134,14 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 }
 
 impl CStore {
-    pub fn from_tcx(tcx: TyCtxt<'_>) -> MappedReadGuard<'_, CStore> {
-        ReadGuard::map(tcx.untracked().cstore.read(), |cstore| {
+    pub fn from_tcx(tcx: TyCtxt<'_>) -> FreezeReadGuard<'_, CStore> {
+        FreezeReadGuard::map(tcx.untracked().cstore.read(), |cstore| {
             cstore.as_any().downcast_ref::<CStore>().expect("`tcx.cstore` is not a `CStore`")
         })
     }
 
-    pub fn from_tcx_mut(tcx: TyCtxt<'_>) -> MappedWriteGuard<'_, CStore> {
-        WriteGuard::map(tcx.untracked().cstore.write(), |cstore| {
+    pub fn from_tcx_mut(tcx: TyCtxt<'_>) -> FreezeWriteGuard<'_, CStore> {
+        FreezeWriteGuard::map(tcx.untracked().cstore.write(), |cstore| {
             cstore.untracked_as_any().downcast_mut().expect("`tcx.cstore` is not a `CStore`")
         })
     }

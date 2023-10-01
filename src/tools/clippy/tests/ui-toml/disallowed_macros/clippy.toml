@@ -8,4 +8,6 @@ disallowed-macros = [
     "macros::ty",
     "macros::pat",
     "macros::item",
+    "macros::binop",
+    "macros::attr",
 ]

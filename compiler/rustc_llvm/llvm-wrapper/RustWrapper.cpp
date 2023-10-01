@@ -2044,3 +2044,19 @@ extern "C" bool LLVMRustIsNonGVFunctionPointerTy(LLVMValueRef V) {
   }
   return false;
 }
+
+extern "C" bool LLVMRustLLVMHasZlibCompressionForDebugSymbols() {
+#if LLVM_VERSION_GE(16, 0)
+  return llvm::compression::zlib::isAvailable();
+#else
+  return false;
+#endif
+}
+
+extern "C" bool LLVMRustLLVMHasZstdCompressionForDebugSymbols() {
+#if LLVM_VERSION_GE(16, 0)
+  return llvm::compression::zstd::isAvailable();
+#else
+  return false;
+#endif
+}

@@ -16,7 +16,10 @@ use rustc_target::spec::{abi, SanitizerSet};
 
 use crate::errors;
 use crate::target_features::from_target_feature;
-use crate::{errors::ExpectedUsedSymbol, target_features::check_target_feature_trait_unsafe};
+use crate::{
+    errors::{ExpectedCoverageSymbol, ExpectedUsedSymbol},
+    target_features::check_target_feature_trait_unsafe,
+};
 
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     use rustc_middle::mir::mono::Linkage::*;
@@ -128,7 +131,21 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .emit();
                 }
             }
-            sym::no_coverage => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE,
+            sym::coverage => {
+                let inner = attr.meta_item_list();
+                match inner.as_deref() {
+                    Some([item]) if item.has_name(sym::off) => {
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
+                    }
+                    Some([item]) if item.has_name(sym::on) => {
+                        // Allow #[coverage(on)] for being explicit, maybe also in future to enable
+                        // coverage on a smaller scope within an excluded larger scope.
+                    }
+                    Some(_) | None => {
+                        tcx.sess.emit_err(ExpectedCoverageSymbol { span: attr.span });
+                    }
+                }
+            }
             sym::rustc_std_internal_symbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }

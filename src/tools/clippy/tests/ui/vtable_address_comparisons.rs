@@ -12,16 +12,24 @@ fn main() {
 
     // These should fail:
     let _ = a == b;
+    //~^ ERROR: comparing trait object pointers compares a non-unique vtable address
     let _ = a != b;
+    //~^ ERROR: comparing trait object pointers compares a non-unique vtable address
     let _ = a < b;
+    //~^ ERROR: comparing trait object pointers compares a non-unique vtable address
     let _ = a <= b;
+    //~^ ERROR: comparing trait object pointers compares a non-unique vtable address
     let _ = a > b;
+    //~^ ERROR: comparing trait object pointers compares a non-unique vtable address
     let _ = a >= b;
+    //~^ ERROR: comparing trait object pointers compares a non-unique vtable address
     ptr::eq(a, b);
+    //~^ ERROR: comparing trait object pointers compares a non-unique vtable address
 
     let a = &1 as &dyn Debug;
     let b = &1 as &dyn Debug;
     ptr::eq(a, b);
+    //~^ ERROR: comparing trait object pointers compares a non-unique vtable address
 
     // These should be fine:
     let a = &1;

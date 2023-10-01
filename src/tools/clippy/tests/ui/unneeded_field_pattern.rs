@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![warn(clippy::unneeded_field_pattern)]
 #![allow(dead_code, unused)]
 

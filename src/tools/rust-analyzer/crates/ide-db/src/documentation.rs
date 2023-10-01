@@ -1,0 +1,281 @@
+//! Documentation attribute related utilties.
+use either::Either;
+use hir::{
+    db::{DefDatabase, HirDatabase},
+    resolve_doc_path_on, AttrId, AttrSourceMap, AttrsWithOwner, HasAttrs, InFile,
+};
+use itertools::Itertools;
+use syntax::{
+    ast::{self, IsString},
+    AstToken,
+};
+use text_edit::{TextRange, TextSize};
+
+/// Holds documentation
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Documentation(String);
+
+impl Documentation {
+    pub fn new(s: String) -> Self {
+        Documentation(s)
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<Documentation> for String {
+    fn from(Documentation(string): Documentation) -> Self {
+        string
+    }
+}
+
+pub trait HasDocs: HasAttrs {
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation>;
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<hir::Namespace>,
+    ) -> Option<hir::DocLinkDef>;
+}
+/// A struct to map text ranges from [`Documentation`] back to TextRanges in the syntax tree.
+#[derive(Debug)]
+pub struct DocsRangeMap {
+    source_map: AttrSourceMap,
+    // (docstring-line-range, attr_index, attr-string-range)
+    // a mapping from the text range of a line of the [`Documentation`] to the attribute index and
+    // the original (untrimmed) syntax doc line
+    mapping: Vec<(TextRange, AttrId, TextRange)>,
+}
+
+impl DocsRangeMap {
+    /// Maps a [`TextRange`] relative to the documentation string back to its AST range
+    pub fn map(&self, range: TextRange) -> Option<InFile<TextRange>> {
+        let found = self.mapping.binary_search_by(|(probe, ..)| probe.ordering(range)).ok()?;
+        let (line_docs_range, idx, original_line_src_range) = self.mapping[found];
+        if !line_docs_range.contains_range(range) {
+            return None;
+        }
+
+        let relative_range = range - line_docs_range.start();
+
+        let InFile { file_id, value: source } = self.source_map.source_of_id(idx);
+        match source {
+            Either::Left(attr) => {
+                let string = get_doc_string_in_attr(attr)?;
+                let text_range = string.open_quote_text_range()?;
+                let range = TextRange::at(
+                    text_range.end() + original_line_src_range.start() + relative_range.start(),
+                    string.syntax().text_range().len().min(range.len()),
+                );
+                Some(InFile { file_id, value: range })
+            }
+            Either::Right(comment) => {
+                let text_range = comment.syntax().text_range();
+                let range = TextRange::at(
+                    text_range.start()
+                        + TextSize::try_from(comment.prefix().len()).ok()?
+                        + original_line_src_range.start()
+                        + relative_range.start(),
+                    text_range.len().min(range.len()),
+                );
+                Some(InFile { file_id, value: range })
+            }
+        }
+    }
+}
+
+pub fn docs_with_rangemap(
+    db: &dyn DefDatabase,
+    attrs: &AttrsWithOwner,
+) -> Option<(Documentation, DocsRangeMap)> {
+    let docs =
+        attrs.by_key("doc").attrs().filter_map(|attr| attr.string_value().map(|s| (s, attr.id)));
+    let indent = doc_indent(attrs);
+    let mut buf = String::new();
+    let mut mapping = Vec::new();
+    for (doc, idx) in docs {
+        if !doc.is_empty() {
+            let mut base_offset = 0;
+            for raw_line in doc.split('\n') {
+                let line = raw_line.trim_end();
+                let line_len = line.len();
+                let (offset, line) = match line.char_indices().nth(indent) {
+                    Some((offset, _)) => (offset, &line[offset..]),
+                    None => (0, line),
+                };
+                let buf_offset = buf.len();
+                buf.push_str(line);
+                mapping.push((
+                    TextRange::new(buf_offset.try_into().ok()?, buf.len().try_into().ok()?),
+                    idx,
+                    TextRange::at(
+                        (base_offset + offset).try_into().ok()?,
+                        line_len.try_into().ok()?,
+                    ),
+                ));
+                buf.push('\n');
+                base_offset += raw_line.len() + 1;
+            }
+        } else {
+            buf.push('\n');
+        }
+    }
+    buf.pop();
+    if buf.is_empty() {
+        None
+    } else {
+        Some((Documentation(buf), DocsRangeMap { mapping, source_map: attrs.source_map(db) }))
+    }
+}
+
+pub fn docs_from_attrs(attrs: &hir::Attrs) -> Option<String> {
+    let docs = attrs.by_key("doc").attrs().filter_map(|attr| attr.string_value());
+    let indent = doc_indent(attrs);
+    let mut buf = String::new();
+    for doc in docs {
+        // str::lines doesn't yield anything for the empty string
+        if !doc.is_empty() {
+            buf.extend(Itertools::intersperse(
+                doc.lines().map(|line| {
+                    line.char_indices()
+                        .nth(indent)
+                        .map_or(line, |(offset, _)| &line[offset..])
+                        .trim_end()
+                }),
+                "\n",
+            ));
+        }
+        buf.push('\n');
+    }
+    buf.pop();
+    if buf.is_empty() {
+        None
+    } else {
+        Some(buf)
+    }
+}
+
+macro_rules! impl_has_docs {
+    ($($def:ident,)*) => {$(
+        impl HasDocs for hir::$def {
+            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+                docs_from_attrs(&self.attrs(db)).map(Documentation)
+            }
+            fn resolve_doc_path(
+                self,
+                db: &dyn HirDatabase,
+                link: &str,
+                ns: Option<hir::Namespace>
+            ) -> Option<hir::DocLinkDef> {
+                resolve_doc_path_on(db, self, link, ns)
+            }
+        }
+    )*};
+}
+
+impl_has_docs![
+    Variant, Field, Static, Const, Trait, TraitAlias, TypeAlias, Macro, Function, Adt, Module,
+    Impl,
+];
+
+macro_rules! impl_has_docs_enum {
+    ($($variant:ident),* for $enum:ident) => {$(
+        impl HasDocs for hir::$variant {
+            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+                hir::$enum::$variant(self).docs(db)
+            }
+            fn resolve_doc_path(
+                self,
+                db: &dyn HirDatabase,
+                link: &str,
+                ns: Option<hir::Namespace>
+            ) -> Option<hir::DocLinkDef> {
+                hir::$enum::$variant(self).resolve_doc_path(db, link, ns)
+            }
+        }
+    )*};
+}
+
+impl_has_docs_enum![Struct, Union, Enum for Adt];
+
+impl HasDocs for hir::AssocItem {
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+        match self {
+            hir::AssocItem::Function(it) => it.docs(db),
+            hir::AssocItem::Const(it) => it.docs(db),
+            hir::AssocItem::TypeAlias(it) => it.docs(db),
+        }
+    }
+
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<hir::Namespace>,
+    ) -> Option<hir::DocLinkDef> {
+        match self {
+            hir::AssocItem::Function(it) => it.resolve_doc_path(db, link, ns),
+            hir::AssocItem::Const(it) => it.resolve_doc_path(db, link, ns),
+            hir::AssocItem::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
+        }
+    }
+}
+
+impl HasDocs for hir::ExternCrateDecl {
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+        let crate_docs =
+            docs_from_attrs(&self.resolved_crate(db)?.root_module().attrs(db)).map(String::from);
+        let decl_docs = docs_from_attrs(&self.attrs(db)).map(String::from);
+        match (decl_docs, crate_docs) {
+            (None, None) => None,
+            (Some(decl_docs), None) => Some(decl_docs),
+            (None, Some(crate_docs)) => Some(crate_docs),
+            (Some(mut decl_docs), Some(crate_docs)) => {
+                decl_docs.push('\n');
+                decl_docs.push('\n');
+                decl_docs += &crate_docs;
+                Some(decl_docs)
+            }
+        }
+        .map(Documentation::new)
+    }
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<hir::Namespace>,
+    ) -> Option<hir::DocLinkDef> {
+        resolve_doc_path_on(db, self, link, ns)
+    }
+}
+
+fn get_doc_string_in_attr(it: &ast::Attr) -> Option<ast::String> {
+    match it.expr() {
+        // #[doc = lit]
+        Some(ast::Expr::Literal(lit)) => match lit.kind() {
+            ast::LiteralKind::String(it) => Some(it),
+            _ => None,
+        },
+        // #[cfg_attr(..., doc = "", ...)]
+        None => {
+            // FIXME: See highlight injection for what to do here
+            None
+        }
+        _ => None,
+    }
+}
+
+fn doc_indent(attrs: &hir::Attrs) -> usize {
+    attrs
+        .by_key("doc")
+        .attrs()
+        .filter_map(|attr| attr.string_value())
+        .flat_map(|s| s.lines())
+        .filter(|line| !line.chars().all(|c| c.is_whitespace()))
+        .map(|line| line.chars().take_while(|c| c.is_whitespace()).count())
+        .min()
+        .unwrap_or(0)
+}

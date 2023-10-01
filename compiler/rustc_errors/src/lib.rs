@@ -30,11 +30,11 @@ pub use emitter::ColorConfig;
 use rustc_lint_defs::LintExpectationId;
 use Level::*;
 
-use emitter::{is_case_difference, Emitter, EmitterWriter};
+use emitter::{is_case_difference, DynEmitter, Emitter, EmitterWriter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::{self, IntoDynSyncSend, Lock, Lrc};
+use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
@@ -44,7 +44,7 @@ use rustc_fluent_macro::fluent_messages;
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_span::source_map::SourceMap;
 pub use rustc_span::ErrorGuaranteed;
-use rustc_span::{Loc, Span};
+use rustc_span::{Loc, Span, DUMMY_SP};
 
 use std::borrow::Cow;
 use std::error::Report;
@@ -55,7 +55,9 @@ use std::num::NonZeroUsize;
 use std::panic;
 use std::path::{Path, PathBuf};
 
-use termcolor::{Color, ColorSpec};
+// Used by external projects such as `rust-gpu`.
+// See https://github.com/rust-lang/rust/pull/115393.
+pub use termcolor::{Color, ColorSpec, WriteColor};
 
 pub mod annotate_snippet_emitter_writer;
 mod diagnostic;
@@ -271,7 +273,7 @@ impl CodeSuggestion {
                 assert!(!lines.lines.is_empty() || bounding_span.is_dummy());
 
                 // We can't splice anything if the source is unavailable.
-                if !sm.ensure_source_file_source_present(lines.file.clone()) {
+                if !sm.ensure_source_file_source_present(&lines.file) {
                     return None;
                 }
 
@@ -428,7 +430,7 @@ struct HandlerInner {
     err_count: usize,
     warn_count: usize,
     deduplicated_err_count: usize,
-    emitter: IntoDynSyncSend<Box<dyn Emitter + sync::Send>>,
+    emitter: Box<DynEmitter>,
     delayed_span_bugs: Vec<DelayedDiagnostic>,
     delayed_good_path_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
@@ -517,7 +519,7 @@ pub struct HandlerFlags {
     /// If false, warning-level lints are suppressed.
     /// (rustc: see `--allow warnings` and `--cap-lints`)
     pub can_emit_warnings: bool,
-    /// If true, error-level diagnostics are upgraded to bug-level.
+    /// If Some, the Nth error-level diagnostic is upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: Option<NonZeroUsize>,
     /// If true, immediately emit diagnostics that would otherwise be buffered.
@@ -594,7 +596,7 @@ impl Handler {
         self
     }
 
-    pub fn with_emitter(emitter: Box<dyn Emitter + sync::Send>) -> Self {
+    pub fn with_emitter(emitter: Box<DynEmitter>) -> Self {
         Self {
             inner: Lock::new(HandlerInner {
                 flags: HandlerFlags { can_emit_warnings: true, ..Default::default() },
@@ -603,7 +605,7 @@ impl Handler {
                 warn_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
-                emitter: IntoDynSyncSend(emitter),
+                emitter,
                 delayed_span_bugs: Vec::new(),
                 delayed_good_path_bugs: Vec::new(),
                 suppressed_expected_diag: false,
@@ -1388,7 +1390,7 @@ impl HandlerInner {
                 debug!(?self.emitted_diagnostics);
                 let already_emitted_sub = |sub: &mut SubDiagnostic| {
                     debug!(?sub);
-                    if sub.level != Level::OnceNote {
+                    if sub.level != Level::OnceNote && sub.level != Level::OnceHelp {
                         return false;
                     }
                     let mut hasher = StableHasher::new();
@@ -1717,19 +1719,17 @@ impl HandlerInner {
             match (
                 self.err_count() + self.lint_err_count,
                 self.delayed_bug_count(),
-                self.flags.treat_err_as_bug.map(|c| c.get()).unwrap_or(0),
+                self.flags.treat_err_as_bug.map(|c| c.get()).unwrap(),
             ) {
                 (1, 0, 1) => panic!("aborting due to `-Z treat-err-as-bug=1`"),
                 (0, 1, 1) => panic!("aborting due delayed bug with `-Z treat-err-as-bug=1`"),
-                (count, delayed_count, as_bug) => {
+                (count, delayed_count, val) => {
                     if delayed_count > 0 {
                         panic!(
-                            "aborting after {count} errors and {delayed_count} delayed bugs due to `-Z treat-err-as-bug={as_bug}`",
+                            "aborting after {count} errors and {delayed_count} delayed bugs due to `-Z treat-err-as-bug={val}`",
                         )
                     } else {
-                        panic!(
-                            "aborting after {count} errors due to `-Z treat-err-as-bug={as_bug}`",
-                        )
+                        panic!("aborting after {count} errors due to `-Z treat-err-as-bug={val}`")
                     }
                 }
             }
@@ -1752,7 +1752,7 @@ impl DelayedDiagnostic {
             BacktraceStatus::Captured => {
                 let inner = &self.inner;
                 self.inner.subdiagnostic(DelayedAtWithNewline {
-                    span: inner.span.primary_span().unwrap(),
+                    span: inner.span.primary_span().unwrap_or(DUMMY_SP),
                     emitted_at: inner.emitted_at.clone(),
                     note: self.note,
                 });
@@ -1762,7 +1762,7 @@ impl DelayedDiagnostic {
             _ => {
                 let inner = &self.inner;
                 self.inner.subdiagnostic(DelayedAtWithoutNewline {
-                    span: inner.span.primary_span().unwrap(),
+                    span: inner.span.primary_span().unwrap_or(DUMMY_SP),
                     emitted_at: inner.emitted_at.clone(),
                     note: self.note,
                 });
@@ -1790,6 +1790,8 @@ pub enum Level {
     /// A note that is only emitted once.
     OnceNote,
     Help,
+    /// A help that is only emitted once.
+    OnceHelp,
     FailureNote,
     Allow,
     Expect(LintExpectationId),
@@ -1814,7 +1816,7 @@ impl Level {
             Note | OnceNote => {
                 spec.set_fg(Some(Color::Green)).set_intense(true);
             }
-            Help => {
+            Help | OnceHelp => {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
@@ -1829,7 +1831,7 @@ impl Level {
             Fatal | Error { .. } => "error",
             Warning(_) => "warning",
             Note | OnceNote => "note",
-            Help => "help",
+            Help | OnceHelp => "help",
             FailureNote => "failure-note",
             Allow => panic!("Shouldn't call on allowed error"),
             Expect(_) => panic!("Shouldn't call on expected error"),

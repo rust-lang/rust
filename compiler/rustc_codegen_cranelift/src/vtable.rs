@@ -48,19 +48,12 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 ) -> (Pointer, Value) {
     let (ptr, vtable) = 'block: {
         if let Abi::Scalar(_) = arg.layout().abi {
-            'descend_newtypes: while !arg.layout().ty.is_unsafe_ptr() && !arg.layout().ty.is_ref() {
-                for i in 0..arg.layout().fields.count() {
-                    let field = arg.value_field(fx, FieldIdx::new(i));
-                    if !field.layout().is_zst() {
-                        // we found the one non-zero-sized field that is allowed
-                        // now find *its* non-zero-sized field, or stop if it's a
-                        // pointer
-                        arg = field;
-                        continue 'descend_newtypes;
-                    }
-                }
-
-                bug!("receiver has no non-zero-sized fields {:?}", arg);
+            while !arg.layout().ty.is_unsafe_ptr() && !arg.layout().ty.is_ref() {
+                let (idx, _) = arg
+                    .layout()
+                    .non_1zst_field(fx)
+                    .expect("not exactly one non-1-ZST field in a `DispatchFromDyn` type");
+                arg = arg.value_field(fx, FieldIdx::new(idx));
             }
         }
 

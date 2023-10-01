@@ -1,4 +1,4 @@
-error: `let` expressions are not supported here
+error: expected expression, found `let` statement
   --> $DIR/ast-validate-guards.rs:5:20
    |
 LL |         Ok(opt) if let Some(4) = opt || false  => {}

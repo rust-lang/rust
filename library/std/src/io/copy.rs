@@ -1,4 +1,4 @@
-use super::{BorrowedBuf, BufReader, BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
+use super::{BorrowedBuf, BufReader, BufWriter, Read, Result, Write, DEFAULT_BUF_SIZE};
 use crate::alloc::Allocator;
 use crate::cmp;
 use crate::collections::VecDeque;
@@ -30,6 +30,7 @@ mod tests;
 ///
 /// [`read`]: Read::read
 /// [`write`]: Write::write
+/// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
 ///
 /// # Examples
 ///
@@ -163,7 +164,7 @@ where
             // from adding I: Read
             match self.read(&mut []) {
                 Ok(_) => {}
-                Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) if e.is_interrupted() => continue,
                 Err(e) => return Err(e),
             }
             let buf = self.buffer();
@@ -243,7 +244,7 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
                         // Read again if the buffer still has enough capacity, as BufWriter itself would do
                         // This will occur if the reader returns short reads
                     }
-                    Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                    Err(ref e) if e.is_interrupted() => {}
                     Err(e) => return Err(e),
                 }
             } else {
@@ -275,7 +276,7 @@ impl<A: Allocator> BufferedWriterSpec for Vec<u8, A> {
             let mut buf: BorrowedBuf<'_> = self.spare_capacity_mut().into();
             match reader.read_buf(buf.unfilled()) {
                 Ok(()) => {}
-                Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) if e.is_interrupted() => continue,
                 Err(e) => return Err(e),
             };
 
@@ -307,7 +308,7 @@ fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     loop {
         match reader.read_buf(buf.unfilled()) {
             Ok(()) => {}
-            Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) if e.is_interrupted() => continue,
             Err(e) => return Err(e),
         };
 

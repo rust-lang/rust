@@ -30,3 +30,18 @@ macro_rules! item {
         const ITEM: usize = 1;
     };
 }
+
+#[macro_export]
+macro_rules! binop {
+    ($t:tt) => {
+        $t + $t
+    };
+}
+
+#[macro_export]
+macro_rules! attr {
+    ($i:item) => {
+        #[repr(C)]
+        $i
+    };
+}

@@ -114,6 +114,11 @@ LL |     check(m1::S{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -128,6 +133,11 @@ LL |     check(m2::S{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -142,6 +152,11 @@ LL |     check(m2::S);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -156,6 +171,11 @@ LL |     check(xm1::S{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -170,6 +190,11 @@ LL |     check(xm2::S{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -184,6 +209,11 @@ LL |     check(xm2::S);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -198,6 +228,11 @@ LL |     check(m3::TS{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -212,6 +247,11 @@ LL |     check(m3::TS);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -226,6 +266,11 @@ LL |     check(m4::TS{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -240,6 +285,11 @@ LL |     check(m4::TS);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -254,6 +304,11 @@ LL |     check(xm3::TS{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -268,6 +323,11 @@ LL |     check(xm3::TS);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -282,6 +342,11 @@ LL |     check(xm4::TS{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -296,6 +361,11 @@ LL |     check(xm4::TS);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -310,6 +380,11 @@ LL |     check(m5::US{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -324,6 +399,11 @@ LL |     check(m5::US);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -338,6 +418,11 @@ LL |     check(m6::US{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -352,6 +437,11 @@ LL |     check(m6::US);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -366,6 +456,11 @@ LL |     check(xm5::US{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -380,6 +475,11 @@ LL |     check(xm5::US);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -394,6 +494,11 @@ LL |     check(xm6::US{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -408,6 +513,11 @@ LL |     check(xm6::US);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -422,6 +532,11 @@ LL |     check(m7::V{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -436,6 +551,11 @@ LL |     check(m8::V{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -450,6 +570,11 @@ LL |     check(m8::V);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -464,6 +589,11 @@ LL |     check(xm7::V{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -478,6 +608,11 @@ LL |     check(xm8::V{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -492,6 +627,11 @@ LL |     check(xm8::V);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -506,6 +646,11 @@ LL |     check(m9::TV{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -520,6 +665,11 @@ LL |     check(m9::TV);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -534,6 +684,11 @@ LL |     check(mA::TV{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -548,6 +703,11 @@ LL |     check(mA::TV);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -562,6 +722,11 @@ LL |     check(xm9::TV{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -576,6 +741,11 @@ LL |     check(xm9::TV);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -590,6 +760,11 @@ LL |     check(xmA::TV{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -604,6 +779,11 @@ LL |     check(xmA::TV);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -618,6 +798,11 @@ LL |     check(mB::UV{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -632,6 +817,11 @@ LL |     check(mB::UV);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -646,6 +836,11 @@ LL |     check(mC::UV{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -660,6 +855,11 @@ LL |     check(mC::UV);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -674,6 +874,11 @@ LL |     check(xmB::UV{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -688,6 +893,11 @@ LL |     check(xmB::UV);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -702,6 +912,11 @@ LL |     check(xmC::UV{});
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |
@@ -716,6 +931,11 @@ LL |     check(xmC::UV);
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/namespace-mix.rs:20:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/namespace-mix.rs:21:13
    |

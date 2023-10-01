@@ -60,9 +60,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // The rest jumps to `ret` immediately.
-        this.emulate_intrinsic_by_name(intrinsic_name, args, dest)?;
+        this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest)?;
 
-        trace!("{:?}", this.dump_place(**dest));
+        trace!("{:?}", this.dump_place(dest));
         this.go_to_block(ret);
         Ok(())
     }
@@ -71,6 +71,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_intrinsic_by_name(
         &mut self,
         intrinsic_name: &str,
+        generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
@@ -80,7 +81,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return this.emulate_atomic_intrinsic(name, args, dest);
         }
         if let Some(name) = intrinsic_name.strip_prefix("simd_") {
-            return this.emulate_simd_intrinsic(name, args, dest);
+            return this.emulate_simd_intrinsic(name, generic_args, args, dest);
         }
 
         match intrinsic_name {
@@ -89,10 +90,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [left, right] = check_arg_count(args)?;
                 let left = this.read_immediate(left)?;
                 let right = this.read_immediate(right)?;
-                let (val, _overflowed, _ty) =
-                    this.overflowing_binary_op(mir::BinOp::Eq, &left, &right)?;
+                let val = this.wrapping_binary_op(mir::BinOp::Eq, &left, &right)?;
                 // We're type punning a bool as an u8 here.
-                this.write_scalar(val, dest)?;
+                this.write_scalar(val.to_scalar(), dest)?;
             }
             "const_allocate" => {
                 // For now, for compatibility with the run-time implementation of this, we just return null.
@@ -325,7 +325,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             "fmaf32" => {
                 let [a, b, c] = check_arg_count(args)?;
-                // FIXME: Using host floats, to work around https://github.com/rust-lang/miri/issues/2468.
+                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let a = f32::from_bits(this.read_scalar(a)?.to_u32()?);
                 let b = f32::from_bits(this.read_scalar(b)?.to_u32()?);
                 let c = f32::from_bits(this.read_scalar(c)?.to_u32()?);
@@ -335,7 +335,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             "fmaf64" => {
                 let [a, b, c] = check_arg_count(args)?;
-                // FIXME: Using host floats, to work around https://github.com/rust-lang/miri/issues/2468.
+                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let a = f64::from_bits(this.read_scalar(a)?.to_u64()?);
                 let b = f64::from_bits(this.read_scalar(b)?.to_u64()?);
                 let c = f64::from_bits(this.read_scalar(c)?.to_u64()?);
@@ -369,7 +369,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     ty::Float(FloatTy::F32) => {
                         let f = val.to_scalar().to_f32()?;
                         this
-                            .float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            .float_to_int_checked(f, dest.layout, Round::TowardZero)
                             .ok_or_else(|| {
                                 err_ub_format!(
                                     "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
@@ -380,7 +380,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     ty::Float(FloatTy::F64) => {
                         let f = val.to_scalar().to_f64()?;
                         this
-                            .float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            .float_to_int_checked(f, dest.layout, Round::TowardZero)
                             .ok_or_else(|| {
                                 err_ub_format!(
                                     "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
@@ -396,7 +396,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         ),
                 };
 
-                this.write_scalar(res, dest)?;
+                this.write_immediate(*res, dest)?;
             }
 
             // Other

@@ -804,7 +804,7 @@ pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
     tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
 }
 
-/// `repr(transparent)` structs can have a single non-ZST field, this function returns that
+/// `repr(transparent)` structs can have a single non-1-ZST field, this function returns that
 /// field.
 pub fn transparent_newtype_field<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -813,8 +813,8 @@ pub fn transparent_newtype_field<'a, 'tcx>(
     let param_env = tcx.param_env(variant.def_id);
     variant.fields.iter().find(|field| {
         let field_ty = tcx.type_of(field.did).instantiate_identity();
-        let is_zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_zst());
-        !is_zst
+        let is_1zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_1zst());
+        !is_1zst
     })
 }
 
@@ -917,13 +917,18 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
         // If the computed size for the field and the enum are different, the nonnull optimization isn't
         // being applied (and we've got a problem somewhere).
-        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, param_env).unwrap();
-        if !compute_size_skeleton(ty).same_size(compute_size_skeleton(field_ty)) {
+        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, param_env).ok();
+        if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
             bug!("improper_ctypes: Option nonnull optimization not applied?");
         }
 
         // Return the nullable type this Option-like enum can be safely represented with.
-        let field_ty_abi = &tcx.layout_of(param_env.and(field_ty)).unwrap().abi;
+        let field_ty_layout = tcx.layout_of(param_env.and(field_ty));
+        if field_ty_layout.is_err() && !field_ty.has_non_region_param() {
+            bug!("should be able to compute the layout of non-polymorphic type");
+        }
+
+        let field_ty_abi = &field_ty_layout.ok()?.abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
             match field_ty_scalar.valid_range(&tcx) {
                 WrappingRange { start: 0, end }
@@ -1266,7 +1271,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Placeholder(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }

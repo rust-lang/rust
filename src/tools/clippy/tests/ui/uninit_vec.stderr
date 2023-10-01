@@ -3,53 +3,54 @@ error: calling `set_len()` immediately after reserving a buffer creates uninitia
    |
 LL |     let mut vec: Vec<u8> = Vec::with_capacity(1000);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     unsafe {
+...
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
    = note: `-D clippy::uninit-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::uninit_vec)]`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
-  --> $DIR/uninit_vec.rs:23:5
+  --> $DIR/uninit_vec.rs:24:5
    |
 LL |     vec.reserve(1000);
    |     ^^^^^^^^^^^^^^^^^^
-LL |     unsafe {
+...
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
 error: calling `set_len()` on empty `Vec` creates out-of-bound values
-  --> $DIR/uninit_vec.rs:29:5
+  --> $DIR/uninit_vec.rs:31:5
    |
 LL |     let mut vec: Vec<u8> = Vec::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     unsafe {
+...
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
 
 error: calling `set_len()` on empty `Vec` creates out-of-bound values
-  --> $DIR/uninit_vec.rs:35:5
+  --> $DIR/uninit_vec.rs:38:5
    |
 LL |     let mut vec: Vec<u8> = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     unsafe {
+...
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
 
 error: calling `set_len()` on empty `Vec` creates out-of-bound values
-  --> $DIR/uninit_vec.rs:40:5
+  --> $DIR/uninit_vec.rs:44:5
    |
 LL |     let mut vec: Vec<u8> = Vec::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     unsafe {
+...
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
-  --> $DIR/uninit_vec.rs:54:5
+  --> $DIR/uninit_vec.rs:61:5
    |
 LL |     let mut vec: Vec<u8> = Vec::with_capacity(1000);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,53 +61,55 @@ LL |         vec.set_len(200);
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
-  --> $DIR/uninit_vec.rs:63:5
+  --> $DIR/uninit_vec.rs:71:5
    |
 LL |     my_vec.vec.reserve(1000);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     unsafe {
+...
 LL |         my_vec.vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
-  --> $DIR/uninit_vec.rs:68:5
+  --> $DIR/uninit_vec.rs:77:5
    |
 LL |     my_vec.vec = Vec::with_capacity(1000);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     unsafe {
+...
 LL |         my_vec.vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
-  --> $DIR/uninit_vec.rs:47:9
+  --> $DIR/uninit_vec.rs:52:9
    |
 LL |         let mut vec: Vec<u8> = Vec::with_capacity(1000);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
-  --> $DIR/uninit_vec.rs:50:9
+  --> $DIR/uninit_vec.rs:56:9
    |
 LL |         vec.reserve(1000);
    |         ^^^^^^^^^^^^^^^^^^
+LL |
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
-  --> $DIR/uninit_vec.rs:122:9
+  --> $DIR/uninit_vec.rs:132:9
    |
 LL |         let mut vec: Vec<T> = Vec::with_capacity(1000);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |         unsafe {
+...
 LL |             vec.set_len(10);
    |             ^^^^^^^^^^^^^^^
    |

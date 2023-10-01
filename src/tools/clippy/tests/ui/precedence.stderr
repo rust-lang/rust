@@ -1,73 +1,74 @@
 error: operator precedence can trip the unwary
-  --> $DIR/precedence.rs:17:5
+  --> $DIR/precedence.rs:16:5
    |
 LL |     1 << 2 + 3;
    |     ^^^^^^^^^^ help: consider parenthesizing your expression: `1 << (2 + 3)`
    |
    = note: `-D clippy::precedence` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::precedence)]`
 
 error: operator precedence can trip the unwary
-  --> $DIR/precedence.rs:18:5
+  --> $DIR/precedence.rs:17:5
    |
 LL |     1 + 2 << 3;
    |     ^^^^^^^^^^ help: consider parenthesizing your expression: `(1 + 2) << 3`
 
 error: operator precedence can trip the unwary
-  --> $DIR/precedence.rs:19:5
+  --> $DIR/precedence.rs:18:5
    |
 LL |     4 >> 1 + 1;
    |     ^^^^^^^^^^ help: consider parenthesizing your expression: `4 >> (1 + 1)`
 
 error: operator precedence can trip the unwary
-  --> $DIR/precedence.rs:20:5
+  --> $DIR/precedence.rs:19:5
    |
 LL |     1 + 3 >> 2;
    |     ^^^^^^^^^^ help: consider parenthesizing your expression: `(1 + 3) >> 2`
 
 error: operator precedence can trip the unwary
-  --> $DIR/precedence.rs:21:5
+  --> $DIR/precedence.rs:20:5
    |
 LL |     1 ^ 1 - 1;
    |     ^^^^^^^^^ help: consider parenthesizing your expression: `1 ^ (1 - 1)`
 
 error: operator precedence can trip the unwary
-  --> $DIR/precedence.rs:22:5
+  --> $DIR/precedence.rs:21:5
    |
 LL |     3 | 2 - 1;
    |     ^^^^^^^^^ help: consider parenthesizing your expression: `3 | (2 - 1)`
 
 error: operator precedence can trip the unwary
-  --> $DIR/precedence.rs:23:5
+  --> $DIR/precedence.rs:22:5
    |
 LL |     3 & 5 - 2;
    |     ^^^^^^^^^ help: consider parenthesizing your expression: `3 & (5 - 2)`
 
 error: unary minus has lower precedence than method call
-  --> $DIR/precedence.rs:24:5
+  --> $DIR/precedence.rs:23:5
    |
 LL |     -1i32.abs();
    |     ^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1i32.abs())`
 
 error: unary minus has lower precedence than method call
-  --> $DIR/precedence.rs:25:5
+  --> $DIR/precedence.rs:24:5
    |
 LL |     -1f32.abs();
    |     ^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1f32.abs())`
 
 error: unary minus has lower precedence than method call
-  --> $DIR/precedence.rs:52:13
+  --> $DIR/precedence.rs:51:13
    |
 LL |     let _ = -1.0_f64.cos().cos();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.cos().cos())`
 
 error: unary minus has lower precedence than method call
-  --> $DIR/precedence.rs:53:13
+  --> $DIR/precedence.rs:52:13
    |
 LL |     let _ = -1.0_f64.cos().sin();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.cos().sin())`
 
 error: unary minus has lower precedence than method call
-  --> $DIR/precedence.rs:54:13
+  --> $DIR/precedence.rs:53:13
    |
 LL |     let _ = -1.0_f64.sin().cos();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.sin().cos())`

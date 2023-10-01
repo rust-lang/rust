@@ -8,6 +8,7 @@ impl MyStruct {
 }
 
 impl MyStruct {
+    //~^ ERROR: multiple implementations of this structure
     fn second() {}
 }
 
@@ -22,6 +23,7 @@ mod submod {
     }
 
     impl super::MyStruct {
+        //~^ ERROR: multiple implementations of this structure
         fn third() {}
     }
 }
@@ -42,6 +44,7 @@ impl WithArgs<u64> {
     fn f2() {}
 }
 impl WithArgs<u64> {
+    //~^ ERROR: multiple implementations of this structure
     fn f3() {}
 }
 
@@ -63,5 +66,6 @@ impl OneAllowedImpl {}
 #[allow(clippy::multiple_inherent_impl)]
 impl OneAllowedImpl {}
 impl OneAllowedImpl {} // Lint, only one of the three blocks is allowed.
+//~^ ERROR: multiple implementations of this structure
 
 fn main() {}

@@ -8,7 +8,7 @@ LL |     |x: &i32| 1i32
    |     ^^^^^^^^^^^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/return-closures.rs:3:5: 3:14]`
+                found closure `{closure@$DIR/return-closures.rs:3:5: 3:14}`
 
 error[E0308]: mismatched types
   --> $DIR/return-closures.rs:9:5
@@ -20,7 +20,7 @@ LL |     || i
    |     ^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/return-closures.rs:9:5: 9:7]`
+                found closure `{closure@$DIR/return-closures.rs:9:5: 9:7}`
 
 error: aborting due to 2 previous errors
 

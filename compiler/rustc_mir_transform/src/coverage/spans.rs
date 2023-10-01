@@ -1,18 +1,14 @@
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
-use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
-use rustc_middle::mir::spanview::source_range_no_file;
 use rustc_middle::mir::{
     self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
-use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
 use std::cell::OnceCell;
-use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone)]
 pub(super) enum CoverageStatement {
@@ -21,31 +17,6 @@ pub(super) enum CoverageStatement {
 }
 
 impl CoverageStatement {
-    pub fn format<'tcx>(&self, tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> String {
-        match *self {
-            Self::Statement(bb, span, stmt_index) => {
-                let stmt = &mir_body[bb].statements[stmt_index];
-                format!(
-                    "{}: @{}[{}]: {:?}",
-                    source_range_no_file(tcx, span),
-                    bb.index(),
-                    stmt_index,
-                    stmt
-                )
-            }
-            Self::Terminator(bb, span) => {
-                let term = mir_body[bb].terminator();
-                format!(
-                    "{}: @{}.{}: {:?}",
-                    source_range_no_file(tcx, span),
-                    bb.index(),
-                    term.kind.name(),
-                    term.kind
-                )
-            }
-        }
-    }
-
     pub fn span(&self) -> Span {
         match self {
             Self::Statement(_, span, _) | Self::Terminator(_, span) => *span,
@@ -149,27 +120,6 @@ impl CoverageSpan {
     #[inline]
     pub fn is_in_same_bcb(&self, other: &Self) -> bool {
         self.bcb == other.bcb
-    }
-
-    pub fn format<'tcx>(&self, tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> String {
-        format!(
-            "{}\n    {}",
-            source_range_no_file(tcx, self.span),
-            self.format_coverage_statements(tcx, mir_body).replace('\n', "\n    "),
-        )
-    }
-
-    pub fn format_coverage_statements<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        mir_body: &mir::Body<'tcx>,
-    ) -> String {
-        let mut sorted_coverage_statements = self.coverage_statements.clone();
-        sorted_coverage_statements.sort_unstable_by_key(|covstmt| match *covstmt {
-            CoverageStatement::Statement(bb, _, index) => (bb, index),
-            CoverageStatement::Terminator(bb, _) => (bb, usize::MAX),
-        });
-        sorted_coverage_statements.iter().map(|covstmt| covstmt.format(tcx, mir_body)).join("\n")
     }
 
     /// If the span is part of a macro, returns the macro name symbol.
@@ -333,30 +283,21 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
         initial_spans.push(CoverageSpan::for_fn_sig(self.fn_sig_span));
 
-        initial_spans.sort_unstable_by(|a, b| {
-            if a.span.lo() == b.span.lo() {
-                if a.span.hi() == b.span.hi() {
-                    if a.is_in_same_bcb(b) {
-                        Some(Ordering::Equal)
-                    } else {
-                        // Sort equal spans by dominator relationship (so dominators always come
-                        // before the dominated equal spans). When later comparing two spans in
-                        // order, the first will either dominate the second, or they will have no
-                        // dominator relationship.
-                        self.basic_coverage_blocks.rank_partial_cmp(a.bcb, b.bcb)
-                    }
-                } else {
-                    // Sort hi() in reverse order so shorter spans are attempted after longer spans.
-                    // This guarantees that, if a `prev` span overlaps, and is not equal to, a
-                    // `curr` span, the prev span either extends further left of the curr span, or
-                    // they start at the same position and the prev span extends further right of
-                    // the end of the curr span.
-                    b.span.hi().partial_cmp(&a.span.hi())
-                }
-            } else {
-                a.span.lo().partial_cmp(&b.span.lo())
-            }
-            .unwrap()
+        initial_spans.sort_by(|a, b| {
+            // First sort by span start.
+            Ord::cmp(&a.span.lo(), &b.span.lo())
+                // If span starts are the same, sort by span end in reverse order.
+                // This ensures that if spans A and B are adjacent in the list,
+                // and they overlap but are not equal, then either:
+                // - Span A extends further left, or
+                // - Both have the same start and span A extends further right
+                .then_with(|| Ord::cmp(&a.span.hi(), &b.span.hi()).reverse())
+                // If both spans are equal, sort the BCBs in dominator order,
+                // so that dominating BCBs come before other BCBs they dominate.
+                .then_with(|| self.basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb))
+                // If two spans are otherwise identical, put closure spans first,
+                // as this seems to be what the refinement step expects.
+                .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
         });
 
         initial_spans
@@ -822,7 +763,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
         // and `_1` is the `Place` for `somenum`.
         //
         // If and when the Issue is resolved, remove this special case match pattern:
-        StatementKind::FakeRead(box (cause, _)) if cause == FakeReadCause::ForGuardBinding => None,
+        StatementKind::FakeRead(box (FakeReadCause::ForGuardBinding, _)) => None,
 
         // Retain spans from all other statements
         StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`

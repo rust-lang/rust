@@ -3,7 +3,7 @@
 //! suggestions from rustc if you get anything slightly wrong in here, and overall
 //! helps with clarity as we're also referring to `char` intentionally in here.
 
-use crate::fmt;
+use crate::fmt::{self, Write};
 use crate::mem::transmute;
 
 /// One of the 128 Unicode characters from U+0000 through U+007F,
@@ -54,7 +54,7 @@ use crate::mem::transmute;
 /// [chart]: https://www.unicode.org/charts/PDF/U0000.pdf
 /// [NIST FIPS 1-2]: https://nvlpubs.nist.gov/nistpubs/Legacy/FIPS/fipspub1-2-1977.pdf
 /// [NamesList]: https://www.unicode.org/Public/15.0.0/ucd/NamesList.txt
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[unstable(feature = "ascii_char", issue = "110998")]
 #[repr(u8)]
 pub enum AsciiChar {
@@ -561,5 +561,42 @@ impl [AsciiChar] {
 impl fmt::Display for AsciiChar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <str as fmt::Display>::fmt(self.as_str(), f)
+    }
+}
+
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl fmt::Debug for AsciiChar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[inline]
+        fn backslash(a: AsciiChar) -> ([AsciiChar; 4], u8) {
+            ([AsciiChar::ReverseSolidus, a, AsciiChar::Null, AsciiChar::Null], 2)
+        }
+
+        let (buf, len) = match self {
+            AsciiChar::Null => backslash(AsciiChar::Digit0),
+            AsciiChar::CharacterTabulation => backslash(AsciiChar::SmallT),
+            AsciiChar::CarriageReturn => backslash(AsciiChar::SmallR),
+            AsciiChar::LineFeed => backslash(AsciiChar::SmallN),
+            AsciiChar::ReverseSolidus => backslash(AsciiChar::ReverseSolidus),
+            AsciiChar::Apostrophe => backslash(AsciiChar::Apostrophe),
+            _ => {
+                let byte = self.to_u8();
+                if !byte.is_ascii_control() {
+                    ([*self, AsciiChar::Null, AsciiChar::Null, AsciiChar::Null], 1)
+                } else {
+                    const HEX_DIGITS: [AsciiChar; 16] = *b"0123456789abcdef".as_ascii().unwrap();
+
+                    let hi = HEX_DIGITS[usize::from(byte >> 4)];
+                    let lo = HEX_DIGITS[usize::from(byte & 0xf)];
+                    ([AsciiChar::ReverseSolidus, AsciiChar::SmallX, hi, lo], 4)
+                }
+            }
+        };
+
+        f.write_char('\'')?;
+        for byte in &buf[..len as usize] {
+            f.write_str(byte.as_str())?;
+        }
+        f.write_char('\'')
     }
 }

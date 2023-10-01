@@ -459,7 +459,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let place = this.project_field(&vars_place, idx)?;
             this.write_pointer(var, &place)?;
         }
-        this.write_pointer(vars_place.ptr, &this.machine.env_vars.environ.clone().unwrap())?;
+        this.write_pointer(vars_place.ptr(), &this.machine.env_vars.environ.clone().unwrap())?;
 
         Ok(())
     }

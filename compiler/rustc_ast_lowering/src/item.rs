@@ -1308,7 +1308,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_asyncness(&mut self, a: Async) -> hir::IsAsync {
         match a {
-            Async::Yes { .. } => hir::IsAsync::Async,
+            Async::Yes { span, .. } => hir::IsAsync::Async(span),
             Async::No => hir::IsAsync::NotAsync,
         }
     }

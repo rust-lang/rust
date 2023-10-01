@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `dyn ToString` cannot be known at compilation time
-  --> $DIR/issue-61525.rs:14:33
+  --> $DIR/issue-61525.rs:14:19
    |
 LL |         1.query::<dyn ToString>("")
-   |           -----                 ^^ doesn't have a size known at compile-time
+   |           -----   ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |           |
    |           required by a bound introduced by this call
    |

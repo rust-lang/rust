@@ -151,7 +151,12 @@ impl fmt::Display for DiagnosticLocation {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticId {
     Error(String),
-    Lint { name: String, has_future_breakage: bool, is_force_warn: bool },
+    Lint {
+        name: String,
+        /// Indicates whether this lint should show up in cargo's future breakage report.
+        has_future_breakage: bool,
+        is_force_warn: bool,
+    },
 }
 
 /// A "sub"-diagnostic attached to a parent diagnostic.
@@ -270,6 +275,7 @@ impl Diagnostic {
             | Level::Note
             | Level::OnceNote
             | Level::Help
+            | Level::OnceHelp
             | Level::Allow
             | Level::Expect(_) => false,
         }
@@ -300,6 +306,7 @@ impl Diagnostic {
         }
     }
 
+    /// Indicates whether this diagnostic should show up in cargo's future breakage report.
     pub fn has_future_breakage(&self) -> bool {
         match self.code {
             Some(DiagnosticId::Lint { has_future_breakage, .. }) => has_future_breakage,
@@ -529,6 +536,13 @@ impl Diagnostic {
     #[rustc_lint_diagnostics]
     pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
+        self
+    }
+
+    /// Prints the span with a help above it.
+    /// This is like [`Diagnostic::help()`], but it gets its own span.
+    pub fn help_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
+        self.sub(Level::OnceHelp, msg, MultiSpan::new(), None);
         self
     }
 

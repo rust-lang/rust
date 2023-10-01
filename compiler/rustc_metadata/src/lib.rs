@@ -26,7 +26,7 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
-pub use rmeta::{provide, provide_extern};
+pub use rmeta::provide;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 
@@ -42,6 +42,6 @@ pub mod locator;
 
 pub use fs::{emit_wrapper_file, METADATA_FILENAME};
 pub use native_libs::find_native_static_library;
-pub use rmeta::{encode_metadata, EncodedMetadata, METADATA_HEADER};
+pub use rmeta::{encode_metadata, rendered_const, EncodedMetadata, METADATA_HEADER};
 
 fluent_messages! { "../messages.ftl" }

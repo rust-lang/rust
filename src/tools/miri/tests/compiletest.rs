@@ -1,10 +1,11 @@
 use colored::*;
 use regex::bytes::Regex;
 use std::ffi::OsString;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
 use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
-use ui_test::{status_emitter, CommandBuilder};
+use ui_test::{status_emitter, CommandBuilder, Format, RustfixMode};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
@@ -78,26 +79,18 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         program.args.push(flag);
     }
 
-    let bless = env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
-    let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
-
-    let output_conflict_handling = match (bless, skip_ui_checks) {
-        (false, false) => OutputConflictHandling::Error("./miri test --bless".into()),
-        (true, false) => OutputConflictHandling::Bless,
-        (false, true) => OutputConflictHandling::Ignore,
-        (true, true) => panic!("cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
-    };
-
     let mut config = Config {
         target: Some(target.to_owned()),
         stderr_filters: STDERR.clone(),
         stdout_filters: STDOUT.clone(),
         mode,
         program,
-        output_conflict_handling,
         out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
         edition: Some("2021".into()),
-        ..Config::rustc(path.into())
+        threads: std::env::var("MIRI_TEST_THREADS")
+            .ok()
+            .map(|threads| NonZeroUsize::new(threads.parse().unwrap()).unwrap()),
+        ..Config::rustc(path)
     };
 
     let use_std = env::var_os("MIRI_NO_STD").is_none();
@@ -120,51 +113,32 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
 }
 
 fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
-    let config = test_config(target, path, mode, with_dependencies);
+    let mut config = test_config(target, path, mode, with_dependencies);
 
     // Handle command-line arguments.
-    let mut after_dashdash = false;
-    let mut quiet = false;
-    let filters = std::env::args()
-        .skip(1)
-        .filter(|arg| {
-            if after_dashdash {
-                // Just propagate everything.
-                return true;
-            }
-            match &**arg {
-                "--quiet" => {
-                    quiet = true;
-                    false
-                }
-                "--" => {
-                    after_dashdash = true;
-                    false
-                }
-                s if s.starts_with('-') => {
-                    panic!("unknown compiletest flag `{s}`");
-                }
-                _ => true,
-            }
-        })
-        .collect::<Vec<_>>();
+    let args = ui_test::Args::test()?;
+    let default_bless = env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
+    config.with_args(&args, default_bless);
+    if let OutputConflictHandling::Error(msg) = &mut config.output_conflict_handling {
+        *msg = "./miri test --bless".into();
+    }
+    if env::var_os("MIRI_SKIP_UI_CHECKS").is_some() {
+        assert!(!default_bless, "cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time");
+        config.output_conflict_handling = OutputConflictHandling::Ignore;
+    }
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
-        config,
+        // Only run one test suite. In the future we can add all test suites to one `Vec` and run
+        // them all at once, making best use of systems with high parallelism.
+        vec![config],
         // The files we're actually interested in (all `.rs` files).
-        |path| {
-            path.extension().is_some_and(|ext| ext == "rs")
-                && (filters.is_empty()
-                    || filters.iter().any(|f| path.display().to_string().contains(f)))
-        },
+        ui_test::default_file_filter,
         // This could be used to overwrite the `Config` on a per-test basis.
-        |_, _| None,
+        |_, _, _| {},
         (
-            if quiet {
-                Box::<status_emitter::Quiet>::default()
-                    as Box<dyn status_emitter::StatusEmitter + Send>
-            } else {
-                Box::new(status_emitter::Text)
+            match args.format {
+                Format::Terse => status_emitter::Text::quiet(),
+                Format::Pretty => status_emitter::Text::verbose(),
             },
             status_emitter::Gha::</* GHA Actions groups*/ false> {
                 name: format!("{mode:?} {path} ({target})"),
@@ -205,8 +179,6 @@ regexes! {
     r" +at (.*\.rs)"                 => " at $1",
     // erase generics in backtraces
     "([0-9]+: .*)::<.*>"             => "$1",
-    // erase addresses in backtraces
-    "([0-9]+: ) +0x[0-9a-f]+ - (.*)" => "$1$2",
     // erase long hexadecimals
     r"0x[0-9a-fA-F]+[0-9a-fA-F]{2,2}" => "$$HEX",
     // erase specific alignments
@@ -218,7 +190,7 @@ regexes! {
     // Windows file paths
     r"\\"                           => "/",
     // erase Rust stdlib path
-    "[^ `]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
+    "[^ \n`]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
     // erase platform file paths
     "sys/[a-z]+/"                    => "sys/PLATFORM/",
     // erase paths into the crate registry
@@ -269,11 +241,22 @@ fn main() -> Result<()> {
     ui(Mode::Pass, "tests/pass", &target, WithoutDependencies)?;
     ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies)?;
     ui(Mode::Panic, "tests/panic", &target, WithDependencies)?;
-    ui(Mode::Fail { require_patterns: true }, "tests/fail", &target, WithDependencies)?;
+    ui(
+        Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
+        "tests/fail",
+        &target,
+        WithoutDependencies,
+    )?;
+    ui(
+        Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
+        "tests/fail-dep",
+        &target,
+        WithDependencies,
+    )?;
     if cfg!(target_os = "linux") {
         ui(Mode::Pass, "tests/extern-so/pass", &target, WithoutDependencies)?;
         ui(
-            Mode::Fail { require_patterns: true },
+            Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
             "tests/extern-so/fail",
             &target,
             WithoutDependencies,
@@ -285,11 +268,17 @@ fn main() -> Result<()> {
 
 fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
     let path = args.next().expect("./miri run-dep must be followed by a file name");
-    let mut config = test_config(&target, "", Mode::Yolo, /* with dependencies */ true);
+    let mut config = test_config(
+        &target,
+        "",
+        Mode::Yolo { rustfix: RustfixMode::Disabled },
+        /* with dependencies */ true,
+    );
     config.program.args.clear(); // We want to give the user full control over flags
-    config.build_dependencies_and_link_them()?;
+    let dep_args = config.build_dependencies()?;
 
     let mut cmd = config.program.build(&config.out_dir);
+    cmd.args(dep_args);
 
     cmd.arg(path);
 

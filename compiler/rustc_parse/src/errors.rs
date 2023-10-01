@@ -10,7 +10,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
-use crate::parser::TokenDescription;
+use crate::parser::{ForbiddenLetReason, TokenDescription};
 
 #[derive(Diagnostic)]
 #[diag(parse_maybe_report_ambiguous_plus)]
@@ -59,9 +59,18 @@ pub(crate) enum BadTypePlusSub {
 #[diag(parse_maybe_recover_from_bad_qpath_stage_2)]
 pub(crate) struct BadQPathStage2 {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
-    pub ty: String,
+    #[subdiagnostic]
+    pub wrap: WrapType,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct WrapType {
+    #[suggestion_part(code = "<")]
+    pub lo: Span,
+    #[suggestion_part(code = ">")]
+    pub hi: Span,
 }
 
 #[derive(Diagnostic)]
@@ -392,9 +401,12 @@ pub(crate) struct IfExpressionMissingCondition {
 
 #[derive(Diagnostic)]
 #[diag(parse_expected_expression_found_let)]
+#[note]
 pub(crate) struct ExpectedExpressionFoundLet {
     #[primary_span]
     pub span: Span,
+    #[subdiagnostic]
+    pub reason: ForbiddenLetReason,
 }
 
 #[derive(Diagnostic)]

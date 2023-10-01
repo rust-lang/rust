@@ -1,37 +1,38 @@
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:14:18
+  --> $DIR/manual_rem_euclid.rs:13:18
    |
 LL |     let _: i32 = ((value % 4) + 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
    |
    = note: `-D clippy::manual-rem-euclid` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_rem_euclid)]`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:15:18
+  --> $DIR/manual_rem_euclid.rs:14:18
    |
 LL |     let _: i32 = (4 + (value % 4)) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:16:18
+  --> $DIR/manual_rem_euclid.rs:15:18
    |
 LL |     let _: i32 = (value % 4 + 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:17:18
+  --> $DIR/manual_rem_euclid.rs:16:18
    |
 LL |     let _: i32 = (4 + value % 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:18:22
+  --> $DIR/manual_rem_euclid.rs:17:22
    |
 LL |     let _: i32 = 1 + (4 + value % 4) % 4;
    |                      ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:38:22
+  --> $DIR/manual_rem_euclid.rs:37:22
    |
 LL |         let _: i32 = ((value % 4) + 4) % 4;
    |                      ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
@@ -39,25 +40,25 @@ LL |         let _: i32 = ((value % 4) + 4) % 4;
    = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:50:5
+  --> $DIR/manual_rem_euclid.rs:49:5
    |
 LL |     ((num % 4) + 4) % 4
    |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `num.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:55:5
+  --> $DIR/manual_rem_euclid.rs:54:5
    |
 LL |     ((num % 4) + 4) % 4
    |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `num.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:67:18
+  --> $DIR/manual_rem_euclid.rs:66:18
    |
 LL |     let _: i32 = ((x % 4) + 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^ help: consider using: `x.rem_euclid(4)`
 
 error: manual `rem_euclid` implementation
-  --> $DIR/manual_rem_euclid.rs:80:18
+  --> $DIR/manual_rem_euclid.rs:79:18
    |
 LL |     let _: i32 = ((x % 4) + 4) % 4;
    |                  ^^^^^^^^^^^^^^^^^ help: consider using: `x.rem_euclid(4)`

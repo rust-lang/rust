@@ -5,10 +5,13 @@ fn main() {
     let x = &Baz;
     let y = &Baz;
     y.to_owned() == *x;
+    //~^ ERROR: this creates an owned instance just for comparison
+    //~| NOTE: `-D clippy::cmp-owned` implied by `-D warnings`
 
     let x = &&Baz;
     let y = &Baz;
     y.to_owned() == **x;
+    //~^ ERROR: this creates an owned instance just for comparison
 
     let x = 0u32;
     let y = U32Wrapper(x);
@@ -20,6 +23,7 @@ struct Foo;
 impl PartialEq for Foo {
     fn eq(&self, other: &Self) -> bool {
         self.to_owned() == *other
+        //~^ ERROR: this creates an owned instance just for comparison
     }
 }
 

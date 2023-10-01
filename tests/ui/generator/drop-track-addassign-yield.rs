@@ -1,5 +1,4 @@
 // run-pass
-// compile-flags: -Zdrop-tracking
 
 // Based on addassign-yield.rs, but with drop tracking enabled. Originally we did not implement
 // the fake_read callback on ExprUseVisitor which caused this case to break.

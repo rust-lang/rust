@@ -10,6 +10,7 @@ use rustc_middle::mir::{
     Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location, Promoted,
     START_BLOCK,
 };
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_span::symbol::sym;
 use std::env;
@@ -441,7 +442,10 @@ fn for_each_region_constraint<'tcx>(
         let subject = match req.subject {
             ClosureOutlivesSubject::Region(subject) => format!("{subject:?}"),
             ClosureOutlivesSubject::Ty(ty) => {
-                format!("{:?}", ty.instantiate(tcx, |vid| ty::Region::new_var(tcx, vid)))
+                with_no_trimmed_paths!(format!(
+                    "{}",
+                    ty.instantiate(tcx, |vid| ty::Region::new_var(tcx, vid))
+                ))
             }
         };
         with_msg(format!("where {}: {:?}", subject, req.outlived_free_region,))?;

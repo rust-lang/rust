@@ -19,9 +19,7 @@ fn main() {
         () if let 0 = 1 => {}
         () if (let 0 = 1) => {}
         //~^ ERROR expected expression, found `let` statement
-        //~| ERROR `let` expressions are not supported here
         () if (((let 0 = 1))) => {}
         //~^ ERROR expected expression, found `let` statement
-        //~| ERROR `let` expressions are not supported here
     }
 }

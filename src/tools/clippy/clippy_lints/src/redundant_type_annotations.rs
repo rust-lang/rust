@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let foo = String::new();
     /// ```
-    #[clippy::version = "1.70.0"]
+    #[clippy::version = "1.72.0"]
     pub REDUNDANT_TYPE_ANNOTATIONS,
     restriction,
     "warns about needless / redundant type annotations."

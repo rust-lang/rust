@@ -1,0 +1,1 @@
+"main.rs" "-g" "--crate-name" "my_crate_name" "--crate-type" "bin" "-C" "metadata=dc9ef878b0a48666" "--out-dir"

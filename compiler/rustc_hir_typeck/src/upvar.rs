@@ -41,6 +41,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{
     self, ClosureSizeProfileData, Ty, TyCtxt, TypeckResults, UpvarArgs, UpvarCapture,
 };
@@ -195,7 +196,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
         let mut delegate = InferBorrowKind {
-            fcx: self,
             closure_def_id,
             capture_information: Default::default(),
             fake_reads: Default::default(),
@@ -295,6 +295,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Equate the type variables for the upvars with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
         debug!(?closure_hir_id, ?args, ?final_upvar_tys);
+
+        if self.tcx.features().unsized_locals || self.tcx.features().unsized_fn_params {
+            for capture in
+                self.typeck_results.borrow().closure_min_captures_flattened(closure_def_id)
+            {
+                if let UpvarCapture::ByValue = capture.info.capture_kind {
+                    self.require_type_is_sized(
+                        capture.place.ty(),
+                        capture.get_path_span(self.tcx),
+                        ObligationCauseCode::SizedClosureCapture(closure_def_id),
+                    );
+                }
+            }
+        }
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
@@ -1607,34 +1621,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Truncate the capture so that the place being borrowed is in accordance with RFC 1240,
 /// which states that it's unsafe to take a reference into a struct marked `repr(packed)`.
 fn restrict_repr_packed_field_ref_capture<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     mut place: Place<'tcx>,
     mut curr_borrow_kind: ty::UpvarCapture,
 ) -> (Place<'tcx>, ty::UpvarCapture) {
     let pos = place.projections.iter().enumerate().position(|(i, p)| {
         let ty = place.ty_before_projection(i);
 
-        // Return true for fields of packed structs, unless those fields have alignment 1.
+        // Return true for fields of packed structs.
         match p.kind {
             ProjectionKind::Field(..) => match ty.kind() {
                 ty::Adt(def, _) if def.repr().packed() => {
-                    // We erase regions here because they cannot be hashed
-                    match tcx.layout_of(param_env.and(tcx.erase_regions(p.ty))) {
-                        Ok(layout) if layout.align.abi.bytes() == 1 => {
-                            // if the alignment is 1, the type can't be further
-                            // disaligned.
-                            debug!(
-                                "restrict_repr_packed_field_ref_capture: ({:?}) - align = 1",
-                                place
-                            );
-                            false
-                        }
-                        _ => {
-                            debug!("restrict_repr_packed_field_ref_capture: ({:?}) - true", place);
-                            true
-                        }
-                    }
+                    // We stop here regardless of field alignment. Field alignment can change as
+                    // types change, including the types of private fields in other crates, and that
+                    // shouldn't affect how we compute our captures.
+                    true
                 }
 
                 _ => false,
@@ -1689,9 +1689,7 @@ fn drop_location_span(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> Span {
     tcx.sess.source_map().end_point(owner_span)
 }
 
-struct InferBorrowKind<'a, 'tcx> {
-    fcx: &'a FnCtxt<'a, 'tcx>,
-
+struct InferBorrowKind<'tcx> {
     // The def-id of the closure whose kind and upvar accesses are being inferred.
     closure_def_id: LocalDefId,
 
@@ -1725,7 +1723,7 @@ struct InferBorrowKind<'a, 'tcx> {
     fake_reads: Vec<(Place<'tcx>, FakeReadCause, hir::HirId)>,
 }
 
-impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
+impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     fn fake_read(
         &mut self,
         place: &PlaceWithHirId<'tcx>,
@@ -1740,12 +1738,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 
         let (place, _) = restrict_capture_precision(place.place.clone(), dummy_capture_kind);
 
-        let (place, _) = restrict_repr_packed_field_ref_capture(
-            self.fcx.tcx,
-            self.fcx.param_env,
-            place,
-            dummy_capture_kind,
-        );
+        let (place, _) = restrict_repr_packed_field_ref_capture(place, dummy_capture_kind);
         self.fake_reads.push((place, cause, diag_expr_id));
     }
 
@@ -1780,12 +1773,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         // We only want repr packed restriction to be applied to reading references into a packed
         // struct, and not when the data is being moved. Therefore we call this method here instead
         // of in `restrict_capture_precision`.
-        let (place, mut capture_kind) = restrict_repr_packed_field_ref_capture(
-            self.fcx.tcx,
-            self.fcx.param_env,
-            place_with_id.place.clone(),
-            capture_kind,
-        );
+        let (place, mut capture_kind) =
+            restrict_repr_packed_field_ref_capture(place_with_id.place.clone(), capture_kind);
 
         // Raw pointers don't inherit mutability
         if place_with_id.place.deref_tys().any(Ty::is_unsafe_ptr) {

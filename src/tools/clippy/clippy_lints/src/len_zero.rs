@@ -424,6 +424,14 @@ fn check_for_is_empty(
     item_name: Symbol,
     item_kind: &str,
 ) {
+    // Implementor may be a type alias, in which case we need to get the `DefId` of the aliased type to
+    // find the correct inherent impls.
+    let impl_ty = if let Some(adt) = cx.tcx.type_of(impl_ty).skip_binder().ty_adt_def() {
+        adt.did()
+    } else {
+        return;
+    };
+
     let is_empty = Symbol::intern("is_empty");
     let is_empty = cx
         .tcx

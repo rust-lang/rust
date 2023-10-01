@@ -3,6 +3,7 @@
 fn main() {
     // Should issue an error.
     let _ = if foo() {
+        //~^ ERROR: this could be simplified with `bool::then`
         println!("true!");
         Some("foo")
     } else {
@@ -11,6 +12,7 @@ fn main() {
 
     // Should issue an error when macros are used.
     let _ = if matches!(true, true) {
+        //~^ ERROR: this could be simplified with `bool::then`
         println!("true!");
         Some(matches!(true, false))
     } else {
@@ -20,10 +22,12 @@ fn main() {
     // Should issue an error. Binary expression `o < 32` should be parenthesized.
     let x = Some(5);
     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
+    //~^ ERROR: this could be simplified with `bool::then_some`
 
     // Should issue an error. Unary expression `!x` should be parenthesized.
     let x = true;
     let _ = if !x { Some(0) } else { None };
+    //~^ ERROR: this could be simplified with `bool::then_some`
 
     // Should not issue an error since the `else` block has a statement besides `None`.
     let _ = if foo() {
@@ -79,6 +83,7 @@ fn _msrv_1_49() {
 #[clippy::msrv = "1.50"]
 fn _msrv_1_50() {
     let _ = if foo() {
+        //~^ ERROR: this could be simplified with `bool::then`
         println!("true!");
         Some(150)
     } else {
@@ -111,4 +116,16 @@ fn f(b: bool, v: Option<()>) -> Option<()> {
     } else {
         None
     }
+}
+
+fn issue11394(b: bool, v: Result<(), ()>) -> Result<(), ()> {
+    let x = if b {
+        #[allow(clippy::let_unit_value)]
+        let _ = v?;
+        Some(())
+    } else {
+        None
+    };
+
+    Ok(())
 }

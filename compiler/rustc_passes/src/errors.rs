@@ -64,20 +64,20 @@ pub struct InlineNotFnOrClosure {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(passes_no_coverage_ignored_function_prototype)]
-pub struct IgnoredNoCoverageFnProto;
+#[diag(passes_coverage_ignored_function_prototype)]
+pub struct IgnoredCoverageFnProto;
 
 #[derive(LintDiagnostic)]
-#[diag(passes_no_coverage_propagate)]
-pub struct IgnoredNoCoveragePropagate;
+#[diag(passes_coverage_propagate)]
+pub struct IgnoredCoveragePropagate;
 
 #[derive(LintDiagnostic)]
-#[diag(passes_no_coverage_fn_defn)]
-pub struct IgnoredNoCoverageFnDefn;
+#[diag(passes_coverage_fn_defn)]
+pub struct IgnoredCoverageFnDefn;
 
 #[derive(Diagnostic)]
-#[diag(passes_no_coverage_not_coverable, code = "E0788")]
-pub struct IgnoredNoCoverageNotCoverable {
+#[diag(passes_coverage_not_coverable, code = "E0788")]
+pub struct IgnoredCoverageNotCoverable {
     #[primary_span]
     pub attr_span: Span,
     #[label]
@@ -621,6 +621,15 @@ pub struct RustcAllowConstFnUnstable {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_safe_intrinsic)]
+pub struct RustcSafeIntrinsic {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_rustc_std_internal_symbol)]
 pub struct RustcStdInternalSymbol {
     #[primary_span]
@@ -809,6 +818,16 @@ pub struct MissingLangItem {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_lang_item_fn_with_target_feature)]
+pub struct LangItemWithTargetFeature {
+    #[primary_span]
+    pub attr_span: Span,
+    pub name: Symbol,
+    #[label]
+    pub sig_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_lang_item_on_incorrect_target, code = "E0718")]
 pub struct LangItemOnIncorrectTarget {
     #[primary_span]
@@ -873,32 +892,32 @@ pub struct DuplicateDiagnosticItemInCrate {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_abi)]
-pub struct Abi {
+#[diag(passes_layout_abi)]
+pub struct LayoutAbi {
     #[primary_span]
     pub span: Span,
     pub abi: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_align)]
-pub struct Align {
+#[diag(passes_layout_align)]
+pub struct LayoutAlign {
     #[primary_span]
     pub span: Span,
     pub align: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_size)]
-pub struct Size {
+#[diag(passes_layout_size)]
+pub struct LayoutSize {
     #[primary_span]
     pub span: Span,
     pub size: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_homogeneous_aggregate)]
-pub struct HomogeneousAggregate {
+#[diag(passes_layout_homogeneous_aggregate)]
+pub struct LayoutHomogeneousAggregate {
     #[primary_span]
     pub span: Span,
     pub homogeneous_aggregate: String,
@@ -911,6 +930,38 @@ pub struct LayoutOf {
     pub span: Span,
     pub normalized_ty: String,
     pub ty_layout: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_layout_invalid_attribute)]
+pub struct LayoutInvalidAttribute {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_abi_of)]
+pub struct AbiOf {
+    #[primary_span]
+    pub span: Span,
+    pub fn_name: Symbol,
+    pub fn_abi: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_abi_ne)]
+pub struct AbiNe {
+    #[primary_span]
+    pub span: Span,
+    pub left: String,
+    pub right: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_abi_invalid_attribute)]
+pub struct AbiInvalidAttribute {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -1,37 +1,38 @@
 error: the type of the `self` parameter does not need to be arbitrary
-  --> $DIR/needless_arbitrary_self_type.rs:12:16
+  --> $DIR/needless_arbitrary_self_type.rs:10:16
    |
 LL |     pub fn bad(self: Self) {
    |                ^^^^^^^^^^ help: consider to change this parameter to: `self`
    |
    = note: `-D clippy::needless-arbitrary-self-type` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_arbitrary_self_type)]`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> $DIR/needless_arbitrary_self_type.rs:20:20
+  --> $DIR/needless_arbitrary_self_type.rs:18:20
    |
 LL |     pub fn mut_bad(mut self: Self) {
    |                    ^^^^^^^^^^^^^^ help: consider to change this parameter to: `mut self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> $DIR/needless_arbitrary_self_type.rs:28:20
+  --> $DIR/needless_arbitrary_self_type.rs:26:20
    |
 LL |     pub fn ref_bad(self: &Self) {
    |                    ^^^^^^^^^^^ help: consider to change this parameter to: `&self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> $DIR/needless_arbitrary_self_type.rs:36:38
+  --> $DIR/needless_arbitrary_self_type.rs:34:38
    |
 LL |     pub fn ref_bad_with_lifetime<'a>(self: &'a Self) {
    |                                      ^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'a self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> $DIR/needless_arbitrary_self_type.rs:44:24
+  --> $DIR/needless_arbitrary_self_type.rs:42:24
    |
 LL |     pub fn mut_ref_bad(self: &mut Self) {
    |                        ^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&mut self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> $DIR/needless_arbitrary_self_type.rs:52:42
+  --> $DIR/needless_arbitrary_self_type.rs:50:42
    |
 LL |     pub fn mut_ref_bad_with_lifetime<'a>(self: &'a mut Self) {
    |                                          ^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'a mut self`

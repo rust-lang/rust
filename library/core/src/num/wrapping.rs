@@ -39,6 +39,7 @@ use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(transparent)]
+#[rustc_diagnostic_item = "Wrapping"]
 pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 #[stable(feature = "rust1", since = "1.0.0")]

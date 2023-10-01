@@ -144,7 +144,6 @@
 #![feature(ptr_metadata)]
 #![feature(ptr_sub_ptr)]
 #![feature(receiver_trait)]
-#![feature(saturating_int_impl)]
 #![feature(set_ptr_value)]
 #![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]

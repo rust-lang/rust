@@ -5,7 +5,7 @@ LL | fn hoge<const IN: [u32; LEN]>() {}
    |                   ^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: aborting due to previous error
 

@@ -563,11 +563,11 @@ pub enum InlineAsmOperand<'tcx> {
         out_expr: Option<ExprId>,
     },
     Const {
-        value: mir::ConstantKind<'tcx>,
+        value: mir::Const<'tcx>,
         span: Span,
     },
     SymFn {
-        value: mir::ConstantKind<'tcx>,
+        value: mir::Const<'tcx>,
         span: Span,
     },
     SymStatic {
@@ -732,14 +732,18 @@ pub enum PatKind<'tcx> {
     },
 
     /// One of the following:
-    /// * `&str`, which will be handled as a string pattern and thus exhaustiveness
-    ///   checking will detect if you use the same string twice in different patterns.
-    /// * integer, bool, char or float, which will be handled by exhaustiveness to cover exactly
-    ///   its own value, similar to `&str`, but these values are much simpler.
-    /// * Opaque constants, that must not be matched structurally. So anything that does not derive
-    ///   `PartialEq` and `Eq`.
+    /// * `&str` (represented as a valtree), which will be handled as a string pattern and thus
+    ///   exhaustiveness checking will detect if you use the same string twice in different
+    ///   patterns.
+    /// * integer, bool, char or float (represented as a valtree), which will be handled by
+    ///   exhaustiveness to cover exactly its own value, similar to `&str`, but these values are
+    ///   much simpler.
+    /// * Opaque constants (represented as `mir::ConstValue`), that must not be matched
+    ///   structurally. So anything that does not derive `PartialEq` and `Eq`.
+    ///
+    /// These are always compared with the matched place using (the semantics of) `PartialEq`.
     Constant {
-        value: mir::ConstantKind<'tcx>,
+        value: mir::Const<'tcx>,
     },
 
     Range(Box<PatRange<'tcx>>),
@@ -769,8 +773,8 @@ pub enum PatKind<'tcx> {
 
 #[derive(Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
-    pub lo: mir::ConstantKind<'tcx>,
-    pub hi: mir::ConstantKind<'tcx>,
+    pub lo: mir::Const<'tcx>,
+    pub hi: mir::Const<'tcx>,
     pub end: RangeEnd,
 }
 

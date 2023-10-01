@@ -6,7 +6,7 @@ use super::miri_extern;
 pub fn host_to_target_path(path: OsString) -> PathBuf {
     use std::ffi::{CStr, CString};
 
-    // Once into_os_str_bytes is stable we can use it here.
+    // Once into_encoded_bytes is stable we can use it here.
     // (Unstable features would need feature flags in each test...)
     let path = CString::new(path.into_string().unwrap()).unwrap();
     let mut out = Vec::with_capacity(1024);

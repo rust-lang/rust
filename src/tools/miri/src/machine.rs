@@ -396,14 +396,14 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) env_vars: EnvVars<'tcx>,
 
     /// Return place of the main function.
-    pub(crate) main_fn_ret_place: Option<MemPlace<Provenance>>,
+    pub(crate) main_fn_ret_place: Option<MPlaceTy<'tcx, Provenance>>,
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
     /// We also need the full command line as one string because of Windows.
-    pub(crate) argc: Option<MemPlace<Provenance>>,
-    pub(crate) argv: Option<MemPlace<Provenance>>,
-    pub(crate) cmd_line: Option<MemPlace<Provenance>>,
+    pub(crate) argc: Option<Pointer<Option<Provenance>>>,
+    pub(crate) argv: Option<Pointer<Option<Provenance>>>,
+    pub(crate) cmd_line: Option<Pointer<Option<Provenance>>>,
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
@@ -670,7 +670,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let place = this.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
         this.write_immediate(*val, &place)?;
-        Self::add_extern_static(this, name, place.ptr);
+        Self::add_extern_static(this, name, place.ptr());
         Ok(())
     }
 
@@ -686,7 +686,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 Self::add_extern_static(
                     this,
                     "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr,
+                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
                 );
                 // A couple zero-initialized pointer-sized extern statics.
                 // Most of them are for weak symbols, which we all set to null (indicating that the
@@ -703,7 +703,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 Self::add_extern_static(
                     this,
                     "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr,
+                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
                 );
             }
             "android" => {
@@ -711,7 +711,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 let layout = this.machine.layouts.const_raw_ptr;
                 let dlsym = Dlsym::from_str("signal".as_bytes(), &this.tcx.sess.target.os)?
                     .expect("`signal` must be an actual dlsym on android");
-                let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
+                let ptr = this.fn_ptr(FnVal::Other(dlsym));
                 let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
                 Self::alloc_extern_static(this, "signal", val)?;
                 // A couple zero-initialized pointer-sized extern statics.
@@ -975,7 +975,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx.start_panic_nounwind(msg)
     }
 
-    fn unwind_terminate(ecx: &mut InterpCx<'mir, 'tcx, Self>, reason: mir::UnwindTerminateReason) -> InterpResult<'tcx> {
+    fn unwind_terminate(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        reason: mir::UnwindTerminateReason,
+    ) -> InterpResult<'tcx> {
         // Call the lang item.
         let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
@@ -995,7 +998,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Provenance>,
         right: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, (Scalar<Provenance>, bool, Ty<'tcx>)> {
+    ) -> InterpResult<'tcx, (ImmTy<'tcx, Provenance>, bool)> {
         ecx.binary_ptr_op(bin_op, left, right)
     }
 
@@ -1410,17 +1413,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
         local: mir::Local,
-        mplace: &MPlaceTy<'tcx, Provenance>
+        mplace: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
-        let Some(Provenance::Concrete { alloc_id, .. }) = mplace.ptr.provenance else {
+        let Some(Provenance::Concrete { alloc_id, .. }) = mplace.ptr().provenance else {
             panic!("after_local_allocated should only be called on fresh allocations");
         };
         let local_decl = &ecx.active_thread_stack()[frame].body.local_decls[local];
         let span = local_decl.source_info.span;
-        ecx.machine
-            .allocation_spans
-            .borrow_mut()
-            .insert(alloc_id, (span, None));
+        ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None));
         Ok(())
     }
 }

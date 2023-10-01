@@ -6,9 +6,10 @@ LL |         "bar" | _ => {
    |
    = help: consider handling `_` separately
    = note: `-D clippy::wildcard-in-or-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wildcard_in_or_patterns)]`
 
 error: wildcard pattern covers any other pattern as it will match anyway
-  --> $DIR/wild_in_or_pats.rs:16:9
+  --> $DIR/wild_in_or_pats.rs:17:9
    |
 LL |         "bar" | "bar2" | _ => {
    |         ^^^^^^^^^^^^^^^^^^
@@ -16,7 +17,7 @@ LL |         "bar" | "bar2" | _ => {
    = help: consider handling `_` separately
 
 error: wildcard pattern covers any other pattern as it will match anyway
-  --> $DIR/wild_in_or_pats.rs:24:9
+  --> $DIR/wild_in_or_pats.rs:26:9
    |
 LL |         _ | "bar" | _ => {
    |         ^^^^^^^^^^^^^
@@ -24,7 +25,7 @@ LL |         _ | "bar" | _ => {
    = help: consider handling `_` separately
 
 error: wildcard pattern covers any other pattern as it will match anyway
-  --> $DIR/wild_in_or_pats.rs:32:9
+  --> $DIR/wild_in_or_pats.rs:35:9
    |
 LL |         _ | "bar" => {
    |         ^^^^^^^^^

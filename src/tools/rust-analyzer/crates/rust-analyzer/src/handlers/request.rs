@@ -11,8 +11,8 @@ use anyhow::Context;
 
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
-    SingleResolve, SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
+    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -30,21 +30,23 @@ use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 use triomphe::Arc;
-use vfs::{AbsPath, AbsPathBuf, VfsPath};
+use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diff::diff,
-    from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
+    lsp::{
+        from_proto, to_proto,
+        utils::{all_edits_are_disjoint, invalid_params_error},
+        LspError,
+    },
     lsp_ext::{
         self, CrateInfoResult, ExternalDocsPair, ExternalDocsResponse, FetchDependencyListParams,
         FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
-    lsp_utils::{all_edits_are_disjoint, invalid_params_error},
-    to_proto, LspError,
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
@@ -354,7 +356,7 @@ pub(crate) fn handle_on_type_formatting(
 
     // This should be a single-file edit
     let (_, (text_edit, snippet_edit)) = edit.source_file_edits.into_iter().next().unwrap();
-    stdx::never!(snippet_edit.is_none(), "on type formatting shouldn't use structured snippets");
+    stdx::always!(snippet_edit.is_none(), "on type formatting shouldn't use structured snippets");
 
     let change = to_proto::snippet_text_edit_vec(&line_index, edit.is_snippet, text_edit);
     Ok(Some(change))
@@ -972,7 +974,7 @@ pub(crate) fn handle_hover(
         PositionOrRange::Range(range) => range,
     };
 
-    let file_range = from_proto::file_range(&snap, params.text_document, range)?;
+    let file_range = from_proto::file_range(&snap, &params.text_document, range)?;
     let info = match snap.analysis.hover(&snap.config.hover(), file_range)? {
         None => return Ok(None),
         Some(info) => info,
@@ -1128,7 +1130,7 @@ pub(crate) fn handle_code_action(
 
     let line_index =
         snap.file_line_index(from_proto::file_id(&snap, &params.text_document.uri)?)?;
-    let frange = from_proto::file_range(&snap, params.text_document.clone(), params.range)?;
+    let frange = from_proto::file_range(&snap, &params.text_document, params.range)?;
 
     let mut assists_config = snap.config.assist();
     assists_config.allowed = params
@@ -1381,7 +1383,7 @@ pub(crate) fn handle_ssr(
     let selections = params
         .selections
         .iter()
-        .map(|range| from_proto::file_range(&snap, params.position.text_document.clone(), *range))
+        .map(|range| from_proto::file_range(&snap, &params.position.text_document, *range))
         .collect::<Result<Vec<_>, _>>()?;
     let position = from_proto::file_position(&snap, params.position)?;
     let source_change = snap.analysis.structural_search_replace(
@@ -1401,7 +1403,7 @@ pub(crate) fn handle_inlay_hints(
     let document_uri = &params.text_document.uri;
     let FileRange { file_id, range } = from_proto::file_range(
         &snap,
-        TextDocumentIdentifier::new(document_uri.to_owned()),
+        &TextDocumentIdentifier::new(document_uri.to_owned()),
         params.range,
     )?;
     let line_index = snap.file_line_index(file_id)?;
@@ -1410,17 +1412,73 @@ pub(crate) fn handle_inlay_hints(
         snap.analysis
             .inlay_hints(&inlay_hints_config, file_id, Some(range))?
             .into_iter()
-            .map(|it| to_proto::inlay_hint(&snap, &line_index, it))
+            .map(|it| {
+                to_proto::inlay_hint(
+                    &snap,
+                    &inlay_hints_config.fields_to_resolve,
+                    &line_index,
+                    file_id,
+                    it,
+                )
+            })
             .collect::<Cancellable<Vec<_>>>()?,
     ))
 }
 
 pub(crate) fn handle_inlay_hints_resolve(
-    _snap: GlobalStateSnapshot,
-    hint: InlayHint,
+    snap: GlobalStateSnapshot,
+    mut original_hint: InlayHint,
 ) -> anyhow::Result<InlayHint> {
     let _p = profile::span("handle_inlay_hints_resolve");
-    Ok(hint)
+
+    let data = match original_hint.data.take() {
+        Some(it) => it,
+        None => return Ok(original_hint),
+    };
+
+    let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
+    let file_id = FileId(resolve_data.file_id);
+    anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
+
+    let line_index = snap.file_line_index(file_id)?;
+    let range = from_proto::text_range(
+        &line_index,
+        lsp_types::Range { start: original_hint.position, end: original_hint.position },
+    )?;
+    let range_start = range.start();
+    let range_end = range.end();
+    let large_range = TextRange::new(
+        range_start.checked_sub(1.into()).unwrap_or(range_start),
+        range_end.checked_add(1.into()).unwrap_or(range_end),
+    );
+    let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
+    forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
+    let resolve_hints = snap.analysis.inlay_hints(
+        &forced_resolve_inlay_hints_config,
+        file_id,
+        Some(large_range),
+    )?;
+
+    let mut resolved_hints = resolve_hints
+        .into_iter()
+        .filter_map(|it| {
+            to_proto::inlay_hint(
+                &snap,
+                &forced_resolve_inlay_hints_config.fields_to_resolve,
+                &line_index,
+                file_id,
+                it,
+            )
+            .ok()
+        })
+        .filter(|hint| hint.position == original_hint.position)
+        .filter(|hint| hint.kind == original_hint.kind);
+    if let Some(resolved_hint) = resolved_hints.next() {
+        if resolved_hints.next().is_none() {
+            return Ok(resolved_hint);
+        }
+    }
+    Ok(original_hint)
 }
 
 pub(crate) fn handle_call_hierarchy_prepare(
@@ -1453,7 +1511,7 @@ pub(crate) fn handle_call_hierarchy_incoming(
     let item = params.item;
 
     let doc = TextDocumentIdentifier::new(item.uri);
-    let frange = from_proto::file_range(&snap, doc, item.selection_range)?;
+    let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
     let call_items = match snap.analysis.incoming_calls(fpos)? {
@@ -1488,7 +1546,7 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let item = params.item;
 
     let doc = TextDocumentIdentifier::new(item.uri);
-    let frange = from_proto::file_range(&snap, doc, item.selection_range)?;
+    let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
     let call_items = match snap.analysis.outgoing_calls(fpos)? {
@@ -1569,18 +1627,21 @@ pub(crate) fn handle_semantic_tokens_full_delta(
         snap.config.highlighting_non_standard_tokens(),
     );
 
-    let mut cache = snap.semantic_tokens_cache.lock();
-    let cached_tokens = cache.entry(params.text_document.uri).or_default();
+    let cached_tokens = snap.semantic_tokens_cache.lock().remove(&params.text_document.uri);
 
-    if let Some(prev_id) = &cached_tokens.result_id {
+    if let Some(cached_tokens @ lsp_types::SemanticTokens { result_id: Some(prev_id), .. }) =
+        &cached_tokens
+    {
         if *prev_id == params.previous_result_id {
             let delta = to_proto::semantic_token_delta(cached_tokens, &semantic_tokens);
-            *cached_tokens = semantic_tokens;
+            snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens);
             return Ok(Some(delta.into()));
         }
     }
 
-    *cached_tokens = semantic_tokens.clone();
+    // Clone first to keep the lock short
+    let semantic_tokens_clone = semantic_tokens.clone();
+    snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens_clone);
 
     Ok(Some(semantic_tokens.into()))
 }
@@ -1591,7 +1652,7 @@ pub(crate) fn handle_semantic_tokens_range(
 ) -> anyhow::Result<Option<SemanticTokensRangeResult>> {
     let _p = profile::span("handle_semantic_tokens_range");
 
-    let frange = from_proto::file_range(&snap, params.text_document, params.range)?;
+    let frange = from_proto::file_range(&snap, &params.text_document, params.range)?;
     let text = snap.analysis.file_text(frange.file_id)?;
     let line_index = snap.file_line_index(frange.file_id)?;
 
@@ -1674,7 +1735,7 @@ pub(crate) fn handle_move_item(
 ) -> anyhow::Result<Vec<lsp_ext::SnippetTextEdit>> {
     let _p = profile::span("handle_move_item");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let range = from_proto::file_range(&snap, params.text_document, params.range)?;
+    let range = from_proto::file_range(&snap, &params.text_document, params.range)?;
 
     let direction = match params.direction {
         lsp_ext::MoveItemDirection::Up => ide::Direction::Up,
@@ -1879,12 +1940,15 @@ fn run_rustfmt(
 
     // Determine the edition of the crate the file belongs to (if there's multiple, we pick the
     // highest edition).
-    let editions = snap
+    let Ok(editions) = snap
         .analysis
         .relevant_crates_for(file_id)?
         .into_iter()
         .map(|crate_id| snap.analysis.crate_edition(crate_id))
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()
+    else {
+        return Ok(None);
+    };
     let edition = editions.iter().copied().max();
 
     let line_index = snap.file_line_index(file_id)?;
@@ -1894,23 +1958,7 @@ fn run_rustfmt(
             let mut cmd = process::Command::new(toolchain::rustfmt());
             cmd.envs(snap.config.extra_env());
             cmd.args(extra_args);
-            // try to chdir to the file so we can respect `rustfmt.toml`
-            // FIXME: use `rustfmt --config-path` once
-            // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
-            match text_document.uri.to_file_path() {
-                Ok(mut path) => {
-                    // pop off file name
-                    if path.pop() && path.is_dir() {
-                        cmd.current_dir(path);
-                    }
-                }
-                Err(_) => {
-                    tracing::error!(
-                        "Unable to get file path for {}, rustfmt.toml might be ignored",
-                        text_document.uri
-                    );
-                }
-            }
+
             if let Some(edition) = edition {
                 cmd.arg("--edition");
                 cmd.arg(edition.to_string());
@@ -1929,7 +1977,7 @@ fn run_rustfmt(
                     .into());
                 }
 
-                let frange = from_proto::file_range(snap, text_document, range)?;
+                let frange = from_proto::file_range(snap, &text_document, range)?;
                 let start_line = line_index.index.line_col(frange.range.start()).line;
                 let end_line = line_index.index.line_col(frange.range.end()).line;
 
@@ -1948,11 +1996,30 @@ fn run_rustfmt(
         }
         RustfmtConfig::CustomCommand { command, args } => {
             let mut cmd = process::Command::new(command);
+
             cmd.envs(snap.config.extra_env());
             cmd.args(args);
             cmd
         }
     };
+
+    // try to chdir to the file so we can respect `rustfmt.toml`
+    // FIXME: use `rustfmt --config-path` once
+    // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
+    match text_document.uri.to_file_path() {
+        Ok(mut path) => {
+            // pop off file name
+            if path.pop() && path.is_dir() {
+                command.current_dir(path);
+            }
+        }
+        Err(_) => {
+            tracing::error!(
+                text_document = ?text_document.uri,
+                "Unable to get path, rustfmt.toml might be ignored"
+            );
+        }
+    }
 
     let mut rustfmt = command
         .stdin(Stdio::piped())

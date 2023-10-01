@@ -186,15 +186,10 @@ impl FormatArgs {
 
 impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
-            return;
-        };
-        if !is_format_macro(cx, macro_call.def_id) {
-            return;
-        }
-        let name = cx.tcx.item_name(macro_call.def_id);
-
-        find_format_args(cx, expr, macro_call.expn, |format_args| {
+        if let Some(macro_call) = root_macro_call_first_node(cx, expr)
+            && is_format_macro(cx, macro_call.def_id)
+            && let Some(format_args) = find_format_args(cx, expr, macro_call.expn)
+        {
             for piece in &format_args.template {
                 if let FormatArgsPiece::Placeholder(placeholder) = piece
                     && let Ok(index) = placeholder.argument.index
@@ -206,12 +201,13 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
 
                     if placeholder.format_trait != FormatTrait::Display
                         || placeholder.format_options != FormatOptions::default()
-                        || is_aliased(format_args, index)
+                        || is_aliased(&format_args, index)
                     {
                         continue;
                     }
 
                     if let Ok(arg_hir_expr) = arg_expr {
+                        let name = cx.tcx.item_name(macro_call.def_id);
                         check_format_in_format_args(cx, macro_call.span, name, arg_hir_expr);
                         check_to_string_in_format_args(cx, name, arg_hir_expr);
                     }
@@ -219,9 +215,9 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
             }
 
             if self.msrv.meets(msrvs::FORMAT_ARGS_CAPTURE) {
-                check_uninlined_args(cx, format_args, macro_call.span, macro_call.def_id, self.ignore_mixed);
+                check_uninlined_args(cx, &format_args, macro_call.span, macro_call.def_id, self.ignore_mixed);
             }
-        });
+        }
     }
 
     extract_msrv_attr!(LateContext);

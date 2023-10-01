@@ -10,7 +10,7 @@ bin="$PWD/clang+llvm-16.0.4-x86_64-linux-gnu-ubuntu-22.04/bin"
 git clone https://github.com/WebAssembly/wasi-libc
 
 cd wasi-libc
-git reset --hard 7018e24d8fe248596819d2e884761676f3542a04
+git reset --hard ec4566beae84e54952637f0bf61bee4b4cacc087
 make -j$(nproc) \
     CC="$bin/clang" \
     NM="$bin/llvm-nm" \

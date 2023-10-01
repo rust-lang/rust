@@ -172,7 +172,10 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
     use rustc_target::spec::abi::Abi::*;
     match tcx.sess.target.adjust_abi(abi) {
         RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
-        RustCold => Conv::RustCold,
+
+        // This is intentionally not using `Conv::Cold`, as that has to preserve
+        // even SIMD registers, which is generally not a good trade-off.
+        RustCold => Conv::PreserveMost,
 
         // It's the ABI's job to select this, not ours.
         System { .. } => bug!("system abi should be selected elsewhere"),
@@ -517,6 +520,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
                 _ => return,
             }
+            // `Aggregate` ABI must be adjusted to ensure that ABI-compatible Rust types are passed
+            // the same way.
 
             let size = arg.layout.size;
             if arg.layout.is_unsized() || size > Pointer(AddressSpace::DATA).size(cx) {
@@ -583,19 +588,11 @@ fn make_thin_self_ptr<'tcx>(
         // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
         // get a built-in pointer type
         let mut fat_pointer_layout = layout;
-        'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
-            && !fat_pointer_layout.ty.is_ref()
-        {
-            for i in 0..fat_pointer_layout.fields.count() {
-                let field_layout = fat_pointer_layout.field(cx, i);
-
-                if !field_layout.is_zst() {
-                    fat_pointer_layout = field_layout;
-                    continue 'descend_newtypes;
-                }
-            }
-
-            bug!("receiver has no non-zero-sized fields {:?}", fat_pointer_layout);
+        while !fat_pointer_layout.ty.is_unsafe_ptr() && !fat_pointer_layout.ty.is_ref() {
+            fat_pointer_layout = fat_pointer_layout
+                .non_1zst_field(cx)
+                .expect("not exactly one non-1-ZST field in a `DispatchFromDyn` type")
+                .1
         }
 
         fat_pointer_layout.ty

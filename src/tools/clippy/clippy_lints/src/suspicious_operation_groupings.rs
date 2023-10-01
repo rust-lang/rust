@@ -586,7 +586,7 @@ fn ident_difference_expr_with_base_location(
         | (ForLoop(_, _, _, _), ForLoop(_, _, _, _))
         | (While(_, _, _), While(_, _, _))
         | (If(_, _, _), If(_, _, _))
-        | (Let(_, _, _), Let(_, _, _))
+        | (Let(_, _, _, _), Let(_, _, _, _))
         | (Type(_, _), Type(_, _))
         | (Cast(_, _), Cast(_, _))
         | (Lit(_), Lit(_))

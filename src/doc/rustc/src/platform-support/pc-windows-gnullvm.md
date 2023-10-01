@@ -6,6 +6,7 @@ Windows targets similar to `*-pc-windows-gnu` but using UCRT as the runtime and 
 
 Target triples available so far:
 - `aarch64-pc-windows-gnullvm`
+- `i686-pc-windows-gnullvm`
 - `x86_64-pc-windows-gnullvm`
 
 ## Target maintainers
@@ -42,7 +43,7 @@ Once these targets bootstrap themselves on native hardware they should pass Rust
 
 ## Cross-compilation toolchains and C code
 
-Compatible C code can be built with Clang's `aarch64-pc-windows-gnu` and `x86_64-pc-windows-gnu` targets as long as LLVM based C toolchains are used.
+Compatible C code can be built with Clang's `aarch64-pc-windows-gnu`, `i686-pc-windows-gnullvm` and `x86_64-pc-windows-gnu` targets as long as LLVM based C toolchains are used.
 Those include:
 - [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)
 - [MSYS2 with CLANG* environment](https://www.msys2.org/docs/environments)

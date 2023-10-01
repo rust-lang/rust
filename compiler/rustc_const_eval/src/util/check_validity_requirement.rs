@@ -54,7 +54,7 @@ fn might_permit_raw_init_strict<'tcx>(
 
     if kind == ValidityRequirement::Zero {
         cx.write_bytes_ptr(
-            allocated.ptr,
+            allocated.ptr(),
             std::iter::repeat(0_u8).take(ty.layout.size().bytes_usize()),
         )
         .expect("failed to write bytes for zero valid check");

@@ -21,8 +21,16 @@ impl Lock {
         let lock_type = if exclusive { libc::F_WRLCK } else { libc::F_RDLCK };
 
         let mut flock: libc::flock = unsafe { mem::zeroed() };
-        flock.l_type = lock_type as libc::c_short;
-        flock.l_whence = libc::SEEK_SET as libc::c_short;
+        #[cfg(not(all(target_os = "hurd", target_arch = "x86")))]
+        {
+            flock.l_type = lock_type as libc::c_short;
+            flock.l_whence = libc::SEEK_SET as libc::c_short;
+        }
+        #[cfg(all(target_os = "hurd", target_arch = "x86"))]
+        {
+            flock.l_type = lock_type as libc::c_int;
+            flock.l_whence = libc::SEEK_SET as libc::c_int;
+        }
         flock.l_start = 0;
         flock.l_len = 0;
 
@@ -39,8 +47,16 @@ impl Lock {
 impl Drop for Lock {
     fn drop(&mut self) {
         let mut flock: libc::flock = unsafe { mem::zeroed() };
-        flock.l_type = libc::F_UNLCK as libc::c_short;
-        flock.l_whence = libc::SEEK_SET as libc::c_short;
+        #[cfg(not(all(target_os = "hurd", target_arch = "x86")))]
+        {
+            flock.l_type = libc::F_UNLCK as libc::c_short;
+            flock.l_whence = libc::SEEK_SET as libc::c_short;
+        }
+        #[cfg(all(target_os = "hurd", target_arch = "x86"))]
+        {
+            flock.l_type = libc::F_UNLCK as libc::c_int;
+            flock.l_whence = libc::SEEK_SET as libc::c_int;
+        }
         flock.l_start = 0;
         flock.l_len = 0;
 

@@ -168,6 +168,16 @@ fn basic() {
     let x: u32 = unsafe { std::mem::transmute(42.0_f32) };
     let y: f32 = unsafe { std::mem::transmute(x) };
     assert_eq(y, 42.0_f32);
+
+    // `%` sign behavior, some of this used to be buggy
+    assert!((black_box(1.0f32) % 1.0).is_sign_positive());
+    assert!((black_box(1.0f32) % -1.0).is_sign_positive());
+    assert!((black_box(-1.0f32) % 1.0).is_sign_negative());
+    assert!((black_box(-1.0f32) % -1.0).is_sign_negative());
+    assert!((black_box(1.0f64) % 1.0).is_sign_positive());
+    assert!((black_box(1.0f64) % -1.0).is_sign_positive());
+    assert!((black_box(-1.0f64) % 1.0).is_sign_negative());
+    assert!((black_box(-1.0f64) % -1.0).is_sign_negative());
 }
 
 /// Many of these test values are taken from

@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(clippy::no_effect, clippy::unnecessary_operation, dead_code)]
 #![warn(clippy::cast_lossless)]
 
@@ -50,4 +48,15 @@ mod cast_lossless_in_impl {
 #[repr(i64)]
 enum Test {
     A = u32::MAX as i64 + 1,
+}
+
+fn issue11458() {
+    macro_rules! sign_cast {
+        ($var: ident, $src: ty, $dest: ty) => {
+            <$dest>::from_ne_bytes(($var as $src).to_ne_bytes())
+        };
+    }
+    let x = 10_u128;
+    let _ = sign_cast!(x, u8, i8) as i32;
+    let _ = (sign_cast!(x, u8, i8) + 1) as i32;
 }

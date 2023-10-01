@@ -286,6 +286,10 @@ pub struct TargetMachineFactoryConfig {
     /// so the path to the dwarf object has to be provided when we create the target machine.
     /// This can be ignored by backends which do not need it for their Split DWARF support.
     pub split_dwarf_file: Option<PathBuf>,
+
+    /// The name of the output object file. Used for setting OutputFilenames in target options
+    /// so that LLVM can emit the CodeView S_OBJNAME record in pdb files
+    pub output_obj_file: Option<PathBuf>,
 }
 
 impl TargetMachineFactoryConfig {
@@ -302,7 +306,10 @@ impl TargetMachineFactoryConfig {
         } else {
             None
         };
-        TargetMachineFactoryConfig { split_dwarf_file }
+
+        let output_obj_file =
+            Some(cgcx.output_filenames.temp_path(OutputType::Object, Some(module_name)));
+        TargetMachineFactoryConfig { split_dwarf_file, output_obj_file }
     }
 }
 
@@ -342,6 +349,12 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub target_arch: String,
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
+
+    /// All commandline args used to invoke the compiler, with @file args fully expanded.
+    /// This will only be used within debug info, e.g. in the pdb file on windows
+    /// This is mainly useful for other tools that reads that debuginfo to figure out
+    /// how to call the compiler with the same arguments.
+    pub expanded_args: Vec<String>,
 
     /// Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
@@ -1108,6 +1121,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
+        expanded_args: tcx.sess.expanded_args.clone(),
         diag_emitter: shared_emitter.clone(),
         output_filenames: tcx.output_filenames(()).clone(),
         regular_module_config: regular_config,

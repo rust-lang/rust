@@ -46,8 +46,8 @@ use crate::{
 
 use super::{
     return_slot, AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError,
-    MirSpan, Operand, Place, PlaceElem, ProjectionElem, Rvalue, StatementKind, TerminatorKind,
-    UnOp,
+    MirSpan, Operand, Place, PlaceElem, ProjectionElem, ProjectionStore, Rvalue, StatementKind,
+    TerminatorKind, UnOp,
 };
 
 mod shim;
@@ -215,9 +215,7 @@ impl Interval {
     }
 
     fn write_from_interval(&self, memory: &mut Evaluator<'_>, interval: Interval) -> Result<()> {
-        // FIXME: this could be more efficient
-        let bytes = &interval.get(memory)?.to_vec();
-        memory.write_memory(self.addr, bytes)
+        memory.copy_from_interval(self.addr, interval)
     }
 
     fn slice(self, range: Range<usize>) -> Interval {
@@ -341,7 +339,7 @@ pub enum MirEvalError {
     InvalidVTableId(usize),
     CoerceUnsizedError(Ty),
     LangItemNotFound(LangItem),
-    BrokenLayout(Layout),
+    BrokenLayout(Box<Layout>),
 }
 
 impl MirEvalError {
@@ -410,7 +408,7 @@ impl MirEvalError {
                 err.pretty_print(f, db, span_formatter)?;
             }
             MirEvalError::ConstEvalError(name, err) => {
-                MirLowerError::ConstEvalError(name.clone(), err.clone()).pretty_print(
+                MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
                     f,
                     db,
                     span_formatter,
@@ -485,17 +483,18 @@ struct DropFlags {
 }
 
 impl DropFlags {
-    fn add_place(&mut self, p: Place) {
-        if p.iterate_over_parents().any(|it| self.need_drop.contains(&it)) {
+    fn add_place(&mut self, p: Place, store: &ProjectionStore) {
+        if p.iterate_over_parents(store).any(|it| self.need_drop.contains(&it)) {
             return;
         }
-        self.need_drop.retain(|it| !p.is_parent(it));
+        self.need_drop.retain(|it| !p.is_parent(it, store));
         self.need_drop.insert(p);
     }
 
-    fn remove_place(&mut self, p: &Place) -> bool {
+    fn remove_place(&mut self, p: &Place, store: &ProjectionStore) -> bool {
         // FIXME: replace parents with parts
-        if let Some(parent) = p.iterate_over_parents().find(|it| self.need_drop.contains(&it)) {
+        if let Some(parent) = p.iterate_over_parents(store).find(|it| self.need_drop.contains(&it))
+        {
             self.need_drop.remove(&parent);
             return true;
         }
@@ -656,7 +655,7 @@ impl Evaluator<'_> {
         let mut addr = locals.ptr[p.local].addr;
         let mut ty: Ty = locals.body.locals[p.local].ty.clone();
         let mut metadata: Option<IntervalOrOwned> = None; // locals are always sized
-        for proj in &*p.projection {
+        for proj in p.projection.lookup(&locals.body.projection_store) {
             let prev_ty = ty.clone();
             ty = self.projected_ty(ty, proj.clone());
             match proj {
@@ -837,7 +836,9 @@ impl Evaluator<'_> {
                                 let addr = self.place_addr(l, &locals)?;
                                 let result = self.eval_rvalue(r, &mut locals)?.to_vec(&self)?;
                                 self.write_memory(addr, &result)?;
-                                locals.drop_flags.add_place(l.clone());
+                                locals
+                                    .drop_flags
+                                    .add_place(l.clone(), &locals.body.projection_store);
                             }
                             StatementKind::Deinit(_) => not_supported!("de-init statement"),
                             StatementKind::StorageLive(_)
@@ -889,7 +890,9 @@ impl Evaluator<'_> {
                                 )?,
                                 it => not_supported!("unknown function type {it:?}"),
                             };
-                            locals.drop_flags.add_place(destination.clone());
+                            locals
+                                .drop_flags
+                                .add_place(destination.clone(), &locals.body.projection_store);
                             if let Some(stack_frame) = stack_frame {
                                 self.code_stack.push(my_stack_frame);
                                 current_block_idx = stack_frame.locals.body.start_block;
@@ -970,7 +973,7 @@ impl Evaluator<'_> {
     ) -> Result<()> {
         let mut remain_args = body.param_locals.len();
         for ((l, interval), value) in locals.ptr.iter().skip(1).zip(args) {
-            locals.drop_flags.add_place(l.into());
+            locals.drop_flags.add_place(l.into(), &locals.body.projection_store);
             match value {
                 IntervalOrOwned::Owned(value) => interval.write_from_bytes(self, &value)?,
                 IntervalOrOwned::Borrowed(value) => interval.write_from_interval(self, value)?,
@@ -1629,7 +1632,7 @@ impl Evaluator<'_> {
         if let Some((offset, size, value)) = tag {
             match result.get_mut(offset..offset + size) {
                 Some(it) => it.copy_from_slice(&value.to_le_bytes()[0..size]),
-                None => return Err(MirEvalError::BrokenLayout(variant_layout.clone())),
+                None => return Err(MirEvalError::BrokenLayout(Box::new(variant_layout.clone()))),
             }
         }
         for (i, op) in values.enumerate() {
@@ -1637,7 +1640,7 @@ impl Evaluator<'_> {
             let op = op.get(&self)?;
             match result.get_mut(offset..offset + op.len()) {
                 Some(it) => it.copy_from_slice(op),
-                None => return Err(MirEvalError::BrokenLayout(variant_layout.clone())),
+                None => return Err(MirEvalError::BrokenLayout(Box::new(variant_layout.clone()))),
             }
         }
         Ok(result)
@@ -1646,7 +1649,7 @@ impl Evaluator<'_> {
     fn eval_operand(&mut self, it: &Operand, locals: &mut Locals) -> Result<Interval> {
         Ok(match it {
             Operand::Copy(p) | Operand::Move(p) => {
-                locals.drop_flags.remove_place(p);
+                locals.drop_flags.remove_place(p, &locals.body.projection_store);
                 self.eval_place(p, locals)?
             }
             Operand::Static(st) => {
@@ -1757,6 +1760,48 @@ impl Evaluator<'_> {
             return Ok(());
         }
         self.write_memory_using_ref(addr, r.len())?.copy_from_slice(r);
+        Ok(())
+    }
+
+    fn copy_from_interval(&mut self, addr: Address, r: Interval) -> Result<()> {
+        if r.size == 0 {
+            return Ok(());
+        }
+
+        let oob = || MirEvalError::UndefinedBehavior("out of bounds memory write".to_string());
+
+        match (addr, r.addr) {
+            (Stack(dst), Stack(src)) => {
+                if self.stack.len() < src + r.size || self.stack.len() < dst + r.size {
+                    return Err(oob());
+                }
+                self.stack.copy_within(src..src + r.size, dst)
+            }
+            (Heap(dst), Heap(src)) => {
+                if self.stack.len() < src + r.size || self.stack.len() < dst + r.size {
+                    return Err(oob());
+                }
+                self.heap.copy_within(src..src + r.size, dst)
+            }
+            (Stack(dst), Heap(src)) => {
+                self.stack
+                    .get_mut(dst..dst + r.size)
+                    .ok_or_else(oob)?
+                    .copy_from_slice(self.heap.get(src..src + r.size).ok_or_else(oob)?);
+            }
+            (Heap(dst), Stack(src)) => {
+                self.heap
+                    .get_mut(dst..dst + r.size)
+                    .ok_or_else(oob)?
+                    .copy_from_slice(self.stack.get(src..src + r.size).ok_or_else(oob)?);
+            }
+            _ => {
+                return Err(MirEvalError::UndefinedBehavior(format!(
+                    "invalid memory write at address {addr:?}"
+                )))
+            }
+        }
+
         Ok(())
     }
 
@@ -2468,7 +2513,7 @@ impl Evaluator<'_> {
 
     fn drop_place(&mut self, place: &Place, locals: &mut Locals, span: MirSpan) -> Result<()> {
         let (addr, ty, metadata) = self.place_addr_and_ty_and_metadata(place, locals)?;
-        if !locals.drop_flags.remove_place(place) {
+        if !locals.drop_flags.remove_place(place, &locals.body.projection_store) {
             return Ok(());
         }
         let metadata = match metadata {

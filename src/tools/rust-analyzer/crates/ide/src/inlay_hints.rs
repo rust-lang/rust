@@ -52,6 +52,28 @@ pub struct InlayHintsConfig {
     pub closure_style: ClosureStyle,
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
+    pub fields_to_resolve: InlayFieldsToResolve,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct InlayFieldsToResolve {
+    pub resolve_text_edits: bool,
+    pub resolve_hint_tooltip: bool,
+    pub resolve_label_tooltip: bool,
+    pub resolve_label_location: bool,
+    pub resolve_label_command: bool,
+}
+
+impl InlayFieldsToResolve {
+    pub const fn empty() -> Self {
+        Self {
+            resolve_text_edits: false,
+            resolve_hint_tooltip: false,
+            resolve_label_tooltip: false,
+            resolve_label_location: false,
+            resolve_label_command: false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -123,11 +145,13 @@ pub struct InlayHint {
     pub label: InlayHintLabel,
     /// Text edit to apply when "accepting" this inlay hint.
     pub text_edit: Option<TextEdit>,
+    pub needs_resolve: bool,
 }
 
 impl InlayHint {
     fn closing_paren_after(kind: InlayKind, range: TextRange) -> InlayHint {
         InlayHint {
+            needs_resolve: false,
             range,
             kind,
             label: InlayHintLabel::from(")"),
@@ -139,6 +163,7 @@ impl InlayHint {
     }
     fn opening_paren_before(kind: InlayKind, range: TextRange) -> InlayHint {
         InlayHint {
+            needs_resolve: false,
             range,
             kind,
             label: InlayHintLabel::from("("),
@@ -195,6 +220,10 @@ impl InlayHintLabel {
                 tooltip: None,
             }),
         }
+    }
+
+    pub fn needs_resolve(&self) -> bool {
+        self.parts.iter().any(|part| part.linked_location.is_some() || part.tooltip.is_some())
     }
 }
 
@@ -529,6 +558,7 @@ fn closure_has_block_body(closure: &ast::ClosureExpr) -> bool {
 
 #[cfg(test)]
 mod tests {
+
     use expect_test::Expect;
     use hir::ClosureStyle;
     use itertools::Itertools;
@@ -538,7 +568,7 @@ mod tests {
     use crate::DiscriminantHints;
     use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
-    use super::ClosureReturnTypeHints;
+    use super::{ClosureReturnTypeHints, InlayFieldsToResolve};
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
         discriminant_hints: DiscriminantHints::Never,
@@ -559,6 +589,7 @@ mod tests {
         param_names_for_lifetime_elision_hints: false,
         max_length: None,
         closing_brace_hints_min_lines: None,
+        fields_to_resolve: InlayFieldsToResolve::empty(),
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,

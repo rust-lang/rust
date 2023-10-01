@@ -7,6 +7,7 @@ use rustc_errors::{
     IntoDiagnosticArg,
 };
 use rustc_macros::Diagnostic;
+use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 use rustc_type_ir::FloatTy;
@@ -105,10 +106,6 @@ pub struct IgnoringOutput {
 pub struct CreateTempDir {
     pub error: Error,
 }
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_incompatible_linking_modifiers)]
-pub struct IncompatibleLinkingModifiers;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_add_native_library)]
@@ -561,6 +558,13 @@ pub struct UnknownArchiveKind<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_coverage_symbol)]
+pub struct ExpectedCoverageSymbol {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_expected_used_symbol)]
 pub struct ExpectedUsedSymbol {
     #[primary_span]
@@ -585,20 +589,6 @@ pub struct MetadataObjectFileWrite {
 #[diag(codegen_ssa_invalid_windows_subsystem)]
 pub struct InvalidWindowsSubsystem {
     pub subsystem: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_erroneous_constant)]
-pub struct ErroneousConstant {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_polymorphic_constant_too_generic)]
-pub struct PolymorphicConstantTooGeneric {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1028,6 +1018,15 @@ pub struct TargetFeatureSafeTrait {
     pub span: Span,
     #[label(codegen_ssa_label_def)]
     pub def: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_failed_to_get_layout)]
+pub struct FailedToGetLayout<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub err: LayoutError<'tcx>,
 }
 
 #[derive(Diagnostic)]

@@ -1,19 +1,20 @@
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> $DIR/short_circuit_statement.rs:7:5
+  --> $DIR/short_circuit_statement.rs:5:5
    |
 LL |     f() && g();
    |     ^^^^^^^^^^^ help: replace it with: `if f() { g(); }`
    |
    = note: `-D clippy::short-circuit-statement` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::short_circuit_statement)]`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> $DIR/short_circuit_statement.rs:8:5
+  --> $DIR/short_circuit_statement.rs:6:5
    |
 LL |     f() || g();
    |     ^^^^^^^^^^^ help: replace it with: `if !f() { g(); }`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> $DIR/short_circuit_statement.rs:9:5
+  --> $DIR/short_circuit_statement.rs:7:5
    |
 LL |     1 == 2 || g();
    |     ^^^^^^^^^^^^^^ help: replace it with: `if 1 != 2 { g(); }`

@@ -79,3 +79,9 @@ impl<'a> FromIterator<&'a str> for SmallCStr {
         Self { data }
     }
 }
+
+impl From<&ffi::CStr> for SmallCStr {
+    fn from(s: &ffi::CStr) -> Self {
+        Self { data: SmallVec::from_slice(s.to_bytes()) }
+    }
+}

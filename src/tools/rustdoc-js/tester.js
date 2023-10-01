@@ -23,7 +23,9 @@ function contentToDiffLine(key, value) {
 }
 
 function shouldIgnoreField(fieldName) {
-    return fieldName === "query" || fieldName === "correction";
+    return fieldName === "query" || fieldName === "correction" ||
+        fieldName === "proposeCorrectionFrom" ||
+        fieldName === "proposeCorrectionTo";
 }
 
 // This function is only called when no matching result was found and therefore will only display

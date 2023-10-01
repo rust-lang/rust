@@ -61,8 +61,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(param_env, cid, span)
             }
-            Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(err) => Err(ErrorHandled::Reported(err.into())),
+            // For errors during resolution, we deliberately do not point at the usage site of the constant,
+            // since for these errors the place the constant is used shouldn't matter.
+            Ok(None) => Err(ErrorHandled::TooGeneric(DUMMY_SP)),
+            Err(err) => Err(ErrorHandled::Reported(err.into(), DUMMY_SP)),
         }
     }
 
@@ -117,8 +119,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 })
             }
-            Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(err) => Err(ErrorHandled::Reported(err.into())),
+            // For errors during resolution, we deliberately do not point at the usage site of the constant,
+            // since for these errors the place the constant is used shouldn't matter.
+            Ok(None) => Err(ErrorHandled::TooGeneric(DUMMY_SP)),
+            Err(err) => Err(ErrorHandled::Reported(err.into(), DUMMY_SP)),
         }
     }
 
@@ -143,7 +147,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // improve caching of queries.
         let inputs = self.erase_regions(param_env.and(cid));
         if let Some(span) = span {
-            self.at(span).eval_to_const_value_raw(inputs)
+            // The query doesn't know where it is being invoked, so we need to fix the span.
+            self.at(span).eval_to_const_value_raw(inputs).map_err(|e| e.with_span(span))
         } else {
             self.eval_to_const_value_raw(inputs)
         }
@@ -162,7 +167,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let inputs = self.erase_regions(param_env.and(cid));
         debug!(?inputs);
         if let Some(span) = span {
-            self.at(span).eval_to_valtree(inputs)
+            // The query doesn't know where it is being invoked, so we need to fix the span.
+            self.at(span).eval_to_valtree(inputs).map_err(|e| e.with_span(span))
         } else {
             self.eval_to_valtree(inputs)
         }

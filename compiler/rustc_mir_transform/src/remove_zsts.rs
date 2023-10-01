@@ -1,7 +1,6 @@
 //! Removes operations on ZST places, and convert ZST operands to constants.
 
 use crate::MirPass;
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -63,12 +62,12 @@ impl<'tcx> Replacer<'_, 'tcx> {
         layout.is_zst()
     }
 
-    fn make_zst(&self, ty: Ty<'tcx>) -> Constant<'tcx> {
+    fn make_zst(&self, ty: Ty<'tcx>) -> ConstOperand<'tcx> {
         debug_assert!(self.known_to_be_zst(ty));
-        Constant {
+        ConstOperand {
             span: rustc_span::DUMMY_SP,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::ZeroSized, ty),
+            const_: Const::Val(ConstValue::ZeroSized, ty),
         }
     }
 }
@@ -85,11 +84,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
                 let place_ty = place.ty(self.local_decls, self.tcx).ty;
                 if self.known_to_be_zst(place_ty) {
                     var_debug_info.value = VarDebugInfoContents::Const(self.make_zst(place_ty))
-                }
-            }
-            VarDebugInfoContents::Composite { ty, fragments: _ } => {
-                if self.known_to_be_zst(ty) {
-                    var_debug_info.value = VarDebugInfoContents::Const(self.make_zst(ty))
                 }
             }
         }

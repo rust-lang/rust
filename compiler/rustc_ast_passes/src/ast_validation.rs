@@ -14,14 +14,12 @@ use rustc_ast::{walk_list, StaticItem};
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_feature::Features;
-use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
@@ -69,9 +67,6 @@ struct AstValidator<'a> {
     /// or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
 
-    /// See [ForbiddenLetReason]
-    forbidden_let_reason: Option<ForbiddenLetReason>,
-
     lint_buffer: &'a mut LintBuffer,
 }
 
@@ -116,26 +111,6 @@ impl<'a> AstValidator<'a> {
         f: impl FnOnce(&mut Self),
     ) {
         self.with_tilde_const(Some(ctx), f)
-    }
-
-    fn with_let_management(
-        &mut self,
-        forbidden_let_reason: Option<ForbiddenLetReason>,
-        f: impl FnOnce(&mut Self, Option<ForbiddenLetReason>),
-    ) {
-        let old = mem::replace(&mut self.forbidden_let_reason, forbidden_let_reason);
-        f(self, old);
-        self.forbidden_let_reason = old;
-    }
-
-    /// Emits an error banning the `let` expression provided in the given location.
-    fn ban_let_expr(&self, expr: &'a Expr, forbidden_let_reason: ForbiddenLetReason) {
-        let sess = &self.session;
-        if sess.opts.unstable_features.is_nightly_build() {
-            sess.emit_err(errors::ForbiddenLet { span: expr.span, reason: forbidden_let_reason });
-        } else {
-            sess.emit_err(errors::ForbiddenLetStable { span: expr.span });
-        }
     }
 
     fn check_type_alias_where_clause_location(
@@ -777,67 +752,6 @@ fn validate_generic_param_order(
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
         validate_attr::check_attr(&self.session.parse_sess, attr);
-    }
-
-    fn visit_expr(&mut self, expr: &'a Expr) {
-        self.with_let_management(Some(ForbiddenLetReason::GenericForbidden), |this, forbidden_let_reason| {
-            match &expr.kind {
-                ExprKind::Binary(Spanned { node: BinOpKind::Or, span }, lhs, rhs) => {
-                    let local_reason = Some(ForbiddenLetReason::NotSupportedOr(*span));
-                    this.with_let_management(local_reason, |this, _| this.visit_expr(lhs));
-                    this.with_let_management(local_reason, |this, _| this.visit_expr(rhs));
-                }
-                ExprKind::If(cond, then, opt_else) => {
-                    this.visit_block(then);
-                    walk_list!(this, visit_expr, opt_else);
-                    this.with_let_management(None, |this, _| this.visit_expr(cond));
-                    return;
-                }
-                ExprKind::Let(..) if let Some(elem) = forbidden_let_reason => {
-                    this.ban_let_expr(expr, elem);
-                },
-                ExprKind::Match(scrutinee, arms) => {
-                    this.visit_expr(scrutinee);
-                    for arm in arms {
-                        this.visit_expr(&arm.body);
-                        this.visit_pat(&arm.pat);
-                        walk_list!(this, visit_attribute, &arm.attrs);
-                        if let Some(guard) = &arm.guard {
-                            this.with_let_management(None, |this, _| {
-                                this.visit_expr(guard)
-                            });
-                        }
-                    }
-                }
-                ExprKind::Paren(local_expr) => {
-                    fn has_let_expr(expr: &Expr) -> bool {
-                        match &expr.kind {
-                            ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
-                            ExprKind::Let(..) => true,
-                            _ => false,
-                        }
-                    }
-                    let local_reason = if has_let_expr(local_expr) {
-                        Some(ForbiddenLetReason::NotSupportedParentheses(local_expr.span))
-                    }
-                    else {
-                        forbidden_let_reason
-                    };
-                    this.with_let_management(local_reason, |this, _| this.visit_expr(local_expr));
-                }
-                ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
-                    this.with_let_management(forbidden_let_reason, |this, _| visit::walk_expr(this, expr));
-                    return;
-                }
-                ExprKind::While(cond, then, opt_label) => {
-                    walk_list!(this, visit_label, opt_label);
-                    this.visit_block(then);
-                    this.with_let_management(None, |this, _| this.visit_expr(cond));
-                    return;
-                }
-                _ => visit::walk_expr(this, expr),
-            }
-        });
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -1601,26 +1515,9 @@ pub fn check_crate(
         outer_impl_trait: None,
         disallow_tilde_const: None,
         is_impl_trait_banned: false,
-        forbidden_let_reason: Some(ForbiddenLetReason::GenericForbidden),
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);
 
     validator.has_proc_macro_decls
-}
-
-/// Used to forbid `let` expressions in certain syntactic locations.
-#[derive(Clone, Copy, Subdiagnostic)]
-pub(crate) enum ForbiddenLetReason {
-    /// `let` is not valid and the source environment is not important
-    GenericForbidden,
-    /// A let chain with the `||` operator
-    #[note(ast_passes_not_supported_or)]
-    NotSupportedOr(#[primary_span] Span),
-    /// A let chain with invalid parentheses
-    ///
-    /// For example, `let 1 = 1 && (expr && expr)` is allowed
-    /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
-    #[note(ast_passes_not_supported_parentheses)]
-    NotSupportedParentheses(#[primary_span] Span),
 }

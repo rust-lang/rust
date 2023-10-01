@@ -24,12 +24,10 @@ LL | fn with_trait<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
    |                               ++++++++++++++++
 
 error[E0277]: the trait bound `dyn CompareToInts: CompareTo<i32>` is not satisfied
-  --> $DIR/repeated-supertrait-ambig.rs:34:37
+  --> $DIR/repeated-supertrait-ambig.rs:34:6
    |
 LL |     <dyn CompareToInts>::same_as(c, 22)
-   |     ----------------------------    ^^ the trait `CompareTo<i32>` is not implemented for `dyn CompareToInts`
-   |     |
-   |     required by a bound introduced by this call
+   |      ^^^^^^^^^^^^^^^^^ the trait `CompareTo<i32>` is not implemented for `dyn CompareToInts`
    |
    = help: the following other types implement trait `CompareTo<T>`:
              <i64 as CompareTo<i64>>

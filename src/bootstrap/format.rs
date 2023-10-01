@@ -127,8 +127,6 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         Err(_) => false,
     };
 
-    let mut paths = paths.to_vec();
-
     if git_available {
         let in_working_tree = match build
             .config
@@ -201,8 +199,6 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                             "WARN: Something went wrong when running git commands:\n{err}\n\
                             Falling back to formatting all files."
                         );
-                        // Something went wrong when getting the version. Just format all the files.
-                        paths.push(".".into());
                     }
                 }
             }

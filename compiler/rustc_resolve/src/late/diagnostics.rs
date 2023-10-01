@@ -41,7 +41,7 @@ type Res = def::Res<ast::NodeId>;
 
 /// A field or associated item from self type suggested in case of resolution failure.
 enum AssocSuggestion {
-    Field,
+    Field(Span),
     MethodWithSelf { called: bool },
     AssocFn { called: bool },
     AssocType,
@@ -51,7 +51,7 @@ enum AssocSuggestion {
 impl AssocSuggestion {
     fn action(&self) -> &'static str {
         match self {
-            AssocSuggestion::Field => "use the available field",
+            AssocSuggestion::Field(_) => "use the available field",
             AssocSuggestion::MethodWithSelf { called: true } => {
                 "call the method with the fully-qualified path"
             }
@@ -186,7 +186,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 fallback_label: format!("not a {expected}"),
                 span,
                 span_label: match res {
-                    Res::Def(kind, def_id) if kind == DefKind::TyParam => {
+                    Res::Def(DefKind::TyParam, def_id) => {
                         Some((self.r.def_span(def_id), "found this type parameter"))
                     }
                     _ => None,
@@ -214,7 +214,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 module: None,
             }
         } else {
-            let item_span = path.last().unwrap().ident.span;
+            let mut span_label = None;
+            let item_ident = path.last().unwrap().ident;
+            let item_span = item_ident.span;
             let (mod_prefix, mod_str, module, suggestion) = if path.len() == 1 {
                 debug!(?self.diagnostic_metadata.current_impl_items);
                 debug!(?self.diagnostic_metadata.current_function);
@@ -224,32 +226,75 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     && let FnKind::Fn(_, _, sig, ..) = fn_kind
                     && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        if let AssocItemKind::Fn(..) | AssocItemKind::Const(..) = &i.kind
-                            && i.ident.name == item_str.name
-                            // don't suggest if the item is in Fn signature arguments
-                            // issue #112590
+                        i.ident.name == item_str.name
+                            // Don't suggest if the item is in Fn signature arguments (#112590).
                             && !sig.span.contains(item_span)
-                        {
-                            debug!(?item_str.name);
-                            return true
-                        }
-                        false
                     })
                 {
-                    let self_sugg = match &item.kind {
-                        AssocItemKind::Fn(fn_) if fn_.sig.decl.has_self() => "self.",
-                        _ => "Self::",
+                    let sp = item_span.shrink_to_lo();
+
+                    // Account for `Foo { field }` when suggesting `self.field` so we result on
+                    // `Foo { field: self.field }`.
+                    let field = match source {
+                        PathSource::Expr(Some(Expr { kind: ExprKind::Struct(expr), .. })) => {
+                            expr.fields.iter().find(|f| f.ident == item_ident)
+                        }
+                        _ => None,
+                    };
+                    let pre = if let Some(field) = field && field.is_shorthand {
+                        format!("{item_ident}: ")
+                    } else {
+                        String::new()
+                    };
+                    // Ensure we provide a structured suggestion for an assoc fn only for
+                    // expressions that are actually a fn call.
+                    let is_call = match field {
+                        Some(ast::ExprField { expr, .. }) => {
+                            matches!(expr.kind, ExprKind::Call(..))
+                        }
+                        _ => matches!(
+                            source,
+                            PathSource::Expr(Some(Expr { kind: ExprKind::Call(..), ..})),
+                        ),
                     };
 
-                    Some((
-                        item_span.shrink_to_lo(),
-                        match &item.kind {
-                            AssocItemKind::Fn(..) => "consider using the associated function",
-                            AssocItemKind::Const(..) => "consider using the associated constant",
-                            _ => unreachable!("item kind was filtered above"),
-                        },
-                        self_sugg.to_string()
-                    ))
+                    match &item.kind {
+                        AssocItemKind::Fn(fn_)
+                        if (!sig.decl.has_self() || !is_call) && fn_.sig.decl.has_self() => {
+                            // Ensure that we only suggest `self.` if `self` is available,
+                            // you can't call `fn foo(&self)` from `fn bar()` (#115992).
+                            // We also want to mention that the method exists.
+                            span_label = Some((
+                                item.ident.span,
+                                "a method by that name is available on `Self` here",
+                            ));
+                            None
+                        }
+                        AssocItemKind::Fn(fn_)
+                        if !fn_.sig.decl.has_self() && !is_call => {
+                            span_label = Some((
+                                item.ident.span,
+                                "an associated function by that name is available on `Self` here",
+                            ));
+                            None
+                        }
+                        AssocItemKind::Fn(fn_) if fn_.sig.decl.has_self() => Some((
+                            sp,
+                            "consider using the method on `Self`",
+                            format!("{pre}self."),
+                        )),
+                        AssocItemKind::Fn(_) => Some((
+                            sp,
+                            "consider using the associated function on `Self`",
+                            format!("{pre}Self::"),
+                        )),
+                        AssocItemKind::Const(..) => Some((
+                            sp,
+                            "consider using the associated constant on `Self`",
+                            format!("{pre}Self::"),
+                        )),
+                        _ => None
+                    }
                 } else {
                     None
                 };
@@ -314,7 +359,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
                 fallback_label,
                 span: item_span,
-                span_label: None,
+                span_label,
                 could_be_expr: false,
                 suggestion,
                 module,
@@ -611,17 +656,30 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 self.lookup_assoc_candidate(ident, ns, is_expected, source.is_call())
             {
                 let self_is_available = self.self_value_is_available(path[0].ident.span);
+                // Account for `Foo { field }` when suggesting `self.field` so we result on
+                // `Foo { field: self.field }`.
+                let pre = match source {
+                    PathSource::Expr(Some(Expr { kind: ExprKind::Struct(expr), .. }))
+                        if expr
+                            .fields
+                            .iter()
+                            .any(|f| f.ident == path[0].ident && f.is_shorthand) =>
+                    {
+                        format!("{path_str}: ")
+                    }
+                    _ => String::new(),
+                };
                 match candidate {
-                    AssocSuggestion::Field => {
+                    AssocSuggestion::Field(field_span) => {
                         if self_is_available {
-                            err.span_suggestion(
-                                span,
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
                                 "you might have meant to use the available field",
-                                format!("self.{path_str}"),
+                                format!("{pre}self."),
                                 Applicability::MachineApplicable,
                             );
                         } else {
-                            err.span_label(span, "a field by this name exists in `Self`");
+                            err.span_label(field_span, "a field by that name exists in `Self`");
                         }
                     }
                     AssocSuggestion::MethodWithSelf { called } if self_is_available => {
@@ -630,10 +688,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         } else {
                             "you might have meant to refer to the method"
                         };
-                        err.span_suggestion(
-                            span,
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
                             msg,
-                            format!("self.{path_str}"),
+                            "self.".to_string(),
                             Applicability::MachineApplicable,
                         );
                     }
@@ -641,10 +699,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     | AssocSuggestion::AssocFn { .. }
                     | AssocSuggestion::AssocConst
                     | AssocSuggestion::AssocType => {
-                        err.span_suggestion(
-                            span,
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
                             format!("you might have meant to {}", candidate.action()),
-                            format!("Self::{path_str}"),
+                            "Self::".to_string(),
                             Applicability::MachineApplicable,
                         );
                     }
@@ -1419,7 +1477,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
                 err.span_label(span, fallback_label.to_string());
             }
-            (Res::Def(DefKind::TyAlias { .. }, def_id), PathSource::Trait(_)) => {
+            (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
                 if self.r.tcx.sess.is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
@@ -1588,7 +1646,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 err.span_label(span, fallback_label.to_string());
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
-            (Res::Def(DefKind::TyAlias { .. } | DefKind::AssocTy, _), _) if ns == ValueNS => {
+            (Res::Def(DefKind::TyAlias | DefKind::AssocTy, _), _) if ns == ValueNS => {
                 err.note("can't use a type alias as a constructor");
             }
             _ => return false,
@@ -1657,11 +1715,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         resolution.full_res()
                     {
                         if let Some(field_ids) = self.r.field_def_ids(did) {
-                            if field_ids
+                            if let Some(field_id) = field_ids
                                 .iter()
-                                .any(|&field_id| ident.name == self.r.tcx.item_name(field_id))
+                                .find(|&&field_id| ident.name == self.r.tcx.item_name(field_id))
                             {
-                                return Some(AssocSuggestion::Field);
+                                return Some(AssocSuggestion::Field(self.r.def_span(*field_id)));
                             }
                         }
                     }

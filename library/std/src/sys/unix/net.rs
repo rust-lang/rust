@@ -75,6 +75,7 @@ impl Socket {
                     target_os = "dragonfly",
                     target_os = "freebsd",
                     target_os = "illumos",
+                    target_os = "hurd",
                     target_os = "linux",
                     target_os = "netbsd",
                     target_os = "openbsd",
@@ -102,7 +103,7 @@ impl Socket {
         }
     }
 
-    #[cfg(not(target_os = "vxworks"))]
+    #[cfg(not(any(target_os = "vxworks", target_os = "vita")))]
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
@@ -114,6 +115,7 @@ impl Socket {
                     target_os = "freebsd",
                     target_os = "illumos",
                     target_os = "linux",
+                    target_os = "hurd",
                     target_os = "netbsd",
                     target_os = "openbsd",
                     target_os = "nto",
@@ -133,7 +135,7 @@ impl Socket {
         }
     }
 
-    #[cfg(target_os = "vxworks")]
+    #[cfg(any(target_os = "vxworks", target_os = "vita"))]
     pub fn new_pair(_fam: c_int, _ty: c_int) -> io::Result<(Socket, Socket)> {
         unimplemented!()
     }
@@ -184,7 +186,7 @@ impl Socket {
             match unsafe { libc::poll(&mut pollfd, 1, timeout) } {
                 -1 => {
                     let err = io::Error::last_os_error();
-                    if err.kind() != io::ErrorKind::Interrupted {
+                    if !err.is_interrupted() {
                         return Err(err);
                     }
                 }
@@ -220,6 +222,7 @@ impl Socket {
                 target_os = "freebsd",
                 target_os = "illumos",
                 target_os = "linux",
+                target_os = "hurd",
                 target_os = "netbsd",
                 target_os = "openbsd",
             ))] {

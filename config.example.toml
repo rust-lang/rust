@@ -294,9 +294,11 @@ changelog-seen = 2
 
 # Enable a build of the extended Rust tool set which is not only the compiler
 # but also tools such as Cargo. This will also produce "combined installers"
-# which are used to install Rust and Cargo together. This is disabled by
-# default. The `tools` option (immediately below) specifies which tools should
-# be built if `extended = true`.
+# which are used to install Rust and Cargo together.
+# The `tools` (check `config.example.toml` to see its default value) option specifies
+# which tools should be built if `extended = true`.
+#
+# This is disabled by default.
 #extended = false
 
 # Set of tools to be included in the installation.
@@ -456,7 +458,6 @@ changelog-seen = 2
 # Sets the number of codegen units to build the standard library with,
 # regardless of what the codegen-unit setting for the rest of the compiler is.
 # NOTE: building with anything other than 1 is known to occasionally have bugs.
-# See https://github.com/rust-lang/rust/issues/83600.
 #codegen-units-std = codegen-units
 
 # Whether or not debug assertions are enabled for the compiler and standard library.

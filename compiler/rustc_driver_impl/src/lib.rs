@@ -7,7 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(lazy_cell)]
 #![feature(decl_macro)]
-#![feature(ice_to_disk)]
+#![feature(panic_update_hook)]
 #![feature(let_chains)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
@@ -50,9 +50,9 @@ use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
 use std::fmt::Write as _;
-use std::fs;
+use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, catch_unwind};
+use std::panic::{self, catch_unwind, PanicInfo};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
@@ -85,6 +85,15 @@ pub mod pretty;
 #[macro_use]
 mod print;
 mod session_diagnostics;
+#[cfg(all(unix, any(target_env = "gnu", target_os = "macos")))]
+mod signal_handler;
+
+#[cfg(not(all(unix, any(target_env = "gnu", target_os = "macos"))))]
+mod signal_handler {
+    /// On platforms which don't support our signal handler's requirements,
+    /// simply use the default signal handler provided by std.
+    pub(super) fn install() {}
+}
 
 use crate::session_diagnostics::{
     RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
@@ -153,9 +162,10 @@ pub fn abort_on_err<T>(result: Result<T, ErrorGuaranteed>, sess: &Session) -> T 
 pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
-    /// Called after parsing. Return value instructs the compiler whether to
+    /// Called after parsing the crate root. Submodules are not yet parsed when
+    /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    fn after_parsing<'tcx>(
+    fn after_crate_root_parsing<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
         _queries: &'tcx Queries<'tcx>,
@@ -175,7 +185,6 @@ pub trait Callbacks {
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_analysis<'tcx>(
         &mut self,
-        _handler: &EarlyErrorHandler,
         _compiler: &interface::Compiler,
         _queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
@@ -304,6 +313,7 @@ fn run_compiler(
         override_queries: None,
         make_codegen_backend,
         registry: diagnostics_registry(),
+        expanded_args: args,
     };
 
     match make_input(&early_error_handler, &matches.free) {
@@ -397,7 +407,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if callbacks.after_parsing(compiler, queries) == Compilation::Stop {
+            if callbacks.after_crate_root_parsing(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
 
@@ -435,7 +445,7 @@ fn run_compiler(
 
             queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
 
-            if callbacks.after_analysis(&handler, compiler, queries) == Compilation::Stop {
+            if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
 
@@ -690,12 +700,14 @@ pub fn list_metadata(
     sess: &Session,
     metadata_loader: &dyn MetadataLoader,
 ) -> Compilation {
-    if sess.opts.unstable_opts.ls {
+    let ls_kinds = &sess.opts.unstable_opts.ls;
+    if !ls_kinds.is_empty() {
         match sess.io.input {
             Input::File(ref ifile) => {
                 let path = &(*ifile);
                 let mut v = Vec::new();
-                locator::list_file_metadata(&sess.target, path, metadata_loader, &mut v).unwrap();
+                locator::list_file_metadata(&sess.target, path, metadata_loader, &mut v, ls_kinds)
+                    .unwrap();
                 safe_println!("{}", String::from_utf8(v).unwrap());
             }
             Input::Str { .. } => {
@@ -852,11 +864,9 @@ fn print_crate_info(
                 use rustc_target::spec::current_apple_deployment_target;
 
                 if sess.target.is_like_osx {
-                    println_info!(
-                        "deployment_target={}",
-                        current_apple_deployment_target(&sess.target)
-                            .expect("unknown Apple target OS")
-                    )
+                    let (major, minor) = current_apple_deployment_target(&sess.target)
+                        .expect("unknown Apple target OS");
+                    println_info!("deployment_target={}", format!("{major}.{minor}"))
                 } else {
                     handler
                         .early_error("only Apple targets currently support deployment version info")
@@ -1316,31 +1326,59 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         std::env::set_var("RUST_BACKTRACE", "full");
     }
 
-    panic::set_hook(Box::new(move |info| {
-        // If the error was caused by a broken pipe then this is not a bug.
-        // Write the error and return immediately. See #98700.
-        #[cfg(windows)]
-        if let Some(msg) = info.payload().downcast_ref::<String>() {
-            if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)") {
-                // the error code is already going to be reported when the panic unwinds up the stack
-                let handler = EarlyErrorHandler::new(ErrorOutputType::default());
-                let _ = handler.early_error_no_abort(msg.clone());
-                return;
+    panic::update_hook(Box::new(
+        move |default_hook: &(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static),
+              info: &PanicInfo<'_>| {
+            // If the error was caused by a broken pipe then this is not a bug.
+            // Write the error and return immediately. See #98700.
+            #[cfg(windows)]
+            if let Some(msg) = info.payload().downcast_ref::<String>() {
+                if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
+                {
+                    // the error code is already going to be reported when the panic unwinds up the stack
+                    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+                    let _ = handler.early_error_no_abort(msg.clone());
+                    return;
+                }
+            };
+
+            // Invoke the default handler, which prints the actual panic message and optionally a backtrace
+            // Don't do this for delayed bugs, which already emit their own more useful backtrace.
+            if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
+                default_hook(info);
+                // Separate the output with an empty line
+                eprintln!();
+
+                if let Some(ice_path) = ice_path()
+                    && let Ok(mut out) =
+                        File::options().create(true).append(true).open(&ice_path)
+                {
+                    // The current implementation always returns `Some`.
+                    let location = info.location().unwrap();
+                    let msg = match info.payload().downcast_ref::<&'static str>() {
+                        Some(s) => *s,
+                        None => match info.payload().downcast_ref::<String>() {
+                            Some(s) => &s[..],
+                            None => "Box<dyn Any>",
+                        },
+                    };
+                    let thread = std::thread::current();
+                    let name = thread.name().unwrap_or("<unnamed>");
+                    let _ = write!(
+                        &mut out,
+                        "thread '{name}' panicked at {location}:\n\
+                        {msg}\n\
+                        stack backtrace:\n\
+                        {:#}",
+                        std::backtrace::Backtrace::force_capture()
+                    );
+                }
             }
-        };
 
-        // Invoke the default handler, which prints the actual panic message and optionally a backtrace
-        // Don't do this for delayed bugs, which already emit their own more useful backtrace.
-        if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
-            std::panic_hook_with_disk_dump(info, ice_path().as_deref());
-
-            // Separate the output with an empty line
-            eprintln!();
-        }
-
-        // Print the ICE message
-        report_ice(info, bug_report_url, extra_info);
-    }));
+            // Print the ICE message
+            report_ice(info, bug_report_url, extra_info);
+        },
+    ));
 }
 
 /// Prints the ICE message, including query stack, but without backtrace.
@@ -1440,72 +1478,6 @@ pub fn init_env_logger(handler: &EarlyErrorHandler, env: &str) {
     if let Err(error) = rustc_log::init_env_logger(env) {
         handler.early_error(error.to_string());
     }
-}
-
-#[cfg(all(unix, any(target_env = "gnu", target_os = "macos")))]
-mod signal_handler {
-    extern "C" {
-        fn backtrace_symbols_fd(
-            buffer: *const *mut libc::c_void,
-            size: libc::c_int,
-            fd: libc::c_int,
-        );
-    }
-
-    extern "C" fn print_stack_trace(_: libc::c_int) {
-        const MAX_FRAMES: usize = 256;
-        static mut STACK_TRACE: [*mut libc::c_void; MAX_FRAMES] =
-            [std::ptr::null_mut(); MAX_FRAMES];
-        unsafe {
-            let depth = libc::backtrace(STACK_TRACE.as_mut_ptr(), MAX_FRAMES as i32);
-            if depth == 0 {
-                return;
-            }
-            backtrace_symbols_fd(STACK_TRACE.as_ptr(), depth, 2);
-        }
-    }
-
-    /// When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
-    /// process, print a stack trace and then exit.
-    pub(super) fn install() {
-        use std::alloc::{alloc, Layout};
-
-        unsafe {
-            let alt_stack_size: usize = min_sigstack_size() + 64 * 1024;
-            let mut alt_stack: libc::stack_t = std::mem::zeroed();
-            alt_stack.ss_sp = alloc(Layout::from_size_align(alt_stack_size, 1).unwrap()).cast();
-            alt_stack.ss_size = alt_stack_size;
-            libc::sigaltstack(&alt_stack, std::ptr::null_mut());
-
-            let mut sa: libc::sigaction = std::mem::zeroed();
-            sa.sa_sigaction = print_stack_trace as libc::sighandler_t;
-            sa.sa_flags = libc::SA_NODEFER | libc::SA_RESETHAND | libc::SA_ONSTACK;
-            libc::sigemptyset(&mut sa.sa_mask);
-            libc::sigaction(libc::SIGSEGV, &sa, std::ptr::null_mut());
-        }
-    }
-
-    /// Modern kernels on modern hardware can have dynamic signal stack sizes.
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    fn min_sigstack_size() -> usize {
-        const AT_MINSIGSTKSZ: core::ffi::c_ulong = 51;
-        let dynamic_sigstksz = unsafe { libc::getauxval(AT_MINSIGSTKSZ) };
-        // If getauxval couldn't find the entry, it returns 0,
-        // so take the higher of the "constant" and auxval.
-        // This transparently supports older kernels which don't provide AT_MINSIGSTKSZ
-        libc::MINSIGSTKSZ.max(dynamic_sigstksz as _)
-    }
-
-    /// Not all OS support hardware where this is needed.
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    fn min_sigstack_size() -> usize {
-        libc::MINSIGSTKSZ
-    }
-}
-
-#[cfg(not(all(unix, any(target_env = "gnu", target_os = "macos"))))]
-mod signal_handler {
-    pub(super) fn install() {}
 }
 
 pub fn main() -> ! {

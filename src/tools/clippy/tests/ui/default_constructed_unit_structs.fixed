@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused)]
 #![warn(clippy::default_constructed_unit_structs)]
 use std::marker::PhantomData;

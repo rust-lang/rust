@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::enum_glob_use)]
 #![allow(unused)]
 #![warn(unused_imports)]

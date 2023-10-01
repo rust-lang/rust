@@ -5,6 +5,7 @@ LL | #[cfg(all())]
    |       ^^^^^
    |
    = note: `-D clippy::non-minimal-cfg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_minimal_cfg)]`
 
 error: aborting due to previous error
 

@@ -4,7 +4,7 @@ error: this argument must be a function item
 LL |     const_eval_select((), || {}, || {});
    |                           ^^^^^
    |
-   = note: expected a function item, found [closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]
+   = note: expected a function item, found {closure@$DIR/const-eval-select-bad.rs:7:27: 7:29}
    = help: consult the documentation on `const_eval_select` for more information
 
 error: this argument must be a function item
@@ -13,7 +13,7 @@ error: this argument must be a function item
 LL |     const_eval_select((), || {}, || {});
    |                                  ^^^^^
    |
-   = note: expected a function item, found [closure@$DIR/const-eval-select-bad.rs:7:34: 7:36]
+   = note: expected a function item, found {closure@$DIR/const-eval-select-bad.rs:7:34: 7:36}
    = help: consult the documentation on `const_eval_select` for more information
 
 error: this argument must be a function item

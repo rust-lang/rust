@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(dead_code, clippy::double_parens, clippy::unnecessary_cast)]
 #![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
 

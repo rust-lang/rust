@@ -6,6 +6,7 @@ use rustc_errors::{
     Applicability, Diagnostic, Handler, LazyFallbackBundle,
 };
 use rustc_parse::parse_stream_from_source_str;
+use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -14,13 +15,14 @@ use rustc_span::{FileName, InnerSpan, DUMMY_SP};
 use crate::clean;
 use crate::core::DocContext;
 use crate::html::markdown::{self, RustCodeBlock};
-use crate::passes::source_span_for_markdown_range;
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item) {
     if let Some(dox) = &item.opt_doc_value() {
         let sp = item.attr_span(cx.tcx);
         let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, item.item_id.expect_def_id(), sp);
-        for code_block in markdown::rust_code_blocks(dox, &extra) {
+        for code_block in
+            markdown::rust_code_blocks(dox, &extra, cx.tcx.features().custom_code_classes_in_docs)
+        {
             check_rust_syntax(cx, item, dox, code_block);
         }
     }
@@ -77,11 +79,15 @@ fn check_rust_syntax(
     let is_ignore = code_block.lang_string.ignore != markdown::Ignore::None;
 
     // The span and whether it is precise or not.
-    let (sp, precise_span) =
-        match source_span_for_markdown_range(cx.tcx, dox, &code_block.range, &item.attrs) {
-            Some(sp) => (sp, true),
-            None => (item.attr_span(cx.tcx), false),
-        };
+    let (sp, precise_span) = match source_span_for_markdown_range(
+        cx.tcx,
+        dox,
+        &code_block.range,
+        &item.attrs.doc_strings,
+    ) {
+        Some(sp) => (sp, true),
+        None => (item.attr_span(cx.tcx), false),
+    };
 
     let msg = if buffer.has_errors {
         "could not parse code block as Rust code"

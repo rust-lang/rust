@@ -33,9 +33,3 @@ pub struct Foo;
 impl Foo {
     pub fn method<'a>(_x: impl Clone + Into<Vec<u8>> + 'a) {}
 }
-
-pub struct Bar;
-
-impl Bar {
-    pub async fn async_foo(&self) {}
-}

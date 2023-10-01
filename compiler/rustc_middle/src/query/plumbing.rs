@@ -19,7 +19,7 @@ use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use std::ops::Deref;
 
 pub struct QueryKeyStringCache {
@@ -37,7 +37,7 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub eval_always: bool,
     pub dep_kind: DepKind,
     pub handle_cycle_error: HandleCycleError,
-    pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key, DepKind>>,
+    pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key>>,
     pub query_cache: FieldOffset<QueryCaches<'tcx>, C>,
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
@@ -52,7 +52,8 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub loadable_from_disk:
         fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
     pub hash_result: HashResult<C::Value>,
-    pub value_from_cycle_error: fn(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<DepKind>]) -> C::Value,
+    pub value_from_cycle_error:
+        fn(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo], guar: ErrorGuaranteed) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 }
 
@@ -401,7 +402,7 @@ macro_rules! define_callbacks {
         #[derive(Default)]
         pub struct QueryStates<'tcx> {
             $(
-                pub $name: QueryState<$($K)*, DepKind>,
+                pub $name: QueryState<$($K)*>,
             )*
         }
 
@@ -515,7 +516,7 @@ macro_rules! define_feedable {
                         }
                     }
                     None => {
-                        let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
+                        let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::dep_kinds::$name, &key);
                         let dep_node_index = tcx.dep_graph.with_feed_task(
                             dep_node,
                             tcx,
@@ -629,3 +630,6 @@ impl<'tcx> TyCtxtAt<'tcx> {
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
     }
 }
+
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct CyclePlaceholder(pub ErrorGuaranteed);

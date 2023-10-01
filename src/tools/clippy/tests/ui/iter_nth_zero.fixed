@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::iter_nth_zero)]
 use std::collections::HashSet;
 

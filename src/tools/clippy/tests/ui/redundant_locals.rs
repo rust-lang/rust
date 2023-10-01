@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(unused, clippy::no_effect, clippy::needless_pass_by_ref_mut)]
 #![warn(clippy::redundant_locals)]
 

@@ -271,7 +271,7 @@ For targets: `loongarch64-unknown-linux-gnu`
 - Operating System > Linux kernel version = 5.19.16
 - Binary utilities > Version of binutils = 2.40
 - C-library > glibc version = 2.36
-- C compiler > gcc version = 13.1.0
+- C compiler > gcc version = 13.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips-linux-gnu.defconfig`
@@ -407,7 +407,7 @@ For targets: `riscv64-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 4.20.17
-- Binary utilities > Version of binutils = 2.32
+- Binary utilities > Version of binutils = 2.36.1
 - C-library > glibc version = 2.29
 - C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM

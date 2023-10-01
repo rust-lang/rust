@@ -8,6 +8,7 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
 error: missing documentation for a struct field
   --> $DIR/missing_doc_impl.rs:14:5

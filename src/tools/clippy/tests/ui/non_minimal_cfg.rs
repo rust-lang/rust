@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused)]
 
 #[cfg(all(windows))]

@@ -1,7 +1,3 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
-
 //! This test ensures that a mutable reference cannot be passed as a resume argument twice.
 
 #![feature(generators, generator_trait)]

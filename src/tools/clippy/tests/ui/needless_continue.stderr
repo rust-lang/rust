@@ -3,6 +3,7 @@ error: this `else` block is redundant
    |
 LL |           } else {
    |  ________________^
+LL | |
 LL | |             continue;
 LL | |         }
    | |_________^
@@ -25,6 +26,7 @@ LL | |         }
                            println!("lama");
                        }
                        if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+
                            continue;
                        } else {
                            println!("Blabber");
@@ -33,11 +35,13 @@ LL | |         }
                        println!("bleh");
                    }
    = note: `-D clippy::needless-continue` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_continue)]`
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> $DIR/needless_continue.rs:45:9
+  --> $DIR/needless_continue.rs:46:9
    |
 LL | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+LL | |
 LL | |             continue;
 LL | |         } else {
 LL | |             println!("Blabber");
@@ -47,6 +51,7 @@ LL | |         }
    |
    = help: consider dropping the `else` clause
                    if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+
                        continue;
                    }
                    {
@@ -55,43 +60,44 @@ LL | |         }
                    }
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:58:9
+  --> $DIR/needless_continue.rs:60:9
    |
-LL |         continue; // should lint here
+LL |         continue;
    |         ^^^^^^^^^
    |
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:65:9
+  --> $DIR/needless_continue.rs:68:9
    |
-LL |         continue; // should lint here
+LL |         continue;
    |         ^^^^^^^^^
    |
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:72:9
+  --> $DIR/needless_continue.rs:76:9
    |
-LL |         continue // should lint here
+LL |         continue
    |         ^^^^^^^^
    |
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:80:9
+  --> $DIR/needless_continue.rs:85:9
    |
-LL |         continue // should lint here
+LL |         continue
    |         ^^^^^^^^
    |
    = help: consider dropping the `continue` expression
 
 error: this `else` block is redundant
-  --> $DIR/needless_continue.rs:130:24
+  --> $DIR/needless_continue.rs:136:24
    |
 LL |                   } else {
    |  ________________________^
-LL | |                     continue 'inner; // should lint here
+LL | |
+LL | |                     continue 'inner;
 LL | |                 }
    | |_________________^
    |
@@ -102,7 +108,8 @@ LL | |                 }
                                println!("bar-4");
                                update_condition();
                                if condition() {
-                                   continue; // should lint here
+
+                                   continue;
                                } else {
                                    println!("bar-5");
                                }
@@ -110,10 +117,11 @@ LL | |                 }
                            }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> $DIR/needless_continue.rs:136:17
+  --> $DIR/needless_continue.rs:143:17
    |
 LL | /                 if condition() {
-LL | |                     continue; // should lint here
+LL | |
+LL | |                     continue;
 LL | |                 } else {
 LL | |                     println!("bar-5");
 LL | |                 }
@@ -121,7 +129,8 @@ LL | |                 }
    |
    = help: consider dropping the `else` clause
                            if condition() {
-                               continue; // should lint here
+
+                               continue;
                            }
                            {
                                println!("bar-5");

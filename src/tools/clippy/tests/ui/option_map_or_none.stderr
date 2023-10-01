@@ -1,13 +1,14 @@
 error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `map(..)` instead
-  --> $DIR/option_map_or_none.rs:12:26
+  --> $DIR/option_map_or_none.rs:10:26
    |
 LL |     let _: Option<i32> = opt.map_or(None, |x| Some(x + 1));
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `map` instead: `opt.map(|x| x + 1)`
    |
    = note: `-D clippy::option-map-or-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_map_or_none)]`
 
 error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `map(..)` instead
-  --> $DIR/option_map_or_none.rs:15:26
+  --> $DIR/option_map_or_none.rs:13:26
    |
 LL |       let _: Option<i32> = opt.map_or(None, |x| {
    |  __________________________^
@@ -16,13 +17,13 @@ LL | |                        });
    | |_________________________^ help: try using `map` instead: `opt.map(|x| x + 1)`
 
 error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
-  --> $DIR/option_map_or_none.rs:19:26
+  --> $DIR/option_map_or_none.rs:17:26
    |
 LL |     let _: Option<i32> = opt.map_or(None, bar);
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: try using `and_then` instead: `opt.and_then(bar)`
 
 error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
-  --> $DIR/option_map_or_none.rs:20:26
+  --> $DIR/option_map_or_none.rs:18:26
    |
 LL |       let _: Option<i32> = opt.map_or(None, |x| {
    |  __________________________^
@@ -42,12 +43,13 @@ LL ~     });
    |
 
 error: called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling `ok()` instead
-  --> $DIR/option_map_or_none.rs:27:26
+  --> $DIR/option_map_or_none.rs:25:26
    |
 LL |     let _: Option<i32> = r.map_or(None, Some);
    |                          ^^^^^^^^^^^^^^^^^^^^ help: try using `ok` instead: `r.ok()`
    |
    = note: `-D clippy::result-map-or-into-option` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_map_or_into_option)]`
 
 error: aborting due to 5 previous errors
 

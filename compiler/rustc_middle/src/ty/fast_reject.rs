@@ -29,8 +29,7 @@ pub enum SimplifiedType {
     Trait(DefId),
     Closure(DefId),
     Generator(DefId),
-    GeneratorWitness(usize),
-    GeneratorWitnessMIR(DefId),
+    GeneratorWitness(DefId),
     Function(usize),
     Placeholder,
 }
@@ -130,10 +129,7 @@ pub fn simplify_type<'tcx>(
         ty::Ref(_, _, mutbl) => Some(SimplifiedType::Ref(mutbl)),
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(SimplifiedType::Closure(def_id)),
         ty::Generator(def_id, _, _) => Some(SimplifiedType::Generator(def_id)),
-        ty::GeneratorWitness(tys) => {
-            Some(SimplifiedType::GeneratorWitness(tys.skip_binder().len()))
-        }
-        ty::GeneratorWitnessMIR(def_id, _) => Some(SimplifiedType::GeneratorWitnessMIR(def_id)),
+        ty::GeneratorWitness(def_id, _) => Some(SimplifiedType::GeneratorWitness(def_id)),
         ty::Never => Some(SimplifiedType::Never),
         ty::Tuple(tys) => Some(SimplifiedType::Tuple(tys.len())),
         ty::FnPtr(f) => Some(SimplifiedType::Function(f.skip_binder().inputs().len())),
@@ -169,7 +165,7 @@ impl SimplifiedType {
             | SimplifiedType::Trait(d)
             | SimplifiedType::Closure(d)
             | SimplifiedType::Generator(d)
-            | SimplifiedType::GeneratorWitnessMIR(d) => Some(d),
+            | SimplifiedType::GeneratorWitness(d) => Some(d),
             _ => None,
         }
     }
@@ -240,7 +236,6 @@ impl DeepRejectCtxt {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Infer(_) => bug!("unexpected impl_ty: {impl_ty}"),
@@ -342,7 +337,7 @@ impl DeepRejectCtxt {
 
             ty::Error(_) => true,
 
-            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => {
+            ty::GeneratorWitness(..) => {
                 bug!("unexpected obligation type: {:?}", obligation_ty)
             }
         }

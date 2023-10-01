@@ -1,157 +1,158 @@
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:22:17
+  --> $DIR/default_numeric_fallback_i32.rs:21:17
    |
 LL |         let x = 22;
    |                 ^^ help: consider adding suffix: `22_i32`
    |
    = note: `-D clippy::default-numeric-fallback` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::default_numeric_fallback)]`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:23:18
+  --> $DIR/default_numeric_fallback_i32.rs:22:18
    |
 LL |         let x = [1, 2, 3];
    |                  ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:23:21
+  --> $DIR/default_numeric_fallback_i32.rs:22:21
    |
 LL |         let x = [1, 2, 3];
    |                     ^ help: consider adding suffix: `2_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:23:24
+  --> $DIR/default_numeric_fallback_i32.rs:22:24
    |
 LL |         let x = [1, 2, 3];
    |                        ^ help: consider adding suffix: `3_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:24:28
+  --> $DIR/default_numeric_fallback_i32.rs:23:28
    |
 LL |         let x = if true { (1, 2) } else { (3, 4) };
    |                            ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:24:31
+  --> $DIR/default_numeric_fallback_i32.rs:23:31
    |
 LL |         let x = if true { (1, 2) } else { (3, 4) };
    |                               ^ help: consider adding suffix: `2_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:24:44
+  --> $DIR/default_numeric_fallback_i32.rs:23:44
    |
 LL |         let x = if true { (1, 2) } else { (3, 4) };
    |                                            ^ help: consider adding suffix: `3_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:24:47
+  --> $DIR/default_numeric_fallback_i32.rs:23:47
    |
 LL |         let x = if true { (1, 2) } else { (3, 4) };
    |                                               ^ help: consider adding suffix: `4_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:25:23
+  --> $DIR/default_numeric_fallback_i32.rs:24:23
    |
 LL |         let x = match 1 {
    |                       ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:26:13
+  --> $DIR/default_numeric_fallback_i32.rs:25:13
    |
 LL |             1 => 1,
    |             ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:26:18
+  --> $DIR/default_numeric_fallback_i32.rs:25:18
    |
 LL |             1 => 1,
    |                  ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:27:18
+  --> $DIR/default_numeric_fallback_i32.rs:26:18
    |
 LL |             _ => 2,
    |                  ^ help: consider adding suffix: `2_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:46:21
+  --> $DIR/default_numeric_fallback_i32.rs:45:21
    |
 LL |             let y = 1;
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:54:21
+  --> $DIR/default_numeric_fallback_i32.rs:53:21
    |
 LL |             let y = 1;
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:60:21
+  --> $DIR/default_numeric_fallback_i32.rs:59:21
    |
 LL |             let y = 1;
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:68:21
+  --> $DIR/default_numeric_fallback_i32.rs:67:21
    |
 LL |             let y = 1;
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:80:9
+  --> $DIR/default_numeric_fallback_i32.rs:79:9
    |
 LL |         1
    |         ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:86:27
+  --> $DIR/default_numeric_fallback_i32.rs:85:27
    |
 LL |         let f = || -> _ { 1 };
    |                           ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:90:29
+  --> $DIR/default_numeric_fallback_i32.rs:89:29
    |
 LL |         let f = || -> i32 { 1 };
    |                             ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:104:21
+  --> $DIR/default_numeric_fallback_i32.rs:103:21
    |
 LL |         generic_arg(1);
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:107:32
+  --> $DIR/default_numeric_fallback_i32.rs:106:32
    |
 LL |         let x: _ = generic_arg(1);
    |                                ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:125:28
+  --> $DIR/default_numeric_fallback_i32.rs:124:28
    |
 LL |         GenericStruct { x: 1 };
    |                            ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:128:36
+  --> $DIR/default_numeric_fallback_i32.rs:127:36
    |
 LL |         let _ = GenericStruct { x: 1 };
    |                                    ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:146:24
+  --> $DIR/default_numeric_fallback_i32.rs:145:24
    |
 LL |         GenericEnum::X(1);
    |                        ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:166:23
+  --> $DIR/default_numeric_fallback_i32.rs:165:23
    |
 LL |         s.generic_arg(1);
    |                       ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:176:25
+  --> $DIR/default_numeric_fallback_i32.rs:175:25
    |
 LL |         inline!(let x = 22;);
    |                         ^^ help: consider adding suffix: `22_i32`

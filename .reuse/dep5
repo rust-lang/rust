@@ -25,6 +25,7 @@ Files: compiler/*
        README.md
        RELEASES.md
        rustfmt.toml
+       rust-bors.toml
        triagebot.toml
        x
        x.ps1

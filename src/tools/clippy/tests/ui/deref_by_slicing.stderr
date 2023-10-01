@@ -1,55 +1,56 @@
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:10:13
+  --> $DIR/deref_by_slicing.rs:8:13
    |
 LL |     let _ = &vec[..];
    |             ^^^^^^^^ help: dereference the original value instead: `&*vec`
    |
    = note: `-D clippy::deref-by-slicing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deref_by_slicing)]`
 
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:11:13
+  --> $DIR/deref_by_slicing.rs:9:13
    |
 LL |     let _ = &mut vec[..];
    |             ^^^^^^^^^^^^ help: dereference the original value instead: `&mut *vec`
 
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:14:13
+  --> $DIR/deref_by_slicing.rs:12:13
    |
 LL |     let _ = &ref_vec[..];
    |             ^^^^^^^^^^^^ help: dereference the original value instead: `&**ref_vec`
 
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:15:21
+  --> $DIR/deref_by_slicing.rs:13:21
    |
 LL |     let mut_slice = &mut ref_vec[..];
    |                     ^^^^^^^^^^^^^^^^ help: dereference the original value instead: `&mut **ref_vec`
 
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:16:13
+  --> $DIR/deref_by_slicing.rs:14:13
    |
 LL |     let _ = &mut mut_slice[..]; // Err, re-borrows slice
    |             ^^^^^^^^^^^^^^^^^^ help: reborrow the original value instead: `&mut *mut_slice`
 
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:19:13
+  --> $DIR/deref_by_slicing.rs:17:13
    |
 LL |     let _ = &s[..];
    |             ^^^^^^ help: dereference the original value instead: `&*s`
 
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:22:18
+  --> $DIR/deref_by_slicing.rs:20:18
    |
 LL |     let _ = &mut &S[..]; // Err, re-borrows slice
    |                  ^^^^^^ help: reborrow the original value instead: `&*S`
 
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:26:13
+  --> $DIR/deref_by_slicing.rs:24:13
    |
 LL |     let _ = &slice_ref[..]; // Err, derefs slice
    |             ^^^^^^^^^^^^^^ help: dereference the original value instead: `*slice_ref`
 
 error: slicing when dereferencing would work
-  --> $DIR/deref_by_slicing.rs:29:13
+  --> $DIR/deref_by_slicing.rs:27:13
    |
 LL |     let _ = (&bytes[..]).read_to_end(&mut vec![]).unwrap(); // Err, re-borrows slice
    |             ^^^^^^^^^^^^ help: reborrow the original value instead: `(&*bytes)`

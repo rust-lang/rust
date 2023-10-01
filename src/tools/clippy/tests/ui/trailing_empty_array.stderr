@@ -2,6 +2,7 @@ error: trailing zero-sized array in a struct which is not marked with a `repr` a
   --> $DIR/trailing_empty_array.rs:5:1
    |
 LL | / struct RarelyUseful {
+LL | |
 LL | |     field: i32,
 LL | |     last: [usize; 0],
 LL | | }
@@ -9,11 +10,13 @@ LL | | }
    |
    = help: consider annotating `RarelyUseful` with `#[repr(C)]` or another `repr` attribute
    = note: `-D clippy::trailing-empty-array` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::trailing_empty_array)]`
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:10:1
+  --> $DIR/trailing_empty_array.rs:11:1
    |
 LL | / struct OnlyField {
+LL | |
 LL | |     first_and_last: [usize; 0],
 LL | | }
    | |_^
@@ -21,9 +24,10 @@ LL | | }
    = help: consider annotating `OnlyField` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:14:1
+  --> $DIR/trailing_empty_array.rs:16:1
    |
 LL | / struct GenericArrayType<T> {
+LL | |
 LL | |     field: i32,
 LL | |     last: [T; 0],
 LL | | }
@@ -32,9 +36,10 @@ LL | | }
    = help: consider annotating `GenericArrayType` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:20:1
+  --> $DIR/trailing_empty_array.rs:23:1
    |
 LL | / struct OnlyAnotherAttribute {
+LL | |
 LL | |     field: i32,
 LL | |     last: [usize; 0],
 LL | | }
@@ -43,9 +48,10 @@ LL | | }
    = help: consider annotating `OnlyAnotherAttribute` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:26:1
+  --> $DIR/trailing_empty_array.rs:30:1
    |
 LL | / struct OnlyADeriveAttribute {
+LL | |
 LL | |     field: i32,
 LL | |     last: [usize; 0],
 LL | | }
@@ -54,9 +60,10 @@ LL | | }
    = help: consider annotating `OnlyADeriveAttribute` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:32:1
+  --> $DIR/trailing_empty_array.rs:37:1
    |
 LL | / struct ZeroSizedWithConst {
+LL | |
 LL | |     field: i32,
 LL | |     last: [usize; ZERO],
 LL | | }
@@ -65,9 +72,10 @@ LL | | }
    = help: consider annotating `ZeroSizedWithConst` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:41:1
+  --> $DIR/trailing_empty_array.rs:47:1
    |
 LL | / struct ZeroSizedWithConstFunction {
+LL | |
 LL | |     field: i32,
 LL | |     last: [usize; compute_zero()],
 LL | | }
@@ -76,9 +84,10 @@ LL | | }
    = help: consider annotating `ZeroSizedWithConstFunction` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:49:1
+  --> $DIR/trailing_empty_array.rs:56:1
    |
 LL | / struct ZeroSizedWithConstFunction2 {
+LL | |
 LL | |     field: i32,
 LL | |     last: [usize; compute_zero_from_arg(1)],
 LL | | }
@@ -87,7 +96,7 @@ LL | | }
    = help: consider annotating `ZeroSizedWithConstFunction2` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:54:1
+  --> $DIR/trailing_empty_array.rs:62:1
    |
 LL | struct ZeroSizedArrayWrapper([usize; 0]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,7 +104,7 @@ LL | struct ZeroSizedArrayWrapper([usize; 0]);
    = help: consider annotating `ZeroSizedArrayWrapper` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:56:1
+  --> $DIR/trailing_empty_array.rs:65:1
    |
 LL | struct TupleStruct(i32, [usize; 0]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,12 +112,12 @@ LL | struct TupleStruct(i32, [usize; 0]);
    = help: consider annotating `TupleStruct` with `#[repr(C)]` or another `repr` attribute
 
 error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
-  --> $DIR/trailing_empty_array.rs:58:1
+  --> $DIR/trailing_empty_array.rs:68:1
    |
 LL | / struct LotsOfFields {
+LL | |
 LL | |     f1: u32,
 LL | |     f2: u32,
-LL | |     f3: u32,
 ...  |
 LL | |     last: [usize; 0],
 LL | | }

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![deny(clippy::while_let_on_iterator)]
 #![allow(unused_mut)]
 #![allow(clippy::uninlined_format_args)]

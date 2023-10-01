@@ -57,18 +57,22 @@ fn main() {
     // Err, reference to a &String
     let _: &String = match Some(&x) {
         Some(ref x) => x,
+        //~^ ERROR: this pattern creates a reference to a reference
+        //~| NOTE: `-D clippy::needless-borrow` implied by `-D warnings`
         None => return,
     };
 
     // Err, reference to a &String.
     let _: &String = match Some(&x) {
         Some(ref x) => *x,
+        //~^ ERROR: this pattern creates a reference to a reference
         None => return,
     };
 
     // Err, reference to a &String
     let _: &String = match Some(&x) {
         Some(ref x) => {
+            //~^ ERROR: this pattern creates a reference to a reference
             f1(x);
             f1(*x);
             x
@@ -79,16 +83,19 @@ fn main() {
     // Err, reference to a &String
     match Some(&x) {
         Some(ref x) => m1!(x),
+        //~^ ERROR: this pattern creates a reference to a reference
         None => return,
     };
 
     // Err, reference to a &String
     let _ = |&ref x: &&String| {
+        //~^ ERROR: this pattern creates a reference to a reference
         let _: &String = x;
     };
 
     // Err, reference to a &String
     let (ref y,) = (&x,);
+    //~^ ERROR: this pattern creates a reference to a reference
     let _: &String = *y;
 
     let y = &&x;
@@ -99,6 +106,7 @@ fn main() {
     // Err, reference to a &u32. Don't suggest adding a reference to the field access.
     let _: u32 = match Some(&x) {
         Some(ref x) => x.0,
+        //~^ ERROR: this pattern creates a reference to a reference
         None => return,
     };
 
@@ -109,12 +117,14 @@ fn main() {
     // Err, reference to &u32.
     let _: &u32 = match E::A(&0) {
         E::A(ref x) | E::B(ref x) => *x,
+        //~^ ERROR: this pattern creates a reference to a reference
     };
 
     // Err, reference to &String.
     if_chain! {
         if true;
         if let Some(ref x) = Some(&String::new());
+        //~^ ERROR: this pattern creates a reference to a reference
         then {
             f1(x);
         }
@@ -123,6 +133,7 @@ fn main() {
 
 // Err, reference to a &String
 fn f2<'a>(&ref x: &&'a String) -> &'a String {
+    //~^ ERROR: this pattern creates a reference to a reference
     let _: &String = x;
     *x
 }
@@ -130,6 +141,7 @@ fn f2<'a>(&ref x: &&'a String) -> &'a String {
 trait T1 {
     // Err, reference to a &String
     fn f(&ref x: &&String) {
+        //~^ ERROR: this pattern creates a reference to a reference
         let _: &String = x;
     }
 }
@@ -138,6 +150,7 @@ struct S;
 impl T1 for S {
     // Err, reference to a &String
     fn f(&ref x: &&String) {
+        //~^ ERROR: this pattern creates a reference to a reference
         let _: &String = *x;
     }
 }

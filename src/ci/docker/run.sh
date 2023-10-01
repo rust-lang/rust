@@ -64,9 +64,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
 
       docker --version >> $hash_key
 
-      # Include cache version. Currently it is needed to bust Docker
-      # cache key after opting in into the old Docker build backend.
-      echo "1" >> $hash_key
+      # Include cache version. Can be used to manually bust the Docker cache.
+      echo "2" >> $hash_key
 
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
@@ -78,6 +77,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       set +e
       retry curl --max-time 600 -y 30 -Y 10 --connect-timeout 30 -f -L -C - \
         -o /tmp/rustci_docker_cache "$url"
+
+      docker_archive_hash=$(sha512sum /tmp/rustci_docker_cache | awk '{print $1}')
+      echo "Downloaded archive hash: ${docker_archive_hash}"
+
       echo "Loading images into docker"
       # docker load sometimes hangs in the CI, so time out after 10 minutes with TERM,
       # KILL after 12 minutes
@@ -115,8 +118,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       digest=$(docker inspect rust-ci --format '{{.Id}}')
       echo "Built container $digest"
       if ! grep -q "$digest" <(echo "$loaded_images"); then
-        echo "Uploading finished image to $url"
+        echo "Uploading finished image $digest to $url"
         set +e
+        # Print image history for easier debugging of layer SHAs
+        docker history rust-ci
         docker history -q rust-ci | \
           grep -v missing | \
           xargs docker save | \
@@ -131,6 +136,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       mkdir -p "$dist"
       echo "$url" >"$info"
       echo "$digest" >>"$info"
+      cat "$info"
     fi
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
     if isCI; then

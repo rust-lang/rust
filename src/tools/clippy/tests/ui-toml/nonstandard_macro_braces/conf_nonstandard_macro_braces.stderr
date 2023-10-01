@@ -1,37 +1,38 @@
 error: use of irregular braces for `vec!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:44:13
+  --> $DIR/conf_nonstandard_macro_braces.rs:43:13
    |
 LL |     let _ = vec! {1, 2, 3};
    |             ^^^^^^^^^^^^^^ help: consider writing: `vec![1, 2, 3]`
    |
    = note: `-D clippy::nonstandard-macro-braces` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonstandard_macro_braces)]`
 
 error: use of irregular braces for `format!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:45:13
+  --> $DIR/conf_nonstandard_macro_braces.rs:44:13
    |
 LL |     let _ = format!["ugh {} stop being such a good compiler", "hello"];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `format!("ugh {} stop being such a good compiler", "hello")`
 
 error: use of irregular braces for `matches!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:46:13
+  --> $DIR/conf_nonstandard_macro_braces.rs:45:13
    |
 LL |     let _ = matches!{{}, ()};
    |             ^^^^^^^^^^^^^^^^ help: consider writing: `matches!({}, ())`
 
 error: use of irregular braces for `quote!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:47:13
+  --> $DIR/conf_nonstandard_macro_braces.rs:46:13
    |
 LL |     let _ = quote!(let x = 1;);
    |             ^^^^^^^^^^^^^^^^^^ help: consider writing: `quote!{let x = 1;}`
 
 error: use of irregular braces for `quote::quote!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:48:13
+  --> $DIR/conf_nonstandard_macro_braces.rs:47:13
    |
 LL |     let _ = quote::quote!(match match match);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `quote::quote!{match match match}`
 
 error: use of irregular braces for `vec!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:19:9
+  --> $DIR/conf_nonstandard_macro_braces.rs:18:9
    |
 LL |         vec!{0, 0, 0}
    |         ^^^^^^^^^^^^^ help: consider writing: `vec![0, 0, 0]`
@@ -42,13 +43,13 @@ LL |     let _ = test!(); // trigger when macro def is inside our own crate
    = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: use of irregular braces for `type_pos!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:57:12
+  --> $DIR/conf_nonstandard_macro_braces.rs:56:12
    |
 LL |     let _: type_pos!(usize) = vec![];
    |            ^^^^^^^^^^^^^^^^ help: consider writing: `type_pos![usize]`
 
 error: use of irregular braces for `eprint!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:59:5
+  --> $DIR/conf_nonstandard_macro_braces.rs:58:5
    |
 LL |     eprint!("test if user config overrides defaults");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `eprint!["test if user config overrides defaults"]`

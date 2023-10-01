@@ -1,5 +1,5 @@
 error: import ending with `::{self}`
-  --> $DIR/unnecessary_self_imports.rs:6:1
+  --> $DIR/unnecessary_self_imports.rs:5:1
    |
 LL | use std::fs::{self as alias};
    | ^^^^^^^^^--------------------
@@ -8,9 +8,10 @@ LL | use std::fs::{self as alias};
    |
    = note: this will slightly change semantics; any non-module items at the same path will also be imported
    = note: `-D clippy::unnecessary-self-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_self_imports)]`
 
 error: import ending with `::{self}`
-  --> $DIR/unnecessary_self_imports.rs:8:1
+  --> $DIR/unnecessary_self_imports.rs:7:1
    |
 LL | use std::rc::{self};
    | ^^^^^^^^^-----------

@@ -115,44 +115,123 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let body = self.builder.body;
             let tcx = self.builder.tcx;
             let place_ty = place_ref.ty(body, tcx).ty;
-            match place_ty.kind() {
-                ty::Ref(..) | ty::RawPtr(..) => {
-                    return Err(MoveError::cannot_move_out_of(
-                        self.loc,
-                        BorrowedContent { target_place: place_ref.project_deeper(&[elem], tcx) },
-                    ));
+            match elem {
+                ProjectionElem::Deref => match place_ty.kind() {
+                    ty::Ref(..) | ty::RawPtr(..) => {
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            BorrowedContent {
+                                target_place: place_ref.project_deeper(&[elem], tcx),
+                            },
+                        ));
+                    }
+                    ty::Adt(adt, _) => {
+                        if !adt.is_box() {
+                            bug!("Adt should be a box type when Place is deref");
+                        }
+                    }
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Foreign(_)
+                    | ty::Str
+                    | ty::Array(_, _)
+                    | ty::Slice(_)
+                    | ty::FnDef(_, _)
+                    | ty::FnPtr(_)
+                    | ty::Dynamic(_, _, _)
+                    | ty::Closure(_, _)
+                    | ty::Generator(_, _, _)
+                    | ty::GeneratorWitness(..)
+                    | ty::Never
+                    | ty::Tuple(_)
+                    | ty::Alias(_, _)
+                    | ty::Param(_)
+                    | ty::Bound(_, _)
+                    | ty::Infer(_)
+                    | ty::Error(_)
+                    | ty::Placeholder(_) => {
+                        bug!("When Place is Deref it's type shouldn't be {place_ty:#?}")
+                    }
+                },
+                ProjectionElem::Field(_, _) => match place_ty.kind() {
+                    ty::Adt(adt, _) => {
+                        if adt.has_dtor(tcx) {
+                            return Err(MoveError::cannot_move_out_of(
+                                self.loc,
+                                InteriorOfTypeWithDestructor { container_ty: place_ty },
+                            ));
+                        }
+                        if adt.is_union() {
+                            union_path.get_or_insert(base);
+                        }
+                    }
+                    ty::Closure(_, _) | ty::Generator(_, _, _) | ty::Tuple(_) => (),
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Foreign(_)
+                    | ty::Str
+                    | ty::Array(_, _)
+                    | ty::Slice(_)
+                    | ty::RawPtr(_)
+                    | ty::Ref(_, _, _)
+                    | ty::FnDef(_, _)
+                    | ty::FnPtr(_)
+                    | ty::Dynamic(_, _, _)
+                    | ty::GeneratorWitness(..)
+                    | ty::Never
+                    | ty::Alias(_, _)
+                    | ty::Param(_)
+                    | ty::Bound(_, _)
+                    | ty::Infer(_)
+                    | ty::Error(_)
+                    | ty::Placeholder(_) => bug!(
+                        "When Place contains ProjectionElem::Field it's type shouldn't be {place_ty:#?}"
+                    ),
+                },
+                ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                    match place_ty.kind() {
+                        ty::Slice(_) => {
+                            return Err(MoveError::cannot_move_out_of(
+                                self.loc,
+                                InteriorOfSliceOrArray {
+                                    ty: place_ty,
+                                    is_index: matches!(elem, ProjectionElem::Index(..)),
+                                },
+                            ));
+                        }
+                        ty::Array(_, _) => (),
+                        _ => bug!("Unexpected type {:#?}", place_ty.is_array()),
+                    }
                 }
-                ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
-                    return Err(MoveError::cannot_move_out_of(
-                        self.loc,
-                        InteriorOfTypeWithDestructor { container_ty: place_ty },
-                    ));
-                }
-                ty::Adt(adt, _) if adt.is_union() => {
-                    union_path.get_or_insert(base);
-                }
-                ty::Slice(_) => {
-                    return Err(MoveError::cannot_move_out_of(
-                        self.loc,
-                        InteriorOfSliceOrArray {
-                            ty: place_ty,
-                            is_index: matches!(elem, ProjectionElem::Index(..)),
-                        },
-                    ));
-                }
-
-                ty::Array(..) => {
-                    if let ProjectionElem::Index(..) = elem {
+                ProjectionElem::Index(_) => match place_ty.kind() {
+                    ty::Array(..) => {
                         return Err(MoveError::cannot_move_out_of(
                             self.loc,
                             InteriorOfSliceOrArray { ty: place_ty, is_index: true },
                         ));
                     }
-                }
-
-                _ => {}
-            };
-
+                    ty::Slice(_) => {
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            InteriorOfSliceOrArray {
+                                ty: place_ty,
+                                is_index: matches!(elem, ProjectionElem::Index(..)),
+                            },
+                        ));
+                    }
+                    _ => bug!("Unexpected type {place_ty:#?}"),
+                },
+                // `OpaqueCast` only transmutes the type, so no moves there and
+                // `Downcast` only changes information about a `Place` without moving
+                // So it's safe to skip these.
+                ProjectionElem::OpaqueCast(_) | ProjectionElem::Downcast(_, _) => (),
+            }
             if union_path.is_none() {
                 // inlined from add_move_path because of a borrowck conflict with the iterator
                 base =

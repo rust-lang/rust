@@ -6,9 +6,10 @@ LL |     let TupleStruct(_) = ref_value;
    |
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
    = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:12:25
+  --> $DIR/pattern_tuples.rs:13:25
    |
 LL |     if let &TupleStruct(Some(_)) = ref_value {}
    |                         ^^^^^^^
@@ -16,7 +17,7 @@ LL |     if let &TupleStruct(Some(_)) = ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:13:24
+  --> $DIR/pattern_tuples.rs:15:24
    |
 LL |     if let TupleStruct(Some(_)) = *ref_value {}
    |                        ^^^^^^^
@@ -24,7 +25,7 @@ LL |     if let TupleStruct(Some(_)) = *ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:30:12
+  --> $DIR/pattern_tuples.rs:33:12
    |
 LL |     if let TupleEnum::Var(_) = ref_value {}
    |            ^^^^^^^^^^^^^^^^^
@@ -32,7 +33,7 @@ LL |     if let TupleEnum::Var(_) = ref_value {}
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:31:28
+  --> $DIR/pattern_tuples.rs:35:28
    |
 LL |     if let &TupleEnum::Var(Some(_)) = ref_value {}
    |                            ^^^^^^^
@@ -40,7 +41,7 @@ LL |     if let &TupleEnum::Var(Some(_)) = ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:32:27
+  --> $DIR/pattern_tuples.rs:37:27
    |
 LL |     if let TupleEnum::Var(Some(_)) = *ref_value {}
    |                           ^^^^^^^
@@ -48,7 +49,7 @@ LL |     if let TupleEnum::Var(Some(_)) = *ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:33:12
+  --> $DIR/pattern_tuples.rs:39:12
    |
 LL |     if let TupleEnum::Empty = ref_value {}
    |            ^^^^^^^^^^^^^^^^
@@ -56,7 +57,7 @@ LL |     if let TupleEnum::Empty = ref_value {}
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:48:9
+  --> $DIR/pattern_tuples.rs:55:9
    |
 LL |     let (_a, _b) = ref_value;
    |         ^^^^^^^^
@@ -64,7 +65,7 @@ LL |     let (_a, _b) = ref_value;
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:49:18
+  --> $DIR/pattern_tuples.rs:57:18
    |
 LL |     if let &(_a, Some(_)) = ref_value {}
    |                  ^^^^^^^
@@ -72,7 +73,7 @@ LL |     if let &(_a, Some(_)) = ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> $DIR/pattern_tuples.rs:50:17
+  --> $DIR/pattern_tuples.rs:59:17
    |
 LL |     if let (_a, Some(_)) = *ref_value {}
    |                 ^^^^^^^

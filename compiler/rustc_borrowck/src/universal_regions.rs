@@ -21,13 +21,14 @@ use rustc_hir::BodyOwnerKind;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Symbol;
 use std::iter;
 
-use crate::renumber::{BoundRegionInfo, RegionCtxt};
+use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;
 
 #[derive(Debug)]
@@ -332,10 +333,16 @@ impl<'tcx> UniversalRegions<'tcx> {
     pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, args) => {
+                let v = with_no_trimmed_paths!(
+                    args[tcx.generics_of(def_id).parent_count..]
+                        .iter()
+                        .map(|arg| arg.to_string())
+                        .collect::<Vec<_>>()
+                );
                 err.note(format!(
-                    "defining type: {} with closure args {:#?}",
+                    "defining type: {} with closure args [\n    {},\n]",
                     tcx.def_path_str_with_args(def_id, args),
-                    &args[tcx.generics_of(def_id).parent_count..],
+                    v.join(",\n    "),
                 ));
 
                 // FIXME: It'd be nice to print the late-bound regions
@@ -348,10 +355,16 @@ impl<'tcx> UniversalRegions<'tcx> {
                 });
             }
             DefiningTy::Generator(def_id, args, _) => {
+                let v = with_no_trimmed_paths!(
+                    args[tcx.generics_of(def_id).parent_count..]
+                        .iter()
+                        .map(|arg| arg.to_string())
+                        .collect::<Vec<_>>()
+                );
                 err.note(format!(
-                    "defining type: {} with generator args {:#?}",
+                    "defining type: {} with generator args [\n    {},\n]",
                     tcx.def_path_str_with_args(def_id, args),
-                    &args[tcx.generics_of(def_id).parent_count..],
+                    v.join(",\n    "),
                 ));
 
                 // FIXME: As above, we'd like to print out the region
@@ -433,9 +446,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     if !indices.indices.contains_key(&r) {
                         let region_vid = {
                             let name = r.get_name_or_anon();
-                            self.infcx.next_nll_region_var(FR, || {
-                                RegionCtxt::LateBound(BoundRegionInfo::Name(name))
-                            })
+                            self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
                         };
 
                         debug!(?region_vid);
@@ -467,9 +478,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
                     let name = r.get_name_or_anon();
-                    self.infcx.next_nll_region_var(FR, || {
-                        RegionCtxt::LateBound(BoundRegionInfo::Name(name))
-                    })
+                    self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
                 };
 
                 debug!(?region_vid);
@@ -567,7 +576,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 }
             }
 
-            BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
+            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
                 let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
                 if self.mir_def.to_def_id() == typeck_root_def_id {
                     let args =
@@ -630,10 +639,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         };
 
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
-        let subst_mapping =
-            iter::zip(identity_args.regions(), fr_args.regions().map(|r| r.as_var()));
+        let arg_mapping = iter::zip(identity_args.regions(), fr_args.regions().map(|r| r.as_var()));
 
-        UniversalRegionIndices { indices: global_mapping.chain(subst_mapping).collect(), fr_static }
+        UniversalRegionIndices { indices: global_mapping.chain(arg_mapping).collect(), fr_static }
     }
 
     fn compute_inputs_and_output(
@@ -783,7 +791,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
                     _ => sym::anon,
                 };
 
-                self.next_nll_region_var(origin, || RegionCtxt::Bound(BoundRegionInfo::Name(name)))
+                self.next_nll_region_var(origin, || RegionCtxt::Bound(name))
             };
 
             indices.insert_late_bound_region(liberated_region, region_vid.as_var());
@@ -813,9 +821,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
                     let name = r.get_name_or_anon();
-                    self.next_nll_region_var(FR, || {
-                        RegionCtxt::LateBound(BoundRegionInfo::Name(name))
-                    })
+                    self.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
                 };
 
                 debug!(?region_vid);
@@ -835,9 +841,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
                     let name = r.get_name_or_anon();
-                    self.next_nll_region_var(FR, || {
-                        RegionCtxt::LateBound(BoundRegionInfo::Name(name))
-                    })
+                    self.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
                 };
 
                 indices.insert_late_bound_region(r, region_vid.as_var());

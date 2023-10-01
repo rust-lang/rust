@@ -10,7 +10,7 @@ fn main() -> () {
     let mut _7: &mut i32;
     let mut _9: &mut i32;
     let mut _12: *mut i32;
-    let mut _14: [closure@main::{closure#0}];
+    let mut _14: {closure@main::{closure#0}};
     let mut _16: for<'a> fn(&'a i32) -> &'a i32;
     let mut _17: &i32;
     let _18: &i32;
@@ -103,7 +103,7 @@ fn main() -> () {
         StorageDead(_2);
         StorageLive(_13);
         StorageLive(_14);
-        _14 = [closure@main::{closure#0}];
+        _14 = {closure@main::{closure#0}};
         Retag(_14);
         _13 = move _14 as for<'a> fn(&'a i32) -> &'a i32 (PointerCoercion(ClosureFnPointer(Normal)));
         StorageDead(_14);

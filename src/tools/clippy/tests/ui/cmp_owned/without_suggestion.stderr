@@ -5,15 +5,16 @@ LL |     y.to_owned() == *x;
    |     ^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
    |
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/without_suggestion.rs:11:5
+  --> $DIR/without_suggestion.rs:13:5
    |
 LL |     y.to_owned() == **x;
    |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
-  --> $DIR/without_suggestion.rs:22:9
+  --> $DIR/without_suggestion.rs:25:9
    |
 LL |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating

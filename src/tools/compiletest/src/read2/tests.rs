@@ -1,4 +1,6 @@
-use crate::read2::{ProcOutput, FILTERED_PATHS_PLACEHOLDER_LEN, HEAD_LEN, TAIL_LEN};
+use std::io::Write;
+
+use crate::read2::{ProcOutput, FILTERED_PATHS_PLACEHOLDER_LEN, MAX_OUT_LEN};
 
 #[test]
 fn test_abbreviate_short_string() {
@@ -21,35 +23,13 @@ fn test_abbreviate_short_string_multiple_steps() {
 fn test_abbreviate_long_string() {
     let mut out = ProcOutput::new();
 
-    let data = vec![b'.'; HEAD_LEN + TAIL_LEN + 16];
+    let data = vec![b'.'; MAX_OUT_LEN + 16];
     out.extend(&data, &[]);
 
-    let mut expected = vec![b'.'; HEAD_LEN];
-    expected.extend_from_slice(b"\n\n<<<<<< SKIPPED 16 BYTES >>>>>>\n\n");
-    expected.extend_from_slice(&vec![b'.'; TAIL_LEN]);
-
-    // We first check the length to avoid endless terminal output if the length differs, since
-    // `out` is hundreds of KBs in size.
-    let out = out.into_bytes();
-    assert_eq!(expected.len(), out.len());
-    assert_eq!(expected, out);
-}
-
-#[test]
-fn test_abbreviate_long_string_multiple_steps() {
-    let mut out = ProcOutput::new();
-
-    out.extend(&vec![b'.'; HEAD_LEN], &[]);
-    out.extend(&vec![b'.'; TAIL_LEN], &[]);
-    // Also test whether the rotation works
-    out.extend(&vec![b'!'; 16], &[]);
-    out.extend(&vec![b'?'; 16], &[]);
-
-    let mut expected = vec![b'.'; HEAD_LEN];
-    expected.extend_from_slice(b"\n\n<<<<<< SKIPPED 32 BYTES >>>>>>\n\n");
-    expected.extend_from_slice(&vec![b'.'; TAIL_LEN - 32]);
-    expected.extend_from_slice(&vec![b'!'; 16]);
-    expected.extend_from_slice(&vec![b'?'; 16]);
+    let mut expected = Vec::new();
+    write!(expected, "<<<<<< TRUNCATED, SHOWING THE FIRST {MAX_OUT_LEN} BYTES >>>>>>\n\n").unwrap();
+    expected.extend_from_slice(&[b'.'; MAX_OUT_LEN]);
+    expected.extend_from_slice(b"\n\n<<<<<< TRUNCATED, DROPPED 16 BYTES >>>>>>");
 
     // We first check the length to avoid endless terminal output if the length differs, since
     // `out` is hundreds of KBs in size.
@@ -86,9 +66,8 @@ fn test_abbreviate_filters_avoid_abbreviations() {
     let mut out = ProcOutput::new();
     let filters = &[std::iter::repeat('a').take(64).collect::<String>()];
 
-    let mut expected = vec![b'.'; HEAD_LEN - FILTERED_PATHS_PLACEHOLDER_LEN as usize];
+    let mut expected = vec![b'.'; MAX_OUT_LEN - FILTERED_PATHS_PLACEHOLDER_LEN as usize];
     expected.extend_from_slice(filters[0].as_bytes());
-    expected.extend_from_slice(&vec![b'.'; TAIL_LEN]);
 
     out.extend(&expected, filters);
 
@@ -104,14 +83,13 @@ fn test_abbreviate_filters_can_still_cause_abbreviations() {
     let mut out = ProcOutput::new();
     let filters = &[std::iter::repeat('a').take(64).collect::<String>()];
 
-    let mut input = vec![b'.'; HEAD_LEN];
-    input.extend_from_slice(&vec![b'.'; TAIL_LEN]);
+    let mut input = vec![b'.'; MAX_OUT_LEN];
     input.extend_from_slice(filters[0].as_bytes());
 
-    let mut expected = vec![b'.'; HEAD_LEN];
-    expected.extend_from_slice(b"\n\n<<<<<< SKIPPED 64 BYTES >>>>>>\n\n");
-    expected.extend_from_slice(&vec![b'.'; TAIL_LEN - 64]);
-    expected.extend_from_slice(&vec![b'a'; 64]);
+    let mut expected = Vec::new();
+    write!(expected, "<<<<<< TRUNCATED, SHOWING THE FIRST {MAX_OUT_LEN} BYTES >>>>>>\n\n").unwrap();
+    expected.extend_from_slice(&[b'.'; MAX_OUT_LEN]);
+    expected.extend_from_slice(b"\n\n<<<<<< TRUNCATED, DROPPED 64 BYTES >>>>>>");
 
     out.extend(&input, filters);
 

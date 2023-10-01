@@ -20,6 +20,7 @@ struct J;
 impl A {
     // Should be detected; emit warning
     fn to_string(&self) -> String {
+        //~^ ERROR: implementation of inherent method `to_string(&self) -> String` for type `A
         "A.to_string()".to_string()
     }
 
@@ -44,6 +45,7 @@ impl B {
 impl C {
     // Should be detected and emit error as C also implements Display
     fn to_string(&self) -> String {
+        //~^ ERROR: type `C` implements inherent method `to_string(&self) -> String` which sha
         "C.to_string()".to_string()
     }
 }

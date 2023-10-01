@@ -416,7 +416,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            PassMode::Cast(cast_ty, _) => {
+            PassMode::Cast { cast: cast_ty, pad_i32: _ } => {
                 let op = match self.locals[mir::RETURN_PLACE] {
                     LocalRef::Operand(op) => op,
                     LocalRef::PendingOperand => bug!("use of return before def"),
@@ -928,21 +928,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // we get a value of a built-in pointer type.
                         //
                         // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
-                        'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
-                            && !op.layout.ty.is_ref()
-                        {
-                            for i in 0..op.layout.fields.count() {
-                                let field = op.extract_field(bx, i);
-                                if !field.layout.is_zst() {
-                                    // we found the one non-zero-sized field that is allowed
-                                    // now find *its* non-zero-sized field, or stop if it's a
-                                    // pointer
-                                    op = field;
-                                    continue 'descend_newtypes;
-                                }
-                            }
-
-                            span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                            let (idx, _) = op.layout.non_1zst_field(bx).expect(
+                                "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
+                            );
+                            op = op.extract_field(bx, idx);
                         }
 
                         // now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
@@ -970,21 +960,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     Immediate(_) => {
                         // See comment above explaining why we peel these newtypes
-                        'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
-                            && !op.layout.ty.is_ref()
-                        {
-                            for i in 0..op.layout.fields.count() {
-                                let field = op.extract_field(bx, i);
-                                if !field.layout.is_zst() {
-                                    // we found the one non-zero-sized field that is allowed
-                                    // now find *its* non-zero-sized field, or stop if it's a
-                                    // pointer
-                                    op = field;
-                                    continue 'descend_newtypes;
-                                }
-                            }
-
-                            span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                            let (idx, _) = op.layout.non_1zst_field(bx).expect(
+                                "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
+                            );
+                            op = op.extract_field(bx, idx);
                         }
 
                         // Make sure that we've actually unwrapped the rcvr down
@@ -1108,9 +1088,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
-                    let const_value = self
-                        .eval_mir_constant(value)
-                        .unwrap_or_else(|_| span_bug!(span, "asm const cannot be resolved"));
+                    let const_value = self.eval_mir_constant(value);
                     let string = common::asm_const_to_str(
                         bx.tcx(),
                         span,
@@ -1120,8 +1098,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     InlineAsmOperandRef::Const { string }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
-                    let literal = self.monomorphize(value.literal);
-                    if let ty::FnDef(def_id, args) = *literal.ty().kind() {
+                    let const_ = self.monomorphize(value.const_);
+                    if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
                             ty::ParamEnv::reveal_all(),
@@ -1330,7 +1308,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         match arg.mode {
             PassMode::Ignore => return,
-            PassMode::Cast(_, true) => {
+            PassMode::Cast { pad_i32: true, .. } => {
                 // Fill padding with undef value, where applicable.
                 llargs.push(bx.const_undef(bx.reg_backend_type(&Reg::i32())));
             }
@@ -1342,7 +1320,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
-            PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => match op.val {
+            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => match op.val {
                 Ref(a, Some(b), _) => {
                     llargs.push(a);
                     llargs.push(b);
@@ -1367,7 +1345,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     op.val.store(bx, scratch);
                     (scratch.llval, scratch.align, true)
                 }
-                PassMode::Cast(..) => {
+                PassMode::Cast { .. } => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
                     op.val.store(bx, scratch);
                     (scratch.llval, scratch.align, true)
@@ -1420,7 +1398,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if let PassMode::Cast(ty, _) = &arg.mode {
+            if let PassMode::Cast { cast: ty, .. } = &arg.mode {
                 let llty = bx.cast_backend_type(ty);
                 llval = bx.load(llty, llval, align.min(arg.layout.align.abi));
             } else {
@@ -1764,7 +1742,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
-                let op = if let PassMode::Cast(..) = ret_abi.mode {
+                let op = if let PassMode::Cast { .. } = ret_abi.mode {
                     let tmp = PlaceRef::alloca(bx, ret_abi.layout);
                     tmp.storage_live(bx);
                     bx.store_arg(&ret_abi, llval, tmp);

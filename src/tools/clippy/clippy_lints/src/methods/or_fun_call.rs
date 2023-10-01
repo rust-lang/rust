@@ -65,10 +65,25 @@ pub(super) fn check<'tcx>(
         };
 
         let sugg = match (name, call_expr.is_some()) {
-            ("unwrap_or", true) | ("unwrap_or_else", false) => "unwrap_or_default",
-            ("or_insert", true) | ("or_insert_with", false) => "or_default",
+            ("unwrap_or", true) | ("unwrap_or_else", false) => sym!(unwrap_or_default),
+            ("or_insert", true) | ("or_insert_with", false) => sym!(or_default),
             _ => return false,
         };
+
+        let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs();
+        let has_suggested_method = receiver_ty.ty_adt_def().is_some_and(|adt_def| {
+            cx.tcx
+                .inherent_impls(adt_def.did())
+                .iter()
+                .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
+                .any(|assoc| {
+                    assoc.fn_has_self_parameter
+                        && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1
+                })
+        });
+        if !has_suggested_method {
+            return false;
+        }
 
         // needs to target Default::default in particular or be *::new and have a Default impl
         // available

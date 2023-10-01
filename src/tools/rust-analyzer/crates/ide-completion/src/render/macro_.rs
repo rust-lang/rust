@@ -1,7 +1,7 @@
 //! Renderer for macro invocations.
 
-use hir::{Documentation, HirDisplay};
-use ide_db::SymbolKind;
+use hir::HirDisplay;
+use ide_db::{documentation::Documentation, SymbolKind};
 use syntax::SmolStr;
 
 use crate::{

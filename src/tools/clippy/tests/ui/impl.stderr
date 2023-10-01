@@ -2,6 +2,7 @@ error: multiple implementations of this structure
   --> $DIR/impl.rs:10:1
    |
 LL | / impl MyStruct {
+LL | |
 LL | |     fn second() {}
 LL | | }
    | |_^
@@ -14,11 +15,13 @@ LL | |     fn first() {}
 LL | | }
    | |_^
    = note: `-D clippy::multiple-inherent-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::multiple_inherent_impl)]`
 
 error: multiple implementations of this structure
-  --> $DIR/impl.rs:24:5
+  --> $DIR/impl.rs:25:5
    |
 LL | /     impl super::MyStruct {
+LL | |
 LL | |         fn third() {}
 LL | |     }
    | |_____^
@@ -32,15 +35,16 @@ LL | | }
    | |_^
 
 error: multiple implementations of this structure
-  --> $DIR/impl.rs:44:1
+  --> $DIR/impl.rs:46:1
    |
 LL | / impl WithArgs<u64> {
+LL | |
 LL | |     fn f3() {}
 LL | | }
    | |_^
    |
 note: first implementation here
-  --> $DIR/impl.rs:41:1
+  --> $DIR/impl.rs:43:1
    |
 LL | / impl WithArgs<u64> {
 LL | |     fn f2() {}
@@ -48,13 +52,13 @@ LL | | }
    | |_^
 
 error: multiple implementations of this structure
-  --> $DIR/impl.rs:65:1
+  --> $DIR/impl.rs:68:1
    |
 LL | impl OneAllowedImpl {} // Lint, only one of the three blocks is allowed.
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first implementation here
-  --> $DIR/impl.rs:62:1
+  --> $DIR/impl.rs:65:1
    |
 LL | impl OneAllowedImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^

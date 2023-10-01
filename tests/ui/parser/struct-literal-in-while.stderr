@@ -14,5 +14,21 @@ LL |         x: 3
 LL ~     }).hi() {
    |
 
-error: aborting due to previous error
+error: struct literals are not allowed here
+  --> $DIR/struct-literal-in-while.rs:17:22
+   |
+LL |       while let true = Foo {
+   |  ______________________^
+LL | |         x: 3
+LL | |     }.hi() {
+   | |_____^
+   |
+help: surround the struct literal with parentheses
+   |
+LL ~     while let true = (Foo {
+LL |         x: 3
+LL ~     }).hi() {
+   |
+
+error: aborting due to 2 previous errors
 

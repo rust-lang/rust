@@ -42,7 +42,7 @@ macro_rules! span_bug {
 // the impls for you.
 
 #[macro_export]
-macro_rules! CloneLiftImpls {
+macro_rules! TrivialLiftImpls {
     ($($ty:ty),+ $(,)?) => {
         $(
             impl<'tcx> $crate::ty::Lift<'tcx> for $ty {
@@ -96,6 +96,6 @@ macro_rules! TrivialTypeTraversalImpls {
 macro_rules! TrivialTypeTraversalAndLiftImpls {
     ($($t:tt)*) => {
         TrivialTypeTraversalImpls! { $($t)* }
-        CloneLiftImpls! { $($t)* }
+        TrivialLiftImpls! { $($t)* }
     }
 }

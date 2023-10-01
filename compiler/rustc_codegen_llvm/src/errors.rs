@@ -139,6 +139,10 @@ pub(crate) struct LtoDisallowed;
 pub(crate) struct LtoDylib;
 
 #[derive(Diagnostic)]
+#[diag(codegen_llvm_lto_proc_macro)]
+pub(crate) struct LtoProcMacro;
+
+#[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
     pub llvm_err: String,
@@ -225,4 +229,10 @@ pub(crate) struct WriteBytecode<'a> {
 #[diag(codegen_llvm_copy_bitcode)]
 pub(crate) struct CopyBitcode {
     pub err: std::io::Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_unknown_debuginfo_compression)]
+pub struct UnknownCompression {
+    pub algorithm: &'static str,
 }

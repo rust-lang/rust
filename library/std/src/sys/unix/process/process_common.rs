@@ -13,7 +13,7 @@ use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
-use crate::sys_common::IntoInner;
+use crate::sys_common::{FromInner, IntoInner};
 
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
@@ -150,6 +150,7 @@ pub enum Stdio {
     Null,
     MakePipe,
     Fd(FileDesc),
+    StaticFd(BorrowedFd<'static>),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -164,9 +165,9 @@ pub enum ProgramKind {
 
 impl ProgramKind {
     fn new(program: &OsStr) -> Self {
-        if program.as_os_str_bytes().starts_with(b"/") {
+        if program.as_encoded_bytes().starts_with(b"/") {
             Self::Absolute
-        } else if program.as_os_str_bytes().contains(&b'/') {
+        } else if program.as_encoded_bytes().contains(&b'/') {
             // If the program has more than one component in it, it is a relative path.
             Self::Relative
         } else {
@@ -463,6 +464,11 @@ impl Stdio {
                 }
             }
 
+            Stdio::StaticFd(fd) => {
+                let fd = FileDesc::from_inner(fd.try_clone_to_owned()?);
+                Ok((ChildStdio::Owned(fd), None))
+            }
+
             Stdio::MakePipe => {
                 let (reader, writer) = pipe::anon_pipe()?;
                 let (ours, theirs) = if readable { (writer, reader) } else { (reader, writer) };
@@ -494,6 +500,28 @@ impl From<AnonPipe> for Stdio {
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
         Stdio::Fd(file.into_inner())
+    }
+}
+
+impl From<io::Stdout> for Stdio {
+    fn from(_: io::Stdout) -> Stdio {
+        // This ought really to be is Stdio::StaticFd(input_argument.as_fd()).
+        // But AsFd::as_fd takes its argument by reference, and yields
+        // a bounded lifetime, so it's no use here. There is no AsStaticFd.
+        //
+        // Additionally AsFd is only implemented for the *locked* versions.
+        // We don't want to lock them here.  (The implications of not locking
+        // are the same as those for process::Stdio::inherit().)
+        //
+        // Arguably the hypothetical AsStaticFd and AsFd<'static>
+        // should be implemented for io::Stdout, not just for StdoutLocked.
+        Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw(libc::STDOUT_FILENO) })
+    }
+}
+
+impl From<io::Stderr> for Stdio {
+    fn from(_: io::Stderr) -> Stdio {
+        Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw(libc::STDERR_FILENO) })
     }
 }
 
@@ -558,6 +586,23 @@ impl fmt::Debug for Command {
             if let Some(ref cwd) = self.cwd {
                 write!(f, "cd {cwd:?} && ")?;
             }
+            if self.env.does_clear() {
+                write!(f, "env -i ")?;
+                // Altered env vars will be printed next, that should exactly work as expected.
+            } else {
+                // Removed env vars need the command to be wrapped in `env`.
+                let mut any_removed = false;
+                for (key, value_opt) in self.get_envs() {
+                    if value_opt.is_none() {
+                        if !any_removed {
+                            write!(f, "env ")?;
+                            any_removed = true;
+                        }
+                        write!(f, "-u {} ", key.to_string_lossy())?;
+                    }
+                }
+            }
+            // Altered env vars can just be added in front of the program.
             for (key, value_opt) in self.get_envs() {
                 if let Some(value) = value_opt {
                     write!(f, "{}={value:?} ", key.to_string_lossy())?;

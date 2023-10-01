@@ -1,5 +1,6 @@
-//@aux-build:proc_macros.rs:proc-macro
-
+//@stderr-per-bitwidth
+//@aux-build:proc_macros.rs
+//@no-rustfix
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![warn(clippy::large_enum_variant)]

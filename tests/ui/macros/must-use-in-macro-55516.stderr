@@ -6,6 +6,7 @@ LL |     write!(&mut example, "{}", 42);
    |
    = note: this `Result` may be an `Err` variant, which should be handled
    = note: `-W unused-must-use` implied by `-W unused`
+   = help: to override `-W unused` add `#[allow(unused_must_use)]`
    = note: this warning originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 1 warning emitted

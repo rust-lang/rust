@@ -566,6 +566,5 @@ impl_binder_encode_decode! {
     ty::TraitPredicate<'tcx>,
     ty::ExistentialPredicate<'tcx>,
     ty::TraitRef<'tcx>,
-    Vec<ty::GeneratorInteriorTypeCause<'tcx>>,
     ty::ExistentialTraitRef<'tcx>,
 }

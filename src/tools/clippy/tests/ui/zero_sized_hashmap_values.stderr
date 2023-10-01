@@ -6,9 +6,10 @@ LL | const CONST_NOT_OK: Option<HashMap<String, ()>> = None;
    |
    = help: consider using a set instead
    = note: `-D clippy::zero-sized-map-values` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_sized_map_values)]`
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:8:30
+  --> $DIR/zero_sized_hashmap_values.rs:9:30
    |
 LL | static STATIC_NOT_OK: Option<HashMap<String, ()>> = None;
    |                              ^^^^^^^^^^^^^^^^^^^
@@ -16,7 +17,7 @@ LL | static STATIC_NOT_OK: Option<HashMap<String, ()>> = None;
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:11:17
+  --> $DIR/zero_sized_hashmap_values.rs:13:17
    |
 LL | type NotOkMap = HashMap<String, ()>;
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -24,7 +25,7 @@ LL | type NotOkMap = HashMap<String, ()>;
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:15:11
+  --> $DIR/zero_sized_hashmap_values.rs:18:11
    |
 LL |     NotOk(HashMap<String, ()>),
    |           ^^^^^^^^^^^^^^^^^^^
@@ -32,7 +33,7 @@ LL |     NotOk(HashMap<String, ()>),
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:20:13
+  --> $DIR/zero_sized_hashmap_values.rs:24:13
    |
 LL |     not_ok: HashMap<String, ()>,
    |             ^^^^^^^^^^^^^^^^^^^
@@ -40,7 +41,7 @@ LL |     not_ok: HashMap<String, ()>,
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:22:22
+  --> $DIR/zero_sized_hashmap_values.rs:26:22
    |
 LL |     also_not_ok: Vec<HashMap<usize, ()>>,
    |                      ^^^^^^^^^^^^^^^^^^
@@ -48,7 +49,7 @@ LL |     also_not_ok: Vec<HashMap<usize, ()>>,
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:30:30
+  --> $DIR/zero_sized_hashmap_values.rs:35:30
    |
 LL |     fn weird_map(&self, map: HashMap<usize, ()>);
    |                              ^^^^^^^^^^^^^^^^^^
@@ -56,7 +57,7 @@ LL |     fn weird_map(&self, map: HashMap<usize, ()>);
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:38:25
+  --> $DIR/zero_sized_hashmap_values.rs:44:25
    |
 LL |     fn not_ok(&self) -> HashMap<String, ()> {
    |                         ^^^^^^^^^^^^^^^^^^^
@@ -64,7 +65,7 @@ LL |     fn not_ok(&self) -> HashMap<String, ()> {
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:55:14
+  --> $DIR/zero_sized_hashmap_values.rs:62:14
    |
 LL | fn test(map: HashMap<String, ()>, key: &str) -> HashMap<String, ()> {
    |              ^^^^^^^^^^^^^^^^^^^
@@ -72,7 +73,7 @@ LL | fn test(map: HashMap<String, ()>, key: &str) -> HashMap<String, ()> {
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:55:49
+  --> $DIR/zero_sized_hashmap_values.rs:62:49
    |
 LL | fn test(map: HashMap<String, ()>, key: &str) -> HashMap<String, ()> {
    |                                                 ^^^^^^^^^^^^^^^^^^^
@@ -80,7 +81,7 @@ LL | fn test(map: HashMap<String, ()>, key: &str) -> HashMap<String, ()> {
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:64:34
+  --> $DIR/zero_sized_hashmap_values.rs:73:34
    |
 LL |     let _: HashMap<String, ()> = HashMap::new();
    |                                  ^^^^^^^
@@ -88,7 +89,7 @@ LL |     let _: HashMap<String, ()> = HashMap::new();
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:64:12
+  --> $DIR/zero_sized_hashmap_values.rs:73:12
    |
 LL |     let _: HashMap<String, ()> = HashMap::new();
    |            ^^^^^^^^^^^^^^^^^^^
@@ -96,7 +97,7 @@ LL |     let _: HashMap<String, ()> = HashMap::new();
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> $DIR/zero_sized_hashmap_values.rs:67:12
+  --> $DIR/zero_sized_hashmap_values.rs:78:12
    |
 LL |     let _: HashMap<_, _> = std::iter::empty::<(String, ())>().collect();
    |            ^^^^^^^^^^^^^

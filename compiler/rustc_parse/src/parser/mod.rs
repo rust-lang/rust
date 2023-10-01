@@ -13,6 +13,7 @@ mod ty;
 use crate::lexer::UnmatchedDelim;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
+pub(crate) use expr::ForbiddenLetReason;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;

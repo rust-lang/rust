@@ -20,7 +20,7 @@ pub struct Bool {
     b: bool,
 }
 
-// CHECK: target triple = "x86_64-apple-macosx10.7.0"
+// CHECK: target triple = "x86_64-apple-macosx10.12.0"
 #[no_mangle]
 pub extern "C" fn structbool() -> Bool {
     Bool { b: true }

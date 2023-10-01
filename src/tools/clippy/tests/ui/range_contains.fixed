@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::manual_range_contains)]
 #![allow(unused)]
 #![allow(clippy::no_effect)]

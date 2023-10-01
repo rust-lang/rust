@@ -5,6 +5,7 @@ LL |     things.iter().find(|p| is_thing_ready(p)).is_some()
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|p| is_thing_ready(&p))`
    |
    = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::search_is_some)]`
 
 error: aborting due to previous error
 

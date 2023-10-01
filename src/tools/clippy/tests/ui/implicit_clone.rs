@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::implicit_clone)]
 #![allow(clippy::clone_on_copy, clippy::redundant_clone)]
 use std::borrow::Borrow;

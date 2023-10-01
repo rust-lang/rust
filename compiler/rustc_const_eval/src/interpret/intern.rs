@@ -24,7 +24,7 @@ use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
 use rustc_ast::Mutability;
 
 use super::{
-    AllocId, Allocation, ConstAllocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy,
+    AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, Projectable,
     ValueVisitor,
 };
 use crate::const_eval;
@@ -177,7 +177,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             if let ty::Dynamic(_, _, ty::Dyn) =
                 tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind()
             {
-                let ptr = mplace.meta.unwrap_meta().to_pointer(&tcx)?;
+                let ptr = mplace.meta().unwrap_meta().to_pointer(&tcx)?;
                 if let Some(alloc_id) = ptr.provenance {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
@@ -191,7 +191,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             }
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
-            if let Some(alloc_id) = mplace.ptr.provenance {
+            if let Some(alloc_id) = mplace.ptr().provenance {
                 // Compute the mode with which we intern this. Our goal here is to make as many
                 // statics as we can immutable so they can be placed in read-only memory by LLVM.
                 let ref_mode = match self.mode {
@@ -267,7 +267,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 
                     // If there is no provenance in this allocation, it does not contain references
                     // that point to another allocation, and we can avoid the interning walk.
-                    if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? {
+                    if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr(), size, align)? {
                         if !alloc.has_provenance() {
                             return Ok(false);
                         }
@@ -353,7 +353,7 @@ pub fn intern_const_alloc_recursive<
         leftover_allocations,
         // The outermost allocation must exist, because we allocated it with
         // `Memory::allocate`.
-        ret.ptr.provenance.unwrap(),
+        ret.ptr().provenance.unwrap(),
         base_intern_mode,
         Some(ret.layout.ty),
     );
@@ -378,7 +378,8 @@ pub fn intern_const_alloc_recursive<
                 ecx.tcx.sess.delay_span_bug(
                     ecx.tcx.span,
                     format!(
-                        "error during interning should later cause validation failure: {error:?}"
+                        "error during interning should later cause validation failure: {}",
+                        ecx.format_error(error),
                     ),
                 );
             }
@@ -454,7 +455,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
 {
     /// A helper function that allocates memory for the layout given and gives you access to mutate
     /// it. Once your own mutation code is done, the backing `Allocation` is removed from the
-    /// current `Memory` and returned.
+    /// current `Memory` and interned as read-only into the global memory.
     pub fn intern_with_temp_alloc(
         &mut self,
         layout: TyAndLayout<'tcx>,
@@ -462,11 +463,15 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
             &mut InterpCx<'mir, 'tcx, M>,
             &PlaceTy<'tcx, M::Provenance>,
         ) -> InterpResult<'tcx, ()>,
-    ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
+    ) -> InterpResult<'tcx, AllocId> {
+        // `allocate` picks a fresh AllocId that we will associate with its data below.
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest.clone().into())?;
-        let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;
+        let mut alloc = self.memory.alloc_map.remove(&dest.ptr().provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
-        Ok(self.tcx.mk_const_alloc(alloc))
+        let alloc = self.tcx.mk_const_alloc(alloc);
+        let alloc_id = dest.ptr().provenance.unwrap(); // this was just allocated, it must have provenance
+        self.tcx.set_alloc_id_memory(alloc_id, alloc);
+        Ok(alloc_id)
     }
 }

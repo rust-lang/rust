@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(dead_code)]
 
 struct SizedStruct(i32);
@@ -49,6 +47,11 @@ mod inner_mod {
             vec![]
         }
     }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/11417
+fn in_closure() {
+    let _ = |_: Vec<Box<dyn ToString>>| {};
 }
 
 fn main() {}

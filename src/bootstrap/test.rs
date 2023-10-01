@@ -846,7 +846,7 @@ impl Step for RustdocTheme {
         let rustdoc = builder.bootstrap_out.join("rustdoc");
         let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
         cmd.arg(rustdoc.to_str().unwrap())
-            .arg(builder.src.join("src/librustdoc/html/static/css/themes").to_str().unwrap())
+            .arg(builder.src.join("src/librustdoc/html/static/css/rustdoc.css").to_str().unwrap())
             .env("RUSTC_STAGE", self.compiler.stage.to_string())
             .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
             .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))
@@ -1139,16 +1139,14 @@ help: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             .map(|filename| builder.src.join("src/etc/completions").join(filename));
         if builder.config.cmd.bless() {
             builder.ensure(crate::run::GenerateCompletions);
-        } else {
-            if crate::flags::get_completion(shells::Bash, &bash).is_some()
-                || crate::flags::get_completion(shells::Fish, &fish).is_some()
-                || crate::flags::get_completion(shells::PowerShell, &powershell).is_some()
-            {
-                eprintln!(
-                    "x.py completions were changed; run `x.py run generate-completions` to update them"
-                );
-                crate::exit!(1);
-            }
+        } else if crate::flags::get_completion(shells::Bash, &bash).is_some()
+            || crate::flags::get_completion(shells::Fish, &fish).is_some()
+            || crate::flags::get_completion(shells::PowerShell, &powershell).is_some()
+        {
+            eprintln!(
+                "x.py completions were changed; run `x.py run generate-completions` to update them"
+            );
+            crate::exit!(1);
         }
     }
 
@@ -1340,6 +1338,12 @@ host_test!(RunMakeFullDeps {
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
+default_test!(CoverageMap {
+    path: "tests/coverage-map",
+    mode: "coverage-map",
+    suite: "coverage-map"
+});
+
 host_test!(RunCoverage { path: "tests/run-coverage", mode: "run-coverage", suite: "run-coverage" });
 host_test!(RunCoverageRustdoc {
     path: "tests/run-coverage-rustdoc",
@@ -1372,7 +1376,7 @@ impl Step for MirOpt {
         let run = |target| {
             builder.ensure(Compiletest {
                 compiler: self.compiler,
-                target: target,
+                target,
                 mode: "mir-opt",
                 suite: "mir-opt",
                 path: "tests/mir-opt",
@@ -1543,6 +1547,14 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }));
             cmd.arg("--jsondoclint-path")
                 .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
+        }
+
+        if mode == "coverage-map" {
+            let coverage_dump = builder.ensure(tool::CoverageDump {
+                compiler: compiler.with_stage(0),
+                target: compiler.host,
+            });
+            cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
         if mode == "run-make" || mode == "run-coverage" {
@@ -2951,5 +2963,131 @@ impl Step for TestHelpers {
             .debug(false)
             .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
             .compile("rust_test_helpers");
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CodegenCranelift {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for CodegenCranelift {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.paths(&["compiler/rustc_codegen_cranelift"])
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let host = run.build_triple();
+        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+
+        if builder.doc_tests == DocTests::Only {
+            return;
+        }
+
+        let triple = run.target.triple;
+        let target_supported = if triple.contains("linux") {
+            triple.contains("x86_64") || triple.contains("aarch64") || triple.contains("s390x")
+        } else if triple.contains("darwin") || triple.contains("windows") {
+            triple.contains("x86_64")
+        } else {
+            false
+        };
+        if !target_supported {
+            builder.info("target not supported by rustc_codegen_cranelift. skipping");
+            return;
+        }
+
+        if builder.remote_tested(run.target) {
+            builder.info("remote testing is not supported by rustc_codegen_cranelift. skipping");
+            return;
+        }
+
+        if !builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("cranelift")) {
+            builder.info("cranelift not in rust.codegen-backends. skipping");
+            return;
+        }
+
+        builder.ensure(CodegenCranelift { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let compiler = self.compiler;
+        let target = self.target;
+
+        builder.ensure(compile::Std::new(compiler, target));
+
+        // If we're not doing a full bootstrap but we're testing a stage2
+        // version of libstd, then what we're actually testing is the libstd
+        // produced in stage1. Reflect that here by updating the compiler that
+        // we're working with automatically.
+        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
+
+        let build_cargo = || {
+            let mut cargo = builder.cargo(
+                compiler,
+                Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
+                SourceType::InTree,
+                target,
+                "run",
+            );
+            cargo.current_dir(&builder.src.join("compiler/rustc_codegen_cranelift"));
+            cargo
+                .arg("--manifest-path")
+                .arg(builder.src.join("compiler/rustc_codegen_cranelift/build_system/Cargo.toml"));
+            compile::rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+
+            // Avoid incremental cache issues when changing rustc
+            cargo.env("CARGO_BUILD_INCREMENTAL", "false");
+
+            cargo
+        };
+
+        builder.info(&format!(
+            "{} cranelift stage{} ({} -> {})",
+            Kind::Test.description(),
+            compiler.stage,
+            &compiler.host,
+            target
+        ));
+        let _time = util::timeit(&builder);
+
+        // FIXME handle vendoring for source tarballs before removing the --skip-test below
+        let download_dir = builder.out.join("cg_clif_download");
+
+        /*
+        let mut prepare_cargo = build_cargo();
+        prepare_cargo.arg("--").arg("prepare").arg("--download-dir").arg(&download_dir);
+        #[allow(deprecated)]
+        builder.config.try_run(&mut prepare_cargo.into()).unwrap();
+        */
+
+        let mut cargo = build_cargo();
+        cargo
+            .arg("--")
+            .arg("test")
+            .arg("--download-dir")
+            .arg(&download_dir)
+            .arg("--out-dir")
+            .arg(builder.stage_out(compiler, Mode::ToolRustc).join("cg_clif"))
+            .arg("--no-unstable-features")
+            .arg("--use-backend")
+            .arg("cranelift")
+            // Avoid having to vendor the standard library dependencies
+            .arg("--sysroot")
+            .arg("llvm")
+            // These tests depend on crates that are not yet vendored
+            // FIXME remove once vendoring is handled
+            .arg("--skip-test")
+            .arg("testsuite.extended_sysroot");
+        cargo.args(builder.config.test_args());
+
+        #[allow(deprecated)]
+        builder.config.try_run(&mut cargo.into()).unwrap();
     }
 }

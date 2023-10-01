@@ -6,7 +6,7 @@
 
 use std::mem;
 
-use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
+use base_db::{salsa::Database, FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
     AsAssocItem, DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility,
 };
@@ -221,7 +221,6 @@ impl Definition {
         }
 
         // def is crate root
-        // FIXME: We don't do searches for crates currently, as a crate does not actually have a single name
         if let &Definition::Module(module) = self {
             if module.is_crate_root() {
                 return SearchScope::reverse_dependencies(db, module.krate());
@@ -393,7 +392,10 @@ impl<'a> FindUsages<'a> {
         let name = match self.def {
             // special case crate modules as these do not have a proper name
             Definition::Module(module) if module.is_crate_root() => {
-                // FIXME: This assumes the crate name is always equal to its display name when it really isn't
+                // FIXME: This assumes the crate name is always equal to its display name when it
+                // really isn't
+                // we should instead look at the dependency edge name and recursively search our way
+                // up the ancestors
                 module
                     .krate()
                     .display_name(self.sema.db)
@@ -468,6 +470,7 @@ impl<'a> FindUsages<'a> {
         };
 
         for (text, file_id, search_range) in scope_files(sema, &search_scope) {
+            self.sema.db.unwind_if_cancelled();
             let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
 
             // Search for occurrences of the items name
@@ -504,6 +507,7 @@ impl<'a> FindUsages<'a> {
             let finder = &Finder::new("super");
 
             for (text, file_id, search_range) in scope_files(sema, &scope) {
+                self.sema.db.unwind_if_cancelled();
                 let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
 
                 for offset in match_indices(&text, finder, search_range) {

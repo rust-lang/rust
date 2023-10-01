@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused, clippy::map_identity)]
 #![warn(clippy::lines_filter_map_ok)]
 

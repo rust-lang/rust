@@ -1,7 +1,7 @@
 //! Completion for extern crates
 
-use hir::{HasAttrs, Name};
-use ide_db::SymbolKind;
+use hir::Name;
+use ide_db::{documentation::HasDocs, SymbolKind};
 
 use crate::{context::CompletionContext, CompletionItem, CompletionItemKind};
 

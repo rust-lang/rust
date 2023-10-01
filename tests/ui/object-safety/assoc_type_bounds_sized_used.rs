@@ -1,6 +1,5 @@
-//! This test checks that even if some associated types have
-//! `where Self: Sized` bounds, those without still need to be
-//! mentioned in trait objects.
+//! This test checks that associated types with `Self: Sized` cannot be projected
+//! from a `dyn Trait`.
 
 trait Bop {
     type Bar: Default
@@ -16,5 +15,4 @@ fn bop<T: Bop + ?Sized>() {
 
 fn main() {
     bop::<dyn Bop>();
-    //~^ ERROR: the size for values of type `dyn Bop` cannot be known at compilation time
 }

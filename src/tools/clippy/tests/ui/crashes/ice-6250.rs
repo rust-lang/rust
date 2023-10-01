@@ -1,6 +1,6 @@
 // originally from glacier/fixed/77218.rs
 // ice while adjusting...
-
+//@no-rustfix
 pub struct Cache {
     data: Vec<i32>,
 }

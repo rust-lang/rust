@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
 #![allow(deprecated, unused_must_use)]

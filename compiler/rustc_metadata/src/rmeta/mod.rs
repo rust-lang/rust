@@ -21,10 +21,10 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
-use rustc_middle::query::Providers;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, ReprOptions, Ty, UnusedGenericParams};
-use rustc_middle::ty::{DeducedParamAttrs, GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
+use rustc_middle::ty::{DeducedParamAttrs, ParameterizedOverTcx, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
@@ -38,11 +38,10 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
-pub use decoder::provide_extern;
 use decoder::DecodeContext;
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
 use encoder::EncodeContext;
-pub use encoder::{encode_metadata, EncodedMetadata};
+pub use encoder::{encode_metadata, rendered_const, EncodedMetadata};
 use rustc_span::hygiene::SyntaxContextData;
 
 mod decoder;
@@ -142,7 +141,11 @@ impl<T> LazyArray<T> {
 /// eagerly and in-order.
 struct LazyTable<I, T> {
     position: NonZeroUsize,
-    encoded_size: usize,
+    /// The encoded size of the elements of a table is selected at runtime to drop
+    /// trailing zeroes. This is the number of bytes used for each table element.
+    width: usize,
+    /// How many elements are in the table.
+    len: usize,
     _marker: PhantomData<fn(I) -> T>,
 }
 
@@ -153,9 +156,10 @@ impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for LazyTable<I, 
 impl<I, T> LazyTable<I, T> {
     fn from_position_and_encoded_size(
         position: NonZeroUsize,
-        encoded_size: usize,
+        width: usize,
+        len: usize,
     ) -> LazyTable<I, T> {
-        LazyTable { position, encoded_size, _marker: PhantomData }
+        LazyTable { position, width, len, _marker: PhantomData }
     }
 }
 
@@ -379,6 +383,7 @@ define_tables! {
     is_intrinsic: Table<DefIndex, bool>,
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,
+    type_alias_is_lazy: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
     def_path_hashes: Table<DefIndex, DefPathHash>,
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
@@ -434,7 +439,7 @@ define_tables! {
     coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
-    asyncness: Table<DefIndex, hir::IsAsync>,
+    asyncness: Table<DefIndex, ty::Asyncness>,
     fn_arg_names: Table<DefIndex, LazyArray<Ident>>,
     generator_kind: Table<DefIndex, LazyValue<hir::GeneratorKind>>,
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
@@ -448,7 +453,6 @@ define_tables! {
     // definitions from any given crate.
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
     proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
-    generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'static>>>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,

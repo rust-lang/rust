@@ -8,6 +8,7 @@ LL | |         .unwrap_or(0);
    | |_____________________^
    |
    = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_unwrap_or)]`
 help: use `map_or(<a>, <f>)` instead
    |
 LL -     let _ = opt.map(|x| x + 1)

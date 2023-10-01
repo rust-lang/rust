@@ -14,11 +14,12 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{
-    CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE,
+    CrateNum, DefId, DefIndex, LocalDefId, LocalDefIdSet, CRATE_DEF_ID, CRATE_DEF_INDEX,
+    LOCAL_CRATE,
 };
 use rustc_hir::definitions::DefPathData;
-use rustc_hir::intravisit;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir_pretty::id_to_string;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
@@ -30,7 +31,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, AssocItemContainer, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
@@ -50,7 +50,6 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
-
     tables: TableBuilders,
 
     lazy_state: LazyState,
@@ -131,7 +130,8 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
 
 impl<'a, 'tcx, I, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
-        e.emit_usize(self.encoded_size);
+        e.emit_usize(self.width);
+        e.emit_usize(self.len);
         e.emit_lazy_distance(self.position);
     }
 }
@@ -279,8 +279,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             // All of this logic ensures that the final result of deserialization is a 'normal'
             // Span that can be used without any additional trouble.
             let metadata_index = {
-                // Introduce a new scope so that we drop the 'lock()' temporary
-                match &*source_file.external_src.lock() {
+                // Introduce a new scope so that we drop the 'read()' temporary
+                match &*source_file.external_src.read() {
                     ExternalSource::Foreign { metadata_index, .. } => *metadata_index,
                     src => panic!("Unexpected external source {src:?}"),
                 }
@@ -344,6 +344,13 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Symbol {
                 }
             }
         }
+    }
+}
+
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+        Encoder::emit_usize(e, self.len());
+        e.emit_raw_bytes(self);
     }
 }
 
@@ -819,7 +826,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -854,7 +861,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -895,7 +902,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::Variant
         | DefKind::Trait
         | DefKind::Impl { .. } => true,
-        DefKind::TyAlias { .. }
+        DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -930,7 +937,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -974,7 +981,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::Const
         | DefKind::Fn
         | DefKind::ForeignMod
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::Enum
         | DefKind::Union
@@ -994,15 +1001,31 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
     }
 }
 
-/// Whether we should encode MIR.
+/// Whether we should encode MIR. Return a pair, resp. for CTFE and for LLVM.
 ///
 /// Computing, optimizing and encoding the MIR is a relatively expensive operation.
 /// We want to avoid this work when not required. Therefore:
 /// - we only compute `mir_for_ctfe` on items with const-eval semantics;
 /// - we skip `optimized_mir` for check runs.
+/// - we only encode `optimized_mir` that could be generated in other crates, that is, a code that
+///   is either generic or has inline hint, and is reachable from the other crates (contained
+///   in reachable set).
 ///
-/// Return a pair, resp. for CTFE and for LLVM.
-fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
+/// Note: Reachable set describes definitions that might be generated or referenced from other
+/// crates and it can be used to limit optimized MIR that needs to be encoded. On the other hand,
+/// the reachable set doesn't have much to say about which definitions might be evaluated at compile
+/// time in other crates, so it cannot be used to omit CTFE MIR. For example, `f` below is
+/// unreachable and yet it can be evaluated in other crates:
+///
+/// ```
+/// const fn f() -> usize { 0 }
+/// pub struct S { pub a: [usize; f()] }
+/// ```
+fn should_encode_mir(
+    tcx: TyCtxt<'_>,
+    reachable_set: &LocalDefIdSet,
+    def_id: LocalDefId,
+) -> (bool, bool) {
     match tcx.def_kind(def_id) {
         // Constructors
         DefKind::Ctor(_, _) => {
@@ -1019,14 +1042,15 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
-            let needs_inline = (generics.requires_monomorphization(tcx)
-                || tcx.codegen_fn_attrs(def_id).requests_inline())
-                && tcx.sess.opts.output_types.should_codegen();
+            let opt = tcx.sess.opts.unstable_opts.always_encode_mir
+                || (tcx.sess.opts.output_types.should_codegen()
+                    && reachable_set.contains(&def_id)
+                    && (generics.requires_monomorphization(tcx)
+                        || tcx.codegen_fn_attrs(def_id).requests_inline()));
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
-            let always_encode_mir = tcx.sess.opts.unstable_opts.always_encode_mir;
-            (is_const_fn, needs_inline || always_encode_mir)
+            (is_const_fn, opt)
         }
         // Generators require optimized MIR to compute layout.
         DefKind::Generator => (false, true),
@@ -1067,9 +1091,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::Closure
         | DefKind::Generator
         | DefKind::ExternCrate => false,
-        DefKind::TyAlias { lazy } => {
-            lazy || tcx.type_of(def_id).instantiate_identity().has_opaque_types()
-        }
+        DefKind::TyAlias => tcx.type_alias_is_lazy(def_id),
     }
 }
 
@@ -1080,7 +1102,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::AssocTy
@@ -1120,7 +1142,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Fn
         | DefKind::Const
         | DefKind::Static(..)
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
         | DefKind::AssocFn
@@ -1180,7 +1202,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Const
         | DefKind::Static(..)
         | DefKind::Ctor(..)
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
@@ -1221,7 +1243,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::AssocConst
         | DefKind::AnonConst
         | DefKind::Static(..)
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::Impl { of_trait: false }
         | DefKind::ForeignTy
@@ -1254,7 +1276,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::Fn
         | DefKind::Static(..)
-        | DefKind::TyAlias { .. }
+        | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
@@ -1414,7 +1436,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             if let DefKind::Generator = def_kind {
-                self.encode_info_for_generator(local_id);
+                let data = self.tcx.generator_kind(def_id).unwrap();
+                record!(self.tables.generator_kind[def_id] <- data);
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
@@ -1424,6 +1447,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Macro(_) = def_kind {
                 self.encode_info_for_macro(local_id);
+            }
+            if let DefKind::TyAlias = def_kind {
+                self.tables
+                    .type_alias_is_lazy
+                    .set(def_id.index, self.tcx.type_alias_is_lazy(def_id));
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
@@ -1572,9 +1600,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
+        let reachable_set = tcx.reachable_set(());
 
         let keys_and_jobs = tcx.mir_keys(()).iter().filter_map(|&def_id| {
-            let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
+            let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
             if encode_const || encode_opt { Some((def_id, encode_const, encode_opt)) } else { None }
         });
         for (def_id, encode_const, encode_opt) in keys_and_jobs {
@@ -1586,8 +1615,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
-                if tcx.sess.opts.unstable_opts.drop_tracking_mir
-                    && let DefKind::Generator = self.tcx.def_kind(def_id)
+                if let DefKind::Generator = self.tcx.def_kind(def_id)
                     && let Some(witnesses) = tcx.mir_generator_witnesses(def_id)
                 {
                     record!(self.tables.mir_generator_witnesses[def_id.to_def_id()] <- witnesses);
@@ -1607,12 +1635,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
                     let body_id = tcx.hir().maybe_body_owned_by(def_id);
                     if let Some(body_id) = body_id {
-                        let const_data = self.encode_rendered_const_for_body(body_id);
+                        let const_data = rendered_const(self.tcx, body_id);
                         record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
                     }
                 }
             }
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
+
+            if let DefKind::Generator = self.tcx.def_kind(def_id)
+                && let Some(witnesses) = tcx.mir_generator_witnesses(def_id)
+            {
+                record!(self.tables.mir_generator_witnesses[def_id.to_def_id()] <- witnesses);
+            }
 
             let instance = ty::InstanceDef::Item(def_id.to_def_id());
             let unused = tcx.unused_generic_params(instance);
@@ -1675,14 +1709,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_rendered_const_for_body(&mut self, body_id: hir::BodyId) -> String {
-        let hir = self.tcx.hir();
-        let body = hir.body(body_id);
-        rustc_hir_pretty::to_string(&(&hir as &dyn intravisit::Map<'_>), |s| {
-            s.print_expr(&body.value)
-        })
-    }
-
     #[instrument(level = "debug", skip(self))]
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
@@ -1692,15 +1718,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
         self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn encode_info_for_generator(&mut self, def_id: LocalDefId) {
-        let typeck_result: &'tcx ty::TypeckResults<'tcx> = self.tcx.typeck(def_id);
-        let data = self.tcx.generator_kind(def_id).unwrap();
-        let generator_diagnostic_data = typeck_result.get_generator_diagnostic_data();
-        record!(self.tables.generator_kind[def_id.to_def_id()] <- data);
-        record!(self.tables.generator_diagnostic_data[def_id.to_def_id()]  <- generator_diagnostic_data);
     }
 
     fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {
@@ -2067,8 +2084,9 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         return;
     }
 
+    let reachable_set = tcx.reachable_set(());
     par_for_each_in(tcx.mir_keys(()), |&def_id| {
-        let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
+        let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
 
         if encode_const {
             tcx.ensure_with_value().mir_for_ctfe(def_id);
@@ -2282,5 +2300,99 @@ pub fn provide(providers: &mut Providers) {
         },
 
         ..*providers
+    }
+}
+
+/// Build a textual representation of an unevaluated constant expression.
+///
+/// If the const expression is too complex, an underscore `_` is returned.
+/// For const arguments, it's `{ _ }` to be precise.
+/// This means that the output is not necessarily valid Rust code.
+///
+/// Currently, only
+///
+/// * literals (optionally with a leading `-`)
+/// * unit `()`
+/// * blocks (`{ … }`) around simple expressions and
+/// * paths without arguments
+///
+/// are considered simple enough. Simple blocks are included since they are
+/// necessary to disambiguate unit from the unit type.
+/// This list might get extended in the future.
+///
+/// Without this censoring, in a lot of cases the output would get too large
+/// and verbose. Consider `match` expressions, blocks and deeply nested ADTs.
+/// Further, private and `doc(hidden)` fields of structs would get leaked
+/// since HIR datatypes like the `body` parameter do not contain enough
+/// semantic information for this function to be able to hide them –
+/// at least not without significant performance overhead.
+///
+/// Whenever possible, prefer to evaluate the constant first and try to
+/// use a different method for pretty-printing. Ideally this function
+/// should only ever be used as a fallback.
+pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
+    let hir = tcx.hir();
+    let value = &hir.body(body).value;
+
+    #[derive(PartialEq, Eq)]
+    enum Classification {
+        Literal,
+        Simple,
+        Complex,
+    }
+
+    use Classification::*;
+
+    fn classify(expr: &hir::Expr<'_>) -> Classification {
+        match &expr.kind {
+            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
+                if matches!(expr.kind, hir::ExprKind::Lit(_)) { Literal } else { Complex }
+            }
+            hir::ExprKind::Lit(_) => Literal,
+            hir::ExprKind::Tup([]) => Simple,
+            hir::ExprKind::Block(hir::Block { stmts: [], expr: Some(expr), .. }, _) => {
+                if classify(expr) == Complex { Complex } else { Simple }
+            }
+            // Paths with a self-type or arguments are too “complex” following our measure since
+            // they may leak private fields of structs (with feature `adt_const_params`).
+            // Consider: `<Self as Trait<{ Struct { private: () } }>>::CONSTANT`.
+            // Paths without arguments are definitely harmless though.
+            hir::ExprKind::Path(hir::QPath::Resolved(_, hir::Path { segments, .. })) => {
+                if segments.iter().all(|segment| segment.args.is_none()) { Simple } else { Complex }
+            }
+            // FIXME: Claiming that those kinds of QPaths are simple is probably not true if the Ty
+            //        contains const arguments. Is there a *concise* way to check for this?
+            hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => Simple,
+            // FIXME: Can they contain const arguments and thus leak private struct fields?
+            hir::ExprKind::Path(hir::QPath::LangItem(..)) => Simple,
+            _ => Complex,
+        }
+    }
+
+    let classification = classify(value);
+
+    if classification == Literal
+    && !value.span.from_expansion()
+    && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) {
+        // For literals, we avoid invoking the pretty-printer and use the source snippet instead to
+        // preserve certain stylistic choices the user likely made for the sake legibility like
+        //
+        // * hexadecimal notation
+        // * underscores
+        // * character escapes
+        //
+        // FIXME: This passes through `-/*spacer*/0` verbatim.
+        snippet
+    } else if classification == Simple {
+        // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
+        // other formatting artifacts.
+        id_to_string(&hir, body.hir_id)
+    } else if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
+        // FIXME: Omit the curly braces if the enclosing expression is an array literal
+        //        with a repeated element (an `ExprKind::Repeat`) as in such case it
+        //        would not actually need any disambiguation.
+        "{ _ }".to_owned()
+    } else {
+        "_".to_owned()
     }
 }

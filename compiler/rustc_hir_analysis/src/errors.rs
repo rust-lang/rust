@@ -430,20 +430,30 @@ pub(crate) struct VariadicFunctionCompatibleConvention<'a> {
 }
 
 #[derive(Diagnostic)]
-pub(crate) enum CannotCaptureLateBoundInAnonConst {
-    #[diag(hir_analysis_cannot_capture_late_bound_ty_in_anon_const)]
+pub(crate) enum CannotCaptureLateBound {
+    #[diag(hir_analysis_cannot_capture_late_bound_ty)]
     Type {
         #[primary_span]
         use_span: Span,
         #[label]
         def_span: Span,
+        what: &'static str,
     },
-    #[diag(hir_analysis_cannot_capture_late_bound_const_in_anon_const)]
+    #[diag(hir_analysis_cannot_capture_late_bound_const)]
     Const {
         #[primary_span]
         use_span: Span,
         #[label]
         def_span: Span,
+        what: &'static str,
+    },
+    #[diag(hir_analysis_cannot_capture_late_bound_lifetime)]
+    Lifetime {
+        #[primary_span]
+        use_span: Span,
+        #[label]
+        def_span: Span,
+        what: &'static str,
     },
 }
 
@@ -919,6 +929,22 @@ pub struct UnusedAssociatedTypeBounds {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_rpitit_refined)]
+#[note]
+pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
+    #[suggestion(applicability = "maybe-incorrect", code = "{pre}{return_ty}{post}")]
+    pub impl_return_span: Span,
+    #[label]
+    pub trait_return_span: Option<Span>,
+    #[label(hir_analysis_unmatched_bound_label)]
+    pub unmatched_bound: Option<Span>,
+
+    pub pre: &'static str,
+    pub post: &'static str,
+    pub return_ty: Ty<'tcx>,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_assoc_bound_on_const)]
 #[note]
@@ -926,4 +952,200 @@ pub struct AssocBoundOnConst {
     #[primary_span]
     pub span: Span,
     pub descr: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_ty_outside, code = "E0390")]
+#[help]
+pub struct InherentTyOutside {
+    #[primary_span]
+    #[help(hir_analysis_span_help)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0378")]
+pub struct DispatchFromDynCoercion<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+    #[note(hir_analysis_coercion_between_struct_same_note)]
+    pub note: bool,
+    pub source_path: String,
+    pub target_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_dispatch_from_dyn_repr, code = "E0378")]
+pub struct DispatchFromDynRepr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_ty_outside_relevant, code = "E0390")]
+#[help]
+pub struct InherentTyOutsideRelevant {
+    #[primary_span]
+    pub span: Span,
+    #[help(hir_analysis_span_help)]
+    pub help_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_ty_outside_new, code = "E0116")]
+#[note]
+pub struct InherentTyOutsideNew {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_ty_outside_primitive, code = "E0390")]
+#[help]
+pub struct InherentTyOutsidePrimitive {
+    #[primary_span]
+    pub span: Span,
+    #[help(hir_analysis_span_help)]
+    pub help_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_primitive_ty, code = "E0390")]
+#[help]
+pub struct InherentPrimitiveTy<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub note: Option<InherentPrimitiveTyNote<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_analysis_inherent_primitive_ty_note)]
+pub struct InherentPrimitiveTyNote<'a> {
+    pub subty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_dyn, code = "E0785")]
+#[note]
+pub struct InherentDyn {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_inherent_nominal, code = "E0118")]
+#[note]
+pub struct InherentNominal {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_dispatch_from_dyn_zst, code = "E0378")]
+#[note]
+pub struct DispatchFromDynZST<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    pub ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0378")]
+pub struct DispatchFromDynSingle<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+    #[note(hir_analysis_coercion_between_struct_single_note)]
+    pub note: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_dispatch_from_dyn_multi, code = "E0378")]
+#[note]
+pub struct DispatchFromDynMulti {
+    #[primary_span]
+    pub span: Span,
+    #[note(hir_analysis_coercions_note)]
+    pub coercions_note: bool,
+    pub number: usize,
+    pub coercions: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0376")]
+pub struct DispatchFromDynStruct<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0377")]
+pub struct DispatchFromDynSame<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+    #[note(hir_analysis_coercion_between_struct_same_note)]
+    pub note: bool,
+    pub source_path: String,
+    pub target_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0374")]
+pub struct CoerceUnsizedOneField<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+    #[note(hir_analysis_coercion_between_struct_single_note)]
+    pub note: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_multi, code = "E0375")]
+#[note]
+pub struct CoerceUnsizedMulti {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note(hir_analysis_coercions_note)]
+    pub coercions_note: bool,
+    pub number: usize,
+    pub coercions: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = "E0378")]
+pub struct CoerceUnsizedMay<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_trait_cannot_impl_for_ty, code = "E0204")]
+pub struct TraitCannotImplForTy {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: String,
+    #[label]
+    pub label_spans: Vec<Span>,
+    #[subdiagnostic]
+    pub notes: Vec<ImplForTyRequires>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_analysis_requires_note)]
+pub struct ImplForTyRequires {
+    #[primary_span]
+    pub span: MultiSpan,
+    pub error_predicate: String,
+    pub trait_name: String,
+    pub ty: String,
 }

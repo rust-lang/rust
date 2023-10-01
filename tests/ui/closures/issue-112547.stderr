@@ -1,0 +1,23 @@
+error[E0412]: cannot find type `V` in this scope
+  --> $DIR/issue-112547.rs:8:4
+   |
+LL | }> V: IntoIterator
+   |    ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | pub fn bar<V>()
+   |           +++
+
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-112547.rs:1:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0412`.

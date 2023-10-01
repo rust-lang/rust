@@ -17,6 +17,8 @@ error: expected item, found `"\u\"`
    |
 LL | "\u\"
    | ^^^^^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
 
 error: aborting due to 3 previous errors
 

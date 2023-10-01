@@ -10,6 +10,7 @@ use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -84,7 +85,7 @@ fn find_innermost_closure<'tcx>(
     cx: &LateContext<'tcx>,
     mut expr: &'tcx hir::Expr<'tcx>,
     mut steps: usize,
-) -> Option<(&'tcx hir::Expr<'tcx>, &'tcx hir::FnDecl<'tcx>, hir::IsAsync)> {
+) -> Option<(&'tcx hir::Expr<'tcx>, &'tcx hir::FnDecl<'tcx>, ty::Asyncness)> {
     let mut data = None;
 
     while let hir::ExprKind::Closure(closure) = expr.kind
@@ -98,9 +99,9 @@ fn find_innermost_closure<'tcx>(
     {
         expr = body.value;
         data = Some((body.value, closure.fn_decl, if is_async_closure(body) {
-            hir::IsAsync::Async
+            ty::Asyncness::Yes
         } else {
-            hir::IsAsync::NotAsync
+            ty::Asyncness::No
         }));
         steps -= 1;
     }

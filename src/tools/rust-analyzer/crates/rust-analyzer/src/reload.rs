@@ -12,6 +12,7 @@
 //! correct. Instead, we try to provide a best-effort service. Even if the
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
+// FIXME: This is a mess that needs some untangling work
 use std::{iter, mem};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};

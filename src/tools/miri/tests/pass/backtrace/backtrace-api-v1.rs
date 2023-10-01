@@ -54,6 +54,8 @@ fn main() {
         eprintln!("{}", out);
         // Print the 'main' frame (and everything before it) to stdout, skipping
         // the printing of internal (and possibly fragile) libstd frames.
+        // Stdout is less normalized so we see more, but it also means we can print less
+        // as platform differences would lead to test suite failures.
         if !seen_main {
             println!("{}", out);
             seen_main = name == "main";

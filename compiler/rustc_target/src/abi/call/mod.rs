@@ -2,6 +2,7 @@ use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 use rustc_span::Symbol;
+use std::fmt;
 use std::str::FromStr;
 
 mod aarch64;
@@ -36,23 +37,52 @@ pub enum PassMode {
     Ignore,
     /// Pass the argument directly.
     ///
-    /// The argument has a layout abi of `Scalar`, `Vector` or in rare cases `Aggregate`.
+    /// The argument has a layout abi of `Scalar` or `Vector`.
+    /// Unfortunately due to past mistakes, in rare cases on wasm, it can also be `Aggregate`.
+    /// This is bad since it leaks LLVM implementation details into the ABI.
+    /// (Also see <https://github.com/rust-lang/rust/issues/115666>.)
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
     ///
     /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
-    /// Pass the argument after casting it, to either a single uniform or a
-    /// pair of registers. The bool indicates if a `Reg::i32()` dummy argument
-    /// is emitted before the real argument.
-    Cast(Box<CastTarget>, bool),
+    /// Pass the argument after casting it. See the `CastTarget` docs for details. The bool
+    /// indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
+    Cast { pad_i32: bool, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
-    /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
-    /// which indicates that it refers to an unsized rvalue.
-    /// `on_stack` defines that the value should be passed at a fixed
-    /// stack offset in accordance to the ABI rather than passed using a
-    /// pointer. This corresponds to the `byval` LLVM argument attribute.
-    Indirect { attrs: ArgAttributes, extra_attrs: Option<ArgAttributes>, on_stack: bool },
+    /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
+    /// argument. (This is the only mode that supports unsized arguments.)
+    /// `on_stack` defines that the value should be passed at a fixed stack offset in accordance to
+    /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
+    /// attribute (using the Rust type of this argument). `on_stack` cannot be true for unsized
+    /// arguments, i.e., when `meta_attrs` is `Some`.
+    Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
+}
+
+impl PassMode {
+    /// Checks if these two `PassMode` are equal enough to be considered "the same for all
+    /// function call ABIs". However, the `Layout` can also impact ABI decisions,
+    /// so that needs to be compared as well!
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        match (self, other) {
+            (PassMode::Ignore, PassMode::Ignore) => true,
+            (PassMode::Direct(a1), PassMode::Direct(a2)) => a1.eq_abi(a2),
+            (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => a1.eq_abi(a2) && b1.eq_abi(b2),
+            (
+                PassMode::Cast { cast: c1, pad_i32: pad1 },
+                PassMode::Cast { cast: c2, pad_i32: pad2 },
+            ) => c1.eq_abi(c2) && pad1 == pad2,
+            (
+                PassMode::Indirect { attrs: a1, meta_attrs: None, on_stack: s1 },
+                PassMode::Indirect { attrs: a2, meta_attrs: None, on_stack: s2 },
+            ) => a1.eq_abi(a2) && s1 == s2,
+            (
+                PassMode::Indirect { attrs: a1, meta_attrs: Some(e1), on_stack: s1 },
+                PassMode::Indirect { attrs: a2, meta_attrs: Some(e2), on_stack: s2 },
+            ) => a1.eq_abi(a2) && e1.eq_abi(e2) && s1 == s2,
+            _ => false,
+        }
+    }
 }
 
 // Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
@@ -126,6 +156,24 @@ impl ArgAttributes {
 
     pub fn contains(&self, attr: ArgAttribute) -> bool {
         self.regular.contains(attr)
+    }
+
+    /// Checks if these two `ArgAttributes` are equal enough to be considered "the same for all
+    /// function call ABIs".
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        // There's only one regular attribute that matters for the call ABI: InReg.
+        // Everything else is things like noalias, dereferenceable, nonnull, ...
+        // (This also applies to pointee_size, pointee_align.)
+        if self.regular.contains(ArgAttribute::InReg) != other.regular.contains(ArgAttribute::InReg)
+        {
+            return false;
+        }
+        // We also compare the sign extension mode -- this could let the callee make assumptions
+        // about bits that conceptually were not even passed.
+        if self.arg_ext != other.arg_ext {
+            return false;
+        }
+        return true;
     }
 }
 
@@ -211,6 +259,13 @@ impl Uniform {
     }
 }
 
+/// Describes the type used for `PassMode::Cast`.
+///
+/// Passing arguments in this mode works as follows: the registers in the `prefix` (the ones that
+/// are `Some`) get laid out one after the other (using `repr(C)` layout rules). Then the
+/// `rest.unit` register type gets repeated often enough to cover `rest.size`. This describes the
+/// actual type used for the call; the Rust type of the argument is then transmuted to this ABI type
+/// (and all data in the padding between the registers is dropped).
 #[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
     pub prefix: [Option<Reg>; 8],
@@ -272,6 +327,14 @@ impl CastTarget {
                 acc.max(align)
             })
     }
+
+    /// Checks if these two `CastTarget` are equal enough to be considered "the same for all
+    /// function call ABIs".
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        let CastTarget { prefix: prefix_l, rest: rest_l, attrs: attrs_l } = self;
+        let CastTarget { prefix: prefix_r, rest: rest_r, attrs: attrs_r } = other;
+        prefix_l == prefix_r && rest_l == rest_r && attrs_l.eq_abi(attrs_r)
+    }
 }
 
 /// Return value from the `homogeneous_aggregate` test function.
@@ -330,8 +393,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// only a single type (e.g., `(u32, u32)`). Such aggregates are often
     /// special-cased in ABIs.
     ///
-    /// Note: We generally ignore fields of zero-sized type when computing
-    /// this value (see #56877).
+    /// Note: We generally ignore 1-ZST fields when computing this value (see #56877).
     ///
     /// This is public so that it can be used in unit tests, but
     /// should generally only be relevant to the ABI details of
@@ -389,11 +451,17 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                         let mut total = start;
 
                         for i in 0..layout.fields.count() {
-                            if !is_union && total != layout.fields.offset(i) {
-                                return Err(Heterogeneous);
+                            let field = layout.field(cx, i);
+                            if field.is_1zst() {
+                                // No data here and no impact on layout, can be ignored.
+                                // (We might be able to also ignore all aligned ZST but that's less clear.)
+                                continue;
                             }
 
-                            let field = layout.field(cx, i);
+                            if !is_union && total != layout.fields.offset(i) {
+                                // This field isn't just after the previous one we considered, abort.
+                                return Err(Heterogeneous);
+                            }
 
                             result = result.merge(field.homogeneous_aggregate(cx)?)?;
 
@@ -458,13 +526,22 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
     pub mode: PassMode,
 }
 
+// Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
+impl<'a, Ty: fmt::Display> fmt::Debug for ArgAbi<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ArgAbi { layout, mode } = self;
+        f.debug_struct("ArgAbi").field("layout", layout).field("mode", mode).finish()
+    }
+}
+
 impl<'a, Ty> ArgAbi<'a, Ty> {
+    /// This defines the "default ABI" for that type, that is then later adjusted in `fn_abi_adjust_for_abi`.
     pub fn new(
         cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
@@ -478,6 +555,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                 scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
+            // The `Aggregate` ABI should always be adjusted later.
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, mode }
@@ -497,15 +575,15 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         attrs.pointee_size = layout.size;
         attrs.pointee_align = Some(layout.align.abi);
 
-        let extra_attrs = layout.is_unsized().then_some(ArgAttributes::new());
+        let meta_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
-        PassMode::Indirect { attrs, extra_attrs, on_stack: false }
+        PassMode::Indirect { attrs, meta_attrs, on_stack: false }
     }
 
     pub fn make_indirect(&mut self) {
         match self.mode {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {}
-            PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: false } => return,
+            PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: false } => return,
             _ => panic!("Tried to make {:?} indirect", self.mode),
         }
 
@@ -515,7 +593,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { ref mut attrs, extra_attrs: _, ref mut on_stack } => {
+            PassMode::Indirect { ref mut attrs, meta_attrs: _, ref mut on_stack } => {
                 *on_stack = true;
 
                 // Some platforms, like 32-bit x86, change the alignment of the type when passing
@@ -548,11 +626,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        self.mode = PassMode::Cast(Box::new(target.into()), false);
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32: false };
     }
 
     pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
-        self.mode = PassMode::Cast(Box::new(target.into()), pad_i32);
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32 };
     }
 
     pub fn is_indirect(&self) -> bool {
@@ -560,15 +638,23 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_sized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ })
+        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ })
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ })
+        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ })
     }
 
     pub fn is_ignore(&self) -> bool {
         matches!(self.mode, PassMode::Ignore)
+    }
+
+    /// Checks if these two `ArgAbi` are equal enough to be considered "the same for all
+    /// function call ABIs".
+    pub fn eq_abi(&self, other: &Self) -> bool {
+        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
+        // at the type.
+        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode)
     }
 }
 
@@ -579,10 +665,9 @@ pub enum Conv {
     C,
     Rust,
 
-    /// For things unlikely to be called, where smaller caller codegen is
-    /// preferred over raw speed.
-    /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
-    RustCold,
+    Cold,
+    PreserveMost,
+    PreserveAll,
 
     // Target-specific calling conventions.
     ArmAapcs,
@@ -605,9 +690,7 @@ pub enum Conv {
     AvrInterrupt,
     AvrNonBlockingInterrupt,
 
-    RiscvInterrupt {
-        kind: RiscvInterruptKind,
-    },
+    RiscvInterrupt { kind: RiscvInterruptKind },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
@@ -630,7 +713,7 @@ impl RiscvInterruptKind {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
     pub args: Box<[ArgAbi<'a, Ty>]>,
@@ -649,6 +732,21 @@ pub struct FnAbi<'a, Ty> {
     pub conv: Conv,
 
     pub can_unwind: bool,
+}
+
+// Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
+impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FnAbi { args, ret, c_variadic, fixed_count, conv, can_unwind } = self;
+        f.debug_struct("FnAbi")
+            .field("args", args)
+            .field("ret", ret)
+            .field("c_variadic", c_variadic)
+            .field("fixed_count", fixed_count)
+            .field("conv", conv)
+            .field("can_unwind", can_unwind)
+            .finish()
+    }
 }
 
 /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.

@@ -6,6 +6,11 @@ LL |     needs_bar(std::mem::discriminant(&x));
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/projection-discr-kind.rs:10:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
 note: required by a bound in `needs_bar`
   --> $DIR/projection-discr-kind.rs:11:22
    |

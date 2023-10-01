@@ -1,8 +1,13 @@
-error[E0054]: cannot cast as `bool`
+error[E0054]: cannot cast `i32` as `bool`
   --> $DIR/cast-rfc0401-2.rs:6:13
    |
 LL |     let _ = 3 as bool;
-   |             ^^^^^^^^^ help: compare with zero instead: `3 != 0`
+   |             ^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL |     let _ = 3 != 0;
+   |               ~~~~
 
 error: aborting due to previous error
 

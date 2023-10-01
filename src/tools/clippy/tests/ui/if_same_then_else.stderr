@@ -24,6 +24,7 @@ LL | |         foo();
 LL | |     }
    | |_____^
    = note: `-D clippy::if-same-then-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
 
 error: this `if` has identical blocks
   --> $DIR/if_same_then_else.rs:67:21

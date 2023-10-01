@@ -1,6 +1,6 @@
 //! Code for debugging the dep-graph.
 
-use super::{DepKind, DepNode, DepNodeIndex};
+use super::{DepNode, DepNodeIndex};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use std::error::Error;
@@ -28,7 +28,7 @@ impl DepNodeFilter {
     }
 
     /// Tests whether `node` meets the filter, returning true if so.
-    pub fn test<K: DepKind>(&self, node: &DepNode<K>) -> bool {
+    pub fn test(&self, node: &DepNode) -> bool {
         let debug_str = format!("{node:?}");
         self.text.split('&').map(|s| s.trim()).all(|f| debug_str.contains(f))
     }
@@ -36,14 +36,14 @@ impl DepNodeFilter {
 
 /// A filter like `F -> G` where `F` and `G` are valid dep-node
 /// filters. This can be used to test the source/target independently.
-pub struct EdgeFilter<K: DepKind> {
+pub struct EdgeFilter {
     pub source: DepNodeFilter,
     pub target: DepNodeFilter,
-    pub index_to_node: Lock<FxHashMap<DepNodeIndex, DepNode<K>>>,
+    pub index_to_node: Lock<FxHashMap<DepNodeIndex, DepNode>>,
 }
 
-impl<K: DepKind> EdgeFilter<K> {
-    pub fn new(test: &str) -> Result<EdgeFilter<K>, Box<dyn Error>> {
+impl EdgeFilter {
+    pub fn new(test: &str) -> Result<EdgeFilter, Box<dyn Error>> {
         let parts: Vec<_> = test.split("->").collect();
         if parts.len() != 2 {
             Err(format!("expected a filter like `a&b -> c&d`, not `{test}`").into())
@@ -57,7 +57,7 @@ impl<K: DepKind> EdgeFilter<K> {
     }
 
     #[cfg(debug_assertions)]
-    pub fn test(&self, source: &DepNode<K>, target: &DepNode<K>) -> bool {
+    pub fn test(&self, source: &DepNode, target: &DepNode) -> bool {
         self.source.test(source) && self.target.test(target)
     }
 }

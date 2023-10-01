@@ -302,7 +302,7 @@ pub fn return_impl_trait() -> i32        {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_nodes, typeck, fn_sig, optimized_mir")]
+#[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_nodes, typeck, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 #[rustc_clean(cfg = "cfail5", except = "hir_owner, hir_owner_nodes, typeck, fn_sig, optimized_mir")]
 #[rustc_clean(cfg = "cfail6")]

@@ -5,6 +5,7 @@ LL |     match "world" {
    |           ^^^^^^^ pattern `&_` not covered
    |
    = note: the matched value is of type `&str`
+   = note: `&str` cannot be matched exhaustively, so a wildcard `_` is necessary
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         "hello" => {},
@@ -18,6 +19,7 @@ LL |     match "world" {
    |           ^^^^^^^ pattern `&_` not covered
    |
    = note: the matched value is of type `&str`
+   = note: `&str` cannot be matched exhaustively, so a wildcard `_` is necessary
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         "hello" => {},

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::empty_structs_with_brackets)]
 #![allow(dead_code)]
 

@@ -61,9 +61,7 @@ pub enum DefKind {
     Variant,
     Trait,
     /// Type alias: `type Foo = Bar;`
-    TyAlias {
-        lazy: bool,
-    },
+    TyAlias,
     /// Type from an `extern` block.
     ForeignTy,
     /// Trait alias: `trait IntIterator = Iterator<Item = i32>;`
@@ -143,7 +141,7 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::OpaqueTy => "opaque type",
-            DefKind::TyAlias { .. } => "type alias",
+            DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
             DefKind::Union => "union",
@@ -199,7 +197,7 @@ impl DefKind {
             | DefKind::Variant
             | DefKind::Trait
             | DefKind::OpaqueTy
-            | DefKind::TyAlias { .. }
+            | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
@@ -250,7 +248,7 @@ impl DefKind {
             | DefKind::Enum
             | DefKind::Variant
             | DefKind::Trait
-            | DefKind::TyAlias { .. }
+            | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy

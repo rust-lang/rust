@@ -9,15 +9,13 @@ use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_hir::def::Namespace;
-use rustc_index::{Idx, IndexVec};
 use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::{ConstKind, DebugWithInfcx, InferCtxtLike, OptWithInfcx};
 
 use std::fmt::{self, Debug};
 use std::ops::ControlFlow;
-use std::rc::Rc;
-use std::sync::Arc;
 
+use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Region};
 
 impl fmt::Debug for ty::TraitDef {
@@ -70,7 +68,7 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon(span) => write!(f, "BrAnon({span:?})"),
+            ty::BrAnon => write!(f, "BrAnon"),
             ty::BrNamed(did, name) => {
                 if did.is_crate_root() {
                     write!(f, "BrNamed({name})")
@@ -138,6 +136,12 @@ impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
     }
 }
 
+impl fmt::Debug for ty::EffectVid<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "?{}e", self.index)
+    }
+}
+
 impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_no_trimmed_paths!(fmt::Display::fmt(self, f))
@@ -154,7 +158,7 @@ impl<'tcx> ty::DebugWithInfcx<TyCtxt<'tcx>> for Ty<'tcx> {
 }
 impl<'tcx> fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Debug::fmt(self.kind(), f))
     }
 }
 
@@ -253,6 +257,7 @@ impl<'tcx> fmt::Debug for ty::InferConst<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InferConst::Var(var) => write!(f, "{var:?}"),
+            InferConst::EffectVar(var) => write!(f, "{var:?}"),
             InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
         }
     }
@@ -267,6 +272,7 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::InferConst<'tcx> {
             None => write!(f, "{:?}", this.data),
             Some(universe) => match *this.data {
                 Var(vid) => write!(f, "?{}_{}c", vid.index, universe.index()),
+                EffectVar(vid) => write!(f, "?{}_{}e", vid.index, universe.index()),
                 Fresh(_) => {
                     unreachable!()
                 }
@@ -335,14 +341,27 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::Const<'tcx> {
         this: OptWithInfcx<'_, TyCtxt<'tcx>, InfCtx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
-        // This reflects what `Const` looked liked before `Interned` was
-        // introduced. We print it like this to avoid having to update expected
-        // output in a lot of tests.
+        // If this is a value, we spend some effort to make it look nice.
+        if let ConstKind::Value(_) = this.data.kind() {
+            return ty::tls::with(move |tcx| {
+                // Somehow trying to lift the valtree results in lifetime errors, so we lift the
+                // entire constant.
+                let lifted = tcx.lift(*this.data).unwrap();
+                let ConstKind::Value(valtree) = lifted.kind() else {
+                    bug!("we checked that this is a valtree")
+                };
+                let cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                let cx =
+                    cx.pretty_print_const_valtree(valtree, lifted.ty(), /*print_ty*/ true)?;
+                f.write_str(&cx.into_buffer())
+            });
+        }
+        // Fall back to something verbose.
         write!(
             f,
-            "Const {{ ty: {:?}, kind: {:?} }}",
-            &this.map(|data| data.ty()),
-            &this.map(|data| data.kind())
+            "{kind:?}: {ty:?}",
+            ty = &this.map(|data| data.ty()),
+            kind = &this.map(|data| data.kind())
         )
     }
 }
@@ -434,22 +453,17 @@ impl<'tcx, T: DebugWithInfcx<TyCtxt<'tcx>>> DebugWithInfcx<TyCtxt<'tcx>> for ty:
 
 // For things for which the type library provides traversal implementations
 // for all Interners, we only need to provide a Lift implementation:
-CloneLiftImpls! {
-    (),
-    bool,
-    usize,
-    u16,
-    u32,
-    u64,
-    String,
-    rustc_type_ir::DebruijnIndex,
+TrivialLiftImpls! {
+     (),
+     bool,
+     usize,
+     u64,
 }
 
-// For things about which the type library does not know, or does not
-// provide any traversal implementations, we need to provide both a Lift
-// implementation and traversal implementations (the latter only for
-// TyCtxt<'_> interners).
-TrivialTypeTraversalAndLiftImpls! {
+// For some things about which the type library does not know, or does not
+// provide any traversal implementations, we need to provide a traversal
+// implementation (only for TyCtxt<'_> interners).
+TrivialTypeTraversalImpls! {
     ::rustc_target::abi::FieldIdx,
     ::rustc_target::abi::VariantIdx,
     crate::middle::region::Scope,
@@ -459,17 +473,12 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_ast::NodeId,
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
-    ::rustc_hir::def_id::DefId,
     ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::HirId,
     ::rustc_hir::MatchSource,
-    ::rustc_hir::Mutability,
-    ::rustc_hir::Unsafety,
     ::rustc_target::asm::InlineAsmRegOrRegClass,
-    ::rustc_target::spec::abi::Abi,
     crate::mir::coverage::CounterId,
     crate::mir::coverage::ExpressionId,
-    crate::mir::coverage::MappedExpressionIndex,
     crate::mir::Local,
     crate::mir::Promoted,
     crate::traits::Reveal,
@@ -484,16 +493,12 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::AssocItem,
     crate::ty::AssocKind,
     crate::ty::AliasKind,
-    crate::ty::AliasRelationDirection,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,
-    crate::ty::ClosureKind,
     crate::ty::FreeRegion,
     crate::ty::InferTy,
     crate::ty::IntVarValue,
-    crate::ty::ParamConst,
-    crate::ty::ParamTy,
     crate::ty::adjustment::PointerCoercion,
     crate::ty::RegionVid,
     crate::ty::UniverseIndex,
@@ -501,31 +506,29 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_span::Span,
     ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,
-    interpret::Scalar,
-    rustc_target::abi::Size,
     ty::BoundVar,
-}
-
-TrivialTypeTraversalAndLiftImpls! {
     ty::ValTree<'tcx>,
+}
+// For some things about which the type library does not know, or does not
+// provide any traversal implementations, we need to provide a traversal
+// implementation and a lift implementation (the former only for TyCtxt<'_>
+// interners).
+TrivialTypeTraversalAndLiftImpls! {
+    ::rustc_hir::def_id::DefId,
+    ::rustc_hir::Mutability,
+    ::rustc_hir::Unsafety,
+    ::rustc_target::spec::abi::Abi,
+    crate::ty::AliasRelationDirection,
+    crate::ty::ClosureKind,
+    crate::ty::ParamConst,
+    crate::ty::ParamTy,
+    interpret::Scalar,
+    interpret::AllocId,
+    rustc_target::abi::Size,
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
-
-impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
-    type Lifted = (A::Lifted, B::Lifted);
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        Some((tcx.lift(self.0)?, tcx.lift(self.1)?))
-    }
-}
-
-impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>, C: Lift<'tcx>> Lift<'tcx> for (A, B, C) {
-    type Lifted = (A::Lifted, B::Lifted, C::Lifted);
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        Some((tcx.lift(self.0)?, tcx.lift(self.1)?, tcx.lift(self.2)?))
-    }
-}
 
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
     type Lifted = Option<T::Lifted>;
@@ -534,50 +537,6 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
             Some(x) => Some(tcx.lift(x)?),
             None => None,
         })
-    }
-}
-
-impl<'tcx, T: Lift<'tcx>, E: Lift<'tcx>> Lift<'tcx> for Result<T, E> {
-    type Lifted = Result<T::Lifted, E::Lifted>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        match self {
-            Ok(x) => tcx.lift(x).map(Ok),
-            Err(e) => tcx.lift(e).map(Err),
-        }
-    }
-}
-
-impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Box<T> {
-    type Lifted = Box<T::Lifted>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        Some(Box::new(tcx.lift(*self)?))
-    }
-}
-
-impl<'tcx, T: Lift<'tcx> + Clone> Lift<'tcx> for Rc<T> {
-    type Lifted = Rc<T::Lifted>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        Some(Rc::new(tcx.lift(self.as_ref().clone())?))
-    }
-}
-
-impl<'tcx, T: Lift<'tcx> + Clone> Lift<'tcx> for Arc<T> {
-    type Lifted = Arc<T::Lifted>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        Some(Arc::new(tcx.lift(self.as_ref().clone())?))
-    }
-}
-impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Vec<T> {
-    type Lifted = Vec<T::Lifted>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        self.into_iter().map(|v| tcx.lift(v)).collect()
-    }
-}
-
-impl<'tcx, I: Idx, T: Lift<'tcx>> Lift<'tcx> for IndexVec<I, T> {
-    type Lifted = IndexVec<I, T::Lifted>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        self.into_iter().map(|e| tcx.lift(e)).collect()
     }
 }
 
@@ -591,13 +550,6 @@ impl<'a, 'tcx> Lift<'tcx> for Term<'a> {
             }
             .pack(),
         )
-    }
-}
-impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
-    type Lifted = ty::ParamEnv<'tcx>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(self.caller_bounds())
-            .map(|caller_bounds| ty::ParamEnv::new(caller_bounds, self.reveal()))
     }
 }
 
@@ -705,9 +657,8 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Generator(did, args, movability) => {
                 ty::Generator(did, args.try_fold_with(folder)?, movability)
             }
-            ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
-            ty::GeneratorWitnessMIR(did, args) => {
-                ty::GeneratorWitnessMIR(did, args.try_fold_with(folder)?)
+            ty::GeneratorWitness(did, args) => {
+                ty::GeneratorWitness(did, args.try_fold_with(folder)?)
             }
             ty::Closure(did, args) => ty::Closure(did, args.try_fold_with(folder)?),
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
@@ -756,8 +707,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 ty.visit_with(visitor)
             }
             ty::Generator(_did, ref args, _) => args.visit_with(visitor),
-            ty::GeneratorWitness(ref types) => types.visit_with(visitor),
-            ty::GeneratorWitnessMIR(_did, ref args) => args.visit_with(visitor),
+            ty::GeneratorWitness(_did, ref args) => args.visit_with(visitor),
             ty::Closure(_did, ref args) => args.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
 

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::useless_vec)]
 #![allow(clippy::nonstandard_macro_braces, clippy::uninlined_format_args, unused)]
 
@@ -121,6 +120,7 @@ fn issue11075() {
             stringify!($e)
         };
     }
+    #[allow(clippy::never_loop)]
     for _string in vec![repro!(true), repro!(null)] {
         unimplemented!();
     }

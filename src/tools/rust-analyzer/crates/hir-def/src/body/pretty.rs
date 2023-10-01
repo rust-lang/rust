@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Write};
 
-use hir_expand::db::ExpandDatabase;
+use itertools::Itertools;
 use syntax::ast::HasName;
 
 use crate::{
@@ -51,8 +51,7 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
         }
     };
 
-    let mut p =
-        Printer { db: db.upcast(), body, buf: header, indent_level: 0, needs_indent: false };
+    let mut p = Printer { db, body, buf: header, indent_level: 0, needs_indent: false };
     if let DefWithBodyId::FunctionId(it) = owner {
         p.buf.push('(');
         body.params.iter().zip(&db.function_data(it).params).for_each(|(&param, ty)| {
@@ -76,8 +75,7 @@ pub(super) fn print_expr_hir(
     _owner: DefWithBodyId,
     expr: ExprId,
 ) -> String {
-    let mut p =
-        Printer { db: db.upcast(), body, buf: String::new(), indent_level: 0, needs_indent: false };
+    let mut p = Printer { db, body, buf: String::new(), indent_level: 0, needs_indent: false };
     p.print_expr(expr);
     p.buf
 }
@@ -98,7 +96,7 @@ macro_rules! wln {
 }
 
 struct Printer<'a> {
-    db: &'a dyn ExpandDatabase,
+    db: &'a dyn DefDatabase,
     body: &'a Body,
     buf: String,
     indent_level: usize,
@@ -142,9 +140,14 @@ impl Printer<'_> {
     }
 
     fn newline(&mut self) {
-        match self.buf.chars().rev().find(|ch| *ch != ' ') {
-            Some('\n') | None => {}
-            _ => writeln!(self).unwrap(),
+        match self.buf.chars().rev().find_position(|ch| *ch != ' ') {
+            Some((_, '\n')) | None => {}
+            Some((idx, _)) => {
+                if idx != 0 {
+                    self.buf.drain(self.buf.len() - idx..);
+                }
+                writeln!(self).unwrap()
+            }
         }
     }
 
@@ -154,6 +157,19 @@ impl Printer<'_> {
         match expr {
             Expr::Missing => w!(self, "�"),
             Expr::Underscore => w!(self, "_"),
+            Expr::InlineAsm(_) => w!(self, "builtin#asm(_)"),
+            Expr::OffsetOf(offset_of) => {
+                w!(self, "builtin#offset_of(");
+                self.print_type_ref(&offset_of.container);
+                w!(
+                    self,
+                    ", {})",
+                    offset_of
+                        .fields
+                        .iter()
+                        .format_with(".", |field, f| f(&field.display(self.db.upcast())))
+                );
+            }
             Expr::Path(path) => self.print_path(path),
             Expr::If { condition, then_branch, else_branch } => {
                 w!(self, "if ");
@@ -173,7 +189,7 @@ impl Printer<'_> {
             }
             Expr::Loop { body, label } => {
                 if let Some(lbl) = label {
-                    w!(self, "{}: ", self.body[*lbl].name.display(self.db));
+                    w!(self, "{}: ", self.body[*lbl].name.display(self.db.upcast()));
                 }
                 w!(self, "loop ");
                 self.print_expr(*body);
@@ -193,7 +209,7 @@ impl Printer<'_> {
             }
             Expr::MethodCall { receiver, method_name, args, generic_args } => {
                 self.print_expr(*receiver);
-                w!(self, ".{}", method_name.display(self.db));
+                w!(self, ".{}", method_name.display(self.db.upcast()));
                 if let Some(args) = generic_args {
                     w!(self, "::<");
                     print_generic_args(self.db, args, self).unwrap();
@@ -231,13 +247,13 @@ impl Printer<'_> {
             Expr::Continue { label } => {
                 w!(self, "continue");
                 if let Some(lbl) = label {
-                    w!(self, " {}", self.body[*lbl].name.display(self.db));
+                    w!(self, " {}", self.body[*lbl].name.display(self.db.upcast()));
                 }
             }
             Expr::Break { expr, label } => {
                 w!(self, "break");
                 if let Some(lbl) = label {
-                    w!(self, " {}", self.body[*lbl].name.display(self.db));
+                    w!(self, " {}", self.body[*lbl].name.display(self.db.upcast()));
                 }
                 if let Some(expr) = expr {
                     self.whitespace();
@@ -276,7 +292,7 @@ impl Printer<'_> {
                 w!(self, "{{");
                 self.indented(|p| {
                     for field in &**fields {
-                        w!(p, "{}: ", field.name.display(self.db));
+                        w!(p, "{}: ", field.name.display(self.db.upcast()));
                         p.print_expr(field.expr);
                         wln!(p, ",");
                     }
@@ -293,7 +309,7 @@ impl Printer<'_> {
             }
             Expr::Field { expr, name } => {
                 self.print_expr(*expr);
-                w!(self, ".{}", name.display(self.db));
+                w!(self, ".{}", name.display(self.db.upcast()));
             }
             Expr::Await { expr } => {
                 self.print_expr(*expr);
@@ -431,7 +447,8 @@ impl Printer<'_> {
             }
             Expr::Literal(lit) => self.print_literal(lit),
             Expr::Block { id: _, statements, tail, label } => {
-                let label = label.map(|lbl| format!("{}: ", self.body[lbl].name.display(self.db)));
+                let label =
+                    label.map(|lbl| format!("{}: ", self.body[lbl].name.display(self.db.upcast())));
                 self.print_block(label.as_deref(), statements, tail);
             }
             Expr::Unsafe { id: _, statements, tail } => {
@@ -507,7 +524,7 @@ impl Printer<'_> {
                 w!(self, " {{");
                 self.indented(|p| {
                     for arg in args.iter() {
-                        w!(p, "{}: ", arg.name.display(self.db));
+                        w!(p, "{}: ", arg.name.display(self.db.upcast()));
                         p.print_pat(arg.pat);
                         wln!(p, ",");
                     }
@@ -666,6 +683,6 @@ impl Printer<'_> {
             BindingAnnotation::Ref => "ref ",
             BindingAnnotation::RefMut => "ref mut ",
         };
-        w!(self, "{}{}", mode, name.display(self.db));
+        w!(self, "{}{}", mode, name.display(self.db.upcast()));
     }
 }

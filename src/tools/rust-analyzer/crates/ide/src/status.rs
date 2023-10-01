@@ -66,6 +66,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
                 None => format!("{}", krate.into_raw()),
             };
             format_to!(buf, "Crate: {}\n", display_crate(krate));
+            format_to!(buf, "Enabled cfgs: {:?}\n", crate_graph[krate].cfg_options);
             let deps = crate_graph[krate]
                 .dependencies
                 .iter()

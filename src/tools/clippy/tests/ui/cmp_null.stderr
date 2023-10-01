@@ -5,9 +5,10 @@ LL |     if p == ptr::null() {
    |        ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::cmp-null` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cmp_null)]`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> $DIR/cmp_null.rs:14:8
+  --> $DIR/cmp_null.rs:16:8
    |
 LL |     if m == ptr::null_mut() {
    |        ^^^^^^^^^^^^^^^^^^^^

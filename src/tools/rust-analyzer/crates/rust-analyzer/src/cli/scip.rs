@@ -51,7 +51,7 @@ impl flags::Scip {
             version: scip_types::ProtocolVersion::UnspecifiedProtocolVersion.into(),
             tool_info: Some(scip_types::ToolInfo {
                 name: "rust-analyzer".to_owned(),
-                version: "0.1".to_owned(),
+                version: format!("{}", crate::version::version()),
                 arguments: vec![],
                 special_fields: Default::default(),
             })

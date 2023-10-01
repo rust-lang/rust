@@ -62,6 +62,9 @@ impl Finder {
 }
 
 pub fn check(build: &mut Build) {
+    let skip_target_sanity =
+        env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some_and(|s| s == "1" || s == "true");
+
     let path = env::var_os("PATH").unwrap_or_default();
     // On Windows, quotes are invalid characters for filename paths, and if
     // one is present as part of the PATH then that can lead to the system
@@ -92,20 +95,19 @@ pub fn check(build: &mut Build) {
                     .unwrap_or(true)
             })
             .any(|build_llvm_ourselves| build_llvm_ourselves);
+
     let need_cmake = building_llvm || build.config.any_sanitizers_enabled();
-    if need_cmake {
-        if cmd_finder.maybe_have("cmake").is_none() {
-            eprintln!(
-                "
+    if need_cmake && cmd_finder.maybe_have("cmake").is_none() {
+        eprintln!(
+            "
 Couldn't find required command: cmake
 
 You should install cmake, or set `download-ci-llvm = true` in the
 `[llvm]` section of `config.toml` to download LLVM rather
 than building it.
 "
-            );
-            crate::exit!(1);
-        }
+        );
+        crate::exit!(1);
     }
 
     build.config.python = build
@@ -166,7 +168,7 @@ than building it.
         // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
         // checks, and have a regular flag for skipping the latter. Also see
         // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
-        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+        if skip_target_sanity {
             continue;
         }
 
@@ -199,13 +201,21 @@ than building it.
             .entry(*target)
             .or_insert_with(|| Target::from_triple(&target.triple));
 
-        if target.contains("-none-") || target.contains("nvptx") {
-            if build.no_std(*target) == Some(false) {
-                panic!("All the *-none-* and nvptx* targets are no-std targets")
-            }
+        if (target.contains("-none-") || target.contains("nvptx"))
+            && build.no_std(*target) == Some(false)
+        {
+            panic!("All the *-none-* and nvptx* targets are no-std targets")
         }
 
-        // Make sure musl-root is valid
+        // Some environments don't want or need these tools, such as when testing Miri.
+        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
+        // checks, and have a regular flag for skipping the latter. Also see
+        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
+        if skip_target_sanity {
+            continue;
+        }
+
+        // Make sure musl-root is valid.
         if target.contains("musl") && !target.contains("unikraft") {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
@@ -225,14 +235,6 @@ than building it.
                             be specified in config.toml"
                 ),
             }
-        }
-
-        // Some environments don't want or need these tools, such as when testing Miri.
-        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
-        // checks, and have a regular flag for skipping the latter. Also see
-        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
-        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
-            continue;
         }
 
         if need_cmake && target.contains("msvc") {

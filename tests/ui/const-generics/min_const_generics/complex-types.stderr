@@ -5,7 +5,7 @@ LL | struct Foo<const N: [u8; 0]>;
    |                     ^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: `()` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:6:21
@@ -14,7 +14,7 @@ LL | struct Bar<const N: ()>;
    |                     ^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: `No` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:11:21
@@ -23,7 +23,7 @@ LL | struct Fez<const N: No>;
    |                     ^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: `&'static u8` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:14:21
@@ -32,7 +32,7 @@ LL | struct Faz<const N: &'static u8>;
    |                     ^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: `!` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:17:21
@@ -41,7 +41,6 @@ LL | struct Fiz<const N: !>;
    |                     ^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
 
 error: `()` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:20:19
@@ -50,7 +49,7 @@ LL | enum Goo<const N: ()> { A, B }
    |                   ^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: `()` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:23:20
@@ -59,7 +58,7 @@ LL | union Boo<const N: ()> { a: () }
    |                    ^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
+   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
 error: aborting due to 7 previous errors
 

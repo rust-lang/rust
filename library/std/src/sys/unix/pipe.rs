@@ -3,7 +3,7 @@ use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
 use crate::sys::{cvt, cvt_r};
-use crate::sys_common::IntoInner;
+use crate::sys_common::{FromInner, IntoInner};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -21,6 +21,7 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
         if #[cfg(any(
             target_os = "dragonfly",
             target_os = "freebsd",
+            target_os = "hurd",
             target_os = "linux",
             target_os = "netbsd",
             target_os = "openbsd",
@@ -156,5 +157,11 @@ impl IntoRawFd for AnonPipe {
 impl FromRawFd for AnonPipe {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
         Self(FromRawFd::from_raw_fd(raw_fd))
+    }
+}
+
+impl FromInner<FileDesc> for AnonPipe {
+    fn from_inner(fd: FileDesc) -> Self {
+        Self(fd)
     }
 }

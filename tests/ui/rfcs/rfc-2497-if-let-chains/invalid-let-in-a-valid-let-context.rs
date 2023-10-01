@@ -13,6 +13,7 @@ fn main() {
         if let Some(elem) = _opt && [1, 2, 3][let _ = &&let Some(x) = Some(42)] = 1 {
         //~^ ERROR expected expression, found `let` statement
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR expected expression, found `let` statement
             true
         }
     }
@@ -31,6 +32,7 @@ fn main() {
     {
         if let Some(elem) = _opt && [1, 2, 3][let _ = ()] = 1 {
         //~^ ERROR expected expression, found `let` statement
+        //~| ERROR expected expression, found `let` statement
             true
         }
     }

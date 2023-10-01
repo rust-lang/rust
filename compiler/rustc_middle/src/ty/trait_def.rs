@@ -90,6 +90,10 @@ pub struct TraitImpls {
 }
 
 impl TraitImpls {
+    pub fn is_empty(&self) -> bool {
+        self.blanket_impls.is_empty() && self.non_blanket_impls.is_empty()
+    }
+
     pub fn blanket_impls(&self) -> &[DefId] {
         self.blanket_impls.as_slice()
     }

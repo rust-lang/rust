@@ -46,6 +46,7 @@ pub fn opts() -> TargetOptions {
         stack_probes: StackProbeType::Call,
         singlethread: true,
         linker: Some("rust-lld".into()),
+        entry_name: "efi_main".into(),
         ..base
     }
 }

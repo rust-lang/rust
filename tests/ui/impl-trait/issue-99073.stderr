@@ -10,7 +10,7 @@ error: concrete type differs from previous defining opaque type use
   --> $DIR/issue-99073.rs:6:13
    |
 LL |   move || f(fix(&f))
-   |             ^^^^^^^ expected `[closure@$DIR/issue-99073.rs:6:3: 6:10]`, got `G`
+   |             ^^^^^^^ expected `{closure@$DIR/issue-99073.rs:6:3: 6:10}`, got `G`
    |
 note: previous use here
   --> $DIR/issue-99073.rs:5:36

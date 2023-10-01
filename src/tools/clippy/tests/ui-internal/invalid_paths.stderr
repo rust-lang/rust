@@ -5,6 +5,7 @@ LL |     pub const TRANSMUTE: [&str; 4] = ["core", "intrinsics", "", "transmute"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::invalid-paths` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::invalid_paths)]`
 
 error: invalid path
   --> $DIR/invalid_paths.rs:18:5

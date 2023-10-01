@@ -1,7 +1,7 @@
 error: identifier `счётчик` has a Unicode script that is not allowed by configuration: Cyrillic
-  --> $DIR/disallowed_script_idents.rs:8:9
+  --> $DIR/disallowed_script_idents.rs:11:9
    |
-LL |     let счётчик = 10; // Cyrillic is not allowed by default.
+LL |     let счётчик = 10;
    |         ^^^^^^^
    |
 note: the lint level is defined here
@@ -11,9 +11,9 @@ LL | #![deny(clippy::disallowed_script_idents)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: identifier `カウンタ` has a Unicode script that is not allowed by configuration: Katakana
-  --> $DIR/disallowed_script_idents.rs:9:9
+  --> $DIR/disallowed_script_idents.rs:14:9
    |
-LL |     let カウンタ = 10; // Same for japanese.
+LL |     let カウンタ = 10;
    |         ^^^^^^^^
 
 error: aborting due to 2 previous errors

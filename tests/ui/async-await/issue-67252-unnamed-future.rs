@@ -1,6 +1,3 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 // edition:2018
 use std::future::Future;
 use std::pin::Pin;
@@ -21,7 +18,7 @@ async fn foo() {
     spawn(async { //~ ERROR future cannot be sent between threads safely
         let a = std::ptr::null_mut::<()>(); // `*mut ()` is not `Send`
         AFuture.await;
-        drop(a);
+        let _a = a;
     });
 }
 

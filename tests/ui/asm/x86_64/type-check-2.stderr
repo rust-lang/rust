@@ -30,7 +30,7 @@ LL |         asm!("{}", in(xmm_reg) SimdNonCopy(0.0, 0.0, 0.0, 0.0));
    |
    = note: `SimdNonCopy` does not implement the Copy trait
 
-error: cannot use value of type `[closure@$DIR/type-check-2.rs:52:28: 52:36]` for inline assembly
+error: cannot use value of type `{closure@$DIR/type-check-2.rs:52:28: 52:36}` for inline assembly
   --> $DIR/type-check-2.rs:52:28
    |
 LL |         asm!("{}", in(reg) |x: i32| x);

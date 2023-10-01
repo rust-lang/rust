@@ -67,11 +67,6 @@ struct Foo;
 }
 
 #[test]
-fn inside_nested_attr() {
-    check(r#"#[cfg($0)]"#, expect![[]])
-}
-
-#[test]
 fn with_existing_attr() {
     check(
         r#"#[no_mangle] #[$0] mcall!();"#,
@@ -636,9 +631,42 @@ mod cfg {
     use super::*;
 
     #[test]
+    fn inside_cfg() {
+        check(
+            r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0)]
+"#,
+            expect![[r#"
+                ba dbg
+                ba opt_level
+                ba test
+            "#]],
+        );
+        check(
+            r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg(b$0)]
+"#,
+            expect![[r#"
+                ba dbg
+                ba opt_level
+                ba test
+            "#]],
+        );
+    }
+
+    #[test]
     fn cfg_target_endian() {
         check(
             r#"#[cfg(target_endian = $0"#,
+            expect![[r#"
+                ba big
+                ba little
+            "#]],
+        );
+        check(
+            r#"#[cfg(target_endian = b$0"#,
             expect![[r#"
                 ba big
                 ba little

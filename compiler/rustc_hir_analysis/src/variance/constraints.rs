@@ -6,7 +6,7 @@
 use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 
 use super::terms::VarianceTerm::*;
@@ -78,9 +78,7 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => constraint_cx.build_constraints_for_item(def_id),
-            DefKind::TyAlias { lazy }
-                if lazy || tcx.type_of(def_id).instantiate_identity().has_opaque_types() =>
-            {
+            DefKind::TyAlias if tcx.type_alias_is_lazy(def_id) => {
                 constraint_cx.build_constraints_for_item(def_id)
             }
             _ => {}
@@ -110,8 +108,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         // The type as returned by `type_of` is the underlying type and generally not a weak projection.
         // Therefore we need to check the `DefKind` first.
-        if let DefKind::TyAlias { lazy } = tcx.def_kind(def_id)
-            && (lazy || ty.has_opaque_types())
+        if let DefKind::TyAlias = tcx.def_kind(def_id)
+            && tcx.type_alias_is_lazy(def_id)
         {
             self.add_constraints_from_ty(current_item, ty, self.covariant);
             return;
@@ -314,11 +312,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // types, where we use Error as the Self type
             }
 
-            ty::Placeholder(..)
-            | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
-            | ty::Bound(..)
-            | ty::Infer(..) => {
+            ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Bound(..) | ty::Infer(..) => {
                 bug!("unexpected type encountered in variance inference: {}", ty);
             }
         }

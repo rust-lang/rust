@@ -29,6 +29,7 @@
 
 use crate::MirPass;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -345,24 +346,22 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let basic_blocks = body.basic_blocks.as_mut();
     let source_scopes = &body.source_scopes;
-    let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
-    let mut used_blocks = 0;
-    for alive_index in reachable.iter() {
-        let alive_index = alive_index.index();
-        replacements[alive_index] = BasicBlock::new(used_blocks);
-        if alive_index != used_blocks {
-            // Swap the next alive block data with the current available slot. Since
-            // alive_index is non-decreasing this is a valid operation.
-            basic_blocks.raw.swap(alive_index, used_blocks);
-        }
-        used_blocks += 1;
-    }
-
     if tcx.sess.instrument_coverage() {
-        save_unreachable_coverage(basic_blocks, source_scopes, used_blocks);
+        save_unreachable_coverage(basic_blocks, source_scopes, &reachable);
     }
 
-    basic_blocks.raw.truncate(used_blocks);
+    let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
+    let mut orig_index = 0;
+    let mut used_index = 0;
+    basic_blocks.raw.retain(|_| {
+        let keep = reachable.contains(BasicBlock::new(orig_index));
+        if keep {
+            replacements[orig_index] = BasicBlock::new(used_index);
+            used_index += 1;
+        }
+        orig_index += 1;
+        keep
+    });
 
     for block in basic_blocks {
         for target in block.terminator_mut().successors_mut() {
@@ -404,11 +403,12 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 fn save_unreachable_coverage(
     basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'_>>,
     source_scopes: &IndexSlice<SourceScope, SourceScopeData<'_>>,
-    first_dead_block: usize,
+    reachable: &BitSet<BasicBlock>,
 ) {
     // Identify instances that still have some live coverage counters left.
     let mut live = FxHashSet::default();
-    for basic_block in &basic_blocks.raw[0..first_dead_block] {
+    for bb in reachable.iter() {
+        let basic_block = &basic_blocks[bb];
         for statement in &basic_block.statements {
             let StatementKind::Coverage(coverage) = &statement.kind else { continue };
             let CoverageKind::Counter { .. } = coverage.kind else { continue };
@@ -417,7 +417,8 @@ fn save_unreachable_coverage(
         }
     }
 
-    for block in &mut basic_blocks.raw[..first_dead_block] {
+    for bb in reachable.iter() {
+        let block = &mut basic_blocks[bb];
         for statement in &mut block.statements {
             let StatementKind::Coverage(_) = &statement.kind else { continue };
             let instance = statement.source_info.scope.inlined_instance(source_scopes);
@@ -433,7 +434,11 @@ fn save_unreachable_coverage(
 
     // Retain coverage for instances that still have some live counters left.
     let mut retained_coverage = Vec::new();
-    for dead_block in &basic_blocks.raw[first_dead_block..] {
+    for dead_block in basic_blocks.indices() {
+        if reachable.contains(dead_block) {
+            continue;
+        }
+        let dead_block = &basic_blocks[dead_block];
         for statement in &dead_block.statements {
             let StatementKind::Coverage(coverage) = &statement.kind else { continue };
             let Some(code_region) = &coverage.code_region else { continue };

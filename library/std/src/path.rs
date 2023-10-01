@@ -193,7 +193,7 @@ impl<'a> Prefix<'a> {
     fn len(&self) -> usize {
         use self::Prefix::*;
         fn os_str_len(s: &OsStr) -> usize {
-            s.as_os_str_bytes().len()
+            s.as_encoded_bytes().len()
         }
         match *self {
             Verbatim(x) => 4 + os_str_len(x),
@@ -316,7 +316,7 @@ fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
 
 // basic workhorse for splitting stem and extension
 fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
-    if file.as_os_str_bytes() == b".." {
+    if file.as_encoded_bytes() == b".." {
         return (Some(file), None);
     }
 
@@ -324,7 +324,7 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     // and back. This is safe to do because (1) we only look at ASCII
     // contents of the encoding and (2) new &OsStr values are produced
     // only from ASCII-bounded slices of existing &OsStr values.
-    let mut iter = file.as_os_str_bytes().rsplitn(2, |b| *b == b'.');
+    let mut iter = file.as_encoded_bytes().rsplitn(2, |b| *b == b'.');
     let after = iter.next();
     let before = iter.next();
     if before == Some(b"") {
@@ -332,15 +332,15 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     } else {
         unsafe {
             (
-                before.map(|s| OsStr::from_os_str_bytes_unchecked(s)),
-                after.map(|s| OsStr::from_os_str_bytes_unchecked(s)),
+                before.map(|s| OsStr::from_encoded_bytes_unchecked(s)),
+                after.map(|s| OsStr::from_encoded_bytes_unchecked(s)),
             )
         }
     }
 }
 
 fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
-    let slice = file.as_os_str_bytes();
+    let slice = file.as_encoded_bytes();
     if slice == b".." {
         return (file, None);
     }
@@ -357,8 +357,8 @@ fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
     let after = &slice[i + 1..];
     unsafe {
         (
-            OsStr::from_os_str_bytes_unchecked(before),
-            Some(OsStr::from_os_str_bytes_unchecked(after)),
+            OsStr::from_encoded_bytes_unchecked(before),
+            Some(OsStr::from_encoded_bytes_unchecked(after)),
         )
     }
 }
@@ -739,7 +739,7 @@ impl<'a> Components<'a> {
             // separately via `include_cur_dir`
             b".." => Some(Component::ParentDir),
             b"" => None,
-            _ => Some(Component::Normal(unsafe { OsStr::from_os_str_bytes_unchecked(comp) })),
+            _ => Some(Component::Normal(unsafe { OsStr::from_encoded_bytes_unchecked(comp) })),
         }
     }
 
@@ -896,7 +896,7 @@ impl<'a> Iterator for Components<'a> {
                     let raw = &self.path[..self.prefix_len()];
                     self.path = &self.path[self.prefix_len()..];
                     return Some(Component::Prefix(PrefixComponent {
-                        raw: unsafe { OsStr::from_os_str_bytes_unchecked(raw) },
+                        raw: unsafe { OsStr::from_encoded_bytes_unchecked(raw) },
                         parsed: self.prefix.unwrap(),
                     }));
                 }
@@ -968,7 +968,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                 State::Prefix if self.prefix_len() > 0 => {
                     self.back = State::Done;
                     return Some(Component::Prefix(PrefixComponent {
-                        raw: unsafe { OsStr::from_os_str_bytes_unchecked(self.path) },
+                        raw: unsafe { OsStr::from_encoded_bytes_unchecked(self.path) },
                         parsed: self.prefix.unwrap(),
                     }));
                 }
@@ -1477,17 +1477,17 @@ impl PathBuf {
     fn _set_extension(&mut self, extension: &OsStr) -> bool {
         let file_stem = match self.file_stem() {
             None => return false,
-            Some(f) => f.as_os_str_bytes(),
+            Some(f) => f.as_encoded_bytes(),
         };
 
         // truncate until right after the file stem
         let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
-        let start = self.inner.as_os_str_bytes().as_ptr().addr();
+        let start = self.inner.as_encoded_bytes().as_ptr().addr();
         let v = self.as_mut_vec();
         v.truncate(end_file_stem.wrapping_sub(start));
 
         // add the new extension, if any
-        let new = extension.as_os_str_bytes();
+        let new = extension.as_encoded_bytes();
         if !new.is_empty() {
             v.reserve_exact(new.len() + 1);
             v.push(b'.');
@@ -2007,11 +2007,11 @@ impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
     unsafe fn from_u8_slice(s: &[u8]) -> &Path {
-        unsafe { Path::new(OsStr::from_os_str_bytes_unchecked(s)) }
+        unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
     fn as_u8_slice(&self) -> &[u8] {
-        self.inner.as_os_str_bytes()
+        self.inner.as_encoded_bytes()
     }
 
     /// Directly wraps a string slice as a `Path` slice.
@@ -2609,7 +2609,7 @@ impl Path {
 
     fn _with_extension(&self, extension: &OsStr) -> PathBuf {
         let self_len = self.as_os_str().len();
-        let self_bytes = self.as_os_str().as_os_str_bytes();
+        let self_bytes = self.as_os_str().as_encoded_bytes();
 
         let (new_capacity, slice_to_copy) = match self.extension() {
             None => {

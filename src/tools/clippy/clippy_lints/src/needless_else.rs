@@ -27,7 +27,7 @@ declare_clippy_lint! {
     ///     println!("Check successful!");
     /// }
     /// ```
-    #[clippy::version = "1.71.0"]
+    #[clippy::version = "1.72.0"]
     pub NEEDLESS_ELSE,
     style,
     "empty else branch"

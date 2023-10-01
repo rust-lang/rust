@@ -43,7 +43,6 @@ pub extern "C" fn test_WithZst(_: WithZst) -> WithZst { loop {} }
 #[repr(transparent)]
 pub struct WithZeroSizedArray(*const f32, [i8; 0]);
 
-// Apparently we use i32* when newtype-unwrapping f32 pointers. Whatever.
 // CHECK: define{{.*}}ptr @test_WithZeroSizedArray(ptr noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_WithZeroSizedArray(_: WithZeroSizedArray) -> WithZeroSizedArray { loop {} }

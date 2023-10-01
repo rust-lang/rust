@@ -186,7 +186,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_constant(
                 &mut self,
-                constant: & $($mutability)? Constant<'tcx>,
+                constant: & $($mutability)? ConstOperand<'tcx>,
                 location: Location,
             ) {
                 self.super_constant(constant, location);
@@ -838,12 +838,20 @@ macro_rules! make_mir_visitor {
                 let VarDebugInfo {
                     name: _,
                     source_info,
+                    composite,
                     value,
                     argument_index: _,
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);
                 let location = Location::START;
+                if let Some(box VarDebugInfoFragment { ref $($mutability)? ty, ref $($mutability)? projection }) = composite {
+                    self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                    for elem in projection {
+                        let ProjectionElem::Field(_, ty) = elem else { bug!() };
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                    }
+                }
                 match value {
                     VarDebugInfoContents::Const(c) => self.visit_constant(c, location),
                     VarDebugInfoContents::Place(place) =>
@@ -852,17 +860,6 @@ macro_rules! make_mir_visitor {
                             PlaceContext::NonUse(NonUseContext::VarDebugInfo),
                             location
                         ),
-                    VarDebugInfoContents::Composite { ty, fragments } => {
-                        // FIXME(eddyb) use a better `TyContext` here.
-                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
-                        for VarDebugInfoFragment { projection: _, contents } in fragments {
-                            self.visit_place(
-                                contents,
-                                PlaceContext::NonUse(NonUseContext::VarDebugInfo),
-                                location,
-                            );
-                        }
-                    }
                 }
             }
 
@@ -873,20 +870,20 @@ macro_rules! make_mir_visitor {
 
             fn super_constant(
                 &mut self,
-                constant: & $($mutability)? Constant<'tcx>,
+                constant: & $($mutability)? ConstOperand<'tcx>,
                 location: Location
             ) {
-                let Constant {
+                let ConstOperand {
                     span,
                     user_ty: _, // no visit method for this
-                    literal,
+                    const_,
                 } = constant;
 
                 self.visit_span($(& $mutability)? *span);
-                match literal {
-                    ConstantKind::Ty(ct) => self.visit_ty_const($(&$mutability)? *ct, location),
-                    ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
-                    ConstantKind::Unevaluated(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
+                match const_ {
+                    Const::Ty(ct) => self.visit_ty_const($(&$mutability)? *ct, location),
+                    Const::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
+                    Const::Unevaluated(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                 }
             }
 

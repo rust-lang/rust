@@ -1,5 +1,5 @@
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:22:1
+  --> $DIR/derivable_impls.rs:20:1
    |
 LL | / impl std::default::Default for FooDefault<'_> {
 LL | |     fn default() -> Self {
@@ -11,6 +11,7 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::derivable-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
    = help: remove the manual implementation...
 help: ...and instead derive it
    |
@@ -19,7 +20,7 @@ LL | struct FooDefault<'a> {
    |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:43:1
+  --> $DIR/derivable_impls.rs:41:1
    |
 LL | / impl std::default::Default for TupleDefault {
 LL | |     fn default() -> Self {
@@ -36,7 +37,7 @@ LL | struct TupleDefault(bool, i32, u64);
    |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:95:1
+  --> $DIR/derivable_impls.rs:93:1
    |
 LL | / impl Default for StrDefault<'_> {
 LL | |     fn default() -> Self {
@@ -53,7 +54,7 @@ LL | struct StrDefault<'a>(&'a str);
    |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:121:1
+  --> $DIR/derivable_impls.rs:119:1
    |
 LL | / impl Default for Y {
 LL | |     fn default() -> Self {
@@ -70,7 +71,7 @@ LL | struct Y(u32);
    |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:160:1
+  --> $DIR/derivable_impls.rs:158:1
    |
 LL | / impl Default for WithoutSelfCurly {
 LL | |     fn default() -> Self {
@@ -87,7 +88,7 @@ LL | struct WithoutSelfCurly {
    |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:168:1
+  --> $DIR/derivable_impls.rs:166:1
    |
 LL | / impl Default for WithoutSelfParan {
 LL | |     fn default() -> Self {
@@ -104,7 +105,7 @@ LL | struct WithoutSelfParan(bool);
    |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:218:1
+  --> $DIR/derivable_impls.rs:216:1
    |
 LL | / impl Default for RepeatDefault1 {
 LL | |     fn default() -> Self {
@@ -121,7 +122,7 @@ LL | pub struct RepeatDefault1 {
    |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:252:1
+  --> $DIR/derivable_impls.rs:250:1
    |
 LL | / impl Default for SimpleEnum {
 LL | |     fn default() -> Self {

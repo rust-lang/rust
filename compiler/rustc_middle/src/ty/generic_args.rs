@@ -379,12 +379,17 @@ impl<'tcx> GenericArgs<'tcx> {
         self.iter().filter_map(|k| k.as_const())
     }
 
+    /// Returns generic arguments that are not lifetimes or host effect params.
     #[inline]
     pub fn non_erasable_generics(
         &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
     ) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> + 'tcx {
-        self.iter().filter_map(|k| match k.unpack() {
-            GenericArgKind::Lifetime(_) => None,
+        let generics = tcx.generics_of(def_id);
+        self.iter().enumerate().filter_map(|(i, k)| match k.unpack() {
+            _ if Some(i) == generics.host_effect_index => None,
+            ty::GenericArgKind::Lifetime(_) => None,
             generic => Some(generic),
         })
     }
@@ -440,7 +445,7 @@ impl<'tcx> GenericArgs<'tcx> {
         target_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
-        tcx.mk_args_from_iter(target_args.iter().chain(self.iter().skip(defs.params.len())))
+        tcx.mk_args_from_iter(target_args.iter().chain(self.iter().skip(defs.count())))
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> GenericArgsRef<'tcx> {
@@ -449,6 +454,11 @@ impl<'tcx> GenericArgs<'tcx> {
 
     pub fn host_effect_param(&'tcx self) -> Option<ty::Const<'tcx>> {
         self.consts().rfind(|x| matches!(x.kind(), ty::ConstKind::Param(p) if p.name == sym::host))
+    }
+
+    pub fn print_as_list(&self) -> String {
+        let v = self.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
+        format!("[{}]", v.join(", "))
     }
 }
 
@@ -1019,7 +1029,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
 /// Stores the user-given args to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct UserArgs<'tcx> {
     /// The args for the item as given by the user.
     pub args: GenericArgsRef<'tcx>,
@@ -1046,7 +1056,7 @@ pub struct UserArgs<'tcx> {
 /// the self type, giving `Foo<?A>`. Finally, we unify that with
 /// the self type here, which contains `?A` to be `&'static u32`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,

@@ -6,7 +6,8 @@
 //!
 //! This module provides three types for representing file descriptors,
 //! with different ownership properties: raw, borrowed, and owned, which are
-//! analogous to types used for representing pointers:
+//! analogous to types used for representing pointers. These types reflect concepts of [I/O
+//! safety][io-safety] on Unix.
 //!
 //! | Type               | Analogous to |
 //! | ------------------ | ------------ |
@@ -17,8 +18,8 @@
 //! Like raw pointers, `RawFd` values are primitive values. And in new code,
 //! they should be considered unsafe to do I/O on (analogous to dereferencing
 //! them). Rust did not always provide this guidance, so existing code in the
-//! Rust ecosystem often doesn't mark `RawFd` usage as unsafe. Once the
-//! `io_safety` feature is stable, libraries will be encouraged to migrate,
+//! Rust ecosystem often doesn't mark `RawFd` usage as unsafe.
+//! Libraries are encouraged to migrate,
 //! either by adding `unsafe` to APIs that dereference `RawFd` values, or by
 //! using to `BorrowedFd` or `OwnedFd` instead.
 //!
@@ -54,6 +55,8 @@
 //! Like boxes, `OwnedFd` values conceptually own the resource they point to,
 //! and free (close) it when they are dropped.
 //!
+//! See the [`io` module docs][io-safety] for a general explanation of I/O safety.
+//!
 //! ## `/proc/self/mem` and similar OS features
 //!
 //! Some platforms have special files, such as `/proc/self/mem`, which
@@ -65,15 +68,16 @@
 //! to be opened and read from or written must be `unsafe`. Rust's safety guarantees
 //! only cover what the program itself can do, and not what entities outside
 //! the program can do to it. `/proc/self/mem` is considered to be such an
-//! external entity, along with debugging interfaces, and people with physical access to
-//! the hardware. This is true even in cases where the program is controlling
-//! the external entity.
+//! external entity, along with `/proc/self/fd/*`, debugging interfaces, and people with physical
+//! access to the hardware. This is true even in cases where the program is controlling the external
+//! entity.
 //!
 //! If you desire to comprehensively prevent programs from reaching out and
 //! causing external entities to reach back in and violate memory safety, it's
 //! necessary to use *sandboxing*, which is outside the scope of `std`.
 //!
 //! [`BorrowedFd<'a>`]: crate::os::unix::io::BorrowedFd
+//! [io-safety]: crate::io#io-safety
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

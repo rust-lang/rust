@@ -1,10 +1,11 @@
 error: unnecessary use of `copied`
-  --> $DIR/unnecessary_iter_cloned.rs:31:22
+  --> $DIR/unnecessary_iter_cloned.rs:29:22
    |
 LL |     for (t, path) in files.iter().copied() {
    |                      ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
 help: use
    |
 LL |     for (t, path) in files {
@@ -16,7 +17,7 @@ LL +         let other = match get_file_path(t) {
    |
 
 error: unnecessary use of `copied`
-  --> $DIR/unnecessary_iter_cloned.rs:46:22
+  --> $DIR/unnecessary_iter_cloned.rs:44:22
    |
 LL |     for (t, path) in files.iter().copied() {
    |                      ^^^^^^^^^^^^^^^^^^^^^

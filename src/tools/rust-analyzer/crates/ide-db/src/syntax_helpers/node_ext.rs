@@ -312,7 +312,6 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         ast::Expr::ArrayExpr(_)
         | ast::Expr::AwaitExpr(_)
         | ast::Expr::BinExpr(_)
-        | ast::Expr::BoxExpr(_)
         | ast::Expr::BreakExpr(_)
         | ast::Expr::CallExpr(_)
         | ast::Expr::CastExpr(_)
@@ -335,7 +334,10 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::LetExpr(_)
         | ast::Expr::UnderscoreExpr(_)
         | ast::Expr::YieldExpr(_)
-        | ast::Expr::YeetExpr(_) => cb(expr),
+        | ast::Expr::YeetExpr(_)
+        | ast::Expr::OffsetOfExpr(_)
+        | ast::Expr::FormatArgsExpr(_)
+        | ast::Expr::AsmExpr(_) => cb(expr),
     }
 }
 

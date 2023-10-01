@@ -65,6 +65,8 @@ pub type LabelSource = InFile<LabelPtr>;
 
 pub type FieldPtr = AstPtr<ast::RecordExprField>;
 pub type FieldSource = InFile<FieldPtr>;
+pub type PatFieldPtr = AstPtr<ast::RecordPatField>;
+pub type PatFieldSource = InFile<PatFieldPtr>;
 
 /// An item body together with the mapping from syntax nodes to HIR expression
 /// IDs. This is needed to go from e.g. a position in a file to the HIR
@@ -90,8 +92,8 @@ pub struct BodySourceMap {
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
     /// Instead, we use id of expression (`92`) to identify the field.
-    field_map: FxHashMap<FieldSource, ExprId>,
     field_map_back: FxHashMap<ExprId, FieldSource>,
+    pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 
@@ -164,9 +166,10 @@ impl Body {
         };
         let module = def.module(db);
         let expander = Expander::new(db, file_id, module);
-        let (mut body, source_map) =
+        let (mut body, mut source_map) =
             Body::new(db, def, expander, params, body, module.krate, is_async_fn);
         body.shrink_to_fit();
+        source_map.shrink_to_fit();
 
         (Arc::new(body), Arc::new(source_map))
     }
@@ -375,9 +378,8 @@ impl BodySourceMap {
         self.field_map_back[&expr].clone()
     }
 
-    pub fn node_field(&self, node: InFile<&ast::RecordExprField>) -> Option<ExprId> {
-        let src = node.map(AstPtr::new);
-        self.field_map.get(&src).cloned()
+    pub fn pat_field_syntax(&self, pat: PatId) -> PatFieldSource {
+        self.pat_field_map_back[&pat].clone()
     }
 
     pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprId> {
@@ -388,5 +390,30 @@ impl BodySourceMap {
     /// Get a reference to the body source map's diagnostics.
     pub fn diagnostics(&self) -> &[BodyDiagnostic] {
         &self.diagnostics
+    }
+
+    fn shrink_to_fit(&mut self) {
+        let Self {
+            expr_map,
+            expr_map_back,
+            pat_map,
+            pat_map_back,
+            label_map,
+            label_map_back,
+            field_map_back,
+            pat_field_map_back,
+            expansions,
+            diagnostics,
+        } = self;
+        expr_map.shrink_to_fit();
+        expr_map_back.shrink_to_fit();
+        pat_map.shrink_to_fit();
+        pat_map_back.shrink_to_fit();
+        label_map.shrink_to_fit();
+        label_map_back.shrink_to_fit();
+        field_map_back.shrink_to_fit();
+        pat_field_map_back.shrink_to_fit();
+        expansions.shrink_to_fit();
+        diagnostics.shrink_to_fit();
     }
 }

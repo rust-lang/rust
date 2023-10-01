@@ -1,12 +1,15 @@
-//@ignore-32bit
-#[warn(
+//@stderr-per-bitwidth
+//@no-rustfix
+
+#![warn(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_possible_wrap,
     clippy::cast_lossless
 )]
-#[allow(clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation)]
+
 fn main() {
     // Casting from *size
     1isize as i8;
@@ -20,7 +23,6 @@ fn main() {
     1isize as u32;
     1usize as u32;
     1usize as i32;
-    // Casting to *size
     1i64 as isize;
     1i64 as usize;
     1u64 as isize;

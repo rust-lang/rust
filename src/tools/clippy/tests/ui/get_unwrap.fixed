@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(
     unused_mut,
     clippy::from_iter_instead_of_collect,

@@ -152,6 +152,31 @@
 //! contains further primitive shared memory types, including [`atomic`] and
 //! [`mpsc`], which contains the channel types for message passing.
 //!
+//! # Use before and after `main()`
+//!
+//! Many parts of the standard library are expected to work before and after `main()`;
+//! but this is not guaranteed or ensured by tests. It is recommended that you write your own tests
+//! and run them on each platform you wish to support.
+//! This means that use of `std` before/after main, especially of features that interact with the
+//! OS or global state, is exempted from stability and portability guarantees and instead only
+//! provided on a best-effort basis. Nevertheless bug reports are appreciated.
+//!
+//! On the other hand `core` and `alloc` are most likely to work in such environments with
+//! the caveat that any hookable behavior such as panics, oom handling or allocators will also
+//! depend on the compatibility of the hooks.
+//!
+//! Some features may also behave differently outside main, e.g. stdio could become unbuffered,
+//! some panics might turn into aborts, backtraces might not get symbolicated or similar.
+//!
+//! Non-exhaustive list of known limitations:
+//!
+//! - after-main use of thread-locals, which also affects additional features:
+//!   - [`thread::current()`]
+//!   - [`thread::scope()`]
+//!   - [`sync::mpsc`]
+//! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
+//!
+//!
 //! [I/O]: io
 //! [`MIN`]: i32::MIN
 //! [`MAX`]: i32::MAX
@@ -187,7 +212,6 @@
 //! [rust-discord]: https://discord.gg/rust-lang
 //! [array]: prim@array
 //! [slice]: prim@slice
-
 // To run std tests without x.py without ending up with two copies of std, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
 // rustc itself never sets the feature, so this line has no effect there.
@@ -236,6 +260,7 @@
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
 #![cfg_attr(windows, feature(round_char_boundary))]
+#![cfg_attr(target_os = "xous", feature(slice_ptr_len))]
 //
 // Language features:
 // tidy-alphabetical-start
@@ -351,7 +376,6 @@
 #![feature(get_many_mut)]
 #![feature(lazy_cell)]
 #![feature(log_syntax)]
-#![feature(saturating_int_impl)]
 #![feature(stdsimd)]
 #![feature(test)]
 #![feature(trace_macros)]
@@ -613,9 +637,6 @@ pub mod alloc;
 // Private support modules
 mod panicking;
 
-#[unstable(feature = "ice_to_disk", issue = "none")]
-pub use panicking::panic_hook_with_disk_dump;
-
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]
 mod backtrace_rs;
@@ -644,13 +665,16 @@ pub use core::{
 )]
 pub use core::concat_bytes;
 
+#[unstable(feature = "cfg_match", issue = "115585")]
+pub use core::cfg_match;
+
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
-include!("primitive_docs.rs");
+include!("../../core/src/primitive_docs.rs");
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for the existing keywords. Using `include!`

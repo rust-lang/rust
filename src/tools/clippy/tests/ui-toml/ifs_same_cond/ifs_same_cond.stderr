@@ -10,6 +10,7 @@ note: same as this
 LL |     if x.get() {
    |        ^^^^^^^
    = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ifs_same_cond)]`
 
 error: aborting due to previous error
 

@@ -18,7 +18,5 @@ mod b {
 use crate::a::HeaderMap;
 
 fn main() {
-    let h: crate::b::http::HeaderMap = HeaderMap;
-    // FIXME: should refer to `crate::b::HeaderMap`,
-    // FIXME: but doesn't currently refer to it due to backward compatibility
+    let h: crate::b::HeaderMap = HeaderMap;
 }

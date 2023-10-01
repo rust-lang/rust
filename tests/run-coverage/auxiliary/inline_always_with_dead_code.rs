@@ -4,9 +4,9 @@
 
 mod foo {
     #[inline(always)]
-    pub fn called() { }
+    pub fn called() {}
 
-    fn uncalled() { }
+    fn uncalled() {}
 }
 
 pub mod bar {

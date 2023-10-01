@@ -1,11 +1,12 @@
 error: casting a character literal to `u8` truncates
-  --> $DIR/char_lit_as_u8.rs:4:13
+  --> $DIR/char_lit_as_u8.rs:5:13
    |
-LL |     let _ = '❤' as u8; // no suggestion, since a byte literal won't work.
+LL |     let _ = '❤' as u8;
    |             ^^^^^^^^^
    |
    = note: `char` is four bytes wide, but `u8` is a single byte
    = note: `-D clippy::char-lit-as-u8` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::char_lit_as_u8)]`
 
 error: aborting due to previous error
 

@@ -4,7 +4,6 @@ error[E0277]: `T` cannot be sent between threads safely
 LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
    |                                                        ^^^^ `T` cannot be sent between threads safely
    |
-   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: required because it appears within the type `X<T>`
   --> $DIR/builtin-superkinds-in-metadata.rs:9:8
    |

@@ -236,15 +236,15 @@ declare_features! (
     /// Allows using the `#[fundamental]` attribute.
     (active, fundamental, "1.0.0", Some(29635), None),
     /// Allows using `#[link_name="llvm.*"]`.
-    (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
+    (internal, link_llvm_intrinsics, "1.0.0", Some(29602), None),
     /// Allows using the `#[linkage = ".."]` attribute.
     (active, linkage, "1.0.0", Some(29603), None),
     /// Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
     (internal, needs_panic_runtime, "1.10.0", Some(32837), None),
-    /// Allows using `+bundled,+whole-archive` native libs.
-    (active, packed_bundled_libs, "1.69.0", Some(108081), None),
     /// Allows using the `#![panic_runtime]` attribute.
     (internal, panic_runtime, "1.10.0", Some(32837), None),
+    /// Allows `extern "platform-intrinsic" { ... }`.
+    (internal, platform_intrinsics, "1.4.0", Some(27731), None),
     /// Allows using `#[rustc_allow_const_fn_unstable]`.
     /// This is an attribute on `const fn` for the same
     /// purpose as `#[allow_internal_unstable]`.
@@ -398,6 +398,11 @@ declare_features! (
     (active, const_trait_impl, "1.42.0", Some(67792), None),
     /// Allows the `?` operator in const contexts.
     (active, const_try, "1.56.0", Some(74935), None),
+    /// Allows function attribute `#[coverage(on/off)]`, to control coverage
+    /// instrumentation of that function.
+    (active, coverage_attribute, "CURRENT_RUSTC_VERSION", Some(84605), None),
+    /// Allows users to provide classes for fenced code block using `class:classname`.
+    (active, custom_code_classes_in_docs, "CURRENT_RUSTC_VERSION", Some(79483), None),
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
@@ -411,7 +416,7 @@ declare_features! (
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
     /// Allows using the `#[diagnostic]` attribute tool namespace
-    (active, diagnostic_namespace, "1.73.0", Some(94785), None),
+    (active, diagnostic_namespace, "1.73.0", Some(111996), None),
     /// Controls errors in trait implementations.
     (active, do_not_recommend, "1.67.0", Some(51992), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -465,8 +470,6 @@ declare_features! (
     (active, impl_trait_in_assoc_type, "1.70.0", Some(63063), None),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (active, impl_trait_in_fn_trait_return, "1.64.0", Some(99697), None),
-    /// Allows referencing `Self` and projections in impl-trait.
-    (active, impl_trait_projections, "1.67.0", Some(103532), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
     /// Allows associated types in inherent impls.
@@ -509,9 +512,6 @@ declare_features! (
     (active, never_type_fallback, "1.41.0", Some(65992), None),
     /// Allows `#![no_core]`.
     (active, no_core, "1.3.0", Some(29639), None),
-    /// Allows function attribute `#[no_coverage]`, to bypass coverage
-    /// instrumentation of that function.
-    (active, no_coverage, "1.53.0", Some(84605), None),
     /// Allows the use of `no_sanitize` attribute.
     (active, no_sanitize, "1.42.0", Some(39699), None),
     /// Allows using the `non_exhaustive_omitted_patterns` lint.
@@ -524,8 +524,6 @@ declare_features! (
     (active, object_safe_for_dispatch, "1.40.0", Some(43561), None),
     /// Allows using `#[optimize(X)]`.
     (active, optimize_attribute, "1.34.0", Some(54882), None),
-    /// Allows `extern "platform-intrinsic" { ... }`.
-    (active, platform_intrinsics, "1.4.0", Some(27731), None),
     /// Allows using `#![plugin(myplugin)]`.
     (active, plugin, "1.0.0", Some(29597), None),
     /// Allows exhaustive integer pattern matching on `usize` and `isize`.

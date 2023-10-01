@@ -25,6 +25,7 @@ struct A;
 
 impl A {
     pub fn as_ref(self) -> &'static str {
+        //~^ ERROR: methods called `as_*` usually take `self` by reference or `self` by mutabl
         "A"
     }
 }

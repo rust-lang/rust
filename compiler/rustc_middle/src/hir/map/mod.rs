@@ -196,9 +196,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::Macro(_, macro_kind) => DefKind::Macro(macro_kind),
                 ItemKind::Mod(..) => DefKind::Mod,
                 ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
-                ItemKind::TyAlias(..) => {
-                    DefKind::TyAlias { lazy: self.tcx.features().lazy_type_alias }
-                }
+                ItemKind::TyAlias(..) => DefKind::TyAlias,
                 ItemKind::Enum(..) => DefKind::Enum,
                 ItemKind::Struct(..) => DefKind::Struct,
                 ItemKind::Union(..) => DefKind::Union,
@@ -442,9 +440,10 @@ impl<'hir> Map<'hir> {
     /// Panics if `LocalDefId` does not have an associated body.
     pub fn body_owner_kind(self, def_id: LocalDefId) -> BodyOwnerKind {
         match self.tcx.def_kind(def_id) {
-            DefKind::Const | DefKind::AssocConst | DefKind::InlineConst | DefKind::AnonConst => {
-                BodyOwnerKind::Const
+            DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
+                BodyOwnerKind::Const { inline: false }
             }
+            DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure | DefKind::Generator => BodyOwnerKind::Closure,
             DefKind::Static(mt) => BodyOwnerKind::Static(mt),
@@ -461,7 +460,7 @@ impl<'hir> Map<'hir> {
     /// just that it has to be checked as if it were.
     pub fn body_const_context(self, def_id: LocalDefId) -> Option<ConstContext> {
         let ccx = match self.body_owner_kind(def_id) {
-            BodyOwnerKind::Const => ConstContext::Const,
+            BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
             BodyOwnerKind::Static(mt) => ConstContext::Static(mt),
 
             BodyOwnerKind::Fn if self.tcx.is_constructor(def_id.to_def_id()) => return None,
@@ -701,6 +700,8 @@ impl<'hir> Map<'hir> {
             // expressions.
             ignore_tail = true;
         }
+
+        let mut prev_hir_id = None;
         while let Some((hir_id, node)) = iter.next() {
             if let (Some((_, next_node)), false) = (iter.peek(), ignore_tail) {
                 match next_node {
@@ -715,7 +716,14 @@ impl<'hir> Map<'hir> {
                 | Node::ForeignItem(_)
                 | Node::TraitItem(_)
                 | Node::Expr(Expr { kind: ExprKind::Closure { .. }, .. })
-                | Node::ImplItem(_) => return Some(hir_id),
+                | Node::ImplItem(_)
+                    // The input node `id` must be enclosed in the method's body as opposed
+                    // to some other place such as its return type (fixes #114918).
+                    // We verify that indirectly by checking that the previous node is the
+                    // current node's body
+                    if node.body_id().map(|b| b.hir_id) == prev_hir_id =>  {
+                        return Some(hir_id)
+                }
                 // Ignore `return`s on the first iteration
                 Node::Expr(Expr { kind: ExprKind::Loop(..) | ExprKind::Ret(..), .. })
                 | Node::Local(_) => {
@@ -723,6 +731,8 @@ impl<'hir> Map<'hir> {
                 }
                 _ => {}
             }
+
+            prev_hir_id = Some(hir_id);
         }
         None
     }
@@ -1195,8 +1205,8 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
         debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
-        if tcx.sess.opts.incremental_relative_spans() {
-            let definitions = tcx.definitions_untracked();
+        if tcx.sess.opts.incremental.is_some() {
+            let definitions = tcx.untracked().definitions.freeze();
             let mut owner_spans: Vec<_> = krate
                 .owners
                 .iter_enumerated()
@@ -1215,7 +1225,6 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         tcx.stable_crate_id(LOCAL_CRATE).hash_stable(&mut hcx, &mut stable_hasher);
         // Hash visibility information since it does not appear in HIR.
         resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
-        resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
         stable_hasher.finish()
     });
 

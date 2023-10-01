@@ -1,4 +1,3 @@
-//@run-rustfix
 #![feature(const_fn_floating_point_arithmetic)]
 #![warn(clippy::suboptimal_flops)]
 

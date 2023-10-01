@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #[allow(clippy::no_effect, clippy::unnecessary_operation)]
 #[warn(clippy::int_plus_one)]
 fn main() {

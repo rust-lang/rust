@@ -152,13 +152,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ohs = self.lower_expr(ohs);
                     hir::ExprKind::AddrOf(*k, *m, ohs)
                 }
-                ExprKind::Let(pat, scrutinee, span) => {
+                ExprKind::Let(pat, scrutinee, span, is_recovered) => {
                     hir::ExprKind::Let(self.arena.alloc(hir::Let {
                         hir_id: self.next_id(),
                         span: self.lower_span(*span),
                         pat: self.lower_pat(pat),
                         ty: None,
                         init: self.lower_expr(scrutinee),
+                        is_recovered: *is_recovered,
                     }))
                 }
                 ExprKind::If(cond, then, else_opt) => {
@@ -558,13 +559,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
         let guard = arm.guard.as_ref().map(|cond| {
-            if let ExprKind::Let(pat, scrutinee, span) = &cond.kind {
+            if let ExprKind::Let(pat, scrutinee, span, is_recovered) = &cond.kind {
                 hir::Guard::IfLet(self.arena.alloc(hir::Let {
                     hir_id: self.next_id(),
                     span: self.lower_span(*span),
                     pat: self.lower_pat(pat),
                     ty: None,
                     init: self.lower_expr(scrutinee),
+                    is_recovered: *is_recovered,
                 }))
             } else {
                 hir::Guard::If(self.lower_expr(cond))

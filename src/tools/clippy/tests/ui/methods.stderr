@@ -7,6 +7,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::new_ret_no_self)]`
 
 error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
   --> $DIR/methods.rs:124:13
@@ -19,6 +20,7 @@ LL | |                    ).next();
    | |___________________________^
    |
    = note: `-D clippy::filter-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
 
 error: aborting due to 2 previous errors
 

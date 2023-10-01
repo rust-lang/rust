@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(
     clippy::cast_lossless,
     unused,

@@ -5,6 +5,7 @@ LL | fn join_the_dark_side(darth: i32, _darth: i32) {}
    |                       ^^^^^
    |
    = note: `-D clippy::duplicate-underscore-argument` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::duplicate_underscore_argument)]`
 
 error: aborting due to previous error
 

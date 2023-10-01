@@ -2,6 +2,7 @@ error: all variants have the same prefix: `Työ`
   --> $DIR/ice-7869.rs:1:1
    |
 LL | / enum Tila {
+LL | |
 LL | |     TyöAlkoi,
 LL | |     TyöKeskeytyi,
 LL | |     TyöValmis,
@@ -10,6 +11,7 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
    = note: `-D clippy::enum-variant-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_variant_names)]`
 
 error: aborting due to previous error
 

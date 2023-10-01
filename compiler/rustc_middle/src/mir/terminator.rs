@@ -1,38 +1,15 @@
+/// Functionality for terminators and helper types that appear in terminators.
 use rustc_hir::LangItem;
 use smallvec::SmallVec;
 
 use super::{BasicBlock, InlineAsmOperand, Operand, SourceInfo, TerminatorKind, UnwindAction};
-use rustc_ast::InlineAsmTemplatePiece;
 pub use rustc_ast::Mutability;
 use rustc_macros::HashStable;
-use std::borrow::Cow;
-use std::fmt::{self, Debug, Formatter, Write};
 use std::iter;
 use std::slice;
 
 pub use super::query::*;
 use super::*;
-
-#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
-pub struct SwitchTargets {
-    /// Possible values. The locations to branch to in each case
-    /// are found in the corresponding indices from the `targets` vector.
-    values: SmallVec<[u128; 1]>,
-
-    /// Possible branch sites. The last element of this vector is used
-    /// for the otherwise branch, so targets.len() == values.len() + 1
-    /// should hold.
-    //
-    // This invariant is quite non-obvious and also could be improved.
-    // One way to make this invariant is to have something like this instead:
-    //
-    // branches: Vec<(ConstInt, BasicBlock)>,
-    // otherwise: Option<BasicBlock> // exhaustive if None
-    //
-    // However we’ve decided to keep this as-is until we figure a case
-    // where some other approach seems to be strictly better than other.
-    targets: SmallVec<[BasicBlock; 2]>,
-}
 
 impl SwitchTargets {
     /// Creates switch targets from an iterator of values and target blocks.
@@ -131,6 +108,168 @@ impl UnwindTerminateReason {
         match self {
             UnwindTerminateReason::Abi => LangItem::PanicCannotUnwind,
             UnwindTerminateReason::InCleanup => LangItem::PanicInCleanup,
+        }
+    }
+}
+
+impl<O> AssertKind<O> {
+    /// Returns true if this an overflow checking assertion controlled by -C overflow-checks.
+    pub fn is_optional_overflow_check(&self) -> bool {
+        use AssertKind::*;
+        use BinOp::*;
+        matches!(self, OverflowNeg(..) | Overflow(Add | Sub | Mul | Shl | Shr, ..))
+    }
+
+    /// Get the message that is printed at runtime when this assertion fails.
+    ///
+    /// The caller is expected to handle `BoundsCheck` and `MisalignedPointerDereference` by
+    /// invoking the appropriate lang item (panic_bounds_check/panic_misaligned_pointer_dereference)
+    /// instead of printing a static message.
+    pub fn description(&self) -> &'static str {
+        use AssertKind::*;
+        match self {
+            Overflow(BinOp::Add, _, _) => "attempt to add with overflow",
+            Overflow(BinOp::Sub, _, _) => "attempt to subtract with overflow",
+            Overflow(BinOp::Mul, _, _) => "attempt to multiply with overflow",
+            Overflow(BinOp::Div, _, _) => "attempt to divide with overflow",
+            Overflow(BinOp::Rem, _, _) => "attempt to calculate the remainder with overflow",
+            OverflowNeg(_) => "attempt to negate with overflow",
+            Overflow(BinOp::Shr, _, _) => "attempt to shift right with overflow",
+            Overflow(BinOp::Shl, _, _) => "attempt to shift left with overflow",
+            Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
+            DivisionByZero(_) => "attempt to divide by zero",
+            RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
+            ResumedAfterReturn(GeneratorKind::Gen) => "generator resumed after completion",
+            ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
+            ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
+            ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
+            BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
+                bug!("Unexpected AssertKind")
+            }
+        }
+    }
+
+    /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
+    ///
+    /// Needs to be kept in sync with the run-time behavior (which is defined by
+    /// `AssertKind::description` and the lang items mentioned in its docs).
+    /// Note that we deliberately show more details here than we do at runtime, such as the actual
+    /// numbers that overflowed -- it is much easier to do so here than at runtime.
+    pub fn fmt_assert_args<W: fmt::Write>(&self, f: &mut W) -> fmt::Result
+    where
+        O: Debug,
+    {
+        use AssertKind::*;
+        match self {
+            BoundsCheck { ref len, ref index } => write!(
+                f,
+                "\"index out of bounds: the length is {{}} but the index is {{}}\", {len:?}, {index:?}"
+            ),
+
+            OverflowNeg(op) => {
+                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {op:?}")
+            }
+            DivisionByZero(op) => write!(f, "\"attempt to divide `{{}}` by zero\", {op:?}"),
+            RemainderByZero(op) => write!(
+                f,
+                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {op:?}"
+            ),
+            Overflow(BinOp::Add, l, r) => write!(
+                f,
+                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {l:?}, {r:?}"
+            ),
+            Overflow(BinOp::Sub, l, r) => write!(
+                f,
+                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {l:?}, {r:?}"
+            ),
+            Overflow(BinOp::Mul, l, r) => write!(
+                f,
+                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {l:?}, {r:?}"
+            ),
+            Overflow(BinOp::Div, l, r) => write!(
+                f,
+                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {l:?}, {r:?}"
+            ),
+            Overflow(BinOp::Rem, l, r) => write!(
+                f,
+                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {l:?}, {r:?}"
+            ),
+            Overflow(BinOp::Shr, _, r) => {
+                write!(f, "\"attempt to shift right by `{{}}`, which would overflow\", {r:?}")
+            }
+            Overflow(BinOp::Shl, _, r) => {
+                write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {r:?}")
+            }
+            MisalignedPointerDereference { required, found } => {
+                write!(
+                    f,
+                    "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
+                )
+            }
+            _ => write!(f, "\"{}\"", self.description()),
+        }
+    }
+
+    /// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
+    ///
+    /// Needs to be kept in sync with the run-time behavior (which is defined by
+    /// `AssertKind::description` and the lang items mentioned in its docs).
+    /// Note that we deliberately show more details here than we do at runtime, such as the actual
+    /// numbers that overflowed -- it is much easier to do so here than at runtime.
+    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+        use crate::fluent_generated::*;
+        use AssertKind::*;
+
+        match self {
+            BoundsCheck { .. } => middle_bounds_check,
+            Overflow(BinOp::Shl, _, _) => middle_assert_shl_overflow,
+            Overflow(BinOp::Shr, _, _) => middle_assert_shr_overflow,
+            Overflow(_, _, _) => middle_assert_op_overflow,
+            OverflowNeg(_) => middle_assert_overflow_neg,
+            DivisionByZero(_) => middle_assert_divide_by_zero,
+            RemainderByZero(_) => middle_assert_remainder_by_zero,
+            ResumedAfterReturn(GeneratorKind::Async(_)) => middle_assert_async_resume_after_return,
+            ResumedAfterReturn(GeneratorKind::Gen) => middle_assert_generator_resume_after_return,
+            ResumedAfterPanic(GeneratorKind::Async(_)) => middle_assert_async_resume_after_panic,
+            ResumedAfterPanic(GeneratorKind::Gen) => middle_assert_generator_resume_after_panic,
+
+            MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
+        }
+    }
+
+    pub fn add_args(self, adder: &mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>))
+    where
+        O: fmt::Debug,
+    {
+        use AssertKind::*;
+
+        macro_rules! add {
+            ($name: expr, $value: expr) => {
+                adder($name.into(), $value.into_diagnostic_arg());
+            };
+        }
+
+        match self {
+            BoundsCheck { len, index } => {
+                add!("len", format!("{len:?}"));
+                add!("index", format!("{index:?}"));
+            }
+            Overflow(BinOp::Shl | BinOp::Shr, _, val)
+            | DivisionByZero(val)
+            | RemainderByZero(val)
+            | OverflowNeg(val) => {
+                add!("val", format!("{val:#?}"));
+            }
+            Overflow(binop, left, right) => {
+                add!("op", binop.to_hir_binop().as_str());
+                add!("left", format!("{left:#?}"));
+                add!("right", format!("{right:#?}"));
+            }
+            ResumedAfterReturn(_) | ResumedAfterPanic(_) => {}
+            MisalignedPointerDereference { required, found } => {
+                add!("required", format!("{required:#?}"));
+                add!("found", format!("{found:#?}"));
+            }
         }
     }
 }
@@ -295,187 +434,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         match self {
             TerminatorKind::Goto { target } => Some(*target),
             _ => None,
-        }
-    }
-}
-
-impl<'tcx> Debug for TerminatorKind<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        self.fmt_head(fmt)?;
-        let successor_count = self.successors().count();
-        let labels = self.fmt_successor_labels();
-        assert_eq!(successor_count, labels.len());
-
-        // `Cleanup` is already included in successors
-        let show_unwind = !matches!(self.unwind(), None | Some(UnwindAction::Cleanup(_)));
-        let fmt_unwind = |fmt: &mut Formatter<'_>| -> fmt::Result {
-            write!(fmt, "unwind ")?;
-            match self.unwind() {
-                // Not needed or included in successors
-                None | Some(UnwindAction::Cleanup(_)) => unreachable!(),
-                Some(UnwindAction::Continue) => write!(fmt, "continue"),
-                Some(UnwindAction::Unreachable) => write!(fmt, "unreachable"),
-                Some(UnwindAction::Terminate(reason)) => {
-                    write!(fmt, "terminate({})", reason.as_short_str())
-                }
-            }
-        };
-
-        match (successor_count, show_unwind) {
-            (0, false) => Ok(()),
-            (0, true) => {
-                write!(fmt, " -> ")?;
-                fmt_unwind(fmt)
-            }
-            (1, false) => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
-            _ => {
-                write!(fmt, " -> [")?;
-                for (i, target) in self.successors().enumerate() {
-                    if i > 0 {
-                        write!(fmt, ", ")?;
-                    }
-                    write!(fmt, "{}: {:?}", labels[i], target)?;
-                }
-                if show_unwind {
-                    write!(fmt, ", ")?;
-                    fmt_unwind(fmt)?;
-                }
-                write!(fmt, "]")
-            }
-        }
-    }
-}
-
-impl<'tcx> TerminatorKind<'tcx> {
-    /// Writes the "head" part of the terminator; that is, its name and the data it uses to pick the
-    /// successor basic block, if any. The only information not included is the list of possible
-    /// successors, which may be rendered differently between the text and the graphviz format.
-    pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
-        use self::TerminatorKind::*;
-        match self {
-            Goto { .. } => write!(fmt, "goto"),
-            SwitchInt { discr, .. } => write!(fmt, "switchInt({discr:?})"),
-            Return => write!(fmt, "return"),
-            GeneratorDrop => write!(fmt, "generator_drop"),
-            UnwindResume => write!(fmt, "resume"),
-            UnwindTerminate(reason) => {
-                write!(fmt, "abort({})", reason.as_short_str())
-            }
-            Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
-            Unreachable => write!(fmt, "unreachable"),
-            Drop { place, .. } => write!(fmt, "drop({place:?})"),
-            Call { func, args, destination, .. } => {
-                write!(fmt, "{destination:?} = ")?;
-                write!(fmt, "{func:?}(")?;
-                for (index, arg) in args.iter().enumerate() {
-                    if index > 0 {
-                        write!(fmt, ", ")?;
-                    }
-                    write!(fmt, "{arg:?}")?;
-                }
-                write!(fmt, ")")
-            }
-            Assert { cond, expected, msg, .. } => {
-                write!(fmt, "assert(")?;
-                if !expected {
-                    write!(fmt, "!")?;
-                }
-                write!(fmt, "{cond:?}, ")?;
-                msg.fmt_assert_args(fmt)?;
-                write!(fmt, ")")
-            }
-            FalseEdge { .. } => write!(fmt, "falseEdge"),
-            FalseUnwind { .. } => write!(fmt, "falseUnwind"),
-            InlineAsm { template, ref operands, options, .. } => {
-                write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
-                for op in operands {
-                    write!(fmt, ", ")?;
-                    let print_late = |&late| if late { "late" } else { "" };
-                    match op {
-                        InlineAsmOperand::In { reg, value } => {
-                            write!(fmt, "in({reg}) {value:?}")?;
-                        }
-                        InlineAsmOperand::Out { reg, late, place: Some(place) } => {
-                            write!(fmt, "{}out({}) {:?}", print_late(late), reg, place)?;
-                        }
-                        InlineAsmOperand::Out { reg, late, place: None } => {
-                            write!(fmt, "{}out({}) _", print_late(late), reg)?;
-                        }
-                        InlineAsmOperand::InOut {
-                            reg,
-                            late,
-                            in_value,
-                            out_place: Some(out_place),
-                        } => {
-                            write!(
-                                fmt,
-                                "in{}out({}) {:?} => {:?}",
-                                print_late(late),
-                                reg,
-                                in_value,
-                                out_place
-                            )?;
-                        }
-                        InlineAsmOperand::InOut { reg, late, in_value, out_place: None } => {
-                            write!(fmt, "in{}out({}) {:?} => _", print_late(late), reg, in_value)?;
-                        }
-                        InlineAsmOperand::Const { value } => {
-                            write!(fmt, "const {value:?}")?;
-                        }
-                        InlineAsmOperand::SymFn { value } => {
-                            write!(fmt, "sym_fn {value:?}")?;
-                        }
-                        InlineAsmOperand::SymStatic { def_id } => {
-                            write!(fmt, "sym_static {def_id:?}")?;
-                        }
-                    }
-                }
-                write!(fmt, ", options({options:?}))")
-            }
-        }
-    }
-
-    /// Returns the list of labels for the edges to the successor basic blocks.
-    pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
-        use self::TerminatorKind::*;
-        match *self {
-            Return | UnwindResume | UnwindTerminate(_) | Unreachable | GeneratorDrop => vec![],
-            Goto { .. } => vec!["".into()],
-            SwitchInt { ref targets, .. } => targets
-                .values
-                .iter()
-                .map(|&u| Cow::Owned(u.to_string()))
-                .chain(iter::once("otherwise".into()))
-                .collect(),
-            Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
-                vec!["return".into(), "unwind".into()]
-            }
-            Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
-            Call { target: None, unwind: UnwindAction::Cleanup(_), .. } => vec!["unwind".into()],
-            Call { target: None, unwind: _, .. } => vec![],
-            Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
-            Yield { drop: None, .. } => vec!["resume".into()],
-            Drop { unwind: UnwindAction::Cleanup(_), .. } => vec!["return".into(), "unwind".into()],
-            Drop { unwind: _, .. } => vec!["return".into()],
-            Assert { unwind: UnwindAction::Cleanup(_), .. } => {
-                vec!["success".into(), "unwind".into()]
-            }
-            Assert { unwind: _, .. } => vec!["success".into()],
-            FalseEdge { .. } => vec!["real".into(), "imaginary".into()],
-            FalseUnwind { unwind: UnwindAction::Cleanup(_), .. } => {
-                vec!["real".into(), "unwind".into()]
-            }
-            FalseUnwind { unwind: _, .. } => vec!["real".into()],
-            InlineAsm { destination: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
-                vec!["return".into(), "unwind".into()]
-            }
-            InlineAsm { destination: Some(_), unwind: _, .. } => {
-                vec!["return".into()]
-            }
-            InlineAsm { destination: None, unwind: UnwindAction::Cleanup(_), .. } => {
-                vec!["unwind".into()]
-            }
-            InlineAsm { destination: None, unwind: _, .. } => vec![],
         }
     }
 }

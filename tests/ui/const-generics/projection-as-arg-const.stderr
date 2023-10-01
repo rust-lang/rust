@@ -5,7 +5,6 @@ LL | pub fn foo<const X: <i32 as Identity>::Identity>() {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
 
 error: aborting due to previous error
 

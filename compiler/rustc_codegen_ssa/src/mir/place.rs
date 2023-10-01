@@ -114,7 +114,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     bx.struct_gep(ty, self.llval, 1)
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
-                    // ZST fields are not included in Scalar, ScalarPair, and Vector layouts, so manually offset the pointer.
+                    // ZST fields (even some that require alignment) are not included in Scalar,
+                    // ScalarPair, and Vector layouts, so manually offset the pointer.
                     bx.gep(bx.cx().type_i8(), self.llval, &[bx.const_usize(offset.bytes())])
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) => {
@@ -462,7 +463,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::Field(ref field, _) => {
                     cg_base.project_field(bx, field.index())
                 }
-                mir::ProjectionElem::OpaqueCast(ty) => cg_base.project_type(bx, ty),
+                mir::ProjectionElem::OpaqueCast(ty) => {
+                    bug!("encountered OpaqueCast({ty}) in codegen")
+                }
                 mir::ProjectionElem::Index(index) => {
                     let index = &mir::Operand::Copy(mir::Place::from(index));
                     let index = self.codegen_operand(bx, index);

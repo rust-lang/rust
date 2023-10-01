@@ -5,6 +5,7 @@ LL |     let _: () = FN();
    |     ^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `FN();`
    |
    = note: `-D clippy::let-unit-value` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
 
 error: aborting due to previous error
 

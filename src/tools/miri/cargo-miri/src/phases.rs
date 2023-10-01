@@ -10,7 +10,7 @@ use rustc_version::VersionMeta;
 
 use crate::{setup::*, util::*};
 
-const CARGO_MIRI_HELP: &str = r#"Runs binary crates and tests in Miri
+const CARGO_MIRI_HELP: &str = r"Runs binary crates and tests in Miri
 
 Usage:
     cargo miri [subcommand] [<cargo options>...] [--] [<program/test suite options>...]
@@ -31,7 +31,7 @@ Examples:
         This will print the path to the generated sysroot (and nothing else) on stdout.
         stderr will still contain progress information about how the build is doing.
 
-"#;
+";
 
 fn show_help() {
     println!("{CARGO_MIRI_HELP}");

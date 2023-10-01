@@ -5,18 +5,21 @@ struct A;
 
 impl A {
     fn result_with_assert_with_message(x: i32) -> Result<bool, String> // should emit lint
+    //~^ ERROR: used `panic!()` or assertion in a function that returns `Result`
     {
         assert!(x == 5, "wrong argument");
         Ok(true)
     }
 
     fn result_with_assert_eq(x: i32) -> Result<bool, String> // should emit lint
+    //~^ ERROR: used `panic!()` or assertion in a function that returns `Result`
     {
         assert_eq!(x, 5);
         Ok(true)
     }
 
     fn result_with_assert_ne(x: i32) -> Result<bool, String> // should emit lint
+    //~^ ERROR: used `panic!()` or assertion in a function that returns `Result`
     {
         assert_ne!(x, 1);
         Ok(true)

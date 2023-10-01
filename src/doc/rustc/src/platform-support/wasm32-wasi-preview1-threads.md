@@ -1,6 +1,6 @@
 # `wasm32-wasi-preview1-threads`
 
-**Tier: 3**
+**Tier: 2**
 
 The `wasm32-wasi-preview1-threads` target is a new and still (as of July 2023) an
 experimental target. This target is an extension to `wasm32-wasi-preview1` target,
@@ -70,12 +70,6 @@ compile `wasm32-wasi-preview1-threads` binaries straight out of the box. You can
 reliably interoperate with C code in this mode (yet).
 
 
-This target is not a stable target. This means that there are not many engines
-which implement the `wasi-threads` feature and if they do they're likely behind a
-flag, for example:
-
-* Wasmtime - `--wasm-features=threads --wasi-modules=experimental-wasi-threads`
-
 Also note that at this time the `wasm32-wasi-preview1-threads` target assumes the
 presence of other merged wasm proposals such as (with their LLVM feature flags):
 
@@ -94,6 +88,17 @@ The target intends to match the corresponding Clang target for its `"C"` ABI.
 > found it's recommended to open an issue either with rust-lang/rust or ideally
 > with LLVM itself.
 
+## Platform requirements
+
+The runtime should support the same set of APIs as any other supported wasi target for interacting with the host environment through the WASI standard. The runtime also should have implemetation of [wasi-threads proposal](https://github.com/WebAssembly/wasi-threads).
+
+This target is not a stable target. This means that there are a few engines
+which implement the `wasi-threads` feature and if they do they're likely behind a
+flag, for example:
+
+* Wasmtime - `--wasm-features=threads --wasi-modules=experimental-wasi-threads`
+* [WAMR](https://github.com/bytecodealliance/wasm-micro-runtime) - needs to be built with WAMR_BUILD_LIB_WASI_THREADS=1
+
 ## Building the target
 
 Users need to install or built wasi-sdk since release 20.0
@@ -110,12 +115,16 @@ After that users can build this by adding it to the `target` list in
 
 ## Building Rust programs
 
-Since it is Tier 3, rust doesn't ship pre-compiled artifacts for this target.
+From Rust Nightly 1.71.1 (2023-08-03) on the artifacts are shipped pre-compiled:
 
-Specify `wasi-root` as explained in the previous section and then use the `build-std`
-nightly cargo feature to build the standard library:
-```shell
-cargo +nightly build --target=wasm32-wasi-preview1-threads -Zbuild-std
+```text
+rustup target add wasm32-wasi-preview1-threads --toolchain nightly
+```
+
+Rust programs can be built for that target:
+
+```text
+rustc --target wasm32-wasi-preview1-threads your-code.rs
 ```
 
 ## Cross-compilation

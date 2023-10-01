@@ -17,6 +17,7 @@ pub(super) fn highlight_format_string(
         return;
     }
 
+    // FIXME: Replace this with the HIR info we have now.
     lex_format_specifiers(string, &mut |piece_range, kind| {
         if let Some(highlight) = highlight_format_specifier(kind) {
             stack.add(HlRange {

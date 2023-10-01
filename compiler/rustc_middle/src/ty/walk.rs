@@ -190,14 +190,11 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             ty::Adt(_, args)
             | ty::Closure(_, args)
             | ty::Generator(_, args, _)
-            | ty::GeneratorWitnessMIR(_, args)
+            | ty::GeneratorWitness(_, args)
             | ty::FnDef(_, args) => {
                 stack.extend(args.iter().rev());
             }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(GenericArg::from)),
-            ty::GeneratorWitness(ts) => {
-                stack.extend(ts.skip_binder().iter().rev().map(|ty| ty.into()));
-            }
             ty::FnPtr(sig) => {
                 stack.push(sig.skip_binder().output().into());
                 stack.extend(sig.skip_binder().inputs().iter().copied().rev().map(|ty| ty.into()));

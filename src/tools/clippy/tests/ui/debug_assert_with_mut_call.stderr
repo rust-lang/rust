@@ -5,165 +5,166 @@ LL |     debug_assert!(bool_mut(&mut 3));
    |                   ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::debug-assert-with-mut-call` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::debug_assert_with_mut_call)]`
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:43:20
+  --> $DIR/debug_assert_with_mut_call.rs:45:20
    |
 LL |     debug_assert!(!bool_mut(&mut 3));
    |                    ^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_eq!`
-  --> $DIR/debug_assert_with_mut_call.rs:45:25
+  --> $DIR/debug_assert_with_mut_call.rs:48:25
    |
 LL |     debug_assert_eq!(0, u32_mut(&mut 3));
    |                         ^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_eq!`
-  --> $DIR/debug_assert_with_mut_call.rs:46:22
+  --> $DIR/debug_assert_with_mut_call.rs:50:22
    |
 LL |     debug_assert_eq!(u32_mut(&mut 3), 0);
    |                      ^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_ne!`
-  --> $DIR/debug_assert_with_mut_call.rs:48:25
+  --> $DIR/debug_assert_with_mut_call.rs:53:25
    |
 LL |     debug_assert_ne!(1, u32_mut(&mut 3));
    |                         ^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_ne!`
-  --> $DIR/debug_assert_with_mut_call.rs:49:22
+  --> $DIR/debug_assert_with_mut_call.rs:55:22
    |
 LL |     debug_assert_ne!(u32_mut(&mut 3), 1);
    |                      ^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:64:19
+  --> $DIR/debug_assert_with_mut_call.rs:71:19
    |
 LL |     debug_assert!(S.bool_self_mut());
    |                   ^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:65:20
+  --> $DIR/debug_assert_with_mut_call.rs:73:20
    |
 LL |     debug_assert!(!S.bool_self_mut());
    |                    ^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:66:19
+  --> $DIR/debug_assert_with_mut_call.rs:75:19
    |
 LL |     debug_assert!(S.bool_self_ref_arg_mut(&mut 3));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:67:19
+  --> $DIR/debug_assert_with_mut_call.rs:77:19
    |
 LL |     debug_assert!(S.bool_self_mut_arg_ref(&3));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:68:19
+  --> $DIR/debug_assert_with_mut_call.rs:79:19
    |
 LL |     debug_assert!(S.bool_self_mut_arg_mut(&mut 3));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_eq!`
-  --> $DIR/debug_assert_with_mut_call.rs:70:22
+  --> $DIR/debug_assert_with_mut_call.rs:82:22
    |
 LL |     debug_assert_eq!(S.u32_self_mut(), 0);
    |                      ^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_eq!`
-  --> $DIR/debug_assert_with_mut_call.rs:71:22
+  --> $DIR/debug_assert_with_mut_call.rs:84:22
    |
 LL |     debug_assert_eq!(S.u32_self_mut_arg_ref(&3), 0);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_eq!`
-  --> $DIR/debug_assert_with_mut_call.rs:72:22
+  --> $DIR/debug_assert_with_mut_call.rs:86:22
    |
 LL |     debug_assert_eq!(S.u32_self_ref_arg_mut(&mut 3), 0);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_eq!`
-  --> $DIR/debug_assert_with_mut_call.rs:73:22
+  --> $DIR/debug_assert_with_mut_call.rs:88:22
    |
 LL |     debug_assert_eq!(S.u32_self_mut_arg_mut(&mut 3), 0);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_ne!`
-  --> $DIR/debug_assert_with_mut_call.rs:75:22
+  --> $DIR/debug_assert_with_mut_call.rs:91:22
    |
 LL |     debug_assert_ne!(S.u32_self_mut(), 1);
    |                      ^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_ne!`
-  --> $DIR/debug_assert_with_mut_call.rs:76:22
+  --> $DIR/debug_assert_with_mut_call.rs:93:22
    |
 LL |     debug_assert_ne!(S.u32_self_mut_arg_ref(&3), 1);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_ne!`
-  --> $DIR/debug_assert_with_mut_call.rs:77:22
+  --> $DIR/debug_assert_with_mut_call.rs:95:22
    |
 LL |     debug_assert_ne!(S.u32_self_ref_arg_mut(&mut 3), 1);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_ne!`
-  --> $DIR/debug_assert_with_mut_call.rs:78:22
+  --> $DIR/debug_assert_with_mut_call.rs:97:22
    |
 LL |     debug_assert_ne!(S.u32_self_mut_arg_mut(&mut 3), 1);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_eq!`
-  --> $DIR/debug_assert_with_mut_call.rs:86:22
+  --> $DIR/debug_assert_with_mut_call.rs:106:22
    |
 LL |     debug_assert_eq!(v.pop(), Some(1));
    |                      ^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_ne!`
-  --> $DIR/debug_assert_with_mut_call.rs:87:31
+  --> $DIR/debug_assert_with_mut_call.rs:108:31
    |
 LL |     debug_assert_ne!(Some(3), v.pop());
    |                               ^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:90:19
+  --> $DIR/debug_assert_with_mut_call.rs:112:19
    |
 LL |     debug_assert!(bool_mut(a));
    |                   ^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:93:31
+  --> $DIR/debug_assert_with_mut_call.rs:116:31
    |
 LL |     debug_assert!(!(bool_ref(&u32_mut(&mut 3))));
    |                               ^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert_eq!`
-  --> $DIR/debug_assert_with_mut_call.rs:96:22
+  --> $DIR/debug_assert_with_mut_call.rs:120:22
    |
 LL |     debug_assert_eq!(v.pop().unwrap(), 3);
    |                      ^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:100:19
+  --> $DIR/debug_assert_with_mut_call.rs:125:19
    |
 LL |     debug_assert!(bool_mut(&mut 3), "w/o format");
    |                   ^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:102:19
+  --> $DIR/debug_assert_with_mut_call.rs:128:19
    |
 LL |     debug_assert!(bool_mut(&mut 3), "{} format", "w/");
    |                   ^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:107:9
+  --> $DIR/debug_assert_with_mut_call.rs:134:9
    |
 LL |         bool_mut(&mut x);
    |         ^^^^^^^^^^^^^^^^
 
 error: do not call a function with mutable arguments inside of `debug_assert!`
-  --> $DIR/debug_assert_with_mut_call.rs:114:9
+  --> $DIR/debug_assert_with_mut_call.rs:142:9
    |
 LL |         bool_mut(&mut x);
    |         ^^^^^^^^^^^^^^^^

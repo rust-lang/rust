@@ -303,7 +303,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
             // check that all features in a given smallvec are enabled
             for llvm_feature in to_llvm_features(sess, feature) {
                 let cstr = SmallCStr::new(llvm_feature);
-                if !unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
+                if !unsafe { llvm::LLVMRustHasFeature(&target_machine, cstr.as_ptr()) } {
                     return false;
                 }
             }
@@ -422,14 +422,14 @@ pub(crate) fn print(req: &PrintRequest, mut out: &mut dyn PrintBackendInfo, sess
             }
             unsafe {
                 llvm::LLVMRustPrintTargetCPUs(
-                    tm,
+                    &tm,
                     cpu_cstring.as_ptr(),
                     callback,
                     &mut out as *mut &mut dyn PrintBackendInfo as *mut c_void,
                 );
             }
         }
-        PrintKind::TargetFeatures => print_target_features(out, sess, tm),
+        PrintKind::TargetFeatures => print_target_features(out, sess, &tm),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }
 }

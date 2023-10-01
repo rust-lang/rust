@@ -10,5 +10,7 @@ fn main() {
     let mut b = 1337;
 
     a = b;
+    //~^ ERROR: this looks like you are trying to swap `a` and `b`
+    //~| NOTE: or maybe you should use `core::mem::replace`?
     b = a;
 }

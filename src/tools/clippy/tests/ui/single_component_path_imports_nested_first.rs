@@ -1,7 +1,9 @@
 #![warn(clippy::single_component_path_imports)]
 #![allow(unused_imports)]
-
+//@no-rustfix
 use regex;
+//~^ ERROR: this import is redundant
+//~| NOTE: `-D clippy::single-component-path-imports` implied by `-D warnings`
 
 use serde as edres;
 
@@ -13,6 +15,8 @@ fn main() {
 
 mod root_nested_use_mod {
     use {regex, serde};
+    //~^ ERROR: this import is redundant
+    //~| ERROR: this import is redundant
     #[allow(dead_code)]
     fn root_nested_use_mod() {}
 }

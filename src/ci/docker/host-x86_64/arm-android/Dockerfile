@@ -1,4 +1,4 @@
-FROM ubuntu:22.10
+FROM ubuntu:23.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 COPY scripts/android-base-apt-get.sh /scripts/

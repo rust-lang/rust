@@ -50,7 +50,7 @@ impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
 
 impl<'a> From<&'a hir::Let<'a>> for Declaration<'a> {
     fn from(let_expr: &'a hir::Let<'a>) -> Self {
-        let hir::Let { hir_id, pat, ty, span, init } = *let_expr;
+        let hir::Let { hir_id, pat, ty, span, init, is_recovered: _ } = *let_expr;
         Declaration { hir_id, pat, ty, span, init: Some(init), origin: DeclOrigin::LetExpr }
     }
 }

@@ -1,28 +1,47 @@
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:7:4
+  --> $DIR/needless_doc_main.rs:7:5
    |
-LL | /// fn main() {
-   |    ^^^^^^^^^^^^
+LL |   /// fn main() {
+   |  _____^
+LL | |
+LL | |
+LL | | ///     unimplemented!();
+LL | | /// }
+   | |_____^
    |
    = note: `-D clippy::needless-doctest-main` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_doctest_main)]`
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:14:4
+  --> $DIR/needless_doc_main.rs:16:5
    |
-LL | /// fn main() -> () {
-   |    ^^^^^^^^^^^^^^^^^^
+LL |   /// fn main() -> () {
+   |  _____^
+LL | |
+LL | | ///     unimplemented!();
+LL | | /// }
+   | |_____^
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:21:4
+  --> $DIR/needless_doc_main.rs:24:5
    |
-LL | /// fn main() {
-   |    ^^^^^^^^^^^^
+LL |   /// fn main() {
+   |  _____^
+LL | |
+LL | | ///     unimplemented!();
+LL | | /// }
+   | |_____^
 
 error: needless `fn main` in doctest
-  --> $DIR/needless_doc_main.rs:28:4
+  --> $DIR/needless_doc_main.rs:32:5
    |
-LL | /// fn main() {
-   |    ^^^^^^^^^^^^
+LL |   /// // the fn is not always the first line
+   |  _____^
+LL | |
+LL | | /// fn main() {
+LL | | ///     unimplemented!();
+LL | | /// }
+   | |_____^
 
 error: aborting due to 4 previous errors
 

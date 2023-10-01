@@ -5,7 +5,9 @@
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 use std::{
+    ffi::OsString,
     fmt, io,
+    path::PathBuf,
     process::{ChildStderr, ChildStdout, Command, Stdio},
     time::Duration,
 };
@@ -168,7 +170,7 @@ struct FlycheckActor {
     /// doesn't provide a way to read sub-process output without blocking, so we
     /// have to wrap sub-processes output handling in a thread and pass messages
     /// back over a channel.
-    cargo_handle: Option<CargoHandle>,
+    command_handle: Option<CommandHandle>,
 }
 
 enum Event {
@@ -184,7 +186,7 @@ impl FlycheckActor {
         workspace_root: AbsPathBuf,
     ) -> FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
-        FlycheckActor { id, sender, config, root: workspace_root, cargo_handle: None }
+        FlycheckActor { id, sender, config, root: workspace_root, command_handle: None }
     }
 
     fn report_progress(&self, progress: Progress) {
@@ -192,7 +194,7 @@ impl FlycheckActor {
     }
 
     fn next_event(&self, inbox: &Receiver<StateChange>) -> Option<Event> {
-        let check_chan = self.cargo_handle.as_ref().map(|cargo| &cargo.receiver);
+        let check_chan = self.command_handle.as_ref().map(|cargo| &cargo.receiver);
         if let Ok(msg) = inbox.try_recv() {
             // give restarts a preference so check outputs don't block a restart or stop
             return Some(Event::RequestStateChange(msg));
@@ -221,21 +223,19 @@ impl FlycheckActor {
                     }
 
                     let command = self.check_command();
+                    let formatted_command = format!("{:?}", command);
+
                     tracing::debug!(?command, "will restart flycheck");
-                    match CargoHandle::spawn(command) {
-                        Ok(cargo_handle) => {
-                            tracing::debug!(
-                                command = ?self.check_command(),
-                                "did  restart flycheck"
-                            );
-                            self.cargo_handle = Some(cargo_handle);
+                    match CommandHandle::spawn(command) {
+                        Ok(command_handle) => {
+                            tracing::debug!(command = formatted_command, "did  restart flycheck");
+                            self.command_handle = Some(command_handle);
                             self.report_progress(Progress::DidStart);
                         }
                         Err(error) => {
                             self.report_progress(Progress::DidFailToRestart(format!(
-                                "Failed to run the following command: {:?} error={}",
-                                self.check_command(),
-                                error
+                                "Failed to run the following command: {} error={}",
+                                formatted_command, error
                             )));
                         }
                     }
@@ -244,12 +244,14 @@ impl FlycheckActor {
                     tracing::debug!(flycheck_id = self.id, "flycheck finished");
 
                     // Watcher finished
-                    let cargo_handle = self.cargo_handle.take().unwrap();
-                    let res = cargo_handle.join();
+                    let command_handle = self.command_handle.take().unwrap();
+                    let formatted_handle = format!("{:?}", command_handle);
+
+                    let res = command_handle.join();
                     if res.is_err() {
                         tracing::error!(
-                            "Flycheck failed to run the following command: {:?}",
-                            self.check_command()
+                            "Flycheck failed to run the following command: {}",
+                            formatted_handle
                         );
                     }
                     self.report_progress(Progress::DidFinish(res));
@@ -284,12 +286,12 @@ impl FlycheckActor {
     }
 
     fn cancel_check_process(&mut self) {
-        if let Some(cargo_handle) = self.cargo_handle.take() {
+        if let Some(command_handle) = self.command_handle.take() {
             tracing::debug!(
-                command = ?self.check_command(),
+                command = ?command_handle,
                 "did  cancel flycheck"
             );
-            cargo_handle.cancel();
+            command_handle.cancel();
             self.report_progress(Progress::DidCancel);
         }
     }
@@ -391,18 +393,35 @@ impl Drop for JodGroupChild {
 }
 
 /// A handle to a cargo process used for fly-checking.
-struct CargoHandle {
+struct CommandHandle {
     /// The handle to the actual cargo process. As we cannot cancel directly from with
     /// a read syscall dropping and therefore terminating the process is our best option.
     child: JodGroupChild,
     thread: stdx::thread::JoinHandle<io::Result<(bool, String)>>,
     receiver: Receiver<CargoMessage>,
+    program: OsString,
+    arguments: Vec<OsString>,
+    current_dir: Option<PathBuf>,
 }
 
-impl CargoHandle {
-    fn spawn(mut command: Command) -> std::io::Result<CargoHandle> {
+impl fmt::Debug for CommandHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CommandHandle")
+            .field("program", &self.program)
+            .field("arguments", &self.arguments)
+            .field("current_dir", &self.current_dir)
+            .finish()
+    }
+}
+
+impl CommandHandle {
+    fn spawn(mut command: Command) -> std::io::Result<CommandHandle> {
         command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
         let mut child = command.group_spawn().map(JodGroupChild)?;
+
+        let program = command.get_program().into();
+        let arguments = command.get_args().map(|arg| arg.into()).collect::<Vec<OsString>>();
+        let current_dir = command.get_current_dir().map(|arg| arg.to_path_buf());
 
         let stdout = child.0.inner().stdout.take().unwrap();
         let stderr = child.0.inner().stderr.take().unwrap();
@@ -413,7 +432,7 @@ impl CargoHandle {
             .name("CargoHandle".to_owned())
             .spawn(move || actor.run())
             .expect("failed to spawn thread");
-        Ok(CargoHandle { child, thread, receiver })
+        Ok(CommandHandle { program, arguments, current_dir, child, thread, receiver })
     }
 
     fn cancel(mut self) {

@@ -1,6 +1,5 @@
-//@run-rustfix
-//@aux-build:proc_macros.rs:proc-macro
-#![allow(clippy::useless_vec, unused)]
+//@aux-build:proc_macros.rs
+#![allow(clippy::useless_vec, clippy::iter_out_of_bounds, unused)]
 #![warn(clippy::iter_skip_zero)]
 
 #[macro_use]

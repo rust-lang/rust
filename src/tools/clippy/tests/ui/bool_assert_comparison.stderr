@@ -1,10 +1,11 @@
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:89:5
+  --> $DIR/bool_assert_comparison.rs:87:5
    |
 LL |     assert_eq!("a".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::bool-assert-comparison` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bool_assert_comparison)]`
 help: replace it with `assert!(..)`
    |
 LL -     assert_eq!("a".is_empty(), false);
@@ -12,7 +13,7 @@ LL +     assert!(!"a".is_empty());
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:90:5
+  --> $DIR/bool_assert_comparison.rs:88:5
    |
 LL |     assert_eq!("".is_empty(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +25,7 @@ LL +     assert!("".is_empty());
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:91:5
+  --> $DIR/bool_assert_comparison.rs:89:5
    |
 LL |     assert_eq!(true, "".is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +37,7 @@ LL +     assert!("".is_empty());
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:96:5
+  --> $DIR/bool_assert_comparison.rs:94:5
    |
 LL |     assert_eq!(b, true);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -48,7 +49,7 @@ LL +     assert!(b);
    |
 
 error: used `assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:99:5
+  --> $DIR/bool_assert_comparison.rs:97:5
    |
 LL |     assert_ne!("a".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +61,7 @@ LL +     assert!("a".is_empty());
    |
 
 error: used `assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:100:5
+  --> $DIR/bool_assert_comparison.rs:98:5
    |
 LL |     assert_ne!("".is_empty(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +73,7 @@ LL +     assert!(!"".is_empty());
    |
 
 error: used `assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:101:5
+  --> $DIR/bool_assert_comparison.rs:99:5
    |
 LL |     assert_ne!(true, "".is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +85,7 @@ LL +     assert!(!"".is_empty());
    |
 
 error: used `assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:106:5
+  --> $DIR/bool_assert_comparison.rs:104:5
    |
 LL |     assert_ne!(b, true);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -96,7 +97,7 @@ LL +     assert!(!b);
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:109:5
+  --> $DIR/bool_assert_comparison.rs:107:5
    |
 LL |     debug_assert_eq!("a".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -108,7 +109,7 @@ LL +     debug_assert!(!"a".is_empty());
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:110:5
+  --> $DIR/bool_assert_comparison.rs:108:5
    |
 LL |     debug_assert_eq!("".is_empty(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +121,7 @@ LL +     debug_assert!("".is_empty());
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:111:5
+  --> $DIR/bool_assert_comparison.rs:109:5
    |
 LL |     debug_assert_eq!(true, "".is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -132,7 +133,7 @@ LL +     debug_assert!("".is_empty());
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:116:5
+  --> $DIR/bool_assert_comparison.rs:114:5
    |
 LL |     debug_assert_eq!(b, true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -144,7 +145,7 @@ LL +     debug_assert!(b);
    |
 
 error: used `debug_assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:119:5
+  --> $DIR/bool_assert_comparison.rs:117:5
    |
 LL |     debug_assert_ne!("a".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +157,7 @@ LL +     debug_assert!("a".is_empty());
    |
 
 error: used `debug_assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:120:5
+  --> $DIR/bool_assert_comparison.rs:118:5
    |
 LL |     debug_assert_ne!("".is_empty(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -168,7 +169,7 @@ LL +     debug_assert!(!"".is_empty());
    |
 
 error: used `debug_assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:121:5
+  --> $DIR/bool_assert_comparison.rs:119:5
    |
 LL |     debug_assert_ne!(true, "".is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -180,7 +181,7 @@ LL +     debug_assert!(!"".is_empty());
    |
 
 error: used `debug_assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:126:5
+  --> $DIR/bool_assert_comparison.rs:124:5
    |
 LL |     debug_assert_ne!(b, true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -192,7 +193,7 @@ LL +     debug_assert!(!b);
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:131:5
+  --> $DIR/bool_assert_comparison.rs:129:5
    |
 LL |     assert_eq!("a".is_empty(), false, "tadam {}", 1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -204,7 +205,7 @@ LL +     assert!(!"a".is_empty(), "tadam {}", 1);
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:132:5
+  --> $DIR/bool_assert_comparison.rs:130:5
    |
 LL |     assert_eq!("a".is_empty(), false, "tadam {}", true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -216,7 +217,7 @@ LL +     assert!(!"a".is_empty(), "tadam {}", true);
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:133:5
+  --> $DIR/bool_assert_comparison.rs:131:5
    |
 LL |     assert_eq!(false, "a".is_empty(), "tadam {}", true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -228,7 +229,7 @@ LL +     assert!(!"a".is_empty(), "tadam {}", true);
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:138:5
+  --> $DIR/bool_assert_comparison.rs:136:5
    |
 LL |     debug_assert_eq!("a".is_empty(), false, "tadam {}", 1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -240,7 +241,7 @@ LL +     debug_assert!(!"a".is_empty(), "tadam {}", 1);
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:139:5
+  --> $DIR/bool_assert_comparison.rs:137:5
    |
 LL |     debug_assert_eq!("a".is_empty(), false, "tadam {}", true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -252,7 +253,7 @@ LL +     debug_assert!(!"a".is_empty(), "tadam {}", true);
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:140:5
+  --> $DIR/bool_assert_comparison.rs:138:5
    |
 LL |     debug_assert_eq!(false, "a".is_empty(), "tadam {}", true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -264,7 +265,7 @@ LL +     debug_assert!(!"a".is_empty(), "tadam {}", true);
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:143:5
+  --> $DIR/bool_assert_comparison.rs:141:5
    |
 LL |     assert_eq!(a!(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -276,7 +277,7 @@ LL +     assert!(a!());
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:144:5
+  --> $DIR/bool_assert_comparison.rs:142:5
    |
 LL |     assert_eq!(true, b!());
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -288,7 +289,7 @@ LL +     assert!(b!());
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:148:5
+  --> $DIR/bool_assert_comparison.rs:146:5
    |
 LL |     renamed!(b, true);
    |     ^^^^^^^^^^^^^^^^^
@@ -300,7 +301,7 @@ LL +     debug_assert!(b);
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:162:5
+  --> $DIR/bool_assert_comparison.rs:160:5
    |
 LL |     assert_eq!("".is_empty(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -312,7 +313,7 @@ LL +     assert!("".is_empty());
    |
 
 error: used `assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:163:5
+  --> $DIR/bool_assert_comparison.rs:161:5
    |
 LL |     assert_ne!("".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -324,7 +325,7 @@ LL +     assert!("".is_empty());
    |
 
 error: used `assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:164:5
+  --> $DIR/bool_assert_comparison.rs:162:5
    |
 LL |     assert_ne!("requires negation".is_empty(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -336,7 +337,7 @@ LL +     assert!(!"requires negation".is_empty());
    |
 
 error: used `assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:165:5
+  --> $DIR/bool_assert_comparison.rs:163:5
    |
 LL |     assert_eq!("requires negation".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -348,7 +349,7 @@ LL +     assert!(!"requires negation".is_empty());
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:167:5
+  --> $DIR/bool_assert_comparison.rs:165:5
    |
 LL |     debug_assert_eq!("".is_empty(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -360,7 +361,7 @@ LL +     debug_assert!("".is_empty());
    |
 
 error: used `debug_assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:168:5
+  --> $DIR/bool_assert_comparison.rs:166:5
    |
 LL |     debug_assert_ne!("".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -372,7 +373,7 @@ LL +     debug_assert!("".is_empty());
    |
 
 error: used `debug_assert_ne!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:169:5
+  --> $DIR/bool_assert_comparison.rs:167:5
    |
 LL |     debug_assert_ne!("requires negation".is_empty(), true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -384,7 +385,7 @@ LL +     debug_assert!(!"requires negation".is_empty());
    |
 
 error: used `debug_assert_eq!` with a literal bool
-  --> $DIR/bool_assert_comparison.rs:170:5
+  --> $DIR/bool_assert_comparison.rs:168:5
    |
 LL |     debug_assert_eq!("requires negation".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -34,6 +34,7 @@ where
             false
         }
         _ => {
+            // We cannot figure out the layout. Conservatively assume that this is disaligned.
             debug!("is_disaligned({:?}) - true", place);
             true
         }

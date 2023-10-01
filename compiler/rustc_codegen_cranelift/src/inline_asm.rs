@@ -242,8 +242,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 }
             }
             InlineAsmOperand::Const { ref value } => {
-                let (const_value, ty) = crate::constant::eval_mir_constant(fx, value)
-                    .unwrap_or_else(|| span_bug!(span, "asm const cannot be resolved"));
+                let (const_value, ty) = crate::constant::eval_mir_constant(fx, value);
                 let value = rustc_codegen_ssa::common::asm_const_to_str(
                     fx.tcx,
                     span,
@@ -253,8 +252,8 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 CInlineAsmOperand::Const { value }
             }
             InlineAsmOperand::SymFn { ref value } => {
-                let literal = fx.monomorphize(value.literal);
-                if let ty::FnDef(def_id, args) = *literal.ty().kind() {
+                let const_ = fx.monomorphize(value.const_);
+                if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         fx.tcx,
                         ty::ParamEnv::reveal_all(),

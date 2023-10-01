@@ -7,7 +7,7 @@
    LL|      1|fn main() {
    LL|      1|    let mut generator = || {
    LL|      1|        yield 1;
-   LL|      1|        return "foo"
+   LL|      1|        return "foo";
    LL|      1|    };
    LL|       |
    LL|      1|    match Pin::new(&mut generator).resume(()) {
@@ -23,7 +23,7 @@
    LL|      1|        yield 1;
    LL|      1|        yield 2;
    LL|      0|        yield 3;
-   LL|      0|        return "foo"
+   LL|      0|        return "foo";
    LL|      0|    };
    LL|       |
    LL|      1|    match Pin::new(&mut generator).resume(()) {

@@ -11,6 +11,7 @@ mod issue10800 {
     use std::future::ready;
 
     async fn async_block_await() {
+        //~^ ERROR: unused `async` for function with no await statements
         async {
             ready(()).await;
         };
@@ -43,6 +44,7 @@ mod issue9695 {
     async fn f() {}
     async fn f2() {}
     async fn f3() {}
+    //~^ ERROR: unused `async` for function with no await statements
 
     fn needs_async_fn<F: Future<Output = ()>>(_: fn() -> F) {}
 
@@ -55,6 +57,7 @@ mod issue9695 {
 }
 
 async fn foo() -> i32 {
+    //~^ ERROR: unused `async` for function with no await statements
     4
 }
 
@@ -66,6 +69,7 @@ struct S;
 
 impl S {
     async fn unused(&self) -> i32 {
+        //~^ ERROR: unused `async` for function with no await statements
         1
     }
 

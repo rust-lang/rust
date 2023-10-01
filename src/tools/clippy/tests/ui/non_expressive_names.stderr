@@ -5,6 +5,7 @@ LL |     let _1 = 1;
    |         ^^
    |
    = note: `-D clippy::just-underscores-and-digits` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::just_underscores_and_digits)]`
 
 error: consider choosing a more descriptive name
   --> $DIR/non_expressive_names.rs:29:9

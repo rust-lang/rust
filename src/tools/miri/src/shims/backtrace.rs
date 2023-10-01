@@ -63,7 +63,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // to reconstruct the needed frame information in `handle_miri_resolve_frame`.
                 // Note that we never actually read or write anything from/to this pointer -
                 // all of the data is represented by the pointer value itself.
-                let fn_ptr = this.create_fn_alloc_ptr(FnVal::Instance(instance));
+                let fn_ptr = this.fn_ptr(FnVal::Instance(instance));
                 fn_ptr.wrapping_offset(Size::from_bytes(pos.0), this)
             })
             .collect();
@@ -88,10 +88,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_pointer(ptr, &place)?;
                 }
 
-                this.write_immediate(
-                    Immediate::new_slice(Scalar::from_maybe_pointer(alloc.ptr, this), len, this),
-                    dest,
-                )?;
+                this.write_immediate(Immediate::new_slice(alloc.ptr(), len, this), dest)?;
             }
             // storage for pointers is allocated by the caller
             1 => {
@@ -159,7 +156,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Reconstruct the original function pointer,
         // which we pass to user code.
-        let fn_ptr = this.create_fn_alloc_ptr(FnVal::Instance(fn_instance));
+        let fn_ptr = this.fn_ptr(FnVal::Instance(fn_instance));
 
         let num_fields = dest.layout.fields.count();
 

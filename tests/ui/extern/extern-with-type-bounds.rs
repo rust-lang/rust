@@ -1,4 +1,4 @@
-#![feature(intrinsics)]
+#![feature(intrinsics, rustc_attrs)]
 
 extern "rust-intrinsic" {
     // Real example from libcore

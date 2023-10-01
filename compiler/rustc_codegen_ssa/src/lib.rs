@@ -31,7 +31,7 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_middle::query::{ExternProviders, Providers};
+use rustc_middle::util::Providers;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
@@ -164,7 +164,6 @@ pub struct CrateInfo {
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
-    pub feature_packed_bundled_libs: bool, // unstable feature flag.
 }
 
 #[derive(Encodable, Decodable)]
@@ -188,10 +187,6 @@ pub fn provide(providers: &mut Providers) {
     crate::base::provide(providers);
     crate::target_features::provide(providers);
     crate::codegen_attrs::provide(providers);
-}
-
-pub fn provide_extern(providers: &mut ExternProviders) {
-    crate::back::symbol_export::provide_extern(providers);
 }
 
 /// Checks if the given filename ends with the `.rcgu.o` extension that `rustc`

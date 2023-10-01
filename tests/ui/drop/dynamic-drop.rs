@@ -2,6 +2,7 @@
 // needs-unwind
 
 #![feature(generators, generator_trait)]
+#![feature(if_let_guard)]
 
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
@@ -332,6 +333,16 @@ fn move_ref_pattern(a: &Allocator) {
     let (ref _a, ref mut _b, _c, mut _d) = tup;
 }
 
+fn if_let_guard(a: &Allocator, c: bool, d: i32) {
+    let foo = if c { Some(a.alloc()) } else { None };
+
+    match d == 0 {
+        false if let Some(a) = foo => { let b = a; }
+        true if let true = { drop(foo.unwrap_or_else(|| a.alloc())); d == 1 } => {}
+        _ => {}
+    }
+}
+
 fn panic_after_return(a: &Allocator) -> Ptr<'_> {
     // Panic in the drop of `p` or `q` can leak
     let exceptions = vec![8, 9];
@@ -496,6 +507,13 @@ fn main() {
     run_test(|a| subslice_mixed_min_lengths(a, 7));
 
     run_test(|a| move_ref_pattern(a));
+
+    run_test(|a| if_let_guard(a, true, 0));
+    run_test(|a| if_let_guard(a, true, 1));
+    run_test(|a| if_let_guard(a, true, 2));
+    run_test(|a| if_let_guard(a, false, 0));
+    run_test(|a| if_let_guard(a, false, 1));
+    run_test(|a| if_let_guard(a, false, 2));
 
     run_test(|a| {
         panic_after_return(a);

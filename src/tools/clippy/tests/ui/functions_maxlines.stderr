@@ -2,15 +2,16 @@ error: this function has too many lines (102/100)
   --> $DIR/functions_maxlines.rs:58:1
    |
 LL | / fn bad_lines() {
+LL | |
+LL | |
 LL | |     println!("Dont get confused by braces: {{}}");
-LL | |     println!("This is bad.");
-LL | |     println!("This is bad.");
 ...  |
 LL | |     println!("This is bad.");
 LL | | }
    | |_^
    |
    = note: `-D clippy::too-many-lines` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_lines)]`
 
 error: aborting due to previous error
 

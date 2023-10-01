@@ -110,15 +110,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     {
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
         // valid span, so we point at the whole path segment instead.
-        let span = if assoc_name.span != DUMMY_SP { assoc_name.span } else { span };
+        let is_dummy = assoc_name.span == DUMMY_SP;
+
         let mut err = struct_span_err!(
             self.tcx().sess,
-            span,
+            if is_dummy { span } else { assoc_name.span },
             E0220,
             "associated type `{}` not found for `{}`",
             assoc_name,
             ty_param_name
         );
+
+        if is_dummy {
+            err.span_label(span, format!("associated type `{assoc_name}` not found"));
+            return err.emit();
+        }
 
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
@@ -131,10 +137,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
             .collect();
 
-        if let (Some(suggested_name), true) = (
-            find_best_match_for_name(&all_candidate_names, assoc_name.name, None),
-            assoc_name.span != DUMMY_SP,
-        ) {
+        if let Some(suggested_name) =
+            find_best_match_for_name(&all_candidate_names, assoc_name.name, None)
+        {
             err.span_suggestion(
                 assoc_name.span,
                 "there is an associated type with a similar name",
@@ -172,10 +177,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
             .collect();
 
-        if let (Some(suggested_name), true) = (
-            find_best_match_for_name(&wider_candidate_names, assoc_name.name, None),
-            assoc_name.span != DUMMY_SP,
-        ) {
+        if let Some(suggested_name) =
+            find_best_match_for_name(&wider_candidate_names, assoc_name.name, None)
+        {
             if let [best_trait] = visible_traits
                 .iter()
                 .filter(|trait_def_id| {
@@ -197,7 +201,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        err.span_label(span, format!("associated type `{assoc_name}` not found"));
+        // If we still couldn't find any associated type, and only one associated type exists,
+        // suggests using it.
+
+        if all_candidate_names.len() == 1 {
+            // this should still compile, except on `#![feature(associated_type_defaults)]`
+            // where it could suggests `type A = Self::A`, thus recursing infinitely
+            let applicability = if self.tcx().features().associated_type_defaults {
+                Applicability::Unspecified
+            } else {
+                Applicability::MaybeIncorrect
+            };
+
+            err.span_suggestion(
+                assoc_name.span,
+                format!("`{ty_param_name}` has the following associated type"),
+                all_candidate_names.first().unwrap().to_string(),
+                applicability,
+            );
+        } else {
+            err.span_label(assoc_name.span, format!("associated type `{assoc_name}` not found"));
+        }
+
         err.emit()
     }
 

@@ -41,7 +41,6 @@ use crate::{
     },
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
-use hir::IsAsync;
 use rustc_ast::attr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
@@ -845,8 +844,8 @@ declare_lint! {
     Warn,
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
+        reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
     };
 }
 
@@ -1001,8 +1000,22 @@ impl EarlyLintPass for UnusedDocComment {
         warn_if_doc(cx, arm_span, "match arms", &arm.attrs);
     }
 
+    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &ast::Pat) {
+        if let ast::PatKind::Struct(_, _, fields, _) = &pat.kind {
+            for field in fields {
+                warn_if_doc(cx, field.span, "pattern fields", &field.attrs);
+            }
+        }
+    }
+
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         warn_if_doc(cx, expr.span, "expressions", &expr.attrs);
+
+        if let ExprKind::Struct(s) = &expr.kind {
+            for field in &s.fields {
+                warn_if_doc(cx, field.span, "expression fields", &field.attrs);
+            }
+        }
     }
 
     fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
@@ -1280,7 +1293,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         span: Span,
         def_id: LocalDefId,
     ) {
-        if fn_kind.asyncness() == IsAsync::Async
+        if fn_kind.asyncness().is_async()
             && !cx.tcx.features().async_fn_track_caller
             // Now, check if the function has the `#[track_caller]` attribute
             && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
@@ -1441,13 +1454,13 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         let hir::ItemKind::TyAlias(hir_ty, type_alias_generics) = &item.kind else { return };
 
-        if cx.tcx.features().lazy_type_alias {
-            // Bounds of lazy type aliases are respected.
+        // Bounds of lazy type aliases and TAITs are respected.
+        if cx.tcx.type_alias_is_lazy(item.owner_id) {
             return;
         }
 
         let ty = cx.tcx.type_of(item.owner_id).skip_binder();
-        if ty.has_opaque_types() || ty.has_inherent_projections() {
+        if ty.has_inherent_projections() {
             // Bounds of type aliases that contain opaque types or inherent projections are respected.
             // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`, `type X = Type::Inherent;`.
             return;
@@ -1656,8 +1669,8 @@ declare_lint! {
     Warn,
     "`...` range patterns are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>",
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>",
     };
 }
 
@@ -1791,8 +1804,8 @@ declare_lint! {
     Allow,
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
+        reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
     };
 }
 

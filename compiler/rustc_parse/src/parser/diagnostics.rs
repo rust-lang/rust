@@ -16,7 +16,7 @@ use crate::errors::{
     StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
     StructLiteralNeedingParensSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
     TernaryOperator, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 
 use crate::fluent_generated as fluent;
@@ -1589,10 +1589,9 @@ impl<'a> Parser<'a> {
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
-        let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
         self.sess.emit_err(BadQPathStage2 {
-            span: path.span,
-            ty: format!("<{}>::{}", ty_str, pprust::path_to_string(&path)),
+            span: ty_span,
+            wrap: WrapType { lo: ty_span.shrink_to_lo(), hi: ty_span.shrink_to_hi() },
         });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.

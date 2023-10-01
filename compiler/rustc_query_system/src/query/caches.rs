@@ -2,7 +2,7 @@ use crate::dep_graph::DepNodeIndex;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::{self, Sharded};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::OnceLock;
 use rustc_index::{Idx, IndexVec};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -55,7 +55,7 @@ where
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
         let key_hash = sharded::make_hash(key);
-        let lock = self.cache.get_shard_by_hash(key_hash).lock();
+        let lock = self.cache.lock_shard_by_hash(key_hash);
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result { Some(*value) } else { None }
@@ -63,15 +63,14 @@ where
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.get_shard_by_value(&key).lock();
+        let mut lock = self.cache.lock_shard_by_value(&key);
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
         lock.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        let shards = self.cache.lock_shards();
-        for shard in shards.iter() {
+        for shard in self.cache.lock_shards() {
             for (k, v) in shard.iter() {
                 f(k, &v.0, v.1);
             }
@@ -88,12 +87,12 @@ impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for SingleCacheSelector {
 }
 
 pub struct SingleCache<V> {
-    cache: Lock<Option<(V, DepNodeIndex)>>,
+    cache: OnceLock<(V, DepNodeIndex)>,
 }
 
 impl<V> Default for SingleCache<V> {
     fn default() -> Self {
-        SingleCache { cache: Lock::new(None) }
+        SingleCache { cache: OnceLock::new() }
     }
 }
 
@@ -106,16 +105,16 @@ where
 
     #[inline(always)]
     fn lookup(&self, _key: &()) -> Option<(V, DepNodeIndex)> {
-        *self.cache.lock()
+        self.cache.get().copied()
     }
 
     #[inline]
     fn complete(&self, _key: (), value: V, index: DepNodeIndex) {
-        *self.cache.lock() = Some((value, index));
+        self.cache.set((value, index)).ok();
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        if let Some(value) = self.cache.lock().as_ref() {
+        if let Some(value) = self.cache.get() {
             f(&(), &value.0, value.1)
         }
     }
@@ -149,19 +148,18 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        let lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
+        let lock = self.cache.lock_shard_by_hash(key.index() as u64);
         if let Some(Some(value)) = lock.get(*key) { Some(*value) } else { None }
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
+        let mut lock = self.cache.lock_shard_by_hash(key.index() as u64);
         lock.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        let shards = self.cache.lock_shards();
-        for shard in shards.iter() {
+        for shard in self.cache.lock_shards() {
             for (k, v) in shard.iter_enumerated() {
                 if let Some(v) = v {
                     f(&k, &v.0, v.1);

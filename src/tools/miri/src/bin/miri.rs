@@ -28,8 +28,9 @@ use rustc_middle::{
     middle::exported_symbols::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
-    query::{ExternProviders, LocalCrate},
+    query::LocalCrate,
     ty::TyCtxt,
+    util::Providers,
 };
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
@@ -43,11 +44,11 @@ struct MiriCompilerCalls {
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
     fn config(&mut self, config: &mut Config) {
-        config.override_queries = Some(|_, _, external_providers| {
-            external_providers.used_crate_source = |tcx, cnum| {
-                let mut providers = ExternProviders::default();
-                rustc_metadata::provide_extern(&mut providers);
-                let mut crate_source = (providers.used_crate_source)(tcx, cnum);
+        config.override_queries = Some(|_, providers| {
+            providers.extern_queries.used_crate_source = |tcx, cnum| {
+                let mut providers = Providers::default();
+                rustc_metadata::provide(&mut providers);
+                let mut crate_source = (providers.extern_queries.used_crate_source)(tcx, cnum);
                 // HACK: rustc will emit "crate ... required to be available in rlib format, but
                 // was not found in this form" errors once we use `tcx.dependency_formats()` if
                 // there's no rlib provided, so setting a dummy path here to workaround those errors.
@@ -59,7 +60,6 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
     fn after_analysis<'tcx>(
         &mut self,
-        handler: &EarlyErrorHandler,
         _: &rustc_interface::interface::Compiler,
         queries: &'tcx rustc_interface::Queries<'tcx>,
     ) -> Compilation {
@@ -68,7 +68,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 tcx.sess.fatal("miri cannot be run on programs that fail compilation");
             }
 
-            init_late_loggers(handler, tcx);
+            let handler = EarlyErrorHandler::new(tcx.sess.opts.error_format);
+            init_late_loggers(&handler, tcx);
             if !tcx.crate_types().contains(&CrateType::Executable) {
                 tcx.sess.fatal("miri only makes sense on bin crates");
             }
@@ -125,7 +126,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
         if config.opts.prints.is_empty() && self.target_crate {
             // Queries overridden here affect the data stored in `rmeta` files of dependencies,
             // which will be used later in non-`MIRI_BE_RUSTC` mode.
-            config.override_queries = Some(|_, local_providers, _| {
+            config.override_queries = Some(|_, local_providers| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
                 local_providers.exported_symbols = |tcx, LocalCrate| {
@@ -358,6 +359,10 @@ fn main() {
                         since it is now enabled by default"
             );
         } else if arg == "-Zmiri-disable-abi-check" {
+            eprintln!(
+                "WARNING: the flag `-Zmiri-disable-abi-check` is deprecated and planned to be removed.\n\
+                If you have a use-case for it, please file an issue."
+            );
             miri_config.check_abi = false;
         } else if arg == "-Zmiri-disable-isolation" {
             if matches!(isolation_enabled, Some(true)) {

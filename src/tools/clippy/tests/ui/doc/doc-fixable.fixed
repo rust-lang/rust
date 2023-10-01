@@ -1,4 +1,4 @@
-//@run-rustfix
+
 //! This file tests for the `DOC_MARKDOWN` lint.
 
 #![allow(dead_code, incomplete_features)]
@@ -197,6 +197,16 @@ fn pulldown_cmark_crash() {}
 /// (regression test for #7758)
 /// [plain text][path::to::item]
 fn intra_doc_link() {}
+
+/// Ignore escaped\_underscores
+///
+/// \\[
+///     \\prod\_{x\\in X} p\_x
+/// \\]
+fn issue_2581() {}
+
+/// Foo \[bar\] \[baz\] \[qux\]. `DocMarkdownLint`
+fn lint_after_escaped_chars() {}
 
 // issue #7033 - generic_const_exprs ICE
 struct S<T, const N: usize>

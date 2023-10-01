@@ -5,39 +5,40 @@ LL |         print!("{}", 1);
    |         ^^^^^^^^^^^^^^^ help: replace with: `write!(f, ..)`
    |
    = note: `-D clippy::print-in-format-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_in_format_impl)]`
 
 error: use of `println!` in `Debug` impl
-  --> $DIR/print_in_format_impl.rs:21:9
+  --> $DIR/print_in_format_impl.rs:23:9
    |
 LL |         println!("{}", 2);
    |         ^^^^^^^^^^^^^^^^^ help: replace with: `writeln!(f, ..)`
 
 error: use of `eprint!` in `Debug` impl
-  --> $DIR/print_in_format_impl.rs:22:9
+  --> $DIR/print_in_format_impl.rs:25:9
    |
 LL |         eprint!("{}", 3);
    |         ^^^^^^^^^^^^^^^^ help: replace with: `write!(f, ..)`
 
 error: use of `eprintln!` in `Debug` impl
-  --> $DIR/print_in_format_impl.rs:23:9
+  --> $DIR/print_in_format_impl.rs:27:9
    |
 LL |         eprintln!("{}", 4);
    |         ^^^^^^^^^^^^^^^^^^ help: replace with: `writeln!(f, ..)`
 
 error: use of `println!` in `Debug` impl
-  --> $DIR/print_in_format_impl.rs:25:13
+  --> $DIR/print_in_format_impl.rs:30:13
    |
 LL |             println!("nested");
    |             ^^^^^^^^^^^^^^^^^^ help: replace with: `writeln!(f, ..)`
 
 error: use of `print!` in `Display` impl
-  --> $DIR/print_in_format_impl.rs:38:9
+  --> $DIR/print_in_format_impl.rs:44:9
    |
 LL |         print!("Display");
    |         ^^^^^^^^^^^^^^^^^ help: replace with: `write!(f, ..)`
 
 error: use of `println!` in `Debug` impl
-  --> $DIR/print_in_format_impl.rs:48:9
+  --> $DIR/print_in_format_impl.rs:55:9
    |
 LL |         println!("UnnamedFormatter");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `writeln!(..)`

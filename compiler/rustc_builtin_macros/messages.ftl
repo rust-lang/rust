@@ -137,6 +137,8 @@ builtin_macros_format_positional_after_named = positional arguments cannot follo
     .label = positional arguments must be before named arguments
     .named_args = named argument
 
+builtin_macros_format_remove_raw_ident = remove the `r#`
+
 builtin_macros_format_requires_string = requires at least a format string argument
 
 builtin_macros_format_string_invalid = invalid format string: {$desc}
@@ -164,6 +166,8 @@ builtin_macros_format_unused_arg = {$named ->
 
 builtin_macros_format_unused_args = multiple unused formatting arguments
     .label = multiple missing formatting specifiers
+
+builtin_macros_format_use_positional = consider using a positional formatting argument instead
 
 builtin_macros_global_asm_clobber_abi = `clobber_abi` cannot be used with `global_asm!`
 
@@ -204,8 +208,6 @@ builtin_macros_requires_cfg_pattern =
     .label = cfg-pattern required
 
 builtin_macros_should_panic = functions using `#[should_panic]` must return `()`
-
-builtin_macros_sugg = consider using a positional formatting argument instead
 
 builtin_macros_test_arg_non_lifetime = functions used as tests can not have any non-lifetime generic parameters
 

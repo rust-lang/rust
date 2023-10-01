@@ -55,7 +55,7 @@ impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         _llfn: RValue<'gcc>,
         _mir: &mir::Body<'tcx>,
-    ) -> Option<FunctionDebugContext<Self::DIScope, Self::DILocation>> {
+    ) -> Option<FunctionDebugContext<'tcx, Self::DIScope, Self::DILocation>> {
         // TODO(antoyo)
         None
     }

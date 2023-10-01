@@ -1,13 +1,14 @@
 error: borrow as raw pointer
-  --> $DIR/borrow_as_ptr_no_std.rs:9:14
+  --> $DIR/borrow_as_ptr_no_std.rs:8:14
    |
 LL |     let _p = &val as *const i32;
    |              ^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::addr_of!(val)`
    |
    = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::borrow_as_ptr)]`
 
 error: borrow as raw pointer
-  --> $DIR/borrow_as_ptr_no_std.rs:12:18
+  --> $DIR/borrow_as_ptr_no_std.rs:11:18
    |
 LL |     let _p_mut = &mut val_mut as *mut i32;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::addr_of_mut!(val_mut)`

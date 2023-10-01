@@ -11,6 +11,7 @@ LL | pub async fn bar<'a, T: 'a>(_: T) {}
    |                             ^ has type `T` which is not `Send`
    = note: `T` doesn't implement `std::marker::Send`
    = note: `-D clippy::future-not-send` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::future_not_send)]`
 
 warning: 1 warning emitted
 

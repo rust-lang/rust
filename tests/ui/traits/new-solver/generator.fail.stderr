@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[generator@$DIR/generator.rs:18:21: 18:23]: Generator<A>` is not satisfied
+error[E0277]: the trait bound `{generator@$DIR/generator.rs:18:21: 18:23}: Generator<A>` is not satisfied
   --> $DIR/generator.rs:18:21
    |
 LL |       needs_generator(|| {
@@ -10,7 +10,7 @@ LL | |
 LL | |
 LL | |         yield ();
 LL | |     });
-   | |_____^ the trait `Generator<A>` is not implemented for `[generator@$DIR/generator.rs:18:21: 18:23]`
+   | |_____^ the trait `Generator<A>` is not implemented for `{generator@$DIR/generator.rs:18:21: 18:23}`
    |
 note: required by a bound in `needs_generator`
   --> $DIR/generator.rs:14:28
@@ -18,7 +18,7 @@ note: required by a bound in `needs_generator`
 LL | fn needs_generator(_: impl Generator<A, Yield = B, Return = C>) {}
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `needs_generator`
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/generator.rs:18:21: 18:23] as Generator<A>>::Yield == B`
+error[E0271]: type mismatch resolving `<{generator@$DIR/generator.rs:18:21: 18:23} as Generator<A>>::Yield == B`
   --> $DIR/generator.rs:18:21
    |
 LL |       needs_generator(|| {
@@ -38,7 +38,7 @@ note: required by a bound in `needs_generator`
 LL | fn needs_generator(_: impl Generator<A, Yield = B, Return = C>) {}
    |                                         ^^^^^^^^^ required by this bound in `needs_generator`
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/generator.rs:18:21: 18:23] as Generator<A>>::Return == C`
+error[E0271]: type mismatch resolving `<{generator@$DIR/generator.rs:18:21: 18:23} as Generator<A>>::Return == C`
   --> $DIR/generator.rs:18:21
    |
 LL |       needs_generator(|| {

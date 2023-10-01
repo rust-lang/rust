@@ -5,6 +5,7 @@ LL |     options.mode(440);
    |                  ^^^ help: consider using an octal literal instead: `0o440`
    |
    = note: `-D clippy::non-octal-unix-permissions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_octal_unix_permissions)]`
 
 error: using a non-octal value to set unix file permissions
   --> $DIR/non_octal_unix_permissions.rs:17:47

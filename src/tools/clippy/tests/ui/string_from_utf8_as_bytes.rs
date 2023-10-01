@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::string_from_utf8_as_bytes)]
 
 fn main() {

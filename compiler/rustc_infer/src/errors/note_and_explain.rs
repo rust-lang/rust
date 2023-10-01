@@ -56,11 +56,8 @@ impl<'a> DescriptionCtx<'a> {
                                 (Some(span), "as_defined", name.to_string())
                             }
                         }
-                        ty::BrAnon(span) => {
-                            let span = match span {
-                                Some(_) => span,
-                                None => Some(tcx.def_span(scope)),
-                            };
+                        ty::BrAnon => {
+                            let span = Some(tcx.def_span(scope));
                             (span, "defined_here", String::new())
                         }
                         _ => {

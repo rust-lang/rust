@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(clippy::no_effect, clippy::useless_vec, unused)]
 #![warn(clippy::tuple_array_conversions)]
 
@@ -82,6 +82,11 @@ fn main() {
     [a, c];
     let [[a, b], [c, d]] = [[1, 2], [3, 4]];
     (a, c);
+    // Array length is not usize (#11144)
+    fn generic_array_length<const N: usize>() {
+        let src = [0; N];
+        let dest: (u8,) = (src[0],);
+    }
 }
 
 #[clippy::msrv = "1.70.0"]

@@ -86,18 +86,14 @@ mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
-use rustc_ast as ast;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
-use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, LocalModDefId};
+use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
 };
-use rustc_span::symbol::Ident;
-use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
@@ -134,7 +130,7 @@ pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
-pub use rustc_session::lint::{LintArray, LintPass};
+pub use rustc_session::lint::{LintPass, LintVec};
 
 fluent_messages! { "../messages.ftl" }
 
@@ -200,7 +196,7 @@ late_lint_methods!(
             BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
-            InvalidReferenceCasting: InvalidReferenceCasting::default(),
+            InvalidReferenceCasting: InvalidReferenceCasting,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             NonUpperCaseGlobals: NonUpperCaseGlobals,
@@ -499,6 +495,11 @@ fn register_builtins(store: &mut LintStore) {
         "unaligned_references",
         "converted into hard error, see issue #82523 \
          <https://github.com/rust-lang/rust/issues/82523> for more information",
+    );
+    store.register_removed(
+        "private_in_public",
+        "replaced with another group of lints, see RFC \
+         <https://rust-lang.github.io/rfcs/2145-type-privacy.html> for more information",
     );
 }
 

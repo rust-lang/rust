@@ -8,8 +8,8 @@ tests. `panic!` is closely tied with the `unwrap` method of both
 [`Option`][ounwrap] and [`Result`][runwrap] enums. Both implementations call
 `panic!` when they are set to [`None`] or [`Err`] variants.
 
-When using `panic!()` you can specify a string payload, that is built using
-the [`format!`] syntax. That payload is used when injecting the panic into
+When using `panic!()` you can specify a string payload that is built using
+[formatting syntax]. That payload is used when injecting the panic into
 the calling Rust thread, causing the thread to panic entirely.
 
 The behavior of the default `std` hook, i.e. the code that runs directly
@@ -18,6 +18,7 @@ after the panic is invoked, is to print the message payload to
 call. You can override the panic hook using [`std::panic::set_hook()`].
 Inside the hook a panic can be accessed as a `&dyn Any + Send`,
 which contains either a `&str` or `String` for regular `panic!()` invocations.
+(Whether a particular invocation contains the payload at type `&str` or `String` is unspecified and can change.)
 To panic with a value of another other type, [`panic_any`] can be used.
 
 See also the macro [`compile_error!`], for raising errors during compilation.
@@ -55,7 +56,7 @@ For more detailed information about error handling check out the [book] or the
 [`panic_any`]: ../std/panic/fn.panic_any.html
 [`Box`]: ../std/boxed/struct.Box.html
 [`Any`]: crate::any::Any
-[`format!`]: ../std/macro.format.html
+[`format!` syntax]: ../std/fmt/index.html
 [book]: ../book/ch09-00-error-handling.html
 [`std::result`]: ../std/result/index.html
 
@@ -63,6 +64,29 @@ For more detailed information about error handling check out the [book] or the
 
 If the main thread panics it will terminate all your threads and end your
 program with code `101`.
+
+# Editions
+
+Behavior of the panic macros changed over editions.
+
+## 2021 and later
+
+In Rust 2021 and later, `panic!` always requires a format string and
+the applicable format arguments, and is the same in `core` and `std`.
+Use [`std::panic::panic_any(x)`](../std/panic/fn.panic_any.html) to
+panic with an arbitrary payload.
+
+## 2018 and 2015
+
+In Rust Editions prior to 2021, `std::panic!(x)` with a single
+argument directly uses that argument as a payload.
+This is true even if the argument is a string literal.
+For example, `panic!("problem: {reason}")` panics with a
+payload of literally `"problem: {reason}"` (a `&'static str`).
+
+`core::panic!(x)` with a single argument requires that `x` be `&str`,
+but otherwise behaves like `std::panic!`. In particular, the string
+need not be a literal, and is not interpreted as a format string.
 
 # Examples
 

@@ -10,6 +10,7 @@ use crate::value::Value;
 
 use cstr::cstr;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
+use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
@@ -159,9 +160,9 @@ pub unsafe fn create_module<'ll>(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.is_builtin {
+        // tm is disposed by its drop impl
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);
-        llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
-        llvm::LLVMRustDisposeTargetMachine(tm);
+        llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, &tm);
 
         let llvm_data_layout = llvm::LLVMGetDataLayoutStr(llmod);
         let llvm_data_layout = str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
@@ -1000,7 +1001,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
             self.sess().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
-            span_bug!(span, "failed to get layout for `{ty}`: {err:?}")
+            self.tcx.sess.emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
         }
     }
 }

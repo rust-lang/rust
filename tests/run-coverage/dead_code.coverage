@@ -1,4 +1,4 @@
-   LL|       |#![allow(unused_assignments, unused_variables)]
+   LL|       |#![allow(dead_code, unused_assignments, unused_variables)]
    LL|       |
    LL|      0|pub fn unused_pub_fn_not_in_library() {
    LL|      0|    // Initialize test constants in a way that cannot be determined at compile time, to ensure

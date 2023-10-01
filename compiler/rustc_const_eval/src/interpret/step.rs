@@ -177,7 +177,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             UnaryOp(un_op, ref operand) => {
                 // The operand always has the same type as the result.
                 let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
-                let val = self.unary_op(un_op, &val)?;
+                let val = self.wrapping_unary_op(un_op, &val)?;
                 assert_eq!(val.layout, dest.layout, "layout mismatch for result of {un_op:?}");
                 self.write_immediate(*val, &dest)?;
             }
@@ -204,7 +204,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // avoid writing each operand individually and instead just make many copies
                     // of the first element.
                     let elem_size = first.layout.size;
-                    let first_ptr = first.ptr;
+                    let first_ptr = first.ptr();
                     let rest_ptr = first_ptr.offset(elem_size, self)?;
                     // For the alignment of `rest_ptr`, we crucially do *not* use `first.align` as
                     // that place might be more aligned than its type mandates (a `u8` array could
@@ -301,11 +301,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let op = self.eval_place_to_op(place, None)?;
                 let variant = self.read_discriminant(&op)?;
                 let discr = self.discriminant_for_variant(op.layout, variant)?;
-                self.write_scalar(discr, &dest)?;
+                self.write_immediate(*discr, &dest)?;
             }
         }
 
-        trace!("{:?}", self.dump_place(*dest));
+        trace!("{:?}", self.dump_place(&dest));
 
         Ok(())
     }

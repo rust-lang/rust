@@ -24,6 +24,13 @@ enum BadUnion {
 type Foo = extern "C" fn([u8]);
 //~^ ERROR `extern` fn uses type `[u8]`, which is not FFI-safe
 
+pub trait FooTrait {
+    type FooType;
+}
+
+pub type Foo2<T> = extern "C" fn(Option<&<T as FooTrait>::FooType>);
+//~^ ERROR `extern` fn uses type `Option<&<T as FooTrait>::FooType>`, which is not FFI-safe
+
 pub struct FfiUnsafe;
 
 #[allow(improper_ctypes_definitions)]

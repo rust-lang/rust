@@ -239,13 +239,6 @@ pub struct LongRunningWarn {
     pub item_span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(const_eval_erroneous_constant)]
-pub(crate) struct ErroneousConstUsed {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(Subdiagnostic)]
 #[note(const_eval_non_const_impl)]
 pub(crate) struct NonConstImplNote {
@@ -482,6 +475,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
         use UndefinedBehaviorInfo::*;
         match self {
             Ub(msg) => msg.clone().into(),
+            Custom(x) => (x.msg)(),
+            ValidationError(e) => e.diagnostic_message(),
+
             Unreachable => const_eval_unreachable,
             BoundsCheckFailed { .. } => const_eval_bounds_check_failed,
             DivisionByZero => const_eval_division_by_zero,
@@ -513,8 +509,8 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             ScalarSizeMismatch(_) => const_eval_scalar_size_mismatch,
             UninhabitedEnumVariantWritten(_) => const_eval_uninhabited_enum_variant_written,
             UninhabitedEnumVariantRead(_) => const_eval_uninhabited_enum_variant_read,
-            ValidationError(e) => e.diagnostic_message(),
-            Custom(x) => (x.msg)(),
+            AbiMismatchArgument { .. } => const_eval_incompatible_types,
+            AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
         }
     }
 
@@ -525,8 +521,15 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
     ) {
         use UndefinedBehaviorInfo::*;
         match self {
-            Ub(_)
-            | Unreachable
+            Ub(_) => {}
+            Custom(custom) => {
+                (custom.add_args)(&mut |name, value| {
+                    builder.set_arg(name, value);
+                });
+            }
+            ValidationError(e) => e.add_args(handler, builder),
+
+            Unreachable
             | DivisionByZero
             | RemainderByZero
             | DivisionOverflow
@@ -593,11 +596,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 builder.set_arg("target_size", info.target_size);
                 builder.set_arg("data_size", info.data_size);
             }
-            ValidationError(e) => e.add_args(handler, builder),
-            Custom(custom) => {
-                (custom.add_args)(&mut |name, value| {
-                    builder.set_arg(name, value);
-                });
+            AbiMismatchArgument { caller_ty, callee_ty }
+            | AbiMismatchReturn { caller_ty, callee_ty } => {
+                builder.set_arg("caller_ty", caller_ty.to_string());
+                builder.set_arg("callee_ty", callee_ty.to_string());
             }
         }
     }
@@ -795,6 +797,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
         use crate::fluent_generated::*;
         match self {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
+            UnsupportedOpInfo::UnsizedLocal => const_eval_unsized_local,
             UnsupportedOpInfo::OverwritePartialPointer(_) => const_eval_partial_pointer_overwrite,
             UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
             UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
@@ -814,7 +817,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
             // be further processed by validity checking which then turns it into something nice to
             // print. So it's not worth the effort of having diagnostics that can print the `info`.
-            Unsupported(_) | ReadPointerAsInt(_) => {}
+            UnsizedLocal | Unsupported(_) | ReadPointerAsInt(_) => {}
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
                 builder.set_arg("ptr", ptr);
             }

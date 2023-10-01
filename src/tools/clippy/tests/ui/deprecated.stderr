@@ -5,6 +5,7 @@ LL | #![warn(clippy::should_assert_eq)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D renamed-and-removed-lints` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
 
 error: lint `clippy::extend_from_slice` has been removed: `.extend_from_slice(_)` is a faster way to extend a Vec by a slice
   --> $DIR/deprecated.rs:6:9

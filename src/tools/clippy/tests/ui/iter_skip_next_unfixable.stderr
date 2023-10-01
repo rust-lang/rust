@@ -10,27 +10,28 @@ help: for this change `sp` has to be mutable
 LL |     let sp = test_string.split('|').map(|s| s.trim());
    |         ^^
    = note: `-D clippy::iter-skip-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_skip_next)]`
 
 error: called `skip(..).next()` on an iterator
-  --> $DIR/iter_skip_next_unfixable.rs:11:29
+  --> $DIR/iter_skip_next_unfixable.rs:12:29
    |
 LL |         let _: Vec<&str> = s.skip(1).next().unwrap().split(' ').collect();
    |                             ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
    |
 help: for this change `s` has to be mutable
-  --> $DIR/iter_skip_next_unfixable.rs:10:17
+  --> $DIR/iter_skip_next_unfixable.rs:11:17
    |
 LL |     if let Some(s) = Some(test_string.split('|').map(|s| s.trim())) {
    |                 ^
 
 error: called `skip(..).next()` on an iterator
-  --> $DIR/iter_skip_next_unfixable.rs:17:29
+  --> $DIR/iter_skip_next_unfixable.rs:19:29
    |
 LL |         let _: Vec<&str> = s.skip(1).next().unwrap().split(' ').collect();
    |                             ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
    |
 help: for this change `s` has to be mutable
-  --> $DIR/iter_skip_next_unfixable.rs:13:17
+  --> $DIR/iter_skip_next_unfixable.rs:15:17
    |
 LL |     fn check<T>(s: T)
    |                 ^

@@ -12,7 +12,7 @@ trait MyTrait {
 }
 
 impl MyTrait for i32 {
-    fn foo(&self) -> impl Future<Output = i32> + '_ {
+    fn foo(&self) -> impl Future<Output = i32> {
         async { *self }
     }
 }

@@ -1,25 +1,41 @@
+error: this loop never actually loops
+  --> $DIR/ice-360.rs:5:5
+   |
+LL | /     loop {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | |     }
+   | |_____^
+   |
+   = note: `#[deny(clippy::never_loop)]` on by default
+
 error: this loop could be written as a `while let` loop
   --> $DIR/ice-360.rs:5:5
    |
 LL | /     loop {
-LL | |         let _ = match iter.next() {
-LL | |             Some(ele) => ele,
-LL | |             None => break,
-LL | |         };
-LL | |         loop {}
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
 LL | |     }
    | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
    |
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
 
 error: empty `loop {}` wastes CPU cycles
-  --> $DIR/ice-360.rs:10:9
+  --> $DIR/ice-360.rs:13:9
    |
 LL |         loop {}
    |         ^^^^^^^
    |
    = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
    = note: `-D clippy::empty-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_loop)]`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

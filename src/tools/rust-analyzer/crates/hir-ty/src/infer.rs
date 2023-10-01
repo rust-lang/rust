@@ -194,7 +194,8 @@ pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InferenceDiagnostic {
     NoSuchField {
-        expr: ExprId,
+        field: ExprOrPatId,
+        private: bool,
     },
     PrivateField {
         expr: ExprId,
@@ -225,6 +226,11 @@ pub enum InferenceDiagnostic {
     },
     MismatchedArgCount {
         call_expr: ExprId,
+        expected: usize,
+        found: usize,
+    },
+    MismatchedTupleStructPatArgCount {
+        pat: ExprOrPatId,
         expected: usize,
         found: usize,
     },

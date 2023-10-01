@@ -142,9 +142,9 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         if let Operand::Constant(constant) = op {
-            let maybe_uneval = match constant.literal {
-                ConstantKind::Val(..) | ConstantKind::Ty(_) => None,
-                ConstantKind::Unevaluated(uv, _) => Some(uv),
+            let maybe_uneval = match constant.const_ {
+                Const::Val(..) | Const::Ty(_) => None,
+                Const::Unevaluated(uv, _) => Some(uv),
             };
 
             if let Some(uv) = maybe_uneval {
@@ -483,7 +483,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheckResu
     // `mir_built` force this.
     let body = &tcx.mir_built(def).borrow();
 
-    if body.is_custom_mir() {
+    if body.is_custom_mir() || body.tainted_by_errors.is_some() {
         return tcx.arena.alloc(UnsafetyCheckResult {
             violations: Vec::new(),
             used_unsafe_blocks: Default::default(),

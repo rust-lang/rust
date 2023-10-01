@@ -1,13 +1,13 @@
 mod block;
 
 use base_db::{fixture::WithFixture, SourceDatabase};
-use expect_test::Expect;
+use expect_test::{expect, Expect};
 
 use crate::{test_db::TestDB, ModuleDefId};
 
 use super::*;
 
-fn lower(ra_fixture: &str) -> Arc<Body> {
+fn lower(ra_fixture: &str) -> (TestDB, Arc<Body>, DefWithBodyId) {
     let db = TestDB::with_files(ra_fixture);
 
     let krate = db.crate_graph().iter().next().unwrap();
@@ -21,8 +21,10 @@ fn lower(ra_fixture: &str) -> Arc<Body> {
             }
         }
     }
+    let fn_def = fn_def.unwrap().into();
 
-    db.body(fn_def.unwrap().into())
+    let body = db.body(fn_def);
+    (db, body, fn_def)
 }
 
 fn def_map_at(ra_fixture: &str) -> String {
@@ -137,4 +139,85 @@ mod m {
 }
 "#,
     );
+}
+
+#[test]
+fn desugar_builtin_format_args() {
+    // Regression test for a path resolution bug introduced with inner item handling.
+    let (db, body, def) = lower(
+        r#"
+//- minicore: fmt
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+}
+"#,
+    );
+
+    expect![[r#"
+        fn main() {
+            let are = "are";
+            let count = 10;
+            builtin#lang(Arguments::new_v1_formatted)(
+                &[
+                    "\"hello ", " ", " friends, we ", " ", "", "\"",
+                ],
+                &[
+                    builtin#lang(Argument::new_display)(
+                        &count,
+                    ), builtin#lang(Argument::new_display)(
+                        &"fancy",
+                    ), builtin#lang(Argument::new_debug)(
+                        &are,
+                    ), builtin#lang(Argument::new_display)(
+                        &"!",
+                    ),
+                ],
+                &[
+                    builtin#lang(Placeholder::new)(
+                        0usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        8u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Is)(
+                            2usize,
+                        ),
+                    ), builtin#lang(Placeholder::new)(
+                        1usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        0u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Implied),
+                    ), builtin#lang(Placeholder::new)(
+                        2usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        0u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Implied),
+                    ), builtin#lang(Placeholder::new)(
+                        1usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        0u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Implied),
+                    ), builtin#lang(Placeholder::new)(
+                        3usize,
+                        ' ',
+                        builtin#lang(Alignment::Unknown),
+                        0u32,
+                        builtin#lang(Count::Implied),
+                        builtin#lang(Count::Implied),
+                    ),
+                ],
+                unsafe {
+                    builtin#lang(UnsafeArg::new)()
+                },
+            );
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def))
 }

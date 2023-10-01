@@ -22,5 +22,4 @@ fn main() {
     //~^ ERROR: `Rc<u32>` cannot be sent between threads safely [E0277]
     //~| NOTE cannot be sent
     //~| NOTE required by a bound
-    //~| NOTE use `std::sync::Arc` instead
 }

@@ -9,7 +9,7 @@ LL |         let c1: () = c;
    |                 expected due to this
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/closure-print-generic-2.rs:5:17: 5:19]`
+                found closure `{closure@$DIR/closure-print-generic-2.rs:5:17: 5:19}`
 help: use parentheses to call this closure
    |
 LL |         let c1: () = c();

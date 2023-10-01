@@ -5,27 +5,28 @@ LL |     str: Sized;
    |          ^^^^^
    |
    = note: `-D trivial-bounds` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(trivial_bounds)]`
 
 error: trait bound for<'a> Dst<(dyn A + 'a)>: std::marker::Sized does not depend on any type or lifetime parameters
-  --> $DIR/ice-3969.rs:24:30
+  --> $DIR/ice-3969.rs:26:30
    |
 LL |     for<'a> Dst<dyn A + 'a>: Sized,
    |                              ^^^^^
 
 error: trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
-  --> $DIR/ice-3969.rs:31:10
+  --> $DIR/ice-3969.rs:34:10
    |
 LL |     str: Sized,
    |          ^^^^^
 
 error: trait bound std::string::String: std::ops::Neg does not depend on any type or lifetime parameters
-  --> $DIR/ice-3969.rs:38:13
+  --> $DIR/ice-3969.rs:42:13
    |
 LL |     String: ::std::ops::Neg<Output = String>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trait bound i32: std::iter::Iterator does not depend on any type or lifetime parameters
-  --> $DIR/ice-3969.rs:45:10
+  --> $DIR/ice-3969.rs:50:10
    |
 LL |     i32: Iterator,
    |          ^^^^^^^^

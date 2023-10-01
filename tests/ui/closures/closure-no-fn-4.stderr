@@ -12,7 +12,7 @@ LL | |     };
    | |_____- `match` arms have incompatible types
    |
    = note: expected fn pointer `fn(usize) -> usize`
-                 found closure `[closure@$DIR/closure-no-fn-4.rs:5:18: 5:21]`
+                 found closure `{closure@$DIR/closure-no-fn-4.rs:5:18: 5:21}`
 note: closures can only be coerced to `fn` types if they do not capture any variables
   --> $DIR/closure-no-fn-4.rs:5:26
    |

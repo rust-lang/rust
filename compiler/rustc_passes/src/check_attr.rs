@@ -16,6 +16,7 @@ use rustc_hir::{
     self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
 };
 use rustc_hir::{MethodKind, Target, Unsafety};
+use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
@@ -24,7 +25,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
-    UNUSED_ATTRIBUTES,
+    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -35,6 +36,10 @@ use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
+
+#[derive(LintDiagnostic)]
+#[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]
+pub struct DiagnosticOnUnimplementedOnlyForTraits;
 
 pub(crate) fn target_from_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -104,13 +109,16 @@ impl CheckAttrVisitor<'_> {
         let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
+            if attr.path_matches(&[sym::diagnostic, sym::on_unimplemented]) {
+                self.check_diagnostic_on_unimplemented(attr.span, hir_id, target);
+            }
             match attr.name_or_empty() {
                 sym::do_not_recommend => self.check_do_not_recommend(attr.span, target),
                 sym::inline => self.check_inline(hir_id, attr, span, target),
-                sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
+                sym::coverage => self.check_coverage(hir_id, attr, span, target),
                 sym::non_exhaustive => self.check_non_exhaustive(hir_id, attr, span, target),
                 sym::marker => self.check_marker(hir_id, attr, span, target),
-                sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
+                sym::target_feature => self.check_target_feature(hir_id, attr, span, target, attrs),
                 sym::thread_local => self.check_thread_local(attr, span, target),
                 sym::track_caller => {
                     self.check_track_caller(hir_id, attr.span, attrs, span, target)
@@ -139,6 +147,9 @@ impl CheckAttrVisitor<'_> {
                     self.check_rustc_std_internal_symbol(&attr, span, target)
                 }
                 sym::naked => self.check_naked(hir_id, attr, span, target),
+                sym::rustc_never_returns_null_ptr => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
                 sym::rustc_legacy_const_generics => {
                     self.check_rustc_legacy_const_generics(hir_id, &attr, span, target, item)
                 }
@@ -184,6 +195,9 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
                 sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
                 sym::rustc_confusables => self.check_confusables(&attr, target),
+                sym::rustc_safe_intrinsic => {
+                    self.check_rustc_safe_intrinsic(hir_id, attr, span, target)
+                }
                 _ => true,
             };
 
@@ -284,6 +298,18 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
+    /// Checks if `#[diagnostic::on_unimplemented]` is applied to a trait definition
+    fn check_diagnostic_on_unimplemented(&self, attr_span: Span, hir_id: HirId, target: Target) {
+        if !matches!(target, Target::Trait) {
+            self.tcx.emit_spanned_lint(
+                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                DiagnosticOnUnimplementedOnlyForTraits,
+            );
+        }
+    }
+
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
     fn check_inline(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
@@ -327,16 +353,10 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// Checks if a `#[no_coverage]` is applied directly to a function
-    fn check_no_coverage(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) -> bool {
+    /// Checks if a `#[coverage]` is applied directly to a function
+    fn check_coverage(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
-            // no_coverage on function is fine
+            // #[coverage] on function is fine
             Target::Fn
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
@@ -347,7 +367,7 @@ impl CheckAttrVisitor<'_> {
                     UNUSED_ATTRIBUTES,
                     hir_id,
                     attr.span,
-                    errors::IgnoredNoCoverageFnProto,
+                    errors::IgnoredCoverageFnProto,
                 );
                 true
             }
@@ -357,7 +377,7 @@ impl CheckAttrVisitor<'_> {
                     UNUSED_ATTRIBUTES,
                     hir_id,
                     attr.span,
-                    errors::IgnoredNoCoveragePropagate,
+                    errors::IgnoredCoveragePropagate,
                 );
                 true
             }
@@ -367,13 +387,13 @@ impl CheckAttrVisitor<'_> {
                     UNUSED_ATTRIBUTES,
                     hir_id,
                     attr.span,
-                    errors::IgnoredNoCoverageFnDefn,
+                    errors::IgnoredCoverageFnDefn,
                 );
                 true
             }
 
             _ => {
-                self.tcx.sess.emit_err(errors::IgnoredNoCoverageNotCoverable {
+                self.tcx.sess.emit_err(errors::IgnoredCoverageNotCoverable {
                     attr_span: attr.span,
                     defn_span: span,
                 });
@@ -574,10 +594,36 @@ impl CheckAttrVisitor<'_> {
         attr: &Attribute,
         span: Span,
         target: Target,
+        attrs: &[Attribute],
     ) -> bool {
         match target {
-            Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+            Target::Fn => {
+                // `#[target_feature]` is not allowed in language items.
+                if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
+                    // Calling functions with `#[target_feature]` is
+                    // not unsafe on WASM, see #84988
+                    && !self.tcx.sess.target.is_like_wasm
+                    && !self.tcx.sess.opts.actually_rustdoc
+                {
+                    let hir::Node::Item(item) = self.tcx.hir().get(hir_id) else {
+                        unreachable!();
+                    };
+                    let hir::ItemKind::Fn(sig, _, _) = item.kind else {
+                        // target is `Fn`
+                        unreachable!();
+                    };
+
+                    self.tcx.sess.emit_err(errors::LangItemWithTargetFeature {
+                        attr_span: attr.span,
+                        name: lang_item,
+                        sig_span: sig.span,
+                    });
+                    false
+                } else {
+                    true
+                }
+            }
+            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
             Target::Statement => {
@@ -1999,6 +2045,29 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
+    fn check_rustc_safe_intrinsic(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        let hir = self.tcx.hir();
+
+        if let Target::ForeignFn = target
+            && let Some(parent) = hir.opt_parent_id(hir_id)
+            && let hir::Node::Item(Item {
+                kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic | Abi::PlatformIntrinsic, .. },
+                ..
+            }) = hir.get(parent)
+        {
+            return true;
+        }
+
+        self.tcx.sess.emit_err(errors::RustcSafeIntrinsic { attr_span: attr.span, span });
+        false
+    }
+
     fn check_rustc_std_internal_symbol(
         &self,
         attr: &Attribute,
@@ -2290,7 +2359,10 @@ impl CheckAttrVisitor<'_> {
                 &mut diag,
                 &cause,
                 None,
-                Some(ValuePairs::Sigs(ExpectedFound { expected: expected_sig, found: sig })),
+                Some(ValuePairs::PolySigs(ExpectedFound {
+                    expected: ty::Binder::dummy(expected_sig),
+                    found: ty::Binder::dummy(sig),
+                })),
                 terr,
                 false,
                 false,

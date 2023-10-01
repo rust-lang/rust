@@ -5,9 +5,10 @@ LL |     eprintln!("Hello");
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::print-stderr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_stderr)]`
 
 error: use of `eprint!`
-  --> $DIR/print_stderr.rs:6:5
+  --> $DIR/print_stderr.rs:8:5
    |
 LL |     eprint!("World");
    |     ^^^^^^^^^^^^^^^^

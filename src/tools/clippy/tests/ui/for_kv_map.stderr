@@ -5,13 +5,14 @@ LL |     for (_, v) in &m {
    |                   ^^
    |
    = note: `-D clippy::for-kv-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::for_kv_map)]`
 help: use the corresponding method
    |
 LL |     for v in m.values() {
    |         ~    ~~~~~~~~~~
 
 error: you seem to want to iterate on a map's values
-  --> $DIR/for_kv_map.rs:14:19
+  --> $DIR/for_kv_map.rs:16:19
    |
 LL |     for (_, v) in &*m {
    |                   ^^^
@@ -22,7 +23,7 @@ LL |     for v in (*m).values() {
    |         ~    ~~~~~~~~~~~~~
 
 error: you seem to want to iterate on a map's values
-  --> $DIR/for_kv_map.rs:22:19
+  --> $DIR/for_kv_map.rs:25:19
    |
 LL |     for (_, v) in &mut m {
    |                   ^^^^^^
@@ -33,7 +34,7 @@ LL |     for v in m.values_mut() {
    |         ~    ~~~~~~~~~~~~~~
 
 error: you seem to want to iterate on a map's values
-  --> $DIR/for_kv_map.rs:27:19
+  --> $DIR/for_kv_map.rs:31:19
    |
 LL |     for (_, v) in &mut *m {
    |                   ^^^^^^^
@@ -44,7 +45,7 @@ LL |     for v in (*m).values_mut() {
    |         ~    ~~~~~~~~~~~~~~~~~
 
 error: you seem to want to iterate on a map's keys
-  --> $DIR/for_kv_map.rs:33:24
+  --> $DIR/for_kv_map.rs:38:24
    |
 LL |     for (k, _value) in rm {
    |                        ^^

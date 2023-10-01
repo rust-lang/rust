@@ -1,10 +1,8 @@
 error[E0277]: expected a `Fn<_>` closure, found `fn() -> str`
-  --> $DIR/builtin-fn-must-return-sized.rs:15:27
+  --> $DIR/builtin-fn-must-return-sized.rs:15:11
    |
 LL |     foo::<fn() -> str, _>(None, ());
-   |     --------------------- ^^^^ expected an `Fn<_>` closure, found `fn() -> str`
-   |     |
-   |     required by a bound introduced by this call
+   |           ^^^^^^^^^^^ expected an `Fn<_>` closure, found `fn() -> str`
    |
    = help: the trait `Fn<_>` is not implemented for `fn() -> str`
 note: required by a bound in `foo`

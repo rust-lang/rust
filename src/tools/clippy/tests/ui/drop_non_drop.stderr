@@ -10,15 +10,16 @@ note: argument has type `main::Foo`
 LL |     drop(Foo);
    |          ^^^
    = note: `-D clippy::drop-non-drop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::drop_non_drop)]`
 
 error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
-  --> $DIR/drop_non_drop.rs:37:5
+  --> $DIR/drop_non_drop.rs:38:5
    |
 LL |     drop(Baz(Foo));
    |     ^^^^^^^^^^^^^^
    |
 note: argument has type `main::Baz<main::Foo>`
-  --> $DIR/drop_non_drop.rs:37:10
+  --> $DIR/drop_non_drop.rs:38:10
    |
 LL |     drop(Baz(Foo));
    |          ^^^^^^^^

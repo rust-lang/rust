@@ -66,6 +66,7 @@ string_enum! {
         JsDocTest => "js-doc-test",
         MirOpt => "mir-opt",
         Assembly => "assembly",
+        CoverageMap => "coverage-map",
         RunCoverage => "run-coverage",
     }
 }
@@ -140,6 +141,22 @@ impl PanicStrategy {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Sanitizer {
+    Address,
+    Cfi,
+    Kcfi,
+    KernelAddress,
+    Leak,
+    Memory,
+    Memtag,
+    Safestack,
+    ShadowCallStack,
+    Thread,
+    Hwaddress,
+}
+
 /// Configuration for compiletest
 #[derive(Debug, Default, Clone)]
 pub struct Config {
@@ -160,6 +177,9 @@ pub struct Config {
 
     /// The rust-demangler executable.
     pub rust_demangler_path: Option<PathBuf>,
+
+    /// The coverage-dump executable.
+    pub coverage_dump_path: Option<PathBuf>,
 
     /// The Python executable to use for LLDB and htmldocck.
     pub python: String,
@@ -556,6 +576,12 @@ pub struct TargetCfg {
     pub(crate) panic: PanicStrategy,
     #[serde(default)]
     pub(crate) dynamic_linking: bool,
+    #[serde(rename = "supported-sanitizers", default)]
+    pub(crate) sanitizers: Vec<Sanitizer>,
+    #[serde(rename = "supports-xray", default)]
+    pub(crate) xray: bool,
+    #[serde(default = "default_reloc_model")]
+    pub(crate) relocation_model: String,
 }
 
 impl TargetCfg {
@@ -566,6 +592,10 @@ impl TargetCfg {
 
 fn default_os() -> String {
     "none".into()
+}
+
+fn default_reloc_model() -> String {
+    "pic".into()
 }
 
 #[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]
@@ -639,6 +669,7 @@ pub const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR_32,
     UI_STDERR_16,
     UI_COVERAGE,
+    UI_COVERAGE_MAP,
 ];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
@@ -649,6 +680,7 @@ pub const UI_STDERR_64: &str = "64bit.stderr";
 pub const UI_STDERR_32: &str = "32bit.stderr";
 pub const UI_STDERR_16: &str = "16bit.stderr";
 pub const UI_COVERAGE: &str = "coverage";
+pub const UI_COVERAGE_MAP: &str = "cov-map";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:

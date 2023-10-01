@@ -29,5 +29,9 @@
           StorageDead(_1);
           return;
       }
++ }
++ 
++ alloc3 (size: 2, align: 1) {
++     03 00                                           │ ..
   }
   

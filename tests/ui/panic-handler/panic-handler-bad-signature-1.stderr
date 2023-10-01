@@ -1,14 +1,12 @@
-error: return type should be `!`
-  --> $DIR/panic-handler-bad-signature-1.rs:11:6
+error[E0308]: `#[panic_handler]` function has wrong type
+  --> $DIR/panic-handler-bad-signature-1.rs:9:16
    |
-LL | ) -> ()
-   |      ^^
-
-error: argument should be `&PanicInfo`
-  --> $DIR/panic-handler-bad-signature-1.rs:10:11
+LL | fn panic(info: PanicInfo) -> () {}
+   |                ^^^^^^^^^ expected `&PanicInfo<'_>`, found `PanicInfo<'_>`
    |
-LL |     info: PanicInfo,
-   |           ^^^^^^^^^
+   = note: expected signature `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
+              found signature `for<'a> fn(PanicInfo<'a>)`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

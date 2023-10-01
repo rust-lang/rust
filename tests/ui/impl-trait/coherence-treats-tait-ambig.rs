@@ -1,6 +1,3 @@
-// revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
-
 #![feature(type_alias_impl_trait)]
 
 type T = impl Sized;

@@ -5,7 +5,6 @@ use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
@@ -150,7 +149,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
             if l.pat.hir_id == self.var_id;
             if let PatKind::Binding(.., ident, _) = l.pat.kind;
             then {
-                let ty = l.ty.map(|ty| hir_ty_to_ty(self.cx.tcx, ty));
+                let ty = l.ty.map(|_| self.cx.typeck_results().pat_ty(l.pat));
 
                 self.state = l.init.map_or(InitializeVisitorState::Declared(ident.name, ty), |init| {
                     InitializeVisitorState::Initialized {

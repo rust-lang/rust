@@ -57,54 +57,52 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             } else {
                 None
             }
+            && let Some(format_args) = find_format_args(cx, write_arg, ExpnId::root())
         {
-            find_format_args(cx, write_arg, ExpnId::root(), |format_args| {
-                let calling_macro =
-                    // ordering is important here, since `writeln!` uses `write!` internally
-                    if is_expn_of(write_call.span, "writeln").is_some() {
-                        Some("writeln")
-                    } else if is_expn_of(write_call.span, "write").is_some() {
-                        Some("write")
-                    } else {
-                        None
-                    };
-                let prefix = if dest_name == "stderr" {
-                    "e"
-                } else {
-                    ""
-                };
+            // ordering is important here, since `writeln!` uses `write!` internally
+            let calling_macro = if is_expn_of(write_call.span, "writeln").is_some() {
+                Some("writeln")
+            } else if is_expn_of(write_call.span, "write").is_some() {
+                Some("write")
+            } else {
+                None
+            };
+            let prefix = if dest_name == "stderr" {
+                "e"
+            } else {
+                ""
+            };
 
-                // We need to remove the last trailing newline from the string because the
-                // underlying `fmt::write` function doesn't know whether `println!` or `print!` was
-                // used.
-                let (used, sugg_mac) = if let Some(macro_name) = calling_macro {
-                    (
-                        format!("{macro_name}!({dest_name}(), ...)"),
-                        macro_name.replace("write", "print"),
-                    )
-                } else {
-                    (
-                        format!("{dest_name}().write_fmt(...)"),
-                        "print".into(),
-                    )
-                };
-                let mut applicability = Applicability::MachineApplicable;
-                let inputs_snippet = snippet_with_applicability(
-                    cx,
-                    format_args_inputs_span(format_args),
-                    "..",
-                    &mut applicability,
-                );
-                span_lint_and_sugg(
-                    cx,
-                    EXPLICIT_WRITE,
-                    expr.span,
-                    &format!("use of `{used}.unwrap()`"),
-                    "try",
-                    format!("{prefix}{sugg_mac}!({inputs_snippet})"),
-                    applicability,
-                );
-            });
+            // We need to remove the last trailing newline from the string because the
+            // underlying `fmt::write` function doesn't know whether `println!` or `print!` was
+            // used.
+            let (used, sugg_mac) = if let Some(macro_name) = calling_macro {
+                (
+                    format!("{macro_name}!({dest_name}(), ...)"),
+                    macro_name.replace("write", "print"),
+                )
+            } else {
+                (
+                    format!("{dest_name}().write_fmt(...)"),
+                    "print".into(),
+                )
+            };
+            let mut applicability = Applicability::MachineApplicable;
+            let inputs_snippet = snippet_with_applicability(
+                cx,
+                format_args_inputs_span(&format_args),
+                "..",
+                &mut applicability,
+            );
+            span_lint_and_sugg(
+                cx,
+                EXPLICIT_WRITE,
+                expr.span,
+                &format!("use of `{used}.unwrap()`"),
+                "try",
+                format!("{prefix}{sugg_mac}!({inputs_snippet})"),
+                applicability,
+            );
         }
     }
 }

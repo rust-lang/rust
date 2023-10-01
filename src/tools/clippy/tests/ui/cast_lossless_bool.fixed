@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(dead_code)]
 #![warn(clippy::cast_lossless)]
 

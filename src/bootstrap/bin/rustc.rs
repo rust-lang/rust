@@ -16,26 +16,24 @@
 //! never get replaced.
 
 include!("../dylib_util.rs");
+include!("./_helper.rs");
 
 use std::env;
 use std::path::PathBuf;
 use std::process::{exit, Child, Command};
-use std::str::FromStr;
 use std::time::Instant;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
+    let stage = parse_rustc_stage();
+    let verbose = parse_rustc_verbose();
+
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
     let target = arg("--target");
     let version = args.iter().find(|w| &**w == "-vV");
-
-    let verbose = match env::var("RUSTC_VERBOSE") {
-        Ok(s) => usize::from_str(&s).expect("RUSTC_VERBOSE should be an integer"),
-        Err(_) => 0,
-    };
 
     // Use a different compiler for build scripts, since there may not yet be a
     // libstd for the real compiler to use. However, if Cargo is attempting to
@@ -47,12 +45,7 @@ fn main() {
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
-    let stage = env::var("RUSTC_STAGE").unwrap_or_else(|_| {
-        // Don't panic here; it's reasonable to try and run these shims directly. Give a helpful error instead.
-        eprintln!("rustc shim: fatal: RUSTC_STAGE was not set");
-        eprintln!("rustc shim: note: use `x.py build -vvv` to see all environment variables set by bootstrap");
-        exit(101);
-    });
+
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 

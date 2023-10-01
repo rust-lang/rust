@@ -34,6 +34,26 @@ impl FlagComputation {
         result.flags
     }
 
+    pub fn bound_var_flags(vars: &ty::List<ty::BoundVariableKind>) -> FlagComputation {
+        let mut computation = FlagComputation::new();
+
+        for bv in vars {
+            match bv {
+                ty::BoundVariableKind::Ty(_) => {
+                    computation.flags |= TypeFlags::HAS_TY_LATE_BOUND;
+                }
+                ty::BoundVariableKind::Region(_) => {
+                    computation.flags |= TypeFlags::HAS_RE_LATE_BOUND;
+                }
+                ty::BoundVariableKind::Const => {
+                    computation.flags |= TypeFlags::HAS_CT_LATE_BOUND;
+                }
+            }
+        }
+
+        computation
+    }
+
     fn add_flags(&mut self, flags: TypeFlags) {
         self.flags = self.flags | flags;
     }
@@ -57,21 +77,7 @@ impl FlagComputation {
     where
         F: FnOnce(&mut Self, T),
     {
-        let mut computation = FlagComputation::new();
-
-        for bv in value.bound_vars() {
-            match bv {
-                ty::BoundVariableKind::Ty(_) => {
-                    computation.flags |= TypeFlags::HAS_TY_LATE_BOUND;
-                }
-                ty::BoundVariableKind::Region(_) => {
-                    computation.flags |= TypeFlags::HAS_RE_LATE_BOUND;
-                }
-                ty::BoundVariableKind::Const => {
-                    computation.flags |= TypeFlags::HAS_CT_LATE_BOUND;
-                }
-            }
-        }
+        let mut computation = FlagComputation::bound_var_flags(value.bound_vars());
 
         f(&mut computation, value.skip_binder());
 
@@ -121,11 +127,7 @@ impl FlagComputation {
                 self.add_ty(args.tupled_upvars_ty());
             }
 
-            &ty::GeneratorWitness(ts) => {
-                self.bound_computation(ts, |flags, ts| flags.add_tys(ts));
-            }
-
-            ty::GeneratorWitnessMIR(_, args) => {
+            ty::GeneratorWitness(_, args) => {
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 self.add_args(args);
@@ -324,7 +326,9 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
-                    InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
+                    InferConst::Var(_) | InferConst::EffectVar(_) => {
+                        self.add_flags(TypeFlags::HAS_CT_INFER)
+                    }
                 }
             }
             ty::ConstKind::Bound(debruijn, _) => {

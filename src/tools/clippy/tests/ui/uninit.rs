@@ -10,6 +10,8 @@ union MyOwnMaybeUninit {
 
 fn main() {
     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
+    //~^ ERROR: this call for this type may be undefined behavior
+    //~| NOTE: `#[deny(clippy::uninit_assumed_init)]` on by default
 
     // This is OK, because ZSTs do not contain data.
     let _: () = unsafe { MaybeUninit::uninit().assume_init() };
@@ -31,6 +33,7 @@ fn main() {
 
     // Was a false negative.
     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
+    //~^ ERROR: this call for this type may be undefined behavior
 
     polymorphic::<()>();
     polymorphic_maybe_uninit_array::<10>();
@@ -39,6 +42,7 @@ fn main() {
     fn polymorphic<T>() {
         // We are conservative around polymorphic types.
         let _: T = unsafe { MaybeUninit::uninit().assume_init() };
+        //~^ ERROR: this call for this type may be undefined behavior
     }
 
     fn polymorphic_maybe_uninit_array<const N: usize>() {

@@ -1,3 +1,13 @@
+Version 1.72.1 (2023-09-19)
+===========================
+
+- [Adjust codegen change to improve LLVM codegen](https://github.com/rust-lang/rust/pull/115236)
+- [rustdoc: Fix self ty params in objects with lifetimes](https://github.com/rust-lang/rust/pull/115276)
+- [Fix regression in compile times](https://github.com/rust-lang/rust/pull/114948)
+- Resolve some ICE regressions in the compiler:
+  - [#115215](https://github.com/rust-lang/rust/pull/115215)
+  - [#115559](https://github.com/rust-lang/rust/pull/115559)
+
 Version 1.72.0 (2023-08-24)
 ==========================
 
@@ -10,9 +20,9 @@ Language
 - [expand: Change how `#![cfg(FALSE)]` behaves on crate root](https://github.com/rust-lang/rust/pull/110141/)
 - [Stabilize inline asm for LoongArch64](https://github.com/rust-lang/rust/pull/111235/)
 - [Uplift `clippy::undropped_manually_drops` lint](https://github.com/rust-lang/rust/pull/111530/)
-- [Uplift `clippy::invalid_utf8_in_unchecked` lint](https://github.com/rust-lang/rust/pull/111543/)
-- [Uplift `clippy::cast_ref_to_mut` lint](https://github.com/rust-lang/rust/pull/111567/)
-- [Uplift `clippy::cmp_nan` lint](https://github.com/rust-lang/rust/pull/111818/)
+- [Uplift `clippy::invalid_utf8_in_unchecked` lint](https://github.com/rust-lang/rust/pull/111543/) as `invalid_from_utf8_unchecked` and `invalid_from_utf8`
+- [Uplift `clippy::cast_ref_to_mut` lint](https://github.com/rust-lang/rust/pull/111567/) as `invalid_reference_casting`
+- [Uplift `clippy::cmp_nan` lint](https://github.com/rust-lang/rust/pull/111818/) as `invalid_nan_comparisons`
 - [resolve: Remove artificial import ambiguity errors](https://github.com/rust-lang/rust/pull/112086/)
 - [Don't require associated types with Self: Sized bounds in `dyn Trait` objects](https://github.com/rust-lang/rust/pull/112319/)
 
@@ -102,6 +112,16 @@ Compatibility Notes
   this should only impact users of other registries, or people who don't publish
   to a registry.
   [#12291](https://github.com/rust-lang/cargo/pull/12291)
+
+Version 1.71.1 (2023-08-03)
+===========================
+
+- [Fix CVE-2023-38497: Cargo did not respect the umask when extracting dependencies](https://github.com/rust-lang/cargo/security/advisories/GHSA-j3xp-wfr4-hx87)
+- [Fix bash completion for users of Rustup](https://github.com/rust-lang/rust/pull/113579)
+- [Do not show `suspicious_double_ref_op` lint when calling `borrow()`](https://github.com/rust-lang/rust/pull/112517)
+- [Fix ICE: substitute types before checking inlining compatibility](https://github.com/rust-lang/rust/pull/113802)
+- [Fix ICE: don't use `can_eq` in `derive(..)` suggestion for missing method](https://github.com/rust-lang/rust/pull/111516)
+- [Fix building Rust 1.71.0 from the source tarball](https://github.com/rust-lang/rust/issues/113678)
 
 Version 1.71.0 (2023-07-13)
 ==========================

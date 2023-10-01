@@ -8,6 +8,7 @@ LL |     let x = x;
    |
    = help: remove the redefinition of `x`
    = note: `-D clippy::redundant-locals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_locals)]`
 
 error: redundant redefinition of a binding
   --> $DIR/redundant_locals.rs:16:9

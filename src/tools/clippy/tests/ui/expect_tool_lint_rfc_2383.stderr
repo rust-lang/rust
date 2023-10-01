@@ -5,33 +5,34 @@ LL |     #[expect(dead_code)]
    |              ^^^^^^^^^
    |
    = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
 
 error: this lint expectation is unfulfilled
-  --> $DIR/expect_tool_lint_rfc_2383.rs:39:18
+  --> $DIR/expect_tool_lint_rfc_2383.rs:41:18
    |
 LL |         #[expect(illegal_floating_point_literal_pattern)]
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this lint expectation is unfulfilled
-  --> $DIR/expect_tool_lint_rfc_2383.rs:113:14
+  --> $DIR/expect_tool_lint_rfc_2383.rs:116:14
    |
 LL |     #[expect(clippy::almost_swapped)]
    |              ^^^^^^^^^^^^^^^^^^^^^^
 
 error: this lint expectation is unfulfilled
-  --> $DIR/expect_tool_lint_rfc_2383.rs:120:14
+  --> $DIR/expect_tool_lint_rfc_2383.rs:124:14
    |
 LL |     #[expect(clippy::bytes_nth)]
    |              ^^^^^^^^^^^^^^^^^
 
 error: this lint expectation is unfulfilled
-  --> $DIR/expect_tool_lint_rfc_2383.rs:125:14
+  --> $DIR/expect_tool_lint_rfc_2383.rs:130:14
    |
 LL |     #[expect(clippy::if_same_then_else)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this lint expectation is unfulfilled
-  --> $DIR/expect_tool_lint_rfc_2383.rs:130:14
+  --> $DIR/expect_tool_lint_rfc_2383.rs:136:14
    |
 LL |     #[expect(clippy::overly_complex_bool_expr)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -5,6 +5,7 @@ LL | /// TestItemThingyOfCoolness might sound cool but is not on the list and sh
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 help: try
    |
 LL | /// `TestItemThingyOfCoolness` might sound cool but is not on the list and should be linted.

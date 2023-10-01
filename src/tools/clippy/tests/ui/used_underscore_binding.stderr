@@ -1,40 +1,76 @@
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:24:5
+  --> $DIR/used_underscore_binding.rs:23:5
    |
 LL |     _foo + 1
    |     ^^^^
    |
+note: `_foo` is defined here
+  --> $DIR/used_underscore_binding.rs:22:22
+   |
+LL | fn prefix_underscore(_foo: u32) -> u32 {
+   |                      ^^^^
    = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_binding)]`
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:29:20
+  --> $DIR/used_underscore_binding.rs:28:20
    |
 LL |     println!("{}", _foo);
    |                    ^^^^
+   |
+note: `_foo` is defined here
+  --> $DIR/used_underscore_binding.rs:27:24
+   |
+LL | fn in_macro_or_desugar(_foo: u32) {
+   |                        ^^^^
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:30:16
+  --> $DIR/used_underscore_binding.rs:29:16
    |
 LL |     assert_eq!(_foo, _foo);
    |                ^^^^
+   |
+note: `_foo` is defined here
+  --> $DIR/used_underscore_binding.rs:27:24
+   |
+LL | fn in_macro_or_desugar(_foo: u32) {
+   |                        ^^^^
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:30:22
+  --> $DIR/used_underscore_binding.rs:29:22
    |
 LL |     assert_eq!(_foo, _foo);
    |                      ^^^^
+   |
+note: `_foo` is defined here
+  --> $DIR/used_underscore_binding.rs:27:24
+   |
+LL | fn in_macro_or_desugar(_foo: u32) {
+   |                        ^^^^
 
 error: used binding `_underscore_field` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:43:5
+  --> $DIR/used_underscore_binding.rs:42:5
    |
 LL |     s._underscore_field += 1;
    |     ^^^^^^^^^^^^^^^^^^^
+   |
+note: `_underscore_field` is defined here
+  --> $DIR/used_underscore_binding.rs:36:5
+   |
+LL |     _underscore_field: u32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: used binding `_i` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:104:16
+  --> $DIR/used_underscore_binding.rs:103:16
    |
 LL |         uses_i(_i);
    |                ^^
+   |
+note: `_i` is defined here
+  --> $DIR/used_underscore_binding.rs:102:13
+   |
+LL |         let _i = 5;
+   |             ^^
 
 error: aborting due to 6 previous errors
 

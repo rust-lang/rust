@@ -32,7 +32,6 @@ pub mod expr_use_visitor;
 mod fallback;
 mod fn_ctxt;
 mod gather_locals;
-mod generator_interior;
 mod inherited;
 mod intrinsicck;
 mod mem_categorization;

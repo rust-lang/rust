@@ -6,9 +6,10 @@ LL |         fn unused_self_move(self) {}
    |
    = help: consider refactoring to an associated function
    = note: `-D clippy::unused-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_self)]`
 
 error: unused `self` argument
-  --> $DIR/unused_self.rs:12:28
+  --> $DIR/unused_self.rs:13:28
    |
 LL |         fn unused_self_ref(&self) {}
    |                            ^^^^^
@@ -16,7 +17,7 @@ LL |         fn unused_self_ref(&self) {}
    = help: consider refactoring to an associated function
 
 error: unused `self` argument
-  --> $DIR/unused_self.rs:13:32
+  --> $DIR/unused_self.rs:15:32
    |
 LL |         fn unused_self_mut_ref(&mut self) {}
    |                                ^^^^^^^^^
@@ -24,7 +25,7 @@ LL |         fn unused_self_mut_ref(&mut self) {}
    = help: consider refactoring to an associated function
 
 error: unused `self` argument
-  --> $DIR/unused_self.rs:14:32
+  --> $DIR/unused_self.rs:17:32
    |
 LL |         fn unused_self_pin_ref(self: Pin<&Self>) {}
    |                                ^^^^
@@ -32,7 +33,7 @@ LL |         fn unused_self_pin_ref(self: Pin<&Self>) {}
    = help: consider refactoring to an associated function
 
 error: unused `self` argument
-  --> $DIR/unused_self.rs:15:36
+  --> $DIR/unused_self.rs:19:36
    |
 LL |         fn unused_self_pin_mut_ref(self: Pin<&mut Self>) {}
    |                                    ^^^^
@@ -40,7 +41,7 @@ LL |         fn unused_self_pin_mut_ref(self: Pin<&mut Self>) {}
    = help: consider refactoring to an associated function
 
 error: unused `self` argument
-  --> $DIR/unused_self.rs:16:35
+  --> $DIR/unused_self.rs:21:35
    |
 LL |         fn unused_self_pin_nested(self: Pin<Arc<Self>>) {}
    |                                   ^^^^
@@ -48,7 +49,7 @@ LL |         fn unused_self_pin_nested(self: Pin<Arc<Self>>) {}
    = help: consider refactoring to an associated function
 
 error: unused `self` argument
-  --> $DIR/unused_self.rs:17:28
+  --> $DIR/unused_self.rs:23:28
    |
 LL |         fn unused_self_box(self: Box<Self>) {}
    |                            ^^^^
@@ -56,7 +57,7 @@ LL |         fn unused_self_box(self: Box<Self>) {}
    = help: consider refactoring to an associated function
 
 error: unused `self` argument
-  --> $DIR/unused_self.rs:18:40
+  --> $DIR/unused_self.rs:25:40
    |
 LL |         fn unused_with_other_used_args(&self, x: u8, y: u8) -> u8 {
    |                                        ^^^^^
@@ -64,7 +65,7 @@ LL |         fn unused_with_other_used_args(&self, x: u8, y: u8) -> u8 {
    = help: consider refactoring to an associated function
 
 error: unused `self` argument
-  --> $DIR/unused_self.rs:21:37
+  --> $DIR/unused_self.rs:29:37
    |
 LL |         fn unused_self_class_method(&self) {
    |                                     ^^^^^

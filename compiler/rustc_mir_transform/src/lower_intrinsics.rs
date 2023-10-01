@@ -1,11 +1,10 @@
 //! Lowers intrinsic calls
 
-use crate::{errors, MirPass};
+use crate::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 pub struct LowerIntrinsics;
@@ -33,10 +32,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
                                     *destination,
-                                    Rvalue::Use(Operand::Constant(Box::new(Constant {
+                                    Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                                         span: terminator.source_info.span,
                                         user_ty: None,
-                                        literal: ConstantKind::zero_sized(tcx.types.unit),
+                                        const_: Const::zero_sized(tcx.types.unit),
                                     }))),
                                 ))),
                             });
@@ -176,23 +175,22 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             } else {
                                 span_bug!(terminator.source_info.span, "Only passing a local is supported");
                             };
+                        // Add new statement at the end of the block that does the read, and patch
+                        // up the terminator.
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Use(Operand::Copy(derefed_place)),
+                            ))),
+                        });
                         terminator.kind = match *target {
                             None => {
                                 // No target means this read something uninhabited,
-                                // so it must be unreachable, and we don't need to
-                                // preserve the assignment either.
+                                // so it must be unreachable.
                                 TerminatorKind::Unreachable
                             }
-                            Some(target) => {
-                                block.statements.push(Statement {
-                                    source_info: terminator.source_info,
-                                    kind: StatementKind::Assign(Box::new((
-                                        *destination,
-                                        Rvalue::Use(Operand::Copy(derefed_place)),
-                                    ))),
-                                });
-                                TerminatorKind::Goto { target }
-                            }
+                            Some(target) => TerminatorKind::Goto { target },
                         }
                     }
                     sym::write_via_move => {
@@ -305,9 +303,6 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Unreachable;
                         }
                     }
-                    sym::simd_shuffle => {
-                        validate_simd_shuffle(tcx, args, terminator.source_info.span);
-                    }
                     _ => {}
                 }
             }
@@ -325,10 +320,4 @@ fn resolve_rust_intrinsic<'tcx>(
         }
     }
     None
-}
-
-fn validate_simd_shuffle<'tcx>(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) {
-    if !matches!(args[2], Operand::Constant(_)) {
-        tcx.sess.emit_err(errors::SimdShuffleLastConst { span });
-    }
 }

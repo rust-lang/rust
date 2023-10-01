@@ -3,6 +3,12 @@ error[E0277]: the trait bound `{integer}: Foo` is not satisfied
    |
 LL |     let dyn_i: dyn* Foo = i;
    |                           ^ the trait `Foo` is not implemented for `{integer}`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/error.rs:6:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
 
 error: aborting due to previous error
 

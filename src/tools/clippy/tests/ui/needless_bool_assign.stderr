@@ -1,5 +1,5 @@
 error: this if-then-else expression assigns a bool literal
-  --> $DIR/needless_bool_assign.rs:15:5
+  --> $DIR/needless_bool_assign.rs:13:5
    |
 LL | /     if random() && random() {
 LL | |         a.field = true;
@@ -9,9 +9,10 @@ LL | |     }
    | |_____^ help: you can reduce it to: `a.field = random() && random();`
    |
    = note: `-D clippy::needless-bool-assign` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_bool_assign)]`
 
 error: this if-then-else expression assigns a bool literal
-  --> $DIR/needless_bool_assign.rs:20:5
+  --> $DIR/needless_bool_assign.rs:18:5
    |
 LL | /     if random() && random() {
 LL | |         a.field = false;
@@ -21,7 +22,7 @@ LL | |     }
    | |_____^ help: you can reduce it to: `a.field = !(random() && random());`
 
 error: this if-then-else expression assigns a bool literal
-  --> $DIR/needless_bool_assign.rs:34:5
+  --> $DIR/needless_bool_assign.rs:32:5
    |
 LL | /     if random() {
 LL | |         a.field = true;
@@ -31,7 +32,7 @@ LL | |     }
    | |_____^ help: you can reduce it to: `random(); a.field = true;`
 
 error: this `if` has identical blocks
-  --> $DIR/needless_bool_assign.rs:34:17
+  --> $DIR/needless_bool_assign.rs:32:17
    |
 LL |       if random() {
    |  _________________^
@@ -40,7 +41,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/needless_bool_assign.rs:36:12
+  --> $DIR/needless_bool_assign.rs:34:12
    |
 LL |       } else {
    |  ____________^

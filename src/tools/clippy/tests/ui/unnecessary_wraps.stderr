@@ -1,16 +1,17 @@
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wraps.rs:8:1
+  --> $DIR/unnecessary_wraps.rs:9:1
    |
 LL | / fn func1(a: bool, b: bool) -> Option<i32> {
+LL | |
+LL | |
 LL | |     if a && b {
-LL | |         return Some(42);
-LL | |     }
 ...  |
 LL | |     }
 LL | | }
    | |_^
    |
    = note: `-D clippy::unnecessary-wraps` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_wraps)]`
 help: remove `Option` from the return type...
    |
 LL | fn func1(a: bool, b: bool) -> i32 {
@@ -27,9 +28,10 @@ LL ~         return 1337;
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wraps.rs:21:1
+  --> $DIR/unnecessary_wraps.rs:24:1
    |
 LL | / fn func2(a: bool, b: bool) -> Option<i32> {
+LL | |
 LL | |     if a && b {
 LL | |         return Some(10);
 LL | |     }
@@ -49,9 +51,10 @@ LL ~     if a { 20 } else { 30 }
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wraps.rs:39:1
+  --> $DIR/unnecessary_wraps.rs:43:1
    |
 LL | / fn func5() -> Option<i32> {
+LL | |
 LL | |     Some(1)
 LL | | }
    | |_^
@@ -66,9 +69,10 @@ LL |     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Result`
-  --> $DIR/unnecessary_wraps.rs:49:1
+  --> $DIR/unnecessary_wraps.rs:54:1
    |
 LL | / fn func7() -> Result<i32, ()> {
+LL | |
 LL | |     Ok(1)
 LL | | }
    | |_^
@@ -83,9 +87,10 @@ LL |     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wraps.rs:77:5
+  --> $DIR/unnecessary_wraps.rs:83:5
    |
 LL | /     fn func12() -> Option<i32> {
+LL | |
 LL | |         Some(1)
 LL | |     }
    | |_____^
@@ -100,12 +105,12 @@ LL |         1
    |
 
 error: this function's return value is unnecessary
-  --> $DIR/unnecessary_wraps.rs:104:1
+  --> $DIR/unnecessary_wraps.rs:111:1
    |
 LL | / fn issue_6640_1(a: bool, b: bool) -> Option<()> {
+LL | |
 LL | |     if a && b {
 LL | |         return Some(());
-LL | |     }
 ...  |
 LL | |     }
 LL | | }
@@ -127,12 +132,12 @@ LL ~         return ;
    |
 
 error: this function's return value is unnecessary
-  --> $DIR/unnecessary_wraps.rs:117:1
+  --> $DIR/unnecessary_wraps.rs:125:1
    |
 LL | / fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
+LL | |
 LL | |     if a && b {
 LL | |         return Ok(());
-LL | |     }
 ...  |
 LL | |     }
 LL | | }

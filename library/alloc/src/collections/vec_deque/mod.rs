@@ -1015,8 +1015,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Shortens the deque, keeping the first `len` elements and dropping
     /// the rest.
     ///
-    /// If `len` is greater than the deque's current length, this has no
-    /// effect.
+    /// If `len` is greater or equal to the deque's current length, this has
+    /// no effect.
     ///
     /// # Examples
     ///

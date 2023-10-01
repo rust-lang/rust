@@ -1,5 +1,7 @@
 // compile-flags: --crate-type=lib
 
+// https://github.com/rust-lang/rust/issues/113766
+
 macro_rules! field {
     ($name:ident:$type:ty) => {
         $name:$type
@@ -13,15 +15,14 @@ macro_rules! variant {
 }
 
 struct Struct {
+    //~^ NOTE while parsing this struct
     field!(bar:u128),
     //~^ NOTE macros cannot expand to struct fields
     //~| ERROR unexpected token: `!`
     //~| NOTE unexpected token after this
     a: u32,
     b: u32,
-    field!(recovers:()), //~ NOTE macros cannot expand to struct fields
-    //~^ ERROR unexpected token: `!`
-    //~^^ NOTE unexpected token after this
+    field!(recovers:()),
 }
 
 enum EnumVariant {
@@ -35,7 +36,7 @@ enum EnumVariant {
     //~^ NOTE macros cannot expand to enum variants
     //~| ERROR unexpected token: `!`
     //~| NOTE unexpected token after this
-    Data {
+    Data { //~ NOTE while parsing this struct
         field!(x:u32),
         //~^ NOTE macros cannot expand to struct fields
         //~| ERROR unexpected token: `!`
@@ -44,27 +45,35 @@ enum EnumVariant {
 }
 
 enum EnumVariantField {
-    Named {
+    Named { //~ NOTE while parsing this struct
         field!(oopsies:()),
         //~^ NOTE macros cannot expand to struct fields
         //~| ERROR unexpected token: `!`
         //~| unexpected token after this
         field!(oopsies2:()),
-        //~^ NOTE macros cannot expand to struct fields
-        //~| ERROR unexpected token: `!`
-        //~| unexpected token after this
     },
 }
 
 union Union {
+    //~^ NOTE while parsing this union
     A: u32,
     field!(oopsies:()),
     //~^ NOTE macros cannot expand to union fields
     //~| ERROR unexpected token: `!`
-    //~| unexpected token after this
+    //~| NOTE unexpected token after this
     B: u32,
     field!(recovers:()),
-    //~^ NOTE macros cannot expand to union fields
-    //~| ERROR unexpected token: `!`
-    //~| unexpected token after this
 }
+
+// https://github.com/rust-lang/rust/issues/114636
+
+#[derive(Debug)]
+pub struct Lazy {
+    //~^ NOTE while parsing this struct
+    unreachable!()
+    //~^ NOTE macros cannot expand to struct fields
+    //~| ERROR unexpected token: `!`
+    //~| NOTE unexpected token after this
+}
+
+fn main() {}

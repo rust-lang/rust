@@ -5,9 +5,10 @@ LL |         write!(f, "{}", self.to_string())
    |                         ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::recursive-format-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::recursive_format_impl)]`
 
 error: using `self` as `Display` in `impl Display` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:75:9
+  --> $DIR/recursive_format_impl.rs:77:9
    |
 LL |         write!(f, "{}", self)
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +16,7 @@ LL |         write!(f, "{}", self)
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: using `self` as `Display` in `impl Display` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:84:9
+  --> $DIR/recursive_format_impl.rs:87:9
    |
 LL |         write!(f, "{}", &self)
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +24,7 @@ LL |         write!(f, "{}", &self)
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: using `self` as `Debug` in `impl Debug` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:90:9
+  --> $DIR/recursive_format_impl.rs:94:9
    |
 LL |         write!(f, "{:?}", &self)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +32,7 @@ LL |         write!(f, "{:?}", &self)
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: using `self` as `Display` in `impl Display` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:99:9
+  --> $DIR/recursive_format_impl.rs:104:9
    |
 LL |         write!(f, "{}", &&&self)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +40,7 @@ LL |         write!(f, "{}", &&&self)
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: using `self` as `Display` in `impl Display` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:173:9
+  --> $DIR/recursive_format_impl.rs:179:9
    |
 LL |         write!(f, "{}", &*self)
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +48,7 @@ LL |         write!(f, "{}", &*self)
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: using `self` as `Debug` in `impl Debug` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:179:9
+  --> $DIR/recursive_format_impl.rs:186:9
    |
 LL |         write!(f, "{:?}", &*self)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -55,7 +56,7 @@ LL |         write!(f, "{:?}", &*self)
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: using `self` as `Display` in `impl Display` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:195:9
+  --> $DIR/recursive_format_impl.rs:203:9
    |
 LL |         write!(f, "{}", *self)
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -63,7 +64,7 @@ LL |         write!(f, "{}", *self)
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: using `self` as `Display` in `impl Display` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:211:9
+  --> $DIR/recursive_format_impl.rs:220:9
    |
 LL |         write!(f, "{}", **&&*self)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +72,7 @@ LL |         write!(f, "{}", **&&*self)
    = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: using `self` as `Display` in `impl Display` will cause infinite recursion
-  --> $DIR/recursive_format_impl.rs:227:9
+  --> $DIR/recursive_format_impl.rs:237:9
    |
 LL |         write!(f, "{}", &&**&&*self)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

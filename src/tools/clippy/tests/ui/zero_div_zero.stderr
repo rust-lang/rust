@@ -6,9 +6,10 @@ LL |     let nan = 0.0 / 0.0;
    |
    = help: consider using `f64::NAN` if you would like a constant representing NaN
    = note: `-D clippy::zero-divided-by-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_divided_by_zero)]`
 
 error: constant division of `0.0` with `0.0` will always result in NaN
-  --> $DIR/zero_div_zero.rs:5:19
+  --> $DIR/zero_div_zero.rs:6:19
    |
 LL |     let f64_nan = 0.0 / 0.0f64;
    |                   ^^^^^^^^^^^^
@@ -16,7 +17,7 @@ LL |     let f64_nan = 0.0 / 0.0f64;
    = help: consider using `f64::NAN` if you would like a constant representing NaN
 
 error: constant division of `0.0` with `0.0` will always result in NaN
-  --> $DIR/zero_div_zero.rs:6:25
+  --> $DIR/zero_div_zero.rs:8:25
    |
 LL |     let other_f64_nan = 0.0f64 / 0.0;
    |                         ^^^^^^^^^^^^
@@ -24,7 +25,7 @@ LL |     let other_f64_nan = 0.0f64 / 0.0;
    = help: consider using `f64::NAN` if you would like a constant representing NaN
 
 error: constant division of `0.0` with `0.0` will always result in NaN
-  --> $DIR/zero_div_zero.rs:7:28
+  --> $DIR/zero_div_zero.rs:10:28
    |
 LL |     let one_more_f64_nan = 0.0f64 / 0.0f64;
    |                            ^^^^^^^^^^^^^^^

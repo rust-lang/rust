@@ -4,6 +4,7 @@ struct A;
 
 impl A {
     fn result_with_panic() -> Result<bool, String> // should emit lint
+    //~^ ERROR: used `panic!()` or assertion in a function that returns `Result`
     {
         panic!("error");
     }
@@ -50,6 +51,7 @@ impl A {
 }
 
 fn function_result_with_panic() -> Result<bool, String> // should emit lint
+//~^ ERROR: used `panic!()` or assertion in a function that returns `Result`
 {
     panic!("error");
 }

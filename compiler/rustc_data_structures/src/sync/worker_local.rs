@@ -1,4 +1,4 @@
-use crate::sync::Lock;
+use parking_lot::Mutex;
 use std::cell::Cell;
 use std::cell::OnceCell;
 use std::ops::Deref;
@@ -6,7 +6,7 @@ use std::ptr;
 use std::sync::Arc;
 
 #[cfg(parallel_compiler)]
-use {crate::cold_path, crate::sync::CacheAligned};
+use {crate::outline, crate::sync::CacheAligned};
 
 /// A pointer to the `RegistryData` which uniquely identifies a registry.
 /// This identifier can be reused if the registry gets freed.
@@ -25,17 +25,13 @@ impl RegistryId {
     fn verify(self) -> usize {
         let (id, index) = THREAD_DATA.with(|data| (data.registry_id.get(), data.index.get()));
 
-        if id == self {
-            index
-        } else {
-            cold_path(|| panic!("Unable to verify registry association"))
-        }
+        if id == self { index } else { outline(|| panic!("Unable to verify registry association")) }
     }
 }
 
 struct RegistryData {
     thread_limit: usize,
-    threads: Lock<usize>,
+    threads: Mutex<usize>,
 }
 
 /// Represents a list of threads which can access worker locals.
@@ -65,7 +61,7 @@ thread_local! {
 impl Registry {
     /// Creates a registry which can hold up to `thread_limit` threads.
     pub fn new(thread_limit: usize) -> Self {
-        Registry(Arc::new(RegistryData { thread_limit, threads: Lock::new(0) }))
+        Registry(Arc::new(RegistryData { thread_limit, threads: Mutex::new(0) }))
     }
 
     /// Gets the registry associated with the current thread. Panics if there's no such registry.

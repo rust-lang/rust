@@ -165,7 +165,7 @@ pub struct TypeckResults<'tcx> {
     /// reading places that are mentioned in a closure (because of _ patterns). However,
     /// to ensure the places are initialized, we introduce fake reads.
     /// Consider these two examples:
-    /// ``` (discriminant matching with only wildcard arm)
+    /// ```ignore (discriminant matching with only wildcard arm)
     /// let x: u8;
     /// let c = || match x { _ => () };
     /// ```
@@ -173,7 +173,7 @@ pub struct TypeckResults<'tcx> {
     /// want to capture it. However, we do still want an error here, because `x` should have
     /// to be initialized at the point where c is created. Therefore, we add a "fake read"
     /// instead.
-    /// ``` (destructured assignments)
+    /// ```ignore (destructured assignments)
     /// let c = || {
     ///     let (t1, t2) = t;
     /// }
@@ -188,10 +188,6 @@ pub struct TypeckResults<'tcx> {
     /// by applying extended parameter rules.
     /// Details may be find in `rustc_hir_analysis::check::rvalue_scopes`.
     pub rvalue_scopes: RvalueScopes,
-
-    /// Stores the type, expression, span and optional scope span of all types
-    /// that are live across the yield of this generator (if a generator).
-    pub generator_interior_types: ty::Binder<'tcx, Vec<GeneratorInteriorTypeCause<'tcx>>>,
 
     /// Stores the predicates that apply on generator witness types.
     /// formatting modified file tests/ui/generator/retain-resume-ref.rs
@@ -210,49 +206,6 @@ pub struct TypeckResults<'tcx> {
 
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<FieldIdx>)>,
-}
-
-/// Whenever a value may be live across a generator yield, the type of that value winds up in the
-/// `GeneratorInteriorTypeCause` struct. This struct adds additional information about such
-/// captured types that can be useful for diagnostics. In particular, it stores the span that
-/// caused a given type to be recorded, along with the scope that enclosed the value (which can
-/// be used to find the await that the value is live across).
-///
-/// For example:
-///
-/// ```ignore (pseudo-Rust)
-/// async move {
-///     let x: T = expr;
-///     foo.await
-///     ...
-/// }
-/// ```
-///
-/// Here, we would store the type `T`, the span of the value `x`, the "scope-span" for
-/// the scope that contains `x`, the expr `T` evaluated from, and the span of `foo.await`.
-#[derive(TyEncodable, TyDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct GeneratorInteriorTypeCause<'tcx> {
-    /// Type of the captured binding.
-    pub ty: Ty<'tcx>,
-    /// Span of the binding that was captured.
-    pub span: Span,
-    /// Span of the scope of the captured binding.
-    pub scope_span: Option<Span>,
-    /// Span of `.await` or `yield` expression.
-    pub yield_span: Span,
-    /// Expr which the type evaluated from.
-    pub expr: Option<hir::HirId>,
-}
-
-// This type holds diagnostic information on generators and async functions across crate boundaries
-// and is used to provide better error messages
-#[derive(TyEncodable, TyDecodable, Clone, Debug, HashStable)]
-pub struct GeneratorDiagnosticData<'tcx> {
-    pub generator_interior_types: ty::Binder<'tcx, Vec<GeneratorInteriorTypeCause<'tcx>>>,
-    pub hir_owner: DefId,
-    pub nodes_types: ItemLocalMap<Ty<'tcx>>,
-    pub adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -278,7 +231,6 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_min_captures: Default::default(),
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
-            generator_interior_types: ty::Binder::dummy(Default::default()),
             generator_interior_predicates: Default::default(),
             treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
@@ -349,28 +301,6 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn node_types_mut(&mut self) -> LocalTableInContextMut<'_, Ty<'tcx>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_types }
-    }
-
-    pub fn get_generator_diagnostic_data(&self) -> GeneratorDiagnosticData<'tcx> {
-        let generator_interior_type = self.generator_interior_types.map_bound_ref(|vec| {
-            vec.iter()
-                .map(|item| {
-                    GeneratorInteriorTypeCause {
-                        ty: item.ty,
-                        span: item.span,
-                        scope_span: item.scope_span,
-                        yield_span: item.yield_span,
-                        expr: None, //FIXME: Passing expression over crate boundaries is impossible at the moment
-                    }
-                })
-                .collect::<Vec<_>>()
-        });
-        GeneratorDiagnosticData {
-            generator_interior_types: generator_interior_type,
-            hir_owner: self.hir_owner.to_def_id(),
-            nodes_types: self.node_types.clone(),
-            adjustments: self.adjustments.clone(),
-        }
     }
 
     pub fn node_type(&self, id: hir::HirId) -> Ty<'tcx> {
@@ -654,7 +584,7 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: Box<CanonicalUserType<'tcx>>,
     pub span: Span,
@@ -714,11 +644,22 @@ impl<'tcx> CanonicalUserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
     /// given substitutions applied.
     TypeOf(DefId, UserArgs<'tcx>),
+}
+
+impl<'tcx> std::fmt::Display for UserType<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ty(arg0) => {
+                ty::print::with_no_trimmed_paths!(write!(f, "Ty({})", arg0))
+            }
+            Self::TypeOf(arg0, arg1) => write!(f, "TypeOf({:?}, {:?})", arg0, arg1),
+        }
+    }
 }

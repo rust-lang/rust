@@ -2,18 +2,54 @@
 
 use std::fmt::{self, Write};
 
-use hir_expand::{db::ExpandDatabase, mod_path::PathKind};
+use hir_expand::mod_path::PathKind;
 use intern::Interned;
 use itertools::Itertools;
 
 use crate::{
+    db::DefDatabase,
+    lang_item::LangItemTarget,
     path::{GenericArg, GenericArgs, Path},
     type_ref::{Mutability, TraitBoundModifier, TypeBound, TypeRef},
 };
 
-pub(crate) fn print_path(db: &dyn ExpandDatabase, path: &Path, buf: &mut dyn Write) -> fmt::Result {
-    if let Path::LangItem(it) = path {
-        return write!(buf, "$lang_item::{it:?}");
+pub(crate) fn print_path(db: &dyn DefDatabase, path: &Path, buf: &mut dyn Write) -> fmt::Result {
+    if let Path::LangItem(it, s) = path {
+        write!(buf, "builtin#lang(")?;
+        match *it {
+            LangItemTarget::ImplDef(it) => write!(buf, "{it:?}")?,
+            LangItemTarget::EnumId(it) => {
+                write!(buf, "{}", db.enum_data(it).name.display(db.upcast()))?
+            }
+            LangItemTarget::Function(it) => {
+                write!(buf, "{}", db.function_data(it).name.display(db.upcast()))?
+            }
+            LangItemTarget::Static(it) => {
+                write!(buf, "{}", db.static_data(it).name.display(db.upcast()))?
+            }
+            LangItemTarget::Struct(it) => {
+                write!(buf, "{}", db.struct_data(it).name.display(db.upcast()))?
+            }
+            LangItemTarget::Union(it) => {
+                write!(buf, "{}", db.union_data(it).name.display(db.upcast()))?
+            }
+            LangItemTarget::TypeAlias(it) => {
+                write!(buf, "{}", db.type_alias_data(it).name.display(db.upcast()))?
+            }
+            LangItemTarget::Trait(it) => {
+                write!(buf, "{}", db.trait_data(it).name.display(db.upcast()))?
+            }
+            LangItemTarget::EnumVariant(it) => write!(
+                buf,
+                "{}",
+                db.enum_data(it.parent).variants[it.local_id].name.display(db.upcast())
+            )?,
+        }
+
+        if let Some(s) = s {
+            write!(buf, "::{}", s.display(db.upcast()))?;
+        }
+        return write!(buf, ")");
     }
     match path.type_anchor() {
         Some(anchor) => {
@@ -44,7 +80,7 @@ pub(crate) fn print_path(db: &dyn ExpandDatabase, path: &Path, buf: &mut dyn Wri
             write!(buf, "::")?;
         }
 
-        write!(buf, "{}", segment.name.display(db))?;
+        write!(buf, "{}", segment.name.display(db.upcast()))?;
         if let Some(generics) = segment.args_and_bindings {
             write!(buf, "::<")?;
             print_generic_args(db, generics, buf)?;
@@ -57,7 +93,7 @@ pub(crate) fn print_path(db: &dyn ExpandDatabase, path: &Path, buf: &mut dyn Wri
 }
 
 pub(crate) fn print_generic_args(
-    db: &dyn ExpandDatabase,
+    db: &dyn DefDatabase,
     generics: &GenericArgs,
     buf: &mut dyn Write,
 ) -> fmt::Result {
@@ -83,7 +119,7 @@ pub(crate) fn print_generic_args(
             write!(buf, ", ")?;
         }
         first = false;
-        write!(buf, "{}", binding.name.display(db))?;
+        write!(buf, "{}", binding.name.display(db.upcast()))?;
         if !binding.bounds.is_empty() {
             write!(buf, ": ")?;
             print_type_bounds(db, &binding.bounds, buf)?;
@@ -97,19 +133,19 @@ pub(crate) fn print_generic_args(
 }
 
 pub(crate) fn print_generic_arg(
-    db: &dyn ExpandDatabase,
+    db: &dyn DefDatabase,
     arg: &GenericArg,
     buf: &mut dyn Write,
 ) -> fmt::Result {
     match arg {
         GenericArg::Type(ty) => print_type_ref(db, ty, buf),
-        GenericArg::Const(c) => write!(buf, "{}", c.display(db)),
-        GenericArg::Lifetime(lt) => write!(buf, "{}", lt.name.display(db)),
+        GenericArg::Const(c) => write!(buf, "{}", c.display(db.upcast())),
+        GenericArg::Lifetime(lt) => write!(buf, "{}", lt.name.display(db.upcast())),
     }
 }
 
 pub(crate) fn print_type_ref(
-    db: &dyn ExpandDatabase,
+    db: &dyn DefDatabase,
     type_ref: &TypeRef,
     buf: &mut dyn Write,
 ) -> fmt::Result {
@@ -143,7 +179,7 @@ pub(crate) fn print_type_ref(
             };
             write!(buf, "&")?;
             if let Some(lt) = lt {
-                write!(buf, "{} ", lt.name.display(db))?;
+                write!(buf, "{} ", lt.name.display(db.upcast()))?;
             }
             write!(buf, "{mtbl}")?;
             print_type_ref(db, pointee, buf)?;
@@ -151,7 +187,7 @@ pub(crate) fn print_type_ref(
         TypeRef::Array(elem, len) => {
             write!(buf, "[")?;
             print_type_ref(db, elem, buf)?;
-            write!(buf, "; {}]", len.display(db))?;
+            write!(buf, "; {}]", len.display(db.upcast()))?;
         }
         TypeRef::Slice(elem) => {
             write!(buf, "[")?;
@@ -198,7 +234,7 @@ pub(crate) fn print_type_ref(
 }
 
 pub(crate) fn print_type_bounds(
-    db: &dyn ExpandDatabase,
+    db: &dyn DefDatabase,
     bounds: &[Interned<TypeBound>],
     buf: &mut dyn Write,
 ) -> fmt::Result {
@@ -216,10 +252,14 @@ pub(crate) fn print_type_bounds(
                 print_path(db, path, buf)?;
             }
             TypeBound::ForLifetime(lifetimes, path) => {
-                write!(buf, "for<{}> ", lifetimes.iter().map(|it| it.display(db)).format(", "))?;
+                write!(
+                    buf,
+                    "for<{}> ",
+                    lifetimes.iter().map(|it| it.display(db.upcast())).format(", ")
+                )?;
                 print_path(db, path, buf)?;
             }
-            TypeBound::Lifetime(lt) => write!(buf, "{}", lt.name.display(db))?,
+            TypeBound::Lifetime(lt) => write!(buf, "{}", lt.name.display(db.upcast()))?,
             TypeBound::Error => write!(buf, "{{unknown}}")?,
         }
     }

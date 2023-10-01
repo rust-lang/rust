@@ -1,4 +1,7 @@
 // run-pass
+
+#![feature(if_let_guard)]
+
 enum Foo {
     A,
     B,
@@ -13,6 +16,7 @@ fn main() {
         match *foo {
             | A => println!("A"),
             | B | C if 1 < 2 => println!("BC!"),
+            | D if let 1 = 1 => println!("D!"),
             | _ => {},
         }
     }

@@ -6,4 +6,5 @@ LL |     let x = 1;
    |         ^ help: if this is intentional, prefix it with an underscore: `_x`
    |
    = note: `-A unused-variables` implied by `-A unused`
+   = help: to override `-A unused` add `#[allow(unused_variables)]`
 

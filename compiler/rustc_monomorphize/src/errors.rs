@@ -4,7 +4,7 @@ use crate::fluent_generated as fluent;
 use rustc_errors::ErrorGuaranteed;
 use rustc_errors::IntoDiagnostic;
 use rustc_macros::{Diagnostic, LintDiagnostic};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_recursion_limit)]
@@ -31,6 +31,14 @@ pub struct TypeLengthLimit {
     pub was_written: Option<()>,
     pub path: PathBuf,
     pub type_length: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_no_optimized_mir)]
+pub struct NoOptimizedMir {
+    #[note]
+    pub span: Span,
+    pub crate_name: Symbol,
 }
 
 pub struct UnusedGenericParamsHint {

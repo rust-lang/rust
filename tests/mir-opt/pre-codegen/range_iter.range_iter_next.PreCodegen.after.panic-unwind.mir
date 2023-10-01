@@ -38,17 +38,19 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
         _4 = Lt(move _2, move _3);
         StorageDead(_3);
         StorageDead(_2);
-        StorageDead(_8);
-        StorageDead(_7);
         switchInt(move _4) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
+        StorageDead(_8);
+        StorageDead(_7);
         _0 = Option::<u32>::None;
         goto -> bb4;
     }
 
     bb2: {
+        StorageDead(_8);
+        StorageDead(_7);
         _5 = ((*_1).0: u32);
         StorageLive(_6);
         _6 = <u32 as Step>::forward_unchecked(_5, const 1_usize) -> [return: bb3, unwind continue];

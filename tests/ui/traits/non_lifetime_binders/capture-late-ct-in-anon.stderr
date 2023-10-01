@@ -7,7 +7,7 @@ LL | #![feature(non_lifetime_binders)]
    = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: cannot capture late-bound const parameter in a constant
+error: cannot capture late-bound const parameter in constant
   --> $DIR/capture-late-ct-in-anon.rs:6:30
    |
 LL |     for<const C: usize> [(); C]: Copy,

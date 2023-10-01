@@ -1,0 +1,8 @@
+Function name: loop_break_value::main
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 03, 01, 0a, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 3, 1) to (start + 10, 2)
+

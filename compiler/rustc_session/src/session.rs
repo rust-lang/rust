@@ -17,10 +17,10 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{duration_to_secs_str, SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    self, AtomicU64, AtomicUsize, Lock, Lrc, OneThread, Ordering, Ordering::SeqCst,
+    AtomicU64, AtomicUsize, Lock, Lrc, OneThread, Ordering, Ordering::SeqCst,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
-use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
+use rustc_errors::emitter::{DynEmitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
@@ -204,6 +204,12 @@ pub struct Session {
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
+
+    /// All commandline args used to invoke the compiler, with @file args fully expanded.
+    /// This will only be used within debug info, e.g. in the pdb file on windows
+    /// This is mainly useful for other tools that reads that debuginfo to figure out
+    /// how to call the compiler with the same arguments.
+    pub expanded_args: Vec<String>,
 }
 
 pub struct PerfStats {
@@ -1251,7 +1257,7 @@ fn default_emitter(
     source_map: Lrc<SourceMap>,
     bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
-) -> Box<dyn Emitter + sync::Send> {
+) -> Box<DynEmitter> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     let track_diagnostics = sopts.unstable_opts.track_diagnostics;
     let terminal_url = match sopts.unstable_opts.terminal_urls {
@@ -1289,7 +1295,10 @@ fn default_emitter(
                     .diagnostic_width(sopts.diagnostic_width)
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
-                    .terminal_url(terminal_url);
+                    .terminal_url(terminal_url)
+                    .ignored_directories_in_source_blocks(
+                        sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
+                    );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         }
@@ -1306,7 +1315,10 @@ fn default_emitter(
                 track_diagnostics,
                 terminal_url,
             )
-            .ui_testing(sopts.unstable_opts.ui_testing),
+            .ui_testing(sopts.unstable_opts.ui_testing)
+            .ignored_directories_in_source_blocks(
+                sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
+            ),
         ),
     }
 }
@@ -1325,6 +1337,7 @@ pub fn build_session(
     target_override: Option<Target>,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
+    expanded_args: Vec<String>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1467,6 +1480,7 @@ pub fn build_session(
         target_features: Default::default(),
         unstable_target_features: Default::default(),
         cfg_version,
+        expanded_args,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1712,17 +1726,26 @@ impl EarlyErrorHandler {
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
+    pub(crate) fn early_struct_error(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, !> {
+        self.handler.struct_fatal(msg)
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.handler.struct_warn(msg).emit()
     }
 }
 
-fn mk_emitter(output: ErrorOutputType) -> Box<dyn Emitter + sync::Send + 'static> {
+fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
     // need to reference every crate that might emit an early error for translation to work.
     let fallback_bundle =
         fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
-    let emitter: Box<dyn Emitter + sync::Send> = match output {
+    let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
             Box::new(EmitterWriter::stderr(color_config, fallback_bundle).short_message(short))

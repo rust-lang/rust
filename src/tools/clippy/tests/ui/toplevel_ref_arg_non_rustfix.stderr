@@ -5,6 +5,7 @@ LL | fn the_answer(ref mut x: u8) {
    |               ^^^^^^^^^
    |
    = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::toplevel_ref_arg)]`
 
 error: `ref` directly on a function argument is ignored. Consider using a reference type instead
   --> $DIR/toplevel_ref_arg_non_rustfix.rs:20:24

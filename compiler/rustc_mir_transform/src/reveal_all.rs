@@ -8,16 +8,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 pub struct RevealAll;
 
 impl<'tcx> MirPass<'tcx> for RevealAll {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 3 || super::inline::Inline.is_enabled(sess)
-    }
-
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // Do not apply this transformation to generators.
-        if body.generator.is_some() {
-            return;
-        }
-
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         RevealAllVisitor { tcx, param_env }.visit_body_preserves_cfg(body);
     }
@@ -35,12 +26,35 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
     }
 
     #[inline]
-    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, _: Location) {
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        _context: PlaceContext,
+        _location: Location,
+    ) {
+        // Performance optimization: don't reintern if there is no `OpaqueCast` to remove.
+        if place.projection.iter().all(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_))) {
+            return;
+        }
+        // `OpaqueCast` projections are only needed if there are opaque types on which projections are performed.
+        // After the `RevealAll` pass, all opaque types are replaced with their hidden types, so we don't need these
+        // projections anymore.
+        place.projection = self.tcx.mk_place_elems(
+            &place
+                .projection
+                .into_iter()
+                .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_)))
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    #[inline]
+    fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, _: Location) {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        if let Ok(c) = self.tcx.try_normalize_erasing_regions(self.param_env, constant.literal) {
-            constant.literal = c;
+        if let Ok(c) = self.tcx.try_normalize_erasing_regions(self.param_env, constant.const_) {
+            constant.const_ = c;
         }
     }
 

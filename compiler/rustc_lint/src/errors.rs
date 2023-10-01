@@ -1,7 +1,5 @@
 use crate::fluent_generated as fluent;
-use rustc_errors::{
-    AddToDiagnostic, Diagnostic, ErrorGuaranteed, Handler, IntoDiagnostic, SubdiagnosticMessage,
-};
+use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
@@ -102,60 +100,10 @@ pub struct UnsupportedGroup {
     pub lint_group: String,
 }
 
-pub struct CheckNameUnknown<'a> {
-    pub lint_name: &'a str,
-    pub suggestion: Option<Symbol>,
-    pub sub: RequestedLevel<'a>,
-}
-
-impl IntoDiagnostic<'_> for CheckNameUnknown<'_> {
-    fn into_diagnostic(
-        self,
-        handler: &Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::lint_check_name_unknown);
-        diag.code(rustc_errors::error_code!(E0602));
-        if let Some(suggestion) = self.suggestion {
-            diag.help(fluent::lint_help);
-            diag.set_arg("suggestion", suggestion);
-        }
-        diag.set_arg("lint_name", self.lint_name);
-        diag.subdiagnostic(self.sub);
-        diag
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(lint_check_name_unknown_tool, code = "E0602")]
 pub struct CheckNameUnknownTool<'a> {
     pub tool_name: Symbol,
-    #[subdiagnostic]
-    pub sub: RequestedLevel<'a>,
-}
-
-#[derive(Diagnostic)]
-#[diag(lint_check_name_renamed)]
-pub struct CheckNameRenamed<'a> {
-    pub lint_name: &'a str,
-    pub replace: &'a str,
-    #[subdiagnostic]
-    pub sub: RequestedLevel<'a>,
-}
-
-#[derive(Diagnostic)]
-#[diag(lint_check_name_removed)]
-pub struct CheckNameRemoved<'a> {
-    pub lint_name: &'a str,
-    pub reason: &'a str,
-    #[subdiagnostic]
-    pub sub: RequestedLevel<'a>,
-}
-
-#[derive(Diagnostic)]
-#[diag(lint_check_name_deprecated)]
-pub struct CheckNameDeprecated<'a> {
-    pub lint_name: &'a str,
-    pub new_name: &'a str,
     #[subdiagnostic]
     pub sub: RequestedLevel<'a>,
 }

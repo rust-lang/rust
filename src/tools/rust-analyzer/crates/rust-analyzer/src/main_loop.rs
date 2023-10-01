@@ -17,11 +17,14 @@ use vfs::FileId;
 
 use crate::{
     config::Config,
+    diagnostics::fetch_native_diagnostics,
     dispatch::{NotificationDispatcher, RequestDispatcher},
-    from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
+    lsp::{
+        from_proto,
+        utils::{notification_is, Progress},
+    },
     lsp_ext,
-    lsp_utils::{notification_is, Progress},
     reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
 };
 
@@ -317,8 +320,11 @@ impl GlobalState {
                 }
 
                 // Refresh inlay hints if the client supports it.
-                if self.config.inlay_hints_refresh() {
+                if (self.send_hint_refresh_query || self.proc_macro_changed)
+                    && self.config.inlay_hints_refresh()
+                {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
+                    self.send_hint_refresh_query = false;
                 }
             }
 
@@ -420,6 +426,32 @@ impl GlobalState {
         });
     }
 
+    fn update_diagnostics(&mut self) {
+        let db = self.analysis_host.raw_database();
+        let subscriptions = self
+            .mem_docs
+            .iter()
+            .map(|path| self.vfs.read().0.file_id(path).unwrap())
+            .filter(|&file_id| {
+                let source_root = db.file_source_root(file_id);
+                // Only publish diagnostics for files in the workspace, not from crates.io deps
+                // or the sysroot.
+                // While theoretically these should never have errors, we have quite a few false
+                // positives particularly in the stdlib, and those diagnostics would stay around
+                // forever if we emitted them here.
+                !db.source_root(source_root).is_library
+            })
+            .collect::<Vec<_>>();
+        tracing::trace!("updating notifications for {:?}", subscriptions);
+
+        // Diagnostics are triggered by the user typing
+        // so we run them on a latency sensitive thread.
+        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
+            let snapshot = self.snapshot();
+            move || Task::Diagnostics(fetch_native_diagnostics(snapshot, subscriptions))
+        });
+    }
+
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
         if self.last_reported_status.as_ref() != Some(&status) {
@@ -509,6 +541,7 @@ impl GlobalState {
                         }
 
                         self.switch_workspaces("fetched build data".to_string());
+                        self.send_hint_refresh_query = true;
 
                         (Some(Progress::End), None)
                     }
@@ -525,7 +558,7 @@ impl GlobalState {
                     ProcMacroProgress::End(proc_macro_load_result) => {
                         self.fetch_proc_macros_queue.op_completed(true);
                         self.set_proc_macros(proc_macro_load_result);
-
+                        self.send_hint_refresh_query = true;
                         (Some(Progress::End), None)
                     }
                 };
@@ -670,6 +703,7 @@ impl GlobalState {
         }
 
         use crate::handlers::request as handlers;
+        use lsp_types::request as lsp_request;
 
         dispatcher
             // Request handlers that must run on the main thread
@@ -682,30 +716,30 @@ impl GlobalState {
             // are run on the main thread to reduce latency:
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
             .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
-            .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
+            .on_sync::<lsp_request::SelectionRangeRequest>(handlers::handle_selection_range)
             .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
             .on_sync::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
             // Formatting should be done immediately as the editor might wait on it, but we can't
             // put it on the main thread as we do not want the main thread to block on rustfmt.
             // So we have an extra thread just for formatting requests to make sure it gets handled
             // as fast as possible.
-            .on_fmt_thread::<lsp_types::request::Formatting>(handlers::handle_formatting)
-            .on_fmt_thread::<lsp_types::request::RangeFormatting>(handlers::handle_range_formatting)
+            .on_fmt_thread::<lsp_request::Formatting>(handlers::handle_formatting)
+            .on_fmt_thread::<lsp_request::RangeFormatting>(handlers::handle_range_formatting)
             // We can’t run latency-sensitive request handlers which do semantic
             // analysis on the main thread because that would block other
             // requests. Instead, we run these request handlers on higher priority
             // threads in the threadpool.
-            .on_latency_sensitive::<lsp_types::request::Completion>(handlers::handle_completion)
-            .on_latency_sensitive::<lsp_types::request::ResolveCompletionItem>(
+            .on_latency_sensitive::<lsp_request::Completion>(handlers::handle_completion)
+            .on_latency_sensitive::<lsp_request::ResolveCompletionItem>(
                 handlers::handle_completion_resolve,
             )
-            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullRequest>(
+            .on_latency_sensitive::<lsp_request::SemanticTokensFullRequest>(
                 handlers::handle_semantic_tokens_full,
             )
-            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullDeltaRequest>(
+            .on_latency_sensitive::<lsp_request::SemanticTokensFullDeltaRequest>(
                 handlers::handle_semantic_tokens_full_delta,
             )
-            .on_latency_sensitive::<lsp_types::request::SemanticTokensRangeRequest>(
+            .on_latency_sensitive::<lsp_request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
             )
             // All other request handlers
@@ -729,29 +763,25 @@ impl GlobalState {
             .on::<lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
             .on::<lsp_ext::MoveItem>(handlers::handle_move_item)
             .on::<lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
-            .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)
-            .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)
-            .on::<lsp_types::request::GotoDeclaration>(handlers::handle_goto_declaration)
-            .on::<lsp_types::request::GotoImplementation>(handlers::handle_goto_implementation)
-            .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
-            .on_no_retry::<lsp_types::request::InlayHintRequest>(handlers::handle_inlay_hints)
-            .on::<lsp_types::request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
-            .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)
-            .on::<lsp_types::request::CodeLensResolve>(handlers::handle_code_lens_resolve)
-            .on::<lsp_types::request::FoldingRangeRequest>(handlers::handle_folding_range)
-            .on::<lsp_types::request::SignatureHelpRequest>(handlers::handle_signature_help)
-            .on::<lsp_types::request::PrepareRenameRequest>(handlers::handle_prepare_rename)
-            .on::<lsp_types::request::Rename>(handlers::handle_rename)
-            .on::<lsp_types::request::References>(handlers::handle_references)
-            .on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)
-            .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
-            .on::<lsp_types::request::CallHierarchyIncomingCalls>(
-                handlers::handle_call_hierarchy_incoming,
-            )
-            .on::<lsp_types::request::CallHierarchyOutgoingCalls>(
-                handlers::handle_call_hierarchy_outgoing,
-            )
-            .on::<lsp_types::request::WillRenameFiles>(handlers::handle_will_rename_files)
+            .on::<lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
+            .on::<lsp_request::GotoDefinition>(handlers::handle_goto_definition)
+            .on::<lsp_request::GotoDeclaration>(handlers::handle_goto_declaration)
+            .on::<lsp_request::GotoImplementation>(handlers::handle_goto_implementation)
+            .on::<lsp_request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
+            .on_no_retry::<lsp_request::InlayHintRequest>(handlers::handle_inlay_hints)
+            .on::<lsp_request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
+            .on::<lsp_request::CodeLensRequest>(handlers::handle_code_lens)
+            .on::<lsp_request::CodeLensResolve>(handlers::handle_code_lens_resolve)
+            .on::<lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
+            .on::<lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)
+            .on::<lsp_request::PrepareRenameRequest>(handlers::handle_prepare_rename)
+            .on::<lsp_request::Rename>(handlers::handle_rename)
+            .on::<lsp_request::References>(handlers::handle_references)
+            .on::<lsp_request::DocumentHighlightRequest>(handlers::handle_document_highlight)
+            .on::<lsp_request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
+            .on::<lsp_request::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)
+            .on::<lsp_request::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)
+            .on::<lsp_request::WillRenameFiles>(handlers::handle_will_rename_files)
             .on::<lsp_ext::Ssr>(handlers::handle_ssr)
             .on::<lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
             .finish();
@@ -787,78 +817,5 @@ impl GlobalState {
             .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
             .finish();
         Ok(())
-    }
-
-    fn update_diagnostics(&mut self) {
-        let db = self.analysis_host.raw_database();
-        let subscriptions = self
-            .mem_docs
-            .iter()
-            .map(|path| self.vfs.read().0.file_id(path).unwrap())
-            .filter(|&file_id| {
-                let source_root = db.file_source_root(file_id);
-                // Only publish diagnostics for files in the workspace, not from crates.io deps
-                // or the sysroot.
-                // While theoretically these should never have errors, we have quite a few false
-                // positives particularly in the stdlib, and those diagnostics would stay around
-                // forever if we emitted them here.
-                !db.source_root(source_root).is_library
-            })
-            .collect::<Vec<_>>();
-
-        tracing::trace!("updating notifications for {:?}", subscriptions);
-
-        let snapshot = self.snapshot();
-
-        // Diagnostics are triggered by the user typing
-        // so we run them on a latency sensitive thread.
-        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, move || {
-            let _p = profile::span("publish_diagnostics");
-            let _ctx = stdx::panic_context::enter("publish_diagnostics".to_owned());
-            let diagnostics = subscriptions
-                .into_iter()
-                .filter_map(|file_id| {
-                    let line_index = snapshot.file_line_index(file_id).ok()?;
-                    Some((
-                        file_id,
-                        line_index,
-                        snapshot
-                            .analysis
-                            .diagnostics(
-                                &snapshot.config.diagnostics(),
-                                ide::AssistResolveStrategy::None,
-                                file_id,
-                            )
-                            .ok()?,
-                    ))
-                })
-                .map(|(file_id, line_index, it)| {
-                    (
-                        file_id,
-                        it.into_iter()
-                            .map(move |d| lsp_types::Diagnostic {
-                                range: crate::to_proto::range(&line_index, d.range),
-                                severity: Some(crate::to_proto::diagnostic_severity(d.severity)),
-                                code: Some(lsp_types::NumberOrString::String(
-                                    d.code.as_str().to_string(),
-                                )),
-                                code_description: Some(lsp_types::CodeDescription {
-                                    href: lsp_types::Url::parse(&d.code.url()).unwrap(),
-                                }),
-                                source: Some("rust-analyzer".to_string()),
-                                message: d.message,
-                                related_information: None,
-                                tags: if d.unused {
-                                    Some(vec![lsp_types::DiagnosticTag::UNNECESSARY])
-                                } else {
-                                    None
-                                },
-                                data: None,
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                });
-            Task::Diagnostics(diagnostics.collect())
-        });
     }
 }

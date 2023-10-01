@@ -13,7 +13,6 @@ LL |     static foo: dyn Fn() -> u32 = || -> u32 {
    |                 ^^^^^^^^^^^^^^^ `(dyn Fn() -> u32 + 'static)` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `(dyn Fn() -> u32 + 'static)`
-   = note: consider using `std::sync::Arc<(dyn Fn() -> u32 + 'static)>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
    = note: shared static variables must have a type that implements `Sync`
 
 error: aborting due to 2 previous errors

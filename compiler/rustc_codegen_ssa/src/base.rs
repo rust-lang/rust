@@ -181,7 +181,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, _, _)) => meth::get_vtable(cx, source, data.principal()),
+        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(cx, source, data.principal()),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }
@@ -202,7 +202,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             (src, unsized_info(bx, a, b, old_info))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
-            assert_eq!(def_a, def_b);
+            assert_eq!(def_a, def_b); // implies same number of fields
             let src_layout = bx.cx().layout_of(src_ty);
             let dst_layout = bx.cx().layout_of(dst_ty);
             if src_ty == dst_ty {
@@ -211,7 +211,8 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let mut result = None;
             for i in 0..src_layout.fields.count() {
                 let src_f = src_layout.field(bx.cx(), i);
-                if src_f.is_zst() {
+                if src_f.is_1zst() {
+                    // We are looking for the one non-1-ZST field; this is not it.
                     continue;
                 }
 
@@ -272,13 +273,14 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
 
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
-            assert_eq!(def_a, def_b);
+            assert_eq!(def_a, def_b); // implies same number of fields
 
             for i in def_a.variant(FIRST_VARIANT).fields.indices() {
                 let src_f = src.project_field(bx, i.as_usize());
                 let dst_f = dst.project_field(bx, i.as_usize());
 
                 if dst_f.layout.is_zst() {
+                    // No data here, nothing to copy/coerce.
                     continue;
                 }
 
@@ -418,9 +420,11 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         rust_main_def_id: DefId,
         entry_type: EntryFnType,
     ) -> Bx::Function {
-        // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
-        // depending on whether the target needs `argc` and `argv` to be passed in.
-        let llfty = if cx.sess().target.main_needs_argc_argv {
+        // The entry function is either `int main(void)` or `int main(int argc, char **argv)`, or
+        // `usize efi_main(void *handle, void *system_table)` depending on the target.
+        let llfty = if cx.sess().target.os.contains("uefi") {
+            cx.type_func(&[cx.type_ptr(), cx.type_ptr()], cx.type_isize())
+        } else if cx.sess().target.main_needs_argc_argv {
             cx.type_func(&[cx.type_int(), cx.type_ptr()], cx.type_int())
         } else {
             cx.type_func(&[], cx.type_int())
@@ -483,8 +487,12 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         };
 
         let result = bx.call(start_ty, None, None, start_fn, &args, None);
-        let cast = bx.intcast(result, cx.type_int(), true);
-        bx.ret(cast);
+        if cx.sess().target.os.contains("uefi") {
+            bx.ret(result);
+        } else {
+            let cast = bx.intcast(result, cx.type_int(), true);
+            bx.ret(cast);
+        }
 
         llfn
     }
@@ -495,7 +503,17 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     bx: &mut Bx,
 ) -> (Bx::Value, Bx::Value) {
-    if cx.sess().target.main_needs_argc_argv {
+    if cx.sess().target.os.contains("uefi") {
+        // Params for UEFI
+        let param_handle = bx.get_param(0);
+        let param_system_table = bx.get_param(1);
+        let arg_argc = bx.const_int(cx.type_isize(), 2);
+        let arg_argv = bx.alloca(cx.type_array(cx.type_ptr(), 2), Align::ONE);
+        bx.store(param_handle, arg_argv, Align::ONE);
+        let arg_argv_el1 = bx.gep(cx.type_ptr(), arg_argv, &[bx.const_int(cx.type_int(), 1)]);
+        bx.store(param_system_table, arg_argv_el1, Align::ONE);
+        (arg_argc, arg_argv)
+    } else if cx.sess().target.main_needs_argc_argv {
         // Params from native `main()` used as args for rust start function
         let param_argc = bx.get_param(0);
         let param_argv = bx.get_param(1);
@@ -839,7 +857,6 @@ impl CrateInfo {
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
-            feature_packed_bundled_libs: tcx.features().packed_bundled_libs,
         };
         let crates = tcx.crates(());
 

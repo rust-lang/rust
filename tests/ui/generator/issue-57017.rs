@@ -1,9 +1,4 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
-// [drop_tracking] build-pass
-// [drop_tracking_mir] build-pass
-
+// build-pass
 #![feature(generators, negative_impls)]
 #![allow(dropping_references, dropping_copy_types)]
 
@@ -30,9 +25,6 @@ macro_rules! type_combinations {
                 _status => yield,
             };
             assert_send(g);
-            //[no_drop_tracking]~^ ERROR generator cannot be sent between threads safely
-            //[no_drop_tracking]~| ERROR generator cannot be sent between threads safely
-            //[no_drop_tracking]~| ERROR generator cannot be sent between threads safely
         }
 
         // This tests that `Client` is properly considered to be dropped after moving it into the
@@ -42,9 +34,6 @@ macro_rules! type_combinations {
                 _status => yield,
             };
             assert_send(g);
-            //[no_drop_tracking]~^ ERROR generator cannot be sent between threads safely
-            //[no_drop_tracking]~| ERROR generator cannot be sent between threads safely
-            //[no_drop_tracking]~| ERROR generator cannot be sent between threads safely
         }
     )* }
 }

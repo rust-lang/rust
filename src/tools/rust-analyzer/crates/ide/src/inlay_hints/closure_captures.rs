@@ -31,9 +31,10 @@ pub(super) fn hints(
             let range = closure.syntax().first_token()?.prev_token()?.text_range();
             let range = TextRange::new(range.end() - TextSize::from(1), range.end());
             acc.push(InlayHint {
+                needs_resolve: false,
                 range,
                 kind: InlayKind::ClosureCapture,
-                label: InlayHintLabel::simple("move", None, None),
+                label: InlayHintLabel::from("move"),
                 text_edit: None,
                 position: InlayHintPosition::After,
                 pad_left: false,
@@ -43,6 +44,7 @@ pub(super) fn hints(
         }
     };
     acc.push(InlayHint {
+        needs_resolve: false,
         range: move_kw_range,
         kind: InlayKind::ClosureCapture,
         label: InlayHintLabel::from("("),
@@ -59,23 +61,25 @@ pub(super) fn hints(
         // force cache the source file, otherwise sema lookup will potentially panic
         _ = sema.parse_or_expand(source.file());
 
+        let label = InlayHintLabel::simple(
+            format!(
+                "{}{}",
+                match capture.kind() {
+                    hir::CaptureKind::SharedRef => "&",
+                    hir::CaptureKind::UniqueSharedRef => "&unique ",
+                    hir::CaptureKind::MutableRef => "&mut ",
+                    hir::CaptureKind::Move => "",
+                },
+                capture.display_place(sema.db)
+            ),
+            None,
+            source.name().and_then(|name| name.syntax().original_file_range_opt(sema.db)),
+        );
         acc.push(InlayHint {
+            needs_resolve: label.needs_resolve(),
             range: move_kw_range,
             kind: InlayKind::ClosureCapture,
-            label: InlayHintLabel::simple(
-                format!(
-                    "{}{}",
-                    match capture.kind() {
-                        hir::CaptureKind::SharedRef => "&",
-                        hir::CaptureKind::UniqueSharedRef => "&unique ",
-                        hir::CaptureKind::MutableRef => "&mut ",
-                        hir::CaptureKind::Move => "",
-                    },
-                    capture.display_place(sema.db)
-                ),
-                None,
-                source.name().and_then(|name| name.syntax().original_file_range_opt(sema.db)),
-            ),
+            label,
             text_edit: None,
             position: InlayHintPosition::After,
             pad_left: false,
@@ -84,9 +88,10 @@ pub(super) fn hints(
 
         if idx != last {
             acc.push(InlayHint {
+                needs_resolve: false,
                 range: move_kw_range,
                 kind: InlayKind::ClosureCapture,
-                label: InlayHintLabel::simple(", ", None, None),
+                label: InlayHintLabel::from(", "),
                 text_edit: None,
                 position: InlayHintPosition::After,
                 pad_left: false,
@@ -95,6 +100,7 @@ pub(super) fn hints(
         }
     }
     acc.push(InlayHint {
+        needs_resolve: false,
         range: move_kw_range,
         kind: InlayKind::ClosureCapture,
         label: InlayHintLabel::from(")"),

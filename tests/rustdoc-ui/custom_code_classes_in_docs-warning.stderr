@@ -1,0 +1,97 @@
+error: unexpected ` ` character after `.`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:9:1
+   |
+LL | / /// ```{. }
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+   |
+note: the lint level is defined here
+  --> $DIR/custom_code_classes_in_docs-warning.rs:5:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(warnings)]`
+
+error: unexpected ` ` character after `=`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:15:1
+   |
+LL | / /// ```{class= a}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected character `#`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:21:1
+   |
+LL | / /// ```{#id}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected character `{`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:27:1
+   |
+LL | / /// ```{{
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected character `}`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:33:1
+   |
+LL | / /// ```}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected character `)`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:39:1
+   |
+LL | / /// ```)
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected `}` character after `=`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:45:1
+   |
+LL | / /// ```{class=}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unclosed comment: missing `)` at the end
+  --> $DIR/custom_code_classes_in_docs-warning.rs:51:1
+   |
+LL | / /// ```(
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected `=` character
+  --> $DIR/custom_code_classes_in_docs-warning.rs:57:1
+   |
+LL | / /// ```{class=one=two}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected `(` character after `=`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:68:1
+   |
+LL | / /// ```{class=(one}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected character `(`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:79:1
+   |
+LL | / /// ```{(comment)}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: aborting due to 11 previous errors
+

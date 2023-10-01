@@ -247,8 +247,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 })
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
-                // Make `PRIVATE_IN_PUBLIC` lint a hard error.
-                self.r.has_pub_restricted = true;
                 // For visibilities we are not ready to provide correct implementation of "uniform
                 // paths" right now, so on 2018 edition we only allow module-relative paths for now.
                 // On 2015 edition visibilities are resolved as crate-relative by default,
@@ -700,10 +698,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
             // These items live in the type namespace.
             ItemKind::TyAlias(..) => {
-                let res = Res::Def(
-                    DefKind::TyAlias { lazy: self.r.tcx.features().lazy_type_alias },
-                    def_id,
-                );
+                let res = Res::Def(DefKind::TyAlias, def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
@@ -952,7 +947,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 DefKind::Struct
                 | DefKind::Union
                 | DefKind::Variant
-                | DefKind::TyAlias { .. }
+                | DefKind::TyAlias
                 | DefKind::ForeignTy
                 | DefKind::OpaqueTy
                 | DefKind::TraitAlias
@@ -1241,7 +1236,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     use_span_with_attributes: span,
                     use_span: span,
                     root_span: span,
-                    span: span,
+                    span,
                     module_path: Vec::new(),
                     vis: Cell::new(Some(vis)),
                     used: Cell::new(true),

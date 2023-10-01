@@ -1,10 +1,8 @@
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
-use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::bug;
-use rustc_middle::mir::coverage::{
-    CodeRegion, CounterId, ExpressionId, MappedExpressionIndex, Op, Operand,
-};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_index::IndexVec;
+use rustc_middle::mir::coverage::{CodeRegion, CounterId, ExpressionId, Op, Operand};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 
@@ -128,6 +126,58 @@ impl<'tcx> FunctionCoverage<'tcx> {
         self.unreachable_regions.push(region)
     }
 
+    /// Perform some simplifications to make the final coverage mappings
+    /// slightly smaller.
+    ///
+    /// This method mainly exists to preserve the simplifications that were
+    /// already being performed by the Rust-side expression renumbering, so that
+    /// the resulting coverage mappings don't get worse.
+    pub(crate) fn simplify_expressions(&mut self) {
+        // The set of expressions that either were optimized out entirely, or
+        // have zero as both of their operands, and will therefore always have
+        // a value of zero. Other expressions that refer to these as operands
+        // can have those operands replaced with `Operand::Zero`.
+        let mut zero_expressions = FxIndexSet::default();
+
+        // For each expression, perform simplifications based on lower-numbered
+        // expressions, and then update the set of always-zero expressions if
+        // necessary.
+        // (By construction, expressions can only refer to other expressions
+        // that have lower IDs, so one simplification pass is sufficient.)
+        for (id, maybe_expression) in self.expressions.iter_enumerated_mut() {
+            let Some(expression) = maybe_expression else {
+                // If an expression is missing, it must have been optimized away,
+                // so any operand that refers to it can be replaced with zero.
+                zero_expressions.insert(id);
+                continue;
+            };
+
+            // If an operand refers to an expression that is always zero, then
+            // that operand can be replaced with `Operand::Zero`.
+            let maybe_set_operand_to_zero = |operand: &mut Operand| match &*operand {
+                Operand::Expression(id) if zero_expressions.contains(id) => {
+                    *operand = Operand::Zero;
+                }
+                _ => (),
+            };
+            maybe_set_operand_to_zero(&mut expression.lhs);
+            maybe_set_operand_to_zero(&mut expression.rhs);
+
+            // Coverage counter values cannot be negative, so if an expression
+            // involves subtraction from zero, assume that its RHS must also be zero.
+            // (Do this after simplifications that could set the LHS to zero.)
+            if let Expression { lhs: Operand::Zero, op: Op::Subtract, .. } = expression {
+                expression.rhs = Operand::Zero;
+            }
+
+            // After the above simplifications, if both operands are zero, then
+            // we know that this expression is always zero too.
+            if let Expression { lhs: Operand::Zero, rhs: Operand::Zero, .. } = expression {
+                zero_expressions.insert(id);
+            }
+        }
+    }
+
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
     pub fn source_hash(&self) -> u64 {
@@ -146,8 +196,14 @@ impl<'tcx> FunctionCoverage<'tcx> {
             self.instance
         );
 
+        let counter_expressions = self.counter_expressions();
+        // Expression IDs are indices into `self.expressions`, and on the LLVM
+        // side they will be treated as indices into `counter_expressions`, so
+        // the two vectors should correspond 1:1.
+        assert_eq!(self.expressions.len(), counter_expressions.len());
+
         let counter_regions = self.counter_regions();
-        let (counter_expressions, expression_regions) = self.expressions_with_regions();
+        let expression_regions = self.expression_regions();
         let unreachable_regions = self.unreachable_regions();
 
         let counter_regions =
@@ -163,149 +219,53 @@ impl<'tcx> FunctionCoverage<'tcx> {
         })
     }
 
-    fn expressions_with_regions(
-        &self,
-    ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &CodeRegion)>) {
-        let mut counter_expressions = Vec::with_capacity(self.expressions.len());
-        let mut expression_regions = Vec::with_capacity(self.expressions.len());
-        let mut new_indexes = IndexVec::from_elem_n(None, self.expressions.len());
+    /// Convert this function's coverage expression data into a form that can be
+    /// passed through FFI to LLVM.
+    fn counter_expressions(&self) -> Vec<CounterExpression> {
+        // We know that LLVM will optimize out any unused expressions before
+        // producing the final coverage map, so there's no need to do the same
+        // thing on the Rust side unless we're confident we can do much better.
+        // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
 
-        // This closure converts any `Expression` operand (`lhs` or `rhs` of the `Op::Add` or
-        // `Op::Subtract` operation) into its native `llvm::coverage::Counter::CounterKind` type
-        // and value.
-        //
-        // Expressions will be returned from this function in a sequential vector (array) of
-        // `CounterExpression`, so the expression IDs must be mapped from their original,
-        // potentially sparse set of indexes.
-        //
-        // An `Expression` as an operand will have already been encountered as an `Expression` with
-        // operands, so its new_index will already have been generated (as a 1-up index value).
-        // (If an `Expression` as an operand does not have a corresponding new_index, it was
-        // probably optimized out, after the expression was injected into the MIR, so it will
-        // get a `CounterKind::Zero` instead.)
-        //
-        // In other words, an `Expression`s at any given index can include other expressions as
-        // operands, but expression operands can only come from the subset of expressions having
-        // `expression_index`s lower than the referencing `Expression`. Therefore, it is
-        // reasonable to look up the new index of an expression operand while the `new_indexes`
-        // vector is only complete up to the current `ExpressionIndex`.
-        type NewIndexes = IndexSlice<ExpressionId, Option<MappedExpressionIndex>>;
-        let id_to_counter = |new_indexes: &NewIndexes, operand: Operand| match operand {
-            Operand::Zero => Some(Counter::zero()),
-            Operand::Counter(id) => Some(Counter::counter_value_reference(id)),
-            Operand::Expression(id) => {
-                self.expressions
-                    .get(id)
-                    .expect("expression id is out of range")
-                    .as_ref()
-                    // If an expression was optimized out, assume it would have produced a count
-                    // of zero. This ensures that expressions dependent on optimized-out
-                    // expressions are still valid.
-                    .map_or(Some(Counter::zero()), |_| new_indexes[id].map(Counter::expression))
-            }
-        };
-
-        for (original_index, expression) in
-            self.expressions.iter_enumerated().filter_map(|(original_index, entry)| {
-                // Option::map() will return None to filter out missing expressions. This may happen
-                // if, for example, a MIR-instrumented expression is removed during an optimization.
-                entry.as_ref().map(|expression| (original_index, expression))
+        self.expressions
+            .iter()
+            .map(|expression| match expression {
+                None => {
+                    // This expression ID was allocated, but we never saw the
+                    // actual expression, so it must have been optimized out.
+                    // Replace it with a dummy expression, and let LLVM take
+                    // care of omitting it from the expression list.
+                    CounterExpression::DUMMY
+                }
+                &Some(Expression { lhs, op, rhs, .. }) => {
+                    // Convert the operands and operator as normal.
+                    CounterExpression::new(
+                        Counter::from_operand(lhs),
+                        match op {
+                            Op::Add => ExprKind::Add,
+                            Op::Subtract => ExprKind::Subtract,
+                        },
+                        Counter::from_operand(rhs),
+                    )
+                }
             })
-        {
-            let optional_region = &expression.region;
-            let Expression { lhs, op, rhs, .. } = *expression;
+            .collect::<Vec<_>>()
+    }
 
-            if let Some(Some((lhs_counter, mut rhs_counter))) = id_to_counter(&new_indexes, lhs)
-                .map(|lhs_counter| {
-                    id_to_counter(&new_indexes, rhs).map(|rhs_counter| (lhs_counter, rhs_counter))
-                })
-            {
-                if lhs_counter.is_zero() && op.is_subtract() {
-                    // The left side of a subtraction was probably optimized out. As an example,
-                    // a branch condition might be evaluated as a constant expression, and the
-                    // branch could be removed, dropping unused counters in the process.
-                    //
-                    // Since counters are unsigned, we must assume the result of the expression
-                    // can be no more and no less than zero. An expression known to evaluate to zero
-                    // does not need to be added to the coverage map.
-                    //
-                    // Coverage test `loops_branches.rs` includes multiple variations of branches
-                    // based on constant conditional (literal `true` or `false`), and demonstrates
-                    // that the expected counts are still correct.
-                    debug!(
-                        "Expression subtracts from zero (assume unreachable): \
-                        original_index={:?}, lhs={:?}, op={:?}, rhs={:?}, region={:?}",
-                        original_index, lhs, op, rhs, optional_region,
-                    );
-                    rhs_counter = Counter::zero();
-                }
-                debug_assert!(
-                    lhs_counter.is_zero()
-                        // Note: with `as usize` the ID _could_ overflow/wrap if `usize = u16`
-                        || ((lhs_counter.zero_based_id() as usize)
-                            <= usize::max(self.counters.len(), self.expressions.len())),
-                    "lhs id={} > both counters.len()={} and expressions.len()={}
-                    ({:?} {:?} {:?})",
-                    lhs_counter.zero_based_id(),
-                    self.counters.len(),
-                    self.expressions.len(),
-                    lhs_counter,
-                    op,
-                    rhs_counter,
-                );
-
-                debug_assert!(
-                    rhs_counter.is_zero()
-                        // Note: with `as usize` the ID _could_ overflow/wrap if `usize = u16`
-                        || ((rhs_counter.zero_based_id() as usize)
-                            <= usize::max(self.counters.len(), self.expressions.len())),
-                    "rhs id={} > both counters.len()={} and expressions.len()={}
-                    ({:?} {:?} {:?})",
-                    rhs_counter.zero_based_id(),
-                    self.counters.len(),
-                    self.expressions.len(),
-                    lhs_counter,
-                    op,
-                    rhs_counter,
-                );
-
-                // Both operands exist. `Expression` operands exist in `self.expressions` and have
-                // been assigned a `new_index`.
-                let mapped_expression_index =
-                    MappedExpressionIndex::from(counter_expressions.len());
-                let expression = CounterExpression::new(
-                    lhs_counter,
-                    match op {
-                        Op::Add => ExprKind::Add,
-                        Op::Subtract => ExprKind::Subtract,
-                    },
-                    rhs_counter,
-                );
-                debug!(
-                    "Adding expression {:?} = {:?}, region: {:?}",
-                    mapped_expression_index, expression, optional_region
-                );
-                counter_expressions.push(expression);
-                new_indexes[original_index] = Some(mapped_expression_index);
-                if let Some(region) = optional_region {
-                    expression_regions.push((Counter::expression(mapped_expression_index), region));
-                }
-            } else {
-                bug!(
-                    "expression has one or more missing operands \
-                      original_index={:?}, lhs={:?}, op={:?}, rhs={:?}, region={:?}",
-                    original_index,
-                    lhs,
-                    op,
-                    rhs,
-                    optional_region,
-                );
-            }
-        }
-        (counter_expressions, expression_regions.into_iter())
+    fn expression_regions(&self) -> Vec<(Counter, &CodeRegion)> {
+        // Find all of the expression IDs that weren't optimized out AND have
+        // an attached code region, and return the corresponding mapping as a
+        // counter/region pair.
+        self.expressions
+            .iter_enumerated()
+            .filter_map(|(id, expression)| {
+                let code_region = expression.as_ref()?.region.as_ref()?;
+                Some((Counter::expression(id), code_region))
+            })
+            .collect::<Vec<_>>()
     }
 
     fn unreachable_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.unreachable_regions.iter().map(|region| (Counter::zero(), region))
+        self.unreachable_regions.iter().map(|region| (Counter::ZERO, region))
     }
 }

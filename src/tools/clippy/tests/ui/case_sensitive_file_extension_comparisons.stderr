@@ -1,11 +1,12 @@
 error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:14:5
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:13:5
    |
 LL |     filename.ends_with(".rs")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using a case-insensitive comparison instead
    = note: `-D clippy::case-sensitive-file-extension-comparisons` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::case_sensitive_file_extension_comparisons)]`
 help: use std::path::Path
    |
 LL ~     std::path::Path::new(filename)
@@ -14,7 +15,7 @@ LL +         .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
    |
 
 error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:19:13
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:18:13
    |
 LL |     let _ = String::new().ends_with(".ext12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +29,7 @@ LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
    |
 
 error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:20:13
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:19:13
    |
 LL |     let _ = "str".ends_with(".ext12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +43,7 @@ LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
    |
 
 error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:24:17
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:23:17
    |
 LL |         let _ = "str".ends_with(".ext12");
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +57,7 @@ LL ~             .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
    |
 
 error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:31:13
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:30:13
    |
 LL |     let _ = String::new().ends_with(".EXT12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +71,7 @@ LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
    |
 
 error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:32:13
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:31:13
    |
 LL |     let _ = "str".ends_with(".EXT12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^

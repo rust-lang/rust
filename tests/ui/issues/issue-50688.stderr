@@ -5,7 +5,7 @@ LL |     [1; || {}];
    |         ^^^^^ expected `usize`, found closure
    |
    = note: expected type `usize`
-           found closure `[closure@$DIR/issue-50688.rs:2:9: 2:11]`
+           found closure `{closure@$DIR/issue-50688.rs:2:9: 2:11}`
 
 error: aborting due to previous error
 

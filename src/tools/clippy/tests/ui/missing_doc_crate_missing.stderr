@@ -3,10 +3,13 @@ error: missing documentation for the crate
    |
 LL | / #![warn(clippy::missing_docs_in_private_items)]
 LL | |
+LL | |
+LL | |
 LL | | fn main() {}
    | |____________^
    |
    = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
 error: aborting due to previous error
 

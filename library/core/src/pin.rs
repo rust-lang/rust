@@ -572,7 +572,10 @@ impl<P: Deref> Pin<P> {
     ///     // though we have previously pinned it! We have violated the pinning API contract.
     /// }
     /// ```
-    /// A value, once pinned, must remain pinned forever (unless its type implements `Unpin`).
+    /// A value, once pinned, must remain pinned until it is dropped (unless its type implements
+    /// `Unpin`). Because `Pin<&mut T>` does not own the value, dropping the `Pin` will not drop
+    /// the value and will not end the pinning contract. So moving the value after dropping the
+    /// `Pin<&mut T>` is still a violation of the API contract.
     ///
     /// Similarly, calling `Pin::new_unchecked` on an `Rc<T>` is unsafe because there could be
     /// aliases to the same data that are not subject to the pinning restrictions:

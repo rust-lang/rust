@@ -321,6 +321,95 @@ pub macro debug_assert_matches($($arg:tt)*) {
     }
 }
 
+/// A macro for defining `#[cfg]` match-like statements.
+///
+/// It is similar to the `if/elif` C preprocessor macro by allowing definition of a cascade of
+/// `#[cfg]` cases, emitting the implementation which matches first.
+///
+/// This allows you to conveniently provide a long list `#[cfg]`'d blocks of code
+/// without having to rewrite each clause multiple times.
+///
+/// Trailing `_` wildcard match arms are **optional** and they indicate a fallback branch when
+/// all previous declarations do not evaluate to true.
+///
+/// # Example
+///
+/// ```
+/// #![feature(cfg_match)]
+///
+/// cfg_match! {
+///     cfg(unix) => {
+///         fn foo() { /* unix specific functionality */ }
+///     }
+///     cfg(target_pointer_width = "32") => {
+///         fn foo() { /* non-unix, 32-bit functionality */ }
+///     }
+///     _ => {
+///         fn foo() { /* fallback implementation */ }
+///     }
+/// }
+/// ```
+#[macro_export]
+#[unstable(feature = "cfg_match", issue = "115585")]
+#[rustc_diagnostic_item = "cfg_match"]
+macro_rules! cfg_match {
+    // with a final wildcard
+    (
+        $(cfg($initial_meta:meta) => { $($initial_tokens:item)* })+
+        _ => { $($extra_tokens:item)* }
+    ) => {
+        cfg_match! {
+            @__items ();
+            $((($initial_meta) ($($initial_tokens)*)),)+
+            (() ($($extra_tokens)*)),
+        }
+    };
+
+    // without a final wildcard
+    (
+        $(cfg($extra_meta:meta) => { $($extra_tokens:item)* })*
+    ) => {
+        cfg_match! {
+            @__items ();
+            $((($extra_meta) ($($extra_tokens)*)),)*
+        }
+    };
+
+    // Internal and recursive macro to emit all the items
+    //
+    // Collects all the previous cfgs in a list at the beginning, so they can be
+    // negated. After the semicolon is all the remaining items.
+    (@__items ($($_:meta,)*);) => {};
+    (
+        @__items ($($no:meta,)*);
+        (($($yes:meta)?) ($($tokens:item)*)),
+        $($rest:tt,)*
+    ) => {
+        // Emit all items within one block, applying an appropriate #[cfg]. The
+        // #[cfg] will require all `$yes` matchers specified and must also negate
+        // all previous matchers.
+        #[cfg(all(
+            $($yes,)?
+            not(any($($no),*))
+        ))]
+        cfg_match! { @__identity $($tokens)* }
+
+        // Recurse to emit all other items in `$rest`, and when we do so add all
+        // our `$yes` matchers to the list of `$no` matchers as future emissions
+        // will have to negate everything we just matched as well.
+        cfg_match! {
+            @__items ($($no,)* $($yes,)?);
+            $($rest,)*
+        }
+    };
+
+    // Internal macro to make __apply work out right for different match types,
+    // because of how macros match/expand stuff.
+    (@__identity $($tokens:item)*) => {
+        $($tokens)*
+    };
+}
+
 /// Returns whether the given expression matches any of the given patterns.
 ///
 /// Like in a `match` expression, the pattern can be optionally followed by `if`
@@ -849,7 +938,8 @@ pub(crate) mod builtin {
     /// assert_eq!(display, debug);
     /// ```
     ///
-    /// For more information, see the documentation in [`std::fmt`].
+    /// See [the formatting documentation in `std::fmt`](../std/fmt/index.html)
+    /// for details of the macro argument syntax, and further information.
     ///
     /// [`Display`]: crate::fmt::Display
     /// [`Debug`]: crate::fmt::Debug
@@ -1043,7 +1133,7 @@ pub(crate) mod builtin {
     /// expression of type `&'static str` which represents all of the literals
     /// concatenated left-to-right.
     ///
-    /// Integer and floating point literals are stringified in order to be
+    /// Integer and floating point literals are [stringified](core::stringify) in order to be
     /// concatenated.
     ///
     /// # Examples

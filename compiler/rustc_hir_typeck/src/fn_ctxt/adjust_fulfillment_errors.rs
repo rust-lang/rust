@@ -20,10 +20,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else {
             return false;
         };
-        let hir = self.tcx.hir();
-        let hir::Node::Expr(expr) = hir.get(hir_id) else {
-            return false;
-        };
 
         let Some(unsubstituted_pred) = self
             .tcx
@@ -37,15 +33,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let generics = self.tcx.generics_of(def_id);
-        let predicate_args = match unsubstituted_pred.kind().skip_binder() {
-            ty::ClauseKind::Trait(pred) => pred.trait_ref.args.to_vec(),
-            ty::ClauseKind::Projection(pred) => pred.projection_ty.args.to_vec(),
-            ty::ClauseKind::ConstArgHasType(arg, ty) => {
-                vec![ty.into(), arg.into()]
-            }
-            ty::ClauseKind::ConstEvaluatable(e) => vec![e.into()],
-            _ => return false,
-        };
+        let (predicate_args, predicate_self_type_to_point_at) =
+            match unsubstituted_pred.kind().skip_binder() {
+                ty::ClauseKind::Trait(pred) => {
+                    (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
+                }
+                ty::ClauseKind::Projection(pred) => (pred.projection_ty.args.to_vec(), None),
+                ty::ClauseKind::ConstArgHasType(arg, ty) => (vec![ty.into(), arg.into()], None),
+                ty::ClauseKind::ConstEvaluatable(e) => (vec![e.into()], None),
+                _ => return false,
+            };
 
         let find_param_matching = |matches: &dyn Fn(ty::ParamTerm) -> bool| {
             predicate_args.iter().find_map(|arg| {
@@ -96,54 +93,92 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.find_ambiguous_parameter_in(def_id, error.root_obligation.predicate);
         }
 
-        if self.closure_span_overlaps_error(error, expr.span) {
-            return false;
-        }
+        let hir = self.tcx.hir();
+        let (expr, qpath) = match hir.get(hir_id) {
+            hir::Node::Expr(expr) => {
+                if self.closure_span_overlaps_error(error, expr.span) {
+                    return false;
+                }
+                let qpath =
+                    if let hir::ExprKind::Path(qpath) = expr.kind { Some(qpath) } else { None };
 
-        match &expr.kind {
-            hir::ExprKind::Path(qpath) => {
-                if let hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Call(callee, args),
-                    hir_id: call_hir_id,
-                    span: call_span,
-                    ..
-                }) = hir.get_parent(expr.hir_id)
-                    && callee.hir_id == expr.hir_id
-                {
-                    if self.closure_span_overlaps_error(error, *call_span) {
-                        return false;
-                    }
+                (Some(&expr.kind), qpath)
+            }
+            hir::Node::Ty(hir::Ty { kind: hir::TyKind::Path(qpath), .. }) => (None, Some(*qpath)),
+            _ => return false,
+        };
 
-                    for param in
-                        [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                        .into_iter()
-                        .flatten()
-                    {
-                        if self.blame_specific_arg_if_possible(
-                                error,
-                                def_id,
-                                param,
-                                *call_hir_id,
-                                callee.span,
-                                None,
-                                args,
-                            )
-                        {
-                            return true;
-                        }
-                    }
+        if let Some(qpath) = qpath {
+            // Prefer pointing at the turbofished arg that corresponds to the
+            // self type of the failing predicate over anything else.
+            if let Some(param) = predicate_self_type_to_point_at
+                && self.point_at_path_if_possible(error, def_id, param, &qpath)
+            {
+                return true;
+            }
+
+            if let hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Call(callee, args),
+                hir_id: call_hir_id,
+                span: call_span,
+                ..
+            }) = hir.get_parent(hir_id)
+                && callee.hir_id == hir_id
+            {
+                if self.closure_span_overlaps_error(error, *call_span) {
+                    return false;
                 }
 
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                for param in
+                    [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
                 {
-                    if self.point_at_path_if_possible(error, def_id, param, qpath) {
+                    if self.blame_specific_arg_if_possible(
+                            error,
+                            def_id,
+                            param,
+                            *call_hir_id,
+                            callee.span,
+                            None,
+                            args,
+                        )
+                    {
                         return true;
                     }
                 }
             }
-            hir::ExprKind::MethodCall(segment, receiver, args, ..) => {
+
+            for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                .into_iter()
+                .flatten()
+            {
+                if self.point_at_path_if_possible(error, def_id, param, &qpath) {
+                    return true;
+                }
+            }
+        }
+
+        match expr {
+            Some(hir::ExprKind::MethodCall(segment, receiver, args, ..)) => {
+                if let Some(param) = predicate_self_type_to_point_at
+                    && self.point_at_generic_if_possible(error, def_id, param, segment)
+                {
+                    // HACK: This is not correct, since `predicate_self_type_to_point_at` might
+                    // not actually correspond to the receiver of the method call. But we
+                    // re-adjust the cause code here in order to prefer pointing at one of
+                    // the method's turbofish segments but still use `FunctionArgumentObligation`
+                    // elsewhere. Hopefully this doesn't break something.
+                    error.obligation.cause.map_code(|parent_code| {
+                        ObligationCauseCode::FunctionArgumentObligation {
+                            arg_hir_id: receiver.hir_id,
+                            call_hir_id: hir_id,
+                            parent_code,
+                        }
+                    });
+                    return true;
+                }
+
                 for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
@@ -175,7 +210,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
             }
-            hir::ExprKind::Struct(qpath, fields, ..) => {
+            Some(hir::ExprKind::Struct(qpath, fields, ..)) => {
                 if let Res::Def(DefKind::Struct | DefKind::Variant, variant_def_id) =
                     self.typeck_results.borrow().qpath_res(qpath, hir_id)
                 {
@@ -200,9 +235,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    .into_iter()
-                    .flatten()
+                for param in [
+                    predicate_self_type_to_point_at,
+                    param_to_point_at,
+                    fallback_param_to_point_at,
+                    self_param_to_point_at,
+                ]
+                .into_iter()
+                .flatten()
                 {
                     if self.point_at_path_if_possible(error, def_id, param, qpath) {
                         return true;
@@ -434,7 +474,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /**
-     * Recursively searches for the most-specific blamable expression.
+     * Recursively searches for the most-specific blameable expression.
      * For example, if you have a chain of constraints like:
      * - want `Vec<i32>: Copy`
      * - because `Option<Vec<i32>>: Copy` needs `Vec<i32>: Copy` because `impl <T: Copy> Copy for Option<T>`

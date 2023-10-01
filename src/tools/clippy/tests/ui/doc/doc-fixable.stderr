@@ -5,6 +5,7 @@ LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot t
    |         ^^^^^^^
    |
    = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 help: try
    |
 LL | /// The `foo_bar` function does _nothing_. See also foo::bar. (note the dot there)
@@ -24,12 +25,12 @@ LL | /// The foo_bar function does _nothing_. See also `foo::bar`. (note the dot
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:10:83
    |
-LL | /// Markdown is _weird_. I mean _really weird_. This /_ is ok. So is `_`. But not Foo::some_fun
+LL | /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not Foo::some_fun
    |                                                                                   ^^^^^^^^^^^^^
    |
 help: try
    |
-LL | /// Markdown is _weird_. I mean _really weird_. This /_ is ok. So is `_`. But not `Foo::some_fun`
+LL | /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not `Foo::some_fun`
    |                                                                                   ~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
@@ -307,5 +308,16 @@ help: try
 LL | /// An iterator over `mycrate::Collection`'s values.
    |                      ~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 28 previous errors
+error: item in documentation is missing backticks
+  --> $DIR/doc-fixable.rs:208:34
+   |
+LL | /// Foo \[bar\] \[baz\] \[qux\]. DocMarkdownLint
+   |                                  ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// Foo \[bar\] \[baz\] \[qux\]. `DocMarkdownLint`
+   |                                  ~~~~~~~~~~~~~~~~~
+
+error: aborting due to 29 previous errors
 

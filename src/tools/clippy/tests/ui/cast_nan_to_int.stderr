@@ -6,9 +6,10 @@ LL |     let _ = (0.0_f32 / -0.0) as usize;
    |
    = note: this always evaluates to 0
    = note: `-D clippy::cast-nan-to-int` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_nan_to_int)]`
 
 error: casting a known NaN to usize
-  --> $DIR/cast_nan_to_int.rs:6:13
+  --> $DIR/cast_nan_to_int.rs:8:13
    |
 LL |     let _ = (f64::INFINITY * -0.0) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +17,7 @@ LL |     let _ = (f64::INFINITY * -0.0) as usize;
    = note: this always evaluates to 0
 
 error: casting a known NaN to usize
-  --> $DIR/cast_nan_to_int.rs:7:13
+  --> $DIR/cast_nan_to_int.rs:11:13
    |
 LL |     let _ = (0.0 * f32::INFINITY) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +25,7 @@ LL |     let _ = (0.0 * f32::INFINITY) as usize;
    = note: this always evaluates to 0
 
 error: casting a known NaN to usize
-  --> $DIR/cast_nan_to_int.rs:9:13
+  --> $DIR/cast_nan_to_int.rs:15:13
    |
 LL |     let _ = (f64::INFINITY + f64::NEG_INFINITY) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +33,7 @@ LL |     let _ = (f64::INFINITY + f64::NEG_INFINITY) as usize;
    = note: this always evaluates to 0
 
 error: casting a known NaN to usize
-  --> $DIR/cast_nan_to_int.rs:10:13
+  --> $DIR/cast_nan_to_int.rs:18:13
    |
 LL |     let _ = (f32::INFINITY - f32::INFINITY) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +41,7 @@ LL |     let _ = (f32::INFINITY - f32::INFINITY) as usize;
    = note: this always evaluates to 0
 
 error: casting a known NaN to usize
-  --> $DIR/cast_nan_to_int.rs:11:13
+  --> $DIR/cast_nan_to_int.rs:21:13
    |
 LL |     let _ = (f32::INFINITY / f32::NEG_INFINITY) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

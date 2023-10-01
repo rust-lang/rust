@@ -10,6 +10,7 @@ note: same as this
 LL |     if b {
    |        ^
    = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ifs_same_cond)]`
 
 error: this `if` has the same condition as a previous `if`
   --> $DIR/ifs_same_cond.rs:19:15

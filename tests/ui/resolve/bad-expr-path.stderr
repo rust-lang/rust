@@ -16,8 +16,8 @@ error[E0580]: `main` function has wrong type
 LL | fn main(arguments: Vec<String>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: expected fn pointer `fn()`
-              found fn pointer `fn(Vec<String>)`
+   = note: expected signature `fn()`
+              found signature `fn(Vec<String>)`
 
 error[E0425]: cannot find function `log` in this scope
   --> $DIR/bad-expr-path.rs:4:5

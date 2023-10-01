@@ -13,7 +13,7 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 
-#[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ImpliedOutlivesBounds<'tcx> {
     pub ty: Ty<'tcx>,
 }

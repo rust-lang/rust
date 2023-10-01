@@ -1,37 +1,38 @@
 error: needless parenthesis on range literals can be removed
-  --> $DIR/needless_parens_on_range_literals.rs:8:13
+  --> $DIR/needless_parens_on_range_literals.rs:7:13
    |
 LL |     let _ = ('a')..=('z');
    |             ^^^^^ help: try: `'a'`
    |
    = note: `-D clippy::needless-parens-on-range-literals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_parens_on_range_literals)]`
 
 error: needless parenthesis on range literals can be removed
-  --> $DIR/needless_parens_on_range_literals.rs:8:21
+  --> $DIR/needless_parens_on_range_literals.rs:7:21
    |
 LL |     let _ = ('a')..=('z');
    |                     ^^^^^ help: try: `'z'`
 
 error: needless parenthesis on range literals can be removed
-  --> $DIR/needless_parens_on_range_literals.rs:9:18
+  --> $DIR/needless_parens_on_range_literals.rs:8:18
    |
 LL |     let _ = 'a'..('z');
    |                  ^^^^^ help: try: `'z'`
 
 error: needless parenthesis on range literals can be removed
-  --> $DIR/needless_parens_on_range_literals.rs:11:19
+  --> $DIR/needless_parens_on_range_literals.rs:10:19
    |
 LL |     let _ = (1.)..(2.);
    |                   ^^^^ help: try: `2.`
 
 error: needless parenthesis on range literals can be removed
-  --> $DIR/needless_parens_on_range_literals.rs:12:13
+  --> $DIR/needless_parens_on_range_literals.rs:11:13
    |
 LL |     let _ = ('a')..;
    |             ^^^^^ help: try: `'a'`
 
 error: needless parenthesis on range literals can be removed
-  --> $DIR/needless_parens_on_range_literals.rs:13:15
+  --> $DIR/needless_parens_on_range_literals.rs:12:15
    |
 LL |     let _ = ..('z');
    |               ^^^^^ help: try: `'z'`

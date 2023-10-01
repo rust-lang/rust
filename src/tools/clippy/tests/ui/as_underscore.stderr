@@ -1,5 +1,5 @@
 error: using `as _` conversion
-  --> $DIR/as_underscore.rs:9:9
+  --> $DIR/as_underscore.rs:7:9
    |
 LL |     foo(n as _);
    |         ^^^^^-
@@ -7,9 +7,10 @@ LL |     foo(n as _);
    |              help: consider giving the type explicitly: `usize`
    |
    = note: `-D clippy::as-underscore` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::as_underscore)]`
 
 error: using `as _` conversion
-  --> $DIR/as_underscore.rs:12:18
+  --> $DIR/as_underscore.rs:10:18
    |
 LL |     let _n: u8 = n as _;
    |                  ^^^^^-

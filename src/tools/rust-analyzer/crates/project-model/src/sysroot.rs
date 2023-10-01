@@ -115,8 +115,17 @@ impl Sysroot {
         Ok(Sysroot::load(sysroot_dir, src))
     }
 
-    pub fn discover_rustc(&self) -> Option<ManifestPath> {
+    pub fn discover_rustc_src(&self) -> Option<ManifestPath> {
         get_rustc_src(&self.root)
+    }
+
+    pub fn discover_rustc(&self) -> Result<AbsPathBuf, std::io::Error> {
+        let rustc = self.root.join("bin/rustc");
+        tracing::debug!(?rustc, "checking for rustc binary at location");
+        match fs::metadata(&rustc) {
+            Ok(_) => Ok(rustc),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn with_sysroot_dir(sysroot_dir: AbsPathBuf) -> Result<Sysroot> {

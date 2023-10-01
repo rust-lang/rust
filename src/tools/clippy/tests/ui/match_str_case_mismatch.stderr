@@ -1,17 +1,18 @@
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:113:9
+  --> $DIR/match_str_case_mismatch.rs:112:9
    |
 LL |         "Bar" => {},
    |         ^^^^^
    |
    = note: `-D clippy::match-str-case-mismatch` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_str_case_mismatch)]`
 help: consider changing the case of this arm to respect `to_ascii_lowercase`
    |
 LL |         "bar" => {},
    |         ~~~~~
 
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:123:9
+  --> $DIR/match_str_case_mismatch.rs:122:9
    |
 LL |         "~!@#$%^&*()-_=+Foo" => {},
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +23,7 @@ LL |         "~!@#$%^&*()-_=+foo" => {},
    |         ~~~~~~~~~~~~~~~~~~~~
 
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:135:9
+  --> $DIR/match_str_case_mismatch.rs:134:9
    |
 LL |         "Воды" => {},
    |         ^^^^^^
@@ -33,7 +34,7 @@ LL |         "воды" => {},
    |         ~~~~~~
 
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:146:9
+  --> $DIR/match_str_case_mismatch.rs:145:9
    |
 LL |         "barǲ" => {},
    |         ^^^^^^
@@ -44,7 +45,7 @@ LL |         "barǳ" => {},
    |         ~~~~~~
 
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:156:9
+  --> $DIR/match_str_case_mismatch.rs:155:9
    |
 LL |         "bARʁ" => {},
    |         ^^^^^^
@@ -55,7 +56,7 @@ LL |         "BARʁ" => {},
    |         ~~~~~~
 
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:166:9
+  --> $DIR/match_str_case_mismatch.rs:165:9
    |
 LL |         "Bar" => {},
    |         ^^^^^
@@ -66,7 +67,7 @@ LL |         "bar" => {},
    |         ~~~~~
 
 error: this `match` arm has a differing case than its expression
-  --> $DIR/match_str_case_mismatch.rs:181:9
+  --> $DIR/match_str_case_mismatch.rs:180:9
    |
 LL |         "bAR" => {},
    |         ^^^^^

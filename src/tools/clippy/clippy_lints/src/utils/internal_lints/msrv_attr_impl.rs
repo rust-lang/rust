@@ -5,9 +5,8 @@ use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, GenericArgKind};
+use rustc_middle::ty::{self, EarlyBinder, GenericArgKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -25,16 +24,14 @@ impl LateLintPass<'_> for MsrvAttrImpl {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if_chain! {
             if let hir::ItemKind::Impl(hir::Impl {
-                of_trait: Some(lint_pass_trait_ref),
-                self_ty,
+                of_trait: Some(_),
                 items,
                 ..
             }) = &item.kind;
-            if let Some(lint_pass_trait_def_id) = lint_pass_trait_ref.trait_def_id();
-            let is_late_pass = match_def_path(cx, lint_pass_trait_def_id, &paths::LATE_LINT_PASS);
-            if is_late_pass || match_def_path(cx, lint_pass_trait_def_id, &paths::EARLY_LINT_PASS);
-            let self_ty = hir_ty_to_ty(cx.tcx, self_ty);
-            if let ty::Adt(self_ty_def, _) = self_ty.kind();
+            if let Some(trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::instantiate_identity);
+            let is_late_pass = match_def_path(cx, trait_ref.def_id, &paths::LATE_LINT_PASS);
+            if is_late_pass || match_def_path(cx, trait_ref.def_id, &paths::EARLY_LINT_PASS);
+            if let ty::Adt(self_ty_def, _) = trait_ref.self_ty().kind();
             if self_ty_def.is_struct();
             if self_ty_def.all_fields().any(|f| {
                 cx.tcx

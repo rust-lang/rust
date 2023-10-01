@@ -535,6 +535,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let assoc_types: Vec<_> = tcx
             .associated_items(trait_predicate.def_id())
             .in_definition_order()
+            // Associated types that require `Self: Sized` do not show up in the built-in
+            // implementation of `Trait for dyn Trait`, and can be dropped here.
+            .filter(|item| !tcx.generics_require_sized_self(item.def_id))
             .filter_map(
                 |item| if item.kind == ty::AssocKind::Type { Some(item.def_id) } else { None },
             )
@@ -548,7 +551,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.cause.span,
                     "GATs in trait object shouldn't have been considered",
                 );
-                return Err(SelectionError::Unimplemented);
+                return Err(SelectionError::TraitNotObjectSafe(trait_predicate.trait_ref.def_id));
             }
 
             // This maybe belongs in wf, but that can't (doesn't) handle
@@ -1235,10 +1238,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let generator = args.as_generator();
                     stack.extend([generator.tupled_upvars_ty(), generator.witness()]);
                 }
-                ty::GeneratorWitness(tys) => {
-                    stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
-                }
-                ty::GeneratorWitnessMIR(def_id, args) => {
+                ty::GeneratorWitness(def_id, args) => {
                     let tcx = self.tcx();
                     stack.extend(tcx.generator_hidden_types(def_id).map(|bty| {
                         let ty = bty.instantiate(tcx, args);

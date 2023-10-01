@@ -14,6 +14,8 @@ error: expected expression, found `let` statement
    |
 LL |     let Some(n) = opt && let another = n else {
    |                          ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
 
 error: a `&&` expression cannot be directly assigned in `let...else`
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:19
@@ -27,13 +29,13 @@ LL |     let Some(n) = (opt && let another = n) else {
    |                   +                      +
 
 error: this `if` expression is missing a block after the condition
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:24:5
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:23:5
    |
 LL |     if let Some(n) = opt else {
    |     ^^
    |
 help: add a block here
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:24:25
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:23:25
    |
 LL |     if let Some(n) = opt else {
    |                         ^
@@ -44,31 +46,31 @@ LL +     let Some(n) = opt else {
    |
 
 error: this `if` expression is missing a block after the condition
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:28:5
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:27:5
    |
 LL |     if let Some(n) = opt && n == 1 else {
    |     ^^
    |
 help: add a block here
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:28:35
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:27:35
    |
 LL |     if let Some(n) = opt && n == 1 else {
    |                                   ^
 
 error: this `if` expression is missing a block after the condition
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:32:5
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:31:5
    |
 LL |     if let Some(n) = opt && let another = n else {
    |     ^^
    |
 help: add a block here
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:32:44
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:31:44
    |
 LL |     if let Some(n) = opt && let another = n else {
    |                                            ^
 
 error: expected `{`, found keyword `else`
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:38:33
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:37:33
    |
 LL |         while let Some(n) = opt else {
    |         ----- ----------------- ^^^^ expected `{`
@@ -77,7 +79,7 @@ LL |         while let Some(n) = opt else {
    |         while parsing the body of this `while` expression
 
 error: expected `{`, found keyword `else`
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:44:43
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:43:43
    |
 LL |         while let Some(n) = opt && n == 1 else {
    |         ----- --------------------------- ^^^^ expected `{`
@@ -86,21 +88,13 @@ LL |         while let Some(n) = opt && n == 1 else {
    |         while parsing the body of this `while` expression
 
 error: expected `{`, found keyword `else`
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:50:52
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:49:52
    |
 LL |         while let Some(n) = opt && let another = n else {
    |         ----- ------------------------------------ ^^^^ expected `{`
    |         |     |
    |         |     this `while` condition successfully parsed
    |         while parsing the body of this `while` expression
-
-error: `let` expressions are not supported here
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:26
-   |
-LL |     let Some(n) = opt && let another = n else {
-   |                          ^^^^^^^^^^^^^^^
-   |
-   = note: only supported directly in conditions of `if` and `while` expressions
 
 error[E0308]: mismatched types
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:9:19
@@ -142,6 +136,6 @@ LL |     let Some(n) = opt && let another = n else {
    = note: expected type `bool`
               found enum `Option<_>`
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

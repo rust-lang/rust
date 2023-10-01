@@ -664,7 +664,7 @@ struct ControlFlow<'a> {
 
 fn extract_pats_and_cond(expr: &ast::Expr) -> (Option<&ast::Pat>, &ast::Expr) {
     match expr.kind {
-        ast::ExprKind::Let(ref pat, ref cond, _) => (Some(pat), cond),
+        ast::ExprKind::Let(ref pat, ref cond, _, _) => (Some(pat), cond),
         _ => (None, expr),
     }
 }

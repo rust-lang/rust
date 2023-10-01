@@ -103,7 +103,6 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                 cond,
                 ast::Expr::BinExpr(_)
                     | ast::Expr::BlockExpr(_)
-                    | ast::Expr::BoxExpr(_)
                     | ast::Expr::BreakExpr(_)
                     | ast::Expr::CastExpr(_)
                     | ast::Expr::ClosureExpr(_)

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::map_clone)]
 #![allow(
     clippy::clone_on_copy,

@@ -72,7 +72,7 @@ impl Context {
         let body_owner_def_id = cx.tcx.hir().body_owner_def_id(body.id());
 
         match cx.tcx.hir().body_owner_kind(body_owner_def_id) {
-            hir::BodyOwnerKind::Static(_) | hir::BodyOwnerKind::Const => {
+            hir::BodyOwnerKind::Static(_) | hir::BodyOwnerKind::Const { .. } => {
                 let body_span = cx.tcx.hir().span_with_body(body_owner);
 
                 if let Some(span) = self.const_span {

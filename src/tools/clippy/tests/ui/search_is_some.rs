@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 extern crate option_helpers;
 use option_helpers::IteratorFalsePositives;
-
+//@no-rustfix
 #[rustfmt::skip]
 fn main() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];

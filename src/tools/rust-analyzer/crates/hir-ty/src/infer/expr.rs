@@ -514,9 +514,6 @@ impl InferenceContext<'_> {
             }
             Expr::RecordLit { path, fields, spread, .. } => {
                 let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
-                if let Some(variant) = def_id {
-                    self.write_variant_resolution(tgt_expr.into(), variant);
-                }
 
                 if let Some(t) = expected.only_has_type(&mut self.table) {
                     self.unify(&ty, &t);
@@ -526,26 +523,56 @@ impl InferenceContext<'_> {
                     .as_adt()
                     .map(|(_, s)| s.clone())
                     .unwrap_or_else(|| Substitution::empty(Interner));
-                let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
-                let variant_data = def_id.map(|it| it.variant_data(self.db.upcast()));
-                for field in fields.iter() {
-                    let field_def =
-                        variant_data.as_ref().and_then(|it| match it.field(&field.name) {
-                            Some(local_id) => Some(FieldId { parent: def_id.unwrap(), local_id }),
-                            None => {
-                                self.push_diagnostic(InferenceDiagnostic::NoSuchField {
-                                    expr: field.expr,
-                                });
-                                None
-                            }
-                        });
-                    let field_ty = field_def.map_or(self.err_ty(), |it| {
-                        field_types[it.local_id].clone().substitute(Interner, &substs)
-                    });
-                    // Field type might have some unknown types
-                    // FIXME: we may want to emit a single type variable for all instance of type fields?
-                    let field_ty = self.insert_type_vars(field_ty);
-                    self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
+                if let Some(variant) = def_id {
+                    self.write_variant_resolution(tgt_expr.into(), variant);
+                }
+                match def_id {
+                    _ if fields.is_empty() => {}
+                    Some(def) => {
+                        let field_types = self.db.field_types(def);
+                        let variant_data = def.variant_data(self.db.upcast());
+                        let visibilities = self.db.field_visibilities(def);
+                        for field in fields.iter() {
+                            let field_def = {
+                                match variant_data.field(&field.name) {
+                                    Some(local_id) => {
+                                        if !visibilities[local_id].is_visible_from(
+                                            self.db.upcast(),
+                                            self.resolver.module(),
+                                        ) {
+                                            self.push_diagnostic(
+                                                InferenceDiagnostic::NoSuchField {
+                                                    field: field.expr.into(),
+                                                    private: true,
+                                                },
+                                            );
+                                        }
+                                        Some(local_id)
+                                    }
+                                    None => {
+                                        self.push_diagnostic(InferenceDiagnostic::NoSuchField {
+                                            field: field.expr.into(),
+                                            private: false,
+                                        });
+                                        None
+                                    }
+                                }
+                            };
+                            let field_ty = field_def.map_or(self.err_ty(), |it| {
+                                field_types[it].clone().substitute(Interner, &substs)
+                            });
+
+                            // Field type might have some unknown types
+                            // FIXME: we may want to emit a single type variable for all instance of type fields?
+                            let field_ty = self.insert_type_vars(field_ty);
+                            self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
+                        }
+                    }
+                    None => {
+                        for field in fields.iter() {
+                            self.infer_expr_coerce(field.expr, &Expectation::None);
+                        }
+                    }
                 }
                 if let Some(expr) = spread {
                     self.infer_expr(*expr, &Expectation::has_type(ty.clone()));
@@ -843,6 +870,11 @@ impl InferenceContext<'_> {
                 });
                 expected
             }
+            Expr::OffsetOf(_) => TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner),
+            Expr::InlineAsm(it) => {
+                self.infer_expr_no_expect(it.e);
+                self.result.standard_types.unit.clone()
+            }
         };
         // use a new type variable if we got unknown here
         let ty = self.insert_type_vars_shallow(ty);
@@ -1122,7 +1154,7 @@ impl InferenceContext<'_> {
             Expr::Underscore => rhs_ty.clone(),
             _ => {
                 // `lhs` is a place expression, a unit struct, or an enum variant.
-                let lhs_ty = self.infer_expr(lhs, &Expectation::none());
+                let lhs_ty = self.infer_expr_inner(lhs, &Expectation::none());
 
                 // This is the only branch where this function may coerce any type.
                 // We are returning early to avoid the unifiability check below.

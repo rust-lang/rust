@@ -1,6 +1,6 @@
 // issue: 113903
 
-#![feature(return_position_impl_trait_in_trait)]
+#![feature(return_position_impl_trait_in_trait, lint_reasons)]
 
 use std::ops::Deref;
 
@@ -10,6 +10,7 @@ pub trait Tr {
 }
 
 impl Tr for () {
+    #[expect(refining_impl_trait)]
     fn w() -> &'static () {
         &()
     }

@@ -114,6 +114,7 @@ mod handlers {
     mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
+    mod bind_unused_param;
     mod change_visibility;
     mod convert_bool_then;
     mod convert_comment_block;
@@ -211,6 +212,7 @@ mod handlers {
     mod unwrap_result_return_type;
     mod unqualify_method_call;
     mod wrap_return_type_in_result;
+    mod into_to_qualified_from;
 
     pub(crate) fn all() -> &'static [Handler] {
         &[
@@ -224,6 +226,7 @@ mod handlers {
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
+            bind_unused_param::bind_unused_param,
             change_visibility::change_visibility,
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,
@@ -274,6 +277,7 @@ mod handlers {
             inline_local_variable::inline_local_variable,
             inline_type_alias::inline_type_alias,
             inline_type_alias::inline_type_alias_uses,
+            into_to_qualified_from::into_to_qualified_from,
             introduce_named_generic::introduce_named_generic,
             introduce_named_lifetime::introduce_named_lifetime,
             invert_if::invert_if,

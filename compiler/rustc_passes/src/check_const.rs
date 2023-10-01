@@ -193,12 +193,12 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
-        let kind = Some(hir::ConstContext::Const);
+        let kind = Some(hir::ConstContext::Const { inline: false });
         self.recurse_into(kind, None, |this| intravisit::walk_anon_const(this, anon));
     }
 
     fn visit_inline_const(&mut self, block: &'tcx hir::ConstBlock) {
-        let kind = Some(hir::ConstContext::Const);
+        let kind = Some(hir::ConstContext::Const { inline: true });
         self.recurse_into(kind, None, |this| intravisit::walk_inline_const(this, block));
     }
 

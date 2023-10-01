@@ -1,3 +1,5 @@
+use either::Either;
+
 use rustc_data_structures::fx::FxHashSet;
 
 use crate::*;
@@ -81,46 +83,33 @@ impl VisitTags for MemPlaceMeta<Provenance> {
     }
 }
 
-impl VisitTags for MemPlace<Provenance> {
+impl VisitTags for ImmTy<'_, Provenance> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
-        let MemPlace { ptr, meta } = self;
-        ptr.visit_tags(visit);
-        meta.visit_tags(visit);
+        (**self).visit_tags(visit)
     }
 }
 
 impl VisitTags for MPlaceTy<'_, Provenance> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
-        (**self).visit_tags(visit)
-    }
-}
-
-impl VisitTags for Place<Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
-        match self {
-            Place::Ptr(p) => p.visit_tags(visit),
-            Place::Local { .. } => {
-                // Will be visited as part of the stack frame.
-            }
-        }
+        self.ptr().visit_tags(visit);
+        self.meta().visit_tags(visit);
     }
 }
 
 impl VisitTags for PlaceTy<'_, Provenance> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
-        (**self).visit_tags(visit)
+        match self.as_mplace_or_local() {
+            Either::Left(mplace) => mplace.visit_tags(visit),
+            Either::Right(_) => (),
+        }
     }
 }
 
-impl VisitTags for Operand<Provenance> {
+impl VisitTags for OpTy<'_, Provenance> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
-        match self {
-            Operand::Immediate(imm) => {
-                imm.visit_tags(visit);
-            }
-            Operand::Indirect(p) => {
-                p.visit_tags(visit);
-            }
+        match self.as_mplace_or_imm() {
+            Either::Left(mplace) => mplace.visit_tags(visit),
+            Either::Right(imm) => imm.visit_tags(visit),
         }
     }
 }

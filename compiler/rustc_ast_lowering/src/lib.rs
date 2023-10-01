@@ -153,6 +153,7 @@ trait ResolverAstLoweringExt {
     fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
+    fn remap_extra_lifetime_params(&mut self, from: NodeId, to: NodeId);
     fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind;
 }
 
@@ -213,6 +214,11 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
         self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
     }
 
+    fn remap_extra_lifetime_params(&mut self, from: NodeId, to: NodeId) {
+        let lifetimes = self.extra_lifetime_params_map.remove(&from).unwrap_or_default();
+        self.extra_lifetime_params_map.insert(to, lifetimes);
+    }
+
     fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind {
         self.builtin_macro_kinds.get(&def_id).copied().unwrap_or(MacroKind::Bang)
     }
@@ -236,7 +242,7 @@ enum ImplTraitContext {
     ReturnPositionOpaqueTy {
         /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
         origin: hir::OpaqueTyOrigin,
-        in_trait: bool,
+        fn_kind: FnDeclKind,
     },
     /// Impl trait in type aliases.
     TypeAliasesOpaqueTy { in_assoc_ty: bool },
@@ -312,7 +318,7 @@ impl std::fmt::Display for ImplTraitPosition {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum FnDeclKind {
     Fn,
     Inherent,
@@ -665,8 +671,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             (None, None)
         };
-        let (nodes, parenting) =
-            index::index_hir(self.tcx.sess, &*self.tcx.definitions_untracked(), node, &bodies);
+        let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies);
         let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash };
 
@@ -765,7 +770,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        if self.tcx.sess.opts.incremental_relative_spans() {
+        if self.tcx.sess.opts.incremental.is_some() {
             span.with_parent(Some(self.current_hir_id_owner.def_id))
         } else {
             // Do not make spans relative when not using incremental compilation.
@@ -1089,6 +1094,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         // constructing the HIR for `impl bounds...` and then lowering that.
 
                         let impl_trait_node_id = self.next_node_id();
+                        // Shift `impl Trait` lifetime captures from the associated type bound's
+                        // node id to the opaque node id, so that the opaque can actually use
+                        // these lifetime bounds.
+                        self.resolver
+                            .remap_extra_lifetime_params(constraint.id, impl_trait_node_id);
 
                         self.with_dyn_type_scope(false, |this| {
                             let node_id = this.next_node_id();
@@ -1401,13 +1411,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::ImplTrait(def_node_id, bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::ReturnPositionOpaqueTy { origin, in_trait } => self
+                    ImplTraitContext::ReturnPositionOpaqueTy { origin, fn_kind } => self
                         .lower_opaque_impl_trait(
                             span,
                             *origin,
                             *def_node_id,
                             bounds,
-                            *in_trait,
+                            Some(*fn_kind),
                             itctx,
                         ),
                     &ImplTraitContext::TypeAliasesOpaqueTy { in_assoc_ty } => self
@@ -1416,17 +1426,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             hir::OpaqueTyOrigin::TyAlias { in_assoc_ty },
                             *def_node_id,
                             bounds,
-                            false,
+                            None,
                             itctx,
                         ),
                     ImplTraitContext::Universal => {
                         let span = t.span;
-                        self.create_def(
-                            self.current_hir_id_owner.def_id,
-                            *def_node_id,
-                            DefPathData::ImplTrait,
-                            span,
-                        );
 
                         // HACK: pprust breaks strings with newlines when the type
                         // gets too long. We don't want these to show up in compiler
@@ -1437,6 +1441,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             span,
                         );
 
+                        self.create_def(
+                            self.current_hir_id_owner.def_id,
+                            *def_node_id,
+                            DefPathData::TypeNs(ident.name),
+                            span,
+                        );
                         let (param, bounds, path) = self.lower_universal_param_and_bounds(
                             *def_node_id,
                             span,
@@ -1523,7 +1533,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         origin: hir::OpaqueTyOrigin,
         opaque_ty_node_id: NodeId,
         bounds: &GenericBounds,
-        in_trait: bool,
+        fn_kind: Option<FnDeclKind>,
         itctx: &ImplTraitContext,
     ) -> hir::TyKind<'hir> {
         // Make sure we know that some funky desugaring has been going on here.
@@ -1540,10 +1550,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 Vec::new()
             }
             hir::OpaqueTyOrigin::FnReturn(..) => {
-                // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
-                // example, we only need to duplicate lifetimes that appear in the
-                // bounds, since those are the only ones that are captured by the opaque.
-                lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
+                if let FnDeclKind::Impl | FnDeclKind::Trait =
+                    fn_kind.expect("expected RPITs to be lowered with a FnKind")
+                {
+                    // return-position impl trait in trait was decided to capture all
+                    // in-scope lifetimes, which we collect for all opaques during resolution.
+                    self.resolver
+                        .take_extra_lifetime_params(opaque_ty_node_id)
+                        .into_iter()
+                        .map(|(ident, id, _)| Lifetime { id, ident })
+                        .collect()
+                } else {
+                    // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
+                    // example, we only need to duplicate lifetimes that appear in the
+                    // bounds, since those are the only ones that are captured by the opaque.
+                    lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
+                }
             }
             hir::OpaqueTyOrigin::AsyncFn(..) => {
                 unreachable!("should be using `lower_async_fn_ret_ty`")
@@ -1554,7 +1576,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_opaque_inner(
             opaque_ty_node_id,
             origin,
-            in_trait,
+            matches!(fn_kind, Some(FnDeclKind::Trait)),
             captured_lifetimes_to_duplicate,
             span,
             opaque_ty_span,
@@ -1642,7 +1664,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     lifetime.ident,
                 ));
 
-                // Now make an arg that we can use for the substs of the opaque tykind.
+                // Now make an arg that we can use for the generic params of the opaque tykind.
                 let id = self.next_node_id();
                 let lifetime_arg = self.new_named_lifetime_with_res(id, lifetime.ident, res);
                 let duplicated_lifetime_def_id = self.local_def_id(duplicated_lifetime_node_id);
@@ -1802,12 +1824,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
 
             let fn_def_id = self.local_def_id(fn_node_id);
-            self.lower_async_fn_ret_ty(
-                &decl.output,
-                fn_def_id,
-                ret_id,
-                matches!(kind, FnDeclKind::Trait),
-            )
+            self.lower_async_fn_ret_ty(&decl.output, fn_def_id, ret_id, kind)
         } else {
             match &decl.output {
                 FnRetTy::Ty(ty) => {
@@ -1815,7 +1832,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let fn_def_id = self.local_def_id(fn_node_id);
                         ImplTraitContext::ReturnPositionOpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                            in_trait: matches!(kind, FnDeclKind::Trait),
+                            fn_kind: kind,
                         }
                     } else {
                         let position = match kind {
@@ -1883,7 +1900,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         output: &FnRetTy,
         fn_def_id: LocalDefId,
         opaque_ty_node_id: NodeId,
-        in_trait: bool,
+        fn_kind: FnDeclKind,
     ) -> hir::FnRetTy<'hir> {
         let span = self.lower_span(output.span());
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
@@ -1898,7 +1915,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_ref = self.lower_opaque_inner(
             opaque_ty_node_id,
             hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
-            in_trait,
+            matches!(fn_kind, FnDeclKind::Trait),
             captured_lifetimes,
             span,
             opaque_ty_span,
@@ -1906,7 +1923,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let future_bound = this.lower_async_fn_output_type_to_future_bound(
                     output,
                     span,
-                    if in_trait && !this.tcx.features().return_position_impl_trait_in_trait {
+                    if let FnDeclKind::Trait = fn_kind
+                        && !this.tcx.features().return_position_impl_trait_in_trait
+                    {
                         ImplTraitContext::FeatureGated(
                             ImplTraitPosition::TraitReturn,
                             sym::return_position_impl_trait_in_trait,
@@ -1914,7 +1933,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     } else {
                         ImplTraitContext::ReturnPositionOpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                            in_trait,
+                            fn_kind,
                         }
                     },
                 );

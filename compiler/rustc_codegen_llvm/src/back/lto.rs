@@ -1,6 +1,8 @@
-use crate::back::write::{self, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers};
+use crate::back::write::{
+    self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
+};
 use crate::errors::{
-    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib,
+    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
@@ -34,8 +36,12 @@ pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
 pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
-        CrateType::Executable | CrateType::Dylib | CrateType::Staticlib | CrateType::Cdylib => true,
-        CrateType::Rlib | CrateType::ProcMacro => false,
+        CrateType::Executable
+        | CrateType::Dylib
+        | CrateType::Staticlib
+        | CrateType::Cdylib
+        | CrateType::ProcMacro => true,
+        CrateType::Rlib => false,
     }
 }
 
@@ -85,6 +91,11 @@ fn prepare_lto(
                     diag_handler.emit_err(LtoDylib);
                     return Err(FatalError);
                 }
+            } else if *crate_type == CrateType::ProcMacro {
+                if !cgcx.opts.unstable_opts.dylib_lto {
+                    diag_handler.emit_err(LtoProcMacro);
+                    return Err(FatalError);
+                }
             }
         }
 
@@ -120,6 +131,7 @@ fn prepare_lto(
                 info!("adding bitcode from {}", name);
                 match get_bitcode_slice_from_object_data(
                     child.data(&*archive_data).expect("corrupt rlib"),
+                    cgcx,
                 ) {
                     Ok(data) => {
                         let module = SerializedModule::FromRlib(data.to_vec());
@@ -141,10 +153,29 @@ fn prepare_lto(
     Ok((symbols_below_threshold, upstream_modules))
 }
 
-fn get_bitcode_slice_from_object_data(obj: &[u8]) -> Result<&[u8], LtoBitcodeFromRlib> {
+fn get_bitcode_slice_from_object_data<'a>(
+    obj: &'a [u8],
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
+) -> Result<&'a [u8], LtoBitcodeFromRlib> {
+    // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR that
+    // won't work. Fortunately, if that's what we have we can just return the object directly, so we sniff
+    // the relevant magic strings here and return.
+    if obj.starts_with(b"\xDE\xC0\x17\x0B") || obj.starts_with(b"BC\xC0\xDE") {
+        return Ok(obj);
+    }
+    // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment name"
+    // which in the public API for sections gets treated as part of the section name, but internally
+    // in MachOObjectFile.cpp gets treated separately.
+    let section_name = bitcode_section_name(cgcx).trim_start_matches("__LLVM,");
     let mut len = 0;
-    let data =
-        unsafe { llvm::LLVMRustGetBitcodeSliceFromObjectData(obj.as_ptr(), obj.len(), &mut len) };
+    let data = unsafe {
+        llvm::LLVMRustGetSliceFromObjectDataByName(
+            obj.as_ptr(),
+            obj.len(),
+            section_name.as_ptr(),
+            &mut len,
+        )
+    };
     if !data.is_null() {
         assert!(len != 0);
         let bc = unsafe { slice::from_raw_parts(data, len) };
@@ -441,7 +472,7 @@ fn thin_lto(
 
         for (i, (name, buffer)) in modules.into_iter().enumerate() {
             info!("local module: {} - {}", i, name);
-            let cname = CString::new(name.clone()).unwrap();
+            let cname = CString::new(name.as_bytes()).unwrap();
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: cname.as_ptr(),
                 data: buffer.data().as_ptr(),
@@ -583,7 +614,7 @@ pub(crate) fn run_pass_manager(
     module: &mut ModuleCodegen<ModuleLlvm>,
     thin: bool,
 ) -> Result<(), FatalError> {
-    let _timer = cgcx.prof.verbose_generic_activity_with_arg("LLVM_lto_optimize", &*module.name);
+    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_lto_optimize", &*module.name);
     let config = cgcx.config(module.kind);
 
     // Now we have one massive module inside of llmod. Time to run the

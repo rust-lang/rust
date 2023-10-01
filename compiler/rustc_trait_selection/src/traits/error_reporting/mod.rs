@@ -986,6 +986,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             }
                         }
 
+                        self.explain_hrtb_projection(&mut err, trait_predicate, obligation.param_env, &obligation.cause);
+                        self.suggest_desugaring_async_fn_in_trait(&mut err, trait_ref);
+
                         // Return early if the trait is Debug or Display and the invocation
                         // originates within a standard library macro, because the output
                         // is otherwise overwhelming and unhelpful (see #85844 for an
@@ -1844,7 +1847,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Generator(..) => Some(18),
                 ty::Foreign(..) => Some(19),
                 ty::GeneratorWitness(..) => Some(20),
-                ty::GeneratorWitnessMIR(..) => Some(21),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
@@ -2054,7 +2056,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     tcx: self.tcx,
                     ty_op: |ty| ty,
                     lt_op: |lt| lt,
-                    ct_op: |ct| ct.eval(self.tcx, ty::ParamEnv::empty()),
+                    ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
                 });
                 cand
             })
@@ -2920,6 +2922,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }
+                    rustc_transmute::Reason::SrcSizeOverflow => {
+                        format!(
+                            "values of the type `{src}` are too big for the current architecture"
+                        )
+                    }
+                    rustc_transmute::Reason::DstSizeOverflow => {
+                        format!(
+                            "values of the type `{dst}` are too big for the current architecture"
+                        )
+                    }
                     rustc_transmute::Reason::DstHasStricterAlignment {
                         src_min_align,
                         dst_min_align,
@@ -2999,10 +3011,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // Try to report a help message
         if is_fn_trait
             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
-            obligation.param_env,
-            trait_ref.self_ty(),
-            trait_predicate.skip_binder().polarity,
-        )
+                obligation.param_env,
+                trait_ref.self_ty(),
+                trait_predicate.skip_binder().polarity,
+            )
         {
             self.add_help_message_for_fn_trait(trait_ref, err, implemented_kind, params);
         } else if !trait_ref.has_non_region_infer()
@@ -3021,6 +3033,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 None,
                 obligation.cause.body_id,
             );
+        } else if trait_ref.def_id().is_local()
+            && self.tcx.trait_impls_of(trait_ref.def_id()).is_empty()
+            && !self.tcx.trait_is_auto(trait_ref.def_id())
+            && !self.tcx.trait_is_alias(trait_ref.def_id())
+        {
+            err.span_help(
+                self.tcx.def_span(trait_ref.def_id()),
+                crate::fluent_generated::trait_selection_trait_has_no_impls,
+            );
         } else if !suggested && !unsatisfied_const {
             // Can't show anything else useful, try to find similar impls.
             let impl_candidates = self.find_similar_impl_candidates(*trait_predicate);
@@ -3031,7 +3052,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err,
                 true,
             ) {
-                self.report_similar_impl_candidates_for_root_obligation(&obligation, *trait_predicate, body_def_id, err);
+                self.report_similar_impl_candidates_for_root_obligation(
+                    &obligation,
+                    *trait_predicate,
+                    body_def_id,
+                    err,
+                );
             }
 
             self.suggest_convert_to_slice(
@@ -3185,7 +3211,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let name = match self.tcx.opaque_type_origin(def_id.expect_local()) {
             hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
-                format!("opaque type")
+                "opaque type".to_string()
             }
             hir::OpaqueTyOrigin::TyAlias { .. } => {
                 format!("`{}`", self.tcx.def_path_debug_str(def_id))

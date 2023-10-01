@@ -1,5 +1,4 @@
-//@run-rustfix
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(unused)]
 #![warn(clippy::allow_attributes)]
 #![feature(lint_reasons)]
@@ -22,6 +21,13 @@ struct T4;
 // `panic = "unwind"` should always be true
 #[cfg_attr(panic = "unwind", allow(dead_code))]
 struct CfgT;
+
+#[allow(clippy::allow_attributes, unused)]
+struct Allowed;
+
+#[expect(clippy::allow_attributes)]
+#[allow(unused)]
+struct Expected;
 
 fn ignore_external() {
     external! {
