@@ -65,8 +65,8 @@ pub trait LayoutCalculator {
             if !matches!(kind, StructKind::MaybeUnsized) {
                 if let Some(niche) = layout.largest_niche {
                     let head_space = niche.offset.bytes();
-                    let niche_length = niche.value.size(dl).bytes();
-                    let tail_space = layout.size.bytes() - head_space - niche_length;
+                    let niche_len = niche.value.size(dl).bytes();
+                    let tail_space = layout.size.bytes() - head_space - niche_len;
 
                     // This may end up doing redundant work if the niche is already in the last
                     // field (e.g. a trailing bool) and there is tail padding. But it's non-trivial
@@ -74,11 +74,11 @@ pub trait LayoutCalculator {
                     if fields.len() > 1 && head_space != 0 && tail_space > 0 {
                         let alt_layout = univariant(self, dl, fields, repr, kind, NicheBias::End)
                             .expect("alt layout should always work");
-                        let niche = alt_layout
+                        let alt_niche = alt_layout
                             .largest_niche
                             .expect("alt layout should have a niche like the regular one");
-                        let alt_head_space = niche.offset.bytes();
-                        let alt_niche_len = niche.value.size(dl).bytes();
+                        let alt_head_space = alt_niche.offset.bytes();
+                        let alt_niche_len = alt_niche.value.size(dl).bytes();
                         let alt_tail_space =
                             alt_layout.size.bytes() - alt_head_space - alt_niche_len;
 
@@ -93,7 +93,7 @@ pub trait LayoutCalculator {
                             alt_layout: {}\n",
                             layout.size.bytes(),
                             head_space,
-                            niche_length,
+                            niche_len,
                             tail_space,
                             alt_head_space,
                             alt_niche_len,
