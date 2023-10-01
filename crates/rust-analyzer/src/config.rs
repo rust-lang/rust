@@ -484,7 +484,7 @@ config_data! {
         /// This is useful to prevent rust-analyzer's `cargo check` from blocking builds.
         ///
         /// Set to `true` to use a subdirectory of the existing target directory or
-        /// set to a path to use that path.
+        /// set to a path relative to the workspace to use that path.
         rust_analyzerTargetDir: Option<TargetDirectory> = "null",
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private

@@ -764,7 +764,7 @@ Optional path to a rust-analyzer specific target directory.
 This is useful to prevent rust-analyzer's `cargo check` from blocking builds.
 
 Set to `true` to use a subdirectory of the existing target directory or
-set to a path to use that path.
+set to a path relative to the workspace to use that path.
 --
 [[rust-analyzer.rustc.source]]rust-analyzer.rustc.source (default: `null`)::
 +
