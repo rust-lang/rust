@@ -97,7 +97,10 @@ pub trait Swizzle<const N: usize> {
                     while i < N {
                         let index = Self::INDEX[i];
                         assert!(index as u32 as usize == index);
-                        assert!(index < M, "source element index exceeds input vector length");
+                        assert!(
+                            index < M,
+                            "source element index exceeds input vector length"
+                        );
                         output[i] = index as u32;
                         i += 1;
                     }
@@ -130,7 +133,10 @@ pub trait Swizzle<const N: usize> {
                     while i < N {
                         let index = Self::INDEX[i];
                         assert!(index as u32 as usize == index);
-                        assert!(index < 2 * M, "source element index exceeds input vector length");
+                        assert!(
+                            index < 2 * M,
+                            "source element index exceeds input vector length"
+                        );
                         output[i] = index as u32;
                         i += 1;
                     }
