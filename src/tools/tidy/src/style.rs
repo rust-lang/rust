@@ -70,29 +70,32 @@ fn generate_problems<'a>(
     consts: &'a [u32],
     letter_digit: &'a HashMap<char, char>,
 ) -> impl Iterator<Item = u32> + 'a {
-    consts.into_iter().flat_map(move |const_value| {
-        let mut problem = format!("{:X}", const_value);
-        for (key, value) in letter_digit {
-            problem = problem.replace(&value.to_string(), &key.to_string());
-        }
+    consts.iter().flat_map(move |const_value| {
+        let problem =
+            letter_digit.iter().fold(format!("{:X}", const_value), |acc, (key, value)| {
+                acc.replace(&value.to_string(), &key.to_string())
+            });
         let indexes: Vec<usize> = problem
             .chars()
             .enumerate()
             .filter_map(|(index, c)| if letter_digit.contains_key(&c) { Some(index) } else { None })
             .collect();
         (0..1 << indexes.len()).map(move |i| {
-            let result = problem
-                .chars()
-                .enumerate()
-                .map(|(index, c)| {
-                    if let Some(pos) = indexes.iter().position(|&x| x == index) {
-                        if (i >> pos) & 1 == 1 { letter_digit[&c] } else { c }
-                    } else {
-                        c
-                    }
-                })
-                .collect::<String>();
-            u32::from_str_radix(&result, 0x10).unwrap()
+            u32::from_str_radix(
+                &problem
+                    .chars()
+                    .enumerate()
+                    .map(|(index, c)| {
+                        if let Some(pos) = indexes.iter().position(|&x| x == index) {
+                            if (i >> pos) & 1 == 1 { letter_digit[&c] } else { c }
+                        } else {
+                            c
+                        }
+                    })
+                    .collect::<String>(),
+                0x10,
+            )
+            .unwrap()
         })
     })
 }
