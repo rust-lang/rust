@@ -203,13 +203,7 @@ impl CoverageSpan {
 ///  * Merge spans that represent continuous (both in source code and control flow), non-branching
 ///    execution
 ///  * Carve out (leave uncovered) any span that will be counted by another MIR (notably, closures)
-struct CoverageSpansGenerator<'a, 'tcx> {
-    /// The MIR, used to look up `BasicBlockData`.
-    mir_body: &'a mir::Body<'tcx>,
-
-    /// A `Span` covering the signature of function for the MIR.
-    fn_sig_span: Span,
-
+struct CoverageSpansGenerator<'a> {
     /// A `Span` covering the function body of the MIR (typically from left curly brace to right
     /// curly brace).
     body_span: Span,
@@ -219,7 +213,7 @@ struct CoverageSpansGenerator<'a, 'tcx> {
 
     /// The initial set of `CoverageSpan`s, sorted by `Span` (`lo` and `hi`) and by relative
     /// dominance between the `BasicCoverageBlock`s of equal `Span`s.
-    sorted_spans_iter: Option<std::vec::IntoIter<CoverageSpan>>,
+    sorted_spans_iter: std::vec::IntoIter<CoverageSpan>,
 
     /// The current `CoverageSpan` to compare to its `prev`, to possibly merge, discard, force the
     /// discard of the `prev` (and or `pending_dups`), or keep both (with `prev` moved to
@@ -259,7 +253,7 @@ struct CoverageSpansGenerator<'a, 'tcx> {
     refined_spans: Vec<CoverageSpan>,
 }
 
-impl<'a, 'tcx> CoverageSpansGenerator<'a, 'tcx> {
+impl<'a> CoverageSpansGenerator<'a> {
     /// Generate a minimal set of `CoverageSpan`s, each representing a contiguous code region to be
     /// counted.
     ///
@@ -282,17 +276,22 @@ impl<'a, 'tcx> CoverageSpansGenerator<'a, 'tcx> {
     /// Note the resulting vector of `CoverageSpan`s may not be fully sorted (and does not need
     /// to be).
     pub(super) fn generate_coverage_spans(
-        mir_body: &'a mir::Body<'tcx>,
+        mir_body: &mir::Body<'_>,
         fn_sig_span: Span, // Ensured to be same SourceFile and SyntaxContext as `body_span`
         body_span: Span,
         basic_coverage_blocks: &'a CoverageGraph,
     ) -> Vec<CoverageSpan> {
-        let mut coverage_spans = Self {
+        let sorted_spans = from_mir::mir_to_initial_sorted_coverage_spans(
             mir_body,
             fn_sig_span,
             body_span,
             basic_coverage_blocks,
-            sorted_spans_iter: None,
+        );
+
+        let coverage_spans = Self {
+            body_span,
+            basic_coverage_blocks,
+            sorted_spans_iter: sorted_spans.into_iter(),
             refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),
             some_curr: None,
             curr_original_span: Span::with_root_ctxt(BytePos(0), BytePos(0)),
@@ -301,10 +300,6 @@ impl<'a, 'tcx> CoverageSpansGenerator<'a, 'tcx> {
             prev_expn_span: None,
             pending_dups: Vec::new(),
         };
-
-        let sorted_spans = coverage_spans.mir_to_initial_sorted_coverage_spans();
-
-        coverage_spans.sorted_spans_iter = Some(sorted_spans.into_iter());
 
         coverage_spans.to_refined_spans()
     }
@@ -510,7 +505,7 @@ impl<'a, 'tcx> CoverageSpansGenerator<'a, 'tcx> {
             self.some_prev = Some(curr);
             self.prev_original_span = self.curr_original_span;
         }
-        while let Some(curr) = self.sorted_spans_iter.as_mut().unwrap().next() {
+        while let Some(curr) = self.sorted_spans_iter.next() {
             debug!("FOR curr={:?}", curr);
             if self.some_prev.is_some() && self.prev_starts_after_next(&curr) {
                 debug!(

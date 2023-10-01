@@ -3,86 +3,89 @@ use rustc_middle::mir::{
 };
 use rustc_span::Span;
 
-use crate::coverage::graph::{BasicCoverageBlock, BasicCoverageBlockData};
-use crate::coverage::spans::{CoverageSpan, CoverageSpansGenerator};
+use crate::coverage::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
+use crate::coverage::spans::CoverageSpan;
 
-impl<'a, 'tcx> CoverageSpansGenerator<'a, 'tcx> {
-    pub(super) fn mir_to_initial_sorted_coverage_spans(&self) -> Vec<CoverageSpan> {
-        let mut initial_spans =
-            Vec::<CoverageSpan>::with_capacity(self.mir_body.basic_blocks.len() * 2);
-        for (bcb, bcb_data) in self.basic_coverage_blocks.iter_enumerated() {
-            initial_spans.extend(self.bcb_to_initial_coverage_spans(bcb, bcb_data));
-        }
-
-        if initial_spans.is_empty() {
-            // This can happen if, for example, the function is unreachable (contains only a
-            // `BasicBlock`(s) with an `Unreachable` terminator).
-            return initial_spans;
-        }
-
-        initial_spans.push(CoverageSpan::for_fn_sig(self.fn_sig_span));
-
-        initial_spans.sort_by(|a, b| {
-            // First sort by span start.
-            Ord::cmp(&a.span.lo(), &b.span.lo())
-                // If span starts are the same, sort by span end in reverse order.
-                // This ensures that if spans A and B are adjacent in the list,
-                // and they overlap but are not equal, then either:
-                // - Span A extends further left, or
-                // - Both have the same start and span A extends further right
-                .then_with(|| Ord::cmp(&a.span.hi(), &b.span.hi()).reverse())
-                // If both spans are equal, sort the BCBs in dominator order,
-                // so that dominating BCBs come before other BCBs they dominate.
-                .then_with(|| self.basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb))
-                // If two spans are otherwise identical, put closure spans first,
-                // as this seems to be what the refinement step expects.
-                .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
-        });
-
-        initial_spans
+pub(super) fn mir_to_initial_sorted_coverage_spans(
+    mir_body: &mir::Body<'_>,
+    fn_sig_span: Span,
+    body_span: Span,
+    basic_coverage_blocks: &CoverageGraph,
+) -> Vec<CoverageSpan> {
+    let mut initial_spans = Vec::<CoverageSpan>::with_capacity(mir_body.basic_blocks.len() * 2);
+    for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
+        initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
     }
 
-    // Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of
-    // the `BasicBlock`(s) in the given `BasicCoverageBlockData`. One `CoverageSpan` is generated
-    // for each `Statement` and `Terminator`. (Note that subsequent stages of coverage analysis will
-    // merge some `CoverageSpan`s, at which point a `CoverageSpan` may represent multiple
-    // `Statement`s and/or `Terminator`s.)
-    fn bcb_to_initial_coverage_spans(
-        &self,
-        bcb: BasicCoverageBlock,
-        bcb_data: &'a BasicCoverageBlockData,
-    ) -> Vec<CoverageSpan> {
-        bcb_data
-            .basic_blocks
-            .iter()
-            .flat_map(|&bb| {
-                let data = &self.mir_body[bb];
-                data.statements
-                    .iter()
-                    .enumerate()
-                    .filter_map(move |(index, statement)| {
-                        filtered_statement_span(statement).map(|span| {
-                            CoverageSpan::for_statement(
-                                statement,
-                                function_source_span(span, self.body_span),
-                                span,
-                                bcb,
-                                bb,
-                                index,
-                            )
-                        })
-                    })
-                    .chain(filtered_terminator_span(data.terminator()).map(|span| {
-                        CoverageSpan::for_terminator(
-                            function_source_span(span, self.body_span),
+    if initial_spans.is_empty() {
+        // This can happen if, for example, the function is unreachable (contains only a
+        // `BasicBlock`(s) with an `Unreachable` terminator).
+        return initial_spans;
+    }
+
+    initial_spans.push(CoverageSpan::for_fn_sig(fn_sig_span));
+
+    initial_spans.sort_by(|a, b| {
+        // First sort by span start.
+        Ord::cmp(&a.span.lo(), &b.span.lo())
+            // If span starts are the same, sort by span end in reverse order.
+            // This ensures that if spans A and B are adjacent in the list,
+            // and they overlap but are not equal, then either:
+            // - Span A extends further left, or
+            // - Both have the same start and span A extends further right
+            .then_with(|| Ord::cmp(&a.span.hi(), &b.span.hi()).reverse())
+            // If both spans are equal, sort the BCBs in dominator order,
+            // so that dominating BCBs come before other BCBs they dominate.
+            .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb))
+            // If two spans are otherwise identical, put closure spans first,
+            // as this seems to be what the refinement step expects.
+            .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
+    });
+
+    initial_spans
+}
+
+// Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of
+// the `BasicBlock`(s) in the given `BasicCoverageBlockData`. One `CoverageSpan` is generated
+// for each `Statement` and `Terminator`. (Note that subsequent stages of coverage analysis will
+// merge some `CoverageSpan`s, at which point a `CoverageSpan` may represent multiple
+// `Statement`s and/or `Terminator`s.)
+fn bcb_to_initial_coverage_spans(
+    mir_body: &mir::Body<'_>,
+    body_span: Span,
+    bcb: BasicCoverageBlock,
+    bcb_data: &BasicCoverageBlockData,
+) -> Vec<CoverageSpan> {
+    bcb_data
+        .basic_blocks
+        .iter()
+        .flat_map(|&bb| {
+            let data = &mir_body[bb];
+            data.statements
+                .iter()
+                .enumerate()
+                .filter_map(move |(index, statement)| {
+                    filtered_statement_span(statement).map(|span| {
+                        CoverageSpan::for_statement(
+                            statement,
+                            function_source_span(span, body_span),
                             span,
                             bcb,
                             bb,
+                            index,
                         )
-                    }))
-            })
-            .collect()
-    }
+                    })
+                })
+                .chain(filtered_terminator_span(data.terminator()).map(|span| {
+                    CoverageSpan::for_terminator(
+                        function_source_span(span, body_span),
+                        span,
+                        bcb,
+                        bb,
+                    )
+                }))
+        })
+        .collect()
 }
 
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
