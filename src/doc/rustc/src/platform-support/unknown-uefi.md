@@ -265,9 +265,12 @@ cargo build --target x86_64-unknown-uefi -Zbuild-std=std,panic_abort
 #### os_str
 - While the strings in UEFI should be valid UCS-2, in practice, many implementations just do not care and use UTF-16 strings.
 - Thus, the current implementation supports full UTF-16 strings.
+#### stdio
+- Uses `Simple Text Input Protocol` and `Simple Text Output Protocol`.
+- Note: UEFI uses CRLF for new line. This means Enter key is registered as CR instead of LF.
 
 ## Example: Hello World With std
-The following code features a valid UEFI application, including stdio and `alloc` (`OsString` and `Vec`):
+The following code features a valid UEFI application, including `stdio` and `alloc` (`OsString` and `Vec`):
 
 This example can be compiled as binary crate via `cargo` using the toolchain
 compiled from the above source (named custom):
@@ -286,6 +289,9 @@ use std::{
 };
 
 pub fn main() {
+  println!("Starting Rust Application...");
+
+  // Use System Table Directly
   let st = env::system_table().as_ptr() as *mut efi::SystemTable;
   let mut s: Vec<u16> = OsString::from("Hello World!\n").encode_wide().collect();
   s.push(0);
