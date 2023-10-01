@@ -6,9 +6,8 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_inf, walk_ty, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_hir_analysis::hir_ty_to_ty;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -162,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     vis.visit_ty(ty);
 
                     for target in &vis.found {
-                        if in_external_macro(cx.sess(), generics.span) {
+                        if generics.span.from_expansion() {
                             continue;
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({
