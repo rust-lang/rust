@@ -552,8 +552,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &const_prop::ConstProp,
             &gvn::GVN,
             &dataflow_const_prop::DataflowConstProp,
-            //
-            // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &early_otherwise_branch::EarlyOtherwiseBranch,
