@@ -73,6 +73,10 @@ impl WorkspaceBuildScripts {
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
 
+                if let Some(target_dir) = &config.target_dir {
+                    cmd.arg("--target-dir").arg(target_dir);
+                }
+
                 // --all-targets includes tests, benches and examples in addition to the
                 // default lib and bins. This is an independent concept from the --target
                 // flag below.

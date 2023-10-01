@@ -50,6 +50,7 @@ pub enum FlycheckConfig {
         extra_args: Vec<String>,
         extra_env: FxHashMap<String, String>,
         ansi_color_output: bool,
+        target_dir: Option<PathBuf>,
     },
     CustomCommand {
         command: String,
@@ -308,6 +309,7 @@ impl FlycheckActor {
                 features,
                 extra_env,
                 ansi_color_output,
+                target_dir,
             } => {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
@@ -339,6 +341,9 @@ impl FlycheckActor {
                         cmd.arg("--features");
                         cmd.arg(features.join(" "));
                     }
+                }
+                if let Some(target_dir) = target_dir {
+                    cmd.arg("--target-dir").arg(target_dir);
                 }
                 cmd.envs(extra_env);
                 (cmd, extra_args)
