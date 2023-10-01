@@ -613,7 +613,15 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         )
     }
 
-    fn check_move_size(&mut self, limit: usize, operand: &mir::Operand<'tcx>, location: Location) {
+    fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
+        if self.skip_move_size_check {
+            return;
+        }
+        let limit = self.tcx.move_size_limit().0;
+        if limit == 0 {
+            return;
+        }
+
         let limit = Size::from_bytes(limit);
         let ty = operand.ty(self.body, self.tcx);
         let ty = self.monomorphize(ty);
@@ -841,10 +849,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
-        let move_size_limit = self.tcx.move_size_limit().0;
-        if move_size_limit > 0 && !self.skip_move_size_check {
-            self.check_move_size(move_size_limit, operand, location);
-        }
+        self.check_operand_move_size(operand, location);
     }
 
     fn visit_local(
