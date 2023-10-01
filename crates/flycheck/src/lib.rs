@@ -58,6 +58,7 @@ pub enum FlycheckConfig {
         extra_env: FxHashMap<String, String>,
         invocation_strategy: InvocationStrategy,
         invocation_location: InvocationLocation,
+        target_dir: Option<PathBuf>,
     },
 }
 
@@ -354,9 +355,14 @@ impl FlycheckActor {
                 extra_env,
                 invocation_strategy,
                 invocation_location,
+                target_dir,
             } => {
                 let mut cmd = Command::new(command);
                 cmd.envs(extra_env);
+
+                if let Some(target_dir) = target_dir {
+                    cmd.env("CARGO_TARGET_DIR", target_dir);
+                }
 
                 match invocation_location {
                     InvocationLocation::Workspace => {

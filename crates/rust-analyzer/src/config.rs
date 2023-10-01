@@ -1289,6 +1289,7 @@ impl Config {
     }
 
     pub fn flycheck(&self) -> FlycheckConfig {
+        let target_dir = self.target_dir_from_config();
         match &self.data.check_overrideCommand {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
@@ -1309,6 +1310,7 @@ impl Config {
                         }
                         InvocationLocation::Workspace => flycheck::InvocationLocation::Workspace,
                     },
+                    target_dir,
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
@@ -1343,7 +1345,7 @@ impl Config {
                 extra_args: self.check_extra_args(),
                 extra_env: self.check_extra_env(),
                 ansi_color_output: self.color_diagnostic_output(),
-                target_dir: self.target_dir_from_config(),
+                target_dir,
             },
         }
     }
