@@ -33,7 +33,7 @@ of a library.
 Plugins can extend [Rust's lint
 infrastructure](../../reference/attributes/diagnostics.md#lint-check-attributes) with
 additional checks for code style, safety, etc. Now let's write a plugin
-[`lint-plugin-test.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui-fulldeps/auxiliary/lint-plugin-test.rs)
+[`lint-plugin-test.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui-fulldeps/plugin/auxiliary/lint-plugin-test.rs)
 that warns about any item named `lintme`.
 
 ```rust,ignore (requires-stage-2)
