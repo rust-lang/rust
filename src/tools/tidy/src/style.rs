@@ -19,7 +19,8 @@
 
 use crate::walk::{filter_dirs, walk};
 use regex::{Regex, RegexSet};
-use std::{collections::HashMap, ffi::OsStr, path::Path};
+use rustc_hash::FxHashMap;
+use std::{ffi::OsStr, path::Path};
 
 /// Error code markdown is restricted to 80 columns because they can be
 /// displayed on the console with --example.
@@ -67,7 +68,7 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
 
 fn generate_problems<'a>(
     consts: &'a [u32],
-    letter_digit: &'a HashMap<char, char>,
+    letter_digit: &'a FxHashMap<char, char>,
 ) -> impl Iterator<Item = u32> + 'a {
     consts.iter().flat_map(move |const_value| {
         let problem =
