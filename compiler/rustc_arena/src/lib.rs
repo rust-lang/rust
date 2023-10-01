@@ -172,8 +172,8 @@ impl<T, const N: usize> IterExt<T> for std::array::IntoIter<T, N> {
             return &mut [];
         }
         // Move the content to the arena by copying and then forgetting it.
+        let start_ptr = arena.alloc_raw_slice(len);
         unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
             self.as_slice().as_ptr().copy_to_nonoverlapping(start_ptr, len);
             mem::forget(self);
             slice::from_raw_parts_mut(start_ptr, len)
@@ -189,8 +189,8 @@ impl<T> IterExt<T> for Vec<T> {
             return &mut [];
         }
         // Move the content to the arena by copying and then forgetting it.
+        let start_ptr = arena.alloc_raw_slice(len);
         unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             self.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
@@ -206,8 +206,8 @@ impl<A: smallvec::Array> IterExt<A::Item> for SmallVec<A> {
             return &mut [];
         }
         // Move the content to the arena by copying and then forgetting it.
+        let start_ptr = arena.alloc_raw_slice(len);
         unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             self.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
@@ -250,25 +250,20 @@ impl<T> TypedArena<T> {
         available_bytes >= additional_bytes
     }
 
-    /// Ensures there's enough space in the current chunk to fit `len` objects.
     #[inline]
-    fn ensure_capacity(&self, additional: usize) {
-        if !self.can_allocate(additional) {
-            self.grow(additional);
-            debug_assert!(self.can_allocate(additional));
-        }
-    }
-
-    #[inline]
-    unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
+    fn alloc_raw_slice(&self, len: usize) -> *mut T {
         assert!(mem::size_of::<T>() != 0);
         assert!(len != 0);
 
-        self.ensure_capacity(len);
+        // Ensure the current chunk can fit `len` objects.
+        if !self.can_allocate(len) {
+            self.grow(len);
+            debug_assert!(self.can_allocate(len));
+        }
 
         let start_ptr = self.ptr.get();
-        // SAFETY: `self.ensure_capacity` makes sure that there is enough space
-        // for `len` elements.
+        // SAFETY: `can_allocate`/`grow` ensures that there is enough space for
+        // `len` elements.
         unsafe { self.ptr.set(start_ptr.add(len)) };
         start_ptr
     }
@@ -407,6 +402,8 @@ impl Default for DroplessArena {
     #[inline]
     fn default() -> DroplessArena {
         DroplessArena {
+            // We set both `start` and `end` to 0 so that the first call to
+            // alloc() will trigger a grow().
             start: Cell::new(ptr::null_mut()),
             end: Cell::new(ptr::null_mut()),
             chunks: Default::default(),
@@ -415,9 +412,11 @@ impl Default for DroplessArena {
 }
 
 impl DroplessArena {
+    #[inline(never)]
+    #[cold]
     fn grow(&self, layout: Layout) {
         // Add some padding so we can align `self.end` while
-        // stilling fitting in a `layout` allocation.
+        // still fitting in a `layout` allocation.
         let additional = layout.size() + cmp::max(DROPLESS_ALIGNMENT, layout.align()) - 1;
 
         unsafe {
@@ -441,7 +440,7 @@ impl DroplessArena {
             let mut chunk = ArenaChunk::new(align_up(new_cap, PAGE));
             self.start.set(chunk.start());
 
-            // Align the end to DROPLESS_ALIGNMENT
+            // Align the end to DROPLESS_ALIGNMENT.
             let end = align_down(chunk.end().addr(), DROPLESS_ALIGNMENT);
 
             // Make sure we don't go past `start`. This should not happen since the allocation
@@ -454,55 +453,40 @@ impl DroplessArena {
         }
     }
 
-    #[inline(never)]
-    #[cold]
-    fn grow_and_alloc_raw(&self, layout: Layout) -> *mut u8 {
-        self.grow(layout);
-        self.alloc_raw_without_grow(layout).unwrap()
-    }
-
-    #[inline(never)]
-    #[cold]
-    fn grow_and_alloc<T>(&self) -> *mut u8 {
-        self.grow_and_alloc_raw(Layout::new::<T>())
-    }
-
-    /// Allocates a byte slice with specified layout from the current memory
-    /// chunk. Returns `None` if there is no free space left to satisfy the
-    /// request.
-    #[inline]
-    fn alloc_raw_without_grow(&self, layout: Layout) -> Option<*mut u8> {
-        let start = self.start.get().addr();
-        let old_end = self.end.get();
-        let end = old_end.addr();
-
-        // Align allocated bytes so that `self.end` stays aligned to DROPLESS_ALIGNMENT
-        let bytes = align_up(layout.size(), DROPLESS_ALIGNMENT);
-
-        // Tell LLVM that `end` is aligned to DROPLESS_ALIGNMENT
-        unsafe { intrinsics::assume(end == align_down(end, DROPLESS_ALIGNMENT)) };
-
-        let new_end = align_down(end.checked_sub(bytes)?, layout.align());
-        if start <= new_end {
-            let new_end = old_end.with_addr(new_end);
-            // `new_end` is aligned to DROPLESS_ALIGNMENT as `align_down` preserves alignment
-            // as both `end` and `bytes` are already aligned to DROPLESS_ALIGNMENT.
-            self.end.set(new_end);
-            Some(new_end)
-        } else {
-            None
-        }
-    }
-
     #[inline]
     pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
         assert!(layout.size() != 0);
-        if let Some(a) = self.alloc_raw_without_grow(layout) {
-            return a;
+
+        // This loop executes once or twice: if allocation fails the first
+        // time, the `grow` ensures it will succeed the second time.
+        loop {
+            let start = self.start.get().addr();
+            let old_end = self.end.get();
+            let end = old_end.addr();
+
+            // Align allocated bytes so that `self.end` stays aligned to
+            // DROPLESS_ALIGNMENT.
+            let bytes = align_up(layout.size(), DROPLESS_ALIGNMENT);
+
+            // Tell LLVM that `end` is aligned to DROPLESS_ALIGNMENT.
+            unsafe { intrinsics::assume(end == align_down(end, DROPLESS_ALIGNMENT)) };
+
+            if let Some(sub) = end.checked_sub(bytes) {
+                let new_end = align_down(sub, layout.align());
+                if start <= new_end {
+                    let new_end = old_end.with_addr(new_end);
+                    // `new_end` is aligned to DROPLESS_ALIGNMENT as `align_down`
+                    // preserves alignment as both `end` and `bytes` are already
+                    // aligned to DROPLESS_ALIGNMENT.
+                    self.end.set(new_end);
+                    return new_end;
+                }
+            }
+
+            // No free space left. Allocate a new chunk to satisfy the request.
+            // On failure the grow will panic or abort.
+            self.grow(layout);
         }
-        // No free space left. Allocate a new chunk to satisfy the request.
-        // On failure the grow will panic or abort.
-        self.grow_and_alloc_raw(layout)
     }
 
     #[inline]
@@ -510,13 +494,7 @@ impl DroplessArena {
         assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
 
-        let mem = if let Some(a) = self.alloc_raw_without_grow(Layout::for_value::<T>(&object)) {
-            a
-        } else {
-            // No free space left. Allocate a new chunk to satisfy the request.
-            // On failure the grow will panic or abort.
-            self.grow_and_alloc::<T>()
-        } as *mut T;
+        let mem = self.alloc_raw(Layout::new::<T>()) as *mut T;
 
         unsafe {
             // Write into uninitialized memory.
@@ -713,10 +691,10 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
         }
 
         #[allow(clippy::mut_from_ref)]
-        pub fn alloc_from_iter<'a, T: ArenaAllocatable<'tcx, C>, C>(
-            &'a self,
+        pub fn alloc_from_iter<T: ArenaAllocatable<'tcx, C>, C>(
+            &self,
             iter: impl ::std::iter::IntoIterator<Item = T>,
-        ) -> &'a mut [T] {
+        ) -> &mut [T] {
             T::allocate_from_iter(self, iter)
         }
     }
