@@ -2,6 +2,7 @@ use rustc_middle::mir;
 
 use log::trace;
 
+use super::foreign_items::EvalContextExt as _;
 use crate::*;
 use helpers::check_arg_count;
 
@@ -38,10 +39,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match dlsym {
             Dlsym::getentropy => {
                 let [ptr, len] = check_arg_count(args)?;
-                let ptr = this.read_pointer(ptr)?;
-                let len = this.read_target_usize(len)?;
-                this.gen_random(ptr, len)?;
-                this.write_null(dest)?;
+                let result = this.getentropy(ptr, len)?;
+                this.write_scalar(result, dest)?;
             }
         }
 
