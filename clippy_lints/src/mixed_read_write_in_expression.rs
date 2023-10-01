@@ -134,15 +134,30 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     }
 }
 
+fn stmt_might_diverge(stmt: &Stmt<'_>) -> bool {
+    match stmt.kind {
+        StmtKind::Item(..) => false,
+        _ => true,
+    }
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             // fix #10776
             ExprKind::Block(block, ..) => match (block.stmts, block.expr) {
-                ([], Some(e)) => self.visit_expr(e),
-                ([stmt], None) => match stmt.kind {
-                    StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
-                    _ => {},
+                (stmts, Some(e)) => {
+                    if stmts.iter().all(|stmt| !stmt_might_diverge(stmt)) {
+                        self.visit_expr(e)
+                    }
+                },
+                ([first @ .., stmt], None) => {
+                    if first.iter().all(|stmt| !stmt_might_diverge(stmt)) {
+                        match stmt.kind {
+                            StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
+                            _ => {},
+                        }
+                    }
                 },
                 _ => {},
             },
