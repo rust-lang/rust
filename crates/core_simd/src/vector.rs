@@ -144,10 +144,10 @@ where
         // This is preferred over `[value; N]`, since it's explicitly a splat:
         // https://github.com/rust-lang/rust/issues/97804
         struct Splat;
-        impl<const N: usize> Swizzle<1, N> for Splat {
+        impl<const N: usize> Swizzle<N> for Splat {
             const INDEX: [usize; N] = [0; N];
         }
-        Splat::swizzle(Simd::<T, 1>::from([value]))
+        Splat::swizzle::<T, 1>(Simd::<T, 1>::from([value]))
     }
 
     /// Returns an array reference containing the entire SIMD vector.

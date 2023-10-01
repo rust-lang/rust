@@ -5,6 +5,7 @@
     const_mut_refs,
     convert_float_to_int,
     decl_macro,
+    inline_const,
     intra_doc_pointers,
     platform_intrinsics,
     repr_simd,
