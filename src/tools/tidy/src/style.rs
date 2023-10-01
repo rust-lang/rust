@@ -19,8 +19,7 @@
 
 use crate::walk::{filter_dirs, walk};
 use regex::{Regex, RegexSet};
-use std::collections::HashMap;
-use std::{ffi::OsStr, path::Path};
+use std::{collections::HashMap, ffi::OsStr, path::Path};
 
 /// Error code markdown is restricted to 80 columns because they can be
 /// displayed on the console with --example.
