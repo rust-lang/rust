@@ -125,7 +125,7 @@
 //! ## Stack size
 //!
 //! The default stack size is platform-dependent and subject to change.
-//! Currently, it is 2 MiB on all Tier-1 platforms.
+//! Currently, it is 8 MiB on all Tier-1 platforms.
 //!
 //! There are two ways to manually specify the stack size for spawned threads:
 //!
