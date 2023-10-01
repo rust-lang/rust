@@ -6,6 +6,13 @@ Q := @
 BOOTSTRAP_ARGS :=
 endif
 
+# Pass `-jN` to the bootstrap if it is specified.
+ifdef MAKEFLAGS
+  ifneq (,$(findstring -j, $(MAKEFLAGS)))
+    BOOTSTRAP_ARGS += $(filter -j%, $(MAKEFLAGS))
+  endif
+endif
+
 BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
 
 all:
