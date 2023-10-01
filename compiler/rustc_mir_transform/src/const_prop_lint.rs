@@ -49,8 +49,9 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
         }
 
         let def_id = body.source.def_id().expect_local();
-        let is_fn_like = tcx.def_kind(def_id).is_fn_like();
-        let is_assoc_const = tcx.def_kind(def_id) == DefKind::AssocConst;
+        let def_kind = tcx.def_kind(def_id);
+        let is_fn_like = def_kind.is_fn_like();
+        let is_assoc_const = def_kind == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
@@ -59,10 +60,9 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
             return;
         }
 
-        let is_generator = tcx.type_of(def_id.to_def_id()).instantiate_identity().is_generator();
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
-        if is_generator {
+        if let DefKind::Generator = def_kind {
             trace!("ConstProp skipped for generator {:?}", def_id);
             return;
         }
