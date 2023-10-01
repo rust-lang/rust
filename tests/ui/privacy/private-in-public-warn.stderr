@@ -84,42 +84,6 @@ note: but type `types::Priv` is only usable at visibility `pub(self)`
 LL |     struct Priv;
    |     ^^^^^^^^^^^
 
-error: type `types::Priv` is more private than the item `types::ES`
-  --> $DIR/private-in-public-warn.rs:27:9
-   |
-LL |         pub static ES: Priv;
-   |         ^^^^^^^^^^^^^^^^^^^ static `types::ES` is reachable at visibility `pub(crate)`
-   |
-note: but type `types::Priv` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:9:5
-   |
-LL |     struct Priv;
-   |     ^^^^^^^^^^^
-
-error: type `types::Priv` is more private than the item `types::ef1`
-  --> $DIR/private-in-public-warn.rs:28:9
-   |
-LL |         pub fn ef1(arg: Priv);
-   |         ^^^^^^^^^^^^^^^^^^^^^^ function `types::ef1` is reachable at visibility `pub(crate)`
-   |
-note: but type `types::Priv` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:9:5
-   |
-LL |     struct Priv;
-   |     ^^^^^^^^^^^
-
-error: type `types::Priv` is more private than the item `types::ef2`
-  --> $DIR/private-in-public-warn.rs:29:9
-   |
-LL |         pub fn ef2() -> Priv;
-   |         ^^^^^^^^^^^^^^^^^^^^^ function `types::ef2` is reachable at visibility `pub(crate)`
-   |
-note: but type `types::Priv` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:9:5
-   |
-LL |     struct Priv;
-   |     ^^^^^^^^^^^
-
 error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:32:9
    |
@@ -394,6 +358,42 @@ note: but type `Priv2` is only usable at visibility `pub(self)`
    |
 LL |     struct Priv2;
    |     ^^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `types::ES`
+  --> $DIR/private-in-public-warn.rs:27:9
+   |
+LL |         pub static ES: Priv;
+   |         ^^^^^^^^^^^^^^^^^^^ static `types::ES` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `types::ef1`
+  --> $DIR/private-in-public-warn.rs:28:9
+   |
+LL |         pub fn ef1(arg: Priv);
+   |         ^^^^^^^^^^^^^^^^^^^^^^ function `types::ef1` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `types::ef2`
+  --> $DIR/private-in-public-warn.rs:29:9
+   |
+LL |         pub fn ef2() -> Priv;
+   |         ^^^^^^^^^^^^^^^^^^^^^ function `types::ef2` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
 
 warning: bounds on generic parameters in type aliases are not enforced
   --> $DIR/private-in-public-warn.rs:41:23
