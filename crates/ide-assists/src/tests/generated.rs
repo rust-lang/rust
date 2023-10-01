@@ -587,6 +587,33 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_tuple_return_type_to_struct() {
+    check_doc_test(
+        "convert_tuple_return_type_to_struct",
+        r#####"
+fn bar() {
+    let (a, b, c) = foo();
+}
+
+fn foo() -> ($0u32, u32, u32) {
+    (1, 2, 3)
+}
+"#####,
+        r#####"
+fn bar() {
+    let FooResult(a, b, c) = foo();
+}
+
+struct FooResult(u32, u32, u32);
+
+fn foo() -> FooResult {
+    FooResult(1, 2, 3)
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_tuple_struct_to_named_struct() {
     check_doc_test(
         "convert_tuple_struct_to_named_struct",
