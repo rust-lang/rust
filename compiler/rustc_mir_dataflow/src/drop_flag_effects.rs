@@ -75,29 +75,6 @@ pub fn on_all_children_bits<'tcx, F>(
     on_all_children_bits(tcx, body, move_data, move_path_index, &mut each_child);
 }
 
-pub fn on_all_drop_children_bits<'tcx, F>(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    ctxt: &MoveDataParamEnv<'tcx>,
-    path: MovePathIndex,
-    mut each_child: F,
-) where
-    F: FnMut(MovePathIndex),
-{
-    on_all_children_bits(tcx, body, &ctxt.move_data, path, |child| {
-        let place = &ctxt.move_data.move_paths[path].place;
-        let ty = place.ty(body, tcx).ty;
-        debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place, ty);
-
-        let erased_ty = tcx.erase_regions(ty);
-        if erased_ty.needs_drop(tcx, ctxt.param_env) {
-            each_child(child);
-        } else {
-            debug!("on_all_drop_children_bits - skipping")
-        }
-    })
-}
-
 pub fn drop_flag_effects_for_function_entry<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,

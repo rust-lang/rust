@@ -9,9 +9,9 @@ use rustc_mir_dataflow::elaborate_drops::{elaborate_drop, DropFlagState, Unwind}
 use rustc_mir_dataflow::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
+use rustc_mir_dataflow::on_all_children_bits;
 use rustc_mir_dataflow::on_lookup_result_bits;
 use rustc_mir_dataflow::MoveDataParamEnv;
-use rustc_mir_dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -172,13 +172,19 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
                 let mut some_live = false;
                 let mut some_dead = false;
                 let mut children_count = 0;
-                on_all_drop_children_bits(self.tcx(), self.body(), self.ctxt.env, path, |child| {
-                    let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
-                    debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
-                    some_live |= live;
-                    some_dead |= dead;
-                    children_count += 1;
-                });
+                on_all_children_bits(
+                    self.tcx(),
+                    self.body(),
+                    self.ctxt.move_data(),
+                    path,
+                    |child| {
+                        let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
+                        debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
+                        some_live |= live;
+                        some_dead |= dead;
+                        children_count += 1;
+                    },
+                );
                 ((some_live, some_dead), children_count != 1)
             }
         };
@@ -298,7 +304,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             match path {
                 LookupResult::Exact(path) => {
                     self.init_data.seek_before(self.body.terminator_loc(bb));
-                    on_all_drop_children_bits(self.tcx, self.body, self.env, path, |child| {
+                    on_all_children_bits(self.tcx, self.body, self.move_data(), path, |child| {
                         let (maybe_live, maybe_dead) = self.init_data.maybe_live_dead(child);
                         debug!(
                             "collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
