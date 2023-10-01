@@ -13,7 +13,6 @@ rustc_index = { path = "../rustc_index" }
 rustc_arena = { path = "../rustc_arena" }
 scoped-tls = "1.0"
 unicode-width = "0.1.4"
-cfg-if = "1.0"
 tracing = "0.1"
 sha1 = "0.10.0"
 sha2 = "0.10.1"

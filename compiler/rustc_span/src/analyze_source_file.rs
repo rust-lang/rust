@@ -33,8 +33,8 @@ pub fn analyze_source_file(
     (lines, multi_byte_chars, non_narrow_chars)
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+cfg_match! {
+    cfg(any(target_arch = "x86", target_arch = "x86_64")) => {
         fn analyze_source_file_dispatch(src: &str,
                                     lines: &mut Vec<RelativeBytePos>,
                                     multi_byte_chars: &mut Vec<MultiByteChar>,
@@ -172,8 +172,8 @@ cfg_if::cfg_if! {
                                         non_narrow_chars);
             }
         }
-    } else {
-
+    }
+    _ => {
         // The target (or compiler version) does not support SSE2 ...
         fn analyze_source_file_dispatch(src: &str,
                                     lines: &mut Vec<RelativeBytePos>,
