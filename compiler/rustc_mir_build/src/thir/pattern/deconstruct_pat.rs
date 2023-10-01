@@ -50,6 +50,7 @@ use std::ops::RangeInclusive;
 
 use smallvec::{smallvec, SmallVec};
 
+use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_index::Idx;
@@ -60,12 +61,11 @@ use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, Integer, Size, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 
 use self::Constructor::*;
 use self::SliceKind::*;
 
-use super::compare_const_vals;
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
 use crate::errors::{Overlap, OverlappingRangeEndpoints};
 
@@ -99,10 +99,6 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct IntRange {
     range: RangeInclusive<u128>,
-    /// Keeps the bias used for encoding the range. It depends on the type of the range and
-    /// possibly the pointer size of the current architecture. The algorithm ensures we never
-    /// compare `IntRange`s with different types/architectures.
-    bias: u128,
 }
 
 impl IntRange {
@@ -120,37 +116,12 @@ impl IntRange {
     }
 
     #[inline]
-    fn integral_size_and_signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Size, u128)> {
-        match *ty.kind() {
-            ty::Bool => Some((Size::from_bytes(1), 0)),
-            ty::Char => Some((Size::from_bytes(4), 0)),
-            ty::Int(ity) => {
-                let size = Integer::from_int_ty(&tcx, ity).size();
-                Some((size, 1u128 << (size.bits() as u128 - 1)))
-            }
-            ty::Uint(uty) => Some((Integer::from_uint_ty(&tcx, uty).size(), 0)),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    fn from_constant<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        value: mir::Const<'tcx>,
-    ) -> Option<IntRange> {
-        let ty = value.ty();
-        let (target_size, bias) = Self::integral_size_and_signed_bias(tcx, ty)?;
-        let val = match value {
-            mir::Const::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
-                valtree.unwrap_leaf().to_bits(target_size).ok()
-            },
-            // This is a more general form of the previous case.
-            _ => value.try_eval_bits(tcx, param_env),
-        }?;
-
-        let val = val ^ bias;
-        Some(IntRange { range: val..=val, bias })
+    fn from_bits<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, bits: u128) -> IntRange {
+        let bias = IntRange::signed_bias(tcx, ty);
+        // Perform a shift if the underlying types are signed,
+        // which makes the interval arithmetic simpler.
+        let val = bits ^ bias;
+        IntRange { range: val..=val }
     }
 
     #[inline]
@@ -159,20 +130,18 @@ impl IntRange {
         lo: u128,
         hi: u128,
         ty: Ty<'tcx>,
-        end: &RangeEnd,
-    ) -> Option<IntRange> {
-        Self::is_integral(ty).then(|| {
-            // Perform a shift if the underlying types are signed,
-            // which makes the interval arithmetic simpler.
-            let bias = IntRange::signed_bias(tcx, ty);
-            let (lo, hi) = (lo ^ bias, hi ^ bias);
-            let offset = (*end == RangeEnd::Excluded) as u128;
-            if lo > hi || (lo == hi && *end == RangeEnd::Excluded) {
-                // This should have been caught earlier by E0030.
-                bug!("malformed range pattern: {}..={}", lo, (hi - offset));
-            }
-            IntRange { range: lo..=(hi - offset), bias }
-        })
+        end: RangeEnd,
+    ) -> IntRange {
+        // Perform a shift if the underlying types are signed,
+        // which makes the interval arithmetic simpler.
+        let bias = IntRange::signed_bias(tcx, ty);
+        let (lo, hi) = (lo ^ bias, hi ^ bias);
+        let offset = (end == RangeEnd::Excluded) as u128;
+        if lo > hi || (lo == hi && end == RangeEnd::Excluded) {
+            // This should have been caught earlier by E0030.
+            bug!("malformed range pattern: {}..={}", lo, (hi - offset));
+        }
+        IntRange { range: lo..=(hi - offset) }
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
@@ -194,7 +163,7 @@ impl IntRange {
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
         if lo <= other_hi && other_lo <= hi {
-            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), bias: self.bias })
+            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi) })
         } else {
             None
         }
@@ -221,7 +190,7 @@ impl IntRange {
     fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let (lo, hi) = self.boundaries();
 
-        let bias = self.bias;
+        let bias = IntRange::signed_bias(tcx, ty);
         let (lo, hi) = (lo ^ bias, hi ^ bias);
 
         let env = ty::ParamEnv::empty().and(ty);
@@ -304,8 +273,6 @@ impl IntRange {
 impl fmt::Debug for IntRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (lo, hi) = self.boundaries();
-        let bias = self.bias;
-        let (lo, hi) = (lo ^ bias, hi ^ bias);
         write!(f, "{lo}")?;
         write!(f, "{}", RangeEnd::Included)?;
         write!(f, "{hi}")
@@ -402,7 +369,7 @@ impl SplitIntRange {
                     (JustBefore(n), AfterMax) => n..=u128::MAX,
                     _ => unreachable!(), // Ruled out by the sorting and filtering we did
                 };
-                IntRange { range, bias: self.range.bias }
+                IntRange { range }
             })
     }
 }
@@ -619,7 +586,8 @@ pub(super) enum Constructor<'tcx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    FloatRange(mir::Const<'tcx>, mir::Const<'tcx>, RangeEnd),
+    F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
+    F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(mir::Const<'tcx>),
     /// Array and slice patterns.
@@ -634,7 +602,9 @@ pub(super) enum Constructor<'tcx> {
     /// Stands for constructors that are not seen in the matrix, as explained in the documentation
     /// for [`SplitWildcard`]. The carried `bool` is used for the `non_exhaustive_omitted_patterns`
     /// lint.
-    Missing { nonexhaustive_enum_missing_real_variants: bool },
+    Missing {
+        nonexhaustive_enum_missing_real_variants: bool,
+    },
     /// Wildcard pattern.
     Wildcard,
     /// Or-pattern.
@@ -722,7 +692,8 @@ impl<'tcx> Constructor<'tcx> {
             },
             Slice(slice) => slice.arity(),
             Str(..)
-            | FloatRange(..)
+            | F32Range(..)
+            | F64Range(..)
             | IntRange(..)
             | NonExhaustive
             | Opaque
@@ -795,21 +766,21 @@ impl<'tcx> Constructor<'tcx> {
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
-            (
-                FloatRange(self_from, self_to, self_end),
-                FloatRange(other_from, other_to, other_end),
-            ) => {
-                match (
-                    compare_const_vals(pcx.cx.tcx, *self_to, *other_to, pcx.cx.param_env),
-                    compare_const_vals(pcx.cx.tcx, *self_from, *other_from, pcx.cx.param_env),
-                ) {
-                    (Some(to), Some(from)) => {
-                        (from == Ordering::Greater || from == Ordering::Equal)
-                            && (to == Ordering::Less
-                                || (other_end == self_end && to == Ordering::Equal))
+            (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
                     }
-                    _ => false,
-                }
+            }
+            (F64Range(self_from, self_to, self_end), F64Range(other_from, other_to, other_end)) => {
+                self_from.ge(other_from)
+                    && match self_to.partial_cmp(other_to) {
+                        Some(Ordering::Less) => true,
+                        Some(Ordering::Equal) => other_end == self_end,
+                        _ => false,
+                    }
             }
             (Str(self_val), Str(other_val)) => {
                 // FIXME Once valtrees are available we can directly use the bytes
@@ -859,7 +830,7 @@ impl<'tcx> Constructor<'tcx> {
                 .any(|other| slice.is_covered_by(other)),
             // This constructor is never covered by anything else
             NonExhaustive => false,
-            Str(..) | FloatRange(..) | Opaque | Missing { .. } | Wildcard | Or => {
+            Str(..) | F32Range(..) | F64Range(..) | Opaque | Missing { .. } | Wildcard | Or => {
                 span_bug!(pcx.span, "found unexpected ctor in all_ctors: {:?}", self)
             }
         }
@@ -896,7 +867,7 @@ impl<'tcx> SplitWildcard<'tcx> {
         let make_range = |start, end| {
             IntRange(
                 // `unwrap()` is ok because we know the type is an integer.
-                IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap(),
+                IntRange::from_range(cx.tcx, start, end, pcx.ty, RangeEnd::Included),
             )
         };
         // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
@@ -1203,7 +1174,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, pcx),
             },
             Str(..)
-            | FloatRange(..)
+            | F32Range(..)
+            | F64Range(..)
             | IntRange(..)
             | NonExhaustive
             | Opaque
@@ -1343,50 +1315,78 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             PatKind::Constant { value } => {
-                if let Some(int_range) = IntRange::from_constant(cx.tcx, cx.param_env, *value) {
-                    ctor = IntRange(int_range);
-                    fields = Fields::empty();
-                } else {
-                    match pat.ty.kind() {
-                        ty::Float(_) => {
-                            ctor = FloatRange(*value, *value, RangeEnd::Included);
-                            fields = Fields::empty();
-                        }
-                        ty::Ref(_, t, _) if t.is_str() => {
-                            // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
-                            // with other `Deref` patterns. This could have been done in `const_to_pat`,
-                            // but that causes issues with the rest of the matching code.
-                            // So here, the constructor for a `"foo"` pattern is `&` (represented by
-                            // `Single`), and has one field. That field has constructor `Str(value)` and no
-                            // fields.
-                            // Note: `t` is `str`, not `&str`.
-                            let subpattern =
-                                DeconstructedPat::new(Str(*value), Fields::empty(), *t, pat.span);
-                            ctor = Single;
-                            fields = Fields::singleton(cx, subpattern)
-                        }
-                        // All constants that can be structurally matched have already been expanded
-                        // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
-                        // opaque.
-                        _ => {
-                            ctor = Opaque;
-                            fields = Fields::empty();
-                        }
+                match pat.ty.kind() {
+                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
+                            Some(bits) => IntRange(IntRange::from_bits(cx.tcx, pat.ty, bits)),
+                            None => Opaque,
+                        };
+                        fields = Fields::empty();
+                    }
+                    ty::Float(ty::FloatTy::F32) => {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
+                            Some(bits) => {
+                                use rustc_apfloat::Float;
+                                let value = rustc_apfloat::ieee::Single::from_bits(bits);
+                                F32Range(value, value, RangeEnd::Included)
+                            }
+                            None => Opaque,
+                        };
+                        fields = Fields::empty();
+                    }
+                    ty::Float(ty::FloatTy::F64) => {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
+                            Some(bits) => {
+                                use rustc_apfloat::Float;
+                                let value = rustc_apfloat::ieee::Double::from_bits(bits);
+                                F64Range(value, value, RangeEnd::Included)
+                            }
+                            None => Opaque,
+                        };
+                        fields = Fields::empty();
+                    }
+                    ty::Ref(_, t, _) if t.is_str() => {
+                        // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
+                        // with other `Deref` patterns. This could have been done in `const_to_pat`,
+                        // but that causes issues with the rest of the matching code.
+                        // So here, the constructor for a `"foo"` pattern is `&` (represented by
+                        // `Single`), and has one field. That field has constructor `Str(value)` and no
+                        // fields.
+                        // Note: `t` is `str`, not `&str`.
+                        let subpattern =
+                            DeconstructedPat::new(Str(*value), Fields::empty(), *t, pat.span);
+                        ctor = Single;
+                        fields = Fields::singleton(cx, subpattern)
+                    }
+                    // All constants that can be structurally matched have already been expanded
+                    // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
+                    // opaque.
+                    _ => {
+                        ctor = Opaque;
+                        fields = Fields::empty();
                     }
                 }
             }
-            &PatKind::Range(box PatRange { lo, hi, end }) => {
+            PatKind::Range(box PatRange { lo, hi, end }) => {
+                use rustc_apfloat::Float;
                 let ty = lo.ty();
-                ctor = if let Some(int_range) = IntRange::from_range(
-                    cx.tcx,
-                    lo.eval_bits(cx.tcx, cx.param_env),
-                    hi.eval_bits(cx.tcx, cx.param_env),
-                    ty,
-                    &end,
-                ) {
-                    IntRange(int_range)
-                } else {
-                    FloatRange(lo, hi, end)
+                let lo = lo.try_eval_bits(cx.tcx, cx.param_env).unwrap();
+                let hi = hi.try_eval_bits(cx.tcx, cx.param_env).unwrap();
+                ctor = match ty.kind() {
+                    ty::Char | ty::Int(_) | ty::Uint(_) => {
+                        IntRange(IntRange::from_range(cx.tcx, lo, hi, ty, *end))
+                    }
+                    ty::Float(ty::FloatTy::F32) => {
+                        let lo = rustc_apfloat::ieee::Single::from_bits(lo);
+                        let hi = rustc_apfloat::ieee::Single::from_bits(hi);
+                        F32Range(lo, hi, *end)
+                    }
+                    ty::Float(ty::FloatTy::F64) => {
+                        let lo = rustc_apfloat::ieee::Double::from_bits(lo);
+                        let hi = rustc_apfloat::ieee::Double::from_bits(hi);
+                        F64Range(lo, hi, *end)
+                    }
+                    _ => bug!("invalid type for range pattern: {}", ty),
                 };
                 fields = Fields::empty();
             }
@@ -1491,14 +1491,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            &FloatRange(lo, hi, end) => PatKind::Range(Box::new(PatRange { lo, hi, end })),
             IntRange(range) => return range.to_pat(cx.tcx, self.ty),
             Wildcard | NonExhaustive => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
             ),
-            Opaque | Or => {
+            F32Range(..) | F64Range(..) | Opaque | Or => {
                 bug!("can't convert to pattern: {:?}", self)
             }
         };
@@ -1673,11 +1672,8 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 write!(f, "]")
             }
-            &FloatRange(lo, hi, end) => {
-                write!(f, "{lo}")?;
-                write!(f, "{end}")?;
-                write!(f, "{hi}")
-            }
+            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
+            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             IntRange(range) => write!(f, "{range:?}"), // Best-effort, will render e.g. `false` as `0..=0`
             Wildcard | Missing { .. } | NonExhaustive => write!(f, "_ : {:?}", self.ty),
             Or => {

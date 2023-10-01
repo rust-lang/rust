@@ -288,7 +288,16 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<ScalarInt> {
-        self.try_eval_scalar(tcx, param_env)?.try_to_int().ok()
+        match self {
+            // If the constant is already evaluated, we shortcut here.
+            Const::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
+                valtree.try_to_scalar_int()
+            },
+            // This is a more general form of the previous case.
+            _ => {
+                self.try_eval_scalar(tcx, param_env)?.try_to_int().ok()
+            },
+        }
     }
 
     #[inline]
