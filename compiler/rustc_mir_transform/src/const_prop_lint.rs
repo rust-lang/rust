@@ -34,9 +34,9 @@ use crate::MirLint;
 /// Severely regress performance.
 const MAX_ALLOC_LIMIT: u64 = 1024;
 
-pub struct ConstProp;
+pub struct ConstPropLint;
 
-impl<'tcx> MirLint<'tcx> for ConstProp {
+impl<'tcx> MirLint<'tcx> for ConstPropLint {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         if body.tainted_by_errors.is_some() {
             return;
@@ -55,18 +55,18 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
             // skip anon_const/statics/consts because they'll be evaluated by miri anyway
-            trace!("ConstProp skipped for {:?}", def_id);
+            trace!("ConstPropLint skipped for {:?}", def_id);
             return;
         }
 
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
         if let DefKind::Generator = def_kind {
-            trace!("ConstProp skipped for generator {:?}", def_id);
+            trace!("ConstPropLint skipped for generator {:?}", def_id);
             return;
         }
 
-        trace!("ConstProp starting for {:?}", def_id);
+        trace!("ConstPropLint starting for {:?}", def_id);
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
         // constants, instead of just checking for const-folding succeeding.
@@ -75,7 +75,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
         let mut linter = ConstPropagator::new(body, tcx);
         linter.visit_body(body);
 
-        trace!("ConstProp done for {:?}", def_id);
+        trace!("ConstPropLint done for {:?}", def_id);
     }
 }
 

@@ -494,7 +494,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &generator::StateTransform,
         &add_retag::AddRetag,
-        &Lint(const_prop_lint::ConstProp),
+        &Lint(const_prop_lint::ConstPropLint),
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
 }
