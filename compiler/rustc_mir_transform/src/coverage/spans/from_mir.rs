@@ -63,26 +63,18 @@ fn bcb_to_initial_coverage_spans(
             let data = &mir_body[bb];
             data.statements
                 .iter()
-                .enumerate()
-                .filter_map(move |(index, statement)| {
+                .filter_map(move |statement| {
                     filtered_statement_span(statement).map(|span| {
                         CoverageSpan::for_statement(
                             statement,
                             function_source_span(span, body_span),
                             span,
                             bcb,
-                            bb,
-                            index,
                         )
                     })
                 })
                 .chain(filtered_terminator_span(data.terminator()).map(|span| {
-                    CoverageSpan::for_terminator(
-                        function_source_span(span, body_span),
-                        span,
-                        bcb,
-                        bb,
-                    )
+                    CoverageSpan::for_terminator(function_source_span(span, body_span), span, bcb)
                 }))
         })
         .collect()

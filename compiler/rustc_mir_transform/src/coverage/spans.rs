@@ -2,7 +2,7 @@ use std::cell::OnceCell;
 
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::IndexVec;
-use rustc_middle::mir::{self, AggregateKind, BasicBlock, Rvalue, Statement, StatementKind};
+use rustc_middle::mir::{self, AggregateKind, Rvalue, Statement, StatementKind};
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
 use super::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
@@ -51,27 +51,13 @@ impl CoverageSpans {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub(super) enum CoverageStatement {
-    Statement(BasicBlock, Span, usize),
-    Terminator(BasicBlock, Span),
-}
-
-impl CoverageStatement {
-    pub fn span(&self) -> Span {
-        match self {
-            Self::Statement(_, span, _) | Self::Terminator(_, span) => *span,
-        }
-    }
-}
-
 /// A BCB is deconstructed into one or more `Span`s. Each `Span` maps to a `CoverageSpan` that
 /// references the originating BCB and one or more MIR `Statement`s and/or `Terminator`s.
 /// Initially, the `Span`s come from the `Statement`s and `Terminator`s, but subsequent
 /// transforms can combine adjacent `Span`s and `CoverageSpan` from the same BCB, merging the
-/// `CoverageStatement` vectors, and the `Span`s to cover the extent of the combined `Span`s.
+/// `merged_spans` vectors, and the `Span`s to cover the extent of the combined `Span`s.
 ///
-/// Note: A `CoverageStatement` merged into another CoverageSpan may come from a `BasicBlock` that
+/// Note: A span merged into another CoverageSpan may come from a `BasicBlock` that
 /// is not part of the `CoverageSpan` bcb if the statement was included because it's `Span` matches
 /// or is subsumed by the `Span` associated with this `CoverageSpan`, and it's `BasicBlock`
 /// `dominates()` the `BasicBlock`s in this `CoverageSpan`.
@@ -81,7 +67,9 @@ struct CoverageSpan {
     pub expn_span: Span,
     pub current_macro_or_none: OnceCell<Option<Symbol>>,
     pub bcb: BasicCoverageBlock,
-    pub coverage_statements: Vec<CoverageStatement>,
+    /// List of all the original spans from MIR that have been merged into this
+    /// span. Mainly used to precisely skip over gaps when truncating a span.
+    pub merged_spans: Vec<Span>,
     pub is_closure: bool,
 }
 
@@ -92,7 +80,7 @@ impl CoverageSpan {
             expn_span: fn_sig_span,
             current_macro_or_none: Default::default(),
             bcb: START_BCB,
-            coverage_statements: vec![],
+            merged_spans: vec![],
             is_closure: false,
         }
     }
@@ -102,8 +90,6 @@ impl CoverageSpan {
         span: Span,
         expn_span: Span,
         bcb: BasicCoverageBlock,
-        bb: BasicBlock,
-        stmt_index: usize,
     ) -> Self {
         let is_closure = match statement.kind {
             StatementKind::Assign(box (_, Rvalue::Aggregate(box ref kind, _))) => {
@@ -117,23 +103,18 @@ impl CoverageSpan {
             expn_span,
             current_macro_or_none: Default::default(),
             bcb,
-            coverage_statements: vec![CoverageStatement::Statement(bb, span, stmt_index)],
+            merged_spans: vec![span],
             is_closure,
         }
     }
 
-    pub fn for_terminator(
-        span: Span,
-        expn_span: Span,
-        bcb: BasicCoverageBlock,
-        bb: BasicBlock,
-    ) -> Self {
+    pub fn for_terminator(span: Span, expn_span: Span, bcb: BasicCoverageBlock) -> Self {
         Self {
             span,
             expn_span,
             current_macro_or_none: Default::default(),
             bcb,
-            coverage_statements: vec![CoverageStatement::Terminator(bb, span)],
+            merged_spans: vec![span],
             is_closure: false,
         }
     }
@@ -141,15 +122,13 @@ impl CoverageSpan {
     pub fn merge_from(&mut self, mut other: CoverageSpan) {
         debug_assert!(self.is_mergeable(&other));
         self.span = self.span.to(other.span);
-        self.coverage_statements.append(&mut other.coverage_statements);
+        self.merged_spans.append(&mut other.merged_spans);
     }
 
     pub fn cutoff_statements_at(&mut self, cutoff_pos: BytePos) {
-        self.coverage_statements.retain(|covstmt| covstmt.span().hi() <= cutoff_pos);
-        if let Some(highest_covstmt) =
-            self.coverage_statements.iter().max_by_key(|covstmt| covstmt.span().hi())
-        {
-            self.span = self.span.with_hi(highest_covstmt.span().hi());
+        self.merged_spans.retain(|span| span.hi() <= cutoff_pos);
+        if let Some(max_hi) = self.merged_spans.iter().map(|span| span.hi()).max() {
+            self.span = self.span.with_hi(max_hi);
         }
     }
 
@@ -673,7 +652,7 @@ impl<'a> CoverageSpansGenerator<'a> {
         if self.pending_dups.is_empty() {
             let curr_span = self.curr().span;
             self.prev_mut().cutoff_statements_at(curr_span.lo());
-            if self.prev().coverage_statements.is_empty() {
+            if self.prev().merged_spans.is_empty() {
                 debug!("  ... no non-overlapping statements to add");
             } else {
                 debug!("  ... adding modified prev={:?}", self.prev());
