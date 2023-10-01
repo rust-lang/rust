@@ -200,16 +200,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                 enum_span,
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
-                    if !cx.tcx.adt_def(enum_id).is_variant_list_non_exhaustive()
-                        && let header_span = cx.sess().source_map().span_until_char(enum_span, '{')
-                        && let Some(snippet) = snippet_opt(cx, header_span)
-                    {
-                            diag.span_suggestion(
-                                header_span,
-                                "add the attribute",
-                                format!("#[non_exhaustive] {snippet}"),
-                                Applicability::Unspecified,
-                            );
+                    let header_span = cx.sess().source_map().span_until_char(enum_span, '{');
+                    if let Some(snippet) = snippet_opt(cx, header_span) {
+                        diag.span_suggestion(
+                            header_span,
+                            "add the attribute",
+                            format!("#[non_exhaustive] {snippet}"),
+                            Applicability::Unspecified,
+                        );
                     }
                     diag.span_help(variant_span, "remove this variant");
                 },
