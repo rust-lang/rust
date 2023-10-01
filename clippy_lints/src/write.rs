@@ -486,9 +486,9 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
             && let rustc_ast::ExprKind::Lit(lit) = &arg.expr.kind
             && !arg.expr.span.from_expansion()
             && let Some(value_string) = snippet_opt(cx, arg.expr.span)
-    {
+        {
             let (replacement, replace_raw) = match lit.kind {
-                LitKind::Str | LitKind::StrRaw(_)  => match extract_str_literal(&value_string) {
+                LitKind::Str | LitKind::StrRaw(_) => match extract_str_literal(&value_string) {
                     Some(extracted) => extracted,
                     None => return,
                 },
@@ -538,7 +538,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
                 // `format!("{}", "a")`, `format!("{named}", named = "b")
                 //              ~~~~~                      ~~~~~~~~~~~~~
                 && let Some(removal_span) = format_arg_removal_span(format_args, index) {
-                let replacement = replacement.replace('{', "{{").replace('}', "}}");
+                let replacement = escape_braces(&replacement, !format_string_is_raw && !replace_raw);
                 suggestion.push((*placeholder_span, replacement));
                 suggestion.push((removal_span, String::new()));
             }
@@ -630,4 +630,48 @@ fn conservative_unescape(literal: &str) -> Result<String, UnescapeErr> {
     }
 
     if err { Err(UnescapeErr::Lint) } else { Ok(unescaped) }
+}
+
+/// Replaces `{` with `{{` and `}` with `}}`. If `preserve_unicode_escapes` is `true` the braces in
+/// `\u{xxxx}` are left unmodified
+#[expect(clippy::match_same_arms)]
+fn escape_braces(literal: &str, preserve_unicode_escapes: bool) -> String {
+    #[derive(Clone, Copy)]
+    enum State {
+        Normal,
+        Backslash,
+        UnicodeEscape,
+    }
+
+    let mut escaped = String::with_capacity(literal.len());
+    let mut state = State::Normal;
+
+    for ch in literal.chars() {
+        state = match (ch, state) {
+            // Escape braces outside of unicode escapes by doubling them up
+            ('{' | '}', State::Normal) => {
+                escaped.push(ch);
+                State::Normal
+            },
+            // If `preserve_unicode_escapes` isn't enabled stay in `State::Normal`, otherwise:
+            //
+            // \u{aaaa} \\ \x01
+            // ^        ^  ^
+            ('\\', State::Normal) if preserve_unicode_escapes => State::Backslash,
+            // \u{aaaa}
+            //  ^
+            ('u', State::Backslash) => State::UnicodeEscape,
+            // \xAA \\
+            //  ^    ^
+            (_, State::Backslash) => State::Normal,
+            // \u{aaaa}
+            //        ^
+            ('}', State::UnicodeEscape) => State::Normal,
+            _ => state,
+        };
+
+        escaped.push(ch);
+    }
+
+    escaped
 }
