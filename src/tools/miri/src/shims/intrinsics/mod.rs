@@ -325,7 +325,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             "fmaf32" => {
                 let [a, b, c] = check_arg_count(args)?;
-                // FIXME: Using host floats, to work around https://github.com/rust-lang/miri/issues/2468.
+                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let a = f32::from_bits(this.read_scalar(a)?.to_u32()?);
                 let b = f32::from_bits(this.read_scalar(b)?.to_u32()?);
                 let c = f32::from_bits(this.read_scalar(c)?.to_u32()?);
@@ -335,7 +335,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             "fmaf64" => {
                 let [a, b, c] = check_arg_count(args)?;
-                // FIXME: Using host floats, to work around https://github.com/rust-lang/miri/issues/2468.
+                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                 let a = f64::from_bits(this.read_scalar(a)?.to_u64()?);
                 let b = f64::from_bits(this.read_scalar(b)?.to_u64()?);
                 let c = f64::from_bits(this.read_scalar(c)?.to_u64()?);

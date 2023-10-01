@@ -71,6 +71,24 @@ mod tests {
         test_mm_avg_epu16();
 
         #[target_feature(enable = "sse2")]
+        unsafe fn test_mm_madd_epi16() {
+            let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+            let b = _mm_setr_epi16(9, 10, 11, 12, 13, 14, 15, 16);
+            let r = _mm_madd_epi16(a, b);
+            let e = _mm_setr_epi32(29, 81, 149, 233);
+            assert_eq_m128i(r, e);
+
+            let a =
+                _mm_setr_epi16(i16::MAX, i16::MAX, i16::MIN, i16::MIN, i16::MIN, i16::MAX, 0, 0);
+            let b =
+                _mm_setr_epi16(i16::MAX, i16::MAX, i16::MIN, i16::MIN, i16::MAX, i16::MIN, 0, 0);
+            let r = _mm_madd_epi16(a, b);
+            let e = _mm_setr_epi32(0x7FFE0002, i32::MIN, -0x7FFF0000, 0);
+            assert_eq_m128i(r, e);
+        }
+        test_mm_madd_epi16();
+
+        #[target_feature(enable = "sse2")]
         unsafe fn test_mm_mulhi_epi16() {
             let (a, b) = (_mm_set1_epi16(1000), _mm_set1_epi16(-1001));
             let r = _mm_mulhi_epi16(a, b);

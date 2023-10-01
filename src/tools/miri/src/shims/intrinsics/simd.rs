@@ -495,15 +495,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (right, right_len) = this.operand_to_simd(right)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
 
-                let index = generic_args[2].expect_const().eval(*this.tcx, this.param_env(), Some(this.tcx.span)).unwrap().unwrap_branch();
+                let index = generic_args[2]
+                    .expect_const()
+                    .eval(*this.tcx, this.param_env(), Some(this.tcx.span))
+                    .unwrap()
+                    .unwrap_branch();
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(index_len as u64, dest_len);
 
                 for i in 0..dest_len {
-                    let src_index: u64 = index[i as usize].unwrap_leaf()
-                        .try_to_u32().unwrap()
+                    let src_index: u64 = index[usize::try_from(i).unwrap()]
+                        .unwrap_leaf()
+                        .try_to_u32()
+                        .unwrap()
                         .into();
                     let dest = this.project_index(&dest, i)?;
 
