@@ -33,6 +33,11 @@ case ${TARGET} in
     i686-* | i586-*)
         export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static -Z plt=yes"
         ;;
+    # Some x86_64 targets enable by default more features beyond SSE2,
+    # which cause some instruction assertion checks to fail.
+    x86_64-*)
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=-sse3"
+        ;;
     #Unoptimized build uses fast-isel which breaks with msa
     mips-* | mipsel-*)
 	export RUSTFLAGS="${RUSTFLAGS} -C llvm-args=-fast-isel=false"
