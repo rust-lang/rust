@@ -268,6 +268,8 @@ cargo build --target x86_64-unknown-uefi -Zbuild-std=std,panic_abort
 #### stdio
 - Uses `Simple Text Input Protocol` and `Simple Text Output Protocol`.
 - Note: UEFI uses CRLF for new line. This means Enter key is registered as CR instead of LF.
+#### args
+- Uses `EFI_LOADED_IMAGE_PROTOCOL->LoadOptions`
 
 ## Example: Hello World With std
 The following code features a valid UEFI application, including `stdio` and `alloc` (`OsString` and `Vec`):
