@@ -625,6 +625,12 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         }
     }
 
+    impl fmt::Display for FormatStringPayload<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            if let Some(s) = &self.string { f.write_str(s) } else { f.write_fmt(*self.inner) }
+        }
+    }
+
     struct StaticStrPayload(&'static str);
 
     unsafe impl PanicPayload for StaticStrPayload {
@@ -637,13 +643,18 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         }
     }
 
+    impl fmt::Display for StaticStrPayload {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str(self.0)
+        }
+    }
+
     let loc = info.location().unwrap(); // The current implementation always returns Some
     let msg = info.message();
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         if let Some(s) = msg.as_str() {
             rust_panic_with_hook(
                 &mut StaticStrPayload(s),
-                Some(msg),
                 loc,
                 info.can_unwind(),
                 info.force_no_backtrace(),
@@ -651,7 +662,6 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         } else {
             rust_panic_with_hook(
                 &mut FormatStringPayload { inner: &msg, string: None },
-                Some(msg),
                 loc,
                 info.can_unwind(),
                 info.force_no_backtrace(),
@@ -681,7 +691,6 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
     return crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         rust_panic_with_hook(
             &mut Payload::new(msg),
-            None,
             loc,
             /* can_unwind */ true,
             /* force_no_backtrace */ false,
@@ -719,6 +728,15 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
             }
         }
     }
+
+    impl<A: Send + 'static> fmt::Display for Payload<A> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match &self.inner {
+                Some(a) => f.write_str(payload_as_str(a)),
+                None => process::abort(),
+            }
+        }
+    }
 }
 
 fn payload_as_str(payload: &dyn Any) -> &str {
@@ -738,7 +756,6 @@ fn payload_as_str(payload: &dyn Any) -> &str {
 /// abort or unwind.
 fn rust_panic_with_hook(
     payload: &mut dyn PanicPayload,
-    message: Option<fmt::Arguments<'_>>,
     location: &Location<'_>,
     can_unwind: bool,
     force_no_backtrace: bool,
@@ -765,11 +782,7 @@ fn rust_panic_with_hook(
             panic_count::MustAbort::AlwaysAbort => {
                 // Unfortunately, this does not print a backtrace, because creating
                 // a `Backtrace` will allocate, which we must avoid here.
-                if let Some(message) = message {
-                    rtprintpanic!("aborting due to panic at {location}:\n{message}\n");
-                } else {
-                    rtprintpanic!("aborting due to panic at {location}\n");
-                }
+                rtprintpanic!("aborting due to panic at {location}:\n{payload}\n");
             }
         }
         crate::sys::abort_internal();
@@ -822,6 +835,12 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
 
         fn get(&mut self) -> &(dyn Any + Send) {
             &*self.0
+        }
+    }
+
+    impl fmt::Display for RewrapBox {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str(payload_as_str(&self.0))
         }
     }
 
