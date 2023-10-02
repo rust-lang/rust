@@ -21,7 +21,7 @@ fn report_simd_type_validation_error(
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
-    _args: GenericArgsRef<'tcx>,
+    generic_args: GenericArgsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     target: BasicBlock,
@@ -115,6 +115,54 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
                 bool_to_zero_or_max_uint(fx, res_lane_ty, res_lane)
             });
+        }
+
+        // simd_shuffle_generic<T, U, const I: &[u32]>(x: T, y: T) -> U
+        sym::simd_shuffle_generic => {
+            let [x, y] = args else {
+                bug!("wrong number of args for intrinsic {intrinsic}");
+            };
+            let x = codegen_operand(fx, x);
+            let y = codegen_operand(fx, y);
+
+            if !x.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
+                return;
+            }
+
+            let idx = generic_args[2]
+                .expect_const()
+                .eval(fx.tcx, ty::ParamEnv::reveal_all(), Some(span))
+                .unwrap()
+                .unwrap_branch();
+
+            assert_eq!(x.layout(), y.layout());
+            let layout = x.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+
+            assert_eq!(lane_ty, ret_lane_ty);
+            assert_eq!(idx.len() as u64, ret_lane_count);
+
+            let total_len = lane_count * 2;
+
+            let indexes =
+                idx.iter().map(|idx| idx.unwrap_leaf().try_to_u16().unwrap()).collect::<Vec<u16>>();
+
+            for &idx in &indexes {
+                assert!(u64::from(idx) < total_len, "idx {} out of range 0..{}", idx, total_len);
+            }
+
+            for (out_idx, in_idx) in indexes.into_iter().enumerate() {
+                let in_lane = if u64::from(in_idx) < lane_count {
+                    x.value_lane(fx, in_idx.into())
+                } else {
+                    y.value_lane(fx, u64::from(in_idx) - lane_count)
+                };
+                let out_lane = ret.place_lane(fx, u64::try_from(out_idx).unwrap());
+                out_lane.write_cvalue(fx, in_lane);
+            }
         }
 
         // simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U
