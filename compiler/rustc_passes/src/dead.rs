@@ -972,12 +972,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                 visitor.warn_multiple(def_id, "read", dead_fields, is_positional);
             }
 
-            visitor.warn_multiple(
-                item.owner_id.def_id,
-                "constructed",
-                dead_variants,
-                false,
-            );
+            visitor.warn_multiple(item.owner_id.def_id, "constructed", dead_variants, false);
         }
     }
 
