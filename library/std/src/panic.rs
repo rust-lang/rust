@@ -76,6 +76,7 @@ impl<'a> PanicInfo<'a> {
     /// panic!("Normal panic");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn payload(&self) -> &(dyn Any + Send) {
         self.payload
@@ -106,6 +107,7 @@ impl<'a> PanicInfo<'a> {
     /// panic!("Normal panic");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn location(&self) -> Option<&Location<'_>> {
         // NOTE: If this is changed to sometimes return None,
@@ -124,6 +126,7 @@ impl<'a> PanicInfo<'a> {
     /// false, however this will simply cause the panic handler to be called
     /// again.
     #[must_use]
+    #[inline]
     #[unstable(feature = "panic_can_unwind", issue = "92988")]
     pub fn can_unwind(&self) -> bool {
         self.can_unwind
