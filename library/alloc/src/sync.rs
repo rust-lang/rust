@@ -3270,7 +3270,7 @@ impl<T> From<T> for Arc<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "shared_from_array", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_array", since = "1.74.0")]
 impl<T, const N: usize> From<[T; N]> for Arc<[T]> {
     /// Converts a [`[T; N]`](prim@array) into an `Arc<[T]>`.
     ///

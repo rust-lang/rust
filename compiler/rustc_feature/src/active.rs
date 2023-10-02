@@ -400,9 +400,9 @@ declare_features! (
     (active, const_try, "1.56.0", Some(74935), None),
     /// Allows function attribute `#[coverage(on/off)]`, to control coverage
     /// instrumentation of that function.
-    (active, coverage_attribute, "CURRENT_RUSTC_VERSION", Some(84605), None),
+    (active, coverage_attribute, "1.74.0", Some(84605), None),
     /// Allows users to provide classes for fenced code block using `class:classname`.
-    (active, custom_code_classes_in_docs, "CURRENT_RUSTC_VERSION", Some(79483), None),
+    (active, custom_code_classes_in_docs, "1.74.0", Some(79483), None),
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
@@ -583,7 +583,7 @@ declare_features! (
     /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
     (active, unix_sigpipe, "1.65.0", Some(97889), None),
     /// Allows unnamed fields of struct and union type
-    (incomplete, unnamed_fields, "CURRENT_RUSTC_VERSION", Some(49804), None),
+    (incomplete, unnamed_fields, "1.74.0", Some(49804), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.
