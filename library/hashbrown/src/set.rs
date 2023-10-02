@@ -383,6 +383,8 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// or the iteration short-circuits, then the remaining elements will be retained.
     /// Use [`retain()`] with a negated predicate if you do not need the returned iterator.
     ///
+    /// [`retain()`]: HashSet::retain
+    ///
     /// # Examples
     ///
     /// ```
