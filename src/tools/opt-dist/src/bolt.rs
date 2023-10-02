@@ -1,14 +1,14 @@
 use anyhow::Context;
 
 use crate::exec::cmd;
-use crate::training::LlvmBoltProfile;
+use crate::training::BoltProfile;
 use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::utils::io::copy_file;
 
 /// Instruments an artifact at the given `path` (in-place) with BOLT and then calls `func`.
 /// After this function finishes, the original file will be restored.
-pub fn with_bolt_instrumented<F: FnOnce() -> anyhow::Result<R>, R>(
+pub fn with_bolt_instrumented<F: FnOnce(&Utf8Path) -> anyhow::Result<R>, R>(
     path: &Utf8Path,
     func: F,
 ) -> anyhow::Result<R> {
@@ -20,10 +20,16 @@ pub fn with_bolt_instrumented<F: FnOnce() -> anyhow::Result<R>, R>(
 
     let instrumented_path = tempfile::NamedTempFile::new()?.into_temp_path();
 
+    let profile_dir =
+        tempfile::TempDir::new().context("Could not create directory for BOLT profiles")?;
+    let profile_prefix = profile_dir.path().join("prof.fdata");
+    let profile_prefix = Utf8Path::from_path(&profile_prefix).unwrap();
+
     // Instrument the original file with BOLT, saving the result into `instrumented_path`
     cmd(&["llvm-bolt"])
         .arg("-instrument")
         .arg(path)
+        .arg(&format!("--instrumentation-file={profile_prefix}"))
         // Make sure that each process will write its profiles into a separate file
         .arg("--instrumentation-file-append-pid")
         .arg("-o")
@@ -36,11 +42,11 @@ pub fn with_bolt_instrumented<F: FnOnce() -> anyhow::Result<R>, R>(
 
     // Run the function that will make use of the instrumented artifact.
     // The original file will be restored when `_backup_file` is dropped.
-    func()
+    func(profile_prefix)
 }
 
 /// Optimizes the file at `path` with BOLT in-place using the given `profile`.
-pub fn bolt_optimize(path: &Utf8Path, profile: &LlvmBoltProfile) -> anyhow::Result<()> {
+pub fn bolt_optimize(path: &Utf8Path, profile: &BoltProfile) -> anyhow::Result<()> {
     // Copy the artifact to a new location, so that we do not use the same input and output file.
     // BOLT cannot handle optimizing when the input and output is the same file, because it performs
     // in-place patching.
