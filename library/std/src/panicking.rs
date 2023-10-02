@@ -597,11 +597,7 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         string: Option<String>,
     }
 
-    impl<'a> FormatStringPayload<'a> {
-        fn new(inner: &'a fmt::Arguments<'a>) -> Self {
-            Self { inner, string: None }
-        }
-
+    impl FormatStringPayload<'_> {
         fn fill(&mut self) -> &mut String {
             use crate::fmt::Write;
 
@@ -615,7 +611,7 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         }
     }
 
-    unsafe impl<'a> PanicPayload for FormatStringPayload<'a> {
+    unsafe impl PanicPayload for FormatStringPayload<'_> {
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
             // We do two allocations here, unfortunately. But (a) they're required with the current
             // scheme, and (b) we don't handle panic + OOM properly anyway (see comment in
@@ -654,7 +650,7 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
             );
         } else {
             rust_panic_with_hook(
-                &mut FormatStringPayload::new(&msg),
+                &mut FormatStringPayload { inner: &msg, string: None },
                 Some(msg),
                 loc,
                 info.can_unwind(),
