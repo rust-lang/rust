@@ -575,6 +575,11 @@ passes_outside_loop =
 
 passes_outside_loop_suggestion = consider labeling this block to be able to break within it
 
+passes_panic_unwind_without_std =
+    unwinding panics are not supported without std
+    .note = since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
+    .help = using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
+
 passes_params_not_allowed =
     referencing function parameters is not allowed in naked functions
     .help = follow the calling convention in asm block to use parameters

@@ -95,6 +95,11 @@ pub struct EncounteredErrorWhileInstantiating {
 }
 
 #[derive(Diagnostic)]
+#[diag(monomorphize_start_not_found)]
+#[help]
+pub struct StartNotFound;
+
+#[derive(Diagnostic)]
 #[diag(monomorphize_unknown_cgu_collection_mode)]
 pub struct UnknownCguCollectionMode<'a> {
     pub mode: &'a str,
