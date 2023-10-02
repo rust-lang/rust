@@ -164,23 +164,6 @@ where
     }
 }
 
-impl<T, const N: usize> IterExt<T> for std::array::IntoIter<T, N> {
-    #[inline]
-    fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
-        let len = self.len();
-        if len == 0 {
-            return &mut [];
-        }
-        // Move the content to the arena by copying and then forgetting it.
-        let start_ptr = arena.alloc_raw_slice(len);
-        unsafe {
-            self.as_slice().as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            mem::forget(self);
-            slice::from_raw_parts_mut(start_ptr, len)
-        }
-    }
-}
-
 impl<T> IterExt<T> for Vec<T> {
     #[inline]
     fn alloc_from_iter(mut self, arena: &TypedArena<T>) -> &mut [T] {
