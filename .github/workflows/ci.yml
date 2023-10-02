@@ -238,7 +238,7 @@ jobs:
         run: cross test --verbose --target=${{ matrix.target }} --release
 
   features:
-    name: "Check cargo features (${{ matrix.simd }} × ${{ matrix.features }})"
+    name: "Test cargo features (${{ matrix.simd }} × ${{ matrix.features }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -249,12 +249,8 @@ jobs:
         features:
           - ""
           - "--features std"
-          - "--features generic_const_exprs"
-          - "--features std --features generic_const_exprs"
           - "--features all_lane_counts"
-          - "--features all_lane_counts --features std"
-          - "--features all_lane_counts --features generic_const_exprs"
-          - "--features all_lane_counts --features std --features generic_const_exprs"
+          - "--all-features"
 
     steps:
       - uses: actions/checkout@v2
@@ -266,9 +262,9 @@ jobs:
         run: echo "CPU_FEATURE=$(lscpu | grep -o avx512[a-z]* | sed s/avx/+avx/ | tr '\n' ',' )" >> $GITHUB_ENV
       - name: Check build
         if: ${{ matrix.simd == '' }}
-        run: RUSTFLAGS="-Dwarnings" cargo check --all-targets --no-default-features ${{ matrix.features }}
+        run: RUSTFLAGS="-Dwarnings" cargo test --all-targets --no-default-features ${{ matrix.features }}
       - name: Check AVX
         if: ${{ matrix.simd == 'avx512' && contains(env.CPU_FEATURE, 'avx512') }}
         run: |
           echo "Found AVX features: $CPU_FEATURE"
-          RUSTFLAGS="-Dwarnings -Ctarget-feature=$CPU_FEATURE" cargo check --all-targets --no-default-features ${{ matrix.features }}
+          RUSTFLAGS="-Dwarnings -Ctarget-feature=$CPU_FEATURE" cargo test --all-targets --no-default-features ${{ matrix.features }}
