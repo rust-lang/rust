@@ -914,12 +914,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                     dead_items.push(DeadItem { def_id, name, level })
                 }
             }
-            visitor.warn_multiple(
-                item.owner_id.def_id,
-                "used",
-                dead_items,
-                false,
-            );
+            visitor.warn_multiple(item.owner_id.def_id, "used", dead_items, false);
         }
 
         if !live_symbols.contains(&item.owner_id.def_id) {
@@ -974,12 +969,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                         }
                     })
                     .collect();
-                visitor.warn_multiple(
-                    def_id,
-                    "read",
-                    dead_fields,
-                    is_positional,
-                )
+                visitor.warn_multiple(def_id, "read", dead_fields, is_positional);
             }
 
             visitor.warn_multiple(
