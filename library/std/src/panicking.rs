@@ -687,24 +687,8 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
         intrinsics::abort()
     }
 
-    let loc = Location::caller();
-    return crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
-        rust_panic_with_hook(
-            &mut Payload::new(msg),
-            loc,
-            /* can_unwind */ true,
-            /* force_no_backtrace */ false,
-        )
-    });
-
     struct Payload<A> {
         inner: Option<A>,
-    }
-
-    impl<A: Send + 'static> Payload<A> {
-        fn new(inner: A) -> Payload<A> {
-            Payload { inner: Some(inner) }
-        }
     }
 
     unsafe impl<A: Send + 'static> PanicPayload for Payload<A> {
@@ -729,7 +713,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
         }
     }
 
-    impl<A: Send + 'static> fmt::Display for Payload<A> {
+    impl<A: 'static> fmt::Display for Payload<A> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match &self.inner {
                 Some(a) => f.write_str(payload_as_str(a)),
@@ -737,6 +721,16 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
             }
         }
     }
+
+    let loc = Location::caller();
+    crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
+        rust_panic_with_hook(
+            &mut Payload { inner: Some(msg) },
+            loc,
+            /* can_unwind */ true,
+            /* force_no_backtrace */ false,
+        )
+    })
 }
 
 fn payload_as_str(payload: &dyn Any) -> &str {
