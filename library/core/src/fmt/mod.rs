@@ -791,8 +791,10 @@ pub trait Octal {
 /// assert_eq!(format!("l as binary is: {l:b}"), "l as binary is: 1101011");
 ///
 /// assert_eq!(
-///     format!("l as binary is: {l:#032b}"),
-///     "l as binary is: 0b000000000000000000000001101011"
+///     // Note that the `0b` prefix added by `#` is included in the total width, so we
+///     // need to add two to correctly display all 32 bits.
+///     format!("l as binary is: {l:#034b}"),
+///     "l as binary is: 0b00000000000000000000000001101011"
 /// );
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
