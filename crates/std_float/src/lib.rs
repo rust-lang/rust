@@ -2,7 +2,8 @@
 #![cfg_attr(
     feature = "as_crate",
     feature(platform_intrinsics),
-    feature(portable_simd)
+    feature(portable_simd),
+    allow(internal_features)
 )]
 #[cfg(not(feature = "as_crate"))]
 use core::simd;
