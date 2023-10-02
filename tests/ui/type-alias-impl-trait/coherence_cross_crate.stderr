@@ -5,8 +5,6 @@ LL | impl OtherTrait for Alias {}
    | ------------------------- first implementation here
 LL | impl OtherTrait for i32 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Alias`
-   |
-   = note: upstream crates may add a new impl of trait `coherence_cross_crate_trait_decl::SomeTrait` for type `i32` in future versions
 
 error: aborting due to previous error
 

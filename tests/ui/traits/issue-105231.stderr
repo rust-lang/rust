@@ -14,16 +14,15 @@ LL |
 LL ~ struct B<T>(Box<A<A<T>>>);
    |
 
-error[E0275]: overflow evaluating the requirement `A<A<A<A<A<A<A<...>>>>>>>: Send`
+error[E0119]: conflicting implementations of trait `Foo` for type `B<u8>`
+  --> $DIR/issue-105231.rs:7:1
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_105231`)
-note: required because it appears within the type `B<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
-  --> $DIR/issue-105231.rs:4:8
-   |
-LL | struct B<T>(A<A<T>>);
-   |        ^
+LL | impl<T> Foo for T where T: Send {}
+   | ----------------- first implementation here
+LL | impl Foo for B<u8> {}
+   | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `B<u8>`
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0072, E0275.
+Some errors have detailed explanations: E0072, E0119.
 For more information about an error, try `rustc --explain E0072`.

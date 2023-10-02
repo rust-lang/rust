@@ -1,3 +1,7 @@
+WARN rustc_trait_selection::traits::coherence expected an unknowable trait ref: <Wrapper<_> as std::marker::Unsize<Wrapper<_>>>
+WARN rustc_trait_selection::traits::coherence expected an unknowable trait ref: <Wrapper<_> as std::marker::Unsize<Wrapper<_>>>
+WARN rustc_trait_selection::traits::coherence expected an unknowable trait ref: <Wrapper<_> as std::marker::Unsize<Wrapper<_>>>
+WARN rustc_trait_selection::traits::coherence expected an unknowable trait ref: <Wrapper<_> as std::marker::Unsize<Wrapper<_>>>
 error[E0119]: conflicting implementations of trait `CoerceUnsized<&Wrapper<_>>` for type `&Wrapper<_>`
   --> $DIR/E0476.rs:9:1
    |
