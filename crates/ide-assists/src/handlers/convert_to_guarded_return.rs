@@ -51,22 +51,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
     // Check if there is an IfLet that we can handle.
     let (if_let_pat, cond_expr) = if is_pattern_cond(cond.clone()) {
         let let_ = single_let(cond)?;
-        match let_.pat() {
-            Some(ast::Pat::TupleStructPat(pat)) if pat.fields().count() == 1 => {
-                let path = pat.path()?;
-                if path.qualifier().is_some() {
-                    return None;
-                }
-
-                let bound_ident = pat.fields().next()?;
-                if !ast::IdentPat::can_cast(bound_ident.syntax().kind()) {
-                    return None;
-                }
-
-                (Some((path, bound_ident)), let_.expr()?)
-            }
-            _ => return None, // Unsupported IfLet.
-        }
+        (Some(let_.pat()?), let_.expr()?)
     } else {
         (None, cond)
     };
@@ -136,11 +121,10 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
                     };
                     new_expr.syntax().clone_for_update()
                 }
-                Some((path, bound_ident)) => {
+                Some(pat) => {
                     // If-let.
-                    let pat = make::tuple_struct_pat(path, once(bound_ident));
                     let let_else_stmt = make::let_else_stmt(
-                        pat.into(),
+                        pat,
                         None,
                         cond_expr,
                         ast::make::tail_only_block_expr(early_expression),
@@ -437,6 +421,60 @@ fn main() {
         foo(n);
         bar();
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_arbitrary_if_let_patterns() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    $0if let None = Some(92) {
+        foo();
+    }
+}
+"#,
+            r#"
+fn main() {
+    let None = Some(92) else { return };
+    foo();
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    $0if let [1, x] = [1, 92] {
+        foo(x);
+    }
+}
+"#,
+            r#"
+fn main() {
+    let [1, x] = [1, 92] else { return };
+    foo(x);
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    $0if let (Some(x), None) = (Some(92), None) {
+        foo(x);
+    }
+}
+"#,
+            r#"
+fn main() {
+    let (Some(x), None) = (Some(92), None) else { return };
+    foo(x);
 }
 "#,
         );
