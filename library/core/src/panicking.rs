@@ -63,7 +63,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
-    let pi = PanicInfo::internal_constructor(
+    let pi = PanicInfo::new(
         fmt,
         Location::caller(),
         /* can_unwind */ true,
@@ -101,12 +101,8 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
         }
 
         // PanicInfo with the `can_unwind` flag set to false forces an abort.
-        let pi = PanicInfo::internal_constructor(
-            &fmt,
-            Location::caller(),
-            /* can_unwind */ false,
-            force_no_backtrace,
-        );
+        let pi =
+            PanicInfo::new(fmt, Location::caller(), /* can_unwind */ false, force_no_backtrace);
 
         // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
         unsafe { panic_impl(&pi) }

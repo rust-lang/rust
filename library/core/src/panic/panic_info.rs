@@ -24,14 +24,8 @@ pub struct PanicInfo<'a> {
 }
 
 impl<'a> PanicInfo<'a> {
-    #[unstable(
-        feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` and related macros",
-        issue = "none"
-    )]
-    #[doc(hidden)]
     #[inline]
-    pub fn internal_constructor(
+    pub(crate) fn new(
         message: fmt::Arguments<'a>,
         location: &'a Location<'a>,
         can_unwind: bool,
