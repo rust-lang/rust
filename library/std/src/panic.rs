@@ -44,23 +44,14 @@ pub struct PanicInfo<'a> {
 }
 
 impl<'a> PanicInfo<'a> {
-    #[unstable(feature = "panic_internals", issue = "none")]
-    #[doc(hidden)]
     #[inline]
-    pub fn internal_constructor(
+    pub(crate) fn new(
         location: &'a Location<'a>,
+        payload: &'a (dyn Any + Send),
         can_unwind: bool,
         force_no_backtrace: bool,
     ) -> Self {
-        struct NoPayload;
-        PanicInfo { payload: &NoPayload, location, can_unwind, force_no_backtrace }
-    }
-
-    #[unstable(feature = "panic_internals", issue = "none")]
-    #[doc(hidden)]
-    #[inline]
-    pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
-        self.payload = info;
+        PanicInfo { payload, location, can_unwind, force_no_backtrace }
     }
 
     /// Returns the payload associated with the panic.

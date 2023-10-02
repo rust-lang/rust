@@ -775,9 +775,7 @@ fn rust_panic_with_hook(
         crate::sys::abort_internal();
     }
 
-    let mut info = PanicInfo::internal_constructor(location, can_unwind, force_no_backtrace);
-    let hook = HOOK.read().unwrap_or_else(PoisonError::into_inner);
-    match *hook {
+    match *HOOK.read().unwrap_or_else(PoisonError::into_inner) {
         // Some platforms (like wasm) know that printing to stderr won't ever actually
         // print anything, and if that's the case we can skip the default
         // hook. Since string formatting happens lazily when calling `payload`
@@ -786,15 +784,12 @@ fn rust_panic_with_hook(
         // formatting.)
         Hook::Default if panic_output().is_none() => {}
         Hook::Default => {
-            info.set_payload(payload.get());
-            default_hook(&info);
+            default_hook(&PanicInfo::new(location, payload.get(), can_unwind, force_no_backtrace));
         }
         Hook::Custom(ref hook) => {
-            info.set_payload(payload.get());
-            hook(&info);
+            hook(&PanicInfo::new(location, payload.get(), can_unwind, force_no_backtrace));
         }
-    };
-    drop(hook);
+    }
 
     // Indicate that we have finished executing the panic hook. After this point
     // it is fine if there is a panic while executing destructors, as long as it
