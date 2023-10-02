@@ -2,7 +2,7 @@
 //!
 //! In core, panicking is always done with a message, resulting in a core::panic::PanicInfo
 //! containing a fmt::Arguments. In std, however, panicking can be done with panic_any, which throws
-//! a Box<dyn Any> containing any type of value. Because of this, std::panic::PanicInfo is a
+//! a `Box<dyn Any>` containing any type of value. Because of this, std::panic::PanicInfo is a
 //! different type, which contains a &dyn Any instead of a fmt::Arguments.
 //! std's panic handler will convert the fmt::Arguments to a &dyn Any containing either a
 //! &'static str or String containing the formatted message.
