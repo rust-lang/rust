@@ -719,7 +719,7 @@ macro_rules! unreachable {
 /// The difference between `unimplemented!` and [`todo!`] is that while `todo!`
 /// conveys an intent of implementing the functionality later and the message is "not yet
 /// implemented", `unimplemented!` makes no such claims. Its message is "not implemented".
-/// 
+///
 /// Also, some IDEs will mark `todo!`s.
 ///
 /// # Panics
@@ -806,7 +806,7 @@ macro_rules! unimplemented {
 /// The difference between [`unimplemented!`] and `todo!` is that while `todo!` conveys
 /// an intent of implementing the functionality later and the message is "not yet
 /// implemented", `unimplemented!` makes no such claims. Its message is "not implemented".
-/// 
+///
 /// Also, some IDEs will mark `todo!`s.
 ///
 /// # Panics
@@ -815,7 +815,7 @@ macro_rules! unimplemented {
 /// fixed, specific message.
 ///
 /// Like `panic!`, this macro has a second form for displaying custom values.
-/// 
+///
 /// # Examples
 ///
 /// Here's an example of some in-progress code. We have a trait `Foo`:
@@ -849,7 +849,7 @@ macro_rules! unimplemented {
 ///         // Let's not worry about implementing baz() for now
 ///         todo!();
 ///     }
-/// 
+///
 ///     fn qux(&self) -> Result<u64, ()> {
 ///         // We can add a message to todo! to display our omission.
 ///         // This will display:
