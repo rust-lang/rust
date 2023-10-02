@@ -617,12 +617,17 @@ impl<'tcx> Instance<'tcx> {
         v: EarlyBinder<T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
-        T: TypeFoldable<TyCtxt<'tcx>> + Clone,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if let Some(args) = self.args_for_mir_body() {
             tcx.try_instantiate_and_normalize_erasing_regions(args, param_env, v)
         } else {
-            tcx.try_normalize_erasing_regions(param_env, v.skip_binder())
+            // We're using `instantiate_identity` as e.g.
+            // `FnPtrShim` is separately generated for every
+            // instantiation of the `FnDef`, so the MIR body
+            // is already instantiated. Any generic parameters it
+            // contains are generic parameters from the caller.
+            tcx.try_normalize_erasing_regions(param_env, v.instantiate_identity())
         }
     }
 

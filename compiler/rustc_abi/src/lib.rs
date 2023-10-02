@@ -53,10 +53,11 @@ bitflags! {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum IntegerType {
-    /// Pointer sized integer type, i.e. isize and usize. The field shows signedness, that
-    /// is, `Pointer(true)` is isize.
+    /// Pointer-sized integer type, i.e. `isize` and `usize`. The field shows signedness, e.g.
+    /// `Pointer(true)` means `isize`.
     Pointer(bool),
-    /// Fix sized integer type, e.g. i8, u32, i128 The bool field shows signedness, `Fixed(I8, false)` means `u8`
+    /// Fixed-sized integer type, e.g. `i8`, `u32`, `i128`. The bool field shows signedness, e.g.
+    /// `Fixed(I8, false)` means `u8`.
     Fixed(Integer, bool),
 }
 
@@ -69,7 +70,7 @@ impl IntegerType {
     }
 }
 
-/// Represents the repr options provided by the user,
+/// Represents the repr options provided by the user.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub struct ReprOptions {
@@ -139,7 +140,7 @@ impl ReprOptions {
     }
 
     /// Returns `true` if this type is valid for reordering and `-Z randomize-layout`
-    /// was enabled for its declaration crate
+    /// was enabled for its declaration crate.
     pub fn can_randomize_type_layout(&self) -> bool {
         !self.inhibit_struct_field_reordering_opt()
             && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
@@ -217,7 +218,8 @@ pub enum TargetDataLayoutErrors<'a> {
 }
 
 impl TargetDataLayout {
-    /// Parse data layout from an [llvm data layout string](https://llvm.org/docs/LangRef.html#data-layout)
+    /// Parse data layout from an
+    /// [llvm data layout string](https://llvm.org/docs/LangRef.html#data-layout)
     ///
     /// This function doesn't fill `c_enum_min_size` and it will always be `I32` since it can not be
     /// determined from llvm string.
@@ -242,10 +244,11 @@ impl TargetDataLayout {
         };
 
         // Parse a size string.
-        let size = |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
+        let parse_size =
+            |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
 
         // Parse an alignment string.
-        let align = |s: &[&'a str], cause: &'a str| {
+        let parse_align = |s: &[&'a str], cause: &'a str| {
             if s.is_empty() {
                 return Err(TargetDataLayoutErrors::MissingAlignment { cause });
             }
@@ -269,22 +272,22 @@ impl TargetDataLayout {
                 [p] if p.starts_with('P') => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
-                ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
-                ["f32", ref a @ ..] => dl.f32_align = align(a, "f32")?,
-                ["f64", ref a @ ..] => dl.f64_align = align(a, "f64")?,
+                ["a", ref a @ ..] => dl.aggregate_align = parse_align(a, "a")?,
+                ["f32", ref a @ ..] => dl.f32_align = parse_align(a, "f32")?,
+                ["f64", ref a @ ..] => dl.f64_align = parse_align(a, "f64")?,
                 // FIXME(erikdesjardins): we should be parsing nonzero address spaces
                 // this will require replacing TargetDataLayout::{pointer_size,pointer_align}
                 // with e.g. `fn pointer_size_in(AddressSpace)`
                 [p @ "p", s, ref a @ ..] | [p @ "p0", s, ref a @ ..] => {
-                    dl.pointer_size = size(s, p)?;
-                    dl.pointer_align = align(a, p)?;
+                    dl.pointer_size = parse_size(s, p)?;
+                    dl.pointer_align = parse_align(a, p)?;
                 }
                 [s, ref a @ ..] if s.starts_with('i') => {
                     let Ok(bits) = s[1..].parse::<u64>() else {
-                        size(&s[1..], "i")?; // For the user error.
+                        parse_size(&s[1..], "i")?; // For the user error.
                         continue;
                     };
-                    let a = align(a, s)?;
+                    let a = parse_align(a, s)?;
                     match bits {
                         1 => dl.i1_align = a,
                         8 => dl.i8_align = a,
@@ -301,8 +304,8 @@ impl TargetDataLayout {
                     }
                 }
                 [s, ref a @ ..] if s.starts_with('v') => {
-                    let v_size = size(&s[1..], "v")?;
-                    let a = align(a, s)?;
+                    let v_size = parse_size(&s[1..], "v")?;
+                    let a = parse_align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
                         v.1 = a;
                         continue;
@@ -747,7 +750,6 @@ impl Align {
 /// A pair of alignments, ABI-mandated and preferred.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-
 pub struct AbiAndPrefAlign {
     pub abi: Align,
     pub pref: Align,
@@ -773,7 +775,6 @@ impl AbiAndPrefAlign {
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
-
 pub enum Integer {
     I8,
     I16,
@@ -937,8 +938,7 @@ impl Primitive {
 }
 
 /// Inclusive wrap-around range of valid values, that is, if
-/// start > end, it represents `start..=MAX`,
-/// followed by `0..=end`.
+/// start > end, it represents `start..=MAX`, followed by `0..=end`.
 ///
 /// That is, for an i8 primitive, a range of `254..=2` means following
 /// sequence:
@@ -970,21 +970,21 @@ impl WrappingRange {
 
     /// Returns `self` with replaced `start`
     #[inline(always)]
-    pub fn with_start(mut self, start: u128) -> Self {
+    fn with_start(mut self, start: u128) -> Self {
         self.start = start;
         self
     }
 
     /// Returns `self` with replaced `end`
     #[inline(always)]
-    pub fn with_end(mut self, end: u128) -> Self {
+    fn with_end(mut self, end: u128) -> Self {
         self.end = end;
         self
     }
 
     /// Returns `true` if `size` completely fills the range.
     #[inline]
-    pub fn is_full_for(&self, size: Size) -> bool {
+    fn is_full_for(&self, size: Size) -> bool {
         let max_value = size.unsigned_int_max();
         debug_assert!(self.start <= max_value && self.end <= max_value);
         self.start == (self.end.wrapping_add(1) & max_value)
@@ -1066,7 +1066,8 @@ impl Scalar {
     }
 
     #[inline]
-    /// Allows the caller to mutate the valid range. This operation will panic if attempted on a union.
+    /// Allows the caller to mutate the valid range. This operation will panic if attempted on a
+    /// union.
     pub fn valid_range_mut(&mut self) -> &mut WrappingRange {
         match self {
             Scalar::Initialized { valid_range, .. } => valid_range,
@@ -1074,7 +1075,8 @@ impl Scalar {
         }
     }
 
-    /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
+    /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole
+    /// layout.
     #[inline]
     pub fn is_always_valid<C: HasDataLayout>(&self, cx: &C) -> bool {
         match *self {
@@ -1252,7 +1254,6 @@ impl AddressSpace {
 /// in terms of categories of C types there are ABI rules for.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-
 pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
@@ -1457,17 +1458,19 @@ impl Niche {
             return None;
         }
 
-        // Extend the range of valid values being reserved by moving either `v.start` or `v.end` bound.
-        // Given an eventual `Option<T>`, we try to maximize the chance for `None` to occupy the niche of zero.
-        // This is accomplished by preferring enums with 2 variants(`count==1`) and always taking the shortest path to niche zero.
-        // Having `None` in niche zero can enable some special optimizations.
+        // Extend the range of valid values being reserved by moving either `v.start` or `v.end`
+        // bound. Given an eventual `Option<T>`, we try to maximize the chance for `None` to occupy
+        // the niche of zero. This is accomplished by preferring enums with 2 variants(`count==1`)
+        // and always taking the shortest path to niche zero. Having `None` in niche zero can
+        // enable some special optimizations.
         //
         // Bound selection criteria:
         // 1. Select closest to zero given wrapping semantics.
         // 2. Avoid moving past zero if possible.
         //
-        // In practice this means that enums with `count > 1` are unlikely to claim niche zero, since they have to fit perfectly.
-        // If niche zero is already reserved, the selection of bounds are of little interest.
+        // In practice this means that enums with `count > 1` are unlikely to claim niche zero,
+        // since they have to fit perfectly. If niche zero is already reserved, the selection of
+        // bounds are of little interest.
         let move_start = |v: WrappingRange| {
             let start = v.start.wrapping_sub(count) & max_value;
             Some((start, Scalar::Initialized { value, valid_range: v.with_start(start) }))
