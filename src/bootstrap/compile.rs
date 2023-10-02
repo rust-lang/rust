@@ -906,6 +906,11 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
+        if compiler.stage == 1 {
+            // Relocations are required for BOLT to work.k
+            cargo.env("RUSTC_BOLT_LINK_FLAGS", "1");
+        }
+
         let _guard = builder.msg_sysroot_tool(
             Kind::Build,
             compiler.stage,
