@@ -30,9 +30,9 @@ pub fn is_equal_up_to_subtyping<'tcx>(
 
 /// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
 ///
-/// For almost all of the use cases variance should be `Covariant`,
-/// in `MirPhase` >= `MirPhase::Runtime(RuntimePhase::Initial` variance should
-/// be `Invariant`.
+/// When validating assignments, the variance should be `Covariant`. When checking
+/// during `MirPhase` >= `MirPhase::Runtime(RuntimePhase::Initial)` variance should be `Invariant`
+/// because we want to check for type equality.
 ///
 /// This mostly ignores opaque types as it can be used in constraining contexts
 /// while still computing the final underlying type.
