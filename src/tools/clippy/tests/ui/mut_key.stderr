@@ -14,103 +14,94 @@ LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> Hash
    |                                                                        ^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:37:5
+  --> $DIR/mut_key.rs:35:5
    |
 LL |     let _other: HashMap<Key, bool> = HashMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:65:22
+  --> $DIR/mut_key.rs:63:22
    |
 LL | fn tuples_bad<U>(_m: &mut HashMap<(Key, U), bool>) {}
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:78:5
+  --> $DIR/mut_key.rs:76:5
    |
 LL |     let _map = HashMap::<Cell<usize>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:80:5
+  --> $DIR/mut_key.rs:78:5
    |
 LL |     let _map = HashMap::<&mut Cell<usize>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:82:5
+  --> $DIR/mut_key.rs:80:5
    |
 LL |     let _map = HashMap::<&mut usize, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:85:5
+  --> $DIR/mut_key.rs:83:5
    |
 LL |     let _map = HashMap::<Vec<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:87:5
+  --> $DIR/mut_key.rs:85:5
    |
 LL |     let _map = HashMap::<BTreeMap<Cell<usize>, ()>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:89:5
+  --> $DIR/mut_key.rs:87:5
    |
 LL |     let _map = HashMap::<BTreeMap<(), Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:91:5
+  --> $DIR/mut_key.rs:89:5
    |
 LL |     let _map = HashMap::<BTreeSet<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:93:5
+  --> $DIR/mut_key.rs:91:5
    |
 LL |     let _map = HashMap::<Option<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:95:5
+  --> $DIR/mut_key.rs:93:5
    |
 LL |     let _map = HashMap::<Option<Vec<Cell<usize>>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:97:5
+  --> $DIR/mut_key.rs:95:5
    |
 LL |     let _map = HashMap::<Result<&mut usize, ()>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:100:5
+  --> $DIR/mut_key.rs:98:5
    |
 LL |     let _map = HashMap::<Box<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:102:5
+  --> $DIR/mut_key.rs:100:5
    |
 LL |     let _map = HashMap::<Rc<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:104:5
+  --> $DIR/mut_key.rs:102:5
    |
 LL |     let _map = HashMap::<Arc<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this argument is a mutable reference, but not used mutably
-  --> $DIR/mut_key.rs:31:32
-   |
-LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&HashMap<Key, usize>`
-   |
-   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
-
-error: aborting due to 18 previous errors
+error: aborting due to 17 previous errors
 

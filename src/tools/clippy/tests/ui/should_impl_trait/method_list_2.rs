@@ -40,8 +40,6 @@ impl T {
 
     pub fn hash(&self, state: &mut T) {
         //~^ ERROR: method `hash` can be confused for the standard trait method `std::hash::Ha
-        //~| ERROR: this argument is a mutable reference, but not used mutably
-        //~| NOTE: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
         unimplemented!()
     }
 

@@ -7,8 +7,6 @@ fn fn_constref(i: &i32) -> i32 {
     unimplemented!()
 }
 fn fn_mutref(i: &mut i32) {
-    //~^ ERROR: this argument is a mutable reference, but not used mutably
-    //~| NOTE: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
     unimplemented!()
 }
 fn fooi() -> i32 {

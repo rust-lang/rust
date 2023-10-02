@@ -22,8 +22,6 @@ impl MyStruct {
     fn takes_an_immutable_reference(&self, a: &i32) {}
 
     fn takes_a_mutable_reference(&self, a: &mut i32) {}
-    //~^ ERROR: this argument is a mutable reference, but not used mutably
-    //~| NOTE: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
 }
 
 #[warn(clippy::unnecessary_mut_passed)]

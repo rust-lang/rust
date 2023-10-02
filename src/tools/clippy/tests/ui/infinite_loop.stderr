@@ -1,5 +1,5 @@
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:24:11
+  --> $DIR/infinite_loop.rs:22:11
    |
 LL |     while y < 10 {
    |           ^^^^^^
@@ -8,7 +8,7 @@ LL |     while y < 10 {
    = note: `#[deny(clippy::while_immutable_condition)]` on by default
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:31:11
+  --> $DIR/infinite_loop.rs:29:11
    |
 LL |     while y < 10 && x < 3 {
    |           ^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     while y < 10 && x < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:40:11
+  --> $DIR/infinite_loop.rs:38:11
    |
 LL |     while !cond {
    |           ^^^^^
@@ -24,7 +24,7 @@ LL |     while !cond {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:86:11
+  --> $DIR/infinite_loop.rs:84:11
    |
 LL |     while i < 3 {
    |           ^^^^^
@@ -32,7 +32,7 @@ LL |     while i < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:93:11
+  --> $DIR/infinite_loop.rs:91:11
    |
 LL |     while i < 3 && j > 0 {
    |           ^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     while i < 3 && j > 0 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:99:11
+  --> $DIR/infinite_loop.rs:97:11
    |
 LL |     while i < 3 {
    |           ^^^^^
@@ -48,7 +48,7 @@ LL |     while i < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:116:11
+  --> $DIR/infinite_loop.rs:114:11
    |
 LL |     while i < 3 {
    |           ^^^^^
@@ -56,7 +56,7 @@ LL |     while i < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:123:11
+  --> $DIR/infinite_loop.rs:121:11
    |
 LL |     while i < 3 {
    |           ^^^^^
@@ -64,7 +64,7 @@ LL |     while i < 3 {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:191:15
+  --> $DIR/infinite_loop.rs:189:15
    |
 LL |         while self.count < n {
    |               ^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |         while self.count < n {
    = note: this may lead to an infinite or to a never running loop
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:201:11
+  --> $DIR/infinite_loop.rs:199:11
    |
 LL |     while y < 10 {
    |           ^^^^^^
@@ -82,7 +82,7 @@ LL |     while y < 10 {
    = help: rewrite it as `if cond { loop { } }`
 
 error: variables in the condition are not mutated in the loop body
-  --> $DIR/infinite_loop.rs:210:11
+  --> $DIR/infinite_loop.rs:208:11
    |
 LL |     while y < 10 {
    |           ^^^^^^
@@ -91,14 +91,5 @@ LL |     while y < 10 {
    = note: this loop contains `return`s or `break`s
    = help: rewrite it as `if cond { loop { } }`
 
-error: this argument is a mutable reference, but not used mutably
-  --> $DIR/infinite_loop.rs:9:17
-   |
-LL | fn fn_mutref(i: &mut i32) {
-   |                 ^^^^^^^^ help: consider changing to: `&i32`
-   |
-   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
-
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 
