@@ -42,38 +42,18 @@ macro_rules! swap_bytes {
 }
 
 macro_rules! impl_to_bytes {
-    { $ty:tt, $size:tt } => {
-        impl_to_bytes! { $ty, $size * 1 }
-        impl_to_bytes! { $ty, $size * 2 }
-        impl_to_bytes! { $ty, $size * 4 }
-        impl_to_bytes! { $ty, $size * 8 }
-        impl_to_bytes! { $ty, $size * 16 }
-        impl_to_bytes! { $ty, $size * 32 }
-        impl_to_bytes! { $ty, $size * 64 }
-    };
+    { $ty:tt, 1  } => { impl_to_bytes! { $ty, 1  * [1, 2, 4, 8, 16, 32, 64] } };
+    { $ty:tt, 2  } => { impl_to_bytes! { $ty, 2  * [1, 2, 4, 8, 16, 32] } };
+    { $ty:tt, 4  } => { impl_to_bytes! { $ty, 4  * [1, 2, 4, 8, 16] } };
+    { $ty:tt, 8  } => { impl_to_bytes! { $ty, 8  * [1, 2, 4, 8] } };
+    { $ty:tt, 16 } => { impl_to_bytes! { $ty, 16 * [1, 2, 4] } };
+    { $ty:tt, 32 } => { impl_to_bytes! { $ty, 32 * [1, 2] } };
+    { $ty:tt, 64 } => { impl_to_bytes! { $ty, 64 * [1] } };
 
-    // multiply element size by number of elements
-    { $ty:tt, 1 * $elems:literal } => { impl_to_bytes! { @impl [$ty; $elems], $elems } };
-    { $ty:tt, $size:literal * 1 } => { impl_to_bytes! { @impl [$ty; 1], $size } };
-    { $ty:tt, 2 * 2  } => { impl_to_bytes! { @impl [$ty; 2], 4  } };
-    { $ty:tt, 2 * 4  } => { impl_to_bytes! { @impl [$ty; 4], 8  } };
-    { $ty:tt, 2 * 8  } => { impl_to_bytes! { @impl [$ty; 8], 16 } };
-    { $ty:tt, 2 * 16 } => { impl_to_bytes! { @impl [$ty; 16], 32 } };
-    { $ty:tt, 2 * 32 } => { impl_to_bytes! { @impl [$ty; 32], 64 } };
-    { $ty:tt, 4 * 2  } => { impl_to_bytes! { @impl [$ty; 2], 8  } };
-    { $ty:tt, 4 * 4  } => { impl_to_bytes! { @impl [$ty; 4], 16 } };
-    { $ty:tt, 4 * 8  } => { impl_to_bytes! { @impl [$ty; 8], 32 } };
-    { $ty:tt, 4 * 16 } => { impl_to_bytes! { @impl [$ty; 16], 64 } };
-    { $ty:tt, 8 * 2  } => { impl_to_bytes! { @impl [$ty; 2], 16 } };
-    { $ty:tt, 8 * 4  } => { impl_to_bytes! { @impl [$ty; 4], 32 } };
-    { $ty:tt, 8 * 8  } => { impl_to_bytes! { @impl [$ty; 8], 64 } };
-
-    // unsupported number of lanes
-    { $ty:ty, $a:literal * $b:literal } => { };
-
-    { @impl [$ty:tt; $elem:literal], $bytes:literal } => {
-        impl ToBytes for Simd<$ty, $elem> {
-            type Bytes = Simd<u8, $bytes>;
+    { $ty:tt, $size:literal * [$($elems:literal),*] } => {
+        $(
+        impl ToBytes for Simd<$ty, $elems> {
+            type Bytes = Simd<u8, { $size * $elems }>;
 
             #[inline]
             fn to_ne_bytes(self) -> Self::Bytes {
@@ -123,6 +103,7 @@ macro_rules! impl_to_bytes {
                 }
             }
         }
+        )*
     }
 }
 
