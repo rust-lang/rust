@@ -40,7 +40,7 @@
 -     bb1: {
 +         StorageLive(_5);
 +         _5 = {generator@$DIR/inline_generator.rs:16:5: 16:8 (#0)};
-+         _4 = move (_5as {generator@$DIR/inline_generator.rs:16:5: 16:8});
++         _4 = move (_5 as subtype {generator@$DIR/inline_generator.rs:16:5: 16:8});
 +         StorageDead(_5);
           _3 = &mut _4;
 -         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new(move _3) -> [return: bb2, unwind: bb5];

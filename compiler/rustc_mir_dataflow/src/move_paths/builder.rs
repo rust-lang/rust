@@ -112,8 +112,6 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         let mut union_path = None;
 
         for (place_ref, elem) in data.rev_lookup.un_derefer.iter_projections(place.as_ref()) {
-            // We don't care creating `MovePath` for `ProjectionElem::Subtype(T)` because it's for debugging/validating
-            // purposes it's movement doesn't affect anything.
             let body = self.builder.body;
             let tcx = self.builder.tcx;
             let place_ty = place_ref.ty(body, tcx).ty;
@@ -229,8 +227,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     }
                     _ => bug!("Unexpected type {place_ty:#?}"),
                 },
-                // `OpaqueCast` only transmutes the type, so no moves there and
-                // `Downcast` only changes information about a `Place` without moving
+                // `OpaqueCast`:Only transmutes the type, so no moves there.
+                // `Downcast`  :Only changes information about a `Place` without moving.
+                // `Subtype`   :Only transmutes the type, so moves.
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Subtype(_)

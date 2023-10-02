@@ -1127,7 +1127,7 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
                 write!(fmt, " as {ty})")?;
             }
             ProjectionElem::Subtype(ty) => {
-                write!(fmt, "as {ty})")?;
+                write!(fmt, " as subtype {ty})")?;
             }
             ProjectionElem::Downcast(Some(name), _index) => {
                 write!(fmt, " as {name})")?;
