@@ -3155,7 +3155,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "vec_from_array_ref", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "vec_from_array_ref", since = "1.74.0")]
 impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
@@ -3170,7 +3170,7 @@ impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "vec_from_array_ref", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "vec_from_array_ref", since = "1.74.0")]
 impl<T: Clone, const N: usize> From<&mut [T; N]> for Vec<T> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///

@@ -198,7 +198,7 @@ declare_features! (
     /// + `impl Debug for Foo<'_>`
     (accepted, impl_header_lifetime_elision, "1.31.0", Some(15872), None),
     /// Allows referencing `Self` and projections in impl-trait.
-    (accepted, impl_trait_projections, "CURRENT_RUSTC_VERSION", Some(103532), None),
+    (accepted, impl_trait_projections, "1.74.0", Some(103532), None),
     /// Allows using `a..=b` and `..=b` as inclusive range syntaxes.
     (accepted, inclusive_range_syntax, "1.26.0", Some(28237), None),
     /// Allows inferring outlives requirements (RFC 2093).
@@ -270,7 +270,7 @@ declare_features! (
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883), None),
     /// Allows using `+bundle,+whole-archive` link modifiers with native libs.
-    (accepted, packed_bundled_libs, "CURRENT_RUSTC_VERSION", Some(108081), None),
+    (accepted, packed_bundled_libs, "1.74.0", Some(108081), None),
     /// Allows annotating functions conforming to `fn(&PanicInfo) -> !` with `#[panic_handler]`.
     /// This defines the behavior of panics.
     (accepted, panic_handler, "1.30.0", Some(44489), None),
