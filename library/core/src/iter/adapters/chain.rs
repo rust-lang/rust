@@ -1,6 +1,6 @@
 use crate::iter::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
 use crate::num::NonZeroUsize;
-use crate::mem;
+use crate::{mem, ptr};
 use crate::ops::Try;
 
 /// An iterator that links two iterators together, in a chain.
@@ -365,17 +365,27 @@ where
 
 impl<A, B> SpecChain for Chain<A, B>
 where
-    A: Iterator,
-    B: Iterator<Item = A::Item>,
+    A: Iterator + FusedIterator,
+    B: Iterator<Item = A::Item> + FusedIterator,
     Self: SymmetricalModuloLifetimes,
 {
     #[inline]
     fn next(&mut self) -> Option<A::Item> {
-        let mut result = and_then_or_clear(&mut self.a, Iterator::next);
+        let mut result = self.a.as_mut().and_then( Iterator::next);
         if result.is_none() {
-            // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap
-            unsafe { mem::swap(&mut self.a, &mut *(&mut self.b as *mut _ as *mut Option<A>)) };
-            result = and_then_or_clear(&mut self.a, Iterator::next);
+            if mem::needs_drop::<A>() {
+                // swap iters to avoid running drop code inside the loop.
+                // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap.
+                unsafe { mem::swap(&mut self.a, &mut *(&mut self.b as *mut _ as *mut Option<A>)) };
+            } else {
+                // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap.
+                // And they dont need drop, so we can overwrite the values directly.
+                unsafe {
+                    ptr::write(&mut self.a, ptr::from_ref(&self.b).cast::<Option<A>>().read());
+                    ptr::write(&mut self.b, None);
+                }
+            }
+            result = self.a.as_mut().and_then(Iterator::next);
         }
         result
     }
@@ -383,17 +393,27 @@ where
 
 impl<A, B> SpecChainBack for Chain<A, B>
 where
-    A: DoubleEndedIterator,
-    B: DoubleEndedIterator<Item = A::Item>,
+    A: DoubleEndedIterator + FusedIterator,
+    B: DoubleEndedIterator<Item = A::Item> + FusedIterator,
     Self: SymmetricalModuloLifetimes,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        let mut result = and_then_or_clear(&mut self.b, DoubleEndedIterator::next_back);
+        let mut result = self.b.as_mut().and_then( DoubleEndedIterator::next_back);
         if result.is_none() {
-            // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap
-            unsafe { mem::swap(&mut self.a, &mut *(&mut self.b as *mut _ as *mut Option<A>)) };
-            result = and_then_or_clear(&mut self.b, DoubleEndedIterator::next_back);
+            if mem::needs_drop::<A>() {
+                // swap iters to avoid running drop code inside the loop.
+                // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap.
+                unsafe { mem::swap(&mut self.a, &mut *(&mut self.b as *mut _ as *mut Option<A>)) };
+            } else {
+                // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap.
+                // And they dont need drop, so we can overwrite the values directly.
+                unsafe {
+                    ptr::write(&mut self.b, ptr::from_ref(&self.a).cast::<Option<B>>().read());
+                    ptr::write(&mut self.a, None);
+                }
+            }
+            result = self.b.as_mut().and_then(DoubleEndedIterator::next_back);
         }
         result
     }
