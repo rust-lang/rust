@@ -11,8 +11,9 @@ Language
 - [Make `noop_method_call` warn by default.](https://github.com/rust-lang/rust/pull/111916/)
 - [Support interpolated block for `try` and `async` in macros.](https://github.com/rust-lang/rust/pull/112953/)
 - [Mention style for new syntax in tracking issue template.](https://github.com/rust-lang/rust/pull/113586/)
-- [Make `unconditional_recursion` warning detect recursive drops.](https://github.com/rust-lang/rust/pull/113902/)
-- [Warn on inductive cycle in coherence leading to impls being considered not overlapping.](https://github.com/rust-lang/rust/pull/114023/)
+- [Make `unconditional_recursion` lint detect recursive drops.](https://github.com/rust-lang/rust/pull/113902/)
+- [Future compatibility warning for some impls being incorrectly considered not overlapping.](https://github.com/rust-lang/rust/pull/114023/)
+ - [The `invalid_reference_casting` lint is now **deny-by-default** (instead of allow-by-default)](https://github.com/rust-lang/rust/pull/112431)
 
 <a id="1.73.0-Compiler"></a>
 
