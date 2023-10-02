@@ -295,7 +295,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 // Nothing to elaborate in a projection predicate.
             }
             ty::PredicateKind::NormalizesTo(..) => {
-                // Nothing to elabroate in normalizes-to predicates.
+                // Nothing to elaborate in normalizes-to predicates.
             }
             ty::PredicateKind::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
