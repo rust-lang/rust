@@ -112,7 +112,8 @@ impl Display for DebuginfoLevel {
 /// `config.example.toml`.
 #[derive(Default, Clone)]
 pub struct Config {
-    pub changelog_seen: Option<usize>,
+    pub changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
+    pub change_id: Option<usize>,
     pub ccache: Option<String>,
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
@@ -546,7 +547,8 @@ impl Target {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlConfig {
-    changelog_seen: Option<usize>,
+    changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
+    change_id: Option<usize>,
     build: Option<Build>,
     install: Option<Install>,
     llvm: Option<Llvm>,
@@ -574,7 +576,17 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, rust, dist, target, profile: _, changelog_seen }: Self,
+        TomlConfig {
+            build,
+            install,
+            llvm,
+            rust,
+            dist,
+            target,
+            profile: _,
+            changelog_seen,
+            change_id,
+        }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -587,6 +599,7 @@ impl Merge for TomlConfig {
             }
         }
         self.changelog_seen.merge(changelog_seen, replace);
+        self.change_id.merge(change_id, replace);
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
         do_merge(&mut self.llvm, llvm, replace);
@@ -1242,6 +1255,7 @@ impl Config {
         toml.merge(override_toml, ReplaceOpt::Override);
 
         config.changelog_seen = toml.changelog_seen;
+        config.change_id = toml.change_id;
 
         let build = toml.build.unwrap_or_default();
         if let Some(file_build) = build.build {

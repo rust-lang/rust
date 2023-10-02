@@ -101,7 +101,7 @@ To build a rust toolchain, create a `config.toml` with the following contents:
 
 ```toml
 profile = "compiler"
-changelog-seen = 2
+change-id = 115898
 
 [build]
 sanitizers = true

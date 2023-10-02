@@ -19,11 +19,18 @@
 # Note that this has no default value (x.py uses the defaults in `config.example.toml`).
 #profile = <none>
 
-# Keeps track of the last version of `x.py` used.
-# If `changelog-seen` does not match the version that is currently running,
-# `x.py` will prompt you to update it and to read the changelog.
-# See `src/bootstrap/CHANGELOG.md` for more information.
-changelog-seen = 2
+# Keeps track of major changes made to this configuration.
+#
+# This value also represents ID of the PR that caused major changes. Meaning,
+# you can visit github.com/rust-lang/rust/pull/{change-id} to check for more details.
+#
+# A 'major change' includes any of the following
+#  - A new option
+#  - A change in the default values
+#
+# If `change-id` does not match the version that is currently running,
+# `x.py` will prompt you to update it and check the related PR for more details.
+change-id = 115898
 
 # =============================================================================
 # Tweaking how LLVM is compiled

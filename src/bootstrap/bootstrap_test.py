@@ -103,7 +103,7 @@ class GenerateAndParseConfig(unittest.TestCase):
     """Test that we can serialize and deserialize a config.toml file"""
     def test_no_args(self):
         build = serialize_and_parse([])
-        self.assertEqual(build.get_toml("changelog-seen"), '2')
+        self.assertEqual(build.get_toml("change-id"), '115898')
         self.assertEqual(build.get_toml("profile"), 'dist')
         self.assertIsNone(build.get_toml("llvm.download-ci-llvm"))
 
