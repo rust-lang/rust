@@ -201,7 +201,7 @@ fn bench_for_each_chain_ref_fold(b: &mut Bencher) {
 /// Helper to benchmark `sum` for iterators taken by value which
 /// can optimize `fold`, and by reference which cannot.
 macro_rules! bench_sums {
-    ($bench_sum:ident, $bench_ref_sum:ident, $iter:expr) => {
+    ($bench_sum:ident, $bench_ref_sum:ident, $bench_ext_sum:ident, $iter:expr) => {
         #[bench]
         fn $bench_sum(b: &mut Bencher) {
             b.iter(|| -> i64 { $iter.map(black_box).sum() });
@@ -211,144 +211,178 @@ macro_rules! bench_sums {
         fn $bench_ref_sum(b: &mut Bencher) {
             b.iter(|| -> i64 { $iter.map(black_box).by_ref().sum() });
         }
+
+        #[bench]
+        fn $bench_ext_sum(b: &mut Bencher) {
+            b.iter(|| -> i64 {
+                let mut sum = 0;
+                for i in $iter.map(black_box) {
+                    sum += i;
+                }
+                sum
+            });
+        }
     };
 }
 
 bench_sums! {
     bench_flat_map_sum,
     bench_flat_map_ref_sum,
+    bench_flat_map_ext_sum,
     (0i64..1000).flat_map(|x| x..x+1000)
 }
 
 bench_sums! {
     bench_flat_map_chain_sum,
     bench_flat_map_chain_ref_sum,
+    bench_flat_map_chain_ext_sum,
     (0i64..1000000).flat_map(|x| once(x).chain(once(x)))
 }
 
 bench_sums! {
     bench_enumerate_sum,
     bench_enumerate_ref_sum,
+    bench_enumerate_ext_sum,
     (0i64..1000000).enumerate().map(|(i, x)| x * i as i64)
 }
 
 bench_sums! {
     bench_enumerate_chain_sum,
     bench_enumerate_chain_ref_sum,
+    bench_enumerate_chain_ext_sum,
     (0i64..1000000).chain(0..1000000).enumerate().map(|(i, x)| x * i as i64)
 }
 
 bench_sums! {
     bench_filter_sum,
     bench_filter_ref_sum,
+    bench_filter_ext_sum,
     (0i64..1000000).filter(|x| x % 3 == 0)
 }
 
 bench_sums! {
     bench_filter_chain_sum,
     bench_filter_chain_ref_sum,
+    bench_filter_chain_ext_sum,
     (0i64..1000000).chain(0..1000000).filter(|x| x % 3 == 0)
 }
 
 bench_sums! {
     bench_filter_map_sum,
     bench_filter_map_ref_sum,
+    bench_filter_map_ext_sum,
     (0i64..1000000).filter_map(|x| x.checked_mul(x))
 }
 
 bench_sums! {
     bench_filter_map_chain_sum,
     bench_filter_map_chain_ref_sum,
+    bench_filter_map_chain_ext_sum,
     (0i64..1000000).chain(0..1000000).filter_map(|x| x.checked_mul(x))
 }
 
 bench_sums! {
     bench_fuse_sum,
     bench_fuse_ref_sum,
+    bench_fuse_ext_sum,
     (0i64..1000000).fuse()
 }
 
 bench_sums! {
     bench_fuse_chain_sum,
     bench_fuse_chain_ref_sum,
+    bench_fuse_chain_ext_sum,
     (0i64..1000000).chain(0..1000000).fuse()
 }
 
 bench_sums! {
     bench_inspect_sum,
     bench_inspect_ref_sum,
+    bench_inspect_ext_sum,
     (0i64..1000000).inspect(|_| {})
 }
 
 bench_sums! {
     bench_inspect_chain_sum,
     bench_inspect_chain_ref_sum,
+    bench_inspect_chain_ext_sum,
     (0i64..1000000).chain(0..1000000).inspect(|_| {})
 }
 
 bench_sums! {
     bench_peekable_sum,
     bench_peekable_ref_sum,
+    bench_peekable_ext_sum,
     (0i64..1000000).peekable()
 }
 
 bench_sums! {
     bench_peekable_chain_sum,
     bench_peekable_chain_ref_sum,
+    bench_peekable_chain_ext_sum,
     (0i64..1000000).chain(0..1000000).peekable()
 }
 
 bench_sums! {
     bench_skip_sum,
     bench_skip_ref_sum,
+    bench_skip_ext_sum,
     (0i64..1000000).skip(1000)
 }
 
 bench_sums! {
     bench_skip_chain_sum,
     bench_skip_chain_ref_sum,
+    bench_skip_chain_ext_sum,
     (0i64..1000000).chain(0..1000000).skip(1000)
 }
 
 bench_sums! {
     bench_skip_while_sum,
     bench_skip_while_ref_sum,
+    bench_skip_while_ext_sum,
     (0i64..1000000).skip_while(|&x| x < 1000)
 }
 
 bench_sums! {
     bench_skip_while_chain_sum,
     bench_skip_while_chain_ref_sum,
+    bench_skip_while_chain_ext_sum,
     (0i64..1000000).chain(0..1000000).skip_while(|&x| x < 1000)
 }
 
 bench_sums! {
     bench_take_while_chain_sum,
     bench_take_while_chain_ref_sum,
+    bench_take_while_chain_ext_sum,
     (0i64..1000000).chain(1000000..).take_while(|&x| x < 1111111)
 }
 
 bench_sums! {
     bench_cycle_take_sum,
     bench_cycle_take_ref_sum,
+    bench_cycle_take_ext_sum,
     (0..10000).cycle().take(1000000)
 }
 
 bench_sums! {
     bench_cycle_skip_take_sum,
     bench_cycle_skip_take_ref_sum,
+    bench_cycle_skip_take_ext_sum,
     (0..100000).cycle().skip(1000000).take(1000000)
 }
 
 bench_sums! {
     bench_cycle_take_skip_sum,
     bench_cycle_take_skip_ref_sum,
+    bench_cycle_take_skip_ext_sum,
     (0..100000).cycle().take(1000000).skip(100000)
 }
 
 bench_sums! {
     bench_skip_cycle_skip_zip_add_sum,
     bench_skip_cycle_skip_zip_add_ref_sum,
+    bench_skip_cycle_skip_zip_add_ext_sum,
     (0..100000).skip(100).cycle().skip(100)
       .zip((0..100000).cycle().skip(10))
       .map(|(a,b)| a+b)
@@ -359,6 +393,7 @@ bench_sums! {
 bench_sums! {
     bench_slice_chain_sum,
     bench_slice_chain_ref_sum,
+    bench_slice_chain_ext_sum,
     (&[0; 512]).iter().chain((&[1; 512]).iter())
 }
 
