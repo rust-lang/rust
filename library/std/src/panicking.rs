@@ -248,13 +248,7 @@ fn default_hook(info: &PanicInfo<'_>) {
     // The current implementation always returns `Some`.
     let location = info.location().unwrap();
 
-    let msg = match info.payload().downcast_ref::<&'static str>() {
-        Some(s) => *s,
-        None => match info.payload().downcast_ref::<String>() {
-            Some(s) => &s[..],
-            None => "Box<dyn Any>",
-        },
-    };
+    let msg = payload_as_str(info.payload());
     let thread = thread::try_current();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
@@ -728,6 +722,16 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
                 None => process::abort(),
             }
         }
+    }
+}
+
+fn payload_as_str(payload: &dyn Any) -> &str {
+    if let Some(&s) = payload.downcast_ref::<&'static str>() {
+        s
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.as_str()
+    } else {
+        "Box<dyn Any>"
     }
 }
 
