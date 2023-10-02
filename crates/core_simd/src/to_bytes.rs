@@ -10,7 +10,14 @@ use sealed::Sealed;
 /// Convert SIMD vectors to vectors of bytes
 pub trait ToBytes: Sealed {
     /// This type, reinterpreted as bytes.
-    type Bytes;
+    type Bytes: Copy
+        + Unpin
+        + Send
+        + Sync
+        + AsRef<[u8]>
+        + AsMut<[u8]>
+        + SimdUint<Scalar = u8>
+        + 'static;
 
     /// Return the memory representation of this integer as a byte array in native byte
     /// order.

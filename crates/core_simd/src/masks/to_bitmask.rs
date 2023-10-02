@@ -1,5 +1,6 @@
 use super::{mask_impl, Mask, MaskElement};
 use crate::simd::{LaneCount, SupportedLaneCount};
+use core::borrow::{Borrow, BorrowMut};
 
 mod sealed {
     pub trait Sealed {}
@@ -32,7 +33,15 @@ pub trait ToBitMask: Sealed {
 /// Each bit of the bitmask corresponds to a mask lane, starting with the LSB of the first byte.
 pub trait ToBitMaskArray: Sealed {
     /// The bitmask array.
-    type BitMaskArray;
+    type BitMaskArray: Copy
+        + Unpin
+        + Send
+        + Sync
+        + AsRef<[u8]>
+        + AsMut<[u8]>
+        + Borrow<[u8]>
+        + BorrowMut<[u8]>
+        + 'static;
 
     /// Converts a mask to a bitmask.
     fn to_bitmask_array(self) -> Self::BitMaskArray;
