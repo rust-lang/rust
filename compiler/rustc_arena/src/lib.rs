@@ -44,23 +44,6 @@ fn outline<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
 
-/// An arena that can hold objects of only one type.
-pub struct TypedArena<T> {
-    /// A pointer to the next object to be allocated.
-    ptr: Cell<*mut T>,
-
-    /// A pointer to the end of the allocated area. When this pointer is
-    /// reached, a new chunk is allocated.
-    end: Cell<*mut T>,
-
-    /// A vector of arena chunks.
-    chunks: RefCell<Vec<ArenaChunk<T>>>,
-
-    /// Marker indicating that dropping the arena causes its owned
-    /// instances of `T` to be dropped.
-    _own: PhantomData<T>,
-}
-
 struct ArenaChunk<T = u8> {
     /// The raw storage for the arena chunk.
     storage: NonNull<[MaybeUninit<T>]>,
@@ -129,6 +112,23 @@ impl<T> ArenaChunk<T> {
 // the usual sizes of pages and huge pages on Linux.
 const PAGE: usize = 4096;
 const HUGE_PAGE: usize = 2 * 1024 * 1024;
+
+/// An arena that can hold objects of only one type.
+pub struct TypedArena<T> {
+    /// A pointer to the next object to be allocated.
+    ptr: Cell<*mut T>,
+
+    /// A pointer to the end of the allocated area. When this pointer is
+    /// reached, a new chunk is allocated.
+    end: Cell<*mut T>,
+
+    /// A vector of arena chunks.
+    chunks: RefCell<Vec<ArenaChunk<T>>>,
+
+    /// Marker indicating that dropping the arena causes its owned
+    /// instances of `T` to be dropped.
+    _own: PhantomData<T>,
+}
 
 impl<T> Default for TypedArena<T> {
     /// Creates a new `TypedArena`.
