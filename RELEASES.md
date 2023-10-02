@@ -6,11 +6,9 @@ Version 1.73.0 (2023-10-05)
 Language
 --------
 
-- [Add `internal_features` lint for internal unstable features.](https://github.com/rust-lang/rust/pull/108955/)
 - [Uplift `clippy::fn_null_check` lint as `useless_ptr_null_checks`.](https://github.com/rust-lang/rust/pull/111717/)
 - [Make `noop_method_call` warn by default.](https://github.com/rust-lang/rust/pull/111916/)
 - [Support interpolated block for `try` and `async` in macros.](https://github.com/rust-lang/rust/pull/112953/)
-- [Mention style for new syntax in tracking issue template.](https://github.com/rust-lang/rust/pull/113586/)
 - [Make `unconditional_recursion` lint detect recursive drops.](https://github.com/rust-lang/rust/pull/113902/)
 - [Future compatibility warning for some impls being incorrectly considered not overlapping.](https://github.com/rust-lang/rust/pull/114023/)
  - [The `invalid_reference_casting` lint is now **deny-by-default** (instead of allow-by-default)](https://github.com/rust-lang/rust/pull/112431)
@@ -24,7 +22,6 @@ Compiler
 - [Add documentation on v0 symbol mangling.](https://github.com/rust-lang/rust/pull/97571/)
 - [Stabilize `extern "thiscall"` and `"thiscall-unwind"` ABIs.](https://github.com/rust-lang/rust/pull/114562/)
 - [Only check outlives goals on impl compared to trait.](https://github.com/rust-lang/rust/pull/109356/)
-- [Check for non-defining uses of return position `impl Trait`.](https://github.com/rust-lang/rust/pull/112842/)
 - [Infer type in irrefutable slice patterns with fixed length as array.](https://github.com/rust-lang/rust/pull/113199/)
 - [Discard default auto trait impls if explicit ones exist.](https://github.com/rust-lang/rust/pull/113312/)
 - Add several new tier 3 targets:
@@ -100,6 +97,7 @@ Compatibility Notes
 -------------------
 
 - [Update the minimum external LLVM to 15.](https://github.com/rust-lang/rust/pull/114148/)
+- [Check for non-defining uses of return position `impl Trait`.](https://github.com/rust-lang/rust/pull/112842/)
 
 <a id="1.73.0-Internal-Changes"></a>
 
@@ -114,6 +112,8 @@ tools.
 - [Port PGO/LTO/BOLT optimized build pipeline to Rust.](https://github.com/rust-lang/rust/pull/112235/)
 - [Replace in-tree `rustc_apfloat` with the new version of the crate.](https://github.com/rust-lang/rust/pull/113843/)
 - [Update to LLVM 17.](https://github.com/rust-lang/rust/pull/114048/)
+- [Add `internal_features` lint for internal unstable features.](https://github.com/rust-lang/rust/pull/108955/)
+- [Mention style for new syntax in tracking issue template.](https://github.com/rust-lang/rust/pull/113586/)
 
 Version 1.72.1 (2023-09-19)
 ===========================
