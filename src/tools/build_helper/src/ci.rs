@@ -82,15 +82,15 @@ pub mod gha {
 
     fn start_group(name: impl std::fmt::Display) {
         if is_in_gha() {
-            eprintln!("::group::{name}");
+            println!("::group::{name}");
         } else {
-            eprintln!("{name}")
+            println!("{name}")
         }
     }
 
     fn end_group() {
         if is_in_gha() {
-            eprintln!("::endgroup::");
+            println!("::endgroup::");
         }
     }
 
