@@ -986,18 +986,15 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///    pointee's type. The resulting address is the address that was stored in the pointer. If the
 ///    pointee type is unsized, the pointer additionally stored the value of the metadata.
 ///
-/// Computing a place may cause UB. One possibility is that the pointer used for a `Deref` may not
-/// be suitably aligned. Another possibility is that the place is not in bounds, meaning it does not
-/// point to an actual allocation.
-///
-/// However, if this is actually UB and when the UB kicks in is undecided. This is being discussed
-/// in [UCG#319]. The options include that every place must obey those rules, that only some places
-/// must obey them, or that places impose no rules of their own.
-///
-/// [UCG#319]: https://github.com/rust-lang/unsafe-code-guidelines/issues/319
-///
-/// Rust currently requires that every place obey those two rules. This is checked by Miri and taken
-/// advantage of by codegen (via `gep inbounds`). That is possibly subject to change.
+/// The "validity invariant" of places is the same as that of raw pointers, meaning that e.g.
+/// `*ptr` on a dangling or unaligned pointer is never UB. (Later doing a load/store on that place
+/// or turning it into a reference can be UB though!) The only ways for a place computation can
+/// cause UB are:
+/// - On a `Deref` projection, we do an actual load of the inner place, with all the usual
+///   consequences (the inner place must be based on an aligned pointer, it must point to allocated
+///   memory, the aliasig model must allow reads, this must not be a data race).
+/// - For the projections that perform pointer arithmetic, the offset must in-bounds of an
+///   allocation (i.e., the preconditions of `ptr::offset` must be met).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Place<'tcx> {
     pub local: Local,
