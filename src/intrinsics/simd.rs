@@ -148,7 +148,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let total_len = lane_count * 2;
 
             let indexes =
-                idx.iter().map(|idx| idx.unwrap_leaf().try_to_u16().unwrap()).collect::<Vec<u16>>();
+                idx.iter().map(|idx| idx.unwrap_leaf().try_to_u32().unwrap()).collect::<Vec<u32>>();
 
             for &idx in &indexes {
                 assert!(u64::from(idx) < total_len, "idx {} out of range 0..{}", idx, total_len);
