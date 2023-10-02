@@ -1868,6 +1868,28 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }
 
+/// Compares the *addresses* of the two pointers for equality,
+/// ignoring any metadata in fat pointers.
+///
+/// If the arguments are thin pointers of the same type,
+/// then this is the same as [`eq`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(ptr_addr_eq)]
+///
+/// let whole: &[i32; 3] = &[1, 2, 3];
+/// let first: &i32 = &whole[0];
+/// assert!(std::ptr::addr_eq(whole, first));
+/// assert!(!std::ptr::eq::<dyn std::fmt::Debug>(whole, first));
+/// ```
+#[unstable(feature = "ptr_addr_eq", issue = "116324")]
+#[inline(always)]
+pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
+    (p as *const ()) == (q as *const ())
+}
+
 /// Hash a raw pointer.
 ///
 /// This can be used to hash a `&T` reference (which coerces to `*const T` implicitly)
