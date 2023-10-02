@@ -22,7 +22,7 @@ macro_rules! test_vsli {
             let a = [$($a as $t),*];
             let b = [$($b as $t),*];
             let n_bit_mask: $t = (1 << $n) - 1;
-            let e = [$(($a as $t & n_bit_mask) | ($b as $t << $n)),*];
+            let e = [$(($a as $t & n_bit_mask) | (($b as $t) << $n)),*];
             let r = $fn_id::<$n>(transmute(a), transmute(b));
             let mut d = e;
             d = transmute(r);
@@ -60,7 +60,7 @@ macro_rules! test_vsri {
         unsafe fn $test_id() {
             let a = [$($a as $t),*];
             let b = [$($b as $t),*];
-            let n_bit_mask = ((1 as $t << $n) - 1).rotate_right($n);
+            let n_bit_mask = (((1 as $t) << $n) - 1).rotate_right($n);
             let e = [$(($a as $t & n_bit_mask) | (($b as $t >> $n) & !n_bit_mask)),*];
             let r = $fn_id::<$n>(transmute(a), transmute(b));
             let mut d = e;
