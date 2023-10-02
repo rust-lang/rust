@@ -116,7 +116,7 @@ LL |     let _val: u16 = None.unwrap_or_else(|| -> u16 { 234 });
 help: remove the `None` and `unwrap_or_else()`
    |
 LL -     let _val: u16 = None.unwrap_or_else(|| -> u16 { 234 });
-LL +     let _val: u16 =  { 234 };
+LL +     let _val: u16 = { 234 };
    |
 
 error: used `unwrap()` on `None` value
@@ -187,7 +187,7 @@ LL |     None::<u16>.unwrap_or_else(|| -> u16 { 234 });
 help: remove the `None` and `unwrap_or_else()`
    |
 LL -     None::<u16>.unwrap_or_else(|| -> u16 { 234 });
-LL +      { 234 };
+LL +     { 234 };
    |
 
 error: used `unwrap()` on `Ok` value
