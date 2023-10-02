@@ -9,6 +9,7 @@
 // [basic] compile-flags: -Z stack-protector=basic
 // [none] compile-flags: -Z stack-protector=none
 // compile-flags: -C opt-level=2 -Z merge-functions=disabled
+// min-llvm-version: 17.0.2
 
 #![crate_type = "lib"]
 

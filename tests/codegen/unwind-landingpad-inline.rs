@@ -1,4 +1,4 @@
-// min-llvm-version: 15.0.0
+// min-llvm-version: 17.0.2
 // compile-flags: -Copt-level=3
 // ignore-debug: the debug assertions get in the way
 #![crate_type = "lib"]
