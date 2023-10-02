@@ -120,14 +120,14 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
         for tree in attr {
             if let Some(it) = tree.token_trees.first() {
                 let text = it.to_string().replace('_', "");
-                let base = match text.as_bytes() {
-                    [b'0', b'x', ..] => 16,
-                    [b'0', b'o', ..] => 8,
-                    [b'0', b'b', ..] => 2,
-                    _ => 10,
+                let (text, base) = match text.as_bytes() {
+                    [b'0', b'x', ..] => (&text[2..], 16),
+                    [b'0', b'o', ..] => (&text[2..], 8),
+                    [b'0', b'b', ..] => (&text[2..], 2),
+                    _ => (&*text, 10),
                 };
 
-                if let Ok(it) = u128::from_str_radix(&text, base) {
+                if let Ok(it) = u128::from_str_radix(text, base) {
                     return Bound::Included(it);
                 }
             }
