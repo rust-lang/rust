@@ -1,7 +1,5 @@
 // check-pass
-//
-// The corresponding incremental compilation test can be found in
-// `tests/incremental/issue-114416-expect-unused-inside-impl-block.rs`
+// incremental
 
 #![feature(lint_reasons)]
 #![warn(unused)]

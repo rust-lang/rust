@@ -1,6 +1,7 @@
-// This implements the dead-code warning pass. It follows crate::reachable
-// closely. The idea is that all reachable symbols are live, codes called
-// from live codes are live, and everything else is dead.
+// This implements the dead-code warning pass.
+// All reachable symbols are live, code called from live code is live, code with certain lint
+// expectations such as `#[expect(unused)]` and `#[expect(dead_code)]` is live, and everything else
+// is dead.
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use itertools::Itertools;
@@ -685,7 +686,7 @@ fn live_symbols_and_ignored_derived_traits(
     (symbol_visitor.live_symbols, symbol_visitor.ignored_derived_traits)
 }
 
-struct DeadVariant {
+struct DeadItem {
     def_id: LocalDefId,
     name: Symbol,
     level: lint::Level,
@@ -729,7 +730,7 @@ impl<'tcx> DeadVisitor<'tcx> {
     // first local def id.
     // Prefer calling `Self.warn_dead_code` or `Self.warn_dead_code_grouped_by_lint_level`
     // since those methods group by lint level before calling this method.
-    fn warn_multiple_dead_codes(
+    fn lint_at_single_level(
         &self,
         dead_codes: &[LocalDefId],
         participle: &str,
@@ -832,23 +833,23 @@ impl<'tcx> DeadVisitor<'tcx> {
         self.tcx.emit_spanned_lint(lint, first_hir_id, MultiSpan::from_spans(spans), diag);
     }
 
-    fn warn_dead_code_grouped_by_lint_level(
+    fn warn_multiple(
         &self,
         def_id: LocalDefId,
         participle: &str,
-        dead_codes: Vec<DeadVariant>,
+        dead_codes: Vec<DeadItem>,
         is_positional: bool,
     ) {
         let mut dead_codes = dead_codes
             .iter()
             .filter(|v| !v.name.as_str().starts_with('_'))
-            .collect::<Vec<&DeadVariant>>();
+            .collect::<Vec<&DeadItem>>();
         if dead_codes.is_empty() {
             return;
         }
         dead_codes.sort_by_key(|v| v.level);
         for (_, group) in &dead_codes.into_iter().group_by(|v| v.level) {
-            self.warn_multiple_dead_codes(
+            self.lint_at_single_level(
                 &group.map(|v| v.def_id).collect::<Vec<_>>(),
                 participle,
                 Some(def_id),
@@ -858,7 +859,7 @@ impl<'tcx> DeadVisitor<'tcx> {
     }
 
     fn warn_dead_code(&mut self, id: LocalDefId, participle: &str) {
-        self.warn_multiple_dead_codes(&[id], participle, None, false);
+        self.lint_at_single_level(&[id], participle, None, false);
     }
 
     fn check_definition(&mut self, def_id: LocalDefId) {
@@ -907,13 +908,13 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                 let def_id = item.id.owner_id.def_id;
                 if !visitor.is_live_code(def_id) {
                     let name = tcx.item_name(def_id.to_def_id());
-                    let hir = tcx.hir().local_def_id_to_hir_id(def_id);
-                    let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir).0;
+                    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                    let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
 
-                    dead_items.push(DeadVariant { def_id, name, level })
+                    dead_items.push(DeadItem { def_id, name, level })
                 }
             }
-            visitor.warn_dead_code_grouped_by_lint_level(
+            visitor.warn_multiple(
                 item.owner_id.def_id,
                 "used",
                 dead_items,
@@ -942,7 +943,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                     // Record to group diagnostics.
                     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                     let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
-                    dead_variants.push(DeadVariant { def_id, name: variant.name, level });
+                    dead_variants.push(DeadItem { def_id, name: variant.name, level });
                     continue;
                 }
 
@@ -967,13 +968,13 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                                     hir_id,
                                 )
                                 .0;
-                            Some(DeadVariant { def_id, name: field.name, level })
+                            Some(DeadItem { def_id, name: field.name, level })
                         } else {
                             None
                         }
                     })
                     .collect();
-                visitor.warn_dead_code_grouped_by_lint_level(
+                visitor.warn_multiple(
                     def_id,
                     "read",
                     dead_fields,
@@ -981,7 +982,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                 )
             }
 
-            visitor.warn_dead_code_grouped_by_lint_level(
+            visitor.warn_multiple(
                 item.owner_id.def_id,
                 "constructed",
                 dead_variants,
