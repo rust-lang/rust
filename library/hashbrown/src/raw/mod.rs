@@ -910,6 +910,8 @@ impl<T, A: Allocator> RawTable<T, A> {
     ///
     /// The caller must ensure that the `RawTable` outlives the returned [`NonNull<T>`],
     /// otherwise using it may result in [`undefined behavior`].
+    ///
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     pub fn data_end(&self) -> NonNull<T> {
         // SAFETY: `self.table.ctrl` is `NonNull`, so casting it is safe

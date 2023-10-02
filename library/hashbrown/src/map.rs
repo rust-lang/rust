@@ -944,6 +944,8 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// Keeps the allocated memory for reuse.
     ///
+    /// [`retain()`]: HashMap::retain
+    ///
     /// # Examples
     ///
     /// ```
