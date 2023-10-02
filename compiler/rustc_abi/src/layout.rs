@@ -53,32 +53,32 @@ pub trait LayoutCalculator {
         kind: StructKind,
     ) -> Option<LayoutS> {
         let layout = univariant(self, dl, fields, repr, kind, NicheBias::Start);
-        // Enums prefer niches close to the beginning or the end of the variants so that other (smaller)
-        // data-carrying variants can be packed into the space after/before the niche.
+        // Enums prefer niches close to the beginning or the end of the variants so that other
+        // (smaller) data-carrying variants can be packed into the space after/before the niche.
         // If the default field ordering does not give us a niche at the front then we do a second
-        // run and bias niches to the right and then check which one is closer to one of the struct's
-        // edges.
+        // run and bias niches to the right and then check which one is closer to one of the
+        // struct's edges.
         if let Some(layout) = &layout {
             // Don't try to calculate an end-biased layout for unsizable structs,
             // otherwise we could end up with different layouts for
-            // Foo<Type> and Foo<dyn Trait> which would break unsizing
+            // Foo<Type> and Foo<dyn Trait> which would break unsizing.
             if !matches!(kind, StructKind::MaybeUnsized) {
                 if let Some(niche) = layout.largest_niche {
                     let head_space = niche.offset.bytes();
-                    let niche_length = niche.value.size(dl).bytes();
-                    let tail_space = layout.size.bytes() - head_space - niche_length;
+                    let niche_len = niche.value.size(dl).bytes();
+                    let tail_space = layout.size.bytes() - head_space - niche_len;
 
-                    // This may end up doing redundant work if the niche is already in the last field
-                    // (e.g. a trailing bool) and there is tail padding. But it's non-trivial to get
-                    // the unpadded size so we try anyway.
+                    // This may end up doing redundant work if the niche is already in the last
+                    // field (e.g. a trailing bool) and there is tail padding. But it's non-trivial
+                    // to get the unpadded size so we try anyway.
                     if fields.len() > 1 && head_space != 0 && tail_space > 0 {
                         let alt_layout = univariant(self, dl, fields, repr, kind, NicheBias::End)
                             .expect("alt layout should always work");
-                        let niche = alt_layout
+                        let alt_niche = alt_layout
                             .largest_niche
                             .expect("alt layout should have a niche like the regular one");
-                        let alt_head_space = niche.offset.bytes();
-                        let alt_niche_len = niche.value.size(dl).bytes();
+                        let alt_head_space = alt_niche.offset.bytes();
+                        let alt_niche_len = alt_niche.value.size(dl).bytes();
                         let alt_tail_space =
                             alt_layout.size.bytes() - alt_head_space - alt_niche_len;
 
@@ -93,7 +93,7 @@ pub trait LayoutCalculator {
                             alt_layout: {}\n",
                             layout.size.bytes(),
                             head_space,
-                            niche_length,
+                            niche_len,
                             tail_space,
                             alt_head_space,
                             alt_niche_len,
@@ -684,7 +684,8 @@ pub trait LayoutCalculator {
                 // Also do not overwrite any already existing "clever" ABIs.
                 if variant.fields.count() > 0 && matches!(variant.abi, Abi::Aggregate { .. }) {
                     variant.abi = abi;
-                    // Also need to bump up the size and alignment, so that the entire value fits in here.
+                    // Also need to bump up the size and alignment, so that the entire value fits
+                    // in here.
                     variant.size = cmp::max(variant.size, size);
                     variant.align.abi = cmp::max(variant.align.abi, align.abi);
                 }
@@ -868,15 +869,15 @@ fn univariant(
 
         // If `-Z randomize-layout` was enabled for the type definition we can shuffle
         // the field ordering to try and catch some code making assumptions about layouts
-        // we don't guarantee
+        // we don't guarantee.
         if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
             #[cfg(feature = "randomize")]
             {
-                // `ReprOptions.layout_seed` is a deterministic seed that we can use to
-                // randomize field ordering with
+                // `ReprOptions.layout_seed` is a deterministic seed we can use to randomize field
+                // ordering.
                 let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed.as_u64());
 
-                // Shuffle the ordering of the fields
+                // Shuffle the ordering of the fields.
                 optimizing.shuffle(&mut rng);
             }
             // Otherwise we just leave things alone and actually optimize the type's fields
@@ -892,27 +893,26 @@ fn univariant(
                 .max()
                 .unwrap_or(0);
 
-            // Calculates a sort key to group fields by their alignment or possibly some size-derived
-            // pseudo-alignment.
+            // Calculates a sort key to group fields by their alignment or possibly some
+            // size-derived pseudo-alignment.
             let alignment_group_key = |layout: Layout<'_>| {
                 if let Some(pack) = pack {
-                    // return the packed alignment in bytes
+                    // Return the packed alignment in bytes.
                     layout.align().abi.min(pack).bytes()
                 } else {
-                    // returns log2(effective-align).
-                    // This is ok since `pack` applies to all fields equally.
-                    // The calculation assumes that size is an integer multiple of align, except for ZSTs.
-                    //
+                    // Returns `log2(effective-align)`. This is ok since `pack` applies to all
+                    // fields equally. The calculation assumes that size is an integer multiple of
+                    // align, except for ZSTs.
                     let align = layout.align().abi.bytes();
                     let size = layout.size().bytes();
                     let niche_size = layout.largest_niche().map(|n| n.available(dl)).unwrap_or(0);
-                    // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
+                    // Group [u8; 4] with align-4 or [u8; 6] with align-2 fields.
                     let size_as_align = align.max(size).trailing_zeros();
                     let size_as_align = if largest_niche_size > 0 {
                         match niche_bias {
-                            // Given `A(u8, [u8; 16])` and `B(bool, [u8; 16])` we want to bump the array
-                            // to the front in the first case (for aligned loads) but keep the bool in front
-                            // in the second case for its niches.
+                            // Given `A(u8, [u8; 16])` and `B(bool, [u8; 16])` we want to bump the
+                            // array to the front in the first case (for aligned loads) but keep
+                            // the bool in front in the second case for its niches.
                             NicheBias::Start => max_field_align.trailing_zeros().min(size_as_align),
                             // When moving niches towards the end of the struct then for
                             // A((u8, u8, u8, bool), (u8, bool, u8)) we want to keep the first tuple
@@ -931,14 +931,14 @@ fn univariant(
 
             match kind {
                 StructKind::AlwaysSized | StructKind::MaybeUnsized => {
-                    // Currently `LayoutS` only exposes a single niche so sorting is usually sufficient
-                    // to get one niche into the preferred position. If it ever supported multiple niches
-                    // then a more advanced pick-and-pack approach could provide better results.
-                    // But even for the single-niche cache it's not optimal. E.g. for
-                    // A(u32, (bool, u8), u16) it would be possible to move the bool to the front
-                    // but it would require packing the tuple together with the u16 to build a 4-byte
-                    // group so that the u32 can be placed after it without padding. This kind
-                    // of packing can't be achieved by sorting.
+                    // Currently `LayoutS` only exposes a single niche so sorting is usually
+                    // sufficient to get one niche into the preferred position. If it ever
+                    // supported multiple niches then a more advanced pick-and-pack approach could
+                    // provide better results. But even for the single-niche cache it's not
+                    // optimal. E.g. for A(u32, (bool, u8), u16) it would be possible to move the
+                    // bool to the front but it would require packing the tuple together with the
+                    // u16 to build a 4-byte group so that the u32 can be placed after it without
+                    // padding. This kind of packing can't be achieved by sorting.
                     optimizing.sort_by_key(|&x| {
                         let f = fields[x];
                         let field_size = f.size().bytes();
