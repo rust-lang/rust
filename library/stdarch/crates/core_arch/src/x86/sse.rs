@@ -1380,7 +1380,7 @@ pub unsafe fn _mm_sfence() {
 #[cfg_attr(test, assert_instr(stmxcsr))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_getcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _mm_getcsr() -> u32 {
@@ -1531,7 +1531,7 @@ pub unsafe fn _mm_getcsr() -> u32 {
 #[cfg_attr(test, assert_instr(ldmxcsr))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _mm_setcsr(val: u32) {
@@ -1618,7 +1618,7 @@ pub const _MM_FLUSH_ZERO_OFF: u32 = 0x0000;
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_getcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_GET_EXCEPTION_MASK() -> u32 {
@@ -1634,7 +1634,7 @@ pub unsafe fn _MM_GET_EXCEPTION_MASK() -> u32 {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_getcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_GET_EXCEPTION_STATE() -> u32 {
@@ -1650,7 +1650,7 @@ pub unsafe fn _MM_GET_EXCEPTION_STATE() -> u32 {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_getcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_GET_FLUSH_ZERO_MODE() -> u32 {
@@ -1666,7 +1666,7 @@ pub unsafe fn _MM_GET_FLUSH_ZERO_MODE() -> u32 {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_getcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
@@ -1682,7 +1682,7 @@ pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
@@ -1698,7 +1698,7 @@ pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
@@ -1714,7 +1714,7 @@ pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
@@ -1732,7 +1732,7 @@ pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[deprecated(
-    since = "1.73.0",
+    since = "1.75.0",
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_SET_ROUNDING_MODE(x: u32) {
