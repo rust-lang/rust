@@ -46,10 +46,10 @@ fn sanitize_sh(path: &Path) -> String {
 }
 
 fn is_dir_writable_for_user(dir: &PathBuf) -> bool {
-    let tmp_file = dir.join(".tmp");
-    match fs::File::create(&tmp_file) {
+    let tmp = dir.join(".tmp");
+    match fs::create_dir_all(&tmp) {
         Ok(_) => {
-            fs::remove_file(tmp_file).unwrap();
+            fs::remove_dir_all(tmp).unwrap();
             true
         }
         Err(e) => {
