@@ -30,19 +30,18 @@ pub trait ToBitMask: Sealed {
 /// Converts masks to and from byte array bitmasks.
 ///
 /// Each bit of the bitmask corresponds to a mask lane, starting with the LSB of the first byte.
-#[cfg(feature = "generic_const_exprs")]
 pub trait ToBitMaskArray: Sealed {
-    /// The length of the bitmask array.
-    const BYTES: usize;
+    /// The bitmask array.
+    type BitMaskArray;
 
     /// Converts a mask to a bitmask.
-    fn to_bitmask_array(self) -> [u8; Self::BYTES];
+    fn to_bitmask_array(self) -> Self::BitMaskArray;
 
     /// Converts a bitmask to a mask.
-    fn from_bitmask_array(bitmask: [u8; Self::BYTES]) -> Self;
+    fn from_bitmask_array(bitmask: Self::BitMaskArray) -> Self;
 }
 
-macro_rules! impl_integer_intrinsic {
+macro_rules! impl_integer {
     { $(impl ToBitMask<BitMask=$int:ty> for Mask<_, $lanes:literal>)* } => {
         $(
         impl<T: MaskElement> ToBitMask for Mask<T, $lanes> {
@@ -62,7 +61,27 @@ macro_rules! impl_integer_intrinsic {
     }
 }
 
-impl_integer_intrinsic! {
+macro_rules! impl_array {
+    { $(impl ToBitMaskArray<Bytes=$int:literal> for Mask<_, $lanes:literal>)* } => {
+        $(
+        impl<T: MaskElement> ToBitMaskArray for Mask<T, $lanes> {
+            type BitMaskArray = [u8; $int];
+
+            #[inline]
+            fn to_bitmask_array(self) -> Self::BitMaskArray {
+                self.0.to_bitmask_array()
+            }
+
+            #[inline]
+            fn from_bitmask_array(bitmask: Self::BitMaskArray) -> Self {
+                Self(mask_impl::Mask::from_bitmask_array(bitmask))
+            }
+        }
+        )*
+    }
+}
+
+impl_integer! {
     impl ToBitMask<BitMask=u8> for Mask<_, 1>
     impl ToBitMask<BitMask=u8> for Mask<_, 2>
     impl ToBitMask<BitMask=u8> for Mask<_, 4>
@@ -72,27 +91,12 @@ impl_integer_intrinsic! {
     impl ToBitMask<BitMask=u64> for Mask<_, 64>
 }
 
-/// Returns the minimum number of bytes in a bitmask with `lanes` lanes.
-#[cfg(feature = "generic_const_exprs")]
-#[allow(clippy::missing_inline_in_public_items)]
-pub const fn bitmask_len(lanes: usize) -> usize {
-    (lanes + 7) / 8
-}
-
-#[cfg(feature = "generic_const_exprs")]
-impl<T: MaskElement, const LANES: usize> ToBitMaskArray for Mask<T, LANES>
-where
-    LaneCount<LANES>: SupportedLaneCount,
-{
-    const BYTES: usize = bitmask_len(LANES);
-
-    #[inline]
-    fn to_bitmask_array(self) -> [u8; Self::BYTES] {
-        self.0.to_bitmask_array()
-    }
-
-    #[inline]
-    fn from_bitmask_array(bitmask: [u8; Self::BYTES]) -> Self {
-        Mask(mask_impl::Mask::from_bitmask_array(bitmask))
-    }
+impl_array! {
+    impl ToBitMaskArray<Bytes=1> for Mask<_, 1>
+    impl ToBitMaskArray<Bytes=1> for Mask<_, 2>
+    impl ToBitMaskArray<Bytes=1> for Mask<_, 4>
+    impl ToBitMaskArray<Bytes=1> for Mask<_, 8>
+    impl ToBitMaskArray<Bytes=2> for Mask<_, 16>
+    impl ToBitMaskArray<Bytes=4> for Mask<_, 32>
+    impl ToBitMaskArray<Bytes=8> for Mask<_, 64>
 }
