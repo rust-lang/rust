@@ -96,13 +96,5 @@ LL |     vec1 = Vec::new();
 LL |     vec1.resize(10, 0);
    |     ^^^^^^^^^^^^^^^^^^
 
-error: this argument is a mutable reference, but not used mutably
-  --> $DIR/slow_vector_initialization.rs:78:18
-   |
-LL | fn do_stuff(vec: &mut [u8]) {}
-   |                  ^^^^^^^^^ help: consider changing to: `&[u8]`
-   |
-   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
-
-error: aborting due to 13 previous errors
+error: aborting due to 12 previous errors
 
