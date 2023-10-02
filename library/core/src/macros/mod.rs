@@ -349,6 +349,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 ///     }
 /// }
 /// ```
+#[cfg(bootstrap)]
 #[macro_export]
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_match"]
@@ -870,6 +871,40 @@ macro_rules! todo {
 /// with exception of expansion functions transforming macro inputs into outputs,
 /// those functions are provided by the compiler.
 pub(crate) mod builtin {
+    /// A macro for defining `#[cfg]` match-like statements.
+    ///
+    /// It is similar to the `if/elif` C preprocessor macro by allowing definition of a cascade of
+    /// `#[cfg]` cases, emitting the implementation which matches first.
+    ///
+    /// This allows you to conveniently provide a long list `#[cfg]`'d blocks of code
+    /// without having to rewrite each clause multiple times.
+    ///
+    /// Trailing `_` wildcard match arms are **optional** and they indicate a fallback branch when
+    /// all previous declarations do not evaluate to true.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(cfg_match)]
+    ///
+    /// cfg_match! {
+    ///     cfg(unix) => {
+    ///         fn foo() { /* unix specific functionality */ }
+    ///     }
+    ///     cfg(target_pointer_width = "32") => {
+    ///         fn foo() { /* non-unix, 32-bit functionality */ }
+    ///     }
+    ///     _ => {
+    ///         fn foo() { /* fallback implementation */ }
+    ///     }
+    /// }
+    /// ```
+    #[cfg(not(bootstrap))]
+    #[rustc_builtin_macro]
+    #[unstable(feature = "cfg_match", issue = "115585")]
+    pub macro cfg_match($($tt:tt)*) {
+        /* compiler built-in */
+    }
 
     /// Causes compilation to fail with the given error message when encountered.
     ///

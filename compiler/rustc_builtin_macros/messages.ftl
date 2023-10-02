@@ -69,6 +69,11 @@ builtin_macros_cfg_accessible_indeterminate = cannot determine whether the path 
 builtin_macros_cfg_accessible_literal_path = `cfg_accessible` path cannot be a literal
 builtin_macros_cfg_accessible_multiple_paths = multiple `cfg_accessible` paths are specified
 builtin_macros_cfg_accessible_unspecified_path = `cfg_accessible` path is not specified
+builtin_macros_cfg_match_bad_arm = conditional arm must be declared with a trailing `=>`
+builtin_macros_cfg_match_bad_single_arm = arms without brackets are only allowed for functions at the current time
+builtin_macros_cfg_match_bad_wildcard = the last arm is expected to be a wildcard
+builtin_macros_cfg_match_meaningless_arms = single arm with a single element has the same effect of a standalone `cfg`
+builtin_macros_cfg_match_missing_comma = conditional arms with a single element must end with a comma
 builtin_macros_concat_bytes_array = cannot concatenate doubly nested array
     .note = byte strings are treated as arrays of bytes
     .help = try flattening the array

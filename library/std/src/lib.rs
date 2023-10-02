@@ -665,6 +665,7 @@ pub use core::{
 )]
 pub use core::concat_bytes;
 
+#[cfg(bootstrap)]
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use core::cfg_match;
 

@@ -1,0 +1,35 @@
+error: arms without brackets are only allowed for functions at the current time
+  --> $DIR/syntax.rs:4:52
+   |
+LL |     cfg(unix) => const BAD_SINGLE_ELEMENT: () = ();,
+   |                                                    ^
+
+error: conditional arms with a single element must end with a comma
+  --> $DIR/syntax.rs:11:5
+   |
+LL |     _ => fn missing_comma() {}
+   |     ^
+
+error: conditional arm must be declared with a trailing `=>`
+  --> $DIR/syntax.rs:16:15
+   |
+LL |     cfg(unix) {
+   |               ^
+
+error: the last arm is expected to be a wildcard
+  --> $DIR/syntax.rs:25:5
+   |
+LL |     {
+   |     ^
+
+error: single arm with a single element has the same effect of a standalone `cfg`
+  --> $DIR/syntax.rs:32:5
+   |
+LL | /     cfg_match! {
+LL | |
+LL | |         cfg(feature = "foo") => fn foo() {},
+LL | |     }
+   | |_____^
+
+error: aborting due to 5 previous errors
+

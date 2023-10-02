@@ -472,6 +472,7 @@ symbols! {
         cfg_doctest,
         cfg_eval,
         cfg_hide,
+        cfg_match,
         cfg_overflow_checks,
         cfg_panic,
         cfg_relocation_model,

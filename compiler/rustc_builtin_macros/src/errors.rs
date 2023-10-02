@@ -831,3 +831,38 @@ pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_cfg_match_bad_arm)]
+pub(crate) struct CfgMatchBadArm {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_cfg_match_bad_single_arm)]
+pub(crate) struct CfgMatchBadSingleArm {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_cfg_match_bad_wildcard)]
+pub(crate) struct CfgMatchBadWildcard {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_cfg_match_meaningless_arms)]
+pub(crate) struct CfgMatchMeaninglessArms {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_cfg_match_missing_comma)]
+pub(crate) struct CfgMatchMissingComma {
+    #[primary_span]
+    pub(crate) span: Span,
+}
