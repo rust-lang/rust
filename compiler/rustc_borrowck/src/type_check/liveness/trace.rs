@@ -2,17 +2,13 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
-use rustc_infer::infer::outlives::test_type_match;
-use rustc_infer::infer::region_constraints::VerifyIfEq;
+use rustc_infer::infer::outlives::for_liveness::FreeRegionsVisitor;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
-use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-};
+use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -559,99 +555,18 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             "make_all_regions_live: live_at={}",
             values::location_set_str(elements, live_at.iter()),
         );
-
-        struct MakeAllRegionsLive<'a, 'b, 'tcx> {
-            typeck: &'b mut TypeChecker<'a, 'tcx>,
-            live_at: &'b IntervalSet<PointIndex>,
-        }
-        impl<'tcx> MakeAllRegionsLive<'_, '_, 'tcx> {
-            /// We can prove that an alias is live two ways:
-            /// 1. All the components are live.
-            /// 2. There is a known outlives bound or where-clause, and that
-            ///    region is live.
-            /// We search through the item bounds and where clauses for
-            /// either `'static` or a unique outlives region, and if one is
-            /// found, we just need to prove that that region is still live.
-            /// If one is not found, then we continue to walk through the alias.
-            fn make_alias_live(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
-                let ty::Alias(_kind, alias_ty) = t.kind() else {
-                    bug!("`make_alias_live` only takes alias types");
-                };
-                let tcx = self.typeck.infcx.tcx;
-                let param_env = self.typeck.param_env;
-                let outlives_bounds: Vec<_> = tcx
-                    .item_bounds(alias_ty.def_id)
-                    .iter_instantiated(tcx, alias_ty.args)
-                    .filter_map(|clause| {
-                        if let Some(outlives) = clause.as_type_outlives_clause()
-                        && outlives.skip_binder().0 == t
-                    {
-                        Some(outlives.skip_binder().1)
-                    } else {
-                        None
-                    }
-                    })
-                    .chain(param_env.caller_bounds().iter().filter_map(|clause| {
-                        let outlives = clause.as_type_outlives_clause()?;
-                        if let Some(outlives) = outlives.no_bound_vars()
-                            && outlives.0 == t
-                        {
-                            Some(outlives.1)
-                        } else {
-                            test_type_match::extract_verify_if_eq(
-                                tcx,
-                                param_env,
-                                &outlives.map_bound(|ty::OutlivesPredicate(ty, bound)| {
-                                    VerifyIfEq { ty, bound }
-                                }),
-                                t,
-                            )
-                        }
-                    }))
-                    .collect();
-                // If we find `'static`, then we know the alias doesn't capture *any* regions.
-                // Otherwise, all of the outlives regions should be equal -- if they're not,
-                // we don't really know how to proceed, so we continue recursing through the
-                // alias.
-                if outlives_bounds.contains(&tcx.lifetimes.re_static) {
-                    ControlFlow::Continue(())
-                } else if let Some(r) = outlives_bounds.first()
-                    && outlives_bounds[1..].iter().all(|other_r| other_r == r)
-                {
-                    r.visit_with(self)
-                } else {
-                    t.super_visit_with(self)
-                }
-            }
-        }
-        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MakeAllRegionsLive<'_, '_, 'tcx> {
-            type BreakTy = !;
-
-            fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if r.is_late_bound() {
-                    return ControlFlow::Continue(());
-                }
-                let live_region_vid =
-                    self.typeck.borrowck_context.universal_regions.to_region_vid(r);
-                self.typeck
+        value.visit_with(&mut FreeRegionsVisitor {
+            tcx: typeck.tcx(),
+            param_env: typeck.param_env,
+            op: |r| {
+                let live_region_vid = typeck.borrowck_context.universal_regions.to_region_vid(r);
+                typeck
                     .borrowck_context
                     .constraints
                     .liveness_constraints
-                    .add_elements(live_region_vid, self.live_at);
-                ControlFlow::Continue(())
-            }
-
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if !t.has_free_regions() {
-                    ControlFlow::Continue(())
-                } else if let ty::Alias(..) = t.kind() {
-                    self.make_alias_live(t)
-                } else {
-                    t.super_visit_with(self)
-                }
-            }
-        }
-        value.visit_with(&mut MakeAllRegionsLive { typeck, live_at });
+                    .add_elements(live_region_vid, live_at);
+            },
+        });
     }
 
     fn compute_drop_data(

@@ -1,6 +1,7 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
+use crate::infer::outlives::for_liveness::FreeRegionsVisitor;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, PredicateObligation};
 use hir::def_id::{DefId, LocalDefId};
@@ -13,11 +14,10 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitable,
+    TypeVisitableExt,
 };
 use rustc_span::Span;
-use std::ops::ControlFlow;
 
 mod table;
 
@@ -380,8 +380,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 .collect(),
         );
 
-        concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+        concrete_ty.visit_with(&mut FreeRegionsVisitor {
             tcx: self.tcx,
+            param_env,
             op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
         });
     }
@@ -412,95 +413,6 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         };
         in_definition_scope.then_some(origin)
-    }
-}
-
-/// Visitor that requires that (almost) all regions in the type visited outlive
-/// `least_region`. We cannot use `push_outlives_components` because regions in
-/// closure signatures are not included in their outlives components. We need to
-/// ensure all regions outlive the given bound so that we don't end up with,
-/// say, `ReVar` appearing in a return type and causing ICEs when other
-/// functions end up with region constraints involving regions from other
-/// functions.
-///
-/// We also cannot use `for_each_free_region` because for closures it includes
-/// the regions parameters from the enclosing item.
-///
-/// We ignore any type parameters because impl trait values are assumed to
-/// capture all the in-scope type parameters.
-pub struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
-    pub tcx: TyCtxt<'tcx>,
-    pub op: OP,
-}
-
-impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
-where
-    OP: FnMut(ty::Region<'tcx>),
-{
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
-        t.super_visit_with(self);
-        ControlFlow::Continue(())
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match *r {
-            // ignore bound regions, keep visiting
-            ty::ReLateBound(_, _) => ControlFlow::Continue(()),
-            _ => {
-                (self.op)(r);
-                ControlFlow::Continue(())
-            }
-        }
-    }
-
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        // We're only interested in types involving regions
-        if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
-            return ControlFlow::Continue(());
-        }
-
-        match ty.kind() {
-            ty::Closure(_, ref args) => {
-                // Skip lifetime parameters of the enclosing item(s)
-
-                for upvar in args.as_closure().upvar_tys() {
-                    upvar.visit_with(self);
-                }
-                args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
-            }
-
-            ty::Generator(_, ref args, _) => {
-                // Skip lifetime parameters of the enclosing item(s)
-                // Also skip the witness type, because that has no free regions.
-
-                for upvar in args.as_generator().upvar_tys() {
-                    upvar.visit_with(self);
-                }
-                args.as_generator().return_ty().visit_with(self);
-                args.as_generator().yield_ty().visit_with(self);
-                args.as_generator().resume_ty().visit_with(self);
-            }
-
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref args, .. }) => {
-                // Skip lifetime parameters that are not captures.
-                let variances = self.tcx.variances_of(*def_id);
-
-                for (v, s) in std::iter::zip(variances, args.iter()) {
-                    if *v != ty::Variance::Bivariant {
-                        s.visit_with(self);
-                    }
-                }
-            }
-
-            _ => {
-                ty.super_visit_with(self);
-            }
-        }
-
-        ControlFlow::Continue(())
     }
 }
 
