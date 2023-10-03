@@ -134,15 +134,15 @@ LL |         let x = x;
    = help: remove the redefinition of `x`
 
 error: redundant redefinition of a binding
-  --> $DIR/redundant_locals.rs:134:9
+  --> $DIR/redundant_locals.rs:142:9
    |
-LL |     let c = WithoutDrop(1);
+LL |     let a = WithoutDrop(1);
    |         ^
-LL |     let d = WithoutDrop(2);
-LL |     let c = c;
+LL |     let b = WithoutDrop(2);
+LL |     let a = a;
    |     ^^^^^^^^^^
    |
-   = help: remove the redefinition of `c`
+   = help: remove the redefinition of `a`
 
 error: aborting due to 14 previous errors
 

@@ -3,14 +3,12 @@ use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::needs_ordered_drop;
 use rustc_ast::Mutability;
 use rustc_hir::def::Res;
-use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, HirId, Local, Node, Pat, PatKind, QPath};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_hir::{BindingAnnotation, ByRef, ExprKind, HirId, Local, Node, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
 use rustc_span::DesugaringKind;
-use rustc_trait_selection::infer::InferCtxtExt as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -68,18 +66,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             // the local does not change the effect of assignments to the binding. see #11290
             if !affects_assignments(cx, mutability, binding_id, local.hir_id);
             // the local does not affect the code's drop behavior
-            if !affects_drop_behavior(cx, binding_id, local.hir_id, expr);
+            if !needs_ordered_drop(cx, cx.typeck_results().expr_ty(expr));
             // the local is user-controlled
             if !in_external_macro(cx.sess(), local.span);
             if !is_from_proc_macro(cx, expr);
-            // the local does not impl Drop trait. see #11599
-            let local_ty = cx.typeck_results().node_type(local.hir_id);
-            if let Some(drop_trait_id) = cx.tcx.lang_items().drop_trait();
-            if !cx.tcx.infer_ctxt().build().type_implements_trait(
-              drop_trait_id,
-              [local_ty],
-              cx.param_env
-            ).must_apply_modulo_regions();
             then {
                 span_lint_and_help(
                     cx,
@@ -113,14 +103,4 @@ fn affects_assignments(cx: &LateContext<'_>, mutability: Mutability, bind: HirId
 
     // the binding is mutable and the rebinding is in a different scope than the original binding
     mutability == Mutability::Mut && hir.get_enclosing_scope(bind) != hir.get_enclosing_scope(rebind)
-}
-
-/// Check if a rebinding of a local affects the code's drop behavior.
-fn affects_drop_behavior<'tcx>(cx: &LateContext<'tcx>, bind: HirId, rebind: HirId, rebind_expr: &Expr<'tcx>) -> bool {
-    let hir = cx.tcx.hir();
-
-    // the rebinding is in a different scope than the original binding
-    // and the type of the binding cares about drop order
-    hir.get_enclosing_scope(bind) != hir.get_enclosing_scope(rebind)
-        && needs_ordered_drop(cx, cx.typeck_results().expr_ty(rebind_expr))
 }
