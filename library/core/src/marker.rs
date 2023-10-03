@@ -918,7 +918,7 @@ marker_impls! {
 /// subset of [`Future`]s which *do* require pinning to be implemented soundly.
 ///
 /// For more discussion on the consequences of [`Unpin`] within the wider scope of the pinning
-/// system, see [the section about `Unpin`] in the [`pin` module].
+/// system, see the [section about `Unpin`] in the [`pin` module].
 ///
 /// `Unpin` has no consequence at all for non-pinned data. In particular, [`mem::replace`] happily
 /// moves `!Unpin` data, which would be immovable when pinned ([`mem::replace`] works for any
