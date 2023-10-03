@@ -71,7 +71,7 @@ pub(crate) fn destructure_const<'tcx>(
         _ => bug!("cannot destructure constant {:?}", const_),
     };
 
-    let fields = tcx.arena.alloc_from_iter(fields.into_iter());
+    let fields = tcx.arena.alloc_from_iter(fields);
 
     ty::DestructuredConst { variant, fields }
 }
