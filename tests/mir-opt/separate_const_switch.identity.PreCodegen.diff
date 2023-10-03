@@ -1,0 +1,85 @@
+- // MIR for `identity` before PreCodegen
++ // MIR for `identity` after PreCodegen
+  
+  fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
+      debug x => _1;
+      let mut _0: std::result::Result<i32, i32>;
+      let mut _4: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, i32>, i32>;
+      let _5: i32;
+      let _8: std::result::Result<std::convert::Infallible, i32>;
+      scope 1 {
+          debug residual => _8;
+          scope 2 {
+              scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) {
+                  debug residual => _8;
+                  let _9: i32;
+                  scope 9 {
+                      debug e => _9;
+                      scope 10 (inlined <i32 as From<i32>>::from) {
+                          debug t => _9;
+                      }
+                  }
+              }
+          }
+      }
+      scope 3 {
+          debug val => _5;
+          scope 4 {
+          }
+      }
+      scope 5 (inlined <Result<i32, i32> as Try>::branch) {
+          debug self => _1;
+          let mut _2: isize;
+          let _3: i32;
+          let _6: i32;
+          let mut _7: std::result::Result<std::convert::Infallible, i32>;
+          scope 6 {
+              debug v => _3;
+          }
+          scope 7 {
+              debug e => _6;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_6);
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
+      }
+  
+      bb1: {
+          _3 = ((_1 as Ok).0: i32);
+          _4 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(_3);
+          StorageDead(_6);
+          StorageDead(_3);
+          StorageDead(_2);
+          _5 = ((_4 as Continue).0: i32);
+          _0 = Result::<i32, i32>::Ok(_5);
+          StorageDead(_4);
+          return;
+      }
+  
+      bb2: {
+          _6 = ((_1 as Err).0: i32);
+          StorageLive(_7);
+          _7 = Result::<Infallible, i32>::Err(_6);
+          _4 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _7);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_3);
+          StorageDead(_2);
+          _8 = ((_4 as Break).0: std::result::Result<std::convert::Infallible, i32>);
+          _9 = ((_8 as Err).0: i32);
+          _0 = Result::<i32, i32>::Err(_9);
+          StorageDead(_4);
+          return;
+      }
+  
+      bb3: {
+          unreachable;
+      }
+  }
+  
