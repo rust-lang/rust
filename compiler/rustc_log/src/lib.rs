@@ -23,10 +23,10 @@
 //! }
 //! ```
 //!
-//! Now `LOG=debug cargo run` will run your minimal main.rs and show
+//! Now `LOG=debug cargo +nightly run` will run your minimal main.rs and show
 //! rustc's debug logging. In a workflow like this, one might also add
 //! `std::env::set_var("LOG", "debug")` to the top of main so that `cargo
-//! run` by itself is sufficient to get logs.
+//! +nightly run` by itself is sufficient to get logs.
 //!
 //! The reason rustc_log is a tiny separate crate, as opposed to exposing the
 //! same things in rustc_driver only, is to enable the above workflow. If you
