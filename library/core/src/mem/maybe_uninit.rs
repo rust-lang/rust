@@ -1019,7 +1019,7 @@ impl<T> MaybeUninit<T> {
 
     /// Copies the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
     ///
-    /// If `T` does not implement `Copy`, use [`write_slice_cloned`]
+    /// If `T` does not implement `Copy`, use [`clone_from_slice`]
     ///
     /// This is similar to [`slice::copy_from_slice`].
     ///
@@ -1036,7 +1036,7 @@ impl<T> MaybeUninit<T> {
     /// let mut dst = [MaybeUninit::uninit(); 32];
     /// let src = [0; 32];
     ///
-    /// let init = MaybeUninit::write_slice(&mut dst, &src);
+    /// let init = MaybeUninit::copy_from_slice(&mut dst, &src);
     ///
     /// assert_eq!(init, src);
     /// ```
@@ -1048,7 +1048,7 @@ impl<T> MaybeUninit<T> {
     /// let mut vec = Vec::with_capacity(32);
     /// let src = [0; 16];
     ///
-    /// MaybeUninit::write_slice(&mut vec.spare_capacity_mut()[..src.len()], &src);
+    /// MaybeUninit::copy_from_slice(&mut vec.spare_capacity_mut()[..src.len()], &src);
     ///
     /// // SAFETY: we have just copied all the elements of len into the spare capacity
     /// // the first src.len() elements of the vec are valid now.
@@ -1059,9 +1059,9 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(vec, src);
     /// ```
     ///
-    /// [`write_slice_cloned`]: MaybeUninit::write_slice_cloned
+    /// [`clone_from_slice`]: MaybeUninit::clone_from_slice
     #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
-    pub fn write_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
+    pub fn copy_from_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
     where
         T: Copy,
     {
@@ -1077,7 +1077,7 @@ impl<T> MaybeUninit<T> {
     /// Clones the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
     /// Any already initialized elements will not be dropped.
     ///
-    /// If `T` implements `Copy`, use [`write_slice`]
+    /// If `T` implements `Copy`, use [`copy_from_slice`]
     ///
     /// This is similar to [`slice::clone_from_slice`] but does not drop existing elements.
     ///
@@ -1096,7 +1096,7 @@ impl<T> MaybeUninit<T> {
     /// let mut dst = [MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit()];
     /// let src = ["wibbly".to_string(), "wobbly".to_string(), "timey".to_string(), "wimey".to_string(), "stuff".to_string()];
     ///
-    /// let init = MaybeUninit::write_slice_cloned(&mut dst, &src);
+    /// let init = MaybeUninit::clone_from_slice(&mut dst, &src);
     ///
     /// assert_eq!(init, src);
     /// ```
@@ -1108,7 +1108,7 @@ impl<T> MaybeUninit<T> {
     /// let mut vec = Vec::with_capacity(32);
     /// let src = ["rust", "is", "a", "pretty", "cool", "language"];
     ///
-    /// MaybeUninit::write_slice_cloned(&mut vec.spare_capacity_mut()[..src.len()], &src);
+    /// MaybeUninit::clone_from_slice(&mut vec.spare_capacity_mut()[..src.len()], &src);
     ///
     /// // SAFETY: we have just cloned all the elements of len into the spare capacity
     /// // the first src.len() elements of the vec are valid now.
@@ -1119,9 +1119,9 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(vec, src);
     /// ```
     ///
-    /// [`write_slice`]: MaybeUninit::write_slice
+    /// [`copy_from_slice`]: MaybeUninit::copy_from_slice
     #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
-    pub fn write_slice_cloned<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
+    pub fn clone_from_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
     where
         T: Clone,
     {
@@ -1264,7 +1264,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];
     /// let uninit_bytes = MaybeUninit::slice_as_bytes_mut(&mut uninit);
-    /// MaybeUninit::write_slice(uninit_bytes, &[0x12, 0x34, 0x56, 0x78]);
+    /// MaybeUninit::copy_from_slice(uninit_bytes, &[0x12, 0x34, 0x56, 0x78]);
     /// let vals = unsafe { MaybeUninit::slice_assume_init_ref(&uninit) };
     /// if cfg!(target_endian = "little") {
     ///     assert_eq!(vals, &[0x3412u16, 0x7856u16]);
