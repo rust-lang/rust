@@ -99,6 +99,16 @@ impl UdpSocket {
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
     /// ```
+    ///
+    /// Note that `bind` declares the scope of your network connection.
+    /// You can only receive datagrams from and send datagrams to
+    /// participants in that view of the network.
+    /// For instance, binding to a loopback address as in the example
+    /// above will prevent you from sending datagrams to another device
+    /// in your local network.
+    ///
+    /// In order to limit your view of the network the least, `bind` to
+    /// [`Ipv4Addr::UNSPECIFIED`] or [`Ipv6Addr::UNSPECIFIED`].
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
         super::each_addr(addr, net_imp::UdpSocket::bind).map(UdpSocket)
@@ -157,7 +167,9 @@ impl UdpSocket {
     }
 
     /// Sends data on the socket to the given address. On success, returns the
-    /// number of bytes written.
+    /// number of bytes written. Note that the operating system may refuse
+    /// buffers larger than 65507. However, partial writes are not possible
+    /// until buffer sizes above `i32::MAX`.
     ///
     /// Address type can be any implementor of [`ToSocketAddrs`] trait. See its
     /// documentation for concrete examples.
@@ -652,12 +664,19 @@ impl UdpSocket {
     /// function of a UDP socket is not a useful thing to do: The OS will be
     /// unable to determine whether something is listening on the remote
     /// address without the application sending data.
+    ///
+    /// If your first `connect` is to a loopback address, subsequent
+    /// `connect`s to non-loopback addresses might fail, depending
+    /// on the platform.
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
         super::each_addr(addr, |addr| self.0.connect(addr))
     }
 
     /// Sends data on the socket to the remote address to which it is connected.
+    /// On success, returns the number of bytes written. Note that the operating
+    /// system may refuse buffers larger than 65507. However, partial writes are
+    /// not possible until buffer sizes above `i32::MAX`.
     ///
     /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
