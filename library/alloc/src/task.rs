@@ -19,7 +19,7 @@ use core::task::Waker;
 /// The implementation of waking a task on an executor.
 ///
 /// This trait can be used to create a [`Waker`]. An executor can define an
-/// implementation of this trait, and use that to construct a Waker to pass
+/// implementation of this trait, and use that to construct a [`Waker`] to pass
 /// to the tasks that are executed on that executor.
 ///
 /// This trait is a memory-safe and ergonomic alternative to constructing a
@@ -28,7 +28,13 @@ use core::task::Waker;
 /// those for embedded systems) cannot use this API, which is why [`RawWaker`]
 /// exists as an alternative for those systems.
 ///
-/// [arc]: ../../std/sync/struct.Arc.html
+/// To construct a [`Waker`] from some type `W` implementing this trait,
+/// wrap it in an [`Arc<W>`](Arc) and call [`Waker::from()`][wi].
+/// It is also possible to convert to [`RawWaker`] in the same way.
+///
+/// <!-- This impl is reachable from `alloc` but rustdoc only lists it in `std`
+///      because `alloc` doesn't reexport `Waker` -->
+/// [wi]: ../../std/task/struct.Waker.html#impl-From<Arc<W,+Global>>-for-Waker
 ///
 /// # Examples
 ///
@@ -100,7 +106,7 @@ pub trait Wake {
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
-    /// Use a `Wake`-able type as a `Waker`.
+    /// Use a [`Wake`]-able type as a `Waker`.
     ///
     /// No heap allocations or atomic operations are used for this conversion.
     fn from(waker: Arc<W>) -> Waker {
