@@ -1099,6 +1099,16 @@ pub struct OutsideLoop<'a> {
     pub span: Span,
     pub name: &'a str,
     pub is_break: bool,
+    #[subdiagnostic]
+    pub suggestion: Option<OutsideLoopSuggestion>,
+}
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(passes_outside_loop_suggestion, applicability = "maybe-incorrect")]
+pub struct OutsideLoopSuggestion {
+    #[suggestion_part(code = "'block: ")]
+    pub block_span: Span,
+    #[suggestion_part(code = " 'block")]
+    pub break_span: Span,
 }
 
 #[derive(Diagnostic)]
