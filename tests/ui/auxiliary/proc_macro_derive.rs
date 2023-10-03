@@ -153,3 +153,19 @@ pub fn shadow_derive(_: TokenStream) -> TokenStream {
         .into(),
     ])
 }
+
+#[proc_macro_derive(StructIgnoredUnitPattern)]
+pub fn derive_ignored_unit_pattern(_: TokenStream) -> TokenStream {
+    quote! {
+        struct A;
+        impl A {
+            fn a(&self) -> Result<(), ()> {
+                unimplemented!()
+            }
+
+            pub fn b(&self) {
+                let _ = self.a().unwrap();
+            }
+        }
+    }
+}
