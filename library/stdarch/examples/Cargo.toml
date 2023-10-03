@@ -14,7 +14,7 @@ default-run = "hex"
 core_arch = { path = "../crates/core_arch" }
 std_detect = { path = "../crates/std_detect" }
 quickcheck = "1.0"
-rand = "0.7"
+rand = "0.8"
 
 [[bin]]
 name = "hex"
