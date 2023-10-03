@@ -670,19 +670,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         trace!("eval_place_to_op: got {:?}", op);
         // Sanity-check the type we ended up with.
-        debug_assert!(
-            mir_assign_valid_types(
+        if cfg!(debug_assertions) {
+            let normalized_place_ty = self.subst_from_current_frame_and_normalize_erasing_regions(
+                mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
+            )?;
+            if !mir_assign_valid_types(
                 *self.tcx,
                 self.param_env,
-                self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
-                    mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty
-                )?)?,
+                self.layout_of(normalized_place_ty)?,
                 op.layout,
-            ),
-            "eval_place of a MIR place with type {:?} produced an interpreter operand with type {}",
-            mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
-            op.layout.ty,
-        );
+            ) {
+                span_bug!(
+                    self.cur_span(),
+                    "eval_place of a MIR place with type {} produced an interpreter operand with type {}",
+                    normalized_place_ty,
+                    op.layout.ty,
+                )
+            }
+        }
         Ok(op)
     }
 
