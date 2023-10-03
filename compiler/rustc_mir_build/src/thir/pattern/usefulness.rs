@@ -872,22 +872,19 @@ fn is_useful<'p, 'tcx>(
                 && usefulness.is_useful() && matches!(witness_preference, RealArm)
                 && matches!(
                     &ctor,
-                    Constructor::Missing { nonexhaustive_enum_missing_real_variants: true }
+                    Constructor::Missing { nonexhaustive_enum_missing_visible_variants: true }
                 )
             {
                 let missing = ConstructorSet::for_ty(pcx.cx, pcx.ty)
                     .compute_missing(pcx, matrix.heads().map(DeconstructedPat::ctor));
-                // Construct for each missing constructor a "wild" version of this
-                // constructor, that matches everything that can be built with
-                // it. For example, if `ctor` is a `Constructor::Variant` for
-                // `Option::Some`, we get the pattern `Some(_)`.
+                // Construct for each missing constructor a "wild" version of this constructor, that
+                // matches everything that can be built with it. For example, if `ctor` is a
+                // `Constructor::Variant` for `Option::Some`, we get the pattern `Some(_)`.
                 let patterns = missing
                     .into_iter()
-                    // Filter out the `NonExhaustive` because we want to list only real
-                    // variants. Also remove any unstable feature gated variants.
-                    // Because of how we computed `nonexhaustive_enum_missing_real_variants`,
+                    // Because of how we computed `nonexhaustive_enum_missing_visible_variants`,
                     // this will not return an empty `Vec`.
-                    .filter(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx)))
+                    .filter(|c| !(matches!(c, Constructor::NonExhaustive | Constructor::Hidden)))
                     .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor))
                     .collect::<Vec<_>>();
 

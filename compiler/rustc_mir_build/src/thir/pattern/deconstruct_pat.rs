@@ -609,19 +609,23 @@ pub(super) enum Constructor<'tcx> {
     /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
     /// don't count towards making a match exhaustive.
     Opaque,
+    /// Or-pattern.
+    Or,
+    /// Wildcard pattern.
+    Wildcard,
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
     /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
-    /// Stands for constructors that are not seen in the matrix, as explained in the code for
-    /// [`Constructor::split`]. The carried `bool` is used for the `non_exhaustive_omitted_patterns`
-    /// lint.
+    /// Fake extra constructor for variants that should not be mentioned in diagnostics.
+    /// We use this for variants behind an unstable gate as well as
+    /// `#[doc(hidden)]` ones.
+    Hidden,
+    /// Fake extra constructor for constructors that are not seen in the matrix, as explained in the
+    /// code for [`Constructor::split`]. The carried `bool` is used for the
+    /// `non_exhaustive_omitted_patterns` lint.
     Missing {
-        nonexhaustive_enum_missing_real_variants: bool,
+        nonexhaustive_enum_missing_visible_variants: bool,
     },
-    /// Wildcard pattern.
-    Wildcard,
-    /// Or-pattern.
-    Or,
 }
 
 impl<'tcx> Constructor<'tcx> {
@@ -650,32 +654,6 @@ impl<'tcx> Constructor<'tcx> {
             Slice(slice) => Some(*slice),
             _ => None,
         }
-    }
-
-    /// Checks if the `Constructor` is a variant and `TyCtxt::eval_stability` returns
-    /// `EvalResult::Deny { .. }`.
-    ///
-    /// This means that the variant has a stdlib unstable feature marking it.
-    pub(super) fn is_unstable_variant(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
-        if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
-            let variant_def_id = adt.variant(*idx).def_id;
-            // Filter variants that depend on a disabled unstable feature.
-            return matches!(
-                pcx.cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
-                EvalResult::Deny { .. }
-            );
-        }
-        false
-    }
-
-    /// Checks if the `Constructor` is a `Constructor::Variant` with a `#[doc(hidden)]`
-    /// attribute from a type not local to the current crate.
-    pub(super) fn is_doc_hidden_variant(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
-        if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
-            let variant_def_id = adt.variants()[*idx].def_id;
-            return pcx.cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
-        }
-        false
     }
 
     fn variant_index_for_adt(&self, adt: ty::AdtDef<'tcx>) -> VariantIdx {
@@ -713,8 +691,9 @@ impl<'tcx> Constructor<'tcx> {
             | F32Range(..)
             | F64Range(..)
             | IntRange(..)
-            | NonExhaustive
             | Opaque
+            | NonExhaustive
+            | Hidden
             | Missing { .. }
             | Wildcard => 0,
             Or => bug!("The `Or` constructor doesn't have a fixed arity"),
@@ -795,8 +774,8 @@ impl<'tcx> Constructor<'tcx> {
                         Wildcard
                     } else {
                         Missing {
-                            nonexhaustive_enum_missing_real_variants: split_set
-                                .nonexhaustive_enum_missing_real_variants,
+                            nonexhaustive_enum_missing_visible_variants: split_set
+                                .nonexhaustive_enum_missing_visible_variants,
                         }
                     };
                     smallvec![ctor]
@@ -828,8 +807,8 @@ impl<'tcx> Constructor<'tcx> {
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
-            // The missing ctors are not covered by anything in the matrix except wildcards.
-            (Missing { .. } | Wildcard, _) => false,
+            // Only a wildcard pattern can match these special constructors.
+            (Wildcard | Missing { .. } | NonExhaustive | Hidden, _) => false,
 
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
@@ -860,8 +839,6 @@ impl<'tcx> Constructor<'tcx> {
 
             // We are trying to inspect an opaque constant. Thus we skip the row.
             (Opaque, _) | (_, Opaque) => false,
-            // Only a wildcard pattern can match the special extra constructor.
-            (NonExhaustive, _) => false,
 
             _ => span_bug!(
                 pcx.span,
@@ -878,7 +855,14 @@ pub(super) enum ConstructorSet {
     /// The type has a single constructor, e.g. `&T` or a struct.
     Single,
     /// This type has the following list of constructors.
-    Variants { variants: Vec<VariantIdx>, non_exhaustive: bool },
+    /// Some variants are hidden, which means they won't be mentioned in diagnostics unless the user
+    /// mentioned them first. We use this for variants behind an unstable gate as well as
+    /// `#[doc(hidden)]` ones.
+    Variants {
+        visible_variants: Vec<VariantIdx>,
+        hidden_variants: Vec<VariantIdx>,
+        non_exhaustive: bool,
+    },
     /// The type is spanned by integer values. The range or ranges give the set of allowed values.
     /// The second range is only useful for `char`.
     /// This is reused for bool. FIXME: don't.
@@ -915,7 +899,7 @@ struct SplitConstructorSet<'tcx> {
     present: SmallVec<[Constructor<'tcx>; 1]>,
     missing: Vec<Constructor<'tcx>>,
     /// For the `non_exhaustive_omitted_patterns` lint.
-    nonexhaustive_enum_missing_real_variants: bool,
+    nonexhaustive_enum_missing_visible_variants: bool,
 }
 
 impl ConstructorSet {
@@ -1001,7 +985,7 @@ impl ConstructorSet {
                     Self::Uninhabited
                 } else {
                     let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
-                    let variants: Vec<_> = def
+                    let (hidden_variants, visible_variants) = def
                         .variants()
                         .iter_enumerated()
                         .filter(|(_, v)| {
@@ -1013,9 +997,24 @@ impl ConstructorSet {
                                     .apply(cx.tcx, cx.param_env, cx.module)
                         })
                         .map(|(idx, _)| idx)
-                        .collect();
+                        .partition(|idx| {
+                            let variant_def_id = def.variant(*idx).def_id;
+                            // Filter variants that depend on a disabled unstable feature.
+                            let is_unstable = matches!(
+                                cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
+                                EvalResult::Deny { .. }
+                            );
+                            // Filter foreign `#[doc(hidden)]` variants.
+                            let is_doc_hidden =
+                                cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
+                            is_unstable || is_doc_hidden
+                        });
 
-                    Self::Variants { variants, non_exhaustive: is_declared_nonexhaustive }
+                    Self::Variants {
+                        visible_variants,
+                        hidden_variants,
+                        non_exhaustive: is_declared_nonexhaustive,
+                    }
                 }
             }
             ty::Never => Self::Uninhabited,
@@ -1050,7 +1049,7 @@ impl ConstructorSet {
                 }
             }
         }
-        let mut nonexhaustive_enum_missing_real_variants = false;
+        let mut nonexhaustive_enum_missing_visible_variants = false;
         match self {
             ConstructorSet::Single => {
                 if seen.is_empty() {
@@ -1059,29 +1058,34 @@ impl ConstructorSet {
                     present.push(Single);
                 }
             }
-            ConstructorSet::Variants { variants, non_exhaustive } => {
+            ConstructorSet::Variants { visible_variants, hidden_variants, non_exhaustive } => {
                 let seen_set: FxHashSet<_> = seen.iter().map(|c| c.as_variant().unwrap()).collect();
                 let mut skipped_a_hidden_variant = false;
-                for variant in variants {
+                for variant in visible_variants {
                     let ctor = Variant(*variant);
                     if seen_set.contains(&variant) {
                         present.push(ctor);
-                    } else if ctor.is_doc_hidden_variant(pcx) || ctor.is_unstable_variant(pcx) {
-                        // We don't want to mention any variants that are `doc(hidden)` or behind an
-                        // unstable feature gate if they aren't present in the match.
-                        skipped_a_hidden_variant = true;
                     } else {
                         missing.push(ctor);
                     }
                 }
+                nonexhaustive_enum_missing_visible_variants =
+                    *non_exhaustive && !missing.is_empty();
+
+                for variant in hidden_variants {
+                    let ctor = Variant(*variant);
+                    if seen_set.contains(&variant) {
+                        present.push(ctor);
+                    } else {
+                        skipped_a_hidden_variant = true;
+                    }
+                }
+                if skipped_a_hidden_variant {
+                    missing.push(Hidden);
+                }
 
                 if *non_exhaustive {
-                    nonexhaustive_enum_missing_real_variants = !missing.is_empty();
                     missing.push(NonExhaustive);
-                } else if skipped_a_hidden_variant {
-                    // FIXME(Nadrieril): This represents the skipped variants, but isn't super
-                    // clean. Using `NonExhaustive` breaks things elsewhere.
-                    missing.push(Wildcard);
                 }
             }
             ConstructorSet::Integers { range_1, range_2, non_exhaustive } => {
@@ -1142,7 +1146,7 @@ impl ConstructorSet {
             ConstructorSet::Uninhabited => {}
         }
 
-        SplitConstructorSet { present, missing, nonexhaustive_enum_missing_real_variants }
+        SplitConstructorSet { present, missing, nonexhaustive_enum_missing_visible_variants }
     }
 
     /// Compute the set of constructors missing from this column.
@@ -1272,8 +1276,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             | F32Range(..)
             | F64Range(..)
             | IntRange(..)
-            | NonExhaustive
             | Opaque
+            | NonExhaustive
+            | Hidden
             | Missing { .. }
             | Wildcard => Fields::empty(),
             Or => {
@@ -1587,7 +1592,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             }
             &Str(value) => PatKind::Constant { value },
             IntRange(range) => return range.to_pat(cx.tcx, self.ty),
-            Wildcard | NonExhaustive => PatKind::Wild,
+            Wildcard | NonExhaustive | Hidden => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
@@ -1770,15 +1775,15 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
             F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             IntRange(range) => write!(f, "{range:?}"), // Best-effort, will render e.g. `false` as `0..=0`
-            Wildcard | Missing { .. } | NonExhaustive => write!(f, "_ : {:?}", self.ty),
+            Str(value) => write!(f, "{value}"),
+            Opaque => write!(f, "<constant pattern>"),
             Or => {
                 for pat in self.iter_fields() {
                     write!(f, "{}{:?}", start_or_continue(" | "), pat)?;
                 }
                 Ok(())
             }
-            Str(value) => write!(f, "{value}"),
-            Opaque => write!(f, "<constant pattern>"),
+            Wildcard | Missing { .. } | NonExhaustive | Hidden => write!(f, "_ : {:?}", self.ty),
         }
     }
 }
