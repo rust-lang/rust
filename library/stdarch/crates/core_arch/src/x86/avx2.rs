@@ -2090,7 +2090,10 @@ pub unsafe fn _mm256_mul_epu32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmulhw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
-    transmute(pmulhw(a.as_i16x16(), b.as_i16x16()))
+    let a = simd_cast::<_, i32x16>(a.as_i16x16());
+    let b = simd_cast::<_, i32x16>(b.as_i16x16());
+    let r = simd_shr(simd_mul(a, b), i32x16::splat(16));
+    transmute(simd_cast::<i32x16, i16x16>(r))
 }
 
 /// Multiplies the packed unsigned 16-bit integers in `a` and `b`, producing
@@ -2103,7 +2106,10 @@ pub unsafe fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmulhuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mulhi_epu16(a: __m256i, b: __m256i) -> __m256i {
-    transmute(pmulhuw(a.as_u16x16(), b.as_u16x16()))
+    let a = simd_cast::<_, u32x16>(a.as_u16x16());
+    let b = simd_cast::<_, u32x16>(b.as_u16x16());
+    let r = simd_shr(simd_mul(a, b), u32x16::splat(16));
+    transmute(simd_cast::<u32x16, u16x16>(r))
 }
 
 /// Multiplies the packed 16-bit integers in `a` and `b`, producing
@@ -3672,10 +3678,6 @@ extern "C" {
     fn maskstoreq256(mem_addr: *mut i8, mask: i64x4, a: i64x4);
     #[link_name = "llvm.x86.avx2.mpsadbw"]
     fn mpsadbw(a: u8x32, b: u8x32, imm8: i32) -> u16x16;
-    #[link_name = "llvm.x86.avx2.pmulhu.w"]
-    fn pmulhuw(a: u16x16, b: u16x16) -> u16x16;
-    #[link_name = "llvm.x86.avx2.pmulh.w"]
-    fn pmulhw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.pmul.dq"]
     fn pmuldq(a: i32x8, b: i32x8) -> i64x4;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
