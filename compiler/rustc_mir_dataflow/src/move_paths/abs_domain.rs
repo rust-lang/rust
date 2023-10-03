@@ -57,6 +57,7 @@ impl<'tcx> Lift for PlaceElem<'tcx> {
                 ProjectionElem::ConstantIndex { offset, min_length, from_end }
             }
             ProjectionElem::Downcast(a, u) => ProjectionElem::Downcast(a, u),
+            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty.lift()),
         }
     }
 }
