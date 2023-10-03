@@ -2,8 +2,8 @@ use crate::mir;
 use crate::query::CyclePlaceholder;
 use crate::traits;
 use crate::ty::{self, Ty};
-use std::mem::{size_of, MaybeUninit};
 use std::intrinsics::transmute_unchecked;
+use std::mem::{size_of, MaybeUninit};
 
 #[derive(Copy, Clone)]
 pub struct Erased<T: Copy> {
@@ -46,15 +46,15 @@ pub fn restore<T: EraseType>(value: Erase<T>) -> T {
 }
 
 impl<T> EraseType for &'_ T {
-    type Result = [u8; size_of::<*const ()>()];
+    type Result = [u8; size_of::<&'static ()>()];
 }
 
 impl<T> EraseType for &'_ [T] {
-    type Result = [u8; size_of::<*const [()]>()];
+    type Result = [u8; size_of::<&'static [()]>()];
 }
 
 impl<T> EraseType for &'_ ty::List<T> {
-    type Result = [u8; size_of::<*const ()>()];
+    type Result = [u8; size_of::<&'static ty::List<()>>()];
 }
 
 impl<I: rustc_index::Idx, T> EraseType for &'_ rustc_index::IndexSlice<I, T> {
