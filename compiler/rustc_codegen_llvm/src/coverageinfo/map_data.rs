@@ -7,6 +7,7 @@ use rustc_middle::mir::coverage::{
     CodeRegion, CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, Op,
 };
 use rustc_middle::ty::Instance;
+use rustc_span::Symbol;
 
 /// Holds all of the coverage mapping data associated with a function instance,
 /// collected during traversal of `Coverage` statements in the function's MIR.
@@ -187,6 +188,11 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// or not the source code structure changed between different compilations.
     pub fn source_hash(&self) -> u64 {
         if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
+    }
+
+    /// Returns an iterator over all filenames used by this function's mappings.
+    pub(crate) fn all_file_names(&self) -> impl Iterator<Item = Symbol> + Captures<'_> {
+        self.function_coverage_info.mappings.iter().map(|mapping| mapping.code_region.file_name)
     }
 
     /// Convert this function's coverage expression data into a form that can be
