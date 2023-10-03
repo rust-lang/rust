@@ -30,7 +30,7 @@ Current stable, released 2023-10-05
   [#11031](https://github.com/rust-lang/rust-clippy/pull/11031)
 * [`redundant_guards`]
   [#10955](https://github.com/rust-lang/rust-clippy/pull/10955)
-* [`redundant_local`]
+* [`redundant_locals`]
   [#10885](https://github.com/rust-lang/rust-clippy/pull/10885)
 * [`absolute_paths`]
   [#11003](https://github.com/rust-lang/rust-clippy/pull/11003)
