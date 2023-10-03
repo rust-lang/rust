@@ -514,7 +514,7 @@ pub enum FakeReadCause {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct Coverage {
     pub kind: CoverageKind,
-    pub code_region: Option<CodeRegion>,
+    pub code_regions: Vec<CodeRegion>,
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]

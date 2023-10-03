@@ -441,21 +441,23 @@ fn save_unreachable_coverage(
         let dead_block = &basic_blocks[dead_block];
         for statement in &dead_block.statements {
             let StatementKind::Coverage(coverage) = &statement.kind else { continue };
-            let Some(code_region) = &coverage.code_region else { continue };
+            if coverage.code_regions.is_empty() {
+                continue;
+            };
             let instance = statement.source_info.scope.inlined_instance(source_scopes);
             if live.contains(&instance) {
-                retained_coverage.push((statement.source_info, code_region.clone()));
+                retained_coverage.push((statement.source_info, coverage.code_regions.clone()));
             }
         }
     }
 
     let start_block = &mut basic_blocks[START_BLOCK];
     start_block.statements.extend(retained_coverage.into_iter().map(
-        |(source_info, code_region)| Statement {
+        |(source_info, code_regions)| Statement {
             source_info,
             kind: StatementKind::Coverage(Box::new(Coverage {
                 kind: CoverageKind::Unreachable,
-                code_region: Some(code_region),
+                code_regions,
             })),
         },
     ));

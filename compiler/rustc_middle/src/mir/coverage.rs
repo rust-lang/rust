@@ -18,11 +18,6 @@ rustc_index::newtype_index! {
 
 impl CounterId {
     pub const START: Self = Self::from_u32(0);
-
-    #[inline(always)]
-    pub fn next_id(self) -> Self {
-        Self::from_u32(self.as_u32() + 1)
-    }
 }
 
 rustc_index::newtype_index! {
@@ -38,11 +33,6 @@ rustc_index::newtype_index! {
 
 impl ExpressionId {
     pub const START: Self = Self::from_u32(0);
-
-    #[inline(always)]
-    pub fn next_id(self) -> Self {
-        Self::from_u32(self.as_u32() + 1)
-    }
 }
 
 /// Operand of a coverage-counter expression.

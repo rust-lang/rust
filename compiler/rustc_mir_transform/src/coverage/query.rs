@@ -93,8 +93,8 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
 fn covered_code_regions(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<&CodeRegion> {
     let body = mir_body(tcx, def_id);
     all_coverage_in_mir_body(body)
-        // Not all coverage statements have an attached code region.
-        .filter_map(|coverage| coverage.code_region.as_ref())
+        // Coverage statements have a list of code regions (possibly empty).
+        .flat_map(|coverage| coverage.code_regions.as_slice())
         .collect()
 }
 
