@@ -2240,7 +2240,9 @@ pub unsafe fn _mm_ucomineq_sd(a: __m128d, b: __m128d) -> i32 {
 #[cfg_attr(test, assert_instr(cvtpd2ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtpd_ps(a: __m128d) -> __m128 {
-    cvtpd2ps(a)
+    let r = simd_cast::<_, f32x2>(a.as_f64x2());
+    let zero = f32x2::new(0.0, 0.0);
+    transmute::<f32x4, _>(simd_shuffle!(r, zero, [0, 1, 2, 3]))
 }
 
 /// Converts packed single-precision (32-bit) floating-point elements in `a` to
@@ -2253,7 +2255,8 @@ pub unsafe fn _mm_cvtpd_ps(a: __m128d) -> __m128 {
 #[cfg_attr(test, assert_instr(cvtps2pd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtps_pd(a: __m128) -> __m128d {
-    cvtps2pd(a)
+    let a = a.as_f32x4();
+    transmute(simd_cast::<f32x2, f64x2>(simd_shuffle!(a, a, [0, 1])))
 }
 
 /// Converts packed double-precision (64-bit) floating-point elements in `a` to
@@ -2908,10 +2911,6 @@ extern "C" {
     fn ucomineqsd(a: __m128d, b: __m128d) -> i32;
     #[link_name = "llvm.x86.sse2.movmsk.pd"]
     fn movmskpd(a: __m128d) -> i32;
-    #[link_name = "llvm.x86.sse2.cvtpd2ps"]
-    fn cvtpd2ps(a: __m128d) -> __m128;
-    #[link_name = "llvm.x86.sse2.cvtps2pd"]
-    fn cvtps2pd(a: __m128) -> __m128d;
     #[link_name = "llvm.x86.sse2.cvtpd2dq"]
     fn cvtpd2dq(a: __m128d) -> i32x4;
     #[link_name = "llvm.x86.sse2.cvtsd2si"]
