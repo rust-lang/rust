@@ -467,7 +467,6 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
-        &add_subtyping_projections::Subtyper,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::EarlyOpt,
@@ -483,6 +482,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &reveal_all::RevealAll, // has to be done before drop elaboration, since we need to drop opaque types, too.
+        &add_subtyping_projections::Subtyper, // calling this after reveal_all ensures that we don't deal with opaque types
         &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
         // necessary as well as well as forcing any call in a non-unwinding
