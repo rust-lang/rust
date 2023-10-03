@@ -4,9 +4,9 @@ extern crate log;
 
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::Command;
 
-use clap::{App, Arg};
 use intrinsic::Intrinsic;
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -320,58 +320,47 @@ path = "{intrinsic}/main.rs""#,
     }
 }
 
+/// Intrinsic test tool
+#[derive(clap::Parser)]
+#[command(
+    name = "Intrinsic test tool",
+    about = "Generates Rust and C programs for intrinsics and compares the output"
+)]
+struct Cli {
+    /// The input file containing the intrinsics
+    input: PathBuf,
+
+    /// The rust toolchain to use for building the rust code
+    #[arg(long)]
+    toolchain: Option<String>,
+
+    /// The C++ compiler to use for compiling the c++ code
+    #[arg(long, default_value_t = String::from("clang++"))]
+    cppcompiler: String,
+
+    /// Run the C programs under emulation with this command
+    #[arg(long)]
+    runner: Option<String>,
+
+    /// Filename for a list of intrinsics to skip (one per line)
+    #[arg(long)]
+    skip: Option<PathBuf>,
+
+    /// Run tests for A32 instrinsics instead of A64
+    #[arg(long)]
+    a32: bool,
+}
+
 fn main() {
     pretty_env_logger::init();
 
-    let matches = App::new("Intrinsic test tool")
-        .about("Generates Rust and C programs for intrinsics and compares the output")
-        .arg(
-            Arg::with_name("INPUT")
-                .help("The input file containing the intrinsics")
-                .required(true)
-                .index(1),
-        )
-        .arg(
-            Arg::with_name("TOOLCHAIN")
-                .takes_value(true)
-                .long("toolchain")
-                .help("The rust toolchain to use for building the rust code"),
-        )
-        .arg(
-            Arg::with_name("CPPCOMPILER")
-                .takes_value(true)
-                .default_value("clang++")
-                .long("cppcompiler")
-                .help("The C++ compiler to use for compiling the c++ code"),
-        )
-        .arg(
-            Arg::with_name("RUNNER")
-                .takes_value(true)
-                .long("runner")
-                .help("Run the C programs under emulation with this command"),
-        )
-        .arg(
-            Arg::with_name("SKIP")
-                .takes_value(true)
-                .long("skip")
-                .help("Filename for a list of intrinsics to skip (one per line)"),
-        )
-        .arg(
-            Arg::with_name("A32")
-                .takes_value(false)
-                .long("a32")
-                .help("Run tests for A32 instrinsics instead of A64"),
-        )
-        .get_matches();
+    let args: Cli = clap::Parser::parse();
 
-    let filename = matches.value_of("INPUT").unwrap();
-    let toolchain = matches
-        .value_of("TOOLCHAIN")
-        .map_or("".into(), |t| format!("+{t}"));
-
-    let cpp_compiler = matches.value_of("CPPCOMPILER").unwrap();
-    let c_runner = matches.value_of("RUNNER").unwrap_or("");
-    let skip = if let Some(filename) = matches.value_of("SKIP") {
+    let filename = args.input;
+    let toolchain = args.toolchain.map_or_else(String::new, |t| format!("+{t}"));
+    let cpp_compiler = args.cppcompiler;
+    let c_runner = args.runner.unwrap_or_else(String::new);
+    let skip = if let Some(filename) = args.skip {
         let data = std::fs::read_to_string(&filename).expect("Failed to open file");
         data.lines()
             .map(str::trim)
@@ -381,8 +370,8 @@ fn main() {
     } else {
         Default::default()
     };
-    let a32 = matches.is_present("A32");
-    let mut intrinsics = get_neon_intrinsics(filename).expect("Error parsing input file");
+    let a32 = args.a32;
+    let mut intrinsics = get_neon_intrinsics(&filename).expect("Error parsing input file");
 
     intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
 
@@ -409,7 +398,7 @@ fn main() {
 
     let notices = build_notices("// ");
 
-    if !build_c(&notices, &intrinsics, cpp_compiler, a32) {
+    if !build_c(&notices, &intrinsics, &cpp_compiler, a32) {
         std::process::exit(2);
     }
 

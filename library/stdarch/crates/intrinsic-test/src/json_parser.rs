@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 
 use serde::Deserialize;
 
@@ -41,7 +42,7 @@ struct JsonIntrinsic {
     architectures: Vec<String>,
 }
 
-pub fn get_neon_intrinsics(filename: &str) -> Result<Vec<Intrinsic>, Box<dyn std::error::Error>> {
+pub fn get_neon_intrinsics(filename: &Path) -> Result<Vec<Intrinsic>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
     let json: Vec<JsonIntrinsic> = serde_json::from_reader(reader).expect("Couldn't parse JSON");
