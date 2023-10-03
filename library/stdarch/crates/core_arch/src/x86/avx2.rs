@@ -344,7 +344,10 @@ pub unsafe fn _mm256_andnot_si256(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpavgw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_avg_epu16(a: __m256i, b: __m256i) -> __m256i {
-    transmute(pavgw(a.as_u16x16(), b.as_u16x16()))
+    let a = simd_cast::<_, u32x16>(a.as_u16x16());
+    let b = simd_cast::<_, u32x16>(b.as_u16x16());
+    let r = simd_shr(simd_add(simd_add(a, b), u32x16::splat(1)), u32x16::splat(1));
+    transmute(simd_cast::<_, u16x16>(r))
 }
 
 /// Averages packed unsigned 8-bit integers in `a` and `b`.
@@ -355,7 +358,10 @@ pub unsafe fn _mm256_avg_epu16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpavgb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_avg_epu8(a: __m256i, b: __m256i) -> __m256i {
-    transmute(pavgb(a.as_u8x32(), b.as_u8x32()))
+    let a = simd_cast::<_, u16x32>(a.as_u8x32());
+    let b = simd_cast::<_, u16x32>(b.as_u8x32());
+    let r = simd_shr(simd_add(simd_add(a, b), u16x32::splat(1)), u16x32::splat(1));
+    transmute(simd_cast::<_, u8x32>(r))
 }
 
 /// Blends packed 32-bit integers from `a` and `b` using control mask `IMM4`.
@@ -3638,10 +3644,6 @@ extern "C" {
     fn pabsw(a: i16x16) -> u16x16;
     #[link_name = "llvm.x86.avx2.pabs.d"]
     fn pabsd(a: i32x8) -> u32x8;
-    #[link_name = "llvm.x86.avx2.pavg.b"]
-    fn pavgb(a: u8x32, b: u8x32) -> u8x32;
-    #[link_name = "llvm.x86.avx2.pavg.w"]
-    fn pavgw(a: u16x16, b: u16x16) -> u16x16;
     #[link_name = "llvm.x86.avx2.pblendvb"]
     fn pblendvb(a: i8x32, b: i8x32, mask: i8x32) -> i8x32;
     #[link_name = "llvm.x86.avx2.phadd.w"]
