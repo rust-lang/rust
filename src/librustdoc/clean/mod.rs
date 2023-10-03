@@ -2226,6 +2226,11 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
+        ty::Bound(_, ref ty) => match ty.kind {
+            ty::BoundTyKind::Param(_, name) => Generic(name),
+            ty::BoundTyKind::Anon => panic!("unexpected anonymous bound type variable"),
+        },
+
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // If it's already in the same alias, don't get an infinite loop.
             if cx.current_type_aliases.contains_key(&def_id) {
@@ -2254,7 +2259,6 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
         ty::Closure(..) => panic!("Closure"),
         ty::Generator(..) => panic!("Generator"),
-        ty::Bound(..) => panic!("Bound"),
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
         ty::Infer(..) => panic!("Infer"),
@@ -3097,6 +3101,17 @@ fn clean_bound_vars<'tcx>(
             {
                 Some(GenericParamDef::lifetime(name))
             }
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(did, name)) => Some(GenericParamDef {
+                name,
+                kind: GenericParamDefKind::Type {
+                    did,
+                    bounds: Vec::new(),
+                    default: None,
+                    synthetic: false,
+                },
+            }),
+            // FIXME(non_lifetime_binders): Support higher-ranked const parameters.
+            ty::BoundVariableKind::Const => None,
             _ => None,
         })
         .collect()
