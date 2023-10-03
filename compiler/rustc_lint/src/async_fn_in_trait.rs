@@ -39,8 +39,8 @@ declare_lint! {
     /// }
     ///
     /// fn test<T: Trait>(x: T) {
-    ///     fn is_send<T: Send>(_: T) {}
-    ///     is_send(x.method()); // Not OK.
+    ///     fn spawn<T: Send>(_: T) {}
+    ///     spawn(x.method()); // Not OK.
     /// }
     /// ```
     ///
@@ -68,11 +68,10 @@ declare_lint! {
     /// }
     /// ```
     ///
-    /// Conversely, if the trait is used only locally, if only concrete types
-    /// that implement the trait are used, or if the trait author otherwise
-    /// does not care that the trait will not promise that the returned
-    /// [`Future`] implements any [auto traits] such as [`Send`], then the
-    /// lint may be suppressed.
+    /// Conversely, if the trait is used only locally, if it is never used in
+    /// generic functions, or if it is only used in single-threaded contexts
+    /// that do not care whether the returned [`Future`] implements [auto traits]
+    /// such as [`Send`], then the lint may be suppressed.
     ///
     /// [`Future`]: https://doc.rust-lang.org/core/future/trait.Future.html
     /// [`Send`]: https://doc.rust-lang.org/core/marker/trait.Send.html
