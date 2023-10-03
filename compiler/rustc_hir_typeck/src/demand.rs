@@ -14,7 +14,7 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeFoldable};
+use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeFoldable, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -504,12 +504,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // incompatible fix at the original mismatch site.
                     if matches!(source, TypeMismatchSource::Ty(_))
                         && let Some(ideal_method) = ideal_method
+                        && let ideal_arg_ty = self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
+                        // HACK(compiler-errors): We don't actually consider the implications
+                        // of our inference guesses in `emit_type_mismatch_suggestions`, so
+                        // only suggest things when we know our type error is precisely due to
+                        // a type mismatch, and not via some projection or something. See #116155.
+                        && !ideal_arg_ty.has_non_region_infer()
                     {
                         self.emit_type_mismatch_suggestions(
                             err,
                             arg_expr,
                             arg_ty,
-                            self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1]),
+                            ideal_arg_ty,
                             None,
                             None,
                         );
