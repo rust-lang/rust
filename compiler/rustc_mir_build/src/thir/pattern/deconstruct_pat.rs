@@ -40,7 +40,7 @@
 //! Splitting is implemented in the [`Constructor::split`] function. We don't do splitting for
 //! or-patterns; instead we just try the alternatives one-by-one. For details on splitting
 //! wildcards, see [`SplitWildcard`]; for integer ranges, see [`IntRange::split`]; for slices, see
-//! [`SplitVarLenSlice`].
+//! [`Slice::split`].
 
 use std::cell::Cell;
 use std::cmp::{self, max, min, Ordering};
@@ -410,141 +410,130 @@ impl Slice {
     fn is_covered_by(self, other: Self) -> bool {
         other.kind.covers_length(self.arity())
     }
-}
 
-/// This computes constructor splitting for variable-length slices, as explained at the top of the
-/// file.
-///
-/// A slice pattern `[x, .., y]` behaves like the infinite or-pattern `[x, y] | [x, _, y] | [x, _,
-/// _, y] | ...`. The corresponding value constructors are fixed-length array constructors above a
-/// given minimum length. We obviously can't list this infinitude of constructors. Thankfully,
-/// it turns out that for each finite set of slice patterns, all sufficiently large array lengths
-/// are equivalent.
-///
-/// Let's look at an example, where we are trying to split the last pattern:
-/// ```
-/// # fn foo(x: &[bool]) {
-/// match x {
-///     [true, true, ..] => {}
-///     [.., false, false] => {}
-///     [..] => {}
-/// }
-/// # }
-/// ```
-/// Here are the results of specialization for the first few lengths:
-/// ```
-/// # fn foo(x: &[bool]) { match x {
-/// // length 0
-/// [] => {}
-/// // length 1
-/// [_] => {}
-/// // length 2
-/// [true, true] => {}
-/// [false, false] => {}
-/// [_, _] => {}
-/// // length 3
-/// [true, true,  _    ] => {}
-/// [_,    false, false] => {}
-/// [_,    _,     _    ] => {}
-/// // length 4
-/// [true, true, _,     _    ] => {}
-/// [_,    _,    false, false] => {}
-/// [_,    _,    _,     _    ] => {}
-/// // length 5
-/// [true, true, _, _,     _    ] => {}
-/// [_,    _,    _, false, false] => {}
-/// [_,    _,    _, _,     _    ] => {}
-/// # _ => {}
-/// # }}
-/// ```
-///
-/// If we went above length 5, we would simply be inserting more columns full of wildcards in the
-/// middle. This means that the set of witnesses for length `l >= 5` if equivalent to the set for
-/// any other `l' >= 5`: simply add or remove wildcards in the middle to convert between them.
-///
-/// This applies to any set of slice patterns: there will be a length `L` above which all lengths
-/// behave the same. This is exactly what we need for constructor splitting. Therefore a
-/// variable-length slice can be split into a variable-length slice of minimal length `L`, and many
-/// fixed-length slices of lengths `< L`.
-///
-/// For each variable-length pattern `p` with a prefix of length `plₚ` and suffix of length `slₚ`,
-/// only the first `plₚ` and the last `slₚ` elements are examined. Therefore, as long as `L` is
-/// positive (to avoid concerns about empty types), all elements after the maximum prefix length
-/// and before the maximum suffix length are not examined by any variable-length pattern, and
-/// therefore can be added/removed without affecting them - creating equivalent patterns from any
-/// sufficiently-large length.
-///
-/// Of course, if fixed-length patterns exist, we must be sure that our length is large enough to
-/// miss them all, so we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
-///
-/// `max_slice` below will be made to have arity `L`.
-#[derive(Debug)]
-struct SplitVarLenSlice {
-    /// If the type is an array, this is its size.
-    array_len: Option<usize>,
-    /// The arity of the input slice.
-    arity: usize,
-    /// The smallest slice bigger than any slice seen. `max_slice.arity()` is the length `L`
-    /// described above.
-    max_slice: SliceKind,
-}
-
-impl SplitVarLenSlice {
-    fn new(prefix: usize, suffix: usize, array_len: Option<usize>) -> Self {
-        SplitVarLenSlice { array_len, arity: prefix + suffix, max_slice: VarLen(prefix, suffix) }
-    }
-
-    /// Pass a set of slices relative to which to split this one.
-    fn split(&mut self, slices: impl Iterator<Item = SliceKind>) {
-        let VarLen(max_prefix_len, max_suffix_len) = &mut self.max_slice else {
-            // No need to split
-            return;
-        };
-        // We grow `self.max_slice` to be larger than all slices encountered, as described above.
-        // For diagnostics, we keep the prefix and suffix lengths separate, but grow them so that
-        // `L = max_prefix_len + max_suffix_len`.
-        let mut max_fixed_len = 0;
-        for slice in slices {
-            match slice {
-                FixedLen(len) => {
-                    max_fixed_len = cmp::max(max_fixed_len, len);
+    /// This computes constructor splitting for variable-length slices, as explained at the top of
+    /// the file.
+    ///
+    /// A slice pattern `[x, .., y]` behaves like the infinite or-pattern `[x, y] | [x, _, y] | [x,
+    /// _, _, y] | etc`. The corresponding value constructors are fixed-length array constructors of
+    /// corresponding lengths. We obviously can't list this infinitude of constructors.
+    /// Thankfully, it turns out that for each finite set of slice patterns, all sufficiently large
+    /// array lengths are equivalent.
+    ///
+    /// Let's look at an example, where we are trying to split the last pattern:
+    /// ```
+    /// # fn foo(x: &[bool]) {
+    /// match x {
+    ///     [true, true, ..] => {}
+    ///     [.., false, false] => {}
+    ///     [..] => {} // `self`
+    /// }
+    /// # }
+    /// ```
+    /// Here are the results of specialization for the first few lengths:
+    /// ```
+    /// # fn foo(x: &[bool]) { match x {
+    /// // length 0
+    /// [] => {}
+    /// // length 1
+    /// [_] => {}
+    /// // length 2
+    /// [true, true] => {}
+    /// [false, false] => {}
+    /// [_, _] => {}
+    /// // length 3
+    /// [true, true,  _    ] => {}
+    /// [_,    false, false] => {}
+    /// [_,    _,     _    ] => {}
+    /// // length 4
+    /// [true, true, _,     _    ] => {}
+    /// [_,    _,    false, false] => {}
+    /// [_,    _,    _,     _    ] => {}
+    /// // length 5
+    /// [true, true, _, _,     _    ] => {}
+    /// [_,    _,    _, false, false] => {}
+    /// [_,    _,    _, _,     _    ] => {}
+    /// # _ => {}
+    /// # }}
+    /// ```
+    ///
+    /// We see that above length 4, we are simply inserting columns full of wildcards in the middle.
+    /// This means that specialization and witness computation with slices of length `l >= 4` will
+    /// give equivalent results independently of `l`. This applies to any set of slice patterns:
+    /// there will be a length `L` above which all lengths behave the same. This is exactly what we
+    /// need for constructor splitting.
+    ///
+    /// A variable-length slice pattern covers all lengths from its arity up to infinity. As we just
+    /// saw, we can split this in two: lengths below `L` are treated individually with a
+    /// fixed-length slice each; lengths above `L` are grouped into a single variable-length slice
+    /// constructor.
+    ///
+    /// For each variable-length slice pattern `p` with a prefix of length `plₚ` and suffix of
+    /// length `slₚ`, only the first `plₚ` and the last `slₚ` elements are examined. Therefore, as
+    /// long as `L` is positive (to avoid concerns about empty types), all elements after the
+    /// maximum prefix length and before the maximum suffix length are not examined by any
+    /// variable-length pattern, and therefore can be ignored. This gives us a way to compute `L`.
+    ///
+    /// Additionally, if fixed-length patterns exist, we must pick an `L` large enough to miss them,
+    /// so we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`.
+    /// `max_slice` below will be made to have this arity `L`.
+    ///
+    /// If `self` is fixed-length, it is returned as-is.
+    fn split(self, column_slices: impl Iterator<Item = Slice>) -> impl Iterator<Item = Slice> {
+        // Range of lengths below `L`.
+        let smaller_lengths;
+        let mut max_slice = self.kind;
+        match &mut max_slice {
+            VarLen(max_prefix_len, max_suffix_len) => {
+                // We grow `max_slice` to be larger than all slices encountered, as described above.
+                // For diagnostics, we keep the prefix and suffix lengths separate, but grow them so that
+                // `L = max_prefix_len + max_suffix_len`.
+                let mut max_fixed_len = 0;
+                for slice in column_slices {
+                    match slice.kind {
+                        FixedLen(len) => {
+                            max_fixed_len = cmp::max(max_fixed_len, len);
+                        }
+                        VarLen(prefix, suffix) => {
+                            *max_prefix_len = cmp::max(*max_prefix_len, prefix);
+                            *max_suffix_len = cmp::max(*max_suffix_len, suffix);
+                        }
+                    }
                 }
-                VarLen(prefix, suffix) => {
-                    *max_prefix_len = cmp::max(*max_prefix_len, prefix);
-                    *max_suffix_len = cmp::max(*max_suffix_len, suffix);
+                // We want `L = max(L, max_fixed_len + 1)`, modulo the fact that we keep prefix and
+                // suffix separate.
+                if max_fixed_len + 1 >= *max_prefix_len + *max_suffix_len {
+                    // The subtraction can't overflow thanks to the above check.
+                    // The new `max_prefix_len` is larger than its previous value.
+                    *max_prefix_len = max_fixed_len + 1 - *max_suffix_len;
                 }
+
+                // We cap the arity of `max_slice` at the array size.
+                match self.array_len {
+                    Some(len) if max_slice.arity() >= len => max_slice = FixedLen(len),
+                    _ => {}
+                }
+
+                smaller_lengths = match self.array_len {
+                    // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
+                    // is fixed-length or variable-length, it will be the only relevant slice to output
+                    // here.
+                    Some(_) => 0..0, // empty range
+                    // We need to cover all arities in the range `(arity..infinity)`. We split that
+                    // range into two: lengths smaller than `max_slice.arity()` are treated
+                    // independently as fixed-lengths slices, and lengths above are captured by
+                    // `max_slice`.
+                    None => self.arity()..max_slice.arity(),
+                };
             }
-        }
-        // We want `L = max(L, max_fixed_len + 1)`, modulo the fact that we keep prefix and
-        // suffix separate.
-        if max_fixed_len + 1 >= *max_prefix_len + *max_suffix_len {
-            // The subtraction can't overflow thanks to the above check.
-            // The new `max_prefix_len` is larger than its previous value.
-            *max_prefix_len = max_fixed_len + 1 - *max_suffix_len;
-        }
-
-        // We cap the arity of `max_slice` at the array size.
-        match self.array_len {
-            Some(len) if self.max_slice.arity() >= len => self.max_slice = FixedLen(len),
-            _ => {}
-        }
-    }
-
-    /// Iterate over the partition of this slice.
-    fn iter(&self) -> impl Iterator<Item = Slice> + Captures<'_> {
-        let smaller_lengths = match self.array_len {
-            // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
-            // is fixed-length or variable-length, it will be the only relevant slice to output
-            // here.
-            Some(_) => 0..0, // empty range
-            // We cover all arities in the range `(self.arity..infinity)`. We split that range into
-            // two: lengths smaller than `max_slice.arity()` are treated independently as
-            // fixed-lengths slices, and lengths above are captured by `max_slice`.
-            None => self.arity..self.max_slice.arity(),
+            FixedLen(_) => {
+                // No need to split.
+                smaller_lengths = 0..0;
+            }
         };
         smaller_lengths
             .map(FixedLen)
-            .chain(once(self.max_slice))
+            .chain(once(max_slice))
             .map(move |kind| Slice::new(self.array_len, kind))
     }
 }
@@ -716,11 +705,9 @@ impl<'tcx> Constructor<'tcx> {
                 let int_ranges = ctors.filter_map(|ctor| ctor.as_int_range()).cloned();
                 ctor_range.split(int_ranges).map(IntRange).collect()
             }
-            &Slice(Slice { kind: VarLen(self_prefix, self_suffix), array_len }) => {
-                let mut split_self = SplitVarLenSlice::new(self_prefix, self_suffix, array_len);
-                let slices = ctors.filter_map(|c| c.as_slice()).map(|s| s.kind);
-                split_self.split(slices);
-                split_self.iter().map(Slice).collect()
+            &Slice(slice @ Slice { kind: VarLen(..), .. }) => {
+                let slices = ctors.filter_map(|c| c.as_slice());
+                slice.split(slices).map(Slice).collect()
             }
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
