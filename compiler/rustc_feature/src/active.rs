@@ -9,10 +9,10 @@ use rustc_span::Span;
 
 macro_rules! set {
     ($field: ident) => {{
-        fn f(features: &mut Features, _: Span) {
+        fn f(features: &mut Features) {
             features.$field = true;
         }
-        f as fn(&mut Features, Span)
+        f as fn(&mut Features)
     }};
 }
 
@@ -123,9 +123,9 @@ macro_rules! declare_features {
 
 impl Feature {
     /// Sets this feature in `Features`. Panics if called on a non-active feature.
-    pub fn set(&self, features: &mut Features, span: Span) {
+    pub fn set(&self, features: &mut Features) {
         match self.state {
-            State::Active { set } => set(features, span),
+            State::Active { set } => set(features),
             _ => panic!("called `set` on feature `{}` which is not `active`", self.name),
         }
     }

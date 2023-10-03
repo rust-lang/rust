@@ -23,14 +23,14 @@ mod removed;
 #[cfg(test)]
 mod tests;
 
-use rustc_span::{edition::Edition, symbol::Symbol, Span};
+use rustc_span::{edition::Edition, symbol::Symbol};
 use std::fmt;
 use std::num::NonZeroU32;
 
 #[derive(Clone, Copy)]
 pub enum State {
     Accepted,
-    Active { set: fn(&mut Features, Span) },
+    Active { set: fn(&mut Features) },
     Removed { reason: Option<&'static str> },
     Stabilized { reason: Option<&'static str> },
 }

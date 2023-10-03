@@ -23,7 +23,7 @@ use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
@@ -67,7 +67,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
     }
 
     for feature in active_features_up_to(crate_edition) {
-        feature.set(&mut features, DUMMY_SP);
+        feature.set(&mut features);
         edition_enabled_features.insert(feature.name, crate_edition);
     }
 
@@ -98,7 +98,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 for feature in active_features_up_to(edition) {
                     // FIXME(Manishearth) there is currently no way to set
                     // lib features by edition
-                    feature.set(&mut features, DUMMY_SP);
+                    feature.set(&mut features);
                     edition_enabled_features.insert(feature.name, edition);
                 }
             }
@@ -176,7 +176,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             }
 
             if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.name) {
-                f.set(&mut features, mi.span());
+                f.set(&mut features);
                 features.declared_lang_features.push((name, mi.span(), None));
                 features.active_features.insert(name);
                 continue;
