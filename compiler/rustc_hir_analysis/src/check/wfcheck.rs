@@ -1130,11 +1130,11 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     let wf_obligations =
         bounds.instantiate_identity_iter_copied().flat_map(|(bound, bound_span)| {
             let normalized_bound = wfcx.normalize(span, None, bound);
-            traits::wf::predicate_obligations(
+            traits::wf::clause_obligations(
                 wfcx.infcx,
                 wfcx.param_env,
                 wfcx.body_def_id,
-                normalized_bound.as_predicate(),
+                normalized_bound,
                 bound_span,
             )
         });
@@ -1234,7 +1234,7 @@ fn check_impl<'tcx>(
                     wfcx.infcx,
                     wfcx.param_env,
                     wfcx.body_def_id,
-                    &trait_pred,
+                    trait_pred,
                     ast_trait_ref.path.span,
                     item,
                 );
@@ -1443,13 +1443,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     debug!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
-        traits::wf::predicate_obligations(
-            infcx,
-            wfcx.param_env,
-            wfcx.body_def_id,
-            p.as_predicate(),
-            sp,
-        )
+        traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
     });
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);

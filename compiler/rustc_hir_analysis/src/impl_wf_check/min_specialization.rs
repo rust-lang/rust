@@ -376,9 +376,9 @@ fn check_predicates<'tcx>(
     let always_applicable_traits = impl1_predicates
         .iter()
         .copied()
-        .filter(|(clause, _span)| {
+        .filter(|&(clause, _span)| {
             matches!(
-                trait_predicate_kind(tcx, clause.as_predicate()),
+                trait_specialization_kind(tcx, clause),
                 Some(TraitSpecializationKind::AlwaysApplicable)
             )
         })
@@ -402,7 +402,7 @@ fn check_predicates<'tcx>(
             .iter()
             .any(|pred2| trait_predicates_eq(tcx, clause.as_predicate(), *pred2, span))
         {
-            check_specialization_on(tcx, clause.as_predicate(), span)
+            check_specialization_on(tcx, clause, span)
         }
     }
 }
@@ -441,19 +441,16 @@ fn trait_predicates_eq<'tcx>(
 }
 
 #[instrument(level = "debug", skip(tcx))]
-fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tcx>, span: Span) {
-    match predicate.kind().skip_binder() {
+fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, clause: ty::Clause<'tcx>, span: Span) {
+    match clause.kind().skip_binder() {
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
-        _ if predicate.is_global() => (),
+        _ if clause.is_global() => (),
         // We allow specializing on explicitly marked traits with no associated
         // items.
-        ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
-            trait_ref,
-            polarity: _,
-        })) => {
+        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
             if !matches!(
-                trait_predicate_kind(tcx, predicate),
+                trait_specialization_kind(tcx, clause),
                 Some(TraitSpecializationKind::Marker)
             ) {
                 tcx.sess
@@ -467,10 +464,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                     .emit();
             }
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
-            projection_ty,
-            term,
-        })) => {
+        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
             tcx.sess
                 .struct_span_err(
                     span,
@@ -478,7 +472,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                 )
                 .emit();
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..)) => {
+        ty::ClauseKind::ConstArgHasType(..) => {
             // FIXME(min_specialization), FIXME(const_generics):
             // It probably isn't right to allow _every_ `ConstArgHasType` but I am somewhat unsure
             // about the actual rules that would be sound. Can't just always error here because otherwise
@@ -490,33 +484,25 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         }
         _ => {
             tcx.sess
-                .struct_span_err(span, format!("cannot specialize on predicate `{predicate}`"))
+                .struct_span_err(span, format!("cannot specialize on predicate `{clause}`"))
                 .emit();
         }
     }
 }
 
-fn trait_predicate_kind<'tcx>(
+fn trait_specialization_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicate: ty::Predicate<'tcx>,
+    clause: ty::Clause<'tcx>,
 ) -> Option<TraitSpecializationKind> {
-    match predicate.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
-            trait_ref,
-            polarity: _,
-        })) => Some(tcx.trait_def(trait_ref.def_id).specialization_kind),
-        ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(_))
-        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(_))
-        | ty::PredicateKind::Clause(ty::ClauseKind::Projection(_))
-        | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
-        | ty::PredicateKind::AliasRelate(..)
-        | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
-        | ty::PredicateKind::Subtype(_)
-        | ty::PredicateKind::Coerce(_)
-        | ty::PredicateKind::ObjectSafe(_)
-        | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-        | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::Ambiguous => None,
+    match clause.kind().skip_binder() {
+        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
+            Some(tcx.trait_def(trait_ref.def_id).specialization_kind)
+        }
+        ty::ClauseKind::RegionOutlives(_)
+        | ty::ClauseKind::TypeOutlives(_)
+        | ty::ClauseKind::Projection(_)
+        | ty::ClauseKind::ConstArgHasType(..)
+        | ty::ClauseKind::WellFormed(_)
+        | ty::ClauseKind::ConstEvaluatable(..) => None,
     }
 }

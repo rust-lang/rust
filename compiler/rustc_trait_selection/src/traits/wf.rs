@@ -105,13 +105,13 @@ pub fn unnormalized_obligations<'tcx>(
 
 /// Returns the obligations that make this trait reference
 /// well-formed. For example, if there is a trait `Set` defined like
-/// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
+/// `trait Set<K: Eq>`, then the trait bound `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
 pub fn trait_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: LocalDefId,
-    trait_pred: &ty::TraitPredicate<'tcx>,
+    trait_pred: ty::TraitPredicate<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
@@ -129,12 +129,17 @@ pub fn trait_obligations<'tcx>(
     wf.normalize(infcx)
 }
 
+/// Returns the requirements for `clause` to be well-formed.
+///
+/// For example, if there is a trait `Set` defined like
+/// `trait Set<K: Eq>`, then the trait bound `Foo: Set<Bar>` is WF
+/// if `Bar: Eq`.
 #[instrument(skip(infcx), ret)]
-pub fn predicate_obligations<'tcx>(
+pub fn clause_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: LocalDefId,
-    predicate: ty::Predicate<'tcx>,
+    clause: ty::Clause<'tcx>,
     span: Span,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates {
@@ -148,44 +153,31 @@ pub fn predicate_obligations<'tcx>(
     };
 
     // It's ok to skip the binder here because wf code is prepared for it
-    match predicate.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) => {
-            wf.compute_trait_pred(&t, Elaborate::None);
+    match clause.kind().skip_binder() {
+        ty::ClauseKind::Trait(t) => {
+            wf.compute_trait_pred(t, Elaborate::None);
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..)) => {}
-        ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-            ty,
-            _reg,
-        ))) => {
+        ty::ClauseKind::RegionOutlives(..) => {}
+        ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
             wf.compute(ty.into());
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::Projection(t)) => {
+        ty::ClauseKind::Projection(t) => {
             wf.compute_projection(t.projection_ty);
             wf.compute(match t.term.unpack() {
                 ty::TermKind::Ty(ty) => ty.into(),
                 ty::TermKind::Const(c) => c.into(),
             })
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+        ty::ClauseKind::ConstArgHasType(ct, ty) => {
             wf.compute(ct.into());
             wf.compute(ty.into());
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+        ty::ClauseKind::WellFormed(arg) => {
             wf.compute(arg);
         }
 
-        ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
+        ty::ClauseKind::ConstEvaluatable(ct) => {
             wf.compute(ct.into());
-        }
-
-        ty::PredicateKind::ObjectSafe(_)
-        | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::Subtype(..)
-        | ty::PredicateKind::Coerce(..)
-        | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::AliasRelate(..) => {
-            bug!("We should only wf check where clauses, unexpected predicate: {predicate:?}")
         }
     }
 
@@ -233,7 +225,7 @@ enum Elaborate {
 
 fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_ref: &ty::TraitRef<'tcx>,
+    trait_ref: ty::TraitRef<'tcx>,
     item: Option<&hir::Item<'tcx>>,
     cause: &mut traits::ObligationCause<'tcx>,
     pred: ty::Predicate<'tcx>,
@@ -336,9 +328,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
-    fn compute_trait_pred(&mut self, trait_pred: &ty::TraitPredicate<'tcx>, elaborate: Elaborate) {
+    fn compute_trait_pred(&mut self, trait_pred: ty::TraitPredicate<'tcx>, elaborate: Elaborate) {
         let tcx = self.tcx();
-        let trait_ref = &trait_pred.trait_ref;
+        let trait_ref = trait_pred.trait_ref;
 
         // Negative trait predicates don't require supertraits to hold, just
         // that their args are WF.
@@ -411,7 +403,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     // Compute the obligations that are required for `trait_ref` to be WF,
     // given that it is a *negative* trait predicate.
-    fn compute_negative_trait_pred(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
+    fn compute_negative_trait_pred(&mut self, trait_ref: ty::TraitRef<'tcx>) {
         for arg in trait_ref.args {
             self.compute(arg);
         }

@@ -2494,10 +2494,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Try alternative arbitrary self types that could fulfill this call.
             // FIXME: probe for all types that *could* be arbitrary self-types, not
             // just this list.
-            for (rcvr_ty, post) in &[
-                (rcvr_ty, ""),
-                (Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
-                (Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
+            for (rcvr_ty, post, pin_call) in &[
+                (rcvr_ty, "", None),
+                (
+                    Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty),
+                    "&mut ",
+                    Some("as_mut"),
+                ),
+                (
+                    Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty),
+                    "&",
+                    Some("as_ref"),
+                ),
             ] {
                 match self.lookup_probe_for_diagnostic(
                     item_name,
@@ -2531,6 +2539,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Err(_) => (),
                 }
 
+                let pred = ty::TraitRef::new(
+                    self.tcx,
+                    self.tcx.lang_items().unpin_trait().unwrap(),
+                    [*rcvr_ty],
+                );
+                let unpin = self.predicate_must_hold_considering_regions(&Obligation::new(
+                    self.tcx,
+                    ObligationCause::misc(rcvr.span, self.body_id),
+                    self.param_env,
+                    pred,
+                ));
                 for (rcvr_ty, pre) in &[
                     (Ty::new_lang_item(self.tcx, *rcvr_ty, LangItem::OwnedBox), "Box::new"),
                     (Ty::new_lang_item(self.tcx, *rcvr_ty, LangItem::Pin), "Pin::new"),
@@ -2554,7 +2573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Explicitly ignore the `Pin::as_ref()` method as `Pin` does not
                         // implement the `AsRef` trait.
                         let skip = skippable.contains(&did)
-                            || (("Pin::new" == *pre) && (sym::as_ref == item_name.name))
+                            || (("Pin::new" == *pre) && ((sym::as_ref == item_name.name) || !unpin))
                             || inputs_len.is_some_and(|inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() != inputs_len);
                         // Make sure the method is defined for the *actual* receiver: we don't
                         // want to treat `Box<Self>` as a receiver if it only works because of
@@ -2566,7 +2585,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                             err.multipart_suggestion(
                                 "consider wrapping the receiver expression with the \
-                                    appropriate type",
+                                 appropriate type",
                                 vec![
                                     (rcvr.span.shrink_to_lo(), format!("{pre}({post}")),
                                     (rcvr.span.shrink_to_hi(), ")".to_string()),
@@ -2577,6 +2596,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             alt_rcvr_sugg = true;
                         }
                     }
+                }
+                // We special case the situation where `Pin::new` wouldn't work, and instead
+                // suggest using the `pin!()` macro instead.
+                if let Some(new_rcvr_t) = Ty::new_lang_item(self.tcx, *rcvr_ty, LangItem::Pin)
+                    // We didn't find an alternative receiver for the method.
+                    && !alt_rcvr_sugg
+                    // `T: !Unpin`
+                    && !unpin
+                    // The method isn't `as_ref`, as it would provide a wrong suggestion for `Pin`.
+                    && sym::as_ref != item_name.name
+                    // Either `Pin::as_ref` or `Pin::as_mut`.
+                    && let Some(pin_call) = pin_call
+                    // Search for `item_name` as a method accessible on `Pin<T>`.
+                    && let Ok(pick) = self.lookup_probe_for_diagnostic(
+                        item_name,
+                        new_rcvr_t,
+                        rcvr,
+                        ProbeScope::AllTraits,
+                        return_type,
+                    )
+                    // We skip some common traits that we don't want to consider because autoderefs
+                    // would take care of them.
+                    && !skippable.contains(&Some(pick.item.container_id(self.tcx)))
+                    // We don't want to go through derefs.
+                    && pick.autoderefs == 0
+                    // Check that the method of the same name that was found on the new `Pin<T>`
+                    // receiver has the same number of arguments that appear in the user's code.
+                    && inputs_len.is_some_and(|inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() == inputs_len)
+                {
+                    let indent = self.tcx.sess
+                        .source_map()
+                        .indentation_before(rcvr.span)
+                        .unwrap_or_else(|| " ".to_string());
+                    err.multipart_suggestion(
+                        "consider pinning the expression",
+                        vec![
+                            (rcvr.span.shrink_to_lo(), format!("let mut pinned = std::pin::pin!(")),
+                            (rcvr.span.shrink_to_hi(), format!(");\n{indent}pinned.{pin_call}()")),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                    // We don't care about the other suggestions.
+                    alt_rcvr_sugg = true;
                 }
             }
         }
