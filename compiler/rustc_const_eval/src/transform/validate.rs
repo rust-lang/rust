@@ -687,7 +687,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 let kind = match parent_ty.ty.kind() {
                     &ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                        self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
+                        let ty = self.tcx.type_of(def_id).instantiate(self.tcx, args);
+                        // If the type we get is opaque, we want to normalize it.
+                        if ty.is_impl_trait() {
+                            let inner_ty = self.tcx.expand_opaque_types(ty).kind();
+                            inner_ty
+                        } else {
+                            ty.kind()
+                        }
                     }
                     kind => kind,
                 };
