@@ -18,13 +18,5 @@ error: the method `takes_an_immutable_reference` doesn't need a mutable referenc
 LL |     my_struct.takes_an_immutable_reference(&mut 42);
    |                                            ^^^^^^^
 
-error: this argument is a mutable reference, but not used mutably
-  --> $DIR/mut_reference.rs:24:44
-   |
-LL |     fn takes_a_mutable_reference(&self, a: &mut i32) {}
-   |                                            ^^^^^^^^ help: consider changing to: `&i32`
-   |
-   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

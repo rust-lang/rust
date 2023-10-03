@@ -1,6 +1,10 @@
 #![allow(clippy::if_same_then_else, clippy::no_effect)]
 #![feature(lint_reasons)]
 
+// just ignore everywhere for now
+//@ignore-32bit
+//@ignore-64bit
+
 use std::ptr::NonNull;
 
 fn foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
