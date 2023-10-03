@@ -7,6 +7,7 @@ extern crate syn;
 use proc_macro::TokenStream;
 use std::{fs::File, io::Read, path::Path};
 use syn::ext::IdentExt;
+use syn::parse::Parser as _;
 
 #[proc_macro]
 pub fn x86_functions(input: TokenStream) -> TokenStream {
@@ -416,7 +417,7 @@ fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
 
 fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
     struct AssertInstr {
-        instr: String,
+        instr: Option<String>,
     }
 
     // A small custom parser to parse out the instruction in `assert_instr`.
@@ -424,15 +425,21 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
     // TODO: should probably just reuse `Invoc` from the `assert-instr-macro`
     // crate.
     impl syn::parse::Parse for AssertInstr {
-        fn parse(content: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
-            let input;
-            parenthesized!(input in content);
-            let _ = input.parse::<syn::Meta>()?;
-            let _ = input.parse::<Token![,]>()?;
-            let ident = input.parse::<syn::Ident>()?;
-            if ident != "assert_instr" {
-                return Err(input.error("expected `assert_instr`"));
+        fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
+            let _ = input.parse::<syn::Meta>().unwrap();
+            let _ = input.parse::<Token![,]>().unwrap();
+
+            match input.parse::<syn::Ident>() {
+                Ok(ident) if ident == "assert_instr" => {}
+                _ => {
+                    while !input.is_empty() {
+                        // consume everything
+                        drop(input.parse::<proc_macro2::TokenStream>());
+                    }
+                    return Ok(Self { instr: None });
+                }
             }
+
             let instrs;
             parenthesized!(instrs in input);
 
@@ -452,18 +459,24 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
                     return Err(input.error("failed to parse instruction"));
                 }
             }
-            Ok(Self { instr })
+            Ok(Self { instr: Some(instr) })
         }
     }
 
     attrs
         .iter()
-        .filter(|a| a.path.is_ident("cfg_attr"))
         .filter_map(|a| {
-            syn::parse2::<AssertInstr>(a.tokens.clone())
-                .ok()
-                .map(|a| a.instr)
+            if let syn::Meta::List(ref l) = a.meta {
+                if l.path.is_ident("cfg_attr") {
+                    Some(l)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
         })
+        .filter_map(|l| syn::parse2::<AssertInstr>(l.tokens.clone()).unwrap().instr)
         .collect()
 }
 
@@ -471,19 +484,26 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
     attrs
         .iter()
         .flat_map(|a| {
-            if let Ok(syn::Meta::List(i)) = a.parse_meta() {
-                if i.path.is_ident("target_feature") {
-                    return i.nested;
+            if let syn::Meta::List(ref l) = a.meta {
+                if l.path.is_ident("target_feature") {
+                    if let Ok(l) =
+                        syn::punctuated::Punctuated::<syn::Meta, Token![,]>::parse_terminated
+                            .parse2(l.tokens.clone())
+                    {
+                        return l;
+                    }
                 }
             }
             syn::punctuated::Punctuated::new()
         })
-        .filter_map(|nested| match nested {
-            syn::NestedMeta::Meta(m) => Some(m),
-            syn::NestedMeta::Lit(_) => None,
-        })
         .find_map(|m| match m {
-            syn::Meta::NameValue(ref i) if i.path.is_ident("enable") => Some(i.clone().lit),
+            syn::Meta::NameValue(i) if i.path.is_ident("enable") => {
+                if let syn::Expr::Lit(lit) = i.value {
+                    Some(lit.lit)
+                } else {
+                    None
+                }
+            }
             _ => None,
         })
 }
@@ -491,9 +511,16 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
 fn find_required_const(name: &str, attrs: &[syn::Attribute]) -> Vec<usize> {
     attrs
         .iter()
-        .flat_map(|a| {
-            if a.path.segments[0].ident == name {
-                syn::parse::<RustcArgsRequiredConst>(a.tokens.clone().into())
+        .filter_map(|a| {
+            if let syn::Meta::List(ref l) = a.meta {
+                Some(l)
+            } else {
+                None
+            }
+        })
+        .flat_map(|l| {
+            if l.path.segments[0].ident == name {
+                syn::parse2::<RustcArgsRequiredConst>(l.tokens.clone())
                     .unwrap()
                     .args
             } else {
@@ -509,10 +536,7 @@ struct RustcArgsRequiredConst {
 
 impl syn::parse::Parse for RustcArgsRequiredConst {
     fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
-        let content;
-        parenthesized!(content in input);
-        let list =
-            syn::punctuated::Punctuated::<syn::LitInt, Token![,]>::parse_terminated(&content)?;
+        let list = syn::punctuated::Punctuated::<syn::LitInt, Token![,]>::parse_terminated(&input)?;
         Ok(Self {
             args: list
                 .into_iter()

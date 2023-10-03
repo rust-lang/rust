@@ -38,7 +38,7 @@ pub fn assert_instr(
     let maybe_allow_deprecated = if func
         .attrs
         .iter()
-        .any(|attr| attr.path.is_ident("deprecated"))
+        .any(|attr| attr.path().is_ident("deprecated"))
     {
         quote! { #[allow(deprecated)] }
     } else {
@@ -117,7 +117,7 @@ pub fn assert_instr(
         .attrs
         .iter()
         .filter(|attr| {
-            attr.path
+            attr.path()
                 .segments
                 .first()
                 .expect("attr.path.segments.first() failed")
