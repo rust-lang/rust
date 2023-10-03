@@ -183,14 +183,8 @@
 //! access to that data to ensure no *moves* or other invalidation occurs, and finally
 //! provide a safe interface on top.
 //!
-//! There are a couple of linked disadvantages to using this model. The core issue is a lack
-//! of generality. This is an issue because it means that each individual type that implements
-//! such an interface does so on its own. Each developer implementing such a type must themselves
-//! think through all the guarantees needed to ensure the API they present is sound. We would
-//! rather build a shared understanding of the problem space and encode that understanding into a
-//! shared interface to solve it which everyone helps validate.
-//!
-//! In addition, in this model, each individual object must assume it is *on its own* to ensure
+//! There are a couple of linked disadvantages to using this model. The most significant is that
+//! each individual object must assume it is *on its own* to ensure
 //! that its data does not become *moved* or otherwise invalidated. Since there is no shared
 //! contract between values of different types, an object cannot assume that others interacting
 //! with it will properly respect the invariants around interacting with its data and must
@@ -198,7 +192,8 @@
 //! requires at least a level of pointer indirection each time a new object is added to the mix
 //! (and, practically, a heap allocation).
 //!
-//! This is the key thing that drove Rust towards a different model. It is particularly a problem
+//! Although there were other reason as well, this issue of expensive composition is the key thing
+//! that drove Rust towards adopting a different model. It is particularly a problem
 //! when one considers, for exapmle, the implications of composing together the [`Future`]s which
 //! will eventaully make up an asynchronous task (including address-sensitive `async fn` state
 //! machines). It is plausible that there could be many layers of [`Future`]s composed together,
