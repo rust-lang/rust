@@ -7,15 +7,6 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
-macro_rules! set {
-    ($field: ident) => {{
-        fn f(features: &mut Features) {
-            features.$field = true;
-        }
-        f as fn(&mut Features)
-    }};
-}
-
 #[derive(PartialEq)]
 enum FeatureStatus {
     Default,
@@ -43,7 +34,15 @@ macro_rules! declare_features {
             &[$(
                 // (sym::$feature, $ver, $issue, $edition, set!($feature))
                 Feature {
-                    state: State::Active { set: set!($feature) },
+                    state: State::Active {
+                        // Sets this feature's corresponding bool within `features`.
+                        set: {
+                            fn f(features: &mut Features) {
+                                features.$feature = true;
+                            }
+                            f as fn(&mut Features)
+                        }
+                    },
                     name: sym::$feature,
                     since: $ver,
                     issue: to_nonzero($issue),
