@@ -264,9 +264,6 @@ jobs:
           - name: test-various
             os: ubuntu-20.04-8core-32gb
             env: {}
-          - name: wasm32
-            os: ubuntu-20.04-8core-32gb
-            env: {}
           - name: x86_64-gnu
             os: ubuntu-20.04-4core-16gb
             env: {}
