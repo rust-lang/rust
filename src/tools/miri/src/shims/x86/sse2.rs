@@ -640,7 +640,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 // The difference between the com* and ucom* variants is signaling
                 // of exceptions when either argument is a quiet NaN. We do not
                 // support accessing the SSE status register from miri (or from Rust,
-                // for that matter), so we treat equally both variants.
+                // for that matter), so we treat both variants equally.
                 let res = match unprefixed_name {
                     "comieq.sd" | "ucomieq.sd" => left == right,
                     "comilt.sd" | "ucomilt.sd" => left < right,
