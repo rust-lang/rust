@@ -15,8 +15,6 @@ query_system_cycle_stack_single = ...which immediately requires {$stack_bottom} 
 
 query_system_cycle_usage = cycle used when {$usage}
 
-query_system_cycle_which_requires = ...which requires {$desc}...
-
 query_system_increment_compilation = internal compiler error: encountered incremental compilation error with {$dep_node}
     .help = This is a known issue with the compiler. Run {$run_cmd} to allow your project to compile
 
