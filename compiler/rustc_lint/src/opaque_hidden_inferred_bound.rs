@@ -37,8 +37,6 @@ declare_lint! {
     ///     type Assoc: Duh;
     /// }
     ///
-    /// struct Struct;
-    ///
     /// impl<F: Duh> Trait for F {
     ///     type Assoc = F;
     /// }
@@ -53,12 +51,12 @@ declare_lint! {
     /// {{produces}}
     ///
     /// In this example, `test` declares that the associated type `Assoc` for
-    /// `impl Trait` is `impl Sized`, which does not satisfy the `Send` bound
+    /// `impl Trait` is `impl Sized`, which does not satisfy the bound `Duh`
     /// on the associated type.
     ///
     /// Although the hidden type, `i32` does satisfy this bound, we do not
     /// consider the return type to be well-formed with this lint. It can be
-    /// fixed by changing `Tait = impl Sized` into `Tait = impl Sized + Send`.
+    /// fixed by changing `Tait = impl Sized` into `Tait = impl Sized + Duh`.
     pub OPAQUE_HIDDEN_INFERRED_BOUND,
     Warn,
     "detects the use of nested `impl Trait` types in associated type bounds that are not general enough"
@@ -79,9 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         for (pred, pred_span) in
             cx.tcx.explicit_item_bounds(def_id).instantiate_identity_iter_copied()
         {
-            // Liberate bound regions in the predicate since we
-            // don't actually care about lifetimes in this check.
-            let predicate = cx.tcx.liberate_late_bound_regions(def_id, pred.kind());
+            let predicate = infcx.instantiate_binder_with_placeholders(pred.kind());
             let ty::ClauseKind::Projection(proj) = predicate else {
                 continue;
             };
