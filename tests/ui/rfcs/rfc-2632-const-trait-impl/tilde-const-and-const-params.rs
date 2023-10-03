@@ -7,7 +7,8 @@ struct Foo<const N: usize>;
 
 impl<const N: usize> Foo<N> {
     fn add<A: ~const Add42>(self) -> Foo<{ A::add(N) }> {
-        //~^ ERROR mismatched types
+        //~^ ERROR `~const` is not allowed here
+        //~| ERROR mismatched types
         Foo
     }
 }
@@ -30,7 +31,7 @@ fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
 }
 
 fn main() {
-   let foo = Foo::<0>;
-   let foo = bar::<(), _>(foo);
-   let _foo = bar::<(), _>(foo);
+    let foo = Foo::<0>;
+    let foo = bar::<(), _>(foo);
+    let _foo = bar::<(), _>(foo);
 }
