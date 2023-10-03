@@ -2,7 +2,8 @@ use crate::mir;
 use crate::query::CyclePlaceholder;
 use crate::traits;
 use crate::ty::{self, Ty};
-use std::mem::{size_of, transmute_copy, MaybeUninit};
+use std::mem::{size_of, MaybeUninit};
+use std::intrinsics::transmute_unchecked;
 
 #[derive(Copy, Clone)]
 pub struct Erased<T: Copy> {
@@ -30,7 +31,7 @@ pub fn erase<T: EraseType>(src: T) -> Erase<T> {
 
     Erased::<<T as EraseType>::Result> {
         // SAFETY: It is safe to transmute to MaybeUninit for types with the same sizes.
-        data: unsafe { transmute_copy(&src) },
+        data: unsafe { transmute_unchecked::<T, MaybeUninit<T::Result>>(src) },
     }
 }
 
@@ -41,7 +42,7 @@ pub fn restore<T: EraseType>(value: Erase<T>) -> T {
     // SAFETY: Due to the use of impl Trait in `Erase` the only way to safely create an instance
     // of `Erase` is to call `erase`, so we know that `value.data` is a valid instance of `T` of
     // the right size.
-    unsafe { transmute_copy(&value.data) }
+    unsafe { transmute_unchecked::<MaybeUninit<T::Result>, T>(value.data) }
 }
 
 impl<T> EraseType for &'_ T {
