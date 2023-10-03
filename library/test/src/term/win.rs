@@ -17,10 +17,15 @@ pub(crate) struct WinConsole<T> {
     background: color::Color,
 }
 
+#[allow(non_camel_case_types)]
 type SHORT = i16;
+#[allow(non_camel_case_types)]
 type WORD = u16;
+#[allow(non_camel_case_types)]
 type DWORD = u32;
+#[allow(non_camel_case_types)]
 type BOOL = i32;
+#[allow(non_camel_case_types)]
 type HANDLE = *mut u8;
 
 #[allow(non_snake_case)]

@@ -35,6 +35,7 @@ pub const DW_EH_PE_aligned: u8 = 0x50;
 
 pub const DW_EH_PE_indirect: u8 = 0x80;
 
+#[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
 pub struct EHContext<'a> {
     pub ip: usize,                             // Current instruction pointer
@@ -43,6 +44,7 @@ pub struct EHContext<'a> {
     pub get_data_start: &'a dyn Fn() -> usize, // Get address of the data section
 }
 
+#[allow(non_camel_case_types)]
 pub enum EHAction {
     None,
     Cleanup(usize),

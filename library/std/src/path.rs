@@ -153,6 +153,7 @@ pub enum Prefix<'a> {
     ///
     /// Verbatim UNC prefixes consist of `\\?\UNC\` immediately followed by the
     /// server's hostname and a share name.
+    #[allow(non_camel_case_types)]
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimUNC(
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
@@ -177,6 +178,7 @@ pub enum Prefix<'a> {
     /// `\\server\share`.
     ///
     /// UNC prefixes consist of the server's hostname and a share name.
+    #[allow(non_camel_case_types)]
     #[stable(feature = "rust1", since = "1.0.0")]
     UNC(
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,

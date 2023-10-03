@@ -2478,6 +2478,7 @@ extern "rust-intrinsic" {
     /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
     /// which violates the principle that a `const fn` must behave the same at
     /// compile-time and at run-time. The unsafe code in crate B is fine.
+    #[allow(non_camel_case_types)]
     #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
     pub fn const_eval_select<ARG: Tuple, F, G, RET>(
         arg: ARG,
