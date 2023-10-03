@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use hir::{self, HasCrate, HasSource, HasVisibility};
+use ide_db::path_transform::PathTransform;
 use syntax::{
     ast::{
         self, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName, HasVisibility as _,
@@ -106,7 +107,10 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
             |edit| {
                 // Create the function
                 let method_source = match method.source(ctx.db()) {
-                    Some(source) => source.value,
+                    Some(source) => {
+                        ctx.sema.parse_or_expand(source.file_id);
+                        source.value
+                    }
                     None => return,
                 };
                 let vis = method_source.visibility();
@@ -182,6 +186,12 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
 
                 let assoc_items = impl_def.get_or_create_assoc_item_list();
                 assoc_items.add_item(f.clone().into());
+
+                PathTransform::generic_transformation(
+                    &ctx.sema.scope(strukt.syntax()).unwrap(),
+                    &ctx.sema.scope(method_source.syntax()).unwrap(),
+                )
+                .apply(f.syntax());
 
                 if let Some(cap) = ctx.config.snippet_cap {
                     edit.add_tabstop_before(cap, f)
@@ -451,6 +461,162 @@ impl Person {
         self.age.age()
     }
 }"#,
+        );
+    }
+
+    #[test]
+    fn test_fixes_basic_self_references() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+struct Foo {
+    field: $0Bar,
+}
+
+struct Bar;
+
+impl Bar {
+    fn bar(&self, other: Self) -> Self {
+        other
+    }
+}
+"#,
+            r#"
+struct Foo {
+    field: Bar,
+}
+
+impl Foo {
+    $0fn bar(&self, other: Bar) -> Bar {
+        self.field.bar(other)
+    }
+}
+
+struct Bar;
+
+impl Bar {
+    fn bar(&self, other: Self) -> Self {
+        other
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fixes_nested_self_references() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+struct Foo {
+    field: $0Bar,
+}
+
+struct Bar;
+
+impl Bar {
+    fn bar(&mut self, a: (Self, [Self; 4]), b: Vec<Self>) {}
+}
+"#,
+            r#"
+struct Foo {
+    field: Bar,
+}
+
+impl Foo {
+    $0fn bar(&mut self, a: (Bar, [Bar; 4]), b: Vec<Bar>) {
+        self.field.bar(a, b)
+    }
+}
+
+struct Bar;
+
+impl Bar {
+    fn bar(&mut self, a: (Self, [Self; 4]), b: Vec<Self>) {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fixes_self_references_with_lifetimes_and_generics() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+struct Foo<'a, T> {
+    $0field: Bar<'a, T>,
+}
+
+struct Bar<'a, T>(&'a T);
+
+impl<'a, T> Bar<'a, T> {
+    fn bar(self, mut b: Vec<&'a Self>) -> &'a Self {
+        b.pop().unwrap()
+    }
+}
+"#,
+            r#"
+struct Foo<'a, T> {
+    field: Bar<'a, T>,
+}
+
+impl<'a, T> Foo<'a, T> {
+    $0fn bar(self, mut b: Vec<&'a Bar<'_, T>>) -> &'a Bar<'_, T> {
+        self.field.bar(b)
+    }
+}
+
+struct Bar<'a, T>(&'a T);
+
+impl<'a, T> Bar<'a, T> {
+    fn bar(self, mut b: Vec<&'a Self>) -> &'a Self {
+        b.pop().unwrap()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fixes_self_references_across_macros() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+//- /bar.rs
+macro_rules! test_method {
+    () => {
+        pub fn test(self, b: Bar) -> Self {
+            self
+        }
+    };
+}
+
+pub struct Bar;
+
+impl Bar {
+    test_method!();
+}
+
+//- /main.rs
+mod bar;
+
+struct Foo {
+    $0bar: bar::Bar,
+}
+"#,
+            r#"
+mod bar;
+
+struct Foo {
+    bar: bar::Bar,
+}
+
+impl Foo {
+    $0pub fn test(self,b:bar::Bar) ->bar::Bar {
+        self.bar.test(b)
+    }
+}
+"#,
         );
     }
 

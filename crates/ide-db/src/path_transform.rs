@@ -2,7 +2,7 @@
 
 use crate::helpers::mod_path_to_ast;
 use either::Either;
-use hir::{AsAssocItem, HirDisplay, SemanticsScope};
+use hir::{AsAssocItem, HirDisplay, ModuleDef, SemanticsScope};
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, make, AstNode},
@@ -332,8 +332,36 @@ impl Ctx<'_> {
                     ted::replace(path.syntax(), subst.clone_subtree().clone_for_update());
                 }
             }
+            hir::PathResolution::SelfType(imp) => {
+                let ty = imp.self_ty(self.source_scope.db);
+                let ty_str = &ty
+                    .display_source_code(
+                        self.source_scope.db,
+                        self.source_scope.module().into(),
+                        true,
+                    )
+                    .ok()?;
+                let ast_ty = make::ty(&ty_str).clone_for_update();
+
+                if let Some(adt) = ty.as_adt() {
+                    if let ast::Type::PathType(path_ty) = &ast_ty {
+                        let found_path = self.target_module.find_use_path(
+                            self.source_scope.db.upcast(),
+                            ModuleDef::from(adt),
+                            false,
+                        )?;
+
+                        if let Some(qual) = mod_path_to_ast(&found_path).qualifier() {
+                            let res = make::path_concat(qual, path_ty.path()?).clone_for_update();
+                            ted::replace(path.syntax(), res.syntax());
+                            return Some(());
+                        }
+                    }
+                }
+
+                ted::replace(path.syntax(), ast_ty.syntax());
+            }
             hir::PathResolution::Local(_)
-            | hir::PathResolution::SelfType(_)
             | hir::PathResolution::Def(_)
             | hir::PathResolution::BuiltinAttr(_)
             | hir::PathResolution::ToolModule(_)
