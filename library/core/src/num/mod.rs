@@ -47,7 +47,7 @@ mod nonzero;
 mod saturating;
 mod wrapping;
 
-#[stable(feature = "saturating_int_impl", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "saturating_int_impl", since = "1.74.0")]
 pub use saturating::Saturating;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use wrapping::Wrapping;

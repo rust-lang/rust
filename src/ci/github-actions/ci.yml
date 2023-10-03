@@ -428,6 +428,17 @@ jobs:
             <<: *job-linux-8c
 
           - name: wasm32
+            env:
+              # Running emscripten tests currently requires that we are
+              # building a nightly toolchain. Otherwise, we cannot pass
+              # -Zunstable-options to libtest. Normally we workaround this by
+              # setting RUSTC_BOOTSTRAP in the environment, but that doesn't
+              # work for emscripten as environment variables are not threaded
+              # into the compiled code.
+              #
+              # For more details see:
+              # https://emscripten.org/docs/porting/connecting_cpp_and_javascript/Interacting-with-code.html#environment-variables
+              RUST_CI_OVERRIDE_RELEASE_CHANNEL: nightly
             <<: *job-linux-8c
 
           - name: x86_64-gnu

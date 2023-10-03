@@ -265,8 +265,9 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: wasm32
+            env:
+              RUST_CI_OVERRIDE_RELEASE_CHANNEL: nightly
             os: ubuntu-20.04-8core-32gb
-            env: {}
           - name: x86_64-gnu
             os: ubuntu-20.04-4core-16gb
             env: {}

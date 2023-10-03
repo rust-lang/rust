@@ -179,7 +179,7 @@ impl OsString {
     ///
     /// [conversions]: super#conversions
     #[inline]
-    #[stable(feature = "os_str_bytes", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub unsafe fn from_encoded_bytes_unchecked(bytes: Vec<u8>) -> Self {
         OsString { inner: Buf::from_encoded_bytes_unchecked(bytes) }
     }
@@ -217,7 +217,7 @@ impl OsString {
     ///
     /// [`std::ffi`]: crate::ffi
     #[inline]
-    #[stable(feature = "os_str_bytes", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub fn into_encoded_bytes(self) -> Vec<u8> {
         self.inner.into_encoded_bytes()
     }
@@ -768,7 +768,7 @@ impl OsStr {
     ///
     /// [conversions]: super#conversions
     #[inline]
-    #[stable(feature = "os_str_bytes", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub unsafe fn from_encoded_bytes_unchecked(bytes: &[u8]) -> &Self {
         Self::from_inner(Slice::from_encoded_bytes_unchecked(bytes))
     }
@@ -958,7 +958,7 @@ impl OsStr {
     ///
     /// [`std::ffi`]: crate::ffi
     #[inline]
-    #[stable(feature = "os_str_bytes", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub fn as_encoded_bytes(&self) -> &[u8] {
         self.inner.as_encoded_bytes()
     }
