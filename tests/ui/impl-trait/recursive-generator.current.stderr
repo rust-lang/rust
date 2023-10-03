@@ -1,5 +1,5 @@
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-generator.rs:5:13
+  --> $DIR/recursive-generator.rs:8:13
    |
 LL | fn foo() -> impl Generator<Yield = (), Return = ()> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive opaque type

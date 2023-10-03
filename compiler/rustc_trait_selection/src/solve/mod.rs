@@ -22,6 +22,7 @@ use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, IsNormalizesToHack, QueryResult,
     Response,
 };
+use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
@@ -302,9 +303,20 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         mut ty: Ty<'tcx>,
     ) -> Result<Option<Ty<'tcx>>, NoSolution> {
         for _ in 0..self.local_overflow_limit() {
-            let ty::Alias(_, projection_ty) = *ty.kind() else {
+            let ty::Alias(kind, projection_ty) = *ty.kind() else {
                 return Ok(Some(ty));
             };
+
+            // Don't try normalizing an opaque that is not in the defining scope
+            if kind == ty::Opaque
+                && param_env.reveal() == Reveal::UserFacing
+                && !projection_ty
+                    .def_id
+                    .as_local()
+                    .is_some_and(|def_id| self.can_define_opaque_ty(def_id))
+            {
+                return Ok(Some(ty));
+            }
 
             let normalized_ty = self.next_ty_infer();
             let normalizes_to_goal = Goal::new(

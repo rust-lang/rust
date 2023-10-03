@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-83919.rs:25:9
+   |
+LL |       fn get_fut(&self) -> Self::Fut {
+   |                            --------- expected `<Implementor as Foo>::Fut` because of return type
+LL |
+LL | /         async move {
+LL | |
+LL | |             42
+LL | |             // 42 does not impl Future and rustc does actually point out the error,
+LL | |             // but rustc used to panic.
+LL | |             // Putting a valid Future here always worked fine.
+LL | |         }
+   | |_________^ types differ
+   |
+   = note: expected associated type `<Implementor as Foo>::Fut`
+                found `async` block `{async block@$DIR/issue-83919.rs:25:9: 31:10}`
+   = help: consider constraining the associated type `<Implementor as Foo>::Fut` to `{async block@$DIR/issue-83919.rs:25:9: 31:10}` or calling a method that returns `<Implementor as Foo>::Fut`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

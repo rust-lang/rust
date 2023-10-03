@@ -1,6 +1,8 @@
-#![feature(impl_trait_in_assoc_type)]
-
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 // edition:2021
+
+#![feature(impl_trait_in_assoc_type)]
 
 use std::future::Future;
 
@@ -19,8 +21,9 @@ impl Foo for Implementor {
     type Fut = impl Future<Output = Self::Fut2>;
 
     fn get_fut(&self) -> Self::Fut {
-        //~^ ERROR `{integer}` is not a future
+        //[current]~^ ERROR `{integer}` is not a future
         async move {
+            //[next]~^ ERROR mismatched types
             42
             // 42 does not impl Future and rustc does actually point out the error,
             // but rustc used to panic.

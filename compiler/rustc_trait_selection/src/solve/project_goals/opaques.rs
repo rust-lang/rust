@@ -23,12 +23,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 let Some(opaque_ty_def_id) = opaque_ty.def_id.as_local() else {
                     return Err(NoSolution);
                 };
+
                 // FIXME: at some point we should call queries without defining
                 // new opaque types but having the existing opaque type definitions.
                 // This will require moving this below "Prefer opaques registered already".
                 if !self.can_define_opaque_ty(opaque_ty_def_id) {
                     return Err(NoSolution);
                 }
+
                 // FIXME: This may have issues when the args contain aliases...
                 match self.tcx().uses_unique_placeholders_ignoring_regions(opaque_ty.args) {
                     Err(NotUniqueParam::NotParam(param)) if param.is_non_region_infer() => {
@@ -41,6 +43,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     }
                     Ok(()) => {}
                 }
+
                 // Prefer opaques registered already.
                 let opaque_type_key =
                     ty::OpaqueTypeKey { def_id: opaque_ty_def_id, args: opaque_ty.args };
@@ -53,6 +56,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         return self.flounder(&matches);
                     }
                 }
+
+                // Try normalizing the opaque's hidden type. If it's a ty var,
+                // then refuse to define the opaque type yet. This allows us to
+                // avoid inferring opaque cycles so eagerly.
+                let expected = match self.try_normalize_ty(goal.param_env, expected) {
+                    Ok(Some(ty)) if !ty.is_ty_var() => ty,
+                    Ok(_) => {
+                        return self.evaluate_added_goals_and_make_canonical_response(
+                            Certainty::AMBIGUOUS,
+                        );
+                    }
+                    Err(_) => {
+                        return Err(NoSolution);
+                    }
+                };
+
                 // Otherwise, define a new opaque type
                 self.insert_hidden_type(opaque_type_key, goal.param_env, expected)?;
                 self.add_item_bounds_for_hidden_type(

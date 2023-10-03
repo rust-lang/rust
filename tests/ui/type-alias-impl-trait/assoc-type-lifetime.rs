@@ -1,6 +1,9 @@
 // Tests that we still detect defining usages when
 // lifetimes are used in an associated opaque type
+
 // check-pass
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 
 #![feature(impl_trait_in_assoc_type)]
 

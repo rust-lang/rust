@@ -1,3 +1,6 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 #![feature(generators, generator_trait)]
 
 use std::ops::{Generator, GeneratorState};
