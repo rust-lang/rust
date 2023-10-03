@@ -186,18 +186,6 @@ impl IntRange {
         (lo == other_hi || hi == other_lo) && !self.is_singleton() && !other.is_singleton()
     }
 
-    /// See `Constructor::is_covered_by`
-    fn is_covered_by(&self, other: &Self) -> bool {
-        if self.intersection(other).is_some() {
-            // Constructor splitting should ensure that all intersections we encounter are actually
-            // inclusions.
-            assert!(self.is_subrange(other));
-            true
-        } else {
-            false
-        }
-    }
-
     /// Partition a range of integers into disjoint subranges. This does constructor splitting for
     /// integer ranges as explained at the top of the file.
     ///
@@ -730,7 +718,7 @@ impl<'tcx> Constructor<'tcx> {
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
-            (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
+            (IntRange(self_range), IntRange(other_range)) => self_range.is_subrange(other_range),
             (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
                 self_from.ge(other_from)
                     && match self_to.partial_cmp(other_to) {
