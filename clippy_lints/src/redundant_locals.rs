@@ -4,11 +4,13 @@ use clippy_utils::ty::needs_ordered_drop;
 use rustc_ast::Mutability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, HirId, Local, Node, Pat, PatKind, QPath};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
 use rustc_span::DesugaringKind;
+use rustc_trait_selection::infer::InferCtxtExt as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -70,6 +72,14 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             // the local is user-controlled
             if !in_external_macro(cx.sess(), local.span);
             if !is_from_proc_macro(cx, expr);
+            // the local does not impl Drop trait. see #11599
+            let local_ty = cx.typeck_results().node_type(local.hir_id);
+            if let Some(drop_trait_id) = cx.tcx.lang_items().drop_trait();
+            if !cx.tcx.infer_ctxt().build().type_implements_trait(
+              drop_trait_id,
+              [local_ty],
+              cx.param_env
+            ).must_apply_modulo_regions();
             then {
                 span_lint_and_help(
                     cx,
