@@ -18,4 +18,9 @@ fn camel_case() {
 
     assert!(!is_camel_case("ONE_TWO_THREE"));
     assert_eq!(to_camel_case("ONE_TWO_THREE"), "OneTwoThree");
+
+    assert!(!is_camel_case("ONE"));
+    assert_eq!(to_camel_case("ONE"), "One");
+
+    assert!(is_camel_case("AStr"));
 }

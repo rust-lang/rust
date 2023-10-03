@@ -93,6 +93,9 @@ fn is_camel_case(name: &str) -> bool {
             // contains a capitalisable character followed by, or preceded by, an underscore
             char_has_case(fst) && snd == '_' || char_has_case(snd) && fst == '_'
         })
+        && !name.chars().collect::<Vec<_>>().array_windows().any(|&[fst, snd, thr]| {
+            fst.is_uppercase() && snd.is_uppercase() && thr.is_uppercase()
+        })
 }
 
 fn to_camel_case(s: &str) -> String {
