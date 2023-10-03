@@ -637,7 +637,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 let left = this.read_scalar(&this.project_index(&left, 0)?)?.to_f64()?;
                 let right = this.read_scalar(&this.project_index(&right, 0)?)?.to_f64()?;
-                // The difference between the com* and *ucom variants is signaling
+                // The difference between the com* and ucom* variants is signaling
                 // of exceptions when either argument is a quiet NaN. We do not
                 // support accessing the SSE status register from miri (or from Rust,
                 // for that matter), so we treat equally both variants.
