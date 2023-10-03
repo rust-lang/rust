@@ -3,10 +3,6 @@ name = "rustc_llvm"
 version = "0.0.0"
 edition = "2021"
 
-[features]
-static-libstdcpp = []
-emscripten = []
-
 [dependencies]
 libc = "0.2.73"
 
