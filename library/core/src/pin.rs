@@ -945,8 +945,13 @@ use crate::{
 ///
 /// In order to pin a value, we wrap a *pointer to that value* (of some type `Ptr`) in a
 /// [`Pin<Ptr>`]. [`Pin<Ptr>`] can wrap any pointer type, forming a promise that the **pointee**
-/// will not be *moved* or [otherwise invalidated][subtle-details]. Note that it is impossible
-/// to create or misuse a [`Pin<Ptr>`] which can violate this promise without using [`unsafe`].
+/// will not be *moved* or [otherwise invalidated][subtle-details]. Note that it is
+/// impossible to create or misuse a [`Pin<Ptr>`] to violate this promise without using [`unsafe`].
+/// If the pointee value's type implements [`Unpin`], we are free to disregard these requirements
+/// entirely and can wrap any pointer to that value in [`Pin`] directly via [`Pin::new`].
+/// If the pointee value's type does not implement [`Unpin`], then Rust will not let us use the
+/// [`Pin::new`] function directly and we'll need to construct a [`Pin`]-wrapped pointer in one of
+/// the more specialized manners discussed below.
 ///
 /// We call such a [`Pin`]-wrapped pointer a **pinning pointer,** (or pinning ref, or pinning
 /// [`Box`], etc.) because its existince is the thing that is pinning the underlying pointee in
@@ -956,25 +961,57 @@ use crate::{
 /// itself, but rather a pointer to that value! A [`Pin<Ptr>`] does not pin the `Ptr` but rather
 /// the pointer's ***pointee** value*.
 ///
-/// For the vast majoriy of Rust types, pinning a value of that type will actually have no effect.
-/// This is because the vast majority of types implement the [`Unpin`] trait, which entirely opts
-/// all values of that type out of pinning-related guarantees. The most common exception
-/// to this is the compiler-generated types that implement [`Future`] for the return value
-/// of `async fn`s. These compiler-generated [`Future`]s do not implement [`Unpin`] for reasons
-/// explained more in the [`pin` module] docs, but suffice it to say they require the guarantees
-/// provided by pinning to be implemented soundly.
+/// The most common set of types which require pinning related guarantees for soundness are the
+/// state machines that implement [`Future`] for the return value of `async fn`s under the
+/// hood. These compiler-generated [`Future`]s may contain self-referrential pointers, one of the
+/// most common use cases for [`Pin`]. More details on this point are provided in the
+/// [`pin` module] docs, but suffice it to say they require the guarantees provided by pinning to
+/// be implemented soundly.
 ///
-/// This requirement in the implementation of `async fn`s means that the [`Future`] trait requires
-/// any [`Future`] to be pinned in order to call [`poll`] on it. Therefore, when manually polling
-/// a future, you will need to pin it first.
+/// This requirement from the implementation of `async fn`s means that the [`Future`] trait
+/// requires all calls to [`poll`] to use a <code>self: [Pin]\<&mut Self></code> parameter instead
+/// of the usual `&mut self`. Therefore, when manually polling a future, you will need to pin it
+/// first.
+///
+/// You may notice that `async fn`-generated [`Future`]s are only a small percentage of all
+/// [`Future`]s that exist, yet we had to modify the signature of [`poll`] for all [`Future`]s
+/// to accommodate them. This is unfortunate, but there is a way that the language attempts to
+/// alleviate the extra friction that this API choice incurs: the [`Unpin`] trait.
+///
+/// The vast majority of Rust types have no reason to ever care about being pinned. These
+/// types implement the [`Unpin`] trait, which entirely opts all values of that type out of
+/// pinning-related guarantees. For values of these types, pinning a value by pointing to it with a
+/// [`Pin<Ptr>`] will have no actual effect.
+///
+/// The reason this distinction exists is exactly to allow APIs like [`Future::poll`] to take a
+/// [`Pin<Ptr>`] as an argument for all types while only forcing [`Future`] types that actually
+/// care about pinning guarantees pay the ergonomics cost. For the majority of [`Future`] types
+/// that don't have a reason to care about being pinned and therefore implement [`Unpin`], the
+/// <code>[Pin]\<&mut Self></code> will act exactly like a regular `&mut Self`, allowing direct
+/// access to the underlying value. Only types that *don't* implement [`Unpin`] will be restricted.
+///
+/// ### Pinning a value of a type that implements [`Unpin`]
+///
+/// If the type of the value you need to "pin" implements [`Unpin`], you can trivially wrap any
+/// pointer to that value in a [`Pin`] by calling [`Pin::new`].
+///
+/// ```
+/// use std::pin::Pin;
+///
+/// // Create a value of a type that implements `Unpin`
+/// let mut unpin_future = std::future::ready(5);
+///
+/// // Pin it by creating a pinning mutable reference to it (ready to be `poll`ed!)
+/// let my_pinned_unpin_future: Pin<&mut _> = Pin::new(&mut unpin_future);
+/// ```
 ///
 /// ### Pinning a value inside a [`Box`]
 ///
-/// The simplest and most flexible way to pin a value is to put that value inside a [`Box`] and
-/// then turn that [`Box`] into a "pinning [`Box`]" by wrapping it in a [`Pin`].
-/// You can do both of these in a single step using [`Box::pin`]. Let's see an example of using
-/// this flow to pin a [`Future`] returned from calling an `async fn`, a common use case
-/// as described above.
+/// The simplest and most flexible way to pin a value that does not implement [`Unpin`] is to put
+/// that value inside a [`Box`] and then turn that [`Box`] into a "pinning [`Box`]" by wrapping it
+/// in a [`Pin`]. You can do both of these in a single step using [`Box::pin`]. Let's see an
+/// example of using this flow to pin a [`Future`] returned from calling an `async fn`, a common
+/// use case as described above.
 ///
 /// ```
 /// use std::pin::Pin;
@@ -1018,8 +1055,8 @@ use crate::{
 ///
 /// There are some situations where it is desirable or even required (for example, in a `#[no_std]`
 /// context where you don't have access to the standard library or allocation in general) to
-/// pin a value to its location on the stack. Doing so is possible using the [`pin!`] macro. See
-/// its documentation for more.
+/// pin a value which does not implement [`Unpin`] to its location on the stack. Doing so is
+/// possible using the [`pin!`] macro. See its documentation for more.
 ///
 /// ## Layout and ABI
 ///
@@ -1032,6 +1069,7 @@ use crate::{
 /// [`pin!`]: crate::pin::pin "pin!"
 /// [`Future`]: crate::future::Future "Future"
 /// [`poll`]: crate::future::Future::poll "Future::poll"
+/// [`Future::poll`]: crate::future::Future::poll "Future::poll"
 /// [`pin` module]: self "pin module"
 /// [`Rc`]: ../../std/rc/struct.Rc.html "Rc"
 /// [`Arc`]: ../../std/sync/struct.Arc.html "Arc"
@@ -1137,7 +1175,10 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// use std::pin::Pin;
     ///
     /// let mut val: u8 = 5;
-    /// // We can pin the value, since it doesn't care about being moved
+    ///
+    /// // Since `val` doesn't care about being moved, we can safely create a "facade" `Pin`
+    /// // which will allow `val` to participate in `Pin`-bound apis  without checking that
+    /// // pinning guarantees are actually upheld.
     /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
     /// ```
     #[inline(always)]
@@ -1161,7 +1202,10 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     ///
     /// let mut val: u8 = 5;
     /// let pinned: Pin<&mut u8> = Pin::new(&mut val);
-    /// // Unwrap the pin to get a reference to the value
+    ///
+    /// // Unwrap the pin to get the underlying mutable reference to the value. We can do
+    /// // this because `val` doesn't care about being moved, so the `Pin` was just
+    /// // a "facade" anyway.
     /// let r = Pin::into_inner(pinned);
     /// assert_eq!(*r, 5);
     /// ```
@@ -1317,7 +1361,7 @@ impl<Ptr: Deref> Pin<Ptr> {
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
 
-    /// Unwraps this `Pin<Ptr>` returning the underlying pointer.
+    /// Unwraps this `Pin<Ptr>`, returning the underlying `Ptr`.
     ///
     /// # Safety
     ///
@@ -1330,7 +1374,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     ///
     /// Note that you must be able to guarantee that the data pointed to by `Ptr`
     /// will be treated as pinned all the way until its `drop` handler is complete!
-    /// 
+    ///
     /// *For more information, see the [`pin` module docs][self]*
     ///
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
