@@ -1,8 +1,3 @@
-use rustc_index::bit_set::{BitSet, ChunkedBitSet};
-use rustc_index::Idx;
-use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
-use rustc_middle::ty::{self, TyCtxt};
-
 use crate::drop_flag_effects_for_function_entry;
 use crate::drop_flag_effects_for_location;
 use crate::elaborate_drops::DropFlagState;
@@ -12,6 +7,11 @@ use crate::on_lookup_result_bits;
 use crate::MoveDataParamEnv;
 use crate::{drop_flag_effects, on_all_children_bits, on_all_drop_children_bits};
 use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis, MaybeReachable};
+use rustc_index::bit_set::{BitSet, ChunkedBitSet};
+use rustc_index::Idx;
+use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::ty::ParamEnv;
+use rustc_middle::ty::{self, TyCtxt};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
@@ -759,7 +759,15 @@ fn switch_on_enum_discriminant<'mir, 'tcx>(
             mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated)))
                 if *lhs == switch_on =>
             {
-                match discriminated.ty(body, tcx).ty.kind() {
+                let mut kind = discriminated.ty(body, tcx).ty.kind();
+                if discriminated.ty(body, tcx).ty.is_impl_trait() {
+                    let ty = tcx.normalize_erasing_regions(
+                        ParamEnv::reveal_all(),
+                        discriminated.ty(body, tcx).ty,
+                    );
+                    kind = ty.kind();
+                }
+                match kind {
                     ty::Adt(def, _) => return Some((*discriminated, *def)),
 
                     // `Rvalue::Discriminant` is also used to get the active yield point for a

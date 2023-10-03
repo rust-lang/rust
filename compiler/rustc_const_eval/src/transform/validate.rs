@@ -690,7 +690,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let ty = self.tcx.type_of(def_id).instantiate(self.tcx, args);
                         // If the type we get is opaque, we want to normalize it.
                         if ty.is_impl_trait() {
-                            let inner_ty = self.tcx.expand_opaque_types(ty).kind();
+                            let inner_ty =
+                                self.tcx.normalize_erasing_regions(self.param_env, ty).kind();
                             inner_ty
                         } else {
                             ty.kind()
