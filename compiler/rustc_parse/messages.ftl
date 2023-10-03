@@ -195,10 +195,6 @@ parse_expected_else_block = expected `{"{"}`, found {$first_tok}
     .label = expected an `if` or a block after this `else`
     .suggestion = add an `if` if this is the condition of a chained `else if` statement
 
-parse_expected_struct_field = expected one of `,`, `:`, or `{"}"}`, found `{$token}`
-    .label = expected one of `,`, `:`, or `{"}"}`
-    .ident_label = while parsing this struct field
-
 parse_expected_expression_found_let = expected expression, found `let` statement
     .note = only supported directly in conditions of `if` and `while` expressions
     .not_supported_or = `||` operators are not supported in let chain expressions
@@ -229,6 +225,10 @@ parse_expected_semi_found_reserved_keyword_str = expected `;`, found reserved ke
 parse_expected_semi_found_str = expected `;`, found `{$token}`
 
 parse_expected_statement_after_outer_attr = expected statement after outer attribute
+
+parse_expected_struct_field = expected one of `,`, `:`, or `{"}"}`, found `{$token}`
+    .label = expected one of `,`, `:`, or `{"}"}`
+    .ident_label = while parsing this struct field
 
 parse_expected_trait_in_trait_impl_found_type = expected a trait, found type
 
