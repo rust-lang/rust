@@ -349,7 +349,15 @@
 //! implement the [`Unpin`] auto-trait, which cancels the restrictive effects of
 //! [`Pin`] when the *pointee* type `T` is [`Unpin`]. When [`T: Unpin`][Unpin],
 //! <code>[Pin]<[Box]\<T>></code> functions identically to a non-pinning [`Box<T>`]; similarly,
-//! <code>[Pin]<[&mut] T></code> would impose no additional restrictions above a regular [`&mut T`].
+//! <code>[Pin]<[&mut] T></code> would impose no additional restrictions above a regular
+//! [`&mut T`].
+//!
+//! The idea of this trait is to alleviate the reduced ergonomics of APIs that require the use
+//! of [`Pin`] for soundness for some types, but which also want to be used by other types that
+//! don't care about pinning. The prime example of such an API is [`Future::poll`]. There are many
+//! [`Future`] types that don't care about pinning. These futures can implement [`Unpin`] and
+//! therefore get around the pinning related restrictions in the API, while still allowing the
+//! subset of [`Future`]s which *do* require pinning to be implemented soundly.
 //!
 //! Note that the interaction between a [`Pin<Ptr>`] and [`Unpin`] is through the type of the
 //! **pointee** value, [`<Ptr as Deref>::Target`][Target]. Whether the `Ptr` type itself
@@ -945,15 +953,14 @@ use crate::{
 ///
 /// In order to pin a value, we wrap a *pointer to that value* (of some type `Ptr`) in a
 /// [`Pin<Ptr>`]. [`Pin<Ptr>`] can wrap any pointer type, forming a promise that the **pointee**
-/// will not be *moved* or [otherwise invalidated][subtle-details]. Note that it is
-/// impossible to create or misuse a [`Pin<Ptr>`] to violate this promise without using [`unsafe`].
-/// If the pointee value's type implements [`Unpin`], we are free to disregard these requirements
-/// entirely and can wrap any pointer to that value in [`Pin`] directly via [`Pin::new`].
-/// If the pointee value's type does not implement [`Unpin`], then Rust will not let us use the
-/// [`Pin::new`] function directly and we'll need to construct a [`Pin`]-wrapped pointer in one of
-/// the more specialized manners discussed below.
+/// will not be *moved* or [otherwise invalidated][subtle-details]. If the pointee value's type
+/// implements [`Unpin`], we are free to disregard these requirements entirely and can wrap any
+/// pointer to that value in [`Pin`] directly via [`Pin::new`]. If the pointee value's type does
+/// not implement [`Unpin`], then Rust will not let us use the [`Pin::new`] function directly and
+/// we'll need to construct a [`Pin`]-wrapped pointer in one of the more specialized manners
+/// discussed below.
 ///
-/// We call such a [`Pin`]-wrapped pointer a **pinning pointer,** (or pinning ref, or pinning
+/// We call such a [`Pin`]-wrapped pointer a **pinning pointer** (or pinning ref, or pinning
 /// [`Box`], etc.) because its existince is the thing that is pinning the underlying pointee in
 /// place: it is the metaphorical "pin" securing the data in place on the pinboard (in memory).
 ///
@@ -962,18 +969,18 @@ use crate::{
 /// the pointer's ***pointee** value*.
 ///
 /// The most common set of types which require pinning related guarantees for soundness are the
-/// state machines that implement [`Future`] for the return value of `async fn`s under the
-/// hood. These compiler-generated [`Future`]s may contain self-referrential pointers, one of the
-/// most common use cases for [`Pin`]. More details on this point are provided in the
+/// compiler-generated state machines that implement [`Future`] for the return value of
+/// `async fn`s. These compiler-generated [`Future`]s may contain self-referrential pointers, one
+/// of the most common use cases for [`Pin`]. More details on this point are provided in the
 /// [`pin` module] docs, but suffice it to say they require the guarantees provided by pinning to
 /// be implemented soundly.
 ///
-/// This requirement from the implementation of `async fn`s means that the [`Future`] trait
+/// This requirement for the implementation of `async fn`s means that the [`Future`] trait
 /// requires all calls to [`poll`] to use a <code>self: [Pin]\<&mut Self></code> parameter instead
 /// of the usual `&mut self`. Therefore, when manually polling a future, you will need to pin it
 /// first.
 ///
-/// You may notice that `async fn`-generated [`Future`]s are only a small percentage of all
+/// You may notice that `async fn`-sourced [`Future`]s are only a small percentage of all
 /// [`Future`]s that exist, yet we had to modify the signature of [`poll`] for all [`Future`]s
 /// to accommodate them. This is unfortunate, but there is a way that the language attempts to
 /// alleviate the extra friction that this API choice incurs: the [`Unpin`] trait.

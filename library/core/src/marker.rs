@@ -910,6 +910,13 @@ marker_impls! {
 /// to the pointee value like it normally would, thus allowing the user to do anything that they
 /// normally could with a non-[`Pin`]-wrapped `Ptr` to that value.
 ///
+/// The idea of this trait is to alleviate the reduced ergonomics of APIs that require the use
+/// of [`Pin`] for soundness for some types, but which also want to be used by other types that
+/// don't care about pinning. The prime example of such an API is [`Future::poll`]. There are many
+/// [`Future`] types that don't care about pinning. These futures can implement `Unpin` and
+/// therefore get around the pinning related restrictions in the API, while still allowing the
+/// subset of [`Future`]s which *do* require pinning to be implemented soundly.
+///
 /// For more discussion on the consequences of [`Unpin`] within the wider scope of the pinning
 /// system, see [the section about `Unpin`] in the [`pin` module].
 ///
@@ -947,6 +954,8 @@ marker_impls! {
 /// by adding [`PhantomPinned`] field. For more details, see the [`pin` module] docs.
 ///
 /// [`mem::replace`]: crate::mem::replace "mem replace"
+/// [`Future`]: crate::future::Future "Future"
+/// [`Future::poll`]: crate::future::Future::poll "Future poll"
 /// [`Pin`]: crate::pin::Pin "Pin"
 /// [`Pin<Ptr>`]: crate::pin::Pin "Pin"
 /// [`pin` module]: crate::pin "pin module"
