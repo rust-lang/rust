@@ -14,16 +14,19 @@ enum FeatureStatus {
     Internal,
 }
 
-macro_rules! declare_features {
-    (__status_to_enum active) => {
+macro_rules! status_to_enum {
+    (active) => {
         FeatureStatus::Default
     };
-    (__status_to_enum incomplete) => {
+    (incomplete) => {
         FeatureStatus::Incomplete
     };
-    (__status_to_enum internal) => {
+    (internal) => {
         FeatureStatus::Internal
     };
+}
+
+macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* ($status:ident, $feature:ident, $ver:expr, $issue:expr, $edition:expr),
     )+) => {
@@ -92,7 +95,7 @@ macro_rules! declare_features {
             pub fn incomplete(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => declare_features!(__status_to_enum $status) == FeatureStatus::Incomplete,
+                        sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
                     // accepted and removed features aren't in this file but are never incomplete
                     _ if self.declared_lang_features.iter().any(|f| f.0 == feature) => false,
@@ -107,7 +110,7 @@ macro_rules! declare_features {
             pub fn internal(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => declare_features!(__status_to_enum $status) == FeatureStatus::Internal,
+                        sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
                     // accepted and removed features aren't in this file but are never internal
                     // (a removed feature might have been internal, but it doesn't matter anymore)
