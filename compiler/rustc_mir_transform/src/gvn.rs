@@ -53,6 +53,7 @@
 //! _c = *_b // replaced by _c = _a
 //! ```
 
+use rustc_const_eval::interpret::MemoryKind;
 use rustc_const_eval::interpret::{ImmTy, InterpCx, MemPlaceMeta, OpTy, Projectable, Scalar};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -323,24 +324,19 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 if ty.is_zst() {
                     ImmTy::uninit(ty).into()
                 } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
-                    let alloc_id = self
-                        .ecx
-                        .intern_with_temp_alloc(ty, |ecx, dest| {
-                            let variant_dest = if let Some(variant) = variant {
-                                ecx.project_downcast(dest, variant)?
-                            } else {
-                                dest.clone()
-                            };
-                            for (field_index, op) in fields.into_iter().enumerate() {
-                                let field_dest = ecx.project_field(&variant_dest, field_index)?;
-                                ecx.copy_op(op, &field_dest, /*allow_transmute*/ false)?;
-                            }
-                            ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), dest)
-                        })
-                        .ok()?;
-                    let mplace =
-                        self.ecx.raw_const_to_mplace(ConstAlloc { alloc_id, ty: ty.ty }).ok()?;
-                    mplace.into()
+                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
+                    let variant_dest = if let Some(variant) = variant {
+                        self.ecx.project_downcast(&dest, variant).ok()?
+                    } else {
+                        dest.clone()
+                    };
+                    for (field_index, op) in fields.into_iter().enumerate() {
+                        let field_dest = self.ecx.project_field(&variant_dest, field_index).ok()?;
+                        self.ecx.copy_op(op, &field_dest, /*allow_transmute*/ false).ok()?;
+                    }
+                    self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
+                    self.ecx.alloc_mark_immutable(dest.ptr().provenance.unwrap()).ok()?;
+                    dest.into()
                 } else {
                     return None;
                 }
@@ -846,10 +842,8 @@ fn op_to_prop_const<'tcx>(
     {
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
         let (alloc_id, offset) = pointer.into_parts();
-        return if matches!(ecx.tcx.global_alloc(alloc_id), GlobalAlloc::Memory(_)) {
-            Some(ConstValue::Indirect { alloc_id, offset })
-        } else {
-            None
+        if matches!(ecx.tcx.try_get_global_alloc(alloc_id), Some(GlobalAlloc::Memory(_))) {
+            return Some(ConstValue::Indirect { alloc_id, offset })
         }
     }
 
