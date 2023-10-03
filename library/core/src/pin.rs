@@ -1226,21 +1226,24 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
 
 impl<Ptr: Deref> Pin<Ptr> {
     /// Construct a new `Pin<Ptr>` around a reference to some data of a type that
-    /// may or may not implement `Unpin`.
+    /// may or may not implement [`Unpin`].
     ///
-    /// If `pointer` dereferences to an `Unpin` type, `Pin::new` should be used
+    /// If `pointer` dereferences to an [`Unpin`] type, [`Pin::new`] should be used
     /// instead.
     ///
     /// # Safety
     ///
     /// This constructor is unsafe because we cannot guarantee that the data
-    /// pointed to by `pointer` is pinned, meaning that the data will not be moved or
-    /// its storage invalidated until it gets dropped. If the constructed `Pin<Ptr>` does
-    /// not guarantee that the data `Ptr` points to is pinned, that is a violation of
-    /// the API contract and may lead to undefined behavior in later (safe) operations.
+    /// pointed to by `pointer` is pinned. At its core, pinning a value means making the
+    /// guarantee that the value's data will not be moved nor have its storage invalidated until
+    /// it gets dropped. For a more thorough explanation of pinning, see the [`pin` module docs].
     ///
-    /// By using this method, you are making a promise about the `Ptr::Deref` and
-    /// `Ptr::DerefMut` implementations, if they exist. Most importantly, they
+    /// If the caller that is constructing this `Pin<Ptr>` does not ensure that the data `Ptr`
+    /// points to is pinned, that is a violation of the API contract and may lead to undefined
+    /// behavior in later (even safe) operations.
+    ///
+    /// By using this method, you are also making a promise about the [`Deref`] and
+    /// [`DerefMut`] implementations of `Ptr`, if they exist. Most importantly, they
     /// must not move out of their `self` arguments: `Pin::as_mut` and `Pin::as_ref`
     /// will call `DerefMut::deref_mut` and `Deref::deref` *on the pointer type `Ptr`*
     /// and expect these methods to uphold the pinning invariants.
@@ -1251,7 +1254,9 @@ impl<Ptr: Deref> Pin<Ptr> {
     ///
     /// For example, calling `Pin::new_unchecked` on an `&'a mut T` is unsafe because
     /// while you are able to pin it for the given lifetime `'a`, you have no control
-    /// over whether it is kept pinned once `'a` ends:
+    /// over whether it is kept pinned once `'a` ends, and therefore cannot uphold the
+    /// guarantee that a value, once pinned, remains pinned until it is dropped:
+    ///
     /// ```
     /// use std::mem;
     /// use std::pin::Pin;
@@ -1285,7 +1290,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     ///         // ...
     ///     }
     ///     drop(pin);
-
+    ///
     ///     let content = Rc::get_mut(&mut x).unwrap(); // Potential UB down the road ⚠️
     ///     // Now, if `x` was the only reference, we have a mutable reference to
     ///     // data that we pinned above, which we could use to move it as we have
@@ -1346,6 +1351,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// ```
     ///
     /// [`mem::swap`]: crate::mem::swap
+    /// [`pin` module docs]: self
     #[lang = "new_unchecked"]
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
