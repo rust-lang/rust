@@ -20,8 +20,6 @@
 #[macro_use]
 extern crate tracing;
 
-pub extern crate rustc_plugin_impl as plugin;
-
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
@@ -132,7 +130,6 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     rustc_monomorphize::DEFAULT_LOCALE_RESOURCE,
     rustc_parse::DEFAULT_LOCALE_RESOURCE,
     rustc_passes::DEFAULT_LOCALE_RESOURCE,
-    rustc_plugin_impl::DEFAULT_LOCALE_RESOURCE,
     rustc_privacy::DEFAULT_LOCALE_RESOURCE,
     rustc_query_system::DEFAULT_LOCALE_RESOURCE,
     rustc_resolve::DEFAULT_LOCALE_RESOURCE,
@@ -994,16 +991,14 @@ the command line flag directly.
 }
 
 /// Write to stdout lint command options, together with a list of all available lints
-pub fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
+pub fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_lints: bool) {
     safe_println!(
         "
 Available lint options:
     -W <foo>           Warn about <foo>
-    -A <foo>           \
-              Allow <foo>
+    -A <foo>           Allow <foo>
     -D <foo>           Deny <foo>
-    -F <foo>           Forbid <foo> \
-              (deny <foo> and all attempts to override)
+    -F <foo>           Forbid <foo> (deny <foo> and all attempts to override)
 
 "
     );
@@ -1022,18 +1017,18 @@ Available lint options:
         lints
     }
 
-    let (plugin, builtin): (Vec<_>, _) =
-        lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_plugin);
-    let plugin = sort_lints(sess, plugin);
+    let (loaded, builtin): (Vec<_>, _) =
+        lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_loaded);
+    let loaded = sort_lints(sess, loaded);
     let builtin = sort_lints(sess, builtin);
 
-    let (plugin_groups, builtin_groups): (Vec<_>, _) =
+    let (loaded_groups, builtin_groups): (Vec<_>, _) =
         lint_store.get_lint_groups().partition(|&(.., p)| p);
-    let plugin_groups = sort_lint_groups(plugin_groups);
+    let loaded_groups = sort_lint_groups(loaded_groups);
     let builtin_groups = sort_lint_groups(builtin_groups);
 
     let max_name_len =
-        plugin.iter().chain(&builtin).map(|&s| s.name.chars().count()).max().unwrap_or(0);
+        loaded.iter().chain(&builtin).map(|&s| s.name.chars().count()).max().unwrap_or(0);
     let padded = |x: &str| {
         let mut s = " ".repeat(max_name_len - x.chars().count());
         s.push_str(x);
@@ -1061,7 +1056,7 @@ Available lint options:
 
     let max_name_len = max(
         "warnings".len(),
-        plugin_groups
+        loaded_groups
             .iter()
             .chain(&builtin_groups)
             .map(|&(s, _)| s.chars().count())
@@ -1099,20 +1094,22 @@ Available lint options:
 
     print_lint_groups(builtin_groups, true);
 
-    match (loaded_plugins, plugin.len(), plugin_groups.len()) {
+    match (loaded_lints, loaded.len(), loaded_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
-            safe_println!("Lint tools like Clippy can provide additional lints and lint groups.");
+            safe_println!("Lint tools like Clippy can load additional lints and lint groups.");
         }
-        (false, ..) => panic!("didn't load lint plugins but got them anyway!"),
-        (true, 0, 0) => safe_println!("This crate does not load any lint plugins or lint groups."),
+        (false, ..) => panic!("didn't load additional lints but got them anyway!"),
+        (true, 0, 0) => {
+            safe_println!("This crate does not load any additional lints or lint groups.")
+        }
         (true, l, g) => {
             if l > 0 {
-                safe_println!("Lint checks provided by plugins loaded by this crate:\n");
-                print_lints(plugin);
+                safe_println!("Lint checks loaded by this crate:\n");
+                print_lints(loaded);
             }
             if g > 0 {
-                safe_println!("Lint groups provided by plugins loaded by this crate:\n");
-                print_lint_groups(plugin_groups, false);
+                safe_println!("Lint groups loaded by this crate:\n");
+                print_lint_groups(loaded_groups, false);
             }
         }
     }
@@ -1129,7 +1126,7 @@ pub fn describe_flag_categories(handler: &EarlyErrorHandler, matches: &Matches) 
         rustc_errors::FatalError.raise();
     }
 
-    // Don't handle -W help here, because we might first load plugins.
+    // Don't handle -W help here, because we might first load additional lints.
     let debug_flags = matches.opt_strs("Z");
     if debug_flags.iter().any(|x| *x == "help") {
         describe_debug_flags();

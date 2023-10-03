@@ -23,11 +23,10 @@ use rustc_middle::util::Providers;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, abi_test, hir_stats, layout_test};
-use rustc_plugin_impl as plugin;
 use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
-use rustc_session::cstore::{MetadataLoader, Untracked};
+use rustc_session::cstore::Untracked;
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -75,25 +74,12 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 
 pub(crate) fn create_lint_store(
     sess: &Session,
-    metadata_loader: &dyn MetadataLoader,
     register_lints: Option<impl Fn(&Session, &mut LintStore)>,
-    pre_configured_attrs: &[ast::Attribute],
 ) -> LintStore {
     let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
     if let Some(register_lints) = register_lints {
         register_lints(sess, &mut lint_store);
     }
-
-    let registrars = sess.time("plugin_loading", || {
-        plugin::load::load_plugins(sess, metadata_loader, pre_configured_attrs)
-    });
-    sess.time("plugin_registration", || {
-        let mut registry = plugin::Registry { lint_store: &mut lint_store };
-        for registrar in registrars {
-            registrar(&mut registry);
-        }
-    });
-
     lint_store
 }
 
