@@ -4,8 +4,9 @@ use crate::coverageinfo::ffi::CounterMappingRegion;
 use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
 use crate::llvm;
 
+use itertools::Itertools as _;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
@@ -13,6 +14,7 @@ use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_session::RemapFileNameExt;
 use rustc_span::def_id::DefIdSet;
 use rustc_span::Symbol;
 
@@ -57,12 +59,18 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         return;
     }
 
-    let mut global_file_table = GlobalFileTable::new(tcx);
+    let function_coverage_entries = function_coverage_map
+        .into_iter()
+        .map(|(instance, function_coverage)| (instance, function_coverage.into_finished()))
+        .collect::<Vec<_>>();
+
+    let all_file_names =
+        function_coverage_entries.iter().flat_map(|(_, fn_cov)| fn_cov.all_file_names());
+    let global_file_table = GlobalFileTable::new(tcx, all_file_names);
 
     // Encode coverage mappings and generate function records
     let mut function_data = Vec::new();
-    for (instance, function_coverage) in function_coverage_map {
-        let function_coverage = function_coverage.into_finished();
+    for (instance, function_coverage) in function_coverage_entries {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
 
         let mangled_function_name = tcx.symbol_name(instance).name;
@@ -70,7 +78,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         let is_used = function_coverage.is_used();
 
         let coverage_mapping_buffer =
-            encode_mappings_for_function(&mut global_file_table, &function_coverage);
+            encode_mappings_for_function(&global_file_table, &function_coverage);
 
         if coverage_mapping_buffer.is_empty() {
             if function_coverage.is_used() {
@@ -88,11 +96,11 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     }
 
     // Encode all filenames referenced by counters/expressions in this module
-    let filenames_buffer = global_file_table.into_filenames_buffer();
+    let filenames_buffer = global_file_table.filenames_buffer();
 
     let filenames_size = filenames_buffer.len();
-    let filenames_val = cx.const_bytes(&filenames_buffer);
-    let filenames_ref = coverageinfo::hash_bytes(&filenames_buffer);
+    let filenames_val = cx.const_bytes(filenames_buffer);
+    let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
 
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
     let cov_data_val = generate_coverage_map(cx, version, filenames_size, filenames_val);
@@ -140,39 +148,61 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 }
 
 struct GlobalFileTable {
-    global_file_table: FxIndexSet<Symbol>,
+    /// This "raw" table doesn't include the working dir, so a filename's
+    /// global ID is its index in this set **plus one**.
+    raw_file_table: FxIndexSet<Symbol>,
+    filenames_buffer: Vec<u8>,
 }
 
 impl GlobalFileTable {
-    fn new(tcx: TyCtxt<'_>) -> Self {
-        let mut global_file_table = FxIndexSet::default();
+    fn new(tcx: TyCtxt<'_>, all_file_names: impl IntoIterator<Item = Symbol>) -> Self {
         // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
         // requires setting the first filename to the compilation directory.
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        use rustc_session::RemapFileNameExt;
-        let working_dir =
-            Symbol::intern(&tcx.sess.opts.working_dir.for_codegen(&tcx.sess).to_string_lossy());
-        global_file_table.insert(working_dir);
-        Self { global_file_table }
-    }
+        let working_dir: &str = &tcx.sess.opts.working_dir.for_codegen(&tcx.sess).to_string_lossy();
 
-    fn global_file_id_for_file_name(&mut self, file_name: Symbol) -> u32 {
-        let (global_file_id, _) = self.global_file_table.insert_full(file_name);
-        global_file_id as u32
-    }
+        // Prepare a map from filename symbols to their underlying strings, so
+        // that we can sort by the strings.
+        let mut raw_file_table = FxIndexMap::<Symbol, &str>::default();
+        // Filenames usually come in contiguous runs, so dedup to save work.
+        let all_file_names = all_file_names.into_iter().dedup().collect::<Vec<_>>();
+        for file_name in &all_file_names {
+            raw_file_table.entry(*file_name).or_insert_with(|| file_name.as_str());
+        }
 
-    fn into_filenames_buffer(self) -> Vec<u8> {
-        // This method takes `self` so that the caller can't accidentally
-        // modify the original file table after encoding it into a buffer.
+        // Sort the file table by its actual string values, not the arbitrary
+        // ordering of its symbols.
+        raw_file_table.sort_unstable_by(|_, a, _, b| str::cmp(a, b));
 
-        llvm::build_byte_buffer(|buffer| {
+        // Build the LLVM filenames buffer ahead of time, so that we can discard
+        // the string references afterwards.
+        let filenames_buffer = llvm::build_byte_buffer(|buffer| {
             coverageinfo::write_filenames_section_to_buffer(
-                self.global_file_table.iter().map(Symbol::as_str),
+                // Insert the working dir at index 0, before the other filenames.
+                std::iter::once(working_dir).chain(raw_file_table.values().copied()),
                 buffer,
             );
-        })
+        });
+
+        // Discard the string reference values, leaving only a set of symbols.
+        let raw_file_table = raw_file_table.into_keys().collect::<FxIndexSet<_>>();
+
+        Self { raw_file_table, filenames_buffer }
+    }
+
+    fn global_file_id_for_file_name(&self, file_name: Symbol) -> u32 {
+        let raw_id = self.raw_file_table.get_index_of(&file_name).unwrap_or_else(|| {
+            bug!("file name not found in prepared global file table: {file_name}");
+        });
+        // The raw file table doesn't include an entry for the working dir
+        // (which has ID 0), so add 1 to get the correct ID.
+        (raw_id + 1) as u32
+    }
+
+    fn filenames_buffer(&self) -> &[u8] {
+        &self.filenames_buffer
     }
 }
 
@@ -182,7 +212,7 @@ impl GlobalFileTable {
 ///
 /// Newly-encountered filenames will be added to the global file table.
 fn encode_mappings_for_function(
-    global_file_table: &mut GlobalFileTable,
+    global_file_table: &GlobalFileTable,
     function_coverage: &FunctionCoverage<'_>,
 ) -> Vec<u8> {
     let mut counter_regions = function_coverage.counter_regions().collect::<Vec<_>>();
@@ -203,7 +233,7 @@ fn encode_mappings_for_function(
     for counter_regions_for_file in
         counter_regions.group_by(|(_, a), (_, b)| a.file_name == b.file_name)
     {
-        // Look up (or allocate) the global file ID for this filename.
+        // Look up the global file ID for this filename.
         let file_name = counter_regions_for_file[0].1.file_name;
         let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
 
