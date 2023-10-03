@@ -1036,30 +1036,21 @@ impl ConstructorSet {
     where
         'tcx: 'a,
     {
-        let mut missing = Vec::new();
         let mut present: SmallVec<[_; 1]> = SmallVec::new();
+        let mut missing = Vec::new();
         // Constructors in `ctors`, except wildcards.
-        let mut seen = Vec::new();
-        for ctor in ctors.cloned() {
-            match ctor {
-                // Wildcards in `ctors` are irrelevant to splitting
-                Opaque | Wildcard => {}
-                _ => {
-                    seen.push(ctor);
-                }
-            }
-        }
+        let mut seen = ctors.filter(|c| !(matches!(c, Opaque | Wildcard)));
         let mut nonexhaustive_enum_missing_visible_variants = false;
         match self {
             ConstructorSet::Single => {
-                if seen.is_empty() {
+                if seen.next().is_none() {
                     missing.push(Single);
                 } else {
                     present.push(Single);
                 }
             }
             ConstructorSet::Variants { visible_variants, hidden_variants, non_exhaustive } => {
-                let seen_set: FxHashSet<_> = seen.iter().map(|c| c.as_variant().unwrap()).collect();
+                let seen_set: FxHashSet<_> = seen.map(|c| c.as_variant().unwrap()).collect();
                 let mut skipped_a_hidden_variant = false;
                 for variant in visible_variants {
                     let ctor = Variant(*variant);
@@ -1089,15 +1080,16 @@ impl ConstructorSet {
                 }
             }
             ConstructorSet::Integers { range_1, range_2, non_exhaustive } => {
-                let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap()).cloned();
-                for (seen, splitted_range) in range_1.split(seen_ranges.clone()) {
+                let seen_ranges: Vec<_> =
+                    seen.map(|ctor| ctor.as_int_range().unwrap().clone()).collect();
+                for (seen, splitted_range) in range_1.split(seen_ranges.iter().cloned()) {
                     match seen {
                         Presence::Unseen => missing.push(IntRange(splitted_range)),
                         Presence::Seen => present.push(IntRange(splitted_range)),
                     }
                 }
                 if let Some(range_2) = range_2 {
-                    for (seen, splitted_range) in range_2.split(seen_ranges) {
+                    for (seen, splitted_range) in range_2.split(seen_ranges.into_iter()) {
                         match seen {
                             Presence::Unseen => missing.push(IntRange(splitted_range)),
                             Presence::Seen => present.push(IntRange(splitted_range)),
@@ -1110,7 +1102,7 @@ impl ConstructorSet {
                 }
             }
             &ConstructorSet::Slice(array_len) => {
-                let seen_slices = seen.iter().map(|c| c.as_slice().unwrap());
+                let seen_slices = seen.map(|c| c.as_slice().unwrap());
                 let base_slice = Slice { kind: VarLen(0, 0), array_len };
                 for (seen, splitted_slice) in base_slice.split(seen_slices) {
                     let ctor = Slice(splitted_slice);
@@ -1123,7 +1115,7 @@ impl ConstructorSet {
             ConstructorSet::SliceOfEmpty => {
                 // Behaves essentially like `Single`.
                 let slice = Slice(Slice::new(None, FixedLen(0)));
-                if seen.is_empty() {
+                if seen.next().is_none() {
                     missing.push(slice);
                 } else {
                     present.push(slice);
@@ -1132,7 +1124,7 @@ impl ConstructorSet {
             ConstructorSet::Unlistable => {
                 // Since we can't list constructors, we take the ones in the column. This might list
                 // some constructors several times but there's not much we can do.
-                present.extend(seen.iter().cloned());
+                present.extend(seen.cloned());
                 missing.push(NonExhaustive);
             }
             // If `exhaustive_patterns` is disabled and our scrutinee is an empty type, we cannot
