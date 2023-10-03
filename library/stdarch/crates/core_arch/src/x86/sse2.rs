@@ -952,7 +952,7 @@ pub unsafe fn _mm_cvtsi32_sd(a: __m128d, b: i32) -> __m128d {
 #[cfg_attr(test, assert_instr(cvtdq2ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepi32_ps(a: __m128i) -> __m128 {
-    cvtdq2ps(a.as_i32x4())
+    transmute(simd_cast::<_, f32x4>(a.as_i32x4()))
 }
 
 /// Converts packed single-precision (32-bit) floating-point elements in `a`
@@ -2856,8 +2856,6 @@ extern "C" {
     fn psrld(a: i32x4, count: i32x4) -> i32x4;
     #[link_name = "llvm.x86.sse2.psrl.q"]
     fn psrlq(a: i64x2, count: i64x2) -> i64x2;
-    #[link_name = "llvm.x86.sse2.cvtdq2ps"]
-    fn cvtdq2ps(a: i32x4) -> __m128;
     #[link_name = "llvm.x86.sse2.cvtps2dq"]
     fn cvtps2dq(a: __m128) -> i32x4;
     #[link_name = "llvm.x86.sse2.maskmov.dqu"]
