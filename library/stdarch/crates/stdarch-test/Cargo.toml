@@ -20,7 +20,7 @@ cc = "1.0"
 # time, and we want to make updates to this explicit rather than automatically
 # picking up updates which might break CI with new instruction names.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasmprinter = "=0.2.53"
+wasmprinter = "=0.2.67"
 
 [features]
 default = []
