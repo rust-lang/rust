@@ -553,6 +553,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(_)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
             | PredicateKind::ConstEquate(_, _)
+            | PredicateKind::Uninhabited(..)
             | PredicateKind::Ambiguous => true,
         }
     }
@@ -705,6 +706,9 @@ pub enum PredicateKind<'tcx> {
     ///
     /// Only used for new solver
     AliasRelate(Term<'tcx>, Term<'tcx>, AliasRelationDirection),
+
+    /// The type is uninhabited at the given module, or anywhere if None.
+    Uninhabited(Ty<'tcx>, Option<DefId>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -1363,6 +1367,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::Uninhabited(..)
             | PredicateKind::Ambiguous => None,
         }
     }
@@ -1383,6 +1388,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::Uninhabited(..)
             | PredicateKind::Ambiguous => None,
         }
     }
@@ -1403,6 +1409,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::Uninhabited(..)
             | PredicateKind::Ambiguous => None,
         }
     }
@@ -2669,7 +2676,6 @@ pub fn provide(providers: &mut Providers) {
     closure::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
-    inhabitedness::provide(providers);
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);

@@ -6,11 +6,13 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
 use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Binder, Const, TypeVisitableExt};
+use rustc_middle::ty::{self, Binder, Const, Ty, TypeVisitableExt};
+use rustc_span::def_id::DefId;
 use std::marker::PhantomData;
 
 use super::const_evaluatable;
@@ -354,6 +356,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::Subtype(_)
                 | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
+                | ty::PredicateKind::Uninhabited(..)
                 | ty::PredicateKind::ConstEquate(..) => {
                     let pred =
                         ty::Binder::dummy(infcx.instantiate_binder_with_placeholders(binder));
@@ -659,6 +662,16 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         )),
                     }
                 }
+                ty::PredicateKind::Uninhabited(ty, module) => {
+                    match self.process_uninhabited_obligation(obligation, ty, module) {
+                        Ok(Ok(nested)) => ProcessResult::Changed(mk_pending(nested)),
+                        Ok(Err(stalled)) => {
+                            pending_obligation.stalled_on.extend(stalled);
+                            ProcessResult::Unchanged
+                        }
+                        Err(NoSolution) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
+                    }
+                }
             },
         }
     }
@@ -683,6 +696,105 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
+    #[instrument(level = "debug", skip(self, obligation), ret)]
+    fn process_uninhabited_obligation(
+        &mut self,
+        obligation: &PredicateObligation<'tcx>,
+        ty: Ty<'tcx>,
+        module: Option<DefId>,
+    ) -> Result<Result<Vec<PredicateObligation<'tcx>>, Vec<TyOrConstInferVar<'tcx>>>, NoSolution>
+    {
+        let infcx = self.selcx.infcx;
+        let tcx = infcx.tcx;
+        if let Some(ty) = TyOrConstInferVar::maybe_from_ty(ty) {
+            return Ok(Err(vec![ty]));
+        }
+        match ty.kind() {
+            ty::Never => Ok(Ok(vec![])),
+            ty::Tuple(tys) => {
+                self.process_uninhabited_obligation_fields(obligation, module, tys.into_iter())
+            }
+            ty::Adt(adt, args) => {
+                // For now, unions are always considered inhabited
+                if adt.is_union() {
+                    return Err(NoSolution);
+                }
+
+                // Non-exhaustive ADTs from other crates are always considered inhabited
+                if adt.is_variant_list_non_exhaustive() && !adt.did().is_local() {
+                    return Err(NoSolution);
+                }
+
+                // The ADT is uninhabited if all its variants are uninhabited.
+                let mut new_obligations = vec![];
+                for variant in adt.variants() {
+                    if variant.is_field_list_non_exhaustive() && !variant.def_id.is_local() {
+                        // Non-exhaustive variants from other crates are always considered inhabited.
+                        return Err(NoSolution);
+                    }
+                    // This variant is uninhabited is any of its fields is uninhabited.
+                    let field_tys = variant.fields.iter().filter_map(|field| {
+                        let ty = tcx.type_of(field.did).instantiate(tcx, args);
+                        match (field.vis, module) {
+                            // The field is public or we do not care for visibility.
+                            (ty::Visibility::Public, _) | (_, None) => Some(ty),
+                            (ty::Visibility::Restricted(from), Some(module)) => {
+                                if tcx.is_descendant_of(module, from) {
+                                    Some(ty)
+                                } else {
+                                    // From `module`, this field may be privately uninhabited.
+                                    // Do not consider it as uninhabited.
+                                    None
+                                }
+                            }
+                        }
+                    });
+                    match self.process_uninhabited_obligation_fields(obligation, module, field_tys)? {
+                        Ok(nested) => new_obligations.extend(nested),
+                        Err(stalled) => return Ok(Err(stalled)),
+                    }
+                }
+                Ok(Ok(new_obligations))
+            }
+            ty::Array(ty, len) => match len.try_eval_target_usize(tcx, obligation.param_env) {
+                None | Some(0) => Err(NoSolution),
+                Some(1..) => {
+                    Ok(Ok(vec![
+                        obligation.with(tcx, ty::PredicateKind::Uninhabited(*ty, module)),
+                    ]))
+                }
+            },
+            ty::Alias(ty::Opaque, _) |
+            // FIXME
+            ty::Alias(ty::Projection | ty::Inherent, _) |
+            // use a query for more complex cases
+            // references and other types are inhabited
+            _ => Err(NoSolution),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self, obligation, tys), ret)]
+    fn process_uninhabited_obligation_fields(
+        &mut self,
+        obligation: &PredicateObligation<'tcx>,
+        module: Option<DefId>,
+        tys: impl Iterator<Item = Ty<'tcx>>,
+    ) -> Result<Result<Vec<PredicateObligation<'tcx>>, Vec<TyOrConstInferVar<'tcx>>>, NoSolution>
+    {
+        let infcx = self.selcx.infcx;
+        let mut stalled_on = vec![];
+        for ty in tys {
+            let response =
+                infcx.probe(|_| self.process_uninhabited_obligation(obligation, ty, module));
+            match response {
+                Ok(Ok(nested)) => return Ok(Ok(nested)),
+                Ok(Err(stalled)) => stalled_on.extend(stalled),
+                Err(NoSolution) => {}
+            }
+        }
+        if stalled_on.is_empty() { Err(NoSolution) } else { Ok(Err(stalled_on)) }
+    }
+
     #[instrument(level = "debug", skip(self, obligation, stalled_on))]
     fn process_trait_obligation(
         &mut self,

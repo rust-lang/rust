@@ -826,6 +826,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 | ty::PredicateKind::Subtype(..)
                 // FIXME(generic_const_exprs): you can absolutely add this as a where clauses
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
+                | ty::PredicateKind::Uninhabited(_, _)
                 | ty::PredicateKind::Coerce(..) => {}
                 ty::PredicateKind::Ambiguous => return false,
             };

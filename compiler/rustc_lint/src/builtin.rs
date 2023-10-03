@@ -2511,18 +2511,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     // And now, enums.
                     let span = cx.tcx.def_span(adt_def.did());
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
-                        let definitely_inhabited = match variant
-                            .inhabited_predicate(cx.tcx, *adt_def)
-                            .instantiate(cx.tcx, args)
-                            .apply_any_module(cx.tcx, cx.param_env)
-                        {
+                        if variant.is_privately_uninhabited(cx.tcx, *adt_def, args, cx.param_env) {
                             // Entirely skip uninhabited variants.
-                            Some(false) => return None,
-                            // Forward the others, but remember which ones are definitely inhabited.
-                            Some(true) => true,
-                            None => false,
-                        };
-                        Some((variant, definitely_inhabited))
+                            return None;
+                        }
+                        Some(variant)
                     });
                     let Some(first_variant) = potential_variants.next() else {
                         return Some(
@@ -2531,12 +2524,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         );
                     };
                     // So we have at least one potentially inhabited variant. Might we have two?
-                    let Some(second_variant) = potential_variants.next() else {
+                    let Some(_) = potential_variants.next() else {
                         // There is only one potentially inhabited variant. So we can recursively check that variant!
                         return variant_find_init_error(
                             cx,
                             ty,
-                            &first_variant.0,
+                            &first_variant,
                             args,
                             "field of the only potentially inhabited enum variant",
                             init,
@@ -2547,16 +2540,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     // then we have a tag and hence leaving this uninit is definitely disallowed.
                     // (Leaving it zeroed could be okay, depending on which variant is encoded as zero tag.)
                     if init == InitKind::Uninit {
-                        let definitely_inhabited = (first_variant.1 as usize)
-                            + (second_variant.1 as usize)
-                            + potential_variants
-                                .filter(|(_variant, definitely_inhabited)| *definitely_inhabited)
-                                .count();
-                        if definitely_inhabited > 1 {
-                            return Some(InitError::from(
-                                "enums with multiple inhabited variants have to be initialized to a variant",
-                            ).spanned(span));
-                        }
+                        return Some(InitError::from(
+                            "enums with multiple inhabited variants have to be initialized to a variant",
+                        ).spanned(span));
                     }
                     // We couldn't find anything wrong here.
                     None
@@ -2599,6 +2585,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         label: expr.span,
                         sub,
                         tcx: cx.tcx,
+                        param_env: cx.param_env,
                     },
                 );
             }

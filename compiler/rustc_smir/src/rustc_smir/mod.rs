@@ -1359,6 +1359,7 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
             PredicateKind::ConstEquate(a, b) => {
                 stable_mir::ty::PredicateKind::ConstEquate(a.stable(tables), b.stable(tables))
             }
+            PredicateKind::Uninhabited(..) => todo!(),
             PredicateKind::Ambiguous => stable_mir::ty::PredicateKind::Ambiguous,
             PredicateKind::AliasRelate(a, b, alias_relation_direction) => {
                 stable_mir::ty::PredicateKind::AliasRelate(

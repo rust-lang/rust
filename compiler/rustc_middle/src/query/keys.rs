@@ -487,6 +487,14 @@ impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
     }
 }
 
+impl<'tcx> Key for ty::ParamEnvAnd<'tcx, (Ty<'tcx>, Option<DefId>)> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.value.0.default_span(tcx)
+    }
+}
+
 impl Key for Symbol {
     type CacheSelector = DefaultCacheSelector<Self>;
 

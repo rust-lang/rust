@@ -509,9 +509,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 && let Constructor::Variant(variant_index) = witness_1.ctor()
             {
                 let variant = adt.variant(*variant_index);
-                let inhabited = variant.inhabited_predicate(cx.tcx, *adt).instantiate(cx.tcx, args);
-                assert!(inhabited.apply(cx.tcx, cx.param_env, cx.module));
-                !inhabited.apply_ignore_module(cx.tcx, cx.param_env)
+                variant.is_privately_uninhabited(cx.tcx, *adt, args, cx.param_env)
             } else {
                 false
             };
@@ -748,7 +746,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     }
 
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
+        if sub_ty.is_uninhabited_from(cx.tcx, cx.param_env, cx.module) {
             err.note("references are always considered inhabited");
         }
     }

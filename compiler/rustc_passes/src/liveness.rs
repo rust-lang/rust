@@ -1287,7 +1287,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-        if ty.is_inhabited_from(self.ir.tcx, m, self.param_env) {
+        if !ty.is_uninhabited_from(self.ir.tcx, self.param_env, m) {
             return succ;
         }
         match self.ir.lnks[succ] {

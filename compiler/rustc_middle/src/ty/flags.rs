@@ -294,6 +294,9 @@ impl FlagComputation {
                 self.add_term(t1);
                 self.add_term(t2);
             }
+            ty::PredicateKind::Uninhabited(ty, _) => {
+                self.add_ty(ty);
+            }
         }
     }
 

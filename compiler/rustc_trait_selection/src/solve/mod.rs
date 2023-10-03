@@ -221,6 +221,103 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         self.eq(goal.param_env, ct.ty(), ty)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
+
+    #[instrument(level = "debug", skip(self))]
+    fn compute_uninhabited_goal(
+        &mut self,
+        Goal { param_env, predicate: (ty, module) }: Goal<'tcx, (Ty<'tcx>, Option<DefId>)>,
+    ) -> QueryResult<'tcx> {
+        let tcx = self.tcx();
+        let Some(ty) = self.try_normalize_ty(param_env, ty)? else {
+            return self.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
+        };
+        match ty.kind() {
+            ty::Never => self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes),
+            ty::Tuple(tys) => {
+                self.compute_uninhabited_goal_fields(param_env, module, tys.into_iter())
+            }
+            ty::Adt(adt, args) => {
+                // For now, unions are always considered inhabited
+                if adt.is_union() {
+                    return Err(NoSolution);
+                }
+
+                // Non-exhaustive ADTs from other crates are always considered inhabited
+                if adt.is_variant_list_non_exhaustive() && !adt.did().is_local() {
+                    return Err(NoSolution);
+                }
+
+                // The ADT is uninhabited if all its variants are uninhabited.
+                for variant in adt.variants() {
+                    if variant.is_field_list_non_exhaustive() && !variant.def_id.is_local() {
+                        // Non-exhaustive variants from other crates are always considered inhabited.
+                        return Err(NoSolution);
+                    }
+                    // This variant is uninhabited is any of its fields is uninhabited.
+                    let field_tys = variant.fields.iter().filter_map(|field| {
+                        let ty = tcx.type_of(field.did).instantiate(tcx, args);
+                        match (field.vis, module) {
+                            // The field is public or we do not care for visibility.
+                            (ty::Visibility::Public, _) | (_, None) => Ok(ty),
+                            (ty::Visibility::Restricted(from), Some(module)) => {
+                                if tcx.is_descendant_of(module, from) {
+                                    Ok(ty)
+                                } else {
+                                    // From `module`, this field may be privately uninhabited.
+                                    // Do not consider it as uninhabited.
+                                    Err(NoSolution)
+                                }
+                            }
+                        }
+                        .ok()
+                    });
+                    self.compute_uninhabited_goal_fields(param_env, module, field_tys)?;
+                }
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+            ty::Array(ty, len) => match len.try_eval_target_usize(tcx, param_env) {
+                None | Some(0) => Err(NoSolution),
+                Some(1..) => {
+                    self.add_goal(Goal::new(
+                        tcx,
+                        param_env,
+                        ty::PredicateKind::Uninhabited(*ty, module),
+                    ));
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+            },
+            ty::Alias(ty::Opaque, _) => Err(NoSolution),
+            // FIXME
+            ty::Alias(ty::Projection | ty::Inherent, _) => Err(NoSolution),
+            // use a query for more complex cases
+            // references and other types are inhabited
+            _ => Err(NoSolution),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self, components))]
+    fn compute_uninhabited_goal_fields(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        module: Option<DefId>,
+        components: impl Iterator<Item = Ty<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        let responses: Vec<_> = components
+            .filter_map(|ty| {
+                self.probe_misc_candidate("uninhabitedness candidate")
+                    .enter(|ecx| {
+                        ecx.add_goal(Goal::new(
+                            ecx.tcx(),
+                            param_env,
+                            ty::PredicateKind::Uninhabited(ty, module),
+                        ));
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                    .ok()
+            })
+            .collect();
+        self.try_merge_responses(&responses).ok_or(NoSolution)
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {

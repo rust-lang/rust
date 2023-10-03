@@ -69,6 +69,7 @@ fn not_outlives_predicate(p: ty::Predicate<'_>) -> bool {
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::Uninhabited(..)
         | ty::PredicateKind::Ambiguous => true,
     }
 }

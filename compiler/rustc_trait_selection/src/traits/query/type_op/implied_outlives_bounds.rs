@@ -136,6 +136,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::AliasRelate(..)
+                | ty::PredicateKind::Uninhabited(..)
                  => {}
 
                 // We need to search through *all* WellFormed predicates

@@ -380,6 +380,9 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..)) => {
                 // Nothing to elaborate
             }
+            ty::PredicateKind::Uninhabited(..) => {
+                // Nothing to elaborate
+            }
         }
     }
 }

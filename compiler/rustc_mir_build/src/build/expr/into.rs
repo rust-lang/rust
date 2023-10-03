@@ -253,6 +253,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 debug!("expr_into_dest: fn_span={:?}", fn_span);
 
+                let expr_is_inhabited =
+                    !expr.ty.is_uninhabited_from(this.tcx, this.param_env, this.parent_module);
                 this.cfg.terminate(
                     block,
                     source_info,
@@ -265,10 +267,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // MIR checks and ultimately whether code is accepted or not. We can only
                         // omit the return edge if a return type is visibly uninhabited to a module
                         // that makes the call.
-                        target: expr
-                            .ty
-                            .is_inhabited_from(this.tcx, this.parent_module, this.param_env)
-                            .then_some(success),
+                        target: expr_is_inhabited.then_some(success),
                         call_source: if from_hir_call {
                             CallSource::Normal
                         } else {

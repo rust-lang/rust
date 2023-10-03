@@ -921,19 +921,17 @@ impl<'tcx> SplitWildcard<'tcx> {
                 let is_secretly_empty =
                     def.variants().is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
 
-                let mut ctors: SmallVec<[_; 1]> =
-                    def.variants()
-                        .iter_enumerated()
-                        .filter(|(_, v)| {
-                            // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                            // uninhabited.
-                            !is_exhaustive_pat_feature
-                                || v.inhabited_predicate(cx.tcx, *def)
-                                    .instantiate(cx.tcx, args)
-                                    .apply(cx.tcx, cx.param_env, cx.module)
-                        })
-                        .map(|(idx, _)| Variant(idx))
-                        .collect();
+                let mut ctors: SmallVec<[_; 1]> = def
+                    .variants()
+                    .iter_enumerated()
+                    .filter(|(_, v)| {
+                        // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                        // uninhabited.
+                        !(is_exhaustive_pat_feature
+                            && v.is_uninhabited_from(cx.tcx, *def, args, cx.param_env, cx.module))
+                    })
+                    .map(|(idx, _)| Variant(idx))
+                    .collect();
 
                 if is_secretly_empty || is_declared_nonexhaustive {
                     ctors.push(NonExhaustive);

@@ -517,6 +517,7 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::Uninhabited(..)
         | ty::PredicateKind::Ambiguous => None,
     }
 }
