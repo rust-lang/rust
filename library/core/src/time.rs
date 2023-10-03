@@ -910,6 +910,7 @@ impl Duration {
 impl Add for Duration {
     type Output = Duration;
 
+    #[inline]
     fn add(self, rhs: Duration) -> Duration {
         self.checked_add(rhs).expect("overflow when adding durations")
     }
@@ -917,6 +918,7 @@ impl Add for Duration {
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 impl AddAssign for Duration {
+    #[inline]
     fn add_assign(&mut self, rhs: Duration) {
         *self = *self + rhs;
     }
@@ -926,6 +928,7 @@ impl AddAssign for Duration {
 impl Sub for Duration {
     type Output = Duration;
 
+    #[inline]
     fn sub(self, rhs: Duration) -> Duration {
         self.checked_sub(rhs).expect("overflow when subtracting durations")
     }
@@ -933,6 +936,7 @@ impl Sub for Duration {
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 impl SubAssign for Duration {
+    #[inline]
     fn sub_assign(&mut self, rhs: Duration) {
         *self = *self - rhs;
     }
@@ -942,6 +946,7 @@ impl SubAssign for Duration {
 impl Mul<u32> for Duration {
     type Output = Duration;
 
+    #[inline]
     fn mul(self, rhs: u32) -> Duration {
         self.checked_mul(rhs).expect("overflow when multiplying duration by scalar")
     }
@@ -951,6 +956,7 @@ impl Mul<u32> for Duration {
 impl Mul<Duration> for u32 {
     type Output = Duration;
 
+    #[inline]
     fn mul(self, rhs: Duration) -> Duration {
         rhs * self
     }
@@ -958,6 +964,7 @@ impl Mul<Duration> for u32 {
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 impl MulAssign<u32> for Duration {
+    #[inline]
     fn mul_assign(&mut self, rhs: u32) {
         *self = *self * rhs;
     }
@@ -967,6 +974,7 @@ impl MulAssign<u32> for Duration {
 impl Div<u32> for Duration {
     type Output = Duration;
 
+    #[inline]
     fn div(self, rhs: u32) -> Duration {
         self.checked_div(rhs).expect("divide by zero error when dividing duration by scalar")
     }
@@ -974,6 +982,7 @@ impl Div<u32> for Duration {
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 impl DivAssign<u32> for Duration {
+    #[inline]
     fn div_assign(&mut self, rhs: u32) {
         *self = *self / rhs;
     }
