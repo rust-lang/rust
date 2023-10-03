@@ -1864,6 +1864,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline(always)]
+#[must_use = "pointer comparison produces a value"]
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }
@@ -1886,6 +1887,7 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// ```
 #[unstable(feature = "ptr_addr_eq", issue = "116324")]
 #[inline(always)]
+#[must_use = "pointer comparison produces a value"]
 pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
     (p as *const ()) == (q as *const ())
 }
