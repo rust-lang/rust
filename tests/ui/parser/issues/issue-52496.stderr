@@ -8,10 +8,15 @@ error: expected one of `,`, `:`, or `}`, found `.`
   --> $DIR/issue-52496.rs:8:22
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
-   |             ---   -  ^ expected one of `,`, `:`, or `}`
+   |             ---   ---^ expected one of `,`, `:`, or `}`
    |             |     |
-   |             |     help: try naming a field: `bar:`
+   |             |     while parsing this struct field
    |             while parsing this struct
+   |
+help: try naming a field
+   |
+LL |     let _ = Foo { bar: bar.into(), bat: -1, . };
+   |                   ++++
 
 error: expected identifier, found `.`
   --> $DIR/issue-52496.rs:8:40
