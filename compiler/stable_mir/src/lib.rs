@@ -89,6 +89,7 @@ pub type ImplTraitDecls = Vec<ImplDef>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CompilerError<T> {
     /// Internal compiler error (I.e.: Compiler crashed).
+    #[allow(non_camel_case_types)]
     ICE,
     /// Compilation failed.
     CompilationFailed,
