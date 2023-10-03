@@ -1778,7 +1778,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[must_use]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() as *const () == other.ptr.as_ptr() as *const ()
+        ptr::addr_eq(this.ptr.as_ptr(), other.ptr.as_ptr())
     }
 }
 
@@ -2900,7 +2900,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
-        ptr::eq(self.ptr.as_ptr() as *const (), other.ptr.as_ptr() as *const ())
+        ptr::addr_eq(self.ptr.as_ptr(), other.ptr.as_ptr())
     }
 }
 
