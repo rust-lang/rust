@@ -2074,7 +2074,10 @@ pub unsafe fn _mm256_mul_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmuludq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mul_epu32(a: __m256i, b: __m256i) -> __m256i {
-    transmute(pmuludq(a.as_u32x8(), b.as_u32x8()))
+    let a = a.as_u64x4();
+    let b = b.as_u64x4();
+    let mask = u64x4::splat(u32::MAX.into());
+    transmute(simd_mul(simd_and(a, mask), simd_and(b, mask)))
 }
 
 /// Multiplies the packed 16-bit integers in `a` and `b`, producing
@@ -3675,8 +3678,6 @@ extern "C" {
     fn pmulhw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.pmul.dq"]
     fn pmuldq(a: i32x8, b: i32x8) -> i64x4;
-    #[link_name = "llvm.x86.avx2.pmulu.dq"]
-    fn pmuludq(a: u32x8, b: u32x8) -> u64x4;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
     fn pmulhrsw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.packsswb"]

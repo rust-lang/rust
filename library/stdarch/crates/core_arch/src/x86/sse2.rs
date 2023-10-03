@@ -303,7 +303,10 @@ pub unsafe fn _mm_mullo_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmuludq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mul_epu32(a: __m128i, b: __m128i) -> __m128i {
-    transmute(pmuludq(a.as_u32x4(), b.as_u32x4()))
+    let a = a.as_u64x2();
+    let b = b.as_u64x2();
+    let mask = u64x2::splat(u32::MAX.into());
+    transmute(simd_mul(simd_and(a, mask), simd_and(b, mask)))
 }
 
 /// Sum the absolute differences of packed unsigned 8-bit integers.
@@ -2839,8 +2842,6 @@ extern "C" {
     fn pmulhw(a: i16x8, b: i16x8) -> i16x8;
     #[link_name = "llvm.x86.sse2.pmulhu.w"]
     fn pmulhuw(a: u16x8, b: u16x8) -> u16x8;
-    #[link_name = "llvm.x86.sse2.pmulu.dq"]
-    fn pmuludq(a: u32x4, b: u32x4) -> u64x2;
     #[link_name = "llvm.x86.sse2.psad.bw"]
     fn psadbw(a: u8x16, b: u8x16) -> u64x2;
     #[link_name = "llvm.x86.sse2.psll.w"]
