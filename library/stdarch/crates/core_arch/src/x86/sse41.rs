@@ -923,7 +923,9 @@ pub unsafe fn _mm_minpos_epu16(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmuldq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mul_epi32(a: __m128i, b: __m128i) -> __m128i {
-    transmute(pmuldq(a.as_i32x4(), b.as_i32x4()))
+    let a = simd_cast::<_, i64x2>(simd_cast::<_, i32x2>(a.as_i64x2()));
+    let b = simd_cast::<_, i64x2>(simd_cast::<_, i32x2>(b.as_i64x2()));
+    transmute(simd_mul(a, b))
 }
 
 /// Multiplies the packed 32-bit integers in `a` and `b`, producing intermediate
@@ -1154,8 +1156,6 @@ extern "C" {
     fn roundss(a: __m128, b: __m128, rounding: i32) -> __m128;
     #[link_name = "llvm.x86.sse41.phminposuw"]
     fn phminposuw(a: u16x8) -> u16x8;
-    #[link_name = "llvm.x86.sse41.pmuldq"]
-    fn pmuldq(a: i32x4, b: i32x4) -> i64x2;
     #[link_name = "llvm.x86.sse41.mpsadbw"]
     fn mpsadbw(a: u8x16, b: u8x16, imm8: u8) -> u16x8;
     #[link_name = "llvm.x86.sse41.ptestz"]

@@ -2066,7 +2066,9 @@ pub unsafe fn _mm256_mpsadbw_epu8<const IMM8: i32>(a: __m256i, b: __m256i) -> __
 #[cfg_attr(test, assert_instr(vpmuldq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mul_epi32(a: __m256i, b: __m256i) -> __m256i {
-    transmute(pmuldq(a.as_i32x8(), b.as_i32x8()))
+    let a = simd_cast::<_, i64x4>(simd_cast::<_, i32x4>(a.as_i64x4()));
+    let b = simd_cast::<_, i64x4>(simd_cast::<_, i32x4>(b.as_i64x4()));
+    transmute(simd_mul(a, b))
 }
 
 /// Multiplies the low unsigned 32-bit integers from each packed 64-bit
@@ -3680,8 +3682,6 @@ extern "C" {
     fn maskstoreq256(mem_addr: *mut i8, mask: i64x4, a: i64x4);
     #[link_name = "llvm.x86.avx2.mpsadbw"]
     fn mpsadbw(a: u8x32, b: u8x32, imm8: i32) -> u16x16;
-    #[link_name = "llvm.x86.avx2.pmul.dq"]
-    fn pmuldq(a: i32x8, b: i32x8) -> i64x4;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
     fn pmulhrsw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.packsswb"]
