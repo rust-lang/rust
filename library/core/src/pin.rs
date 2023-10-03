@@ -273,7 +273,7 @@
 //! order to identify the type of the pinned pointee data and provide (restricted) access to it.
 //!
 //! A [`Pin<Ptr>`] where [`Ptr: Deref`][Deref] is a "`Ptr`-style pinning pointer" to a pinned
-//! [`P::Target`][Target] – so, a <code>[Pin]<[Box]\<T>></code> is an owned, pinning pointer to a
+//! [`Ptr::Target`][Target] – so, a <code>[Pin]<[Box]\<T>></code> is an owned, pinning pointer to a
 //! pinned `T`, and a <code>[Pin]<[Rc]\<T>></code> is a reference-counted, pinning pointer to a
 //! pinned `T`.
 //!
@@ -590,7 +590,7 @@
 //! # Implementing an address-sensitive type.
 //!
 //! This section goes into detail on important considerations for implementing your own
-//! address-sensitive types, which are different from merely using [`Pin<P>`] in a generic
+//! address-sensitive types, which are different from merely using [`Pin<Ptr>`] in a generic
 //! way.
 //!
 //! ## Implementing [`Drop`] for types with address-sensitive states
@@ -689,7 +689,7 @@
 //! Even though we can't have the compiler do the assignment for us, it's possible to write
 //! such specialized functions for types that might need it.
 //!
-//! Note that it _is_ possible to assign generically through a [`Pin<P>`] by way of [`Pin::set()`].
+//! Note that it _is_ possible to assign generically through a [`Pin<Ptr>`] by way of [`Pin::set()`].
 //! This does not violate any guarantees, since it will run [`drop`] on the pointee value before
 //! assigning the new value. Thus, the [`drop`] implementation still has a chance to perform the
 //! necessary notifications to dependent values before the memory location of the original pinned
@@ -1050,7 +1050,7 @@ use crate::{
 #[fundamental]
 #[repr(transparent)]
 #[derive(Copy, Clone)]
-pub struct Pin<P> {
+pub struct Pin<Ptr> {
     // FIXME(#93176): this field is made `#[unstable] #[doc(hidden)] pub` to:
     //   - deter downstream users from accessing it (which would be unsound!),
     //   - let the `pin!` macro access it (such a macro requires using struct
@@ -1058,7 +1058,7 @@ pub struct Pin<P> {
     // Long-term, `unsafe` fields or macro hygiene are expected to offer more robust alternatives.
     #[unstable(feature = "unsafe_pin_internals", issue = "none")]
     #[doc(hidden)]
-    pub pointer: P,
+    pub pointer: Ptr,
 }
 
 // The following implementations aren't derived in order to avoid soundness
@@ -1068,68 +1068,68 @@ pub struct Pin<P> {
 // See <https://internals.rust-lang.org/t/unsoundness-in-pin/11311/73> for more details.
 
 #[stable(feature = "pin_trait_impls", since = "1.41.0")]
-impl<P: Deref, Q: Deref> PartialEq<Pin<Q>> for Pin<P>
+impl<Ptr: Deref, Q: Deref> PartialEq<Pin<Q>> for Pin<Ptr>
 where
-    P::Target: PartialEq<Q::Target>,
+    Ptr::Target: PartialEq<Q::Target>,
 {
     fn eq(&self, other: &Pin<Q>) -> bool {
-        P::Target::eq(self, other)
+        Ptr::Target::eq(self, other)
     }
 
     fn ne(&self, other: &Pin<Q>) -> bool {
-        P::Target::ne(self, other)
+        Ptr::Target::ne(self, other)
     }
 }
 
 #[stable(feature = "pin_trait_impls", since = "1.41.0")]
-impl<P: Deref<Target: Eq>> Eq for Pin<P> {}
+impl<Ptr: Deref<Target: Eq>> Eq for Pin<Ptr> {}
 
 #[stable(feature = "pin_trait_impls", since = "1.41.0")]
-impl<P: Deref, Q: Deref> PartialOrd<Pin<Q>> for Pin<P>
+impl<Ptr: Deref, Q: Deref> PartialOrd<Pin<Q>> for Pin<Ptr>
 where
-    P::Target: PartialOrd<Q::Target>,
+    Ptr::Target: PartialOrd<Q::Target>,
 {
     fn partial_cmp(&self, other: &Pin<Q>) -> Option<cmp::Ordering> {
-        P::Target::partial_cmp(self, other)
+        Ptr::Target::partial_cmp(self, other)
     }
 
     fn lt(&self, other: &Pin<Q>) -> bool {
-        P::Target::lt(self, other)
+        Ptr::Target::lt(self, other)
     }
 
     fn le(&self, other: &Pin<Q>) -> bool {
-        P::Target::le(self, other)
+        Ptr::Target::le(self, other)
     }
 
     fn gt(&self, other: &Pin<Q>) -> bool {
-        P::Target::gt(self, other)
+        Ptr::Target::gt(self, other)
     }
 
     fn ge(&self, other: &Pin<Q>) -> bool {
-        P::Target::ge(self, other)
+        Ptr::Target::ge(self, other)
     }
 }
 
 #[stable(feature = "pin_trait_impls", since = "1.41.0")]
-impl<P: Deref<Target: Ord>> Ord for Pin<P> {
+impl<Ptr: Deref<Target: Ord>> Ord for Pin<Ptr> {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        P::Target::cmp(self, other)
+        Ptr::Target::cmp(self, other)
     }
 }
 
 #[stable(feature = "pin_trait_impls", since = "1.41.0")]
-impl<P: Deref<Target: Hash>> Hash for Pin<P> {
+impl<Ptr: Deref<Target: Hash>> Hash for Pin<Ptr> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        P::Target::hash(self, state);
+        Ptr::Target::hash(self, state);
     }
 }
 
-impl<P: Deref<Target: Unpin>> Pin<P> {
-    /// Construct a new `Pin<P>` around a pointer to some data of a type that
+impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
+    /// Construct a new `Pin<Ptr>` around a pointer to some data of a type that
     /// implements [`Unpin`].
     ///
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
-    /// `P` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
+    /// `Ptr` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
     ///
     /// # Examples
     ///
@@ -1143,16 +1143,16 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
-    pub const fn new(pointer: P) -> Pin<P> {
+    pub const fn new(pointer: Ptr) -> Pin<Ptr> {
         // SAFETY: the value pointed to is `Unpin`, and so has no requirements
         // around pinning.
         unsafe { Pin::new_unchecked(pointer) }
     }
 
-    /// Unwraps this `Pin<P>` returning the underlying pointer.
+    /// Unwraps this `Pin<Ptr>`, returning the underlying pointer.
     ///
-    /// This requires that the data inside this `Pin` implements [`Unpin`] so that we
-    /// can ignore the pinning invariants when unwrapping it.
+    /// Doing this operation safely requires that the data pointed at by this pinning pointer
+    /// implemts [`Unpin`] so that we can ignore the pinning invariants when unwrapping it.
     ///
     /// # Examples
     ///
@@ -1168,13 +1168,13 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
-    pub const fn into_inner(pin: Pin<P>) -> P {
+    pub const fn into_inner(pin: Pin<Ptr>) -> Ptr {
         pin.pointer
     }
 }
 
-impl<P: Deref> Pin<P> {
-    /// Construct a new `Pin<P>` around a reference to some data of a type that
+impl<Ptr: Deref> Pin<Ptr> {
+    /// Construct a new `Pin<Ptr>` around a reference to some data of a type that
     /// may or may not implement `Unpin`.
     ///
     /// If `pointer` dereferences to an `Unpin` type, `Pin::new` should be used
@@ -1184,18 +1184,18 @@ impl<P: Deref> Pin<P> {
     ///
     /// This constructor is unsafe because we cannot guarantee that the data
     /// pointed to by `pointer` is pinned, meaning that the data will not be moved or
-    /// its storage invalidated until it gets dropped. If the constructed `Pin<P>` does
-    /// not guarantee that the data `P` points to is pinned, that is a violation of
+    /// its storage invalidated until it gets dropped. If the constructed `Pin<Ptr>` does
+    /// not guarantee that the data `Ptr` points to is pinned, that is a violation of
     /// the API contract and may lead to undefined behavior in later (safe) operations.
     ///
-    /// By using this method, you are making a promise about the `P::Deref` and
-    /// `P::DerefMut` implementations, if they exist. Most importantly, they
+    /// By using this method, you are making a promise about the `Ptr::Deref` and
+    /// `Ptr::DerefMut` implementations, if they exist. Most importantly, they
     /// must not move out of their `self` arguments: `Pin::as_mut` and `Pin::as_ref`
-    /// will call `DerefMut::deref_mut` and `Deref::deref` *on the pointer type P*
+    /// will call `DerefMut::deref_mut` and `Deref::deref` *on the pointer type `Ptr`*
     /// and expect these methods to uphold the pinning invariants.
-    /// Moreover, by calling this method you promise that the reference `P`
+    /// Moreover, by calling this method you promise that the reference `Ptr`
     /// dereferences to will not be moved out of again; in particular, it
-    /// must not be possible to obtain a `&mut P::Target` and then
+    /// must not be possible to obtain a `&mut Ptr::Target` and then
     /// move out of that reference (using, for example [`mem::swap`]).
     ///
     /// For example, calling `Pin::new_unchecked` on an `&'a mut T` is unsafe because
@@ -1299,7 +1299,7 @@ impl<P: Deref> Pin<P> {
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
-    pub const unsafe fn new_unchecked(pointer: P) -> Pin<P> {
+    pub const unsafe fn new_unchecked(pointer: Ptr) -> Pin<Ptr> {
         Pin { pointer }
     }
 
@@ -1312,34 +1312,39 @@ impl<P: Deref> Pin<P> {
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_ref(&self) -> Pin<&P::Target> {
+    pub fn as_ref(&self) -> Pin<&Ptr::Target> {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
 
-    /// Unwraps this `Pin<P>` returning the underlying pointer.
+    /// Unwraps this `Pin<Ptr>` returning the underlying pointer.
     ///
     /// # Safety
     ///
     /// This function is unsafe. You must guarantee that you will continue to
-    /// treat the pointer `P` as pinned after you call this function, so that
+    /// treat the pointer `Ptr` as pinned after you call this function, so that
     /// the invariants on the `Pin` type can be upheld. If the code using the
-    /// resulting `P` does not continue to maintain the pinning invariants that
+    /// resulting `Ptr` does not continue to maintain the pinning invariants that
     /// is a violation of the API contract and may lead to undefined behavior in
     /// later (safe) operations.
+    ///
+    /// Note that you must be able to guarantee that the data pointed to by `Ptr`
+    /// will be treated as pinned all the way until its `drop` handler is complete!
+    /// 
+    /// *For more information, see the [`pin` module docs][self]*
     ///
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
     /// instead.
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
-    pub const unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
+    pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
         pin.pointer
     }
 }
 
-impl<P: DerefMut> Pin<P> {
-    /// Gets a mutable reference to the pinned value this `Pin<P>` points to.
+impl<Ptr: DerefMut> Pin<Ptr> {
+    /// Gets a mutable reference to the pinned value this `Pin<Ptr>` points to.
     ///
     /// This is a generic method to go from `&mut Pin<Pointer<T>>` to `Pin<&mut T>`.
     /// It is safe because, as part of the contract of `Pin::new_unchecked`,
@@ -1370,12 +1375,12 @@ impl<P: DerefMut> Pin<P> {
     /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_mut(&mut self) -> Pin<&mut P::Target> {
+    pub fn as_mut(&mut self) -> Pin<&mut Ptr::Target> {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&mut *self.pointer) }
     }
 
-    /// Assigns a new value to the memory location pointed to by the `Pin<P>`.
+    /// Assigns a new value to the memory location pointed to by the `Pin<Ptr>`.
     ///
     /// This overwrites pinned data, but that is okay: the original pinned value's destructor gets
     /// run before being overwritten and the new value is also a valid value of the same type, so
@@ -1397,9 +1402,9 @@ impl<P: DerefMut> Pin<P> {
     /// [subtle-details]: self#subtle-details-and-the-drop-guarantee
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn set(&mut self, value: P::Target)
+    pub fn set(&mut self, value: Ptr::Target)
     where
-        P::Target: Sized,
+        Ptr::Target: Sized,
     {
         *(self.pointer) = value;
     }
@@ -1555,41 +1560,42 @@ impl<T: ?Sized> Pin<&'static T> {
     }
 }
 
-impl<'a, P: DerefMut> Pin<&'a mut Pin<P>> {
+impl<'a, Ptr: DerefMut> Pin<&'a mut Pin<Ptr>> {
     /// Gets `Pin<&mut T>` to the underlying pinned value from this nested `Pin`-pointer.
     ///
     /// This is a generic method to go from `Pin<&mut Pin<Pointer<T>>>` to `Pin<&mut T>`. It is
     /// safe because the existence of a `Pin<Pointer<T>>` ensures that the pointee, `T`, cannot
     /// move in the future, and this method does not enable the pointee to move. "Malicious"
-    /// implementations of `P::DerefMut` are likewise ruled out by the contract of
+    /// implementations of `Ptr::DerefMut` are likewise ruled out by the contract of
     /// `Pin::new_unchecked`.
     #[unstable(feature = "pin_deref_mut", issue = "86918")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
-    pub fn as_deref_mut(self) -> Pin<&'a mut P::Target> {
+    pub fn as_deref_mut(self) -> Pin<&'a mut Ptr::Target> {
         // SAFETY: What we're asserting here is that going from
         //
-        //     Pin<&mut Pin<P>>
+        //     Pin<&mut Pin<Ptr>>
         //
         // to
         //
-        //     Pin<&mut P::Target>
+        //     Pin<&mut Ptr::Target>
         //
         // is safe.
         //
         // We need to ensure that two things hold for that to be the case:
         //
-        // 1) Once we give out a `Pin<&mut P::Target>`, an `&mut P::Target` will not be given out.
-        // 2) By giving out a `Pin<&mut P::Target>`, we do not risk of violating `Pin<&mut Pin<P>>`
+        // 1) Once we give out a `Pin<&mut Ptr::Target>`, an `&mut Ptr::Target` will not be given out.
+        // 2) By giving out a `Pin<&mut Ptr::Target>`, we do not risk of violating
+        // `Pin<&mut Pin<Ptr>>`
         //
-        // The existence of `Pin<P>` is sufficient to guarantee #1: since we already have a
-        // `Pin<P>`, it must already uphold the pinning guarantees, which must mean that
-        // `Pin<&mut P::Target>` does as well, since `Pin::as_mut` is safe. We do not have to rely
-        // on the fact that P is _also_ pinned.
+        // The existence of `Pin<Ptr>` is sufficient to guarantee #1: since we already have a
+        // `Pin<Ptr>`, it must already uphold the pinning guarantees, which must mean that
+        // `Pin<&mut Ptr::Target>` does as well, since `Pin::as_mut` is safe. We do not have to rely
+        // on the fact that `Ptr` is _also_ pinned.
         //
-        // For #2, we need to ensure that code given a `Pin<&mut P::Target>` cannot cause the
-        // `Pin<P>` to move? That is not possible, since `Pin<&mut P::Target>` no longer retains
-        // any access to the `P` itself, much less the `Pin<P>`.
+        // For #2, we need to ensure that code given a `Pin<&mut Ptr::Target>` cannot cause the
+        // `Pin<Ptr>` to move? That is not possible, since `Pin<&mut Ptr::Target>` no longer retains
+        // any access to the `Ptr` itself, much less the `Pin<Ptr>`.
         unsafe { self.get_unchecked_mut() }.as_mut()
     }
 }
@@ -1609,39 +1615,39 @@ impl<T: ?Sized> Pin<&'static mut T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P: Deref> Deref for Pin<P> {
-    type Target = P::Target;
-    fn deref(&self) -> &P::Target {
+impl<Ptr: Deref> Deref for Pin<Ptr> {
+    type Target = Ptr::Target;
+    fn deref(&self) -> &Ptr::Target {
         Pin::get_ref(Pin::as_ref(self))
     }
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P: DerefMut<Target: Unpin>> DerefMut for Pin<P> {
-    fn deref_mut(&mut self) -> &mut P::Target {
+impl<Ptr: DerefMut<Target: Unpin>> DerefMut for Pin<Ptr> {
+    fn deref_mut(&mut self) -> &mut Ptr::Target {
         Pin::get_mut(Pin::as_mut(self))
     }
 }
 
 #[unstable(feature = "receiver_trait", issue = "none")]
-impl<P: Receiver> Receiver for Pin<P> {}
+impl<Ptr: Receiver> Receiver for Pin<Ptr> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P: fmt::Debug> fmt::Debug for Pin<P> {
+impl<Ptr: fmt::Debug> fmt::Debug for Pin<Ptr> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.pointer, f)
     }
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P: fmt::Display> fmt::Display for Pin<P> {
+impl<Ptr: fmt::Display> fmt::Display for Pin<Ptr> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.pointer, f)
     }
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
+impl<Ptr: fmt::Pointer> fmt::Pointer for Pin<Ptr> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.pointer, f)
     }
@@ -1653,10 +1659,10 @@ impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
 // for other reasons, though, so we just need to take care not to allow such
 // impls to land in std.
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
+impl<Ptr, U> CoerceUnsized<Pin<U>> for Pin<Ptr> where Ptr: CoerceUnsized<U> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
+impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr> where Ptr: DispatchFromDyn<U> {}
 
 /// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///
