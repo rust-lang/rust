@@ -50,7 +50,7 @@ Current stable, released 2023-10-05
   [#11049](https://github.com/rust-lang/rust-clippy/pull/11049)
 * [`manual_is_finite`]
   [#11049](https://github.com/rust-lang/rust-clippy/pull/11049)
-* [`non_canonical_partial_ord_impl`]
+* [`incorrect_partial_ord_impl_on_ord_type`]
   [#10788](https://github.com/rust-lang/rust-clippy/pull/10788)
 * [`read_line_without_trim`]
   [#10970](https://github.com/rust-lang/rust-clippy/pull/10970)
@@ -62,8 +62,8 @@ Current stable, released 2023-10-05
 * Renamed `unwrap_or_else_default` to [`unwrap_or_default`]
   [#10120](https://github.com/rust-lang/rust-clippy/pull/10120)
 * Moved [`tuple_array_conversions`] to `pedantic` (Now allow-by-default)
-  [#11171](https://github.com/rust-lang/rust-clippy/pull/11171)
-* Moved [`arc_with_non_send_sync`] to `complexity` (Now warn-by-default)
+  [#11146](https://github.com/rust-lang/rust-clippy/pull/11146)
+* Moved [`arc_with_non_send_sync`] to `suspicious` (Now warn-by-default)
   [#11104](https://github.com/rust-lang/rust-clippy/pull/11104)
 * Moved [`needless_raw_string_hashes`] to `pedantic` (Now allow-by-default)
   [#11415](https://github.com/rust-lang/rust-clippy/pull/11415)
