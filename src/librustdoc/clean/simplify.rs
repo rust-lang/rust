@@ -40,18 +40,18 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP
             WP::RegionPredicate { lifetime, bounds } => {
                 lifetimes.push((lifetime, bounds));
             }
-            WP::EqPredicate { lhs, rhs, bound_params } => equalities.push((lhs, rhs, bound_params)),
+            WP::EqPredicate { lhs, rhs } => equalities.push((lhs, rhs)),
         }
     }
 
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates.
-    equalities.retain(|(lhs, rhs, bound_params)| {
+    equalities.retain(|(lhs, rhs)| {
         let Some((ty, trait_did, name)) = lhs.projection() else {
             return true;
         };
         let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
-        merge_bounds(cx, bounds, bound_params.clone(), trait_did, name, rhs)
+        merge_bounds(cx, bounds, trait_did, name, rhs)
     });
 
     // And finally, let's reassemble everything
@@ -64,18 +64,13 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP
         bounds,
         bound_params,
     }));
-    clauses.extend(equalities.into_iter().map(|(lhs, rhs, bound_params)| WP::EqPredicate {
-        lhs,
-        rhs,
-        bound_params,
-    }));
+    clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
     clauses
 }
 
 pub(crate) fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
-    mut bound_params: Vec<clean::GenericParamDef>,
     trait_did: DefId,
     assoc: clean::PathSegment,
     rhs: &clean::Term,
@@ -92,12 +87,6 @@ pub(crate) fn merge_bounds(
             return false;
         }
         let last = trait_ref.trait_.segments.last_mut().expect("segments were empty");
-
-        trait_ref.generic_params.append(&mut bound_params);
-        // Sort parameters (likely) originating from a hashset alphabetically to
-        // produce predictable output (and to allow for full deduplication).
-        trait_ref.generic_params.sort_unstable_by(|p, q| p.name.as_str().cmp(q.name.as_str()));
-        trait_ref.generic_params.dedup_by_key(|p| p.name);
 
         match last.args {
             PP::AngleBracketed { ref mut bindings, .. } => {

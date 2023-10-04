@@ -18,9 +18,9 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_fn_decl_from_did_and_sig, clean_generics, clean_impl_item, clean_middle_assoc_item,
-    clean_middle_field, clean_middle_ty, clean_trait_ref_with_bindings, clean_ty,
-    clean_ty_alias_inner_type, clean_ty_generics, clean_variant_def, utils, Attributes,
+    self, clean_bound_vars, clean_fn_decl_from_did_and_sig, clean_generics, clean_impl_item,
+    clean_middle_assoc_item, clean_middle_field, clean_middle_ty, clean_trait_ref_with_bindings,
+    clean_ty, clean_ty_alias_inner_type, clean_ty_generics, clean_variant_def, utils, Attributes,
     AttributesExt, ImplKind, ItemId, Type,
 };
 use crate::core::DocContext;
@@ -239,20 +239,13 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
 
 fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
     let sig = cx.tcx.fn_sig(did).instantiate_identity();
-
-    let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
-        ty::BoundVariableKind::Region(ty::BrNamed(_, name)) if name != kw::UnderscoreLifetime => {
-            Some(clean::GenericParamDef::lifetime(name))
-        }
-        _ => None,
-    });
-
     let predicates = cx.tcx.explicit_predicates_of(did);
+
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
         let mut generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
         // FIXME: This does not place parameters in source order (late-bound ones come last)
-        generics.params.extend(late_bound_regions);
+        generics.params.extend(clean_bound_vars(sig.bound_vars()));
         let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
         (generics, decl)
     });

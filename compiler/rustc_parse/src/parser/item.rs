@@ -813,7 +813,12 @@ impl<'a> Parser<'a> {
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemInfo> {
         let unsafety = self.parse_unsafety(Case::Sensitive);
         // Parse optional `auto` prefix.
-        let is_auto = if self.eat_keyword(kw::Auto) { IsAuto::Yes } else { IsAuto::No };
+        let is_auto = if self.eat_keyword(kw::Auto) {
+            self.sess.gated_spans.gate(sym::auto_traits, self.prev_token.span);
+            IsAuto::Yes
+        } else {
+            IsAuto::No
+        };
 
         self.expect_keyword(kw::Trait)?;
         let ident = self.parse_ident()?;
