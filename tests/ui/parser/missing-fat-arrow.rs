@@ -6,11 +6,8 @@ fn main() {
     match value {
         Some(x) if x == y {
             self.next_token()?; //~ ERROR expected identifier, found keyword `self`
-            Ok(true)
         },
-        _ => {
-            Ok(false)
-        }
+        _ => {}
     }
     let _: i32 = (); //~ ERROR mismatched types
 }

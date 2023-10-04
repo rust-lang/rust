@@ -2998,7 +2998,6 @@ impl<'a> Parser<'a> {
                         } else {
                             Applicability::MaybeIncorrect
                         };
-                        // self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                         err.span_suggestion_verbose(sugg_sp, msg, "=> ".to_string(), applicability);
                     }
                 }
@@ -3171,7 +3170,7 @@ impl<'a> Parser<'a> {
                             self.token.span.shrink_to_lo(),
                             "try naming a field",
                             &format!("{ident}: ", ),
-                            Applicability::HasPlaceholders,
+                            Applicability::MaybeIncorrect,
                         );
                     }
                     if in_if_guard && close_delim == Delimiter::Brace {
@@ -3325,7 +3324,7 @@ impl<'a> Parser<'a> {
 
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
-            // Proactively check whether parsing the field will be correct.
+            // Proactively check whether parsing the field will be incorrect.
             let is_wrong = this.token.is_ident()
                 && !this.token.is_reserved_ident()
                 && !this.look_ahead(1, |t| {
