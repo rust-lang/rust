@@ -55,13 +55,54 @@ impl<A, B> SlicePartialEq<B> for [A]
 where
     A: PartialEq<B>,
 {
+    #[inline]
     default fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
             return false;
         }
 
-        self.iter().zip(other.iter()).all(|(x, y)| x == y)
+        // at least 8 items for unrolling to make sense (4 peeled + 4+ unrolled)
+        if self.len() < 8 {
+            return eq_small(self, other);
+        }
+
+        eq_unroll(self, other)
     }
+}
+
+#[inline]
+fn eq_small<A, B>(a: &[A], b: &[B]) -> bool
+where
+    A: PartialEq<B>,
+{
+    a.iter().zip(b).all(|(a, b)| a == b)
+}
+
+fn eq_unroll<A, B>(a: &[A], b: &[B]) -> bool
+where
+    A: PartialEq<B>,
+{
+    let (mut chunks_a, residual_a) = a.as_chunks::<4>();
+    let (mut chunks_b, residual_b) = b.as_chunks::<4>();
+    let peeled_a = chunks_a.take_first().unwrap();
+    let peeled_b = chunks_b.take_first().unwrap();
+
+    // peel the first chunk and do a short-circuiting comparison to bail early on mismatches
+    // in case comparisons are expensive
+    let mut result = eq_small(peeled_a, peeled_b);
+
+    // then check the residual, another chance to bail early
+    result = result && eq_small(residual_a, residual_b);
+
+    // iter.all short-circuits which means the backend can't unroll the loop due to early exits.
+    // So we unroll it manually.
+    result = result
+        && chunks_a
+            .iter()
+            .zip(chunks_b)
+            .all(|(a, b)| (a[0] == b[0]) & (a[1] == b[1]) & (a[2] == b[2]) & (a[3] == b[3]));
+
+    result
 }
 
 // When each element can be compared byte-wise, we can compare all the bytes
