@@ -171,3 +171,17 @@ fn fold_to_last(b: &mut Bencher) {
     let slice: &[i32] = &[0; 1024];
     b.iter(|| black_box(slice).iter().fold(None, |_, r| Some(NonNull::from(r))));
 }
+
+#[bench]
+fn slice_cmp_generic(b: &mut Bencher) {
+    #[derive(PartialEq, Clone, Copy)]
+    struct Foo(u32, u32);
+
+    let left = [Foo(128, 128); 128];
+    let right = [Foo(128, 128); 128];
+
+    b.iter(|| {
+        let (left, right) = (black_box(&left), black_box(&right));
+        left.as_slice() == right.as_slice()
+    });
+}
