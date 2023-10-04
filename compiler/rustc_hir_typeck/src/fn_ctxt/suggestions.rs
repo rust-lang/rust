@@ -1687,4 +1687,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             false
         }
     }
+
+    pub(crate) fn is_field_suggestable(
+        &self,
+        field: &ty::FieldDef,
+        hir_id: HirId,
+        span: Span,
+    ) -> bool {
+        // The field must be visible in the containing module.
+        field.vis.is_accessible_from(self.tcx.parent_module(hir_id), self.tcx)
+            // The field must not be unstable.
+            && !matches!(
+                self.tcx.eval_stability(field.did, None, rustc_span::DUMMY_SP, None),
+                rustc_middle::middle::stability::EvalResult::Deny { .. }
+            )
+            // If the field is from an external crate it must not be `doc(hidden)`.
+            && (field.did.is_local() || !self.tcx.is_doc_hidden(field.did))
+            // If the field is hygienic it must come from the same syntax context.
+            && self.tcx.def_ident_span(field.did).unwrap().normalize_to_macros_2_0().eq_ctxt(span)
+    }
 }

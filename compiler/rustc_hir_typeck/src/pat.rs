@@ -12,7 +12,6 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -1408,6 +1407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 adt.variant_descr(),
                 &inexistent_fields,
                 &mut unmentioned_fields,
+                pat,
                 variant,
                 args,
             ))
@@ -1434,15 +1434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
                 .iter()
                 .copied()
-                .filter(|(field, _)| {
-                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id), tcx)
-                        && !matches!(
-                            tcx.eval_stability(field.did, None, DUMMY_SP, None),
-                            EvalResult::Deny { .. }
-                        )
-                        // We only want to report the error if it is hidden and not local
-                        && !(tcx.is_doc_hidden(field.did) && !field.did.is_local())
-                })
+                .filter(|(field, _)| self.is_field_suggestable(field, pat.hir_id, pat.span))
                 .collect();
 
             if !has_rest_pat {
@@ -1578,12 +1570,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         kind_name: &str,
         inexistent_fields: &[&hir::PatField<'tcx>],
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
+        pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let tcx = self.tcx;
-        let (field_names, t, plural) = if inexistent_fields.len() == 1 {
-            (format!("a field named `{}`", inexistent_fields[0].ident), "this", "")
+        let (field_names, t, plural) = if let [field] = inexistent_fields {
+            (format!("a field named `{}`", field.ident), "this", "")
         } else {
             (
                 format!(
@@ -1620,10 +1613,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
 
-            if unmentioned_fields.len() == 1 {
-                let input =
-                    unmentioned_fields.iter().map(|(_, field)| field.name).collect::<Vec<_>>();
-                let suggested_name = find_best_match_for_name(&input, pat_field.ident.name, None);
+            if let [(field_def, field)] = unmentioned_fields.as_slice()
+                && self.is_field_suggestable(field_def, pat.hir_id, pat.span)
+            {
+                let suggested_name =
+                    find_best_match_for_name(&[field.name], pat_field.ident.name, None);
                 if let Some(suggested_name) = suggested_name {
                     err.span_suggestion(
                         pat_field.ident.span,
@@ -1646,22 +1640,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         PatKind::Lit(expr)
                             if !self.can_coerce(
                                 self.typeck_results.borrow().expr_ty(expr),
-                                self.field_ty(
-                                    unmentioned_fields[0].1.span,
-                                    unmentioned_fields[0].0,
-                                    args,
-                                ),
+                                self.field_ty(field.span, field_def, args),
                             ) => {}
                         _ => {
-                            let unmentioned_field = unmentioned_fields[0].1.name;
                             err.span_suggestion_short(
                                 pat_field.ident.span,
                                 format!(
                                     "`{}` has a field named `{}`",
                                     tcx.def_path_str(variant.def_id),
-                                    unmentioned_field
+                                    field.name,
                                 ),
-                                unmentioned_field.to_string(),
+                                field.name,
                                 Applicability::MaybeIncorrect,
                             );
                         }
@@ -1871,8 +1860,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::PatField<'tcx>],
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
-        let field_names = if unmentioned_fields.len() == 1 {
-            format!("field `{}`{}", unmentioned_fields[0].1, inaccessible)
+        let field_names = if let [(_, field)] = unmentioned_fields {
+            format!("field `{field}`{inaccessible}")
         } else {
             let fields = unmentioned_fields
                 .iter()
