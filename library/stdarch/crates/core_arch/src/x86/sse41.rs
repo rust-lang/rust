@@ -75,15 +75,25 @@ pub unsafe fn _mm_blendv_epi8(a: __m128i, b: __m128i, mask: __m128i) -> __m128i 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_blend_epi16)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-// Note: LLVM7 prefers the single-precision floating-point domain when possible
-// see https://bugs.llvm.org/show_bug.cgi?id=38195
-// #[cfg_attr(test, assert_instr(pblendw, IMM8 = 0xF0))]
-#[cfg_attr(test, assert_instr(blendps, IMM8 = 0xF0))]
+#[cfg_attr(test, assert_instr(pblendw, IMM8 = 0xB1))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blend_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
-    transmute(pblendw(a.as_i16x8(), b.as_i16x8(), IMM8 as u8))
+    transmute::<i16x8, _>(simd_shuffle!(
+        a.as_i16x8(),
+        b.as_i16x8(),
+        [
+            [0, 8][IMM8 as usize & 1],
+            [1, 9][(IMM8 >> 1) as usize & 1],
+            [2, 10][(IMM8 >> 2) as usize & 1],
+            [3, 11][(IMM8 >> 3) as usize & 1],
+            [4, 12][(IMM8 >> 4) as usize & 1],
+            [5, 13][(IMM8 >> 5) as usize & 1],
+            [6, 14][(IMM8 >> 6) as usize & 1],
+            [7, 15][(IMM8 >> 7) as usize & 1],
+        ]
+    ))
 }
 
 /// Blend packed double-precision (64-bit) floating-point elements from `a`
@@ -1135,8 +1145,6 @@ extern "C" {
     fn blendpd(a: __m128d, b: __m128d, imm2: u8) -> __m128d;
     #[link_name = "llvm.x86.sse41.blendps"]
     fn blendps(a: __m128, b: __m128, imm4: u8) -> __m128;
-    #[link_name = "llvm.x86.sse41.pblendw"]
-    fn pblendw(a: i16x8, b: i16x8, imm8: u8) -> i16x8;
     #[link_name = "llvm.x86.sse41.insertps"]
     fn insertps(a: __m128, b: __m128, imm8: u8) -> __m128;
     #[link_name = "llvm.x86.sse41.packusdw"]
