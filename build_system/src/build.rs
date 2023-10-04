@@ -1,5 +1,7 @@
 use crate::config::set_config;
-use crate::utils::{get_gcc_path, run_command_with_env, run_command_with_output, walk_dir};
+use crate::utils::{
+    get_gcc_path, run_command, run_command_with_env, run_command_with_output_and_env, walk_dir,
+};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -9,7 +11,6 @@ use std::path::Path;
 struct BuildArg {
     codegen_release_channel: bool,
     sysroot_release_channel: bool,
-    no_default_features: bool,
     features: Vec<String>,
     gcc_path: String,
 }
@@ -21,27 +22,31 @@ impl BuildArg {
             gcc_path,
             ..Default::default()
         };
+        // We skip binary name and the `build` command.
         let mut args = std::env::args().skip(2);
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--release" => build_arg.codegen_release_channel = true,
                 "--release-sysroot" => build_arg.sysroot_release_channel = true,
-                "--no-default-features" => build_arg.no_default_features = true,
+                "--no-default-features" => {
+                    build_arg.features.push("--no-default-features".to_string());
+                }
                 "--features" => {
                     if let Some(arg) = args.next() {
+                        build_arg.features.push("--features".to_string());
                         build_arg.features.push(arg.as_str().into());
                     } else {
-                        return Err(format!(
-                            "Expected a value after `--features`, found nothing"
-                        ));
+                        return Err(
+                            "Expected a value after `--features`, found nothing".to_string()
+                        );
                     }
                 }
                 "--help" => {
                     Self::usage();
                     return Ok(None);
                 }
-                a => return Err(format!("Unknown argument `{a}`")),
+                arg => return Err(format!("Unknown argument `{}`", arg)),
             }
         }
         Ok(Some(build_arg))
@@ -68,37 +73,37 @@ fn build_sysroot(
     target_triple: &str,
 ) -> Result<(), String> {
     std::env::set_current_dir("build_sysroot")
-        .map_err(|e| format!("Failed to go to `build_sysroot` directory: {e:?}"))?;
+        .map_err(|error| format!("Failed to go to `build_sysroot` directory: {:?}", error))?;
     // Cleanup for previous run
-    //     v Clean target dir except for build scripts and incremental cache
-   let _e = walk_dir(
+    // Clean target dir except for build scripts and incremental cache
+    let _ = walk_dir(
         "target",
         |dir: &Path| {
             for top in &["debug", "release"] {
-                let _e = fs::remove_dir_all(dir.join(top).join("build"));
-                let _e = fs::remove_dir_all(dir.join(top).join("deps"));
-                let _e = fs::remove_dir_all(dir.join(top).join("examples"));
-                let _e = fs::remove_dir_all(dir.join(top).join("native"));
+                let _ = fs::remove_dir_all(dir.join(top).join("build"));
+                let _ = fs::remove_dir_all(dir.join(top).join("deps"));
+                let _ = fs::remove_dir_all(dir.join(top).join("examples"));
+                let _ = fs::remove_dir_all(dir.join(top).join("native"));
 
-                let _e = walk_dir(
+                let _ = walk_dir(
                     dir.join(top),
                     |sub_dir: &Path| {
                         if sub_dir
                             .file_name()
-                            .map(|s| s.to_str().unwrap().starts_with("libsysroot"))
+                            .map(|filename| filename.to_str().unwrap().starts_with("libsysroot"))
                             .unwrap_or(false)
                         {
-                            let _e = fs::remove_dir_all(sub_dir);
+                            let _ = fs::remove_dir_all(sub_dir);
                         }
                         Ok(())
                     },
                     |file: &Path| {
                         if file
                             .file_name()
-                            .map(|s| s.to_str().unwrap().starts_with("libsysroot"))
+                            .map(|filename| filename.to_str().unwrap().starts_with("libsysroot"))
                             .unwrap_or(false)
                         {
-                            let _e = fs::remove_file(file);
+                            let _ = fs::remove_file(file);
                         }
                         Ok(())
                     },
@@ -109,21 +114,21 @@ fn build_sysroot(
         |_| Ok(()),
     );
 
-    let _e = fs::remove_file("Cargo.lock");
-    let _e = fs::remove_file("test_target/Cargo.lock");
-    let _e = fs::remove_dir_all("sysroot");
+    let _ = fs::remove_file("Cargo.lock");
+    let _ = fs::remove_file("test_target/Cargo.lock");
+    let _ = fs::remove_dir_all("sysroot");
 
     // Builds libs
     let channel = if release_mode {
         let rustflags = env
-            .get(&"RUSTFLAGS".to_owned())
+            .get("RUSTFLAGS")
             .cloned()
             .unwrap_or_default();
         env.insert(
-            "RUSTFLAGS".to_owned(),
-            format!("{rustflags} -Zmir-opt-level=3"),
+            "RUSTFLAGS".to_string(),
+            format!("{} -Zmir-opt-level=3", rustflags),
         );
-        run_command_with_output(
+        run_command_with_output_and_env(
             &[
                 &"cargo",
                 &"build",
@@ -136,7 +141,7 @@ fn build_sysroot(
         )?;
         "release"
     } else {
-        run_command_with_output(
+        run_command_with_output_and_env(
             &[
                 &"cargo",
                 &"build",
@@ -152,12 +157,14 @@ fn build_sysroot(
     };
 
     // Copy files to sysroot
-    let sysroot_path = format!("sysroot/lib/rustlib/{target_triple}/lib/");
+    let sysroot_path = format!("sysroot/lib/rustlib/{}/lib/", target_triple);
     fs::create_dir_all(&sysroot_path)
-        .map_err(|e| format!("Failed to create directory `{sysroot_path}`: {e:?}"))?;
-    let copier = |d: &Path| run_command_with_output(&[&"cp", &"-r", &d, &sysroot_path], None, None);
+        .map_err(|error| format!("Failed to create directory `{}`: {:?}", sysroot_path, error))?;
+    let copier = |dir_to_copy: &Path| {
+        run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
+    };
     walk_dir(
-        &format!("target/{target_triple}/{channel}/deps"),
+        &format!("target/{}/{}/deps", target_triple, channel),
         copier,
         copier,
     )?;
@@ -169,21 +176,25 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
     let current_dir =
-        std::env::current_dir().map_err(|e| format!("`current_dir` failed: {e:?}"))?;
-    env.insert(
-        "RUST_COMPILER_RT_ROOT".to_owned(),
-        format!("{}", current_dir.join("llvm/compiler-rt").display()),
-    );
-    env.insert("LD_LIBRARY_PATH".to_owned(), args.gcc_path.clone());
-    env.insert("LIBRARY_PATH".to_owned(), args.gcc_path.clone());
+        std::env::current_dir().map_err(|error| format!("`current_dir` failed: {:?}", error))?;
+    if let Ok(rt_root) = std::env::var("RUST_COMPILER_RT_ROOT") {
+        env.insert("RUST_COMPILER_RT_ROOT".to_string(), rt_root);
+    } else {
+        env.insert(
+            "RUST_COMPILER_RT_ROOT".to_string(),
+            format!("{}", current_dir.join("llvm/compiler-rt").display()),
+        );
+    }
+    env.insert("LD_LIBRARY_PATH".to_string(), args.gcc_path.clone());
+    env.insert("LIBRARY_PATH".to_string(), args.gcc_path.clone());
 
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
     if args.codegen_release_channel {
         command.push(&"--release");
-        env.insert("CHANNEL".to_owned(), "release".to_owned());
-        env.insert("CARGO_INCREMENTAL".to_owned(), "1".to_owned());
+        env.insert("CHANNEL".to_string(), "release".to_string());
+        env.insert("CARGO_INCREMENTAL".to_string(), "1".to_string());
     } else {
-        env.insert("CHANNEL".to_owned(), "debug".to_owned());
+        env.insert("CHANNEL".to_string(), "debug".to_string());
     }
     let ref_features = args.features.iter().map(|s| s.as_str()).collect::<Vec<_>>();
     for feature in &ref_features {
@@ -194,10 +205,14 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     let config = set_config(&mut env, &[], Some(&args.gcc_path))?;
 
     // We voluntarily ignore the error.
-    let _e = fs::remove_dir_all("target/out");
+    let _ = fs::remove_dir_all("target/out");
     let gccjit_target = "target/out/gccjit";
-    fs::create_dir_all(gccjit_target)
-        .map_err(|e| format!("Failed to create directory `{gccjit_target}`: {e:?}"))?;
+    fs::create_dir_all(gccjit_target).map_err(|error| {
+        format!(
+            "Failed to create directory `{}`: {:?}",
+            gccjit_target, error
+        )
+    })?;
 
     println!("[BUILD] sysroot");
     build_sysroot(
@@ -210,7 +225,7 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
 
 pub fn run() -> Result<(), String> {
     let args = match BuildArg::new()? {
-        Some(a) => a,
+        Some(args) => args,
         None => return Ok(()),
     };
     build_codegen(&args)?;

@@ -80,6 +80,19 @@ pub fn run_command_with_env(
 pub fn run_command_with_output(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
+) -> Result<(), String> {
+    let exit_status = get_command_inner(input, cwd, None)
+        .spawn()
+        .map_err(|e| command_error(input, &cwd, e))?
+        .wait()
+        .map_err(|e| command_error(input, &cwd, e))?;
+    check_exit_status(input, cwd, exit_status)?;
+    Ok(())
+}
+
+pub fn run_command_with_output_and_env(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
     env: Option<&HashMap<String, String>>,
 ) -> Result<(), String> {
     let exit_status = get_command_inner(input, cwd, env)
@@ -111,7 +124,7 @@ pub fn cargo_install(to_install: &str) -> Result<(), String> {
         return Ok(());
     }
     // We voluntarily ignore this error.
-    if run_command_with_output(&[&"cargo", &"install", &to_install], None, None).is_err() {
+    if run_command_with_output(&[&"cargo", &"install", &to_install], None).is_err() {
         println!("Skipping installation of `{to_install}`");
     }
     Ok(())
@@ -122,11 +135,11 @@ pub fn get_os_name() -> Result<String, String> {
     let name = std::str::from_utf8(&output.stdout)
         .unwrap_or("")
         .trim()
-        .to_owned();
+        .to_string();
     if !name.is_empty() {
         Ok(name)
     } else {
-        Err(format!("Failed to retrieve the OS name"))
+        Err("Failed to retrieve the OS name".to_string())
     }
 }
 
@@ -138,14 +151,14 @@ pub fn get_rustc_host_triple() -> Result<String, String> {
         if !line.starts_with("host:") {
             continue;
         }
-        return Ok(line.split(':').nth(1).unwrap().trim().to_owned());
+        return Ok(line.split(':').nth(1).unwrap().trim().to_string());
     }
-    Err("Cannot find host triple".to_owned())
+    Err("Cannot find host triple".to_string())
 }
 
 pub fn get_gcc_path() -> Result<String, String> {
     let content = match fs::read_to_string("gcc_path") {
-        Ok(c) => c,
+        Ok(content) => content,
         Err(_) => {
             return Err(
                 "Please put the path to your custom build of libgccjit in the file \
@@ -156,15 +169,16 @@ pub fn get_gcc_path() -> Result<String, String> {
     };
     match content
         .split('\n')
-        .map(|l| l.trim())
-        .filter(|l| !l.is_empty())
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
         .next()
     {
         Some(gcc_path) => {
             let path = Path::new(gcc_path);
             if !path.exists() {
                 Err(format!(
-                    "Path `{gcc_path}` contained in the `gcc_path` file doesn't exist"
+                    "Path `{}` contained in the `gcc_path` file doesn't exist",
+                    gcc_path,
                 ))
             } else {
                 Ok(gcc_path.into())
@@ -182,8 +196,8 @@ pub struct CloneResult {
 pub fn git_clone(to_clone: &str, dest: Option<&Path>) -> Result<CloneResult, String> {
     let repo_name = to_clone.split('/').last().unwrap();
     let repo_name = match repo_name.strip_suffix(".git") {
-        Some(n) => n.to_owned(),
-        None => repo_name.to_owned(),
+        Some(n) => n.to_string(),
+        None => repo_name.to_string(),
     };
 
     let dest = dest
@@ -196,7 +210,7 @@ pub fn git_clone(to_clone: &str, dest: Option<&Path>) -> Result<CloneResult, Str
         });
     }
 
-    run_command_with_output(&[&"git", &"clone", &to_clone, &dest], None, None)?;
+    run_command_with_output(&[&"git", &"clone", &to_clone, &dest], None)?;
     Ok(CloneResult {
         ran_clone: true,
         repo_name,
@@ -210,11 +224,11 @@ where
     F: FnMut(&Path) -> Result<(), String>,
 {
     let dir = dir.as_ref();
-    for entry in
-        fs::read_dir(dir).map_err(|e| format!("Failed to read dir `{}`: {e:?}", dir.display()))?
+    for entry in fs::read_dir(dir)
+        .map_err(|error| format!("Failed to read dir `{}`: {:?}", dir.display(), error))?
     {
-        let entry =
-            entry.map_err(|e| format!("Failed to read entry in `{}`: {e:?}", dir.display()))?;
+        let entry = entry
+            .map_err(|error| format!("Failed to read entry in `{}`: {:?}", dir.display(), error))?;
         let entry_path = entry.path();
         if entry_path.is_dir() {
             dir_cb(&entry_path)?;

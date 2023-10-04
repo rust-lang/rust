@@ -7,7 +7,7 @@ use std::path::Path;
 fn prepare_libcore(sysroot_path: &Path) -> Result<(), String> {
     let rustc_path = match get_rustc_path() {
         Some(path) => path,
-        None => return Err("`rustc` path not found".to_owned()),
+        None => return Err("`rustc` path not found".to_string()),
     };
 
     let parent = match rustc_path.parent() {
@@ -18,27 +18,28 @@ fn prepare_libcore(sysroot_path: &Path) -> Result<(), String> {
     let rustlib_dir = parent
         .join("../lib/rustlib/src/rust")
         .canonicalize()
-        .map_err(|e| format!("Failed to canonicalize path: {e:?}"))?;
+        .map_err(|error| format!("Failed to canonicalize path: {:?}", error))?;
     if !rustlib_dir.is_dir() {
-        return Err("Please install `rust-src` component".to_owned());
+        return Err("Please install `rust-src` component".to_string());
     }
 
     let sysroot_dir = sysroot_path.join("sysroot_src");
     if sysroot_dir.is_dir() {
-        if let Err(e) = fs::remove_dir_all(&sysroot_dir) {
+        if let Err(error) = fs::remove_dir_all(&sysroot_dir) {
             return Err(format!(
                 "Failed to remove `{}`: {:?}",
                 sysroot_dir.display(),
-                e
+                error,
             ));
         }
     }
 
     let sysroot_library_dir = sysroot_dir.join("library");
-    fs::create_dir_all(&sysroot_library_dir).map_err(|e| {
+    fs::create_dir_all(&sysroot_library_dir).map_err(|error| {
         format!(
-            "Failed to create folder `{}`: {e:?}",
+            "Failed to create folder `{}`: {:?}",
             sysroot_library_dir.display(),
+            error,
         )
     })?;
 
@@ -90,8 +91,8 @@ fn prepare_libcore(sysroot_path: &Path) -> Result<(), String> {
     for file_path in patches {
         println!("[GIT] apply `{}`", file_path.display());
         let path = Path::new("../..").join(file_path);
-        run_command_with_output(&[&"git", &"apply", &path], Some(&sysroot_dir), None)?;
-        run_command_with_output(&[&"git", &"add", &"-A"], Some(&sysroot_dir), None)?;
+        run_command_with_output(&[&"git", &"apply", &path], Some(&sysroot_dir))?;
+        run_command_with_output(&[&"git", &"add", &"-A"], Some(&sysroot_dir))?;
         run_command_with_output(
             &[
                 &"git",
@@ -101,7 +102,6 @@ fn prepare_libcore(sysroot_path: &Path) -> Result<(), String> {
                 &format!("Patch {}", path.display()),
             ],
             Some(&sysroot_dir),
-            None,
         )?;
     }
     println!("Successfully prepared libcore for building");
@@ -139,12 +139,11 @@ where
         "crate_patches",
         |_| Ok(()),
         |file_path| {
-            let s = file_path.as_os_str().to_str().unwrap();
-            if s.contains(&filter) && s.ends_with(".patch") {
+            let patch = file_path.as_os_str().to_str().unwrap();
+            if patch.contains(&filter) && patch.ends_with(".patch") {
                 run_command_with_output(
                     &[&"git", &"am", &file_path.canonicalize().unwrap()],
                     Some(&repo_path),
-                    None,
                 )?;
             }
             Ok(())

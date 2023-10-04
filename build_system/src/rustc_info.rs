@@ -8,5 +8,5 @@ pub fn get_rustc_path() -> Option<PathBuf> {
     }
     run_command(&[&"rustup", &"which", &"rustc"], None)
         .ok()
-        .map(|out| Path::new(String::from_utf8(out.stdout).unwrap().trim()).to_owned())
+        .map(|out| Path::new(String::from_utf8(out.stdout).unwrap().trim()).to_path_buf())
 }
