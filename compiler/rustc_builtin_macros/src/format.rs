@@ -7,12 +7,12 @@ use rustc_ast::{
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
     FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
 };
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan, PResult, SingleLabelManySpans};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{Applicability, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
+use rustc_span::{BytePos, InnerSpan, Span};
 
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
@@ -616,7 +616,9 @@ fn report_missing_placeholders(
         .collect::<Vec<_>>();
 
     if !placeholders.is_empty() {
-        report_redundant_placeholders(&mut diag, &args, used, placeholders);
+        report_redundant_placeholders(ecx, fmt_span, &args, used, placeholders);
+        diag.cancel();
+        return;
     }
 
     // Used to ensure we only report translations for *one* kind of foreign format.
@@ -707,13 +709,16 @@ fn report_missing_placeholders(
 }
 
 fn report_redundant_placeholders(
-    diag: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+    ecx: &mut ExtCtxt<'_>,
+    fmt_span: Span,
     args: &FormatArguments,
     used: &[bool],
     placeholders: Vec<(Span, &str)>,
 ) {
+    let mut fmt_arg_indices = vec![];
     let mut args_spans = vec![];
-    let mut fmt_spans = FxIndexSet::default();
+    let mut fmt_spans = vec![];
+    let mut bindings = vec![];
 
     for (i, unnamed_arg) in args.unnamed_args().iter().enumerate().rev() {
         let Some(ty) = unnamed_arg.expr.to_ty() else { continue };
@@ -730,36 +735,39 @@ fn report_redundant_placeholders(
             .collect::<Vec<_>>();
 
         if !matching_placeholders.is_empty() {
+            fmt_arg_indices.push(i);
             args_spans.push(unnamed_arg.expr.span);
-            for placeholder in &matching_placeholders {
-                fmt_spans.insert(*placeholder);
+            for (span, binding) in &matching_placeholders {
+                if fmt_spans.contains(span) {
+                    continue;
+                }
+                fmt_spans.push(*span);
+                bindings.push(binding);
             }
         }
     }
 
     if !args_spans.is_empty() {
-        let mut multispan = MultiSpan::from(args_spans.clone());
+        let multispan = MultiSpan::from(fmt_spans);
+        let mut suggestion_spans = vec![];
 
-        let msg = if fmt_spans.len() > 1 {
-            "the formatting strings already captures the bindings \
-            directly, they don't need to be included in the argument list"
-        } else {
-            "the formatting string already captures the binding \
-            directly, it doesn't need to be included in the argument list"
-        };
+        for (arg_span, fmt_arg_idx) in args_spans.iter().zip(fmt_arg_indices.iter()) {
+            let span = if fmt_arg_idx + 1 == args.explicit_args().len() {
+                *arg_span
+            } else {
+                arg_span.until(args.explicit_args()[*fmt_arg_idx + 1].expr.span)
+            };
 
-        for (span, binding) in fmt_spans {
-            multispan.push_span_label(
-                *span,
-                format!("this formatting specifier is referencing the `{binding}` binding"),
-            );
+            suggestion_spans.push(span);
         }
 
-        for span in &args_spans {
-            multispan.push_span_label(*span, "this can be removed");
-        }
+        let mut diag = ecx.create_err(errors::FormatRedundantArgs {
+            fmt_span,
+            note: multispan,
+            n: args_spans.len(),
+            sugg: errors::FormatRedundantArgsSugg { spans: suggestion_spans },
+        });
 
-        diag.span_help(multispan, msg);
         diag.emit();
     }
 }

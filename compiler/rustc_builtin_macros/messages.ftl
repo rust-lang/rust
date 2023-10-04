@@ -139,6 +139,17 @@ builtin_macros_format_positional_after_named = positional arguments cannot follo
 
 builtin_macros_format_remove_raw_ident = remove the `r#`
 
+builtin_macros_format_redundant_args = redundant argument
+    .help = {$n ->
+        [one] the formatting string already captures the binding directly, it doesn't need to be included in the argument list
+        *[more] the formatting strings already captures the bindings directly, they don't need to be included in the argument list
+    }
+    .note = {$n ->
+        [one] the formatting specifier is referencing the binding already
+        *[more] the formatting specifiers are referencing the bindings already
+    }
+    .suggestion = this can be removed
+
 builtin_macros_format_requires_string = requires at least a format string argument
 
 builtin_macros_format_string_invalid = invalid format string: {$desc}
