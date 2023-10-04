@@ -268,7 +268,11 @@ pub unsafe fn _mm256_mul_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vaddsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_addsub_pd(a: __m256d, b: __m256d) -> __m256d {
-    addsubpd256(a, b)
+    let a = a.as_f64x4();
+    let b = b.as_f64x4();
+    let add = simd_add(a, b);
+    let sub = simd_sub(a, b);
+    simd_shuffle!(add, sub, [4, 1, 6, 3])
 }
 
 /// Alternatively adds and subtracts packed single-precision (32-bit)
@@ -280,7 +284,11 @@ pub unsafe fn _mm256_addsub_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vaddsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_addsub_ps(a: __m256, b: __m256) -> __m256 {
-    addsubps256(a, b)
+    let a = a.as_f32x8();
+    let b = b.as_f32x8();
+    let add = simd_add(a, b);
+    let sub = simd_sub(a, b);
+    simd_shuffle!(add, sub, [8, 1, 10, 3, 12, 5, 14, 7])
 }
 
 /// Subtracts packed double-precision (64-bit) floating-point elements in `b`
@@ -2906,10 +2914,6 @@ pub unsafe fn _mm256_cvtss_f32(a: __m256) -> f32 {
 // LLVM intrinsics used in the above functions
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.avx.addsub.pd.256"]
-    fn addsubpd256(a: __m256d, b: __m256d) -> __m256d;
-    #[link_name = "llvm.x86.avx.addsub.ps.256"]
-    fn addsubps256(a: __m256, b: __m256) -> __m256;
     #[link_name = "llvm.x86.avx.round.pd.256"]
     fn roundpd256(a: __m256d, b: i32) -> __m256d;
     #[link_name = "llvm.x86.avx.round.ps.256"]
