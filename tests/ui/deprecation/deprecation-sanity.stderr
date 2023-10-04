@@ -16,25 +16,25 @@ error[E0541]: unknown meta item 'reason'
 LL |     #[deprecated(since = "a", note = "a", reason)]
    |                                           ^^^^^^ expected one of `since`, `note`
 
-error[E0551]: incorrect meta item
+error[E0539]: incorrect meta item
   --> $DIR/deprecation-sanity.rs:7:31
    |
 LL |     #[deprecated(since = "a", note)]
    |                               ^^^^
 
-error[E0551]: incorrect meta item
+error[E0539]: incorrect meta item
   --> $DIR/deprecation-sanity.rs:10:18
    |
 LL |     #[deprecated(since, note = "a")]
    |                  ^^^^^
 
-error[E0551]: incorrect meta item
+error[E0539]: incorrect meta item
   --> $DIR/deprecation-sanity.rs:13:31
    |
 LL |     #[deprecated(since = "a", note(b))]
    |                               ^^^^^^^
 
-error[E0551]: incorrect meta item
+error[E0539]: incorrect meta item
   --> $DIR/deprecation-sanity.rs:16:18
    |
 LL |     #[deprecated(since(b), note = "a")]
@@ -70,5 +70,5 @@ LL | #[deprecated = "hello"]
 
 error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0538, E0541, E0551, E0565.
+Some errors have detailed explanations: E0538, E0539, E0541, E0565.
 For more information about an error, try `rustc --explain E0538`.
