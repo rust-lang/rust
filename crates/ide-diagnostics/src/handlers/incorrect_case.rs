@@ -113,6 +113,31 @@ fn some_fn() {
 }
 "#,
         );
+
+        check_fix(
+            r#"
+static S: i32 = M::A;
+
+mod $0M {
+    pub const A: i32 = 10;
+}
+
+mod other {
+    use crate::M::A;
+}
+"#,
+            r#"
+static S: i32 = m::A;
+
+mod m {
+    pub const A: i32 = 10;
+}
+
+mod other {
+    use crate::m::A;
+}
+"#,
+        );
     }
 
     #[test]
@@ -518,17 +543,20 @@ fn NonSnakeCaseName(some_var: u8) -> u8 {
 
 #[deny(nonstandard_style)]
 mod CheckNonstandardStyle {
+  //^^^^^^^^^^^^^^^^^^^^^ 💡 error: Module `CheckNonstandardStyle` should have snake_case name, e.g. `check_nonstandard_style`
     fn HiImABadFnName() {}
      //^^^^^^^^^^^^^^ 💡 error: Function `HiImABadFnName` should have snake_case name, e.g. `hi_im_abad_fn_name`
 }
 
 #[deny(warnings)]
 mod CheckBadStyle {
+  //^^^^^^^^^^^^^ 💡 error: Module `CheckBadStyle` should have snake_case name, e.g. `check_bad_style`
     struct fooo;
          //^^^^ 💡 error: Structure `fooo` should have CamelCase name, e.g. `Fooo`
 }
 
 mod F {
+  //^ 💡 warn: Module `F` should have snake_case name, e.g. `f`
     #![deny(non_snake_case)]
     fn CheckItWorksWithModAttr() {}
      //^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Function `CheckItWorksWithModAttr` should have snake_case name, e.g. `check_it_works_with_mod_attr`
@@ -648,5 +676,31 @@ enum E {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn module_name_inline() {
+        check_diagnostics(
+            r#"
+mod M {
+  //^ 💡 warn: Module `M` should have snake_case name, e.g. `m`
+    mod IncorrectCase {}
+      //^^^^^^^^^^^^^ 💡 warn: Module `IncorrectCase` should have snake_case name, e.g. `incorrect_case`
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn module_name_decl() {
+        check_diagnostics(
+            r#"
+//- /Foo.rs
+
+//- /main.rs
+mod Foo;
+  //^^^ 💡 warn: Module `Foo` should have snake_case name, e.g. `foo`
+"#,
+        )
     }
 }
