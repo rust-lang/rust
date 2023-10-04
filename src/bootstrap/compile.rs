@@ -167,12 +167,14 @@ impl Step for Std {
                 .rustc_snapshot_sysroot()
                 .join("lib")
                 .join("rustlib")
-                .join(&compiler.host.triple)
+                .join(compiler.host.triple)
                 .join("bin");
-            let target_sysroot_bin =
-                builder.sysroot_libdir(compiler, target).parent().unwrap().join("bin");
-            t!(fs::create_dir_all(&target_sysroot_bin));
-            builder.cp_r(&src_sysroot_bin, &target_sysroot_bin);
+            if src_sysroot_bin.exists() {
+                let target_sysroot_bin =
+                    builder.sysroot_libdir(compiler, target).parent().unwrap().join("bin");
+                t!(fs::create_dir_all(&target_sysroot_bin));
+                builder.cp_r(&src_sysroot_bin, &target_sysroot_bin);
+            }
         }
 
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
