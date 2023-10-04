@@ -511,7 +511,8 @@ pub unsafe fn _mm256_blend_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vblendvpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
-    vblendvpd(a, b, c)
+    let mask: i64x4 = simd_lt(transmute::<_, i64x4>(c), i64x4::splat(0));
+    transmute(simd_select(mask, b.as_f64x4(), a.as_f64x4()))
 }
 
 /// Blends packed single-precision (32-bit) floating-point elements from
@@ -2914,8 +2915,6 @@ extern "C" {
     fn roundps256(a: __m256, b: i32) -> __m256;
     #[link_name = "llvm.x86.avx.sqrt.ps.256"]
     fn sqrtps256(a: __m256) -> __m256;
-    #[link_name = "llvm.x86.avx.blendv.pd.256"]
-    fn vblendvpd(a: __m256d, b: __m256d, c: __m256d) -> __m256d;
     #[link_name = "llvm.x86.avx.blendv.ps.256"]
     fn vblendvps(a: __m256, b: __m256, c: __m256) -> __m256;
     #[link_name = "llvm.x86.avx.dp.ps.256"]
