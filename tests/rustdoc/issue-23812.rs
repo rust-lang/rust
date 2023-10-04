@@ -1,3 +1,5 @@
+#![crate_name="issue_23812"]
+
 macro_rules! doc {
     (#[$outer:meta] mod $i:ident { #![$inner:meta] }) =>
     (

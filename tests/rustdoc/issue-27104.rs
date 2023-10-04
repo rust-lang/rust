@@ -2,6 +2,8 @@
 // aux-build:empty.rs
 // ignore-cross-compile
 
+#![crate_name="issue_27104"]
+
 // @has issue_27104/index.html
 // @!hasraw - 'extern crate std'
 // @!hasraw - 'use std::prelude::'

@@ -1,3 +1,5 @@
+#![crate_name="issue_27862"]
+
 /// Tests  | Table
 /// ------|-------------
 /// t = b | id = \|x\| x

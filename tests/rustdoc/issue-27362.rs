@@ -1,6 +1,8 @@
 // aux-build:issue-27362-aux.rs
 // ignore-cross-compile
 
+#![crate_name="issue_27362"]
+
 extern crate issue_27362_aux;
 
 pub use issue_27362_aux::*;

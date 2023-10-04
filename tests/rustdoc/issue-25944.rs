@@ -1,5 +1,7 @@
 // compile-flags:--test
 
+#![crate_name="issue_25944"]
+
 /// ```
 /// let a = r#"
 /// foo

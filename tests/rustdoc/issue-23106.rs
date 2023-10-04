@@ -1,5 +1,7 @@
 // compile-flags:--test
 
+#![crate_name="issue_23106"]
+
 /// ```
 /// #
 /// ```

@@ -2,6 +2,8 @@
 #![feature(rustdoc_internals)]
 #![no_std]
 
+#![crate_name="issue_23511"]
+
 pub mod str {
     #![rustc_doc_primitive = "str"]
 

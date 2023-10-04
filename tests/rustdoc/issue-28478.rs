@@ -1,3 +1,5 @@
+#![crate_name="issue_28478"]
+
 #![feature(associated_type_defaults)]
 
 // @has issue_28478/trait.Bar.html

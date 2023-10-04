@@ -1,3 +1,5 @@
+#![crate_name="issue_21474"]
+
 pub use inner::*;
 
 mod inner {

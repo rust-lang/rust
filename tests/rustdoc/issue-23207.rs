@@ -2,6 +2,8 @@
 // aux-build:issue-23207-2.rs
 // ignore-cross-compile
 
+#![crate_name="issue_23207"]
+
 extern crate issue_23207_2;
 
 // @has issue_23207/fmt/index.html

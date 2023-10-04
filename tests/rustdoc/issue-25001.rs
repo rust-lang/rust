@@ -1,3 +1,5 @@
+#![crate_name="issue_25001"]
+
 // @has issue_25001/struct.Foo.html
 pub struct Foo<T>(T);
 
