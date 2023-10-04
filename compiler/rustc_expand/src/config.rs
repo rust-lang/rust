@@ -58,21 +58,28 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
     let mut edition_enabled_features = FxHashMap::default();
     let crate_edition = sess.edition();
 
+    // Enable edition umbrella feature-gates based on the crate edition.
+    // - enable `rust_2015_preview` always
+    // - enable `rust_2018_preview` if the crate edition is 2018 or higher
+    // - enable `rust_2021_preview` if the crate edition is 2021 or higher
+    // - etc.
     for &edition in ALL_EDITIONS {
         if edition <= crate_edition {
-            // The `crate_edition` implies its respective umbrella feature-gate
-            // (i.e., `#![feature(rust_20XX_preview)]` isn't needed on edition 20XX).
             edition_enabled_features.insert(edition.feature_name(), edition);
         }
     }
 
+    // Enable edition-dependent features based on the crate edition.
+    // - E.g. `test_2018_feature` if the crate edition is 2018 or higher
     for feature in active_features_up_to(crate_edition) {
         feature.set(&mut features);
         edition_enabled_features.insert(feature.name, crate_edition);
     }
 
-    // Process the edition umbrella feature-gates first, to ensure
-    // `edition_enabled_features` is completed before it's queried.
+    // Enable edition umbrella feature-gates that are declared in the code. If
+    // present, enable edition-specific features based on that.
+    // - E.g. enable `test_2018_feature` if the crate edition is 2015 but
+    //   `rust_2018_preview` is present
     for attr in krate_attrs {
         if !attr.has_name(sym::feature) {
             continue;
@@ -105,6 +112,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
         }
     }
 
+    // Process all features declared in the code.
     for attr in krate_attrs {
         if !attr.has_name(sym::feature) {
             continue;
@@ -136,6 +144,13 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 }
             };
 
+            // If the declared feature is edition-specific and already enabled
+            // due to the crate edition or a declared edition umbrella
+            // feature-gate, give a warning.
+            // - E.g. warn if `test_2018_feature` is declared when the crate
+            //   edition is 2018 or higher
+            // - E.g. warn if `test_2018_feature` is declared when
+            //   `rust_2018_preview` or higher is declared.
             if let Some(&edition) = edition_enabled_features.get(&name) {
                 sess.emit_warning(FeatureIncludedInEdition {
                     span: mi.span(),
@@ -145,11 +160,14 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 continue;
             }
 
+            // If the declared feature is an edition umbrella feature-gate,
+            // ignore it, because it was already handled above.
+            // - E.g. `rust_20XX_preview`
             if ALL_EDITIONS.iter().any(|e| name == e.feature_name()) {
-                // Handled in the separate loop above.
                 continue;
             }
 
+            // If the declared feature is removed, issue an error.
             let removed = REMOVED_FEATURES.iter().find(|f| name == f.name);
             let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.name);
             if let Some(Feature { state, .. }) = removed.or(stable_removed) {
@@ -161,6 +179,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 }
             }
 
+            // If the declared feature is stable, record it.
             if let Some(Feature { since, .. }) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
                 let since = Some(Symbol::intern(since));
                 features.declared_lang_features.push((name, mi.span(), since));
@@ -168,6 +187,9 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 continue;
             }
 
+            // If `-Z allow-features` is used and the declared feature is
+            // unstable and not also listed as one of the allowed features,
+            // issue an error.
             if let Some(allowed) = sess.opts.unstable_opts.allow_features.as_ref() {
                 if allowed.iter().all(|f| name.as_str() != f) {
                     sess.emit_err(FeatureNotAllowed { span: mi.span(), name });
@@ -175,6 +197,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 }
             }
 
+            // If the declared feature is unstable, record it.
             if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.name) {
                 f.set(&mut features);
                 features.declared_lang_features.push((name, mi.span(), None));
@@ -182,6 +205,8 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 continue;
             }
 
+            // Otherwise, the feature is unknown. Record it at a lib feature.
+            // It will be checked later.
             features.declared_lib_features.push((name, mi.span()));
             features.active_features.insert(name);
         }
