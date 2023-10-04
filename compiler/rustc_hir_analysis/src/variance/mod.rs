@@ -192,5 +192,5 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
             }
         }
     }
-    tcx.arena.alloc_from_iter(collector.variances.into_iter())
+    tcx.arena.alloc_from_iter(collector.variances)
 }

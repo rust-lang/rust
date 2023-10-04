@@ -316,7 +316,7 @@ fn vtable_entries<'tcx>(
         dump_vtable_entries(tcx, sp, trait_ref, &entries);
     }
 
-    tcx.arena.alloc_from_iter(entries.into_iter())
+    tcx.arena.alloc_from_iter(entries)
 }
 
 /// Find slot base for trait methods within vtable entries of another trait

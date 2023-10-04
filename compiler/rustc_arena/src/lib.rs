@@ -15,7 +15,6 @@
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
-#![feature(min_specialization)]
 #![feature(decl_macro)]
 #![feature(pointer_byte_offsets)]
 #![feature(rustc_attrs)]
@@ -42,23 +41,6 @@ use std::{cmp, intrinsics};
 #[cold]
 fn outline<F: FnOnce() -> R, R>(f: F) -> R {
     f()
-}
-
-/// An arena that can hold objects of only one type.
-pub struct TypedArena<T> {
-    /// A pointer to the next object to be allocated.
-    ptr: Cell<*mut T>,
-
-    /// A pointer to the end of the allocated area. When this pointer is
-    /// reached, a new chunk is allocated.
-    end: Cell<*mut T>,
-
-    /// A vector of arena chunks.
-    chunks: RefCell<Vec<ArenaChunk<T>>>,
-
-    /// Marker indicating that dropping the arena causes its owned
-    /// instances of `T` to be dropped.
-    _own: PhantomData<T>,
 }
 
 struct ArenaChunk<T = u8> {
@@ -130,6 +112,23 @@ impl<T> ArenaChunk<T> {
 const PAGE: usize = 4096;
 const HUGE_PAGE: usize = 2 * 1024 * 1024;
 
+/// An arena that can hold objects of only one type.
+pub struct TypedArena<T> {
+    /// A pointer to the next object to be allocated.
+    ptr: Cell<*mut T>,
+
+    /// A pointer to the end of the allocated area. When this pointer is
+    /// reached, a new chunk is allocated.
+    end: Cell<*mut T>,
+
+    /// A vector of arena chunks.
+    chunks: RefCell<Vec<ArenaChunk<T>>>,
+
+    /// Marker indicating that dropping the arena causes its owned
+    /// instances of `T` to be dropped.
+    _own: PhantomData<T>,
+}
+
 impl<T> Default for TypedArena<T> {
     /// Creates a new `TypedArena`.
     fn default() -> TypedArena<T> {
@@ -140,77 +139,6 @@ impl<T> Default for TypedArena<T> {
             end: Cell::new(ptr::null_mut()),
             chunks: Default::default(),
             _own: PhantomData,
-        }
-    }
-}
-
-trait IterExt<T> {
-    fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T];
-}
-
-impl<I, T> IterExt<T> for I
-where
-    I: IntoIterator<Item = T>,
-{
-    // This default collects into a `SmallVec` and then allocates by copying
-    // from it. The specializations below for types like `Vec` are more
-    // efficient, copying directly without the intermediate collecting step.
-    // This default could be made more efficient, like
-    // `DroplessArena::alloc_from_iter`, but it's not hot enough to bother.
-    #[inline]
-    default fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
-        let vec: SmallVec<[_; 8]> = self.into_iter().collect();
-        vec.alloc_from_iter(arena)
-    }
-}
-
-impl<T, const N: usize> IterExt<T> for std::array::IntoIter<T, N> {
-    #[inline]
-    fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
-        let len = self.len();
-        if len == 0 {
-            return &mut [];
-        }
-        // Move the content to the arena by copying and then forgetting it.
-        let start_ptr = arena.alloc_raw_slice(len);
-        unsafe {
-            self.as_slice().as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            mem::forget(self);
-            slice::from_raw_parts_mut(start_ptr, len)
-        }
-    }
-}
-
-impl<T> IterExt<T> for Vec<T> {
-    #[inline]
-    fn alloc_from_iter(mut self, arena: &TypedArena<T>) -> &mut [T] {
-        let len = self.len();
-        if len == 0 {
-            return &mut [];
-        }
-        // Move the content to the arena by copying and then forgetting it.
-        let start_ptr = arena.alloc_raw_slice(len);
-        unsafe {
-            self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            self.set_len(0);
-            slice::from_raw_parts_mut(start_ptr, len)
-        }
-    }
-}
-
-impl<A: smallvec::Array> IterExt<A::Item> for SmallVec<A> {
-    #[inline]
-    fn alloc_from_iter(mut self, arena: &TypedArena<A::Item>) -> &mut [A::Item] {
-        let len = self.len();
-        if len == 0 {
-            return &mut [];
-        }
-        // Move the content to the arena by copying and then forgetting it.
-        let start_ptr = arena.alloc_raw_slice(len);
-        unsafe {
-            self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            self.set_len(0);
-            slice::from_raw_parts_mut(start_ptr, len)
         }
     }
 }
@@ -270,8 +198,35 @@ impl<T> TypedArena<T> {
 
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        // This implementation is entirely separate to
+        // `DroplessIterator::alloc_from_iter`, even though conceptually they
+        // are the same.
+        //
+        // `DroplessIterator` (in the fast case) writes elements from the
+        // iterator one at a time into the allocated memory. That's easy
+        // because the elements don't implement `Drop`. But for `TypedArena`
+        // they do implement `Drop`, which means that if the iterator panics we
+        // could end up with some allocated-but-uninitialized elements, which
+        // will then cause UB in `TypedArena::drop`.
+        //
+        // Instead we use an approach where any iterator panic will occur
+        // before the memory is allocated. This function is much less hot than
+        // `DroplessArena::alloc_from_iter`, so it doesn't need to be
+        // hyper-optimized.
         assert!(mem::size_of::<T>() != 0);
-        iter.alloc_from_iter(self)
+
+        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
+        if vec.is_empty() {
+            return &mut [];
+        }
+        // Move the content to the arena by copying and then forgetting it.
+        let len = vec.len();
+        let start_ptr = self.alloc_raw_slice(len);
+        unsafe {
+            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            vec.set_len(0);
+            slice::from_raw_parts_mut(start_ptr, len)
+        }
     }
 
     /// Grows the arena.
