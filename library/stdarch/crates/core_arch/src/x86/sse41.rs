@@ -136,7 +136,11 @@ pub unsafe fn _mm_blendv_ps(a: __m128, b: __m128, mask: __m128) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blend_pd<const IMM2: i32>(a: __m128d, b: __m128d) -> __m128d {
     static_assert_uimm_bits!(IMM2, 2);
-    blendpd(a, b, IMM2 as u8)
+    transmute::<f64x2, _>(simd_shuffle!(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        [[0, 2][IMM2 as usize & 1], [1, 3][(IMM2 >> 1) as usize & 1]]
+    ))
 }
 
 /// Blend packed single-precision (32-bit) floating-point elements from `a`
@@ -150,7 +154,16 @@ pub unsafe fn _mm_blend_pd<const IMM2: i32>(a: __m128d, b: __m128d) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(IMM4, 4);
-    blendps(a, b, IMM4 as u8)
+    transmute::<f32x4, _>(simd_shuffle!(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        [
+            [0, 4][IMM4 as usize & 1],
+            [1, 5][(IMM4 >> 1) as usize & 1],
+            [2, 6][(IMM4 >> 2) as usize & 1],
+            [3, 7][(IMM4 >> 3) as usize & 1],
+        ]
+    ))
 }
 
 /// Extracts a single-precision (32-bit) floating-point element from `a`,
@@ -1139,10 +1152,6 @@ pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.sse41.blendpd"]
-    fn blendpd(a: __m128d, b: __m128d, imm2: u8) -> __m128d;
-    #[link_name = "llvm.x86.sse41.blendps"]
-    fn blendps(a: __m128, b: __m128, imm4: u8) -> __m128;
     #[link_name = "llvm.x86.sse41.insertps"]
     fn insertps(a: __m128, b: __m128, imm8: u8) -> __m128;
     #[link_name = "llvm.x86.sse41.packusdw"]
