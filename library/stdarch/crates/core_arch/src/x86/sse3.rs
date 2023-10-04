@@ -1,7 +1,7 @@
 //! Streaming SIMD Extensions 3 (SSE3)
 
 use crate::{
-    core_arch::{simd::*, simd_llvm::simd_shuffle, x86::*},
+    core_arch::{simd::*, simd_llvm::*, x86::*},
     mem::transmute,
 };
 
@@ -17,7 +17,11 @@ use stdarch_test::assert_instr;
 #[cfg_attr(test, assert_instr(addsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_addsub_ps(a: __m128, b: __m128) -> __m128 {
-    addsubps(a, b)
+    let a = a.as_f32x4();
+    let b = b.as_f32x4();
+    let add = simd_add(a, b);
+    let sub = simd_sub(a, b);
+    simd_shuffle!(add, sub, [4, 1, 6, 3])
 }
 
 /// Alternatively add and subtract packed double-precision (64-bit)
@@ -29,7 +33,11 @@ pub unsafe fn _mm_addsub_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(addsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_addsub_pd(a: __m128d, b: __m128d) -> __m128d {
-    addsubpd(a, b)
+    let a = a.as_f64x2();
+    let b = b.as_f64x2();
+    let add = simd_add(a, b);
+    let sub = simd_sub(a, b);
+    simd_shuffle!(add, sub, [2, 1])
 }
 
 /// Horizontally adds adjacent pairs of double-precision (64-bit)
@@ -143,10 +151,6 @@ pub unsafe fn _mm_moveldup_ps(a: __m128) -> __m128 {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.sse3.addsub.ps"]
-    fn addsubps(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse3.addsub.pd"]
-    fn addsubpd(a: __m128d, b: __m128d) -> __m128d;
     #[link_name = "llvm.x86.sse3.hadd.pd"]
     fn haddpd(a: __m128d, b: __m128d) -> __m128d;
     #[link_name = "llvm.x86.sse3.hadd.ps"]
