@@ -21,6 +21,8 @@ name: CI
       - auto
       - try
       - try-perf
+      - automation/bors/try
+      - automation/bors/try-merge
       - master
   pull_request:
     branches:
