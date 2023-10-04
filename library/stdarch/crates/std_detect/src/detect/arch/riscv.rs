@@ -24,19 +24,39 @@ features! {
     ///
     /// The supported ratified RISC-V instruction sets are as follows:
     ///
+    /// * RV32E: `"rv32e"`
     /// * RV32I: `"rv32i"`
+    /// * RV64I: `"rv64i"`
+    /// * A: `"a"`
+    /// * B: `"b"`
+    ///   * Zba: `"zba"`
+    ///   * Zbb: `"zbb"`
+    ///   * Zbc: `"zbc"`
+    ///   * Zbs: `"zbs"`
+    /// * C: `"c"`
+    /// * D: `"d"`
+    /// * F: `"f"`
+    /// * M: `"m"`
+    /// * Q: `"q"`
+    /// * V: `"v"`
+    /// * Zicntr: `"zicntr"`
+    /// * Zicsr: `"zicsr"`
     /// * Zifencei: `"zifencei"`
     /// * Zihintpause: `"zihintpause"`
-    /// * RV64I: `"rv64i"`
-    /// * M: `"m"`
-    /// * A: `"a"`
-    /// * Zicsr: `"zicsr"`
-    /// * Zicntr: `"zicntr"`
     /// * Zihpm: `"zihpm"`
-    /// * F: `"f"`
-    /// * D: `"d"`
-    /// * Q: `"q"`
-    /// * C: `"c"`
+    /// * Zk: `"zk"`
+    ///   * Zbkb: `"zbkb"`
+    ///   * Zbkc: `"zbkc"`
+    ///   * Zbkx: `"zbkx"`
+    ///   * Zkn: `"zkn"`
+    ///     * Zknd: `"zknd"`
+    ///     * Zkne: `"zkne"`
+    ///     * Zknh: `"zknh"`
+    ///   * Zkr: `"zkr"`
+    ///   * Zks: `"zks"`
+    ///     * Zksed: `"zksed"`
+    ///     * Zksh: `"zksh"`
+    ///   * Zkt: `"zkt"`
     ///
     /// There's also bases and extensions marked as standard instruction set,
     /// but they are in frozen or draft state. These instruction sets are also
@@ -44,6 +64,8 @@ features! {
     ///
     /// Frozen RISC-V instruction sets:
     ///
+    /// * Zfh: `"zfh"`
+    /// * Zfhmin: `"zfhmin"`
     /// * Zfinx: `"zfinx"`
     /// * Zdinx: `"zdinx"`
     /// * Zhinx: `"zhinx"`
@@ -52,14 +74,9 @@ features! {
     ///
     /// Draft RISC-V instruction sets:
     ///
-    /// * RV32E: `"rv32e"`
     /// * RV128I: `"rv128i"`
-    /// * Zfh: `"zfh"`
-    /// * Zfhmin: `"zfhmin"`
-    /// * B: `"b"`
     /// * J: `"j"`
     /// * P: `"p"`
-    /// * V: `"v"`
     /// * Zam: `"zam"`
     ///
     /// Defined by Privileged Specification:
@@ -70,36 +87,8 @@ features! {
     /// * Svinval: `"svinval"`
     /// * Hypervisor: `"h"`
     ///
-    /// # RISC-V Bit-Manipulation ISA-extensions
-    ///
-    /// This document defined the following extensions:
-    ///
-    /// * Zba: `"zba"`
-    /// * Zbb: `"zbb"`
-    /// * Zbc: `"zbc"`
-    /// * Zbs: `"zbs"`
-    ///
-    /// # RISC-V Cryptography Extensions
-    ///
-    /// These extensions are defined in Volume I, Scalar & Entropy Source
-    /// Instructions:
-    ///
-    /// * Zbkb: `"zbkb"`
-    /// * Zbkc: `"zbkc"`
-    /// * Zbkx: `"zbkx"`
-    /// * Zknd: `"zknd"`
-    /// * Zkne: `"zkne"`
-    /// * Zknh: `"zknh"`
-    /// * Zksed: `"zksed"`
-    /// * Zksh: `"zksh"`
-    /// * Zkr: `"zkr"`
-    /// * Zkn: `"zkn"`
-    /// * Zks: `"zks"`
-    /// * Zk: `"zk"`
-    /// * Zkt: `"zkt"`
-    ///
     /// [ISA manual]: https://github.com/riscv/riscv-isa-manual/
-    #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")]
+    #[stable(feature = "riscv_ratified", since = "1.76.0")]
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] rv32i: "rv32i";
     /// RV32I Base Integer Instruction Set
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zifencei: "zifencei";
@@ -108,9 +97,9 @@ features! {
     /// "Zihintpause" Pause Hint
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] rv64i: "rv64i";
     /// RV64I Base Integer Instruction Set
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] m: "m";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] m: "m";
     /// "M" Standard Extension for Integer Multiplication and Division
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] a: "a";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] a: "a";
     /// "A" Standard Extension for Atomic Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicsr: "zicsr";
     /// "Zicsr", Control and Status Register (CSR) Instructions
@@ -124,7 +113,7 @@ features! {
     /// "D" Standard Extension for Double-Precision Floating-Point
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] q: "q";
     /// "Q" Standard Extension for Quad-Precision Floating-Point
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] c: "c";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] c: "c";
     /// "C" Standard Extension for Compressed Instructions
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfinx: "zfinx";
@@ -146,8 +135,6 @@ features! {
     /// "Zfh" Standard Extension for 16-Bit Half-Precision Floating-Point
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfhmin: "zfhmin";
     /// "Zfhmin" Standard Extension for Minimal Half-Precision Floating-Point Support
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] b: "b";
-    /// "B" Standard Extension for Bit Manipulation
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] j: "j";
     /// "J" Standard Extension for Dynamically Translated Languages
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] p: "p";
@@ -168,39 +155,39 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] h: "h";
     /// Hypervisor Extension
 
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zba: "zba";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zba: "zba";
     /// "Zba" Standard Extension for Address Generation Instructions
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zbb: "zbb";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zbb: "zbb";
     /// "Zbb" Standard Extension for Basic Bit-Manipulation
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zbc: "zbc";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zbc: "zbc";
     /// "Zbc" Standard Extension for Carry-less Multiplication
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zbs: "zbs";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zbs: "zbs";
     /// "Zbs" Standard Extension for Single-Bit instructions
 
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zbkb: "zbkb";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zbkb: "zbkb";
     /// "Zbkb" Standard Extension for Bitmanip instructions for Cryptography
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zbkc: "zbkc";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zbkc: "zbkc";
     /// "Zbkc" Standard Extension for Carry-less multiply instructions
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zbkx: "zbkx";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zbkx: "zbkx";
     /// "Zbkx" Standard Extension for Crossbar permutation instructions
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zknd: "zknd";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zknd: "zknd";
     /// "Zknd" Standard Extension for NIST Suite: AES Decryption
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zkne: "zkne";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zkne: "zkne";
     /// "Zkne" Standard Extension for NIST Suite: AES Encryption
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zknh: "zknh";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zknh: "zknh";
     /// "Zknh" Standard Extension for NIST Suite: Hash Function Instructions
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zksed: "zksed";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zksed: "zksed";
     /// "Zksed" Standard Extension for ShangMi Suite: SM4 Block Cipher Instructions
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zksh: "zksh";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zksh: "zksh";
     /// "Zksh" Standard Extension for ShangMi Suite: SM3 Hash Function Instructions
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zkr: "zkr";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zkr: "zkr";
     /// "Zkr" Standard Extension for Entropy Source Extension
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zkn: "zkn";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zkn: "zkn";
     /// "Zkn" Standard Extension for NIST Algorithm Suite
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zks: "zks";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zks: "zks";
     /// "Zks" Standard Extension for ShangMi Algorithm Suite
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zk: "zk";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zk: "zk";
     /// "Zk" Standard Extension for Standard scalar cryptography extension
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zkt: "zkt";
+    @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zkt: "zkt";
     /// "Zkt" Standard Extension for Data Independent Execution Latency
 }
