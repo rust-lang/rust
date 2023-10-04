@@ -37,7 +37,7 @@ declare_clippy_lint! {
     ///   // no redefinition with the same name
     /// }
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub REDUNDANT_LOCALS,
     correctness,
     "redundant redefinition of a local binding"

@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// # let x = 1.0f32;
     /// if x.is_infinite() {}
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub MANUAL_IS_INFINITE,
     style,
     "use dedicated method to check if a float is infinite"
@@ -51,7 +51,7 @@ declare_clippy_lint! {
     /// if x.is_finite() {}
     /// if x.is_finite() {}
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub MANUAL_IS_FINITE,
     style,
     "use dedicated method to check if a float is finite"
