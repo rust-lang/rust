@@ -2335,17 +2335,14 @@ impl<'test> TestCx<'test> {
         rustc.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
         rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
 
-        // #[cfg(not(bootstrap))]: After beta bump, this should **always** run.
-        if !(self.config.stage_id.starts_with("stage1-") && self.config.suite == "ui-fulldeps") {
-            // Hide Cargo dependency sources from ui tests to make sure the error message doesn't
-            // change depending on whether $CARGO_HOME is remapped or not. If this is not present,
-            // when $CARGO_HOME is remapped the source won't be shown, and when it's not remapped the
-            // source will be shown, causing a blessing hell.
-            rustc.arg("-Z").arg(format!(
-                "ignore-directory-in-diagnostics-source-blocks={}",
-                home::cargo_home().expect("failed to find cargo home").to_str().unwrap()
-            ));
-        }
+        // Hide Cargo dependency sources from ui tests to make sure the error message doesn't
+        // change depending on whether $CARGO_HOME is remapped or not. If this is not present,
+        // when $CARGO_HOME is remapped the source won't be shown, and when it's not remapped the
+        // source will be shown, causing a blessing hell.
+        rustc.arg("-Z").arg(format!(
+            "ignore-directory-in-diagnostics-source-blocks={}",
+            home::cargo_home().expect("failed to find cargo home").to_str().unwrap()
+        ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
