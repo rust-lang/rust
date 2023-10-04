@@ -2103,7 +2103,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // It doesn't make sense to talk about applicable impls if there are more than a
                 // handful of them. If there are a lot of them, but only a few of them have no type
                 // params, we only show those, as they are more likely to be useful/intended.
-                if ambiguities.len() > 20 {
+                if ambiguities.len() > 5 {
                     let infcx = self.infcx;
                     if !ambiguities.iter().all(|option| match option {
                         DefId(did) => infcx.fresh_args_for_item(DUMMY_SP, *did).is_empty(),
