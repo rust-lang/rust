@@ -2450,7 +2450,7 @@ pub unsafe fn _mm_setzero_pd() -> __m128d {
 #[cfg_attr(test, assert_instr(movmskpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movemask_pd(a: __m128d) -> i32 {
-    movmskpd(a)
+    simd_bitmask::<u64x2, u8>(transmute(a)).into()
 }
 
 /// Loads 128-bits (composed of 2 packed double-precision (64-bit)
@@ -2914,8 +2914,6 @@ extern "C" {
     fn ucomigesd(a: __m128d, b: __m128d) -> i32;
     #[link_name = "llvm.x86.sse2.ucomineq.sd"]
     fn ucomineqsd(a: __m128d, b: __m128d) -> i32;
-    #[link_name = "llvm.x86.sse2.movmsk.pd"]
-    fn movmskpd(a: __m128d) -> i32;
     #[link_name = "llvm.x86.sse2.cvtpd2dq"]
     fn cvtpd2dq(a: __m128d) -> i32x4;
     #[link_name = "llvm.x86.sse2.cvtsd2si"]

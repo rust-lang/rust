@@ -1081,7 +1081,7 @@ pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(movmskps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
-    movmskps(a)
+    simd_bitmask::<u32x4, u8>(transmute(a)).into()
 }
 
 /// Construct a `__m128` with the lowest element read from `p` and the other
@@ -1885,8 +1885,6 @@ extern "C" {
     fn maxss(a: __m128, b: __m128) -> __m128;
     #[link_name = "llvm.x86.sse.max.ps"]
     fn maxps(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse.movmsk.ps"]
-    fn movmskps(a: __m128) -> i32;
     #[link_name = "llvm.x86.sse.cmp.ps"]
     fn cmpps(a: __m128, b: __m128, imm8: i8) -> __m128;
     #[link_name = "llvm.x86.sse.comieq.ss"]
