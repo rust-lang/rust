@@ -16,18 +16,8 @@ print-type-size type: `std::mem::MaybeUninit<[u8; 8192]>`: 8192 bytes, alignment
 print-type-size     variant `MaybeUninit`: 8192 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 8192 bytes
-print-type-size type: `std::panic::Location<'_>`: 24 bytes, alignment: 8 bytes
-print-type-size     field `.file`: 16 bytes
-print-type-size     field `.line`: 4 bytes
-print-type-size     field `.col`: 4 bytes
-print-type-size type: `std::mem::ManuallyDrop<u8>`: 1 bytes, alignment: 1 bytes
-print-type-size     field `.value`: 1 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body@$DIR/async.rs:8:17: 8:19}>`: 1 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1 bytes
-print-type-size type: `std::mem::MaybeUninit<u8>`: 1 bytes, alignment: 1 bytes
-print-type-size     variant `MaybeUninit`: 1 bytes
-print-type-size         field `.uninit`: 0 bytes
-print-type-size         field `.value`: 1 bytes
 print-type-size type: `std::mem::MaybeUninit<{async fn body@$DIR/async.rs:8:17: 8:19}>`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 1 bytes
 print-type-size         field `.uninit`: 0 bytes

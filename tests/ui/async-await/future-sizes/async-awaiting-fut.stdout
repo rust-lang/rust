@@ -50,19 +50,9 @@ print-type-size     variant `Returned`: 1024 bytes
 print-type-size         upvar `.arg`: 1024 bytes
 print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         upvar `.arg`: 1024 bytes
-print-type-size type: `std::panic::Location<'_>`: 24 bytes, alignment: 8 bytes
-print-type-size     field `.file`: 16 bytes
-print-type-size     field `.line`: 4 bytes
-print-type-size     field `.col`: 4 bytes
 print-type-size type: `std::mem::ManuallyDrop<bool>`: 1 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1 bytes
-print-type-size type: `std::mem::ManuallyDrop<u8>`: 1 bytes, alignment: 1 bytes
-print-type-size     field `.value`: 1 bytes
 print-type-size type: `std::mem::MaybeUninit<bool>`: 1 bytes, alignment: 1 bytes
-print-type-size     variant `MaybeUninit`: 1 bytes
-print-type-size         field `.uninit`: 0 bytes
-print-type-size         field `.value`: 1 bytes
-print-type-size type: `std::mem::MaybeUninit<u8>`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 1 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 1 bytes

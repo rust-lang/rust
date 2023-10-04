@@ -1,4 +1,4 @@
-// compile-flags: -Z print-type-sizes --crate-type=lib
+// compile-flags: -Z print-type-sizes --crate-type=lib -Zmir-enable-passes=-CheckNiches
 // edition: 2021
 // build-pass
 // ignore-pass
