@@ -708,6 +708,8 @@ fn report_missing_placeholders(
     diag.emit();
 }
 
+/// This function detects and reports unused format!() arguments that are
+/// redundant due to implicit captures (e.g. `format!("{x}", x)`).
 fn report_redundant_format_arguments(
     ecx: &mut ExtCtxt<'_>,
     fmt_span: Span,
