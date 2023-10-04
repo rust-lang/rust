@@ -1001,11 +1001,16 @@ impl Step for PlainSourceTarball {
             channel::write_commit_info_file(&plain_dst_src, info);
         }
 
-        // If we're building from git sources, we need to vendor a complete distribution.
-        if builder.rust_info().is_managed_git_subrepository() {
-            // Ensure we have the submodules checked out.
-            builder.update_submodule(Path::new("src/tools/cargo"));
-            builder.update_submodule(Path::new("src/tools/rust-analyzer"));
+        // If we're building from git or tarball sources, we need to vendor
+        // a complete distribution.
+        if builder.rust_info().is_managed_git_subrepository()
+            || builder.rust_info().is_from_tarball()
+        {
+            if builder.rust_info().is_managed_git_subrepository() {
+                // Ensure we have the submodules checked out.
+                builder.update_submodule(Path::new("src/tools/cargo"));
+                builder.update_submodule(Path::new("src/tools/rust-analyzer"));
+            }
 
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
