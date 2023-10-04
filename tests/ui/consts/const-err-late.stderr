@@ -27,6 +27,8 @@ note: erroneous constant encountered
    |
 LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    |                ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

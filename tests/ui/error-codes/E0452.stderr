@@ -9,18 +9,24 @@ error[E0452]: malformed lint attribute input
    |
 LL | #![allow(foo = "")]
    |          ^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/E0452.rs:1:10
    |
 LL | #![allow(foo = "")]
    |          ^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/E0452.rs:1:10
    |
 LL | #![allow(foo = "")]
    |          ^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

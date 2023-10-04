@@ -13,6 +13,7 @@ LL | #[allow(deprecated)]
    |         ^^^^^^^^^^ overruled by previous forbid
    |
    = note: `forbid` lint level was set on command line
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

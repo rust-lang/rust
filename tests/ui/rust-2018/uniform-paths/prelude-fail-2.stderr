@@ -51,6 +51,7 @@ note: the tool module imported here
    |
 LL | use rustfmt as imported_rustfmt;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot use a tool module through an import
   --> $DIR/prelude-fail-2.rs:19:13
@@ -63,6 +64,7 @@ note: the tool module imported here
    |
 LL |     pub use rustfmt as imported_rustfmt;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 6 previous errors
 

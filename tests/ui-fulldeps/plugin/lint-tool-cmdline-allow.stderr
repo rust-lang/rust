@@ -8,6 +8,7 @@ warning: lint name `test_lint` is deprecated and may not have an effect in the f
    |
    = help: change it to clippy::test_lint
    = note: requested on the command line with `-A test_lint`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: item is named 'lintme'
   --> $DIR/lint-tool-cmdline-allow.rs:9:1
@@ -29,6 +30,7 @@ warning: lint name `test_lint` is deprecated and may not have an effect in the f
    |
    = help: change it to clippy::test_lint
    = note: requested on the command line with `-A test_lint`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 5 warnings emitted
 

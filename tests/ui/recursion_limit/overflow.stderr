@@ -13,6 +13,8 @@ LL | #![recursion_limit = "999999999999999999999999"]
    | ^^^^^^^^^^^^^^^^^^^^^--------------------------^
    |                      |
    |                      `limit` is too large
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

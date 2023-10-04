@@ -15,6 +15,7 @@ LL |     f: &id,
    |
    = note: expected trait `for<'a, 'b> Fn<(&'a Foo<'b>,)>`
               found trait `Fn<(&Foo<'_>,)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/rfc1623-2.rs:28:8

@@ -25,6 +25,7 @@ LL | trait A<T>: std::ops::Add<Self> + Sized {}
    |             ^^^^^^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
 LL | trait B<T>: A<T> {}
    |       - this trait cannot be made into an object...
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

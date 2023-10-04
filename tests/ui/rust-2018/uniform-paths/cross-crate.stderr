@@ -33,6 +33,7 @@ note: the tool module imported here
    |
 LL | use cross_crate::*;
    |     ^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

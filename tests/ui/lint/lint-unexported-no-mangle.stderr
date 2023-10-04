@@ -10,18 +10,22 @@ warning: lint `private_no_mangle_statics` has been removed: no longer a warning,
 warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
    |
    = note: requested on the command line with `-F private_no_mangle_fns`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: lint `private_no_mangle_statics` has been removed: no longer a warning, `#[no_mangle]` statics always exported
    |
    = note: requested on the command line with `-F private_no_mangle_statics`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
    |
    = note: requested on the command line with `-F private_no_mangle_fns`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: lint `private_no_mangle_statics` has been removed: no longer a warning, `#[no_mangle]` statics always exported
    |
    = note: requested on the command line with `-F private_no_mangle_statics`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: const items should never be `#[no_mangle]`
   --> $DIR/lint-unexported-no-mangle.rs:9:1

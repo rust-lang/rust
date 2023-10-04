@@ -9,6 +9,8 @@ error[E0433]: failed to resolve: global paths cannot start with `super`
    |
 LL |     use ::super::{S, Z};
    |           ^^^^^ global paths cannot start with `super`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0433]: failed to resolve: global paths cannot start with `super`
   --> $DIR/use-super-global-path.rs:11:15

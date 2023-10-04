@@ -131,6 +131,7 @@ help: the following changes may resolve your lifetime errors
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
   --> $DIR/normalization-2.rs:89:5
@@ -185,6 +186,7 @@ help: the following changes may resolve your lifetime errors
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
   --> $DIR/normalization-2.rs:117:5

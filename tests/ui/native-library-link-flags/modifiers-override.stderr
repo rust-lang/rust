@@ -21,6 +21,8 @@ error: overriding linking modifiers from command line is not supported
    |
 LL | extern "C" {}
    | ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

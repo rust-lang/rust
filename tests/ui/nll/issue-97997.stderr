@@ -15,6 +15,7 @@ LL |     <fn(&u8) as Foo>::ASSOC;
    |
    = note: `Foo` would have to be implemented for the type `for<'a> fn(&'a u8)`
    = note: ...but `Foo` is actually implemented for the type `fn(&'0 u8)`, for some specific lifetime `'0`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

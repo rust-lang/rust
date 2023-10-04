@@ -1,3 +1,5 @@
+// compile-flags: -Zdeduplicate-diagnostics=yes
+
 // This test of structural match checking enumerates the different kinds of
 // const definitions, collecting cases where the const pattern is rejected.
 //
@@ -76,9 +78,6 @@ fn main() {
     const REPEAT: [OND; 2] = [Some(NoDerive); 2];
     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
     //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-    //~| NOTE the traits must be derived
-    //~| NOTE StructuralEq.html for details
-    //~| ERROR must be annotated with `#[derive(PartialEq, Eq)]`
     //~| NOTE the traits must be derived
     //~| NOTE StructuralEq.html for details
 

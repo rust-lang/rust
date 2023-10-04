@@ -6,10 +6,12 @@ warning[E0602]: unknown lint: `foo_qux`
 warning[E0602]: unknown lint: `foo_qux`
    |
    = note: requested on the command line with `--force-warn foo_qux`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning[E0602]: unknown lint: `foo_qux`
    |
    = note: requested on the command line with `--force-warn foo_qux`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 3 warnings emitted
 
