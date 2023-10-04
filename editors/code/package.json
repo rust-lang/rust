@@ -371,6 +371,19 @@
                     ],
                     "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
                 },
+                "rust-analyzer.statusBar.clickAction": {
+                    "type": "string",
+                    "enum": [
+                        "stopServer",
+                        "openLogs"
+                    ],
+                    "enumDescriptions": [
+                        "Stop Server",
+                        "Open Logs"
+                    ],
+                    "default": "openLogs",
+                    "markdownDescription": "Action to run when clicking the extension status bar item."
+                },
                 "rust-analyzer.server.path": {
                     "type": [
                         "null",
