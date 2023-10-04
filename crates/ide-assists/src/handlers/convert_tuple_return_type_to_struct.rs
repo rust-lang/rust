@@ -129,16 +129,12 @@ fn replace_usages(
                 let pats = name
                     .syntax()
                     .ancestors()
-                    .nth(5)
-                    .and_then(node_to_pats)
-                    .or_else(|| {
-                        cov_mark::hit!(replace_method_usage);
-
-                        name.syntax()
-                            .parent()
-                            .filter(|node| ast::MethodCallExpr::can_cast(node.kind()))
-                            .and_then(|node| node.parent().and_then(node_to_pats))
+                    .find(|node| {
+                        ast::CallExpr::can_cast(node.kind())
+                            || ast::MethodCallExpr::can_cast(node.kind())
                     })
+                    .and_then(|node| node.parent())
+                    .and_then(node_to_pats)
                     .unwrap_or(Vec::new());
 
                 let tuple_pats = pats.iter().filter_map(|pat| match pat {
@@ -387,7 +383,6 @@ fn main() {
 
     #[test]
     fn method_usage() {
-        cov_mark::check!(replace_method_usage);
         check_assist(
             convert_tuple_return_type_to_struct,
             r#"
