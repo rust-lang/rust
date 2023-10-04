@@ -429,9 +429,6 @@ jobs:
           - name: test-various
             <<: *job-linux-8c
 
-          - name: wasm32
-            <<: *job-linux-8c
-
           - name: x86_64-gnu
             <<: *job-linux-4c
 
