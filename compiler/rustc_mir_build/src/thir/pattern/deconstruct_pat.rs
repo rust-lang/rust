@@ -859,6 +859,7 @@ impl<'tcx> Constructor<'tcx> {
 }
 
 /// Describes the set of all constructors for a type.
+#[derive(Debug)]
 pub(super) enum ConstructorSet {
     /// The type has a single constructor, e.g. `&T` or a struct.
     Single,
@@ -903,6 +904,7 @@ pub(super) enum ConstructorSet {
 /// - constructors in `present` and `missing` are split for the column; in other words, they are
 ///     either fully included in or disjoint from each constructor in the column. This avoids
 ///     non-trivial intersections like between `0..10` and `5..15`.
+#[derive(Debug)]
 struct SplitConstructorSet<'tcx> {
     present: SmallVec<[Constructor<'tcx>; 1]>,
     missing: Vec<Constructor<'tcx>>,
@@ -911,8 +913,8 @@ struct SplitConstructorSet<'tcx> {
 }
 
 impl ConstructorSet {
+    #[instrument(level = "debug", skip(cx), ret)]
     pub(super) fn for_ty<'p, 'tcx>(cx: &MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
-        debug!("ConstructorSet::for_ty({:?})", ty);
         let make_range =
             |start, end| IntRange::from_range(cx.tcx, start, end, ty, RangeEnd::Included);
         // This determines the set of all possible constructors for the type `ty`. For numbers,
@@ -1036,6 +1038,7 @@ impl ConstructorSet {
     /// This is the core logical operation of exhaustiveness checking. This analyzes a column a
     /// constructors to 1/ determine which constructors of the type (if any) are missing; 2/ split
     /// constructors to handle non-trivial intersections e.g. on ranges or slices.
+    #[instrument(level = "debug", skip(self, pcx, ctors), ret)]
     fn split<'a, 'tcx>(
         &self,
         pcx: &PatCtxt<'_, '_, 'tcx>,
@@ -1111,7 +1114,7 @@ impl ConstructorSet {
             }
             &ConstructorSet::Slice(array_len) => {
                 let seen_slices = seen.map(|c| c.as_slice().unwrap());
-                let base_slice = Slice { kind: VarLen(0, 0), array_len };
+                let base_slice = Slice::new(array_len, VarLen(0, 0));
                 for (seen, splitted_slice) in base_slice.split(seen_slices) {
                     let ctor = Slice(splitted_slice);
                     match seen {
@@ -1121,12 +1124,22 @@ impl ConstructorSet {
                 }
             }
             ConstructorSet::SliceOfEmpty => {
-                // Behaves essentially like `Single`.
-                let slice = Slice(Slice::new(None, FixedLen(0)));
-                if seen.next().is_none() {
-                    missing.push(slice);
-                } else {
-                    present.push(slice);
+                // This one is tricky because even though there's only one possible value of this
+                // type (namely `[]`), slice patterns of all lengths are allowed, they're just
+                // unreachable if length != 0.
+                // We still gather the seen constructors in `present`, but the only slice that can
+                // go in `missing` is `[]`.
+                let seen_slices = seen.map(|c| c.as_slice().unwrap());
+                let base_slice = Slice::new(None, VarLen(0, 0));
+                for (seen, splitted_slice) in base_slice.split(seen_slices) {
+                    let ctor = Slice(splitted_slice);
+                    match seen {
+                        Presence::Seen => present.push(ctor),
+                        Presence::Unseen if splitted_slice.arity() == 0 => {
+                            missing.push(Slice(Slice::new(None, FixedLen(0))))
+                        }
+                        Presence::Unseen => {}
+                    }
                 }
             }
             ConstructorSet::Unlistable => {
