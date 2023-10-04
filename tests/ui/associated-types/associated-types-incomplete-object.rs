@@ -21,11 +21,11 @@ pub fn main() {
     let a = &42isize as &dyn Foo<A=usize, B=char>;
 
     let b = &42isize as &dyn Foo<A=usize>;
-    //~^ ERROR the value of the associated type `B` (from trait `Foo`) must be specified
+    //~^ ERROR the value of the associated type `B` in `Foo` must be specified
 
     let c = &42isize as &dyn Foo<B=char>;
-    //~^ ERROR the value of the associated type `A` (from trait `Foo`) must be specified
+    //~^ ERROR the value of the associated type `A` in `Foo` must be specified
 
     let d = &42isize as &dyn Foo;
-    //~^ ERROR the value of the associated types `A` (from trait `Foo`), `B` (from trait
+    //~^ ERROR the value of the associated types `A` and `B` in `Foo`
 }

@@ -9,7 +9,7 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
    |
    = note: the trait cannot be made into an object because it uses `Self` as a type parameter
 
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
+error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
   --> $DIR/object-fail.rs:9:17
    |
 LL |     let _: &dyn IteratorAlias = &vec![123].into_iter();

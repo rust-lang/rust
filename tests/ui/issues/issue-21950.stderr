@@ -1,4 +1,4 @@
-error[E0191]: the value of the associated type `Output` (from trait `Add`) must be specified
+error[E0191]: the value of the associated type `Output` in `Add` must be specified
   --> $DIR/issue-21950.rs:10:25
    |
 LL |     type Output;

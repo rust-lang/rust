@@ -1,4 +1,4 @@
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
+error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
   --> $DIR/trait-hidden-method.rs:6:33
    |
 LL |     Box::new(1..=10) as Box<dyn Iterator>

@@ -8,6 +8,6 @@ trait Foo {
 }
 
 fn bar(x: &dyn Foo) {}
-//~^ ERROR the associated type `A` (from trait `Foo`) must be specified
+//~^ ERROR the associated type `A` in `Foo` must be specified
 
 pub fn main() {}

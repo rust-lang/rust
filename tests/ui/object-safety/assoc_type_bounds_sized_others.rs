@@ -10,7 +10,7 @@ trait Foo {
 }
 
 fn foo(_: &dyn Foo) {}
-//~^ ERROR the value of the associated type `Bop` (from trait `Foo`) must be specified
+//~^ ERROR the value of the associated type `Bop` in `Foo` must be specified
 
 trait Bar {
     type Bop;
@@ -20,6 +20,6 @@ trait Bar {
 }
 
 fn bar(_: &dyn Bar) {}
-//~^ ERROR the value of the associated type `Bop` (from trait `Bar`) must be specified
+//~^ ERROR the value of the associated type `Bop` in `Bar` must be specified
 
 fn main() {}
