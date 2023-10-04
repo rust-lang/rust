@@ -62,7 +62,8 @@ pub const _MM_FROUND_NEARBYINT: i32 = _MM_FROUND_NO_EXC | _MM_FROUND_CUR_DIRECTI
 #[cfg_attr(test, assert_instr(pblendvb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blendv_epi8(a: __m128i, b: __m128i, mask: __m128i) -> __m128i {
-    transmute(pblendvb(a.as_i8x16(), b.as_i8x16(), mask.as_i8x16()))
+    let mask: i8x16 = simd_lt(mask.as_i8x16(), i8x16::splat(0));
+    transmute(simd_select(mask, b.as_i8x16(), a.as_i8x16()))
 }
 
 /// Blend packed 16-bit integers from `a` and `b` using the mask `IMM8`.
@@ -1126,8 +1127,6 @@ pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.sse41.pblendvb"]
-    fn pblendvb(a: i8x16, b: i8x16, mask: i8x16) -> i8x16;
     #[link_name = "llvm.x86.sse41.blendvpd"]
     fn blendvpd(a: __m128d, b: __m128d, mask: __m128d) -> __m128d;
     #[link_name = "llvm.x86.sse41.blendvps"]

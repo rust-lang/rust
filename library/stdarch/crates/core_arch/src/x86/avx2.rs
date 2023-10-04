@@ -464,7 +464,8 @@ pub unsafe fn _mm256_blend_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 #[cfg_attr(test, assert_instr(vpblendvb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blendv_epi8(a: __m256i, b: __m256i, mask: __m256i) -> __m256i {
-    transmute(pblendvb(a.as_i8x32(), b.as_i8x32(), mask.as_i8x32()))
+    let mask: i8x32 = simd_lt(mask.as_i8x32(), i8x32::splat(0));
+    transmute(simd_select(mask, b.as_i8x32(), a.as_i8x32()))
 }
 
 /// Broadcasts the low packed 8-bit integer from `a` to all elements of
@@ -3646,8 +3647,6 @@ extern "C" {
     fn pabsw(a: i16x16) -> u16x16;
     #[link_name = "llvm.x86.avx2.pabs.d"]
     fn pabsd(a: i32x8) -> u32x8;
-    #[link_name = "llvm.x86.avx2.pblendvb"]
-    fn pblendvb(a: i8x32, b: i8x32, mask: i8x32) -> i8x32;
     #[link_name = "llvm.x86.avx2.phadd.w"]
     fn phaddw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.phadd.d"]
