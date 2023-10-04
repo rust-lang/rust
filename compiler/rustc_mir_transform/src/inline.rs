@@ -616,9 +616,7 @@ impl<'tcx> Inliner<'tcx> {
                 // If there are any locals without storage markers, give them storage only for the
                 // duration of the call.
                 for local in callee_body.vars_and_temps_iter() {
-                    if !callee_body.local_decls[local].internal
-                        && integrator.always_live_locals.contains(local)
-                    {
+                    if integrator.always_live_locals.contains(local) {
                         let new_local = integrator.map_local(local);
                         caller_body[callsite.block].statements.push(Statement {
                             source_info: callsite.source_info,
@@ -641,9 +639,7 @@ impl<'tcx> Inliner<'tcx> {
                         n += 1;
                     }
                     for local in callee_body.vars_and_temps_iter().rev() {
-                        if !callee_body.local_decls[local].internal
-                            && integrator.always_live_locals.contains(local)
-                        {
+                        if integrator.always_live_locals.contains(local) {
                             let new_local = integrator.map_local(local);
                             caller_body[block].statements.push(Statement {
                                 source_info: callsite.source_info,

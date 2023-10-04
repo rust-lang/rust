@@ -18,6 +18,7 @@
       bb0: {
 -         _0 = inner() -> [return: bb1, unwind unreachable];
 +         StorageLive(_1);
++         StorageLive(_2);
 +         _1 = const _;
 +         _0 = index() -> [return: bb1, unwind unreachable];
       }
@@ -40,6 +41,7 @@
 + 
 +     bb4: {
 +         StorageDead(_3);
++         StorageDead(_2);
 +         StorageDead(_1);
           return;
       }

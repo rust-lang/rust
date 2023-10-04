@@ -830,22 +830,6 @@ pub struct LocalDecl<'tcx> {
     // FIXME(matthewjasper) Don't store in this in `Body`
     pub local_info: ClearCrossCrate<Box<LocalInfo<'tcx>>>,
 
-    /// `true` if this is an internal local.
-    ///
-    /// These locals are not based on types in the source code and are only used
-    /// for a few desugarings at the moment.
-    ///
-    /// The generator transformation will sanity check the locals which are live
-    /// across a suspension point against the type components of the generator
-    /// which type checking knows are live across a suspension point. We need to
-    /// flag drop flags to avoid triggering this check as they are introduced
-    /// outside of type inference.
-    ///
-    /// This should be sound because the drop flags are fully algebraic, and
-    /// therefore don't affect the auto-trait or outlives properties of the
-    /// generator.
-    pub internal: bool,
-
     /// The type of this local.
     pub ty: Ty<'tcx>,
 
@@ -1058,7 +1042,7 @@ impl<'tcx> LocalDecl<'tcx> {
         self.source_info.span.desugaring_kind().is_some()
     }
 
-    /// Creates a new `LocalDecl` for a temporary: mutable, non-internal.
+    /// Creates a new `LocalDecl` for a temporary, mutable.
     #[inline]
     pub fn new(ty: Ty<'tcx>, span: Span) -> Self {
         Self::with_source_info(ty, SourceInfo::outermost(span))
@@ -1070,18 +1054,10 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability: Mutability::Mut,
             local_info: ClearCrossCrate::Set(Box::new(LocalInfo::Boring)),
-            internal: false,
             ty,
             user_ty: None,
             source_info,
         }
-    }
-
-    /// Converts `self` into same `LocalDecl` except tagged as internal.
-    #[inline]
-    pub fn internal(mut self) -> Self {
-        self.internal = true;
-        self
     }
 
     /// Converts `self` into same `LocalDecl` except tagged as immutable.

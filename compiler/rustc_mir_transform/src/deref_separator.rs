@@ -37,7 +37,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DerefChecker<'a, 'tcx> {
             for (idx, (p_ref, p_elem)) in place.iter_projections().enumerate() {
                 if !p_ref.projection.is_empty() && p_elem == ProjectionElem::Deref {
                     let ty = p_ref.ty(self.local_decls, self.tcx).ty;
-                    let temp = self.patcher.new_internal_with_info(
+                    let temp = self.patcher.new_local_with_info(
                         ty,
                         self.local_decls[p_ref.local].source_info.span,
                         LocalInfo::DerefTemp,

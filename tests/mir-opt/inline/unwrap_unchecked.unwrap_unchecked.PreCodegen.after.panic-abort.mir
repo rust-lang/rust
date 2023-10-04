@@ -25,12 +25,14 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
 
     bb0: {
         StorageLive(_3);
+        StorageLive(_2);
         _2 = discriminant(_1);
         switchInt(move _2) -> [1: bb1, otherwise: bb2];
     }
 
     bb1: {
         _0 = move ((_1 as Some).0: T);
+        StorageDead(_2);
         StorageDead(_3);
         return;
     }
