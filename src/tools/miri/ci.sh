@@ -112,7 +112,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=aarch64-linux-android run_tests_minimal hello integer vec panic/panic
     MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal no_std integer strings
     MIRI_TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std integer strings
-    MIRI_TEST_TARGET=thumbv7em-none-eabihf MIRI_NO_STD=1 run_tests_minimal no_std # no_std embedded architecture
+    MIRI_TEST_TARGET=thumbv7em-none-eabihf run_tests_minimal no_std # no_std embedded architecture
     MIRI_TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std # JSON target file
     ;;
   x86_64-apple-darwin)
