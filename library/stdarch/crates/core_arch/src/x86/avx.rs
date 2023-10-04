@@ -2066,7 +2066,7 @@ pub unsafe fn _mm_testnzc_ps(a: __m128, b: __m128) -> i32 {
 #[cfg_attr(test, assert_instr(vmovmskpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
-    movmskpd256(a)
+    simd_bitmask::<u64x4, u8>(transmute(a)).into()
 }
 
 /// Sets each bit of the returned mask based on the most significant bit of the
@@ -2079,7 +2079,7 @@ pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
 #[cfg_attr(test, assert_instr(vmovmskps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_movemask_ps(a: __m256) -> i32 {
-    movmskps256(a)
+    simd_bitmask::<u32x8, u8>(transmute(a)).into()
 }
 
 /// Returns vector of type __m256d with all elements set to zero.
@@ -3028,10 +3028,6 @@ extern "C" {
     fn vtestcps(a: __m128, b: __m128) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.ps"]
     fn vtestnzcps(a: __m128, b: __m128) -> i32;
-    #[link_name = "llvm.x86.avx.movmsk.pd.256"]
-    fn movmskpd256(a: __m256d) -> i32;
-    #[link_name = "llvm.x86.avx.movmsk.ps.256"]
-    fn movmskps256(a: __m256) -> i32;
     #[link_name = "llvm.x86.avx.min.ps.256"]
     fn vminps(a: __m256, b: __m256) -> __m256;
     #[link_name = "llvm.x86.avx.max.ps.256"]
