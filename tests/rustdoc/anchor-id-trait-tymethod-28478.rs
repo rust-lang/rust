@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/28478
 #![crate_name="issue_28478"]
 
 #![feature(associated_type_defaults)]

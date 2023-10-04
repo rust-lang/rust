@@ -1,6 +1,7 @@
 // aux-build:issue-21801.rs
 // ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/21801
 #![crate_name="issue_21801"]
 
 extern crate issue_21801;

@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/27862
 #![crate_name="issue_27862"]
 
 /// Tests  | Table

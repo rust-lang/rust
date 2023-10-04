@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/22038
 #![crate_name="issue_22038"]
 
 extern "C" {
