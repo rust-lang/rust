@@ -68,10 +68,15 @@ declare_lint! {
     /// }
     /// ```
     ///
+    /// This still allows the use of `async fn` within impls of the trait.
+    /// However, it also means that the trait will never be compatible with
+    /// impls where the returned [`Future`] of the method does not implement
+    /// `Send`.
+    ///
     /// Conversely, if the trait is used only locally, if it is never used in
     /// generic functions, or if it is only used in single-threaded contexts
-    /// that do not care whether the returned [`Future`] implements [auto traits]
-    /// such as [`Send`], then the lint may be suppressed.
+    /// that do not care whether the returned [`Future`] implements [`Send`],
+    /// then the lint may be suppressed.
     ///
     /// [`Future`]: https://doc.rust-lang.org/core/future/trait.Future.html
     /// [`Send`]: https://doc.rust-lang.org/core/marker/trait.Send.html
