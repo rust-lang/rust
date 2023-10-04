@@ -468,6 +468,14 @@ pub(crate) struct VariancesOf {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_type_of)]
+pub(crate) struct TypeOf<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub type_of: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_pass_to_variadic_function, code = "E0617")]
 pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
     #[primary_span]

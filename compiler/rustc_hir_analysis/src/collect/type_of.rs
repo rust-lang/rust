@@ -11,6 +11,7 @@ use rustc_span::{Span, DUMMY_SP};
 
 use super::ItemCtxt;
 use super::{bad_placeholder, is_suggestable_infer_ty};
+pub use opaque::test_opaque_hidden_types;
 
 mod opaque;
 
