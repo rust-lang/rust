@@ -616,7 +616,7 @@ fn report_missing_placeholders(
         .collect::<Vec<_>>();
 
     if !placeholders.is_empty() {
-        report_redundant_placeholders(ecx, fmt_span, &args, used, placeholders);
+        report_redundant_format_arguments(ecx, fmt_span, &args, used, placeholders);
         diag.cancel();
         return;
     }
@@ -708,7 +708,7 @@ fn report_missing_placeholders(
     diag.emit();
 }
 
-fn report_redundant_placeholders(
+fn report_redundant_format_arguments(
     ecx: &mut ExtCtxt<'_>,
     fmt_span: Span,
     args: &FormatArguments,
