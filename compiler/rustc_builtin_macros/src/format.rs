@@ -720,7 +720,6 @@ fn report_redundant_format_arguments(
     let mut fmt_arg_indices = vec![];
     let mut args_spans = vec![];
     let mut fmt_spans = vec![];
-    let mut bindings = vec![];
 
     for (i, unnamed_arg) in args.unnamed_args().iter().enumerate().rev() {
         let Some(ty) = unnamed_arg.expr.to_ty() else { continue };
@@ -734,17 +733,17 @@ fn report_redundant_format_arguments(
         let matching_placeholders = placeholders
             .iter()
             .filter(|(_, inline_binding)| argument_binding == *inline_binding)
+            .map(|(span, _)| span)
             .collect::<Vec<_>>();
 
         if !matching_placeholders.is_empty() {
             fmt_arg_indices.push(i);
             args_spans.push(unnamed_arg.expr.span);
-            for (span, binding) in &matching_placeholders {
-                if fmt_spans.contains(span) {
+            for span in &matching_placeholders {
+                if fmt_spans.contains(*span) {
                     continue;
                 }
-                fmt_spans.push(*span);
-                bindings.push(binding);
+                fmt_spans.push(**span);
             }
         }
     }
