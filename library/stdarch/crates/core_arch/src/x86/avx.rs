@@ -524,7 +524,8 @@ pub unsafe fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vblendvps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
-    vblendvps(a, b, c)
+    let mask: i32x8 = simd_lt(transmute::<_, i32x8>(c), i32x8::splat(0));
+    transmute(simd_select(mask, b.as_f32x8(), a.as_f32x8()))
 }
 
 /// Conditionally multiplies the packed single-precision (32-bit) floating-point
@@ -2915,8 +2916,6 @@ extern "C" {
     fn roundps256(a: __m256, b: i32) -> __m256;
     #[link_name = "llvm.x86.avx.sqrt.ps.256"]
     fn sqrtps256(a: __m256) -> __m256;
-    #[link_name = "llvm.x86.avx.blendv.ps.256"]
-    fn vblendvps(a: __m256, b: __m256, c: __m256) -> __m256;
     #[link_name = "llvm.x86.avx.dp.ps.256"]
     fn vdpps(a: __m256, b: __m256, imm8: i32) -> __m256;
     #[link_name = "llvm.x86.avx.hadd.pd.256"]

@@ -118,7 +118,8 @@ pub unsafe fn _mm_blendv_pd(a: __m128d, b: __m128d, mask: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(blendvps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blendv_ps(a: __m128, b: __m128, mask: __m128) -> __m128 {
-    blendvps(a, b, mask)
+    let mask: i32x4 = simd_lt(transmute::<_, i32x4>(mask), i32x4::splat(0));
+    transmute(simd_select(mask, b.as_f32x4(), a.as_f32x4()))
 }
 
 /// Blend packed double-precision (64-bit) floating-point elements from `a`
@@ -1138,8 +1139,6 @@ pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.sse41.blendvps"]
-    fn blendvps(a: __m128, b: __m128, mask: __m128) -> __m128;
     #[link_name = "llvm.x86.sse41.blendpd"]
     fn blendpd(a: __m128d, b: __m128d, imm2: u8) -> __m128d;
     #[link_name = "llvm.x86.sse41.blendps"]
