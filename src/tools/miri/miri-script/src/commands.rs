@@ -37,7 +37,10 @@ impl MiriEnv {
             Err(_) => vec![],
         };
         if !quiet {
-            eprintln!("$ (building Miri sysroot)");
+            match self.sh.var("MIRI_TEST_TARGET") {
+                Ok(target) => eprintln!("$ (building Miri sysroot for {target})"),
+                Err(_) => eprintln!("$ (building Miri sysroot)"),
+            }
         }
         let output = cmd!(self.sh,
             "cargo +{toolchain} --quiet run {cargo_extra_flags...} --manifest-path {manifest_path} --
