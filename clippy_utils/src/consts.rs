@@ -504,7 +504,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             },
             (Some(Constant::Vec(vec)), _) => {
                 if !vec.is_empty() && vec.iter().all(|x| *x == vec[0]) {
-                    match vec.get(0) {
+                    match vec.first() {
                         Some(Constant::F32(x)) => Some(Constant::F32(*x)),
                         Some(Constant::F64(x)) => Some(Constant::F64(*x)),
                         _ => None,

@@ -335,7 +335,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
 
     fn visit_block(&mut self, block: &'tcx Block<'_>) {
         if self.initialization_found {
-            if let Some(s) = block.stmts.get(0) {
+            if let Some(s) = block.stmts.first() {
                 self.visit_stmt(s);
             }
 

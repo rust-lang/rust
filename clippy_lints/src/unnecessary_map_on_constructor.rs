@@ -40,7 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
             let (constructor_path, constructor_item) =
                 if let hir::ExprKind::Call(constructor, constructor_args) = recv.kind
                     && let hir::ExprKind::Path(constructor_path) = constructor.kind
-                    && let Some(arg) = constructor_args.get(0)
+                    && let Some(arg) = constructor_args.first()
                 {
                     if constructor.span.from_expansion() || arg.span.from_expansion() {
                         return;
@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
                 _ => return,
             }
 
-            if let Some(map_arg) = args.get(0)
+            if let Some(map_arg) = args.first()
                 && let hir::ExprKind::Path(fun) = map_arg.kind
             {
                 if map_arg.span.from_expansion() {
