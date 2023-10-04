@@ -215,6 +215,10 @@ impl Attrs {
         self.doc_exprs().flat_map(|doc_expr| doc_expr.aliases().to_vec())
     }
 
+    pub fn export_name(&self) -> Option<&SmolStr> {
+        self.by_key("export_name").string_value()
+    }
+
     pub fn is_proc_macro(&self) -> bool {
         self.by_key("proc_macro").exists()
     }

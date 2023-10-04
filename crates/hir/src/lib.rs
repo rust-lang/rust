@@ -1971,6 +1971,17 @@ impl Function {
         db.function_data(self.id).attrs.is_test()
     }
 
+    /// is this a `fn main` or a function with an `export_name` of `main`?
+    pub fn is_main(self, db: &dyn HirDatabase) -> bool {
+        if !self.module(db).is_crate_root() {
+            return false;
+        }
+        let data = db.function_data(self.id);
+
+        data.name.to_smol_str() == "main"
+            || data.attrs.export_name().map(core::ops::Deref::deref) == Some("main")
+    }
+
     /// Does this function have the ignore attribute?
     pub fn is_ignore(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).attrs.is_ignore()
