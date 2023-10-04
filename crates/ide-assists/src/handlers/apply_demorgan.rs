@@ -219,7 +219,12 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
                 .and_then(ast::PrefixExpr::cast)
                 .filter(|prefix_expr| matches!(prefix_expr.op_kind(), Some(ast::UnaryOp::Not)))
             {
-                edit.delete(prefix_expr.op_token().unwrap().text_range());
+                edit.delete(
+                    prefix_expr
+                        .op_token()
+                        .expect("prefix expression always has an operator")
+                        .text_range(),
+                );
             } else {
                 edit.insert(method_call.syntax().text_range().start(), "!");
             }
