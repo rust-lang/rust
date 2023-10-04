@@ -201,18 +201,26 @@ impl IntRange {
     /// intersections between an output range and a column range are inclusions. No output range
     /// straddles the boundary of one of the inputs.
     ///
+    /// Additionally, we track for each output range whether it is covered by one of the column ranges or not.
+    ///
     /// The following input:
     /// ```text
-    ///   |-------------------------| // `self`
-    /// |------|  |----------|   |----|
-    ///    |-------| |-------|
+    ///   (--------------------------) // `self`
+    /// (------) (----------)    (-)
+    ///     (------) (--------)
     /// ```
-    /// would be iterated over as follows:
+    /// is first intersected with `self`:
     /// ```text
-    ///   ||---|--||-|---|---|---|--|
+    ///   (--------------------------) // `self`
+    ///   (----) (----------)    (-)
+    ///     (------) (--------)
     /// ```
-    ///
-    /// Additionally, we track for each output range whether it is covered by one of the column ranges or not.
+    /// and then iterated over as follows:
+    /// ```text
+    ///   (-(--)-(-)-(------)-)--(-)-
+    /// ```
+    /// where each sequence of dashes is an output range, and dashes outside parentheses are marked
+    /// as `Presence::Missing`.
     fn split(
         &self,
         column_ranges: impl Iterator<Item = IntRange>,
@@ -245,33 +253,30 @@ impl IntRange {
             .map(unpack_intrange)
             .flat_map(|[lo, hi]| [(lo, 1), (hi, -1)])
             .collect();
+        // We sort by boundary, and for each boundary we sort the "closing parentheses" first. The
+        // order of +1/-1 for a same boundary value is actually irrelevant, because we only look at
+        // the accumulated count between distinct boundary values.
         boundaries.sort_unstable();
 
-        // Counter for parenthesis matching.
-        let mut paren_counter = 0isize;
-        let boundaries_with_paren_counts = boundaries
-            .into_iter()
-            // Accumulate parenthesis counts.
-            .map(move |(bdy, delta)| {
-                paren_counter += delta;
-                (bdy, paren_counter)
-            });
-
         let [self_start, self_end] = unpack_intrange(self.clone());
+        // Accumulate parenthesis counts.
+        let mut paren_counter = 0isize;
         // Gather pairs of adjacent boundaries.
         let mut prev_bdy = self_start;
-        let mut prev_paren_count = 0;
-        boundaries_with_paren_counts
-            // End with the end of the range. The count is irrelevant.
+        boundaries
+            .into_iter()
+            // End with the end of the range. The count is ignored.
             .chain(once((self_end, 0)))
-            // List pairs of adjacent boundaries.
-            .map(move |(bdy, paren_count)| {
-                let ret = (prev_bdy, prev_paren_count, bdy);
+            // List pairs of adjacent boundaries and the count between them.
+            .map(move |(bdy, delta)| {
+                // `delta` affects the count as we cross `bdy`, so the relevant count between
+                // `prev_bdy` and `bdy` is untouched by `delta`.
+                let ret = (prev_bdy, paren_counter, bdy);
                 prev_bdy = bdy;
-                prev_paren_count = paren_count;
+                paren_counter += delta;
                 ret
             })
-            // Skip duplicates.
+            // Skip empty ranges.
             .filter(|&(prev_bdy, _, bdy)| prev_bdy != bdy)
             // Convert back to ranges.
             .map(move |(prev_bdy, paren_count, bdy)| {
@@ -503,7 +508,10 @@ impl Slice {
         let smaller_lengths;
         let arity = self.arity();
         let mut max_slice = self.kind;
+        // Tracks the smallest variable-length slice we've seen. Any slice arity above it is
+        // therefore `Presence::Seen` in the column.
         let mut min_var_len = usize::MAX;
+        // Tracks the fixed-length slices we've seen, to mark them as `Presence::Seen`.
         let mut seen_fixed_lens = FxHashSet::default();
         match &mut max_slice {
             VarLen(max_prefix_len, max_suffix_len) => {
