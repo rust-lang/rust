@@ -9,5 +9,5 @@
 extern crate issue_26606_macro;
 
 // @has issue_26606/constant.FOO.html
-// @has - '//a[@href="../src/issue_26606/issue-26606.rs.html#13"]' 'source'
+// @has - '//a[@href="../src/issue_26606/src-link-external-macro-26606.rs.html#13"]' 'source'
 make_item!(FOO);
