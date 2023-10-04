@@ -226,6 +226,7 @@ mod handlers {
             add_return_type::add_return_type,
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
+            apply_demorgan::apply_demorgan_iterator,
             auto_import::auto_import,
             bind_unused_param::bind_unused_param,
             bool_to_enum::bool_to_enum,
