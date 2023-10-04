@@ -165,15 +165,6 @@ pub(crate) struct MissingIssue {
     pub span: Span,
 }
 
-// FIXME: This diagnostic is identical to `IncorrectMetaItem`, barring the error code. Consider
-// changing this to `IncorrectMetaItem`. See #51489.
-#[derive(Diagnostic)]
-#[diag(attr_incorrect_meta_item, code = "E0551")]
-pub(crate) struct IncorrectMetaItem2 {
-    #[primary_span]
-    pub span: Span,
-}
-
 // FIXME: Why is this the same error code as `InvalidReprHintNoParen` and `InvalidReprHintNoValue`?
 // It is more similar to `IncorrectReprFormatGeneric`.
 #[derive(Diagnostic)]

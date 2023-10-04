@@ -846,7 +846,7 @@ pub fn find_deprecation(
                                 ),
                             );
                         } else {
-                            sess.emit_err(session_diagnostics::IncorrectMetaItem2 {
+                            sess.emit_err(session_diagnostics::IncorrectMetaItem {
                                 span: meta.span,
                             });
                         }
