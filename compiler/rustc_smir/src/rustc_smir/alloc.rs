@@ -41,8 +41,18 @@ pub fn new_allocation<'tcx>(
             allocation.stable(tables)
         }
         ConstValue::ZeroSized => {
-            let align =
-                tables.tcx.layout_of(rustc_middle::ty::ParamEnv::empty().and(ty)).unwrap().align;
+            let mut ty = ty;
+            match ty.kind() {
+                rustc_middle::ty::FnDef(def, _) => {
+                    ty = tables.tcx.type_of(def).skip_binder();
+                }
+                _ => (),
+            }
+            let align = tables
+                .tcx
+                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
+                .unwrap()
+                .align;
             new_empty_allocation(align.abi)
         }
         ConstValue::Slice { data, meta } => {
