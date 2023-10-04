@@ -2,6 +2,7 @@ use std::fs::OpenOptions;
 
 #[allow(unused_must_use)]
 #[warn(clippy::nonsensical_open_options)]
+#[warn(clippy::suspicious_open_options)]
 fn main() {
     OpenOptions::new().read(true).truncate(true).open("foo.txt");
     //~^ ERROR: file opened with `truncate` and `read`
@@ -19,4 +20,6 @@ fn main() {
     //~^ ERROR: the method `append` is called more than once
     OpenOptions::new().truncate(true).truncate(false).open("foo.txt");
     //~^ ERROR: the method `truncate` is called more than once
+    OpenOptions::new().create(true).open("foo.txt");
+    //~^ ERROR: file opened with `create`, but `truncate` behavior not defined
 }

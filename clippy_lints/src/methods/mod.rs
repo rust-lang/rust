@@ -2829,6 +2829,37 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for the suspicious use of OpenOptions::create()
+    /// without an explicit OpenOptions::truncate().
+    ///
+    /// ### Why is this bad?
+    /// create() alone will either create a new file or open an
+    /// existing file. If the file already exists, it will be
+    /// overwritten when written to, but the file will not be
+    /// truncated by default. If less data is written to the file
+    /// than it already contains, the remainder of the file will
+    /// remain unchanged, and the end of the file will contain old
+    /// data.
+    /// In most cases, one should either use `create_new` to ensure
+    /// the file is created from scratch, or ensure `truncate` is
+    /// called so that the truncation behaviour is explicit. `truncate(true)`
+    /// will ensure the file is entirely overwritten with new data, whereas
+    /// `truncate(false)` will explicitely keep the default behavior.
+    ///
+    /// ### Example
+    /// ```rust
+    /// use std::fs::OpenOptions;
+    ///
+    /// OpenOptions::new().create(true).truncate(true);
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub SUSPICIOUS_OPEN_OPTIONS,
+    suspicious,
+    "suspicious combination of options for opening a file"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     ///* Checks for [push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push)
     /// calls on `PathBuf` that can cause overwrites.
     ///
@@ -4033,6 +4064,7 @@ impl_lint_pass!(Methods => [
     MAP_ERR_IGNORE,
     MUT_MUTEX_LOCK,
     NONSENSICAL_OPEN_OPTIONS,
+    SUSPICIOUS_OPEN_OPTIONS,
     PATH_BUF_PUSH_OVERWRITE,
     RANGE_ZIP_WITH_LEN,
     REPEAT_ONCE,
