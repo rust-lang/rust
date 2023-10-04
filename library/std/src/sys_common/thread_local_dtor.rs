@@ -38,7 +38,10 @@ pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut
         DTORS.set(Box::into_raw(v) as *mut u8);
     }
     let list = &*(DTORS.get() as *const List);
-    list.try_borrow_mut().expect("global allocator may not use TLS").push((t, dtor));
+    match list.try_borrow_mut() {
+        Ok(mut dtors) => dtors.push((t, dtor)),
+        Err(_) => rtabort!("global allocator may not use TLS"),
+    }
 
     unsafe extern "C" fn run_dtors(mut ptr: *mut u8) {
         while !ptr.is_null() {

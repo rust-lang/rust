@@ -11,7 +11,10 @@ use crate::cell::RefCell;
 static DTORS: RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>> = RefCell::new(Vec::new());
 
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
-    DTORS.try_borrow_mut().expect("global allocator may not use TLS").push((t, dtor));
+    match DTORS.try_borrow_mut() {
+        Ok(mut dtors) => dtors.push((t, dtor)),
+        Err(_) => rtabort!("global allocator may not use TLS"),
+    }
 }
 
 // every thread call this function to run through all possible destructors
