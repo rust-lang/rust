@@ -1,23 +1,29 @@
 error: accessing first element with `x.get(0)`
   --> $DIR/get_first.rs:17:13
    |
-LL |     let _ = x.get(0); // Use x.first()
+LL |     let _ = x.get(0);
    |             ^^^^^^^^ help: try: `x.first()`
    |
    = note: `-D clippy::get-first` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::get_first)]`
 
 error: accessing first element with `y.get(0)`
-  --> $DIR/get_first.rs:22:13
+  --> $DIR/get_first.rs:23:13
    |
-LL |     let _ = y.get(0); // Use y.first()
+LL |     let _ = y.get(0);
    |             ^^^^^^^^ help: try: `y.first()`
 
 error: accessing first element with `z.get(0)`
-  --> $DIR/get_first.rs:27:13
+  --> $DIR/get_first.rs:29:13
    |
-LL |     let _ = z.get(0); // Use z.first()
+LL |     let _ = z.get(0);
    |             ^^^^^^^^ help: try: `z.first()`
 
-error: aborting due to 3 previous errors
+error: accessing first element with `non_primitives.get(0)`
+  --> $DIR/get_first.rs:45:13
+   |
+LL |     let _ = non_primitives.get(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `non_primitives.first()`
+
+error: aborting due to 4 previous errors
 
