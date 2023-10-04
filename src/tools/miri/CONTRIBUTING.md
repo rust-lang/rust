@@ -71,19 +71,12 @@ and you can (cross-)run the entire test suite using:
 MIRI_TEST_TARGET=i686-unknown-linux-gnu ./miri test
 ```
 
-If your target doesn't support libstd, you can run miri with
+If your target doesn't support libstd that should usually just work. However, if you are using a
+custom target file, you might have to set `MIRI_NO_STD=1`.
 
-```
-MIRI_NO_STD=1 MIRI_TEST_TARGET=thumbv7em-none-eabihf ./miri test tests/fail/alloc/no_global_allocator.rs
-MIRI_NO_STD=1 ./miri run tests/pass/no_std.rs --target thumbv7em-none-eabihf
-```
-
-to avoid attempting (and failing) to build libstd. Note that almost no tests will pass
-this way, but you can run individual tests.
-
-`./miri test FILTER` only runs those tests that contain `FILTER` in their
-filename (including the base directory, e.g. `./miri test fail` will run all
-compile-fail tests).
+`./miri test FILTER` only runs those tests that contain `FILTER` in their filename (including the
+base directory, e.g. `./miri test fail` will run all compile-fail tests). These filters are passed
+to `cargo test`, so for multiple filers you need to use `./miri test -- FILTER1 FILTER2`.
 
 You can get a trace of which MIR statements are being executed by setting the
 `MIRI_LOG` environment variable.  For example:

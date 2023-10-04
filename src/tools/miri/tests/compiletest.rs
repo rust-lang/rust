@@ -93,9 +93,7 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         ..Config::rustc(path)
     };
 
-    let use_std = env::var_os("MIRI_NO_STD").is_none();
-
-    if with_dependencies && use_std {
+    if with_dependencies {
         config.dependencies_crate_manifest_path =
             Some(Path::new("test_dependencies").join("Cargo.toml"));
         let mut builder_args = vec!["run".into()];
