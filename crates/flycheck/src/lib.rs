@@ -360,10 +360,6 @@ impl FlycheckActor {
                 let mut cmd = Command::new(command);
                 cmd.envs(extra_env);
 
-                if let Some(target_dir) = target_dir {
-                    cmd.env("CARGO_TARGET_DIR", target_dir);
-                }
-
                 match invocation_location {
                     InvocationLocation::Workspace => {
                         match invocation_strategy {
@@ -379,6 +375,10 @@ impl FlycheckActor {
                     InvocationLocation::Root(root) => {
                         cmd.current_dir(root);
                     }
+                }
+
+                if let Some(target_dir) = target_dir {
+                    cmd.arg("--target-dir").arg(target_dir);
                 }
 
                 (cmd, args)
