@@ -8,7 +8,9 @@ use rustc_ast::{
     FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, MultiSpan, PResult, SingleLabelManySpans};
+use rustc_errors::{
+    Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult, SingleLabelManySpans,
+};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
@@ -616,9 +618,13 @@ fn report_missing_placeholders(
         .collect::<Vec<_>>();
 
     if !placeholders.is_empty() {
-        report_redundant_format_arguments(ecx, fmt_span, &args, used, placeholders);
-        diag.cancel();
-        return;
+        if let Some(mut new_diag) =
+            report_redundant_format_arguments(ecx, fmt_span, &args, used, placeholders)
+        {
+            diag.cancel();
+            new_diag.emit();
+            return;
+        }
     }
 
     // Used to ensure we only report translations for *one* kind of foreign format.
@@ -710,13 +716,13 @@ fn report_missing_placeholders(
 
 /// This function detects and reports unused format!() arguments that are
 /// redundant due to implicit captures (e.g. `format!("{x}", x)`).
-fn report_redundant_format_arguments(
-    ecx: &mut ExtCtxt<'_>,
+fn report_redundant_format_arguments<'a>(
+    ecx: &mut ExtCtxt<'a>,
     fmt_span: Span,
     args: &FormatArguments,
     used: &[bool],
     placeholders: Vec<(Span, &str)>,
-) {
+) -> Option<DiagnosticBuilder<'a, ErrorGuaranteed>> {
     let mut fmt_arg_indices = vec![];
     let mut args_spans = vec![];
     let mut fmt_spans = vec![];
@@ -762,15 +768,15 @@ fn report_redundant_format_arguments(
             suggestion_spans.push(span);
         }
 
-        let mut diag = ecx.create_err(errors::FormatRedundantArgs {
+        return Some(ecx.create_err(errors::FormatRedundantArgs {
             fmt_span,
             note: multispan,
             n: args_spans.len(),
             sugg: errors::FormatRedundantArgsSugg { spans: suggestion_spans },
-        });
-
-        diag.emit();
+        }));
     }
+
+    None
 }
 
 /// Handle invalid references to positional arguments. Output different
