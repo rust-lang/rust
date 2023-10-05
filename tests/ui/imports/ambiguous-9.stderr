@@ -60,6 +60,7 @@ note: `date_range` could also refer to the function imported here
 LL | use prelude::*;
    |     ^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 4 warnings emitted
 

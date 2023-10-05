@@ -18,6 +18,7 @@ LL | #![deny(must_not_suspend)]
    = note: the `must_not_suspend` lint is unstable
    = note: see issue #83310 <https://github.com/rust-lang/rust/issues/83310> for more information
    = help: add `#![feature(must_not_suspend)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unknown lint: `must_not_suspend`
   --> $DIR/gated.rs:4:1
@@ -28,6 +29,7 @@ LL | #![deny(must_not_suspend)]
    = note: the `must_not_suspend` lint is unstable
    = note: see issue #83310 <https://github.com/rust-lang/rust/issues/83310> for more information
    = help: add `#![feature(must_not_suspend)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 3 warnings emitted
 

@@ -1,23 +1,19 @@
+// compile-flags: -Zdeduplicate-diagnostics=yes
+
 #![feature(lint_reasons)]
 
 #[forbid(unused_variables)]
 //~^ NOTE `forbid` level set here
-//~| NOTE `forbid` level set here
 #[expect(unused_variables)]
 //~^ ERROR incompatible with previous forbid [E0453]
-//~| NOTE overruled by previous forbid
-//~| ERROR incompatible with previous forbid [E0453]
 //~| NOTE overruled by previous forbid
 fn expect_forbidden_lint_1() {}
 
 #[forbid(while_true)]
 //~^ NOTE `forbid` level set here
-//~| NOTE `forbid` level set here
 //~| NOTE the lint level is defined here
 #[expect(while_true)]
 //~^ ERROR incompatible with previous forbid [E0453]
-//~| NOTE overruled by previous forbid
-//~| ERROR incompatible with previous forbid [E0453]
 //~| NOTE overruled by previous forbid
 fn expect_forbidden_lint_2() {
     // This while loop will produce a `while_true` lint as the lint level

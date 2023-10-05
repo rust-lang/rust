@@ -13,6 +13,7 @@ LL | #![warn(abc::my_lint)]
    |         ^^^
    |
    = help: add `#![register_tool(abc)]` to the crate root
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

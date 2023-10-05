@@ -20,6 +20,7 @@ LL | #![allow(test_unstable_lint)]
    |
    = note: the `test_unstable_lint` lint is unstable
    = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unknown lint: `test_unstable_lint`
   --> $DIR/deny-unstable-lint-inline.rs:4:1
@@ -29,6 +30,7 @@ LL | #![allow(test_unstable_lint)]
    |
    = note: the `test_unstable_lint` lint is unstable
    = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

@@ -9,6 +9,8 @@ error: ~const can only be applied to `#[const_trait]` traits
    |
 LL | trait Bar: ~const Foo {}
    |                   ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

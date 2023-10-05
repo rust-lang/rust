@@ -22,6 +22,8 @@ error[E0412]: cannot find type `foo` in this scope
    |
 LL |     define_struct! { foo }
    |                      ^^^ not found in this scope
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

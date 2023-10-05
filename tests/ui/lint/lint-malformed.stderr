@@ -9,6 +9,8 @@ error[E0452]: malformed lint attribute input
    |
 LL | #![allow(bar = "baz")]
    |          ^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: malformed `deny` attribute input
   --> $DIR/lint-malformed.rs:1:1
@@ -21,12 +23,16 @@ error[E0452]: malformed lint attribute input
    |
 LL | #![allow(bar = "baz")]
    |          ^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
    |          ^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors
 

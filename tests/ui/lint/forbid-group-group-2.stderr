@@ -26,6 +26,7 @@ LL | #[allow(nonstandard_style)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(nonstandard_style) incompatible with previous forbid
   --> $DIR/forbid-group-group-2.rs:7:9
@@ -38,6 +39,7 @@ LL | #[allow(nonstandard_style)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(nonstandard_style) incompatible with previous forbid
   --> $DIR/forbid-group-group-2.rs:7:9
@@ -50,6 +52,7 @@ LL | #[allow(nonstandard_style)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(nonstandard_style) incompatible with previous forbid
   --> $DIR/forbid-group-group-2.rs:7:9
@@ -62,6 +65,7 @@ LL | #[allow(nonstandard_style)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(nonstandard_style) incompatible with previous forbid
   --> $DIR/forbid-group-group-2.rs:7:9
@@ -74,6 +78,7 @@ LL | #[allow(nonstandard_style)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(nonstandard_style) incompatible with previous forbid
   --> $DIR/forbid-group-group-2.rs:7:9
@@ -86,6 +91,7 @@ LL | #[allow(nonstandard_style)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(nonstandard_style) incompatible with previous forbid
   --> $DIR/forbid-group-group-2.rs:7:9
@@ -98,6 +104,7 @@ LL | #[allow(nonstandard_style)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(nonstandard_style) incompatible with previous forbid
   --> $DIR/forbid-group-group-2.rs:7:9
@@ -110,6 +117,7 @@ LL | #[allow(nonstandard_style)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 9 previous errors
 

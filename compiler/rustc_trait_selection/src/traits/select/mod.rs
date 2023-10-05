@@ -3116,9 +3116,6 @@ fn bind_generator_hidden_types_above<'tcx>(
             bty.instantiate(tcx, args)
         })
         .collect();
-    if considering_regions {
-        debug_assert!(!hidden_types.has_erased_regions());
-    }
     let bound_vars =
         tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
             (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon)),

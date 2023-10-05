@@ -44,6 +44,7 @@ note: the lifetime requirement is introduced here
    |
 LL |     F: Future + Send + 'static,
    |                 ^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

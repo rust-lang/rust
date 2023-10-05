@@ -24,6 +24,7 @@ LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }
    |
    = note: expected enum `Option<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
               found enum `Option<for<'a> fn(Inv<'a>, Inv<'a>)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

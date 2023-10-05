@@ -39,6 +39,7 @@ note: associated constant defined here
    |
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

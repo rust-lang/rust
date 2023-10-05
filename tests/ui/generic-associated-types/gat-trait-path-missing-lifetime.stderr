@@ -25,6 +25,7 @@ note: associated type defined here, with 1 lifetime parameter: `'a`
    |
 LL |   type Y<'a>;
    |        ^ --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |   fn foo<'a, T1: X<Y<'a> = T1>>(t : T1) -> T1::Y<'a> {

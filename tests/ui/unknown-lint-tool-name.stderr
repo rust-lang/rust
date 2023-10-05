@@ -21,6 +21,7 @@ LL | #![deny(foo::bar)]
    |         ^^^
    |
    = help: add `#![register_tool(foo)]` to the crate root
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0710]: unknown tool name `foo` found in scoped lint: `foo::bar`
   --> $DIR/unknown-lint-tool-name.rs:4:9
@@ -29,6 +30,7 @@ LL | #[allow(foo::bar)]
    |         ^^^
    |
    = help: add `#![register_tool(foo)]` to the crate root
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 
