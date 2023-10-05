@@ -36,8 +36,10 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
 
     bb1: {
         StorageLive(_5);
+        StorageLive(_4);
         _4 = discriminant(_3);
         _5 = Eq(_4, const 1_isize);
+        StorageDead(_4);
         _6 = Not(move _5);
         StorageDead(_5);
         switchInt(move _6) -> [0: bb2, otherwise: bb3];

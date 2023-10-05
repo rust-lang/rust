@@ -52,12 +52,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let local_info = match expr.kind {
                 ExprKind::StaticRef { def_id, .. } => {
                     assert!(!this.tcx.is_thread_local_static(def_id));
-                    local_decl.internal = true;
                     LocalInfo::StaticRef { def_id, is_thread_local: false }
                 }
                 ExprKind::ThreadLocalRef(def_id) => {
                     assert!(this.tcx.is_thread_local_static(def_id));
-                    local_decl.internal = true;
                     LocalInfo::StaticRef { def_id, is_thread_local: true }
                 }
                 ExprKind::NamedConst { def_id, .. } | ExprKind::ConstParam { def_id, .. } => {

@@ -237,7 +237,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         if self.const_kind() == hir::ConstContext::ConstFn {
             for (idx, local) in body.local_decls.iter_enumerated() {
                 // Handle the return place below.
-                if idx == RETURN_PLACE || local.internal {
+                if idx == RETURN_PLACE {
                     continue;
                 }
 

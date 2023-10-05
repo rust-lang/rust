@@ -15,9 +15,13 @@ fn d(_1: &Box<T>) -> &T {
         StorageLive(_2);
         StorageLive(_3);
         _3 = &(*_1);
+        StorageLive(_4);
+        StorageLive(_5);
         _4 = deref_copy (*_3);
         _5 = (((_4.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T);
         _2 = &(*_5);
+        StorageDead(_5);
+        StorageDead(_4);
         _0 = &(*_2);
         StorageDead(_3);
         StorageDead(_2);

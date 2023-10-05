@@ -127,7 +127,7 @@ impl<'tcx> MirPatch<'tcx> {
         Location { block: bb, statement_index: offset }
     }
 
-    pub fn new_internal_with_info(
+    pub fn new_local_with_info(
         &mut self,
         ty: Ty<'tcx>,
         span: Span,
@@ -135,7 +135,7 @@ impl<'tcx> MirPatch<'tcx> {
     ) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        let mut new_decl = LocalDecl::new(ty, span).internal();
+        let mut new_decl = LocalDecl::new(ty, span);
         **new_decl.local_info.as_mut().assert_crate_local() = local_info;
         self.new_locals.push(new_decl);
         Local::new(index)
@@ -145,13 +145,6 @@ impl<'tcx> MirPatch<'tcx> {
         let index = self.next_local;
         self.next_local += 1;
         self.new_locals.push(LocalDecl::new(ty, span));
-        Local::new(index)
-    }
-
-    pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
-        let index = self.next_local;
-        self.next_local += 1;
-        self.new_locals.push(LocalDecl::new(ty, span).internal());
         Local::new(index)
     }
 
