@@ -1371,7 +1371,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
     },
     Punct {
         ch: '<',
-        spacing: Joint,
+        spacing: Alone,
         span: $DIR/issue-75930-derive-cfg.rs:25:11: 25:12 (#0),
     },
     Ident {

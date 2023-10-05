@@ -301,7 +301,7 @@ pub struct AttributesData {
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
 /// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
+pub struct TokenStream(pub Lrc<Vec<TokenTree>>);
 
 /// Similar to `proc_macro::Spacing`, but for tokens.
 ///

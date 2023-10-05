@@ -59,9 +59,7 @@ impl<'a> TokenTreesReader<'a> {
                             if let Some(glued) = self.token.glue(&next_tok) {
                                 self.token = glued;
                             } else {
-                                let this_spacing =
-                                    if next_tok.is_op() { Spacing::Joint } else { Spacing::Alone };
-                                break (this_spacing, next_tok);
+                                break (Spacing::Joint, next_tok);
                             }
                         } else {
                             break (Spacing::Alone, next_tok);

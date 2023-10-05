@@ -60,14 +60,18 @@ impl base::BangProcMacro for BangProcMacro {
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx);
         let server = proc_macro_server::Rustc::new(ecx);
-        self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
-            ecx.sess.emit_err(errors::ProcMacroPanicked {
-                span,
-                message: e
-                    .as_str()
-                    .map(|message| errors::ProcMacroPanickedHelp { message: message.into() }),
+        let input = crate::proc_macro_server::TokenStream2::from_internal(input, true);
+        self.client
+            .run(&strategy, server, input, proc_macro_backtrace)
+            .map_err(|e| {
+                ecx.sess.emit_err(errors::ProcMacroPanicked {
+                    span,
+                    message: e
+                        .as_str()
+                        .map(|message| errors::ProcMacroPanickedHelp { message: message.into() }),
+                })
             })
-        })
+            .map(|stream| stream.to_internal())
     }
 }
 
@@ -91,15 +95,18 @@ impl base::AttrProcMacro for AttrProcMacro {
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx);
         let server = proc_macro_server::Rustc::new(ecx);
-        self.client.run(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
-            |e| {
+        let annotation = crate::proc_macro_server::TokenStream2::from_internal(annotation, true);
+        let annotated = crate::proc_macro_server::TokenStream2::from_internal(annotated, true);
+        self.client
+            .run(&strategy, server, annotation, annotated, proc_macro_backtrace)
+            .map_err(|e| {
                 let mut err = ecx.struct_span_err(span, "custom attribute panicked");
                 if let Some(s) = e.as_str() {
                     err.help(format!("message: {s}"));
                 }
                 err.emit()
-            },
-        )
+            })
+            .map(|stream| stream.to_internal())
     }
 }
 
@@ -143,6 +150,7 @@ impl MultiItemModifier for DeriveProcMacro {
             let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
             let strategy = exec_strategy(ecx);
             let server = proc_macro_server::Rustc::new(ecx);
+            let input = crate::proc_macro_server::TokenStream2::from_internal(input, true);
             match self.client.run(&strategy, server, input, proc_macro_backtrace) {
                 Ok(stream) => stream,
                 Err(e) => {
@@ -157,6 +165,7 @@ impl MultiItemModifier for DeriveProcMacro {
         };
 
         let error_count_before = ecx.sess.parse_sess.span_diagnostic.err_count();
+        let stream = stream.to_internal();
         let mut parser =
             rustc_parse::stream_to_parser(&ecx.sess.parse_sess, stream, Some("proc-macro derive"));
         let mut items = vec![];

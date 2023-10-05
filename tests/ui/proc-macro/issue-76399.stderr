@@ -1,0 +1,7 @@
+TokenStream [
+    Punct {
+        ch: ':',
+        spacing: Joint,
+        span: #5 bytes(70..87),
+    },
+]
