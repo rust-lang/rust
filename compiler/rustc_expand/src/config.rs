@@ -38,13 +38,6 @@ pub struct StripUnconfigured<'a> {
 }
 
 pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
-    fn feature_removed(sess: &Session, span: Span, reason: Option<&str>) {
-        sess.emit_err(FeatureRemoved {
-            span,
-            reason: reason.map(|reason| FeatureRemovedReason { reason }),
-        });
-    }
-
     fn active_features_up_to(edition: Edition) -> impl Iterator<Item = &'static Feature> {
         ACTIVE_FEATURES.iter().filter(move |feature| {
             if let Some(feature_edition) = feature.edition {
@@ -167,7 +160,10 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 if let FeatureState::Removed { reason } | FeatureState::Stabilized { reason } =
                     state
                 {
-                    feature_removed(sess, mi.span(), *reason);
+                    sess.emit_err(FeatureRemoved {
+                        span: mi.span(),
+                        reason: reason.map(|reason| FeatureRemovedReason { reason }),
+                    });
                     continue;
                 }
             }
