@@ -1,6 +1,9 @@
 // aux-build:issue-27362-aux.rs
 // ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/27362
+#![crate_name="issue_27362"]
+
 extern crate issue_27362_aux;
 
 pub use issue_27362_aux::*;
