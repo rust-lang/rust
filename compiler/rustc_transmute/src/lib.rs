@@ -19,7 +19,7 @@ pub struct Assume {
     pub validity: bool,
 }
 
-/// Either we have an error, transmutation is allowed, or we have an optional
+/// Either transmutation is allowed, we have an error, or we have an optional
 /// Condition that must hold.
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum Answer<R> {
