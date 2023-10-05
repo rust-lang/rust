@@ -1359,9 +1359,9 @@ fn suggest_ampmut<'tcx>(
         None => (false, decl_span),
     };
 
-    // if the binding already exists and is a reference with a explicit
+    // if the binding already exists and is a reference with an explicit
     // lifetime, then we can suggest adding ` mut`. this is special-cased from
-    // the path without a explicit lifetime.
+    // the path without an explicit lifetime.
     if let Ok(src) = tcx.sess.source_map().span_to_snippet(span)
         && src.starts_with("&'")
         // note that `&     'a T` is invalid so this is correct.

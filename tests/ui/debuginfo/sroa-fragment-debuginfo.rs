@@ -1,4 +1,4 @@
-// Verify that we do not trigger a LLVM assertion by creating zero-sized DWARF fragments.
+// Verify that we do not trigger an LLVM assertion by creating zero-sized DWARF fragments.
 //
 // build-pass
 // compile-flags: -g -Zmir-opt-level=0 -Zmir-enable-passes=+ScalarReplacementOfAggregates
