@@ -699,19 +699,9 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
 
     fn prologue(generated_asm: &mut String, arch: InlineAsmArch) {
         match arch {
-            InlineAsmArch::X86 => {
-                generated_asm.push_str("    push ebp\n");
-                generated_asm.push_str("    mov ebp,[esp+8]\n");
-            }
             InlineAsmArch::X86_64 => {
                 generated_asm.push_str("    push rbp\n");
                 generated_asm.push_str("    mov rbp,rdi\n");
-            }
-            InlineAsmArch::RiscV32 => {
-                generated_asm.push_str("    addi sp, sp, -8\n");
-                generated_asm.push_str("    sw ra, 4(sp)\n");
-                generated_asm.push_str("    sw s0, 0(sp)\n");
-                generated_asm.push_str("    mv s0, a0\n");
             }
             InlineAsmArch::RiscV64 => {
                 generated_asm.push_str("    addi sp, sp, -16\n");
@@ -725,18 +715,8 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
 
     fn epilogue(generated_asm: &mut String, arch: InlineAsmArch) {
         match arch {
-            InlineAsmArch::X86 => {
-                generated_asm.push_str("    pop ebp\n");
-                generated_asm.push_str("    ret\n");
-            }
             InlineAsmArch::X86_64 => {
                 generated_asm.push_str("    pop rbp\n");
-                generated_asm.push_str("    ret\n");
-            }
-            InlineAsmArch::RiscV32 => {
-                generated_asm.push_str("    lw s0, 0(sp)\n");
-                generated_asm.push_str("    lw ra, 4(sp)\n");
-                generated_asm.push_str("    addi sp, sp, 8\n");
                 generated_asm.push_str("    ret\n");
             }
             InlineAsmArch::RiscV64 => {
@@ -751,10 +731,10 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
 
     fn epilogue_noreturn(generated_asm: &mut String, arch: InlineAsmArch) {
         match arch {
-            InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
+            InlineAsmArch::X86_64 => {
                 generated_asm.push_str("    ud2\n");
             }
-            InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
+            InlineAsmArch::RiscV64 => {
                 generated_asm.push_str("    ebreak\n");
             }
             _ => unimplemented!("epilogue_noreturn for {:?}", arch),
@@ -768,20 +748,10 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         offset: Size,
     ) {
         match arch {
-            InlineAsmArch::X86 => {
-                write!(generated_asm, "    mov [ebp+0x{:x}], ", offset.bytes()).unwrap();
-                reg.emit(generated_asm, InlineAsmArch::X86, None).unwrap();
-                generated_asm.push('\n');
-            }
             InlineAsmArch::X86_64 => {
                 write!(generated_asm, "    mov [rbp+0x{:x}], ", offset.bytes()).unwrap();
                 reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
                 generated_asm.push('\n');
-            }
-            InlineAsmArch::RiscV32 => {
-                generated_asm.push_str("    sw ");
-                reg.emit(generated_asm, InlineAsmArch::RiscV32, None).unwrap();
-                writeln!(generated_asm, ", 0x{:x}(s0)", offset.bytes()).unwrap();
             }
             InlineAsmArch::RiscV64 => {
                 generated_asm.push_str("    sd ");
@@ -799,20 +769,10 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         offset: Size,
     ) {
         match arch {
-            InlineAsmArch::X86 => {
-                generated_asm.push_str("    mov ");
-                reg.emit(generated_asm, InlineAsmArch::X86, None).unwrap();
-                writeln!(generated_asm, ", [ebp+0x{:x}]", offset.bytes()).unwrap();
-            }
             InlineAsmArch::X86_64 => {
                 generated_asm.push_str("    mov ");
                 reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
                 writeln!(generated_asm, ", [rbp+0x{:x}]", offset.bytes()).unwrap();
-            }
-            InlineAsmArch::RiscV32 => {
-                generated_asm.push_str("    lw ");
-                reg.emit(generated_asm, InlineAsmArch::RiscV32, None).unwrap();
-                writeln!(generated_asm, ", 0x{:x}(s0)", offset.bytes()).unwrap();
             }
             InlineAsmArch::RiscV64 => {
                 generated_asm.push_str("    ld ");
