@@ -116,19 +116,47 @@ fn main() {
 }
 
 #[test]
-fn short_paths_are_ignored() {
-    cov_mark::check!(flyimport_exact_on_short_path);
+fn short_paths_are_prefix_matched() {
+    cov_mark::check!(flyimport_prefix_on_short_path);
 
     check(
         r#"
 //- /lib.rs crate:dep
-pub struct Bar;
+pub struct Barc;
 pub struct Rcar;
 pub struct Rc;
+pub const RC: () = ();
 pub mod some_module {
     pub struct Bar;
     pub struct Rcar;
     pub struct Rc;
+    pub const RC: () = ();
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    Rc$0
+}
+"#,
+        expect![[r#"
+            st Rc (use dep::Rc)
+            st Rcar (use dep::Rcar)
+            st Rc (use dep::some_module::Rc)
+            st Rcar (use dep::some_module::Rcar)
+        "#]],
+    );
+    check(
+        r#"
+//- /lib.rs crate:dep
+pub struct Barc;
+pub struct Rcar;
+pub struct Rc;
+pub const RC: () = ();
+pub mod some_module {
+    pub struct Bar;
+    pub struct Rcar;
+    pub struct Rc;
+    pub const RC: () = ();
 }
 
 //- /main.rs crate:main deps:dep
@@ -137,8 +165,36 @@ fn main() {
 }
 "#,
         expect![[r#"
+            ct RC (use dep::RC)
             st Rc (use dep::Rc)
+            st Rcar (use dep::Rcar)
+            ct RC (use dep::some_module::RC)
             st Rc (use dep::some_module::Rc)
+            st Rcar (use dep::some_module::Rcar)
+        "#]],
+    );
+    check(
+        r#"
+//- /lib.rs crate:dep
+pub struct Barc;
+pub struct Rcar;
+pub struct Rc;
+pub const RC: () = ();
+pub mod some_module {
+    pub struct Bar;
+    pub struct Rcar;
+    pub struct Rc;
+    pub const RC: () = ();
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    RC$0
+}
+"#,
+        expect![[r#"
+            ct RC (use dep::RC)
+            ct RC (use dep::some_module::RC)
         "#]],
     );
 }
@@ -841,8 +897,8 @@ fn main() {
     TES$0
 }"#,
         expect![[r#"
-        ct TEST_CONST (use foo::TEST_CONST)
-    "#]],
+            ct TEST_CONST (use foo::TEST_CONST)
+        "#]],
     );
 
     check(
@@ -858,9 +914,9 @@ fn main() {
     tes$0
 }"#,
         expect![[r#"
-        ct TEST_CONST (use foo::TEST_CONST)
-        fn test_function() (use foo::test_function) fn() -> i32
-    "#]],
+            ct TEST_CONST (use foo::TEST_CONST)
+            fn test_function() (use foo::test_function) fn() -> i32
+        "#]],
     );
 
     check(
@@ -873,9 +929,9 @@ mod foo {
 }
 
 fn main() {
-    Te$0
+    Tes$0
 }"#,
-        expect![[]],
+        expect![""],
     );
 }
 

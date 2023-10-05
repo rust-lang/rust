@@ -31,26 +31,34 @@ pub fn items_with_name<'a>(
         )
     });
 
+    let prefix = matches!(name, NameToImport::Prefix(..));
     let (mut local_query, mut external_query) = match name {
-        NameToImport::Exact(exact_name, case_sensitive) => {
+        NameToImport::Prefix(exact_name, case_sensitive)
+        | NameToImport::Exact(exact_name, case_sensitive) => {
             let mut local_query = symbol_index::Query::new(exact_name.clone());
-            local_query.exact();
-
-            let external_query = import_map::Query::new(exact_name);
-
-            (
-                local_query,
-                if case_sensitive { external_query.case_sensitive() } else { external_query },
-            )
+            let mut external_query = import_map::Query::new(exact_name);
+            if prefix {
+                local_query.prefix();
+                external_query = external_query.prefix();
+            } else {
+                local_query.exact();
+                external_query = external_query.exact();
+            }
+            if case_sensitive {
+                local_query.case_sensitive();
+                external_query = external_query.case_sensitive();
+            }
+            (local_query, external_query)
         }
-        NameToImport::Fuzzy(fuzzy_search_string) => {
+        NameToImport::Fuzzy(fuzzy_search_string, case_sensitive) => {
             let mut local_query = symbol_index::Query::new(fuzzy_search_string.clone());
+            local_query.fuzzy();
 
             let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
                 .fuzzy()
                 .assoc_search_mode(assoc_item_search);
 
-            if fuzzy_search_string.to_lowercase() != fuzzy_search_string {
+            if case_sensitive {
                 local_query.case_sensitive();
                 external_query = external_query.case_sensitive();
             }
