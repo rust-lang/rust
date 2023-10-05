@@ -32,7 +32,6 @@ pub enum State {
     Accepted,
     Active { set: fn(&mut Features) },
     Removed { reason: Option<&'static str> },
-    Stabilized { reason: Option<&'static str> },
 }
 
 impl fmt::Debug for State {
@@ -41,7 +40,6 @@ impl fmt::Debug for State {
             State::Accepted { .. } => write!(f, "accepted"),
             State::Active { .. } => write!(f, "active"),
             State::Removed { .. } => write!(f, "removed"),
-            State::Stabilized { .. } => write!(f, "stabilized"),
         }
     }
 }
@@ -113,7 +111,6 @@ fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
         .chain(ACTIVE_FEATURES)
         .chain(ACCEPTED_FEATURES)
         .chain(REMOVED_FEATURES)
-        .chain(STABLE_REMOVED_FEATURES)
         .find(|t| t.name == feature);
 
     match found {
@@ -151,4 +148,4 @@ pub use builtin_attrs::{
     is_valid_for_get_attr, AttributeGate, AttributeTemplate, AttributeType, BuiltinAttribute,
     GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
-pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
+pub use removed::REMOVED_FEATURES;

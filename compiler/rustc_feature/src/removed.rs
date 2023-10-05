@@ -20,23 +20,6 @@ macro_rules! declare_features {
             ),+
         ];
     };
-
-    ($(
-        $(#[doc = $doc:tt])* (stable_removed, $feature:ident, $ver:expr, $issue:expr, None),
-    )+) => {
-        /// Represents stable features which have since been removed (it was once Accepted)
-        pub const STABLE_REMOVED_FEATURES: &[Feature] = &[
-            $(
-                Feature {
-                    state: State::Stabilized { reason: None },
-                    name: sym::$feature,
-                    since: $ver,
-                    issue: to_nonzero($issue),
-                    edition: None,
-                }
-            ),+
-        ];
-    };
 }
 
 #[rustfmt::skip]
@@ -141,6 +124,11 @@ declare_features! (
     (removed, no_coverage, "CURRENT_RUSTC_VERSION", Some(84605), None, Some("renamed to `coverage_attribute`")),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
+    /// Note: this feature was previously recorded in a separate
+    /// `STABLE_REMOVED` list because it, uniquely, was once stable but was
+    /// then removed. But there was no utility storing it separately, so now
+    /// it's in this list.
+    (removed, no_stack_check, "1.0.0", None, None, None),
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
     (removed, on_unimplemented, "1.40.0", None, None, None),
@@ -207,9 +195,4 @@ declare_features! (
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------
-);
-
-#[rustfmt::skip]
-declare_features! (
-    (stable_removed, no_stack_check, "1.0.0", None, None),
 );

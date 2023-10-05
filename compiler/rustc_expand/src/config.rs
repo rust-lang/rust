@@ -15,9 +15,7 @@ use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::{Feature, Features, State as FeatureState};
-use rustc_feature::{
-    ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
-};
+use rustc_feature::{ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES};
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -154,12 +152,8 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             }
 
             // If the declared feature is removed, issue an error.
-            let removed = REMOVED_FEATURES.iter().find(|f| name == f.name);
-            let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.name);
-            if let Some(Feature { state, .. }) = removed.or(stable_removed) {
-                if let FeatureState::Removed { reason } | FeatureState::Stabilized { reason } =
-                    state
-                {
+            if let Some(Feature { state, .. }) = REMOVED_FEATURES.iter().find(|f| name == f.name) {
+                if let FeatureState::Removed { reason } = state {
                     sess.emit_err(FeatureRemoved {
                         span: mi.span(),
                         reason: reason.map(|reason| FeatureRemovedReason { reason }),
