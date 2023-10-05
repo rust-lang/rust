@@ -13,7 +13,7 @@ use rustc_ast::NodeId;
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES};
 use rustc_parse::validate_attr;
@@ -55,53 +55,35 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
     }
 
     let mut features = Features::default();
-    let mut edition_enabled_features = FxHashMap::default();
+
+    // The edition from `--edition`.
     let crate_edition = sess.edition();
 
-    // Enable edition umbrella feature-gates based on the crate edition.
-    // - enable `rust_2015_preview` always
-    // - enable `rust_2018_preview` if the crate edition is 2018 or higher
-    // - enable `rust_2021_preview` if the crate edition is 2021 or higher
-    // - etc.
-    for &edition in ALL_EDITIONS {
-        if edition <= crate_edition {
-            edition_enabled_features.insert(edition.feature_name(), edition);
-        }
-    }
-
-    // Enable edition-dependent features based on the crate edition.
-    // - E.g. `test_2018_feature` if the crate edition is 2018 or higher
-    for feature in active_features_up_to(crate_edition) {
-        feature.set(&mut features);
-        edition_enabled_features.insert(feature.name, crate_edition);
-    }
-
-    // Enable edition umbrella feature-gates that are declared in the code. If
-    // present, enable edition-specific features based on that.
-    // - E.g. enable `test_2018_feature` if the crate edition is 2015 but
-    //   `rust_2018_preview` is present
+    // The maximum of (a) the edition from `--edition` and (b) any edition
+    // umbrella feature-gates declared in the code.
+    // - E.g. if `crate_edition` is 2015 but `rust_2018_preview` is present,
+    //   `feature_edition` is 2018
+    let mut features_edition = crate_edition;
     for attr in krate_attrs {
         for mi in feature_list(attr) {
-            if !mi.is_word() {
-                continue;
-            }
-
-            let name = mi.name_or_empty();
-
-            let edition = ALL_EDITIONS.iter().find(|e| name == e.feature_name()).copied();
-            if let Some(edition) = edition {
-                if edition <= crate_edition {
-                    continue;
-                }
-
-                for feature in active_features_up_to(edition) {
-                    // FIXME(Manishearth) there is currently no way to set
-                    // lib features by edition
-                    feature.set(&mut features);
-                    edition_enabled_features.insert(feature.name, edition);
+            if mi.is_word() {
+                let name = mi.name_or_empty();
+                let edition = ALL_EDITIONS.iter().find(|e| name == e.feature_name()).copied();
+                if let Some(edition) = edition && edition > features_edition {
+                    features_edition = edition;
                 }
             }
         }
+    }
+
+    // Enable edition-dependent features based on `features_edition`.
+    // - E.g. enable `test_2018_feature` if `features_edition` is 2018 or higher
+    let mut edition_enabled_features = FxHashSet::default();
+    for feature in active_features_up_to(features_edition) {
+        // FIXME(Manishearth) there is currently no way to set lib features by
+        // edition.
+        edition_enabled_features.insert(feature.name);
+        feature.set(&mut features);
     }
 
     // Process all features declared in the code.
@@ -128,30 +110,37 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                 }
             };
 
-            // If the declared feature is edition-specific and already enabled
-            // due to the crate edition or a declared edition umbrella
-            // feature-gate, give a warning.
-            // - E.g. warn if `test_2018_feature` is declared when the crate
-            //   edition is 2018 or higher
+            // If the declared feature is an edition umbrella feature-gate,
+            // warn if it was redundant w.r.t. `crate_edition`.
+            // - E.g. warn if `rust_2018_preview` is declared when
+            //   `crate_edition` is 2018
+            // - E.g. don't warn if `rust_2018_preview` is declared when
+            //   `crate_edition` is 2015.
+            if let Some(&edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
+                if edition <= crate_edition {
+                    sess.emit_warning(FeatureIncludedInEdition {
+                        span: mi.span(),
+                        feature: name,
+                        edition,
+                    });
+                }
+                continue;
+            }
+
+            // If the declared feature is edition-dependent and was already
+            // enabled due to `feature_edition`, give a warning.
             // - E.g. warn if `test_2018_feature` is declared when
-            //   `rust_2018_preview` or higher is declared.
-            if let Some(&edition) = edition_enabled_features.get(&name) {
+            //   `feature_edition` is 2018 or higher.
+            if edition_enabled_features.contains(&name) {
                 sess.emit_warning(FeatureIncludedInEdition {
                     span: mi.span(),
                     feature: name,
-                    edition,
+                    edition: features_edition,
                 });
                 continue;
             }
 
-            // If the declared feature is an edition umbrella feature-gate,
-            // ignore it, because it was already handled above.
-            // - E.g. `rust_20XX_preview`
-            if ALL_EDITIONS.iter().any(|e| name == e.feature_name()) {
-                continue;
-            }
-
-            // If the declared feature is removed, issue an error.
+            // If the declared feature has been removed, issue an error.
             if let Some(Feature { state, .. }) = REMOVED_FEATURES.iter().find(|f| name == f.name) {
                 if let FeatureState::Removed { reason } = state {
                     sess.emit_err(FeatureRemoved {
