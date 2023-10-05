@@ -27,49 +27,12 @@ pub struct SsaLocals {
     direct_uses: IndexVec<Local, u32>,
 }
 
-/// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
-/// actually compute dominators, we can just compare block indices because bb0 is always the first
-/// block, and in any body all other blocks are always dominated by bb0.
-struct SmallDominators<'a> {
-    inner: Option<&'a Dominators<BasicBlock>>,
-}
-
-impl SmallDominators<'_> {
-    fn dominates(&self, first: Location, second: Location) -> bool {
-        if first.block == second.block {
-            first.statement_index <= second.statement_index
-        } else if let Some(inner) = &self.inner {
-            inner.dominates(first.block, second.block)
-        } else {
-            first.block < second.block
-        }
-    }
-
-    fn check_dominates(&mut self, set: &mut Set1<LocationExtended>, loc: Location) {
-        let assign_dominates = match *set {
-            Set1::Empty | Set1::Many => false,
-            Set1::One(LocationExtended::Arg) => true,
-            Set1::One(LocationExtended::Plain(assign)) => {
-                self.dominates(assign.successor_within_block(), loc)
-            }
-        };
-        // We are visiting a use that is not dominated by an assignment.
-        // Either there is a cycle involved, or we are reading for uninitialized local.
-        // Bail out.
-        if !assign_dominates {
-            *set = Set1::Many;
-        }
-    }
-}
-
 impl SsaLocals {
     pub fn new<'tcx>(body: &Body<'tcx>) -> SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
-        let dominators =
-            if body.basic_blocks.len() > 2 { Some(body.basic_blocks.dominators()) } else { None };
-        let dominators = SmallDominators { inner: dominators };
+        let dominators = body.basic_blocks.dominators();
 
         let direct_uses = IndexVec::from_elem(0, &body.local_decls);
         let mut visitor = SsaVisitor { assignments, assignment_order, dominators, direct_uses };
@@ -231,10 +194,29 @@ enum LocationExtended {
 }
 
 struct SsaVisitor<'a> {
-    dominators: SmallDominators<'a>,
+    dominators: &'a Dominators<BasicBlock>,
     assignments: IndexVec<Local, Set1<LocationExtended>>,
     assignment_order: Vec<Local>,
     direct_uses: IndexVec<Local, u32>,
+}
+
+impl SsaVisitor<'_> {
+    fn check_dominates(&mut self, local: Local, loc: Location) {
+        let set = &mut self.assignments[local];
+        let assign_dominates = match *set {
+            Set1::Empty | Set1::Many => false,
+            Set1::One(LocationExtended::Arg) => true,
+            Set1::One(LocationExtended::Plain(assign)) => {
+                assign.successor_within_block().dominates(loc, self.dominators)
+            }
+        };
+        // We are visiting a use that is not dominated by an assignment.
+        // Either there is a cycle involved, or we are reading for uninitialized local.
+        // Bail out.
+        if !assign_dominates {
+            *set = Set1::Many;
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
@@ -254,7 +236,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
                 self.assignments[local] = Set1::Many;
             }
             PlaceContext::NonMutatingUse(_) => {
-                self.dominators.check_dominates(&mut self.assignments[local], loc);
+                self.check_dominates(local, loc);
                 self.direct_uses[local] += 1;
             }
             PlaceContext::NonUse(_) => {}
@@ -269,7 +251,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
                 let new_ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
 
                 self.visit_projection(place.as_ref(), new_ctxt, loc);
-                self.dominators.check_dominates(&mut self.assignments[place.local], loc);
+                self.check_dominates(place.local, loc);
             }
             return;
         } else {
