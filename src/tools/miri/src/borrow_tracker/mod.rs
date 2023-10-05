@@ -305,7 +305,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn protect_place(
+        &mut self,
+        place: &MPlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {

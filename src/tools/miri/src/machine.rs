@@ -1275,19 +1275,25 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         place: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
-        // We do need to write `uninit` so that even after the call ends, the former contents of
-        // this place cannot be observed any more.
-        ecx.write_uninit(place)?;
         // If we have a borrow tracker, we also have it set up protection so that all reads *and
         // writes* during this call are insta-UB.
-        if ecx.machine.borrow_tracker.is_some() {
+        let protected_place = if ecx.machine.borrow_tracker.is_some() {
             // Have to do `to_op` first because a `Place::Local` doesn't imply the local doesn't have an address.
             if let Either::Left(place) = ecx.place_to_op(place)?.as_mplace_or_imm() {
-                ecx.protect_place(&place)?;
+                ecx.protect_place(&place)?.into()
             } else {
                 // Locals that don't have their address taken are as protected as they can ever be.
+                place.clone()
             }
-        }
+        } else {
+            // No borrow tracker.
+            place.clone()
+        };
+        // We do need to write `uninit` so that even after the call ends, the former contents of
+        // this place cannot be observed any more. We do the write after retagging so that for
+        // Tree Borrows, this is considered to activate the new tag.
+        ecx.write_uninit(&protected_place)?;
+        // Now we throw away the protected place, ensuring its tag is never used again.
         Ok(())
     }
 

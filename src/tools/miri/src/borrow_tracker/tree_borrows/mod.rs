@@ -5,7 +5,11 @@ use rustc_target::abi::{Abi, Align, Size};
 use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind, RetagFields};
 use rustc_middle::{
     mir::{Mutability, RetagKind},
-    ty::{self, layout::HasParamEnv, Ty},
+    ty::{
+        self,
+        layout::{HasParamEnv, HasTyCtxt},
+        Ty,
+    },
 };
 use rustc_span::def_id::DefId;
 
@@ -174,6 +178,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         new_tag: BorTag,
     ) -> InterpResult<'tcx, Option<Provenance>> {
         let this = self.eval_context_mut();
+        // Make sure the new permission makes sense as the initial permission of a fresh tag.
+        assert!(new_perm.initial_state.is_initial());
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         this.check_ptr_access_align(
             place.ptr(),
@@ -275,10 +281,6 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             diagnostics::AccessCause::Reborrow,
         )?;
         // Record the parent-child pair in the tree.
-        // FIXME: We should eventually ensure that the following `assert` holds, because
-        // some "exhaustive" tests consider only the initial configurations that satisfy it.
-        // The culprit is `Permission::new_active` in `tb_protect_place`.
-        //assert!(new_perm.initial_state.is_initial());
         tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;
         drop(tree_borrows);
 
@@ -306,15 +308,12 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
     }
 
-    /// Retags an individual pointer, returning the retagged version.
-    fn tb_retag_reference(
+    fn tb_retag_place(
         &mut self,
-        val: &ImmTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx, Provenance>,
         new_perm: NewPermission,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
-        // We want a place for where the ptr *points to*, so we get one.
-        let place = this.ref_to_mplace(val)?;
 
         // Determine the size of the reborrow.
         // For most types this is the entire size of the place, however
@@ -323,7 +322,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // then we override the size to do a zero-length reborrow.
         let reborrow_size = match new_perm {
             NewPermission { zero_size: false, .. } =>
-                this.size_and_align_of_mplace(&place)?
+                this.size_and_align_of_mplace(place)?
                     .map(|(size, _)| size)
                     .unwrap_or(place.layout.size),
             _ => Size::from_bytes(0),
@@ -339,12 +338,21 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
 
         // Compute the actual reborrow.
-        let new_prov = this.tb_reborrow(&place, reborrow_size, new_perm, new_tag)?;
+        let new_prov = this.tb_reborrow(place, reborrow_size, new_perm, new_tag)?;
 
-        // Adjust pointer.
-        let new_place = place.map_provenance(|_| new_prov);
+        // Adjust place.
+        Ok(place.clone().map_provenance(|_| new_prov))
+    }
 
-        // Return new pointer.
+    /// Retags an individual pointer, returning the retagged version.
+    fn tb_retag_reference(
+        &mut self,
+        val: &ImmTy<'tcx, Provenance>,
+        new_perm: NewPermission,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        let this = self.eval_context_mut();
+        let place = this.ref_to_mplace(val)?;
+        let new_place = this.tb_retag_place(&place, new_perm)?;
         Ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
     }
 }
@@ -493,22 +501,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// call.
     ///
     /// This is used to ensure soundness of in-place function argument/return passing.
-    fn tb_protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn tb_protect_place(
+        &mut self,
+        place: &MPlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
 
-        // We have to turn the place into a pointer to use the usual retagging logic.
-        // (The pointer type does not matter, so we use a raw pointer.)
-        let ptr = this.mplace_to_ref(place)?;
-        // Reborrow it. With protection! That is the entire point.
+        // Retag it. With protection! That is the entire point.
         let new_perm = NewPermission {
-            initial_state: Permission::new_active(),
+            initial_state: Permission::new_reserved(
+                place.layout.ty.is_freeze(this.tcx(), this.param_env()),
+            ),
             zero_size: false,
             protector: Some(ProtectorKind::StrongProtector),
         };
-        let _new_ptr = this.tb_retag_reference(&ptr, new_perm)?;
-        // We just throw away `new_ptr`, so nobody can access this memory while it is protected.
-
-        Ok(())
+        this.tb_retag_place(place, new_perm)
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
