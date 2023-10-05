@@ -19,11 +19,17 @@ LL | |             let non_copy = S(42);
 LL | |
 LL | |     }
    | |_____^
-help: the protected tag <TAG> was created here, in the initial state Active
+help: the protected tag <TAG> was created here, in the initial state Reserved
   --> $DIR/arg_inplace_observe_during.rs:LL:CC
    |
 LL |     x.0 = 0;
    |     ^^^^^^^
+help: the protected tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+   |
+LL |     x.0 = 0;
+   |     ^^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
    = note: inside `change_arg` at $DIR/arg_inplace_observe_during.rs:LL:CC
 note: inside `main`
