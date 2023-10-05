@@ -21,7 +21,6 @@
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 
-mod collection_impls;
 mod serialize;
 
 pub mod leb128;
