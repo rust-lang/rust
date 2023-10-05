@@ -1,47 +1,47 @@
 error: redundant argument
-  --> $DIR/issue-105225.rs:3:14
+  --> $DIR/issue-105225.rs:5:21
    |
 LL |     println!("{x}", x);
-   |              ^^^^^  - help: this can be removed
+   |                     ^ help: this can be removed
    |
 note: the formatting specifier is referencing the binding already
-  --> $DIR/issue-105225.rs:3:16
+  --> $DIR/issue-105225.rs:5:16
    |
 LL |     println!("{x}", x);
    |                ^
 
 error: redundant argument
-  --> $DIR/issue-105225.rs:6:14
+  --> $DIR/issue-105225.rs:8:27
    |
 LL |     println!("{x} {}", x, x);
-   |              ^^^^^^^^     - help: this can be removed
+   |                           ^ help: this can be removed
    |
 note: the formatting specifier is referencing the binding already
-  --> $DIR/issue-105225.rs:6:16
+  --> $DIR/issue-105225.rs:8:16
    |
 LL |     println!("{x} {}", x, x);
    |                ^
 
 error: redundant argument
-  --> $DIR/issue-105225.rs:9:14
+  --> $DIR/issue-105225.rs:11:27
    |
 LL |     println!("{} {x}", x, x);
-   |              ^^^^^^^^     - help: this can be removed
+   |                           ^ help: this can be removed
    |
 note: the formatting specifier is referencing the binding already
-  --> $DIR/issue-105225.rs:9:19
+  --> $DIR/issue-105225.rs:11:19
    |
 LL |     println!("{} {x}", x, x);
    |                   ^
 
 error: redundant arguments
-  --> $DIR/issue-105225.rs:13:14
+  --> $DIR/issue-105225.rs:14:25
    |
 LL |     println!("{x} {y}", x, y);
-   |              ^^^^^^^^^
+   |                         ^  ^
    |
 note: the formatting specifiers are referencing the bindings already
-  --> $DIR/issue-105225.rs:13:16
+  --> $DIR/issue-105225.rs:14:16
    |
 LL |     println!("{x} {y}", x, y);
    |                ^   ^
@@ -52,10 +52,10 @@ LL +     println!("{x} {y}", );
    |
 
 error: redundant arguments
-  --> $DIR/issue-105225.rs:17:14
+  --> $DIR/issue-105225.rs:17:43
    |
 LL |     println!("{} {} {x} {y} {}", x, x, x, y, y);
-   |              ^^^^^^^^^^^^^^^^^^
+   |                                           ^  ^
    |
 note: the formatting specifiers are referencing the bindings already
   --> $DIR/issue-105225.rs:17:26

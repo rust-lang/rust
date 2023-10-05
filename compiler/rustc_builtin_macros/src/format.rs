@@ -619,7 +619,7 @@ fn report_missing_placeholders(
 
     if !placeholders.is_empty() {
         if let Some(mut new_diag) =
-            report_redundant_format_arguments(ecx, fmt_span, &args, used, placeholders)
+            report_redundant_format_arguments(ecx, &args, used, placeholders)
         {
             diag.cancel();
             new_diag.emit();
@@ -718,7 +718,6 @@ fn report_missing_placeholders(
 /// redundant due to implicit captures (e.g. `format!("{x}", x)`).
 fn report_redundant_format_arguments<'a>(
     ecx: &mut ExtCtxt<'a>,
-    fmt_span: Span,
     args: &FormatArguments,
     used: &[bool],
     placeholders: Vec<(Span, &str)>,
@@ -769,9 +768,9 @@ fn report_redundant_format_arguments<'a>(
         }
 
         return Some(ecx.create_err(errors::FormatRedundantArgs {
-            fmt_span,
-            note: multispan,
             n: args_spans.len(),
+            span: MultiSpan::from(args_spans),
+            note: multispan,
             sugg: errors::FormatRedundantArgsSugg { spans: suggestion_spans },
         }));
     }

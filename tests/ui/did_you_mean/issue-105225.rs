@@ -1,5 +1,7 @@
 fn main() {
     let x = 0;
+    let y = 0;
+
     println!("{x}", x);
     //~^ ERROR: redundant argument
 
@@ -9,11 +11,9 @@ fn main() {
     println!("{} {x}", x, x);
     //~^ ERROR: redundant argument
 
-    let y = 0;
     println!("{x} {y}", x, y);
-    //~^ ERROR: redundant argument
+    //~^ ERROR: redundant arguments
 
-    let y = 0;
     println!("{} {} {x} {y} {}", x, x, x, y, y);
-    //~^ ERROR: redundant argument
+    //~^ ERROR: redundant arguments
 }

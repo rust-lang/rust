@@ -650,7 +650,7 @@ pub(crate) struct FormatPositionalMismatch {
 #[diag(builtin_macros_format_redundant_args)]
 pub(crate) struct FormatRedundantArgs {
     #[primary_span]
-    pub(crate) fmt_span: Span,
+    pub(crate) span: MultiSpan,
     pub(crate) n: usize,
 
     #[note]
