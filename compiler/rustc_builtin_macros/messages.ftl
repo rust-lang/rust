@@ -137,8 +137,6 @@ builtin_macros_format_positional_after_named = positional arguments cannot follo
     .label = positional arguments must be before named arguments
     .named_args = named argument
 
-builtin_macros_format_remove_raw_ident = remove the `r#`
-
 builtin_macros_format_redundant_args = redundant {$n ->
     [one] argument
     *[more] arguments
@@ -152,6 +150,8 @@ builtin_macros_format_redundant_args = redundant {$n ->
         *[more] the formatting specifiers are referencing the bindings already
     }
     .suggestion = this can be removed
+
+builtin_macros_format_remove_raw_ident = remove the `r#`
 
 builtin_macros_format_requires_string = requires at least a format string argument
 
