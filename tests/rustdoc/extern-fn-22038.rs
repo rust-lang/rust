@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/22038
+#![crate_name="issue_22038"]
+
 extern "C" {
     // @has issue_22038/fn.foo1.html \
     //      '//pre[@class="rust item-decl"]' 'pub unsafe extern "C" fn foo1()'
