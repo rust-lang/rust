@@ -446,7 +446,7 @@ impl Token {
         }
     }
 
-    /// Returns `true` if the token can appear at the start of an pattern.
+    /// Returns `true` if the token can appear at the start of a pattern.
     ///
     /// Shamelessly borrowed from `can_begin_expr`, only used for diagnostics right now.
     pub fn can_begin_pattern(&self) -> bool {
