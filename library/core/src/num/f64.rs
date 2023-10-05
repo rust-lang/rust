@@ -376,6 +376,13 @@ impl f64 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MANTISSA_DIGITS: u32 = 53;
     /// Approximate number of significant digits in base 10.
+    ///
+    /// This is the maximum <i>x</i> such that any decimal number with <i>x</i>
+    /// significant digits can be converted to `f64` and back without loss.
+    ///
+    /// Equal to floor(log<sub>10</sub>&nbsp;2<sup>[`MANTISSA_DIGITS`]&nbsp;&minus;&nbsp;1</sup>).
+    ///
+    /// [`MANTISSA_DIGITS`]: f64::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const DIGITS: u32 = 15;
 
@@ -383,31 +390,62 @@ impl f64 {
     ///
     /// This is the difference between `1.0` and the next larger representable number.
     ///
+    /// Equal to 2<sup>1&nbsp;&minus;&nbsp;[`MANTISSA_DIGITS`]</sup>.
+    ///
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
+    /// [`MANTISSA_DIGITS`]: f64::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
     /// Smallest finite `f64` value.
+    ///
+    /// Equal to &minus;[`MAX`].
+    ///
+    /// [`MAX`]: f64::MAX
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN: f64 = -1.7976931348623157e+308_f64;
     /// Smallest positive normal `f64` value.
+    ///
+    /// Equal to 2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
+    ///
+    /// [`MIN_EXP`]: f64::MIN_EXP
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
     /// Largest finite `f64` value.
+    ///
+    /// Equal to
+    /// (1&nbsp;&minus;&nbsp;2<sup>&minus;[`MANTISSA_DIGITS`]</sup>)&nbsp;2<sup>[`MAX_EXP`]</sup>.
+    ///
+    /// [`MANTISSA_DIGITS`]: f64::MANTISSA_DIGITS
+    /// [`MAX_EXP`]: f64::MAX_EXP
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX: f64 = 1.7976931348623157e+308_f64;
 
     /// One greater than the minimum possible normal power of 2 exponent.
+    ///
+    /// If <i>x</i>&nbsp;=&nbsp;`MIN_EXP`, then normal numbers
+    /// ≥&nbsp;0.5&nbsp;×&nbsp;2<sup><i>x</i></sup>.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_EXP: i32 = -1021;
     /// Maximum possible power of 2 exponent.
+    ///
+    /// If <i>x</i>&nbsp;=&nbsp;`MAX_EXP`, then normal numbers
+    /// &lt;&nbsp;1&nbsp;×&nbsp;2<sup><i>x</i></sup>.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_EXP: i32 = 1024;
 
-    /// Minimum possible normal power of 10 exponent.
+    /// Minimum <i>x</i> for which 10<sup><i>x</i></sup> is normal.
+    ///
+    /// Equal to ceil(log<sub>10</sub>&nbsp;[`MIN_POSITIVE`]).
+    ///
+    /// [`MIN_POSITIVE`]: f64::MIN_POSITIVE
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_10_EXP: i32 = -307;
-    /// Maximum possible power of 10 exponent.
+    /// Maximum <i>x</i> for which 10<sup><i>x</i></sup> is normal.
+    ///
+    /// Equal to floor(log<sub>10</sub>&nbsp;[`MAX`]).
+    ///
+    /// [`MAX`]: f64::MAX
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_10_EXP: i32 = 308;
 
