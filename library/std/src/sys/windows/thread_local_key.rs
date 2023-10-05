@@ -42,7 +42,10 @@ unsafe fn run_keyless_dtors() {
     // the case that this loop always terminates because we provide the
     // guarantee that a TLS key cannot be set after it is flagged for
     // destruction.
-    while let Some((ptr, dtor)) = DESTRUCTORS.borrow_mut().pop() {
+    loop {
+        let Some((ptr, dtor)) = DESTRUCTORS.borrow_mut().pop() else {
+            break;
+        };
         (dtor)(ptr);
     }
     // We're done so free the memory.
