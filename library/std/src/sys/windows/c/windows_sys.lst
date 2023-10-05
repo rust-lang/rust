@@ -2224,6 +2224,7 @@ Windows.Win32.Storage.FileSystem.FILE_ACCESS_RIGHTS
 Windows.Win32.Storage.FileSystem.FILE_ADD_FILE
 Windows.Win32.Storage.FileSystem.FILE_ADD_SUBDIRECTORY
 Windows.Win32.Storage.FileSystem.FILE_ALL_ACCESS
+Windows.Win32.Storage.FileSystem.FILE_ALLOCATION_INFO
 Windows.Win32.Storage.FileSystem.FILE_APPEND_DATA
 Windows.Win32.Storage.FileSystem.FILE_ATTRIBUTE_ARCHIVE
 Windows.Win32.Storage.FileSystem.FILE_ATTRIBUTE_COMPRESSED

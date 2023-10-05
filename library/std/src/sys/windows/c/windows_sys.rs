@@ -3107,6 +3107,16 @@ impl ::core::clone::Clone for FILETIME {
 pub type FILE_ACCESS_RIGHTS = u32;
 pub const FILE_ADD_FILE: FILE_ACCESS_RIGHTS = 2u32;
 pub const FILE_ADD_SUBDIRECTORY: FILE_ACCESS_RIGHTS = 4u32;
+#[repr(C)]
+pub struct FILE_ALLOCATION_INFO {
+    pub AllocationSize: i64,
+}
+impl ::core::marker::Copy for FILE_ALLOCATION_INFO {}
+impl ::core::clone::Clone for FILE_ALLOCATION_INFO {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 pub const FILE_ALL_ACCESS: FILE_ACCESS_RIGHTS = 2032127u32;
 pub const FILE_APPEND_DATA: FILE_ACCESS_RIGHTS = 4u32;
 pub const FILE_ATTRIBUTE_ARCHIVE: FILE_FLAGS_AND_ATTRIBUTES = 32u32;
