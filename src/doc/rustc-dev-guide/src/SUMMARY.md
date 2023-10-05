@@ -124,6 +124,7 @@
         - [Goals and clauses](./traits/goals-and-clauses.md)
         - [Canonical queries](./traits/canonical-queries.md)
     - [Next-gen trait solving](./solve/trait-solving.md)
+        - [Invariants of the type system](./solve/invariants.md)
         - [The solver](./solve/the-solver.md)
         - [Canonicalization](./solve/canonicalization.md)
         - [Coinduction](./solve/coinduction.md)
