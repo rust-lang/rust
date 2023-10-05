@@ -2599,7 +2599,8 @@ fn rewrite_fn_base(
     if where_clause_str.is_empty() {
         if let ast::FnRetTy::Default(ret_span) = fd.output {
             match recover_missing_comment_in_span(
-                mk_sp(params_span.hi(), ret_span.hi()),
+                // from after the closing paren to right before block or semicolon
+                mk_sp(ret_span.lo(), span.hi()),
                 shape,
                 context,
                 last_line_width(&result),

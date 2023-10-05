@@ -42,7 +42,7 @@ error[E0308]: mismatched types
   --> $DIR/offset-of-output-type.rs:19:5
    |
 LL | fn main() {
-   |           - expected `()` because of default return type
+   |          - expected `()` because of default return type
 ...
 LL |     offset_of!(S, v)
    |     ^^^^^^^^^^^^^^^^ expected `()`, found `usize`

@@ -1189,7 +1189,7 @@ fn report_trait_method_mismatch<'tcx>(
                     let ap = Applicability::MachineApplicable;
                     match sig.decl.output {
                         hir::FnRetTy::DefaultReturn(sp) => {
-                            let sugg = format!("-> {} ", trait_sig.output());
+                            let sugg = format!(" -> {}", trait_sig.output());
                             diag.span_suggestion_verbose(sp, msg, sugg, ap);
                         }
                         hir::FnRetTy::Return(hir_ty) => {

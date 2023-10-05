@@ -14,7 +14,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-91267.rs:4:5
    |
 LL | fn main() {
-   |           - expected `()` because of default return type
+   |          - expected `()` because of default return type
 LL |     type_ascribe!(0, u8<e<5>=e>)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `u8`
 
