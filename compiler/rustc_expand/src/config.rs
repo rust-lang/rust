@@ -124,6 +124,8 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                         edition,
                     });
                 }
+                features.declared_lang_features.push((name, mi.span(), None));
+                features.declared_features.insert(name);
                 continue;
             }
 
@@ -137,6 +139,8 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                     feature: name,
                     edition: features_edition,
                 });
+                features.declared_lang_features.push((name, mi.span(), None));
+                features.declared_features.insert(name);
                 continue;
             }
 
