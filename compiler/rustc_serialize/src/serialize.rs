@@ -307,8 +307,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
     fn encode(&self, s: &mut S) {
-        let slice: &[T] = self;
-        slice.encode(s);
+        self.as_slice().encode(s);
     }
 }
 
@@ -332,8 +331,7 @@ impl<D: Decoder, T: Decodable<D>, A: Allocator + Default> Decodable<D> for Vec<T
 
 impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
     fn encode(&self, s: &mut S) {
-        let slice: &[T] = self;
-        slice.encode(s);
+        self.as_slice().encode(s);
     }
 }
 
@@ -516,8 +514,7 @@ impl<D: Decoder, A: Allocator + Default, T: Decodable<D>> Decodable<D> for Box<T
 
 impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
     fn encode(&self, s: &mut S) {
-        let slice: &[A::Item] = self;
-        slice.encode(s);
+        self.as_slice().encode(s);
     }
 }
 
