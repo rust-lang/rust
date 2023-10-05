@@ -124,8 +124,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                         edition,
                     });
                 }
-                features.declared_lang_features.push((name, mi.span(), None));
-                features.declared_features.insert(name);
+                features.set_declared_lang_feature(name, mi.span(), None);
                 continue;
             }
 
@@ -139,8 +138,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
                     feature: name,
                     edition: features_edition,
                 });
-                features.declared_lang_features.push((name, mi.span(), None));
-                features.declared_features.insert(name);
+                features.set_declared_lang_feature(name, mi.span(), None);
                 continue;
             }
 
@@ -158,8 +156,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             // If the declared feature is stable, record it.
             if let Some(Feature { since, .. }) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
                 let since = Some(Symbol::intern(since));
-                features.declared_lang_features.push((name, mi.span(), since));
-                features.declared_features.insert(name);
+                features.set_declared_lang_feature(name, mi.span(), since);
                 continue;
             }
 
@@ -176,15 +173,13 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             // If the declared feature is unstable, record it.
             if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.name) {
                 f.set(&mut features);
-                features.declared_lang_features.push((name, mi.span(), None));
-                features.declared_features.insert(name);
+                features.set_declared_lang_feature(name, mi.span(), None);
                 continue;
             }
 
-            // Otherwise, the feature is unknown. Record it at a lib feature.
+            // Otherwise, the feature is unknown. Record it as a lib feature.
             // It will be checked later.
-            features.declared_lib_features.push((name, mi.span()));
-            features.declared_features.insert(name);
+            features.set_declared_lib_feature(name, mi.span());
         }
     }
 

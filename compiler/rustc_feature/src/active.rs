@@ -70,6 +70,21 @@ macro_rules! declare_features {
         }
 
         impl Features {
+            pub fn set_declared_lang_feature(
+                &mut self,
+                symbol: Symbol,
+                span: Span,
+                since: Option<Symbol>
+            ) {
+                self.declared_lang_features.push((symbol, span, since));
+                self.declared_features.insert(symbol);
+            }
+
+            pub fn set_declared_lib_feature(&mut self, symbol: Symbol, span: Span) {
+                self.declared_lib_features.push((symbol, span));
+                self.declared_features.insert(symbol);
+            }
+
             pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
                 $(f(stringify!($feature), self.$feature);)+
             }
