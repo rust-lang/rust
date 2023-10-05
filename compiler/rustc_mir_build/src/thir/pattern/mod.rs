@@ -93,6 +93,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             None => Ok((None, None)),
             Some(expr) => {
                 let (kind, ascr) = match self.lower_lit(expr) {
+                    PatKind::InlineConstant { subpattern, value } => (
+                        PatKind::Constant { value: Const::Unevaluated(value, subpattern.ty) },
+                        None,
+                    ),
                     PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
                         (kind, Some(ascription))
                     }
@@ -633,13 +637,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
-            self.const_to_pat(
+            let subpattern = self.const_to_pat(
                 Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
                 id,
                 span,
                 None,
-            )
-            .kind
+            );
+            PatKind::InlineConstant { subpattern, value: uneval }
         } else {
             // If that fails, convert it to an opaque constant pattern.
             match tcx.const_eval_resolve(self.param_env, uneval, Some(span)) {
@@ -822,6 +826,9 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                 PatKind::Deref { subpattern: subpattern.fold_with(folder) }
             }
             PatKind::Constant { value } => PatKind::Constant { value },
+            PatKind::InlineConstant { value, subpattern: ref pattern } => {
+                PatKind::InlineConstant { value, subpattern: pattern.fold_with(folder) }
+            }
             PatKind::Range(ref range) => PatKind::Range(range.clone()),
             PatKind::Slice { ref prefix, ref slice, ref suffix } => PatKind::Slice {
                 prefix: prefix.fold_with(folder),

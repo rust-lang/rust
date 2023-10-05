@@ -1,4 +1,12 @@
 error[E0133]: call to unsafe function `foo` is unsafe and requires unsafe function or block
+  --> $DIR/const-extern-fn-requires-unsafe.rs:12:5
+   |
+LL |     foo();
+   |     ^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: call to unsafe function `foo` is unsafe and requires unsafe function or block
   --> $DIR/const-extern-fn-requires-unsafe.rs:9:17
    |
 LL |     let a: [u8; foo()];
@@ -6,6 +14,6 @@ LL |     let a: [u8; foo()];
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0133`.

@@ -636,7 +636,8 @@ impl<'tcx> Pat<'tcx> {
             Wild | Range(..) | Binding { subpattern: None, .. } | Constant { .. } | Error(_) => {}
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
-            | Deref { subpattern } => subpattern.walk_(it),
+            | Deref { subpattern }
+            | InlineConstant { subpattern, .. } => subpattern.walk_(it),
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
@@ -762,6 +763,11 @@ pub enum PatKind<'tcx> {
     /// These are always compared with the matched place using (the semantics of) `PartialEq`.
     Constant {
         value: mir::Const<'tcx>,
+    },
+
+    InlineConstant {
+        value: mir::UnevaluatedConst<'tcx>,
+        subpattern: Box<Pat<'tcx>>,
     },
 
     Range(Box<PatRange<'tcx>>),
@@ -924,6 +930,9 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 write!(f, "{subpattern}")
             }
             PatKind::Constant { value } => write!(f, "{value}"),
+            PatKind::InlineConstant { value: _, ref subpattern } => {
+                write!(f, "{} (from inline const)", subpattern)
+            }
             PatKind::Range(box PatRange { lo, hi, end }) => {
                 write!(f, "{lo}")?;
                 write!(f, "{end}")?;

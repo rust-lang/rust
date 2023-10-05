@@ -23,7 +23,7 @@ LL |     S::f();
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/async-unsafe-fn-call-in-safe.rs:24:5
+  --> $DIR/async-unsafe-fn-call-in-safe.rs:26:5
    |
 LL |     f();
    |     ^^^ call to unsafe function

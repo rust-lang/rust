@@ -20,6 +20,10 @@ async fn g() {
 }
 
 fn main() {
-    S::f(); //[mir]~ ERROR call to unsafe function is unsafe
-    f(); //[mir]~ ERROR call to unsafe function is unsafe
+    S::f();
+    //[mir]~^ ERROR call to unsafe function is unsafe
+    //[thir]~^^ ERROR call to unsafe function `S::f` is unsafe
+    f();
+    //[mir]~^ ERROR call to unsafe function is unsafe
+    //[thir]~^^ ERROR call to unsafe function `f` is unsafe
 }
