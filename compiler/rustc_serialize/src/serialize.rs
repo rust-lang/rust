@@ -578,13 +578,7 @@ where
 {
     fn decode(d: &mut D) -> BTreeMap<K, V> {
         let len = d.read_usize();
-        let mut map = BTreeMap::new();
-        for _ in 0..len {
-            let key = Decodable::decode(d);
-            let val = Decodable::decode(d);
-            map.insert(key, val);
-        }
-        map
+        (0..len).map(|_| (Decodable::decode(d), Decodable::decode(d))).collect()
     }
 }
 
@@ -606,11 +600,7 @@ where
 {
     fn decode(d: &mut D) -> BTreeSet<T> {
         let len = d.read_usize();
-        let mut set = BTreeSet::new();
-        for _ in 0..len {
-            set.insert(Decodable::decode(d));
-        }
-        set
+        (0..len).map(|_| Decodable::decode(d)).collect()
     }
 }
 
@@ -637,14 +627,7 @@ where
 {
     fn decode(d: &mut D) -> HashMap<K, V, S> {
         let len = d.read_usize();
-        let state = Default::default();
-        let mut map = HashMap::with_capacity_and_hasher(len, state);
-        for _ in 0..len {
-            let key = Decodable::decode(d);
-            let val = Decodable::decode(d);
-            map.insert(key, val);
-        }
-        map
+        (0..len).map(|_| (Decodable::decode(d), Decodable::decode(d))).collect()
     }
 }
 
@@ -668,12 +651,7 @@ where
 {
     fn decode(d: &mut D) -> HashSet<T, S> {
         let len = d.read_usize();
-        let state = Default::default();
-        let mut set = HashSet::with_capacity_and_hasher(len, state);
-        for _ in 0..len {
-            set.insert(Decodable::decode(d));
-        }
-        set
+        (0..len).map(|_| Decodable::decode(d)).collect()
     }
 }
 
@@ -700,14 +678,7 @@ where
 {
     fn decode(d: &mut D) -> indexmap::IndexMap<K, V, S> {
         let len = d.read_usize();
-        let state = Default::default();
-        let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
-        for _ in 0..len {
-            let key = Decodable::decode(d);
-            let val = Decodable::decode(d);
-            map.insert(key, val);
-        }
-        map
+        (0..len).map(|_| (Decodable::decode(d), Decodable::decode(d))).collect()
     }
 }
 
@@ -731,12 +702,7 @@ where
 {
     fn decode(d: &mut D) -> indexmap::IndexSet<T, S> {
         let len = d.read_usize();
-        let state = Default::default();
-        let mut set = indexmap::IndexSet::with_capacity_and_hasher(len, state);
-        for _ in 0..len {
-            set.insert(Decodable::decode(d));
-        }
-        set
+        (0..len).map(|_| Decodable::decode(d)).collect()
     }
 }
 
