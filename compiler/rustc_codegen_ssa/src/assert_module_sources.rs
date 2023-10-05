@@ -227,14 +227,14 @@ pub struct CguReuseTracker {
 }
 
 impl CguReuseTracker {
-    pub fn new() -> CguReuseTracker {
+    fn new() -> CguReuseTracker {
         let data =
             TrackerData { actual_reuse: Default::default(), expected_reuse: Default::default() };
 
         CguReuseTracker { data: Some(data) }
     }
 
-    pub fn new_disabled() -> CguReuseTracker {
+    fn new_disabled() -> CguReuseTracker {
         CguReuseTracker { data: None }
     }
 
@@ -247,7 +247,7 @@ impl CguReuseTracker {
         }
     }
 
-    pub fn set_expectation(
+    fn set_expectation(
         &mut self,
         cgu_name: Symbol,
         cgu_user_name: &str,
@@ -265,7 +265,7 @@ impl CguReuseTracker {
         }
     }
 
-    pub fn check_expected_reuse(&self, sess: &Session) {
+    fn check_expected_reuse(&self, sess: &Session) {
         if let Some(ref data) = self.data {
             for (cgu_name, &(ref cgu_user_name, ref error_span, expected_reuse, comparison_kind)) in
                 &data.expected_reuse

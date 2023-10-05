@@ -412,7 +412,7 @@ pub(crate) fn run_aot(
                         )
                         .0
                 }
-                CguReuse::PreLto => unreachable!(),
+                CguReuse::PreLto => unreachable!("LTO not yet supported"),
                 CguReuse::PostLto => {
                     concurrency_limiter.job_already_done();
                     OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
