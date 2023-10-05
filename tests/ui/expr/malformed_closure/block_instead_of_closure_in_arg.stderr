@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce<(&bool,)>` closure, found `bool`
+error[E0277]: expected a `FnOnce(&bool)` closure, found `bool`
   --> $DIR/block_instead_of_closure_in_arg.rs:3:23
    |
 LL |        Some(true).filter({
@@ -12,7 +12,7 @@ LL | ||             number != 0
 LL | ||         }
    | ||_________- this tail expression is of type `bool`
 LL | |      });
-   | |______^ expected an `FnOnce<(&bool,)>` closure, found `bool`
+   | |______^ expected an `FnOnce(&bool)` closure, found `bool`
    |
    = help: the trait `for<'a> FnOnce<(&'a bool,)>` is not implemented for `bool`
 note: required by a bound in `Option::<T>::filter`

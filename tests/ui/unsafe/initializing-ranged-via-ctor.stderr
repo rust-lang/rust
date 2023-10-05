@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce<({integer},)>` closure, found `unsafe fn(u8) -> NonZeroAndOneU8 {NonZeroAndOneU8}`
+error[E0277]: expected a `FnOnce({integer})` closure, found `unsafe fn(u8) -> NonZeroAndOneU8 {NonZeroAndOneU8}`
   --> $DIR/initializing-ranged-via-ctor.rs:9:34
    |
 LL |     println!("{:?}", Some(1).map(NonZeroAndOneU8).unwrap());

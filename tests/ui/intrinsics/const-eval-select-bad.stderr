@@ -25,11 +25,11 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
    = note: expected a function item, found {integer}
    = help: consult the documentation on `const_eval_select` for more information
 
-error[E0277]: expected a `FnOnce<()>` closure, found `{integer}`
+error[E0277]: expected a `FnOnce()` closure, found `{integer}`
   --> $DIR/const-eval-select-bad.rs:10:27
    |
 LL |     const_eval_select((), 42, 0xDEADBEEF);
-   |     -----------------     ^^ expected an `FnOnce<()>` closure, found `{integer}`
+   |     -----------------     ^^ expected an `FnOnce()` closure, found `{integer}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -47,11 +47,11 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
    = note: expected a function item, found {integer}
    = help: consult the documentation on `const_eval_select` for more information
 
-error[E0277]: expected a `FnOnce<()>` closure, found `{integer}`
+error[E0277]: expected a `FnOnce()` closure, found `{integer}`
   --> $DIR/const-eval-select-bad.rs:10:31
    |
 LL |     const_eval_select((), 42, 0xDEADBEEF);
-   |     -----------------         ^^^^^^^^^^ expected an `FnOnce<()>` closure, found `{integer}`
+   |     -----------------         ^^^^^^^^^^ expected an `FnOnce()` closure, found `{integer}`
    |     |
    |     required by a bound introduced by this call
    |

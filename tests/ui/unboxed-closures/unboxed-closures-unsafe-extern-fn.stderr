@@ -1,4 +1,4 @@
-error[E0277]: expected a `Fn<(&isize,)>` closure, found `for<'a> unsafe fn(&'a isize) -> isize {square}`
+error[E0277]: expected a `Fn(&isize)` closure, found `for<'a> unsafe fn(&'a isize) -> isize {square}`
   --> $DIR/unboxed-closures-unsafe-extern-fn.rs:20:21
    |
 LL |     let x = call_it(&square, 22);
@@ -14,7 +14,7 @@ note: required by a bound in `call_it`
 LL | fn call_it<F: Fn(&isize) -> isize>(_: &F, _: isize) -> isize {
    |               ^^^^^^^^^^^^^^^^^^^ required by this bound in `call_it`
 
-error[E0277]: expected a `FnMut<(&isize,)>` closure, found `for<'a> unsafe fn(&'a isize) -> isize {square}`
+error[E0277]: expected a `FnMut(&isize)` closure, found `for<'a> unsafe fn(&'a isize) -> isize {square}`
   --> $DIR/unboxed-closures-unsafe-extern-fn.rs:25:25
    |
 LL |     let y = call_it_mut(&mut square, 22);
@@ -30,7 +30,7 @@ note: required by a bound in `call_it_mut`
 LL | fn call_it_mut<F: FnMut(&isize) -> isize>(_: &mut F, _: isize) -> isize {
    |                   ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `call_it_mut`
 
-error[E0277]: expected a `FnOnce<(&isize,)>` closure, found `for<'a> unsafe fn(&'a isize) -> isize {square}`
+error[E0277]: expected a `FnOnce(&isize)` closure, found `for<'a> unsafe fn(&'a isize) -> isize {square}`
   --> $DIR/unboxed-closures-unsafe-extern-fn.rs:30:26
    |
 LL |     let z = call_it_once(square, 22);

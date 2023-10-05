@@ -316,6 +316,7 @@ symbols! {
         ToOwned,
         ToString,
         TokenStream,
+        Trait,
         Try,
         TryCaptureGeneric,
         TryCapturePrintable,

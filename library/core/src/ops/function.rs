@@ -56,7 +56,7 @@ use crate::marker::Tuple;
 #[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
-#[rustc_on_unimplemented(
+#[cfg_attr(not(bootstrap), rustc_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
@@ -67,9 +67,9 @@ use crate::marker::Tuple;
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{Fn}<{Args}>` closure, found `{Self}`",
-    label = "expected an `Fn<{Args}>` closure, found `{Self}`"
-)]
+    message = "expected a `{Trait}` closure, found `{Self}`",
+    label = "expected an `{Trait}` closure, found `{Self}`"
+))]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
 // FIXME(effects) #[const_trait]
@@ -143,7 +143,7 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 #[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
-#[rustc_on_unimplemented(
+#[cfg_attr(not(bootstrap), rustc_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
@@ -154,9 +154,9 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{FnMut}<{Args}>` closure, found `{Self}`",
-    label = "expected an `FnMut<{Args}>` closure, found `{Self}`"
-)]
+    message = "expected a `{Trait}` closure, found `{Self}`",
+    label = "expected an `{Trait}` closure, found `{Self}`"
+))]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
 // FIXME(effects) #[const_trait]
@@ -222,7 +222,7 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 #[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
-#[rustc_on_unimplemented(
+#[cfg_attr(not(bootstrap), rustc_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
@@ -233,9 +233,9 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{FnOnce}<{Args}>` closure, found `{Self}`",
-    label = "expected an `FnOnce<{Args}>` closure, found `{Self}`"
-)]
+    message = "expected a `{Trait}` closure, found `{Self}`",
+    label = "expected an `{Trait}` closure, found `{Self}`"
+))]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
 // FIXME(effects) #[const_trait]

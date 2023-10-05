@@ -10,5 +10,5 @@ where
 
 fn main() {
     ice();
-    //[classic]~^ ERROR expected a `Fn<(&'w (),)>` closure, found `fn(&'w ())`
+    //[classic]~^ ERROR expected a `Fn(&'w ())` closure, found `fn(&'w ())`
 }
