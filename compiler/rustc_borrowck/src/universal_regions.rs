@@ -164,7 +164,7 @@ struct UniversalRegionIndices<'tcx> {
     /// be able to map them to our internal `RegionVid`. This is
     /// basically equivalent to an `GenericArgs`, except that it also
     /// contains an entry for `ReStatic` -- it might be nice to just
-    /// use a args, and then handle `ReStatic` another way.
+    /// use an args, and then handle `ReStatic` another way.
     indices: FxHashMap<ty::Region<'tcx>, RegionVid>,
 
     /// The vid assigned to `'static`. Used only for diagnostics.
@@ -290,7 +290,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::from_usize)
     }
 
-    /// Returns `true` if `r` is classified as an local region.
+    /// Returns `true` if `r` is classified as a local region.
     pub fn is_local_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::Local)
     }

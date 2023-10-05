@@ -1364,7 +1364,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     err.note(format!(
                         "a for loop advances the iterator for you, the result is stored in `{loop_bind}`."
                     ));
-                    err.help("if you want to call `next` on a iterator within the loop, consider using `while let`.");
+                    err.help("if you want to call `next` on an iterator within the loop, consider using `while let`.");
         }
     }
 

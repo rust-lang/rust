@@ -1967,7 +1967,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Reservation(WriteKind::MutableBorrow(BorrowKind::Mut { kind: mut_borrow_kind }))
             | Write(WriteKind::MutableBorrow(BorrowKind::Mut { kind: mut_borrow_kind })) => {
                 let is_local_mutation_allowed = match mut_borrow_kind {
-                    // `ClosureCapture` is used for mutable variable with a immutable binding.
+                    // `ClosureCapture` is used for mutable variable with an immutable binding.
                     // This is only behaviour difference between `ClosureCapture` and mutable borrows.
                     MutBorrowKind::ClosureCapture => LocalMutationIsAllowed::Yes,
                     MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow => {
