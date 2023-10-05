@@ -7,12 +7,11 @@
       let mut _2: std::pin::Pin<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>;
       let mut _3: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8};
       let mut _4: {generator@$DIR/inline_generator.rs:16:5: 16:8};
-+     let mut _6: bool;
++     let mut _5: bool;
       scope 1 {
           debug _r => _1;
       }
 +     scope 2 (inlined g) {
-+         let mut _5: {generator@$DIR/inline_generator.rs:16:5: 16:8};
 +     }
 +     scope 3 (inlined Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new) {
 +         debug pointer => _3;
@@ -23,10 +22,10 @@
 +         }
 +     }
 +     scope 6 (inlined g::{closure#0}) {
-+         debug a => _6;
-+         let mut _7: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8};
-+         let mut _8: u32;
-+         let mut _9: i32;
++         debug a => _5;
++         let mut _6: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8};
++         let mut _7: u32;
++         let mut _8: i32;
 +     }
   
       bb0: {
@@ -35,28 +34,25 @@
           StorageLive(_3);
           StorageLive(_4);
 -         _4 = g() -> [return: bb1, unwind unreachable];
-+         StorageLive(_5);
-+         _5 = {generator@$DIR/inline_generator.rs:16:5: 16:8 (#0)};
-+         _4 = move (_5 as subtype {generator@$DIR/inline_generator.rs:16:5: 16:8});
-+         StorageDead(_5);
++         _4 = {generator@$DIR/inline_generator.rs:16:5: 16:8 (#0)};
 +         _3 = &mut _4;
 +         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}> { pointer: move _3 };
 +         StorageDead(_3);
++         StorageLive(_5);
++         _5 = const false;
 +         StorageLive(_6);
-+         _6 = const false;
 +         StorageLive(_7);
-+         StorageLive(_8);
-+         _7 = (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
-+         _8 = discriminant((*_7));
-+         switchInt(move _8) -> [0: bb3, 1: bb7, 3: bb8, otherwise: bb9];
++         _6 = (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
++         _7 = discriminant((*_6));
++         switchInt(move _7) -> [0: bb3, 1: bb7, 3: bb8, otherwise: bb9];
       }
   
       bb1: {
 -         _3 = &mut _4;
 -         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new(move _3) -> [return: bb2, unwind unreachable];
-+         StorageDead(_8);
 +         StorageDead(_7);
 +         StorageDead(_6);
++         StorageDead(_5);
 +         StorageDead(_2);
 +         drop(_4) -> [return: bb2, unwind unreachable];
       }
@@ -73,8 +69,8 @@
       bb3: {
 -         StorageDead(_2);
 -         drop(_4) -> [return: bb4, unwind unreachable];
-+         StorageLive(_9);
-+         switchInt(_6) -> [0: bb4, otherwise: bb5];
++         StorageLive(_8);
++         switchInt(_5) -> [0: bb4, otherwise: bb5];
       }
   
       bb4: {
@@ -82,18 +78,18 @@
 -         _0 = const ();
 -         StorageDead(_1);
 -         return;
-+         _9 = const 13_i32;
++         _8 = const 13_i32;
 +         goto -> bb6;
 +     }
 + 
 +     bb5: {
-+         _9 = const 7_i32;
++         _8 = const 7_i32;
 +         goto -> bb6;
 +     }
 + 
 +     bb6: {
-+         _1 = GeneratorState::<i32, bool>::Yielded(move _9);
-+         discriminant((*_7)) = 3;
++         _1 = GeneratorState::<i32, bool>::Yielded(move _8);
++         discriminant((*_6)) = 3;
 +         goto -> bb1;
 +     }
 + 
@@ -102,10 +98,10 @@
 +     }
 + 
 +     bb8: {
-+         StorageLive(_9);
-+         StorageDead(_9);
-+         _1 = GeneratorState::<i32, bool>::Complete(_6);
-+         discriminant((*_7)) = 1;
++         StorageLive(_8);
++         StorageDead(_8);
++         _1 = GeneratorState::<i32, bool>::Complete(_5);
++         discriminant((*_6)) = 1;
 +         goto -> bb1;
 +     }
 + 
