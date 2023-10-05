@@ -48,7 +48,7 @@ fi
 export RUSTFLAGS="$CG_RUSTFLAGS $linker -Csymbol-mangling-version=v0 -Cdebuginfo=2 $disable_lto_flags -Zcodegen-backend=$(pwd)/target/${CHANNEL:-debug}/librustc_codegen_gcc.$dylib_ext --sysroot $(pwd)/build_sysroot/sysroot $TEST_FLAGS"
 
 # FIXME(antoyo): remove once the atomic shim is gone
-if [[ `uname` == 'Darwin' ]]; then
+if [[ unamestr == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 

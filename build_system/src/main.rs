@@ -2,6 +2,7 @@ use std::env;
 use std::process;
 
 mod build;
+mod config;
 mod prepare;
 mod rustc_info;
 mod utils;
@@ -16,12 +17,14 @@ macro_rules! arg_error {
 }
 
 fn usage() {
-    println!("\
+    println!(
+        "\
 Available commands for build_system:
 
     prepare  : Run prepare command
     build    : Run build command
-    --help   : Show this message");
+    --help   : Show this message"
+    );
 }
 
 pub enum Command {

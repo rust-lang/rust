@@ -100,7 +100,7 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ./build.sh --release --release-sysroot
+        ./y.sh build --release --release-sysroot
         cargo test
 
     - name: Clean

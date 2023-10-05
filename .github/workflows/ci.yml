@@ -119,7 +119,7 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ${{ matrix.libgccjit_version.env_extra }} ./build.sh ${{ matrix.libgccjit_version.extra }}
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh build ${{ matrix.libgccjit_version.extra }}
         ${{ matrix.libgccjit_version.env_extra }} cargo test ${{ matrix.libgccjit_version.extra }}
         ./clean_all.sh
 
