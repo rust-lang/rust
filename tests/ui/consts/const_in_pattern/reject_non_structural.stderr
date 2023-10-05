@@ -1,5 +1,5 @@
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:40:36
+  --> $DIR/reject_non_structural.rs:42:36
    |
 LL |     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"), };
    |                                    ^^^^
@@ -8,7 +8,7 @@ LL |     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:46:28
+  --> $DIR/reject_non_structural.rs:48:28
    |
 LL |     match Some(NoDerive) { FIELD => dbg!(FIELD), _ => panic!("whoops"), };
    |                            ^^^^^
@@ -17,7 +17,7 @@ LL |     match Some(NoDerive) { FIELD => dbg!(FIELD), _ => panic!("whoops"), };
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:53:27
+  --> $DIR/reject_non_structural.rs:55:27
    |
 LL |     match Some(NoDerive) {INDIRECT => dbg!(INDIRECT), _ => panic!("whoops"), };
    |                           ^^^^^^^^
@@ -26,7 +26,7 @@ LL |     match Some(NoDerive) {INDIRECT => dbg!(INDIRECT), _ => panic!("whoops")
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:59:36
+  --> $DIR/reject_non_structural.rs:61:36
    |
 LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoops"), };
    |                                    ^^^^^
@@ -35,7 +35,7 @@ LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoop
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:65:28
+  --> $DIR/reject_non_structural.rs:67:28
    |
 LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => p
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:71:36
+  --> $DIR/reject_non_structural.rs:73:36
    |
 LL |     match [None, Some(NoDerive)] { ARRAY => dbg!(ARRAY), _ => panic!("whoops"), };
    |                                    ^^^^^
@@ -53,7 +53,7 @@ LL |     match [None, Some(NoDerive)] { ARRAY => dbg!(ARRAY), _ => panic!("whoop
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:77:33
+  --> $DIR/reject_non_structural.rs:79:33
    |
 LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
    |                                 ^^^^^^
@@ -62,16 +62,7 @@ LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:77:33
-   |
-LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
-   |                                 ^^^^^^
-   |
-   = note: the traits must be derived, manual `impl`s are not sufficient
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
-
-error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:87:28
+  --> $DIR/reject_non_structural.rs:86:28
    |
 LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^
@@ -80,7 +71,7 @@ LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => p
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:93:28
+  --> $DIR/reject_non_structural.rs:92:28
    |
 LL |     match Some(NoDerive) { BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
    |                            ^^^^^
@@ -89,7 +80,7 @@ LL |     match Some(NoDerive) { BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:99:29
+  --> $DIR/reject_non_structural.rs:98:29
    |
 LL |     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
    |                             ^^^^^^^
@@ -99,10 +90,10 @@ LL |     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops")
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 note: the lint level is defined here
-  --> $DIR/reject_non_structural.rs:12:9
+  --> $DIR/reject_non_structural.rs:14:9
    |
 LL | #![warn(indirect_structural_match)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 10 previous errors; 1 warning emitted
+error: aborting due to 9 previous errors; 1 warning emitted
 

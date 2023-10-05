@@ -8,11 +8,13 @@ error: lint `bare_trait_object` has been renamed to `bare_trait_objects`
    |
    = help: use the new name `bare_trait_objects`
    = note: requested on the command line with `-D bare_trait_object`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lint `bare_trait_object` has been renamed to `bare_trait_objects`
    |
    = help: use the new name `bare_trait_objects`
    = note: requested on the command line with `-D bare_trait_object`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unused variable: `unused`
   --> $DIR/lint-renamed-cmdline-deny.rs:10:17

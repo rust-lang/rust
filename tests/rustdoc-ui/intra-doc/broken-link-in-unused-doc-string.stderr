@@ -22,6 +22,7 @@ LL | /// [1]
    |      ^ no item named `1` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 3 warnings emitted
 

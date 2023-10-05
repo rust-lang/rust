@@ -24,6 +24,7 @@ LL | |     B = T,
 LL | | }
    | |_- in this macro invocation
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

@@ -36,6 +36,7 @@ note: `V` could also refer to the associated type defined here
    |
 LL |     type V;
    |     ^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

@@ -24,6 +24,8 @@ note: erroneous constant encountered
    |
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: skipping const checks
    |

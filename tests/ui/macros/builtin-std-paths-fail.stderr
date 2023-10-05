@@ -15,12 +15,16 @@ error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
    |
 LL |     core::RustcDecodable,
    |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
   --> $DIR/builtin-std-paths-fail.rs:4:11
    |
 LL |     core::RustcDecodable,
    |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0433]: failed to resolve: could not find `bench` in `core`
   --> $DIR/builtin-std-paths-fail.rs:7:9
@@ -63,12 +67,16 @@ error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
    |
 LL |     std::RustcDecodable,
    |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
   --> $DIR/builtin-std-paths-fail.rs:16:10
    |
 LL |     std::RustcDecodable,
    |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0433]: failed to resolve: could not find `bench` in `std`
   --> $DIR/builtin-std-paths-fail.rs:19:8

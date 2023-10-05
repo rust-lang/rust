@@ -22,6 +22,7 @@ LL | #[allow(unused_variables)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: allow(unused_variables) incompatible with previous forbid
   --> $DIR/forbid-group-member.rs:8:9
@@ -34,6 +35,7 @@ LL | #[allow(unused_variables)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 3 warnings emitted
 

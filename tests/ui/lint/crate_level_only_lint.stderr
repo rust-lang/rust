@@ -27,36 +27,48 @@ error: allow(uncommon_codepoints) is ignored unless specified at crate level
    |
 LL | #![allow(uncommon_codepoints)]
    |          ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(uncommon_codepoints) is ignored unless specified at crate level
   --> $DIR/crate_level_only_lint.rs:9:9
    |
 LL | #[allow(uncommon_codepoints)]
    |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(uncommon_codepoints) is ignored unless specified at crate level
   --> $DIR/crate_level_only_lint.rs:17:9
    |
 LL | #[allow(uncommon_codepoints)]
    |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(uncommon_codepoints) is ignored unless specified at crate level
   --> $DIR/crate_level_only_lint.rs:4:10
    |
 LL | #![allow(uncommon_codepoints)]
    |          ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(uncommon_codepoints) is ignored unless specified at crate level
   --> $DIR/crate_level_only_lint.rs:9:9
    |
 LL | #[allow(uncommon_codepoints)]
    |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: allow(uncommon_codepoints) is ignored unless specified at crate level
   --> $DIR/crate_level_only_lint.rs:17:9
    |
 LL | #[allow(uncommon_codepoints)]
    |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 9 previous errors
 

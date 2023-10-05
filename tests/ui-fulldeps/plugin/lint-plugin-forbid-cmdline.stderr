@@ -21,6 +21,7 @@ LL | #[allow(test_lint)]
    |         ^^^^^^^^^ overruled by previous forbid
    |
    = note: `forbid` lint level was set on command line
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/lint-plugin-forbid-cmdline.rs:6:1

@@ -9,6 +9,8 @@ error[E0789]: `rustc_allowed_through_unstable_modules` attribute must be paired 
    |
 LL | struct Foo;
    | ^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

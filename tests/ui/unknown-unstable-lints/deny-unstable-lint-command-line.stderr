@@ -8,11 +8,13 @@ error: unknown lint: `test_unstable_lint`
    |
    = note: the `test_unstable_lint` lint is unstable
    = help: add `-Zcrate-attr="feature(test_unstable_lint)"` to the command-line options to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unknown lint: `test_unstable_lint`
    |
    = note: the `test_unstable_lint` lint is unstable
    = help: add `-Zcrate-attr="feature(test_unstable_lint)"` to the command-line options to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

@@ -15,6 +15,7 @@ LL | #![warn(nonstandard_style, reason = "the standard should be respected")]
    |
    = note: see issue #54503 <https://github.com/rust-lang/rust/issues/54503> for more information
    = help: add `#![feature(lint_reasons)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

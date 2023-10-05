@@ -23,6 +23,7 @@ LL | |     });
    |
    = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `FnOnce<(&(),)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 
