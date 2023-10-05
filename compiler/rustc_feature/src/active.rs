@@ -39,12 +39,7 @@ macro_rules! declare_features {
                 Feature {
                     state: State::Active {
                         // Sets this feature's corresponding bool within `features`.
-                        set: {
-                            fn f(features: &mut Features) {
-                                features.$feature = true;
-                            }
-                            f as fn(&mut Features)
-                        }
+                        set: |features| features.$feature = true,
                     },
                     name: sym::$feature,
                     since: $ver,
