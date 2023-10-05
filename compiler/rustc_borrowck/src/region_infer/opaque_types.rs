@@ -368,7 +368,7 @@ fn check_opaque_type_well_formed<'tcx>(
     if errors.is_empty() {
         Ok(definition_ty)
     } else {
-        Err(infcx.err_ctxt().report_fulfillment_errors(&errors))
+        Err(infcx.err_ctxt().report_fulfillment_errors(errors))
     }
 }
 

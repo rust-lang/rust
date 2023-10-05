@@ -196,7 +196,7 @@ fn get_impl_args(
 
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let guar = ocx.infcx.err_ctxt().report_fulfillment_errors(&errors);
+        let guar = ocx.infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
     }
 

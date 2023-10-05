@@ -1,13 +1,13 @@
 error[E0282]: type annotations needed
   --> $DIR/E0282.rs:2:9
    |
-LL |     let x = "hello".chars().rev().collect();
+LL |     let x;
    |         ^
    |
 help: consider giving `x` an explicit type
    |
-LL |     let x: Vec<_> = "hello".chars().rev().collect();
-   |          ++++++++
+LL |     let x: /* Type */;
+   |          ++++++++++++
 
 error: aborting due to previous error
 

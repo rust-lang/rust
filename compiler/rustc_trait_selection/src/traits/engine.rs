@@ -218,7 +218,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         def_id: LocalDefId,
     ) -> Result<FxIndexSet<Ty<'tcx>>, ErrorGuaranteed> {
         self.assumed_wf_types(param_env, def_id)
-            .map_err(|errors| self.infcx.err_ctxt().report_fulfillment_errors(&errors))
+            .map_err(|errors| self.infcx.err_ctxt().report_fulfillment_errors(errors))
     }
 
     pub fn assumed_wf_types(

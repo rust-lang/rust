@@ -2958,7 +2958,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // There should be at least one error reported. If not, we
             // will still delay a span bug in `report_fulfillment_errors`.
             Ok::<_, NoSolution>((
-                self.err_ctxt().report_fulfillment_errors(&errors),
+                self.err_ctxt().report_fulfillment_errors(errors),
                 impl_trait_ref.args.type_at(1),
                 element_ty,
             ))

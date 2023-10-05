@@ -323,7 +323,7 @@ fn compare_method_predicate_entailment<'tcx>(
         // FIXME(-Ztrait-solver=next): Not needed when the hack below is removed.
         let errors = ocx.select_where_possible();
         if !errors.is_empty() {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
             return Err(reported);
         }
 
@@ -394,7 +394,7 @@ fn compare_method_predicate_entailment<'tcx>(
                 });
             }
             CheckImpliedWfMode::Skip => {
-                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
+                let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
                 return Err(reported);
             }
         }
@@ -874,7 +874,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // RPITs.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
 
@@ -2050,7 +2050,7 @@ fn compare_const_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors));
+        return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
     let outlives_env = OutlivesEnvironment::new(param_env);
@@ -2143,7 +2143,7 @@ fn compare_type_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
 
@@ -2358,7 +2358,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
 

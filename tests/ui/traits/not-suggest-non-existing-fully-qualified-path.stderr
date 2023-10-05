@@ -1,14 +1,3 @@
-error[E0282]: type annotations needed
-  --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:21:7
-   |
-LL |     a.method();
-   |       ^^^^^^
-   |
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     <A<B> as V<U>>::method(a);
-   |     +++++++++++++++++++++++ ~
-
 error[E0283]: type annotations needed
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:21:7
    |
@@ -35,7 +24,6 @@ help: try using a fully qualified path to specify the expected types
 LL |     <A<B> as V<U>>::method(a);
    |     +++++++++++++++++++++++ ~
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

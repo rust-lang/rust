@@ -1,3 +1,4 @@
+// ignore-msvc different list of satisfying impls
 use std::collections::HashMap;
 
 fn what() {
