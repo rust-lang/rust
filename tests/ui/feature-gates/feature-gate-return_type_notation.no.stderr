@@ -1,5 +1,5 @@
 warning: return type notation is experimental
-  --> $DIR/feature-gate-return_type_notation.rs:14:17
+  --> $DIR/feature-gate-return_type_notation.rs:15:17
    |
 LL | fn foo<T: Trait<m(): Send>>() {}
    |                 ^^^^^^^^^

@@ -1818,3 +1818,24 @@ pub struct UnusedAllocationDiag;
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_allocation_mut)]
 pub struct UnusedAllocationMutDiag;
+
+pub struct AsyncFnInTraitDiag {
+    pub sugg: Option<Vec<(Span, String)>>,
+}
+
+impl<'a> DecorateLint<'a, ()> for AsyncFnInTraitDiag {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.note(fluent::lint_note);
+        if let Some(sugg) = self.sugg {
+            diag.multipart_suggestion(fluent::lint_suggestion, sugg, Applicability::MaybeIncorrect);
+        }
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        fluent::lint_async_fn_in_trait
+    }
+}
