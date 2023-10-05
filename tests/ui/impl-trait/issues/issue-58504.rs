@@ -8,5 +8,5 @@ fn mk_gen() -> impl Generator<Return=!, Yield=()> {
 
 fn main() {
     let gens: [impl Generator<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
-    //~^ `impl Trait` only allowed in function and inherent method return types
+    //~^ `impl Trait` only allowed in function and inherent method argument and return types
 }

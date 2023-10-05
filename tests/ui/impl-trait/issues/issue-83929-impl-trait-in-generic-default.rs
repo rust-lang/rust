@@ -1,8 +1,8 @@
 struct Foo<T = impl Copy>(T);
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` only allowed in function and inherent method argument and return types
 
 type Result<T, E = impl std::error::Error> = std::result::Result<T, E>;
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` only allowed in function and inherent method argument and return types
 
 // should not cause ICE
 fn x() -> Foo {
