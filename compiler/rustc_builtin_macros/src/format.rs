@@ -767,11 +767,17 @@ fn report_redundant_format_arguments<'a>(
             suggestion_spans.push(span);
         }
 
+        let sugg = if args.named_args().len() == 0 {
+            Some(errors::FormatRedundantArgsSugg { spans: suggestion_spans })
+        } else {
+            None
+        };
+
         return Some(ecx.create_err(errors::FormatRedundantArgs {
             n: args_spans.len(),
             span: MultiSpan::from(args_spans),
             note: multispan,
-            sugg: errors::FormatRedundantArgsSugg { spans: suggestion_spans },
+            sugg,
         }));
     }
 

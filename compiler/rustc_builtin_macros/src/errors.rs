@@ -657,7 +657,7 @@ pub(crate) struct FormatRedundantArgs {
     pub(crate) note: MultiSpan,
 
     #[subdiagnostic]
-    pub(crate) sugg: FormatRedundantArgsSugg,
+    pub(crate) sugg: Option<FormatRedundantArgsSugg>,
 }
 
 #[derive(Subdiagnostic)]

@@ -1,8 +1,8 @@
 // run-rustfix
 
 fn main() {
-    let x = 0;
-    let y = 0;
+    let x = "x";
+    let y = "y";
 
     println!("{x}", );
     //~^ ERROR: redundant argument
