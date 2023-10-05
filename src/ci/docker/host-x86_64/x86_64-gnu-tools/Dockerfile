@@ -80,6 +80,7 @@ COPY host-x86_64/x86_64-gnu-tools/browser-ui-test.version /tmp/
 RUN npm install -g browser-ui-test@$(head -n 1 /tmp/browser-ui-test.version) --unsafe-perm=true
 
 ENV RUST_CONFIGURE_ARGS \
+  --set llvm.download-ci-llvm=false \
   --build=x86_64-unknown-linux-gnu \
   --save-toolstates=/tmp/toolstate/toolstates.json
 
