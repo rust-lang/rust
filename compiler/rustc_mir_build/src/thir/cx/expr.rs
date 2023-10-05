@@ -642,15 +642,33 @@ impl<'tcx> Cx<'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let value =
-                                mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
+                            let value = mir::Const::Unevaluated(
+                                mir::UnevaluatedConst {
+                                    def: anon_const.def_id.to_def_id(),
+                                    args: GenericArgs::identity_for_item(
+                                        self.tcx,
+                                        anon_const.def_id,
+                                    ),
+                                    promoted: None,
+                                },
+                                tcx.type_of(anon_const.def_id).instantiate_identity(),
+                            );
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let value =
-                                mir::Const::from_anon_const(tcx, anon_const.def_id, self.param_env);
+                            let value = mir::Const::Unevaluated(
+                                mir::UnevaluatedConst {
+                                    def: anon_const.def_id.to_def_id(),
+                                    args: GenericArgs::identity_for_item(
+                                        self.tcx,
+                                        anon_const.def_id,
+                                    ),
+                                    promoted: None,
+                                },
+                                tcx.type_of(anon_const.def_id).instantiate_identity(),
+                            );
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }
