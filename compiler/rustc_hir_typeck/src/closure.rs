@@ -56,7 +56,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => self.deduce_closure_signature(ty),
+            Some(ty) => {
+                self.deduce_closure_signature(self.try_structurally_resolve_type(expr_span, ty))
+            }
             None => (None, None),
         };
         let body = self.tcx.hir().body(closure.body);
