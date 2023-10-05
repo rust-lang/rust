@@ -1009,7 +1009,6 @@ impl Step for PlainSourceTarball {
             if builder.rust_info().is_managed_git_subrepository() {
                 // Ensure we have the submodules checked out.
                 builder.update_submodule(Path::new("src/tools/cargo"));
-                builder.update_submodule(Path::new("src/tools/rust-analyzer"));
             }
 
             // Vendor all Cargo dependencies
