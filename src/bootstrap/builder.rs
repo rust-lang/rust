@@ -1174,9 +1174,6 @@ impl<'a> Builder<'a> {
         if let Some(linker) = self.linker(compiler.host) {
             cmd.env("RUSTDOC_LINKER", linker);
         }
-        if self.is_fuse_ld_lld(compiler.host) {
-            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
-        }
         cmd
     }
 
@@ -1659,7 +1656,6 @@ impl<'a> Builder<'a> {
         }
         if self.is_fuse_ld_lld(compiler.host) {
             cargo.env("RUSTC_HOST_FUSE_LD_LLD", "1");
-            cargo.env("RUSTDOC_FUSE_LD_LLD", "1");
         }
 
         if let Some(target_linker) = self.linker(target) {
