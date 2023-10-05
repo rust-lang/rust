@@ -5,7 +5,13 @@ use crate::{ty::Ty, Span};
 #[derive(Clone, Debug)]
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
-    pub locals: Vec<Ty>,
+    pub locals: Vec<LocalDecl>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalDecl {
+    pub ty: Ty,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -15,7 +21,13 @@ pub struct BasicBlock {
 }
 
 #[derive(Clone, Debug)]
-pub enum Terminator {
+pub struct Terminator {
+    pub kind: TerminatorKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum TerminatorKind {
     Goto {
         target: usize,
     },
@@ -179,7 +191,13 @@ pub enum NonDivergingIntrinsic {
 }
 
 #[derive(Clone, Debug)]
-pub enum Statement {
+pub struct Statement {
+    pub kind: StatementKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum StatementKind {
     Assign(Place, Rvalue),
     FakeRead(FakeReadCause, Place),
     SetDiscriminant { place: Place, variant_index: VariantIdx },
