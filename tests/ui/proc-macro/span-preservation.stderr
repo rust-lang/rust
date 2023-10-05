@@ -38,7 +38,7 @@ error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:39:5
    |
 LL | extern "C" fn bar() {
-   |                     - help: try adding a return type: `-> i32`
+   |                    - help: try adding a return type: `-> i32`
 LL |     0
    |     ^ expected `()`, found integer
 
@@ -46,7 +46,7 @@ error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:44:5
    |
 LL | extern "C" fn baz() {
-   |                     - help: try adding a return type: `-> i32`
+   |                    - help: try adding a return type: `-> i32`
 LL |     0
    |     ^ expected `()`, found integer
 
@@ -54,7 +54,7 @@ error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:49:5
    |
 LL | extern "Rust" fn rust_abi() {
-   |                             - help: try adding a return type: `-> i32`
+   |                            - help: try adding a return type: `-> i32`
 LL |     0
    |     ^ expected `()`, found integer
 
@@ -62,7 +62,7 @@ error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:54:5
    |
 LL | extern "\x43" fn c_abi_escaped() {
-   |                                  - help: try adding a return type: `-> i32`
+   |                                 - help: try adding a return type: `-> i32`
 LL |     0
    |     ^ expected `()`, found integer
 

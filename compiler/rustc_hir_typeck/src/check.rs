@@ -113,7 +113,11 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fcx.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+    let return_or_body_span = match decl.output {
+        hir::FnRetTy::DefaultReturn(_) => body.value.span,
+        hir::FnRetTy::Return(ty) => ty.span,
+    };
+    fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
     fcx.check_return_expr(&body.value, false);
 
     // We insert the deferred_generator_interiors entry after visiting the body.

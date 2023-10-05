@@ -25,10 +25,10 @@ LL |     for <Foo>::Bar in x {}
    = help: consider removing `for<...>`
 
 error: implicit types in closure signatures are forbidden when `for<...>` is present
-  --> $DIR/recover-quantified-closure.rs:2:25
+  --> $DIR/recover-quantified-closure.rs:2:24
    |
 LL |     for<'a> |x: &'a u8| *x + 1;
-   |     -------             ^
+   |     -------            ^
    |     |
    |     `for<...>` is here
 
