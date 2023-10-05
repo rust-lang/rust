@@ -34,7 +34,7 @@ note: the formatting specifier is referencing the binding already
 LL |     println!("{} {x}", x, x);
    |                   ^
 
-error: redundant argument
+error: redundant arguments
   --> $DIR/issue-105225.rs:13:14
    |
 LL |     println!("{x} {y}", x, y);
@@ -51,7 +51,7 @@ LL -     println!("{x} {y}", x, y);
 LL +     println!("{x} {y}", );
    |
 
-error: redundant argument
+error: redundant arguments
   --> $DIR/issue-105225.rs:17:14
    |
 LL |     println!("{} {} {x} {y} {}", x, x, x, y, y);

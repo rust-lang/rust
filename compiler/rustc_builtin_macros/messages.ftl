@@ -139,7 +139,10 @@ builtin_macros_format_positional_after_named = positional arguments cannot follo
 
 builtin_macros_format_remove_raw_ident = remove the `r#`
 
-builtin_macros_format_redundant_args = redundant argument
+builtin_macros_format_redundant_args = redundant {$n ->
+    [one] argument
+    *[more] arguments
+    }
     .help = {$n ->
         [one] the formatting string already captures the binding directly, it doesn't need to be included in the argument list
         *[more] the formatting strings already captures the bindings directly, they don't need to be included in the argument list
