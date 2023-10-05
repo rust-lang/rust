@@ -132,6 +132,16 @@ rustc_queries! {
         desc { "getting the resolver for lowering" }
     }
 
+    /// Named module children from all kinds of items, including imports.
+    /// In addition to regular items this list also includes struct and variant constructors, and
+    /// items inside `extern {}` blocks because all of them introduce names into parent module.
+    ///
+    /// Module here is understood in name resolution sense - it can be a `mod` item,
+    /// or a crate root, or an enum, or a trait.
+    query module_children_local(key: LocalDefId) -> &'tcx [ModChild] {
+        desc { |tcx| "module exports for `{}`", tcx.def_path_str(key) }
+    }
+
     /// Return the span for a definition.
     /// Contrary to `def_span` below, this query returns the full absolute span of the definition.
     /// This span is meant for dep-tracking rather than diagnostics. It should not be used outside

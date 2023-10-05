@@ -1468,6 +1468,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let table = tcx.associated_types_for_impl_traits_in_associated_fn(def_id);
                 record_defaulted_array!(self.tables.associated_types_for_impl_traits_in_associated_fn[def_id] <- table);
             }
+            if let DefKind::Mod = tcx.def_kind(def_id) {
+                record!(self.tables.doc_link_resolutions[def_id] <- tcx.doc_link_resolutions(def_id));
+                record_array!(self.tables.doc_link_traits_in_scope[def_id] <- tcx.doc_link_traits_in_scope(def_id));
+            }
         }
 
         let inherent_impls = tcx.with_stable_hashing_context(|hcx| {
@@ -1478,14 +1482,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 assert!(def_id.is_local());
                 def_id.index
             }));
-        }
-
-        for (def_id, res_map) in &tcx.resolutions(()).doc_link_resolutions {
-            record!(self.tables.doc_link_resolutions[def_id.to_def_id()] <- res_map);
-        }
-
-        for (def_id, traits) in &tcx.resolutions(()).doc_link_traits_in_scope {
-            record_array!(self.tables.doc_link_traits_in_scope[def_id.to_def_id()] <- traits);
         }
     }
 
@@ -2126,6 +2122,8 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 pub struct EncodedMetadata {
     // The declaration order matters because `mmap` should be dropped before `_temp_dir`.
     mmap: Option<Mmap>,
+    // The path containing the metadata, to record as work product.
+    path: Option<Box<Path>>,
     // We need to carry MaybeTempDir to avoid deleting the temporary
     // directory while accessing the Mmap.
     _temp_dir: Option<MaybeTempDir>,
@@ -2137,15 +2135,20 @@ impl EncodedMetadata {
         let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { mmap: None, _temp_dir: None });
+            return Ok(Self { mmap: None, path: None, _temp_dir: None });
         }
         let mmap = unsafe { Some(Mmap::map(file)?) };
-        Ok(Self { mmap, _temp_dir: temp_dir })
+        Ok(Self { mmap, path: Some(path.into()), _temp_dir: temp_dir })
     }
 
     #[inline]
     pub fn raw_data(&self) -> &[u8] {
         self.mmap.as_deref().unwrap_or_default()
+    }
+
+    #[inline]
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 }
 
@@ -2170,11 +2173,32 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
             None
         };
 
-        Self { mmap, _temp_dir: None }
+        Self { mmap, path: None, _temp_dir: None }
     }
 }
 
+#[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
+    let dep_node = tcx.metadata_dep_node();
+
+    if tcx.dep_graph.is_fully_enabled()
+        && let work_product_id = &rustc_middle::dep_graph::WorkProductId::from_cgu_name("metadata")
+        && let Some(work_product) = tcx.dep_graph.previous_work_product(work_product_id)
+        && tcx.try_mark_green(&dep_node)
+    {
+        let saved_path = &work_product.saved_files["rmeta"];
+        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().unwrap();
+        let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, saved_path);
+        debug!("copying preexisting metadata from {source_file:?} to {path:?}");
+        match rustc_fs_util::link_or_copy(&source_file, path) {
+            Ok(_) => {}
+            Err(err) => {
+                tcx.sess.emit_fatal(FailCreateFileEncoder { err });
+            }
+        };
+        return;
+    };
+
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2182,7 +2206,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     tcx.dep_graph.assert_ignored();
 
     join(
-        || encode_metadata_impl(tcx, path),
+        || tcx.dep_graph.with_task(dep_node, tcx, path, encode_metadata_impl, None),
         || {
             if tcx.sess.threads() == 1 {
                 return;
