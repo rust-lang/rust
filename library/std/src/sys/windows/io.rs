@@ -3,7 +3,7 @@ use crate::mem::size_of;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::slice;
 use crate::sys::c;
-use libc;
+use core::ffi::c_void;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
@@ -136,7 +136,7 @@ unsafe fn msys_tty_on(handle: c::HANDLE) -> bool {
     let res = c::GetFileInformationByHandleEx(
         handle,
         c::FileNameInfo,
-        &mut name_info as *mut _ as *mut libc::c_void,
+        &mut name_info as *mut _ as *mut c_void,
         size_of::<FILE_NAME_INFO>() as u32,
     );
     if res == 0 {

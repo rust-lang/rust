@@ -16,6 +16,8 @@ use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
 
+use core::ffi::c_void;
+
 use super::path::maybe_verbatim;
 use super::to_u16s;
 
@@ -371,7 +373,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                &mut info as *mut _ as *mut libc::c_void,
+                &mut info as *mut _ as *mut c_void,
                 size as c::DWORD,
             ))?;
             let mut attr = FileAttr {
@@ -399,7 +401,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileStandardInfo,
-                &mut info as *mut _ as *mut libc::c_void,
+                &mut info as *mut _ as *mut c_void,
                 size as c::DWORD,
             ))?;
             attr.file_size = info.AllocationSize as u64;
@@ -624,7 +626,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                &mut info as *mut _ as *mut libc::c_void,
+                &mut info as *mut _ as *mut c_void,
                 size as c::DWORD,
             ))?;
             Ok(info)
