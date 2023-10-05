@@ -12,7 +12,7 @@ macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, None, $reason:expr),
     )+) => {
-        /// Represents unstable features which have since been removed (it was once Active)
+        /// Formerly unstable features that have now been removed.
         pub const REMOVED_FEATURES: &[RemovedFeature] = &[
             $(RemovedFeature {
                 feature: Feature {

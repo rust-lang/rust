@@ -15,7 +15,7 @@ use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Features;
-use rustc_feature::{ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES};
+use rustc_feature::{ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -73,7 +73,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
     // Enable edition-dependent features based on `features_edition`.
     // - E.g. enable `test_2018_feature` if `features_edition` is 2018 or higher
     let mut edition_enabled_features = FxHashSet::default();
-    for f in ACTIVE_FEATURES {
+    for f in UNSTABLE_FEATURES {
         if let Some(edition) = f.feature.edition && edition <= features_edition {
             // FIXME(Manishearth) there is currently no way to set lib features by
             // edition.
@@ -165,7 +165,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             }
 
             // If the declared feature is unstable, record it.
-            if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.feature.name) {
+            if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name) {
                 (f.set_enabled)(&mut features);
                 features.set_declared_lang_feature(name, mi.span(), None);
                 continue;

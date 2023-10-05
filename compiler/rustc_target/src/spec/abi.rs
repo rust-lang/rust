@@ -182,7 +182,7 @@ pub fn is_enabled(
 ) -> Result<(), AbiDisabled> {
     let s = is_stable(name);
     if let Err(AbiDisabled::Unstable { feature, .. }) = s {
-        if features.enabled(feature) || span.allows_unstable(feature) {
+        if features.active(feature) || span.allows_unstable(feature) {
             return Ok(());
         }
     }
