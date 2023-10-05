@@ -233,12 +233,15 @@ impl Socket {
         }
     }
 
+    pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
+        let (addr, len) = addr.into_inner();
+        cvt(unsafe { netc::connect(self.0.raw(), addr.as_ptr(), len) })?;
+        Ok(())
+    }
+
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
-        let r = unsafe {
-            let (addr, len) = addr.into_inner();
-            cvt(netc::connect(self.0.raw(), addr.as_ptr(), len))
-        };
+        let r = self.connect(addr);
         self.set_nonblocking(false)?;
 
         match r {

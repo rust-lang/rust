@@ -226,9 +226,7 @@ impl TcpStream {
         init();
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
-
-        let (addr, len) = addr.into_inner();
-        cvt_r(|| unsafe { c::connect(sock.as_raw(), addr.as_ptr(), len) })?;
+        sock.connect(addr)?;
         Ok(TcpStream { inner: sock })
     }
 
