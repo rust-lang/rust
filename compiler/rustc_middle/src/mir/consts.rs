@@ -213,10 +213,10 @@ impl<'tcx> Const<'tcx> {
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
             Const::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(valtree) => match valtree {
-                    ty::ValTree::Leaf(scalar_int) => Some(Scalar::Int(scalar_int)),
-                    ty::ValTree::Branch(_) => None,
-                },
+                ty::ConstKind::Value(valtree) if c.ty().is_primitive() => {
+                    // A valtree of a type where leaves directly represent the scalar const value.
+                    Some(valtree.unwrap_leaf().into())
+                }
                 _ => None,
             },
             Const::Val(val, _) => val.try_to_scalar(),
@@ -279,7 +279,16 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<Scalar> {
-        self.eval(tcx, param_env, None).ok()?.try_to_scalar()
+        match self {
+            Const::Ty(c) if c.ty().is_primitive() => {
+                // Avoid the `valtree_to_const_val` query. Can only be done on primitive types that
+                // are valtree leaves, and *not* on references. (References should return the
+                // pointer here, which valtrees don't represent.)
+                let val = c.eval(tcx, param_env, None).ok()?;
+                Some(val.unwrap_leaf().into())
+            }
+            _ => self.eval(tcx, param_env, None).ok()?.try_to_scalar(),
+        }
     }
 
     #[inline]
@@ -288,16 +297,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<ScalarInt> {
-        match self {
-            // If the constant is already evaluated, we shortcut here.
-            Const::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
-                valtree.try_to_scalar_int()
-            },
-            // This is a more general form of the previous case.
-            _ => {
-                self.try_eval_scalar(tcx, param_env)?.try_to_int().ok()
-            },
-        }
+        self.try_eval_scalar(tcx, param_env)?.try_to_int().ok()
     }
 
     #[inline]
