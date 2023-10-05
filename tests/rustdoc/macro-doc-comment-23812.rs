@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/23812
+#![crate_name="issue_23812"]
+
 macro_rules! doc {
     (#[$outer:meta] mod $i:ident { #![$inner:meta] }) =>
     (

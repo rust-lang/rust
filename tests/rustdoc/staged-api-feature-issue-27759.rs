@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/27759
+#![crate_name="issue_27759"]
+
 #![feature(staged_api)]
 #![doc(issue_tracker_base_url = "http://issue_url/")]
 
