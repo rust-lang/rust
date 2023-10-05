@@ -24,6 +24,7 @@ use rustc_session::Session;
 use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
@@ -54,6 +55,14 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
         })
     }
 
+    fn feature_list(attr: &Attribute) -> ThinVec<ast::NestedMetaItem> {
+        if attr.has_name(sym::feature) && let Some(list) = attr.meta_item_list() {
+            list
+        } else {
+            ThinVec::new()
+        }
+    }
+
     let mut features = Features::default();
     let mut edition_enabled_features = FxHashMap::default();
     let crate_edition = sess.edition();
@@ -81,15 +90,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
     // - E.g. enable `test_2018_feature` if the crate edition is 2015 but
     //   `rust_2018_preview` is present
     for attr in krate_attrs {
-        if !attr.has_name(sym::feature) {
-            continue;
-        }
-
-        let Some(list) = attr.meta_item_list() else {
-            continue;
-        };
-
-        for mi in list {
+        for mi in feature_list(attr) {
             if !mi.is_word() {
                 continue;
             }
@@ -114,15 +115,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
 
     // Process all features declared in the code.
     for attr in krate_attrs {
-        if !attr.has_name(sym::feature) {
-            continue;
-        }
-
-        let Some(list) = attr.meta_item_list() else {
-            continue;
-        };
-
-        for mi in list {
+        for mi in feature_list(attr) {
             let name = match mi.ident() {
                 Some(ident) if mi.is_word() => ident.name,
                 Some(ident) => {
