@@ -8,6 +8,7 @@ on:
     branches:
       - auto
       - try
+      - automation/bors/try
 
 env:
   CARGO_INCREMENTAL: 0
