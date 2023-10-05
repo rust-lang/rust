@@ -1,47 +1,47 @@
 error: redundant argument
-  --> $DIR/issue-105225.rs:5:21
+  --> $DIR/issue-105225.rs:7:21
    |
 LL |     println!("{x}", x);
    |                     ^ help: this can be removed
    |
 note: the formatting specifier is referencing the binding already
-  --> $DIR/issue-105225.rs:5:16
+  --> $DIR/issue-105225.rs:7:16
    |
 LL |     println!("{x}", x);
    |                ^
 
 error: redundant argument
-  --> $DIR/issue-105225.rs:8:27
+  --> $DIR/issue-105225.rs:10:27
    |
 LL |     println!("{x} {}", x, x);
    |                           ^ help: this can be removed
    |
 note: the formatting specifier is referencing the binding already
-  --> $DIR/issue-105225.rs:8:16
+  --> $DIR/issue-105225.rs:10:16
    |
 LL |     println!("{x} {}", x, x);
    |                ^
 
 error: redundant argument
-  --> $DIR/issue-105225.rs:11:27
+  --> $DIR/issue-105225.rs:13:27
    |
 LL |     println!("{} {x}", x, x);
    |                           ^ help: this can be removed
    |
 note: the formatting specifier is referencing the binding already
-  --> $DIR/issue-105225.rs:11:19
+  --> $DIR/issue-105225.rs:13:19
    |
 LL |     println!("{} {x}", x, x);
    |                   ^
 
 error: redundant arguments
-  --> $DIR/issue-105225.rs:14:25
+  --> $DIR/issue-105225.rs:16:25
    |
 LL |     println!("{x} {y}", x, y);
    |                         ^  ^
    |
 note: the formatting specifiers are referencing the bindings already
-  --> $DIR/issue-105225.rs:14:16
+  --> $DIR/issue-105225.rs:16:16
    |
 LL |     println!("{x} {y}", x, y);
    |                ^   ^
@@ -52,13 +52,13 @@ LL +     println!("{x} {y}", );
    |
 
 error: redundant arguments
-  --> $DIR/issue-105225.rs:17:43
+  --> $DIR/issue-105225.rs:19:43
    |
 LL |     println!("{} {} {x} {y} {}", x, x, x, y, y);
    |                                           ^  ^
    |
 note: the formatting specifiers are referencing the bindings already
-  --> $DIR/issue-105225.rs:17:26
+  --> $DIR/issue-105225.rs:19:26
    |
 LL |     println!("{} {} {x} {y} {}", x, x, x, y, y);
    |                          ^
