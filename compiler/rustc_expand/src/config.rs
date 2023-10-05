@@ -14,12 +14,12 @@ use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_feature::{Feature, Features, State as FeatureState};
+use rustc_feature::Features;
 use rustc_feature::{ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES};
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::edition::{Edition, ALL_EDITIONS};
+use rustc_span::edition::ALL_EDITIONS;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use thin_vec::ThinVec;
@@ -36,16 +36,6 @@ pub struct StripUnconfigured<'a> {
 }
 
 pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
-    fn active_features_up_to(edition: Edition) -> impl Iterator<Item = &'static Feature> {
-        ACTIVE_FEATURES.iter().filter(move |feature| {
-            if let Some(feature_edition) = feature.edition {
-                feature_edition <= edition
-            } else {
-                false
-            }
-        })
-    }
-
     fn feature_list(attr: &Attribute) -> ThinVec<ast::NestedMetaItem> {
         if attr.has_name(sym::feature)
             && let Some(list) = attr.meta_item_list()
@@ -83,11 +73,13 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
     // Enable edition-dependent features based on `features_edition`.
     // - E.g. enable `test_2018_feature` if `features_edition` is 2018 or higher
     let mut edition_enabled_features = FxHashSet::default();
-    for feature in active_features_up_to(features_edition) {
-        // FIXME(Manishearth) there is currently no way to set lib features by
-        // edition.
-        edition_enabled_features.insert(feature.name);
-        feature.set(&mut features);
+    for f in ACTIVE_FEATURES {
+        if let Some(edition) = f.feature.edition && edition <= features_edition {
+            // FIXME(Manishearth) there is currently no way to set lib features by
+            // edition.
+            edition_enabled_features.insert(f.feature.name);
+            (f.set_enabled)(&mut features);
+        }
     }
 
     // Process all features declared in the code.
@@ -147,19 +139,17 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             }
 
             // If the declared feature has been removed, issue an error.
-            if let Some(Feature { state, .. }) = REMOVED_FEATURES.iter().find(|f| name == f.name) {
-                if let FeatureState::Removed { reason } = state {
-                    sess.emit_err(FeatureRemoved {
-                        span: mi.span(),
-                        reason: reason.map(|reason| FeatureRemovedReason { reason }),
-                    });
-                    continue;
-                }
+            if let Some(f) = REMOVED_FEATURES.iter().find(|f| name == f.feature.name) {
+                sess.emit_err(FeatureRemoved {
+                    span: mi.span(),
+                    reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
+                });
+                continue;
             }
 
             // If the declared feature is stable, record it.
-            if let Some(Feature { since, .. }) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
-                let since = Some(Symbol::intern(since));
+            if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
+                let since = Some(Symbol::intern(f.since));
                 features.set_declared_lang_feature(name, mi.span(), since);
                 continue;
             }
@@ -175,8 +165,8 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             }
 
             // If the declared feature is unstable, record it.
-            if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.name) {
-                f.set(&mut features);
+            if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.feature.name) {
+                (f.set_enabled)(&mut features);
                 features.set_declared_lang_feature(name, mi.span(), None);
                 continue;
             }

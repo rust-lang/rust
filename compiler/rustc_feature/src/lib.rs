@@ -24,29 +24,10 @@ mod removed;
 mod tests;
 
 use rustc_span::{edition::Edition, symbol::Symbol};
-use std::fmt;
 use std::num::NonZeroU32;
-
-#[derive(Clone, Copy)]
-pub enum State {
-    Accepted,
-    Active { set: fn(&mut Features) },
-    Removed { reason: Option<&'static str> },
-}
-
-impl fmt::Debug for State {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            State::Accepted { .. } => write!(f, "accepted"),
-            State::Active { .. } => write!(f, "active"),
-            State::Removed { .. } => write!(f, "removed"),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Feature {
-    pub state: State,
     pub name: Symbol,
     pub since: &'static str,
     issue: Option<NonZeroU32>,
@@ -106,17 +87,16 @@ impl UnstableFeatures {
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
     // Search in all the feature lists.
-    let found = []
-        .iter()
-        .chain(ACTIVE_FEATURES)
-        .chain(ACCEPTED_FEATURES)
-        .chain(REMOVED_FEATURES)
-        .find(|t| t.name == feature);
-
-    match found {
-        Some(found) => found.issue,
-        None => panic!("feature `{feature}` is not declared anywhere"),
+    if let Some(f) = ACTIVE_FEATURES.iter().find(|f| f.feature.name == feature) {
+        return f.feature.issue;
     }
+    if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| f.name == feature) {
+        return f.issue;
+    }
+    if let Some(f) = REMOVED_FEATURES.iter().find(|f| f.feature.name == feature) {
+        return f.feature.issue;
+    }
+    panic!("feature `{feature}` is not declared anywhere");
 }
 
 const fn to_nonzero(n: Option<u32>) -> Option<NonZeroU32> {

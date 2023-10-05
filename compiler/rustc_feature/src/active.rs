@@ -1,11 +1,16 @@
 //! List of the active feature gates.
 
-use super::{to_nonzero, Feature, State};
+use super::{to_nonzero, Feature};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+
+pub struct ActiveFeature {
+    pub feature: Feature,
+    pub set_enabled: fn(&mut Features),
+}
 
 #[derive(PartialEq)]
 enum FeatureStatus {
@@ -32,21 +37,18 @@ macro_rules! declare_features {
     )+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
-        pub const ACTIVE_FEATURES:
-            &[Feature] =
-            &[$(
-                // (sym::$feature, $ver, $issue, $edition, set!($feature))
-                Feature {
-                    state: State::Active {
-                        // Sets this feature's corresponding bool within `features`.
-                        set: |features| features.$feature = true,
-                    },
+        pub const ACTIVE_FEATURES: &[ActiveFeature] = &[
+            $(ActiveFeature {
+                feature: Feature {
                     name: sym::$feature,
                     since: $ver,
                     issue: to_nonzero($issue),
                     edition: $edition,
-                }
-            ),+];
+                },
+                // Sets this feature's corresponding bool within `features`.
+                set_enabled: |features| features.$feature = true,
+            }),+
+        ];
 
         /// A set of features to be used by later passes.
         #[derive(Clone, Default, Debug)]
@@ -132,16 +134,6 @@ macro_rules! declare_features {
             }
         }
     };
-}
-
-impl Feature {
-    /// Sets this feature in `Features`. Panics if called on a non-active feature.
-    pub fn set(&self, features: &mut Features) {
-        match self.state {
-            State::Active { set } => set(features),
-            _ => panic!("called `set` on feature `{}` which is not `active`", self.name),
-        }
-    }
 }
 
 // See https://rustc-dev-guide.rust-lang.org/feature-gates.html#feature-gates for more
