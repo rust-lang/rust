@@ -2,7 +2,7 @@
 
 use crate::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::{Array, SmallVec};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::hash::{BuildHasher, Hash};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -30,22 +30,6 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for ThinVec<T> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for ThinVec<T> {
     fn decode(d: &mut D) -> ThinVec<T> {
-        let len = d.read_usize();
-        (0..len).map(|_| Decodable::decode(d)).collect()
-    }
-}
-
-impl<S: Encoder, T: Encodable<S>> Encodable<S> for LinkedList<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_usize(self.len());
-        for e in self.iter() {
-            e.encode(s);
-        }
-    }
-}
-
-impl<D: Decoder, T: Decodable<D>> Decodable<D> for LinkedList<T> {
-    fn decode(d: &mut D) -> LinkedList<T> {
         let len = d.read_usize();
         (0..len).map(|_| Decodable::decode(d)).collect()
     }
