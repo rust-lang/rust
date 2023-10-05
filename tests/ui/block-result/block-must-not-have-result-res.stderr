@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/block-must-not-have-result-res.rs:5:9
    |
 LL |     fn drop(&mut self) {
-   |                        - expected `()` because of default return type
+   |                       - expected `()` because of default return type
 LL |         true
    |         ^^^^ expected `()`, found `bool`
 

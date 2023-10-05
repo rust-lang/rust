@@ -23,7 +23,7 @@ fn unwrap_option_none() {
     let _val: u16 = 234;
     let _val: u16 = 234;
     let _val: u16 = { 234 };
-    let _val: u16 =  { 234 };
+    let _val: u16 = { 234 };
 
     panic!();
     panic!("this always happens");
@@ -31,7 +31,7 @@ fn unwrap_option_none() {
     234;
     234;
     { 234 };
-     { 234 };
+    { 234 };
 }
 
 fn unwrap_result_ok() {

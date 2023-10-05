@@ -28,10 +28,10 @@ LL |     fn foo(self);
               found signature `fn(Box<MyFuture>)`
 
 error[E0053]: method `bar` has an incompatible type for trait
-  --> $DIR/bad-self-type.rs:24:18
+  --> $DIR/bad-self-type.rs:24:17
    |
 LL |     fn bar(self) {}
-   |                  ^ expected `Option<()>`, found `()`
+   |                 ^ expected `Option<()>`, found `()`
    |
 note: type in trait
   --> $DIR/bad-self-type.rs:18:21
