@@ -134,7 +134,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     vis,
                     fn_name,
                     type_params,
-                    None,
+                    method_source.where_clause(),
                     params,
                     body,
                     ret_type,
@@ -461,6 +461,53 @@ impl Person {
         self.age.age()
     }
 }"#,
+        );
+    }
+
+    #[test]
+    fn test_preserve_where_clause() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+struct Inner<T>(T);
+impl<T> Inner<T> {
+    fn get(&self) -> T
+    where
+        T: Copy,
+        T: PartialEq,
+    {
+        self.0
+    }
+}
+
+struct Struct<T> {
+    $0field: Inner<T>,
+}
+"#,
+            r#"
+struct Inner<T>(T);
+impl<T> Inner<T> {
+    fn get(&self) -> T
+    where
+        T: Copy,
+        T: PartialEq,
+    {
+        self.0
+    }
+}
+
+struct Struct<T> {
+    field: Inner<T>,
+}
+
+impl<T> Struct<T> {
+    $0fn get(&self) -> T where
+            T: Copy,
+            T: PartialEq, {
+        self.field.get()
+    }
+}
+"#,
         );
     }
 
