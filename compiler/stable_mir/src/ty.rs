@@ -565,3 +565,24 @@ pub enum ImplPolarity {
     Negative,
     Reservation,
 }
+
+#[derive(Clone, Debug)]
+pub struct Instance {
+    pub def: InstanceDef,
+    pub args: GenericArgs,
+}
+
+#[derive(Clone, Debug)]
+pub enum InstanceDef {
+    Item(DefId),
+    Intrinsic(DefId),
+    VTableShim(DefId),
+    ReifyShim(DefId),
+    FnPtrShim(DefId, Ty),
+    Virtual(DefId, usize),
+    ClosureOnceShim { call_once: DefId, track_caller: bool },
+    ThreadLocalShim(DefId),
+    DropGlue(DefId, Option<Ty>),
+    CloneShim(DefId, Ty),
+    FnPtrAddrShim(DefId, Ty),
+}

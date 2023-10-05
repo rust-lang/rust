@@ -94,7 +94,7 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::Prov(self.create_alloc_id(aid))
     }
 
-    fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
+    pub(super) fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
         // FIXME: this becomes inefficient when we have too many ids
         for (i, &d) in self.def_ids.iter().enumerate() {
             if d == did {

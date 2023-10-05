@@ -1610,3 +1610,62 @@ impl<'tcx> Stable<'tcx> for DefKind {
         opaque(self)
     }
 }
+
+impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
+    type T = stable_mir::ty::Instance;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::Instance { def, args } = self;
+        stable_mir::ty::Instance { def: def.stable(tables), args: args.stable(tables) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::InstanceDef<'tcx> {
+    type T = stable_mir::ty::InstanceDef;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::InstanceDef::*;
+
+        match *self {
+            ty::InstanceDef::Item(did) => Item(tables.create_def_id(did)),
+            ty::InstanceDef::Intrinsic(did) => Intrinsic(tables.create_def_id(did)),
+            ty::InstanceDef::VTableShim(did) => VTableShim(tables.create_def_id(did)),
+            ty::InstanceDef::ReifyShim(did) => ReifyShim(tables.create_def_id(did)),
+            ty::InstanceDef::FnPtrShim(did, ty) => {
+                FnPtrShim(tables.create_def_id(did), tables.intern_ty(ty))
+            }
+            ty::InstanceDef::Virtual(did, vtable_idx) => {
+                Virtual(tables.create_def_id(did), vtable_idx)
+            }
+            ty::InstanceDef::ClosureOnceShim { call_once, track_caller } => {
+                ClosureOnceShim { call_once: tables.create_def_id(call_once), track_caller }
+            }
+            ty::InstanceDef::ThreadLocalShim(did) => ThreadLocalShim(tables.create_def_id(did)),
+            ty::InstanceDef::DropGlue(did, drop_glue) => {
+                DropGlue(tables.create_def_id(did), drop_glue.map(|ty| tables.intern_ty(ty)))
+            }
+            ty::InstanceDef::CloneShim(did, ty) => {
+                CloneShim(tables.create_def_id(did), tables.intern_ty(ty))
+            }
+            ty::InstanceDef::FnPtrAddrShim(did, ty) => {
+                FnPtrAddrShim(tables.create_def_id(did), tables.intern_ty(ty))
+            }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::mono::MonoItem<'tcx> {
+    type T = stable_mir::mir::mono::MonoItem;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::mir::mono::MonoItem::*;
+
+        match *self {
+            mir::mono::MonoItem::Fn(instance) => Fn(instance.stable(tables)),
+            mir::mono::MonoItem::Static(did) => Static(tables.create_def_id(did)),
+            mir::mono::MonoItem::GlobalAsm(iid) => {
+                GlobalAsm(opaque(tables.tcx.hir().item(iid).expect_global_asm()))
+            }
+        }
+    }
+}
