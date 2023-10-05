@@ -24,6 +24,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) {
+        // We don't need to do anything for deref temps as they are
+        // not part of the source code, but used for desugaring purposes.
+        if self.local_decls[place.local].is_deref_temp() {
+            return;
+        }
         let mut place_ty = place.ty(self.local_decls, self.tcx).ty;
         let mut rval_ty = rvalue.ty(self.local_decls, self.tcx);
         // Not erasing this causes `Free Regions` errors in validator,
@@ -48,7 +53,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
 // // gets transformed to
 // let temp: rval_ty = rval;
 // let place: place_ty = temp as place_ty;
-//
 pub fn subtype_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let patch = MirPatch::new(body);
     let mut checker = SubTypeChecker { tcx, patcher: patch, local_decls: &body.local_decls };
