@@ -1,0 +1,29 @@
+error: expected identifier, found reserved keyword `yield`
+  --> $DIR/gen_block.rs:8:19
+   |
+LL |     let y = gen { yield 42 };
+   |             ---   ^^^^^ expected identifier, found reserved keyword
+   |             |
+   |             while parsing this struct
+
+error[E0422]: cannot find struct, variant or union type `gen` in this scope
+  --> $DIR/gen_block.rs:5:13
+   |
+LL |     let x = gen {};
+   |             ^^^ not found in this scope
+
+error[E0422]: cannot find struct, variant or union type `gen` in this scope
+  --> $DIR/gen_block.rs:8:13
+   |
+LL |     let y = gen { yield 42 };
+   |             ^^^ not found in this scope
+
+error[E0422]: cannot find struct, variant or union type `gen` in this scope
+  --> $DIR/gen_block.rs:11:5
+   |
+LL |     gen {};
+   |     ^^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0422`.

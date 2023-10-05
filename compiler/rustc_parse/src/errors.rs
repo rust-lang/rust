@@ -521,6 +521,14 @@ pub(crate) struct CatchAfterTry {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_gen_block)]
+#[help]
+pub(crate) struct GenBlock {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_comma_after_base_struct)]
 #[note]
 pub(crate) struct CommaAfterBaseStruct {

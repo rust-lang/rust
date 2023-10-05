@@ -1422,6 +1422,9 @@ impl<'a> Parser<'a> {
             } else if this.is_try_block() {
                 this.expect_keyword(kw::Try)?;
                 this.parse_try_block(lo)
+            } else if this.is_gen_block() {
+                this.expect_keyword(kw::Gen)?;
+                this.parse_gen_block(lo)
             } else if this.eat_keyword(kw::Return) {
                 this.parse_expr_return()
             } else if this.eat_keyword(kw::Continue) {
@@ -3040,6 +3043,14 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parses a `gen {...}` expression (`gen` token already eaten).
+    fn parse_gen_block(&mut self, _span_lo: Span) -> PResult<'a, P<Expr>> {
+        let (_attrs, _body) = self.parse_inner_attrs_and_block()?;
+
+        Err(errors::GenBlock { span: self.prev_token.span }
+            .into_diagnostic(&self.sess.span_diagnostic))
+    }
+
     fn is_do_catch_block(&self) -> bool {
         self.token.is_keyword(kw::Do)
             && self.is_keyword_ahead(1, &[kw::Catch])
@@ -3057,6 +3068,13 @@ impl<'a> Parser<'a> {
             && self
                 .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
             && self.token.uninterpolated_span().at_least_rust_2018()
+    }
+
+    fn is_gen_block(&self) -> bool {
+        self.token.is_keyword(kw::Gen)
+            && self
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+            && self.token.uninterpolated_span().at_least_rust_2024()
     }
 
     /// Parses an `async move? {...}` expression.

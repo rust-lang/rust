@@ -1,0 +1,10 @@
+error: `gen` blocks are not yet implemented
+  --> $DIR/gen_block.rs:5:18
+   |
+LL |     let x = gen {};
+   |                  ^
+   |
+   = help: only the keyword is reserved for now
+
+error: aborting due to previous error
+

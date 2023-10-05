@@ -2357,6 +2357,12 @@ pub enum Async {
     No,
 }
 
+#[derive(Copy, Clone, Encodable, Decodable, Debug)]
+pub enum Gen {
+    Yes { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+    No,
+}
+
 impl Async {
     pub fn is_async(self) -> bool {
         matches!(self, Async::Yes { .. })
