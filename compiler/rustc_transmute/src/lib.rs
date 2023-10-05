@@ -9,7 +9,7 @@ extern crate tracing;
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
 pub mod layout;
-pub(crate) mod maybe_transmutable;
+mod maybe_transmutable;
 
 #[derive(Default)]
 pub struct Assume {
