@@ -116,8 +116,7 @@ macro_rules! declare_features {
                         sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
                     // accepted and removed features aren't in this file but are never incomplete
-                    _ if self.declared_lang_features.iter().any(|f| f.0 == feature) => false,
-                    _ if self.declared_lib_features.iter().any(|f| f.0 == feature) => false,
+                    _ if self.declared_features.contains(&feature) => false,
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
@@ -132,8 +131,7 @@ macro_rules! declare_features {
                     )*
                     // accepted and removed features aren't in this file but are never internal
                     // (a removed feature might have been internal, but it doesn't matter anymore)
-                    _ if self.declared_lang_features.iter().any(|f| f.0 == feature) => false,
-                    _ if self.declared_lib_features.iter().any(|f| f.0 == feature) => false,
+                    _ if self.declared_features.contains(&feature) => false,
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
