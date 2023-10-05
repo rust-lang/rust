@@ -159,6 +159,7 @@ impl Permission {
     }
 
     /// Default initial permission of the root of a new tree.
+    /// Must *only* be used for the root, this is not in general an "initial" permission!
     pub fn new_active() -> Self {
         Self { inner: Active }
     }
