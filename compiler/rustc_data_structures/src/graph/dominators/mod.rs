@@ -245,7 +245,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
 
     let time = compute_access_time(start_node, &immediate_dominators);
 
-    Dominators { start_node, post_order_rank, immediate_dominators, time }
+    Dominators { post_order_rank, immediate_dominators, time }
 }
 
 /// Evaluate the link-eval virtual forest, providing the currently minimum semi
@@ -311,7 +311,6 @@ fn compress(
 /// Tracks the list of dominators for each node.
 #[derive(Clone, Debug)]
 pub struct Dominators<N: Idx> {
-    start_node: N,
     post_order_rank: IndexVec<N, usize>,
     // Even though we track only the immediate dominator of each node, it's
     // possible to get its full list of dominators by looking up the dominator
@@ -323,7 +322,7 @@ pub struct Dominators<N: Idx> {
 impl<Node: Idx> Dominators<Node> {
     /// Returns true if node is reachable from the start node.
     pub fn is_reachable(&self, node: Node) -> bool {
-        node == self.start_node || self.immediate_dominators[node].is_some()
+        self.time[node].start != 0
     }
 
     /// Returns the immediate dominator of node, if any.
