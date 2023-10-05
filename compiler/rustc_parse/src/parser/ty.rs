@@ -247,7 +247,7 @@ impl<'a> Parser<'a> {
             )?;
             FnRetTy::Ty(ty)
         } else {
-            FnRetTy::Default(self.token.span.shrink_to_lo())
+            FnRetTy::Default(self.prev_token.span.shrink_to_hi())
         })
     }
 

@@ -41,10 +41,10 @@ LL |     let _ = for<'a> |x: &'a ()| -> &() { x };
    |                                    ^ explicit lifetime name needed here
 
 error: implicit types in closure signatures are forbidden when `for<...>` is present
-  --> $DIR/implicit-stuff.rs:5:22
+  --> $DIR/implicit-stuff.rs:5:21
    |
 LL |     let _ = for<> || {};
-   |             -----    ^
+   |             -----   ^
    |             |
    |             `for<...>` is here
 

@@ -67,7 +67,7 @@ The following procedure outlines the build process for the MIPS64 R6 target with
 
 ### Prerequisite: Disable debuginfo
 
-A LLVM bug makes rustc crash if debug or debug info generation is enabled. You need to edit `config.toml` to disable this:
+An LLVM bug makes rustc crash if debug or debug info generation is enabled. You need to edit `config.toml` to disable this:
 
 ```toml
 [rust]

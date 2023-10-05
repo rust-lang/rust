@@ -12,7 +12,7 @@ enum Foo {
 }
 
 // NOTE(eddyb) Don't make this a const, needs to be a static
-// so it is always instantiated as a LLVM constant value.
+// so it is always instantiated as an LLVM constant value.
 static FOO: Foo = Foo::C;
 
 fn main() {

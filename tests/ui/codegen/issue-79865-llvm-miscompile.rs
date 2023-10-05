@@ -4,7 +4,7 @@
 
 // Regression test for issue #79865.
 // The assertion will fail when compiled with Rust 1.56..=1.59
-// due to a LLVM miscompilation.
+// due to an LLVM miscompilation.
 
 use std::arch::x86_64::*;
 
