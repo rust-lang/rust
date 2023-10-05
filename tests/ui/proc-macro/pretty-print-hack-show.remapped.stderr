@@ -18,6 +18,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: using an old version of `rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
@@ -28,6 +29,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: using an old version of `rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
@@ -38,6 +40,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: using an old version of `rental`
   --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
@@ -58,6 +61,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: using an old version of `rental`
   --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
@@ -68,6 +72,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: using an old version of `rental`
   --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
@@ -78,6 +83,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 8 previous errors
 

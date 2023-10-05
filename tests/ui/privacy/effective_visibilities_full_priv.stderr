@@ -9,6 +9,8 @@ error: not in the table
    |
 LL |     struct Priv;
    |     ^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: Direct: pub(crate), Reexported: pub(crate), Reachable: pub(crate), ReachableThroughImplTrait: pub(crate)
   --> $DIR/effective_visibilities_full_priv.rs:13:5

@@ -25,6 +25,7 @@ LL | #![cfg_attr(foo, crate_type="bin")]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #91632 <https://github.com/rust-lang/rust/issues/91632>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `crate_name` within an `#![cfg_attr] attribute is deprecated`
   --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:9:18
@@ -34,6 +35,7 @@ LL | #![cfg_attr(foo, crate_name="bar")]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #91632 <https://github.com/rust-lang/rust/issues/91632>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

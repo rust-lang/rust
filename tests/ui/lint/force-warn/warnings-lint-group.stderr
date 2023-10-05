@@ -1,6 +1,8 @@
 error[E0602]: `warnings` lint group is not supported with ´--force-warn´
 
 error[E0602]: `warnings` lint group is not supported with ´--force-warn´
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

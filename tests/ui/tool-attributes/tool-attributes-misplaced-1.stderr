@@ -9,6 +9,8 @@ error: cannot find derive macro `rustfmt` in this scope
    |
 LL | #[derive(rustfmt)]
    |          ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot find attribute `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:9:3

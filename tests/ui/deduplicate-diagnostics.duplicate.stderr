@@ -15,12 +15,16 @@ error: cannot find derive macro `Unresolved` in this scope
    |
 LL | #[derive(Unresolved)]
    |          ^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/deduplicate-diagnostics.rs:8:8
    |
 LL | #[deny("literal")]
    |        ^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

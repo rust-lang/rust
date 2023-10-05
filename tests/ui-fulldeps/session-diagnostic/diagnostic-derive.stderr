@@ -414,6 +414,8 @@ error: `#[lint(...)]` is not a valid attribute
    |
 LL | #[lint(no_crate_example, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: diagnostic slug not specified
   --> $DIR/diagnostic-derive.rs:601:1

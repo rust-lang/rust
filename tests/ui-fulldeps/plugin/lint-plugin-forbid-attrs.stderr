@@ -27,6 +27,8 @@ LL | #![forbid(test_lint)]
 ...
 LL | #[allow(test_lint)]
    |         ^^^^^^^^^ overruled by previous forbid
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/lint-plugin-forbid-attrs.rs:5:1

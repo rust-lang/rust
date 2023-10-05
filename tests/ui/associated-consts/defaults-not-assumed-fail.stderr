@@ -24,6 +24,7 @@ note: erroneous constant encountered
 LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

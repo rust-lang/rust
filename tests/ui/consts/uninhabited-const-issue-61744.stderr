@@ -656,6 +656,8 @@ note: erroneous constant encountered
    |
 LL |     dbg!(i32::CONSTANT);
    |          ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to previous error
 

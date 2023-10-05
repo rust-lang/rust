@@ -21,6 +21,8 @@ error: ~const can only be applied to `#[const_trait]` traits
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
    |               ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:22:15
@@ -33,6 +35,8 @@ error: ~const can only be applied to `#[const_trait]` traits
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |               ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:29:15
@@ -45,6 +49,8 @@ error: ~const can only be applied to `#[const_trait]` traits
    |
 LL |     T: ~const FnOnce<()>,
    |               ^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:36:15
@@ -57,6 +63,8 @@ error: ~const can only be applied to `#[const_trait]` traits
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
    |               ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:50:15
@@ -69,6 +77,8 @@ error: ~const can only be applied to `#[const_trait]` traits
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |               ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 12 previous errors
 

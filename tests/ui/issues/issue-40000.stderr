@@ -15,6 +15,7 @@ LL |     foo(bar);
    |
    = note: expected trait object `dyn for<'a> Fn(&'a i32)`
               found trait object `dyn Fn(&i32)`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 
