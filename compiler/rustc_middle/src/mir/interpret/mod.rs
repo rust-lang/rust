@@ -120,19 +120,23 @@ mod queries;
 mod value;
 
 use std::fmt;
+use std::hash::Hash;
 use std::io;
 use std::io::{Read, Write};
 use std::num::{NonZeroU32, NonZeroU64};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_ast::LitKind;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
 
@@ -490,6 +494,10 @@ pub(crate) struct AllocMap<'tcx> {
     // FIXME: Should we just have two separate dedup maps for statics and functions each?
     dedup: FxHashMap<GlobalAlloc<'tcx>, AllocId>,
 
+    /// Record the hash of each `AllocId` for incr. comp. purposes.
+    /// This map is left empty in non-incremental mode.
+    hash_stable: FxHashMap<AllocId, Fingerprint>,
+
     /// The `AllocId` to assign to the next requested ID.
     /// Always incremented; never gets smaller.
     next_id: AllocId,
@@ -500,17 +508,41 @@ impl<'tcx> AllocMap<'tcx> {
         AllocMap {
             alloc_map: Default::default(),
             dedup: Default::default(),
+            hash_stable: Default::default(),
             next_id: AllocId(NonZeroU64::new(1).unwrap()),
         }
     }
-    fn reserve(&mut self) -> AllocId {
+
+    fn reserve(&mut self, tcx: TyCtxt<'tcx>) -> AllocId {
         let next = self.next_id;
+        if tcx.dep_graph.is_fully_enabled() {
+            ty::tls::with_related_context(tcx, |icx| {
+                let dep_node = icx.dep_node.unwrap();
+                let allocations = icx.allocations.unwrap();
+                let internal_num = allocations.fetch_add(1, Ordering::SeqCst);
+                let mut hasher = StableHasher::new();
+                dep_node.hash(&mut hasher);
+                internal_num.hash(&mut hasher);
+                let fingerprint = hasher.finish();
+                self.hash_stable.insert(next, fingerprint);
+            })
+        }
         self.next_id.0 = self.next_id.0.checked_add(1).expect(
             "You overflowed a u64 by incrementing by 1... \
              You've just earned yourself a free drink if we ever meet. \
              Seriously, how did you do that?!",
         );
         next
+    }
+}
+
+// AllocIds get resolved to whatever they point to (to be stable)
+impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        trace!("hashing {:?}", *self);
+        ty::tls::with(|tcx| {
+            tcx.alloc_map.lock().hash_stable[self].hash_stable(hcx, hasher);
+        });
     }
 }
 
@@ -521,7 +553,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Make sure to call `set_alloc_id_memory` or `set_alloc_id_same_memory` before returning such
     /// an `AllocId` from a query.
     pub fn reserve_alloc_id(self) -> AllocId {
-        self.alloc_map.lock().reserve()
+        self.alloc_map.lock().reserve(self)
     }
 
     /// Reserves a new ID *if* this allocation has not been dedup-reserved before.
@@ -536,7 +568,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(&alloc_id) = alloc_map.dedup.get(&alloc) {
             return alloc_id;
         }
-        let id = alloc_map.reserve();
+        let id = alloc_map.reserve(self);
         debug!("creating alloc {alloc:?} with id {id:?}");
         alloc_map.alloc_map.insert(id, alloc.clone());
         alloc_map.dedup.insert(alloc, id);
@@ -566,7 +598,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if is_generic {
             // Get a fresh ID.
             let mut alloc_map = self.alloc_map.lock();
-            let id = alloc_map.reserve();
+            let id = alloc_map.reserve(self);
             alloc_map.alloc_map.insert(id, GlobalAlloc::Function(instance));
             id
         } else {

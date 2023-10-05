@@ -1,8 +1,9 @@
 use super::{GlobalCtxt, TyCtxt};
 
+use crate::dep_graph::DepNode;
 use crate::dep_graph::TaskDepsRef;
 use crate::query::plumbing::QueryJobId;
-use rustc_data_structures::sync::{self, Lock};
+use rustc_data_structures::sync::{self, AtomicU32, Lock};
 use rustc_errors::Diagnostic;
 #[cfg(not(parallel_compiler))]
 use std::cell::Cell;
@@ -20,6 +21,10 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     /// The current `TyCtxt`.
     pub tcx: TyCtxt<'tcx>,
 
+    /// The `DepNode` of the current query, or `None` in non-incremental mode.
+    /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
+    pub dep_node: Option<DepNode>,
+
     /// The current query job, if any. This is updated by `JobOwner::start` in
     /// `ty::query::plumbing` when executing a query.
     pub query: Option<QueryJobId>,
@@ -27,6 +32,9 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     /// Where to store diagnostics for the current query job, if any.
     /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
     pub diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
+
+    /// Where to record the number of allocations that happened in the current query.
+    pub allocations: Option<&'a AtomicU32>,
 
     /// Used to prevent queries from calling too deeply.
     pub query_depth: usize,
@@ -41,8 +49,10 @@ impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
         let tcx = TyCtxt { gcx };
         ImplicitCtxt {
             tcx,
+            dep_node: None,
             query: None,
             diagnostics: None,
+            allocations: None,
             query_depth: 0,
             task_deps: TaskDepsRef::Ignore,
         }

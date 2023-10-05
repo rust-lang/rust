@@ -445,6 +445,7 @@ where
     Qcx: QueryContext,
 {
     debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
+    let dep_node = DepNode::new_no_params(*qcx.dep_context(), query.dep_kind());
 
     // Fingerprint the key, just to assert that it doesn't
     // have anything we don't consider hashable
@@ -453,7 +454,8 @@ where
     }
 
     let prof_timer = qcx.dep_context().profiler().query_provider();
-    let result = qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
+    let result =
+        qcx.start_query(dep_node, job_id, query.depth_limit(), None, || query.compute(qcx, key));
     let dep_node_index = qcx.dep_context().dep_graph().next_virtual_depnode_index();
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -481,14 +483,13 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    if !query.anon() && !query.eval_always() {
-        // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node =
-            dep_node_opt.get_or_insert_with(|| query.construct_dep_node(*qcx.dep_context(), &key));
+    let dep_node =
+        *dep_node_opt.get_or_insert_with(|| query.construct_dep_node(*qcx.dep_context(), &key));
 
+    if !query.anon() && !query.eval_always() {
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        if let Some(ret) = qcx.start_query(job_id, false, None, || {
+        if let Some(ret) = qcx.start_query(dep_node, job_id, false, None, || {
             try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, &dep_node)
         }) {
             return ret;
@@ -499,16 +500,12 @@ where
     let diagnostics = Lock::new(ThinVec::new());
 
     let (result, dep_node_index) =
-        qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
+        qcx.start_query(dep_node, job_id, query.depth_limit(), Some(&diagnostics), || {
             if query.anon() {
                 return dep_graph_data.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
                     query.compute(qcx, key)
                 });
             }
-
-            // `to_dep_node` is expensive for some `DepKind`s.
-            let dep_node =
-                dep_node_opt.unwrap_or_else(|| query.construct_dep_node(*qcx.dep_context(), &key));
 
             dep_graph_data.with_task(
                 dep_node,

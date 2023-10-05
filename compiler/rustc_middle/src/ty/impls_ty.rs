@@ -2,7 +2,6 @@
 //! from `rustc_middle::ty` in no particular order.
 
 use crate::middle::region;
-use crate::mir;
 use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -70,17 +69,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for SimplifiedType {
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::GenericArg<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.unpack().hash_stable(hcx, hasher);
-    }
-}
-
-// AllocIds get resolved to whatever they point to (to be stable)
-impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ty::tls::with_opt(|tcx| {
-            trace!("hashing {:?}", *self);
-            let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            tcx.try_get_global_alloc(*self).hash_stable(hcx, hasher);
-        });
     }
 }
 

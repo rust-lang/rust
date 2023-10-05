@@ -6,7 +6,7 @@ use crate::rustc_middle::dep_graph::DepContext;
 use crate::rustc_middle::ty::TyEncoder;
 use crate::QueryConfigRestored;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{AtomicU32, Lock};
 use rustc_errors::Diagnostic;
 
 use rustc_index::Idx;
@@ -125,6 +125,7 @@ impl QueryContext for QueryCtxt<'_> {
     #[inline(always)]
     fn start_query<R>(
         self,
+        dep_node: DepNode,
         token: QueryJobId,
         depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
@@ -138,11 +139,15 @@ impl QueryContext for QueryCtxt<'_> {
                 self.depth_limit_error(token);
             }
 
+            let allocations = AtomicU32::new(0);
+
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
                 tcx: self.tcx,
+                dep_node: Some(dep_node),
                 query: Some(token),
                 diagnostics,
+                allocations: Some(&allocations),
                 query_depth: current_icx.query_depth + depth_limit as usize,
                 task_deps: current_icx.task_deps,
             };

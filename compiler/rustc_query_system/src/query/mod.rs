@@ -14,7 +14,7 @@ pub use self::caches::{
 mod config;
 pub use self::config::{HashResult, QueryConfig};
 
-use crate::dep_graph::DepKind;
+use crate::dep_graph::{DepKind, DepNode};
 use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::Lock;
@@ -126,6 +126,7 @@ pub trait QueryContext: HasDepContext {
     /// captured during execution and the actual result.
     fn start_query<R>(
         self,
+        dep_node: DepNode,
         token: QueryJobId,
         depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
