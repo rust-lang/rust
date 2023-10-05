@@ -111,20 +111,11 @@ fn main() {
         // FIXME(rust-lang/cargo#5754) we shouldn't be using special env vars
         // here, but rather Cargo should know what flags to pass rustc itself.
 
-        // Override linker if necessary.
-        if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
-            cmd.arg(format!("-Clinker={host_linker}"));
-        }
-        if env::var_os("RUSTC_HOST_FUSE_LD_LLD").is_some() {
-            cmd.arg("-Clink-args=-fuse-ld=lld");
-        }
-
-        if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
-            if s == "true" {
-                cmd.arg("-C").arg("target-feature=+crt-static");
-            }
-            if s == "false" {
-                cmd.arg("-C").arg("target-feature=-crt-static");
+        // Find any host flags that were passed by bootstrap.
+        // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
+        if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
+            for flag in flags.split(' ') {
+                cmd.arg(flag);
             }
         }
 
