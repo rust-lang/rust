@@ -60,8 +60,9 @@ macro_rules! declare_features {
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
             /// `#![feature]` attrs for non-language (library) features.
             pub declared_lib_features: Vec<(Symbol, Span)>,
-            /// Features enabled for this crate.
-            pub active_features: FxHashSet<Symbol>,
+            /// `declared_lang_features` + `declared_lib_features`.
+            pub declared_features: FxHashSet<Symbol>,
+            /// Individual features (unstable only).
             $(
                 $(#[doc = $doc])*
                 pub $feature: bool
@@ -73,12 +74,14 @@ macro_rules! declare_features {
                 $(f(stringify!($feature), self.$feature);)+
             }
 
-            /// Is the given feature active?
-            pub fn active(&self, feature: Symbol) -> bool {
-                self.active_features.contains(&feature)
+            /// Is the given feature explicitly declared, i.e. named in a
+            /// `#![feature(...)]` within the code?
+            pub fn declared(&self, feature: Symbol) -> bool {
+                self.declared_features.contains(&feature)
             }
 
-            /// Is the given feature enabled?
+            /// Is the given feature enabled, i.e. declared or automatically
+            /// enabled due to the edition?
             ///
             /// Panics if the symbol doesn't correspond to a declared feature.
             pub fn enabled(&self, feature: Symbol) -> bool {
