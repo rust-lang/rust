@@ -484,8 +484,11 @@ pub trait Into<T>: Sized {
 /// a `From` implementation, the general expectation is that the conversions
 /// should typically be restricted as follows:
 ///
-/// * The conversion is *lossless*: it cannot fail and it's possible to recover
-///   the original value.  For example, `i32: From<u16>` exists, where the original
+/// * The conversion is *infallible*: if the conversion can fail, use `TryFrom`
+///   instead; don't provide a `From` impl that panics.
+///
+/// * The conversion is *lossless*: semantically, it should not lose or discard
+///   information. For example, `i32: From<u16>` exists, where the original
 ///   value can be recovered using `u16: TryFrom<i32>`.  And `String: From<&str>`
 ///   exists, where you can get something equivalent to the original value via
 ///   `Deref`.  But `From` cannot be used to convert from `u32` to `u16`, since
