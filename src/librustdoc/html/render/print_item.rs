@@ -1453,18 +1453,22 @@ fn get_parent_enum_def_id(
     panic!("No parent enum found for variant {variant_def_id:?}");
 }
 
-fn is_c_like_enum(
+/// It'll return true if all variants are C-like variants and if at least one of them has a value
+/// set.
+fn should_show_c_like_variants_value(
     variants: &rustc_index::IndexVec<rustc_target::abi::VariantIdx, clean::Item>,
 ) -> bool {
-    !variants.iter().any(|variant| {
-        matches!(
-            *variant.kind,
-            clean::VariantItem(clean::Variant {
-                kind: clean::VariantKind::Tuple(_) | clean::VariantKind::Struct(_),
-                ..
-            })
-        )
-    })
+    let mut has_variants_with_value = false;
+    for variant in variants {
+        if let clean::VariantItem(ref var) = *variant.kind &&
+            matches!(var.kind, clean::VariantKind::CLike)
+        {
+            has_variants_with_value |= var.discriminant.is_some();
+        } else {
+            return false;
+        }
+    }
+    has_variants_with_value
 }
 
 fn display_c_like_variant(
@@ -1473,12 +1477,12 @@ fn display_c_like_variant(
     item: &clean::Item,
     variant: &clean::Variant,
     index: rustc_target::abi::VariantIdx,
-    is_c_like_enum: bool,
+    should_show_c_like_variants_value: bool,
 ) {
     let name = item.name.unwrap();
     if let Some(ref value) = variant.discriminant {
         write!(w, "{} = {}", name.as_str(), value.value(cx.tcx(), true));
-    } else if is_c_like_enum &&
+    } else if should_show_c_like_variants_value &&
         let Some(variant_def_id) = item.item_id.as_def_id() &&
         let Some(variant_def_id) = variant_def_id.as_local()
     {
@@ -1504,7 +1508,7 @@ fn render_enum_fields(
     has_stripped_entries: bool,
     is_non_exhaustive: bool,
 ) {
-    let is_c_like_enum = is_c_like_enum(variants);
+    let should_show_c_like_variants_value = should_show_c_like_variants_value(variants);
     if !g.is_some_and(|g| print_where_clause_and_check(w, g, cx)) {
         // If there wasn't a `where` clause, we add a whitespace.
         w.write_str(" ");
@@ -1527,9 +1531,14 @@ fn render_enum_fields(
             w.write_str(TAB);
             match *v.kind {
                 clean::VariantItem(ref var) => match var.kind {
-                    clean::VariantKind::CLike => {
-                        display_c_like_variant(w, cx, v, var, index, is_c_like_enum)
-                    }
+                    clean::VariantKind::CLike => display_c_like_variant(
+                        w,
+                        cx,
+                        v,
+                        var,
+                        index,
+                        should_show_c_like_variants_value,
+                    ),
                     clean::VariantKind::Tuple(ref s) => {
                         write!(w, "{}({})", v.name.unwrap(), print_tuple_struct_fields(cx, s));
                     }
@@ -1569,7 +1578,7 @@ fn item_variants(
         document_non_exhaustive_header(it),
         document_non_exhaustive(it)
     );
-    let is_c_like_enum = is_c_like_enum(variants);
+    let should_show_c_like_variants_value = should_show_c_like_variants_value(variants);
     for (index, variant) in variants.iter_enumerated() {
         if variant.is_stripped() {
             continue;
@@ -1598,7 +1607,7 @@ fn item_variants(
                 variant,
                 var,
                 index,
-                is_c_like_enum,
+                should_show_c_like_variants_value,
             );
         } else {
             w.write_str(variant.name.unwrap().as_str());
