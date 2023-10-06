@@ -484,7 +484,7 @@ pub trait Into<T>: Sized {
 /// a `From` implementation, the general expectation is that the conversions
 /// should typically be restricted as follows:
 ///
-/// * The conversion is *infallible*: if the conversion can fail, use `TryFrom`
+/// * The conversion is *infallible*: if the conversion can fail, use [`TryFrom`]
 ///   instead; don't provide a `From` impl that panics.
 ///
 /// * The conversion is *lossless*: semantically, it should not lose or discard
@@ -492,7 +492,10 @@ pub trait Into<T>: Sized {
 ///   value can be recovered using `u16: TryFrom<i32>`.  And `String: From<&str>`
 ///   exists, where you can get something equivalent to the original value via
 ///   `Deref`.  But `From` cannot be used to convert from `u32` to `u16`, since
-///   that cannot succeed in a lossless way.
+///   that cannot succeed in a lossless way.  (There's some wiggle room here for
+///   information not considered semantically relevant.  For example,
+///   `Box<[T]>: From<Vec<T>>` exists even though it might not preserve capacity,
+///   like how two vectors can be equal despite differing capacities.)
 ///
 /// * The conversion is *value-preserving*: the conceptual kind and meaning of
 ///   the resulting value is the same, even though the Rust type and technical
