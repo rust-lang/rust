@@ -1,5 +1,6 @@
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
@@ -193,26 +194,11 @@ impl<'tcx> FunctionCoverage<'tcx> {
         if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
     }
 
-    /// Generate an array of CounterExpressions, and an iterator over all `Counter`s and their
-    /// associated `Regions` (from which the LLVM-specific `CoverageMapGenerator` will create
-    /// `CounterMappingRegion`s.
-    pub fn get_expressions_and_counter_regions(
-        &self,
-    ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &CodeRegion)>) {
-        let counter_expressions = self.counter_expressions();
-        // Expression IDs are indices into `self.expressions`, and on the LLVM
-        // side they will be treated as indices into `counter_expressions`, so
-        // the two vectors should correspond 1:1.
-        assert_eq!(self.function_coverage_info.expressions.len(), counter_expressions.len());
-
-        let counter_regions = self.counter_regions();
-
-        (counter_expressions, counter_regions)
-    }
-
     /// Convert this function's coverage expression data into a form that can be
     /// passed through FFI to LLVM.
-    fn counter_expressions(&self) -> Vec<CounterExpression> {
+    pub(crate) fn counter_expressions(
+        &self,
+    ) -> impl Iterator<Item = CounterExpression> + ExactSizeIterator + Captures<'_> {
         // We know that LLVM will optimize out any unused expressions before
         // producing the final coverage map, so there's no need to do the same
         // thing on the Rust side unless we're confident we can do much better.
@@ -223,23 +209,23 @@ impl<'tcx> FunctionCoverage<'tcx> {
             _ => Counter::from_term(operand),
         };
 
-        self.function_coverage_info
-            .expressions
-            .iter()
-            .map(|&Expression { lhs, op, rhs }| CounterExpression {
+        self.function_coverage_info.expressions.iter().map(move |&Expression { lhs, op, rhs }| {
+            CounterExpression {
                 lhs: counter_from_operand(lhs),
                 kind: match op {
                     Op::Add => ExprKind::Add,
                     Op::Subtract => ExprKind::Subtract,
                 },
                 rhs: counter_from_operand(rhs),
-            })
-            .collect::<Vec<_>>()
+            }
+        })
     }
 
     /// Converts this function's coverage mappings into an intermediate form
     /// that will be used by `mapgen` when preparing for FFI.
-    fn counter_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
+    pub(crate) fn counter_regions(
+        &self,
+    ) -> impl Iterator<Item = (Counter, &CodeRegion)> + ExactSizeIterator {
         // Historically, mappings were stored directly in counter/expression
         // statements in MIR, and MIR optimizations would sometimes remove them.
         // That's mostly no longer true, so now we detect cases where that would

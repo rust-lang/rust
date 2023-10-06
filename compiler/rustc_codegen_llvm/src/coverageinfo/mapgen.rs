@@ -185,12 +185,12 @@ fn encode_mappings_for_function(
     global_file_table: &mut GlobalFileTable,
     function_coverage: &FunctionCoverage<'_>,
 ) -> Vec<u8> {
-    let (expressions, counter_regions) = function_coverage.get_expressions_and_counter_regions();
-
-    let mut counter_regions = counter_regions.collect::<Vec<_>>();
+    let mut counter_regions = function_coverage.counter_regions().collect::<Vec<_>>();
     if counter_regions.is_empty() {
         return Vec::new();
     }
+
+    let expressions = function_coverage.counter_expressions().collect::<Vec<_>>();
 
     let mut virtual_file_mapping = IndexVec::<u32, u32>::new();
     let mut mapping_regions = Vec::with_capacity(counter_regions.len());
