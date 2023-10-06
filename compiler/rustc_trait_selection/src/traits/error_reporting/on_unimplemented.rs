@@ -18,7 +18,7 @@ use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
 
-use super::InferCtxtPrivExt;
+use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 
 pub trait TypeErrCtxtExt<'tcx> {
     /*private*/

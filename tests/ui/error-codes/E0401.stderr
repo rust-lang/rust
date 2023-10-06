@@ -32,12 +32,18 @@ LL |         fn helper(sel: &Self) -> u8 {
    |                         use of generic parameter from outer item
    |                         refer to the type directly here instead
 
-error[E0282]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/E0401.rs:11:5
    |
 LL |     bfnr(x);
-   |     ^^^^ cannot infer type of the type parameter `U` declared on the function `bfnr`
+   |     ^^^^ cannot infer type of the type parameter `V` declared on the function `bfnr`
    |
+   = note: cannot satisfy `_: Baz<_>`
+note: required by a bound in `bfnr`
+  --> $DIR/E0401.rs:4:19
+   |
+LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) {
+   |                   ^^^^^^ required by this bound in `bfnr`
 help: consider specifying the generic arguments
    |
 LL |     bfnr::<U, V, W>(x);
@@ -66,5 +72,5 @@ LL |     bfnr::<U, V, W>(x);
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0282, E0283, E0401.
-For more information about an error, try `rustc --explain E0282`.
+Some errors have detailed explanations: E0283, E0401.
+For more information about an error, try `rustc --explain E0283`.

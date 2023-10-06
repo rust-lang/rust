@@ -41,8 +41,8 @@ use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::iter;
 
-use super::InferCtxtPrivExt;
 use crate::infer::InferCtxtExt as _;
+use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 
@@ -4251,6 +4251,39 @@ impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
         }
 
         hir::intravisit::walk_ty(self, t);
+    }
+}
+
+pub(super) fn get_explanation_based_on_obligation<'tcx>(
+    obligation: &PredicateObligation<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    trait_predicate: &ty::PolyTraitPredicate<'tcx>,
+    pre_message: String,
+) -> String {
+    if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
+        "consider using `()`, or a `Result`".to_owned()
+    } else {
+        let ty_desc = match trait_ref.skip_binder().self_ty().kind() {
+            ty::FnDef(_, _) => Some("fn item"),
+            ty::Closure(_, _) => Some("closure"),
+            _ => None,
+        };
+
+        match ty_desc {
+            Some(desc) => format!(
+                "{}the trait `{}` is not implemented for {} `{}`",
+                pre_message,
+                trait_predicate.print_modifiers_and_trait_path(),
+                desc,
+                trait_ref.skip_binder().self_ty(),
+            ),
+            None => format!(
+                "{}the trait `{}` is not implemented for `{}`",
+                pre_message,
+                trait_predicate.print_modifiers_and_trait_path(),
+                trait_ref.skip_binder().self_ty(),
+            ),
+        }
     }
 }
 

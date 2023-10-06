@@ -1,3 +1,11 @@
+error: unconstrained generic constant
+  --> $DIR/const-argument-if-length.rs:17:10
+   |
+LL |     pad: [u8; is_zst::<T>()],
+   |          ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); is_zst::<T>()]:`
+
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/const-argument-if-length.rs:15:12
    |
@@ -21,14 +29,6 @@ help: the `Box` type always has a statically known size and allocates its conten
    |
 LL |     value: Box<T>,
    |            ++++ +
-
-error: unconstrained generic constant
-  --> $DIR/const-argument-if-length.rs:17:10
-   |
-LL |     pad: [u8; is_zst::<T>()],
-   |          ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try adding a `where` bound using this expression: `where [(); is_zst::<T>()]:`
 
 error: aborting due to 2 previous errors
 

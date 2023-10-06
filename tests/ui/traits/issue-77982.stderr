@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-77982.rs:8:10
+  --> $DIR/issue-77982.rs:9:10
    |
 LL |     opts.get(opt.as_ref());
    |          ^^^ ------------ type must be known at this point
@@ -18,7 +18,7 @@ LL |     opts.get::<Q>(opt.as_ref());
    |             +++++
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-77982.rs:8:10
+  --> $DIR/issue-77982.rs:9:10
    |
 LL |     opts.get(opt.as_ref());
    |          ^^^     ------ type must be known at this point
@@ -35,25 +35,34 @@ help: consider specifying the generic argument
 LL |     opts.get::<Q>(opt.as_ref());
    |             +++++
 
-error[E0282]: type annotations needed
-  --> $DIR/issue-77982.rs:13:59
+error[E0283]: type annotations needed
+  --> $DIR/issue-77982.rs:14:59
    |
 LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect();
-   |                                                           ^^^^
+   |                                            ---            ^^^^
+   |                                            |
+   |                                            type must be known at this point
    |
+   = note: multiple `impl`s satisfying `u32: From<_>` found in the `core` crate:
+           - impl From<Ipv4Addr> for u32;
+           - impl From<NonZeroU32> for u32;
+           - impl From<bool> for u32;
+           - impl From<char> for u32;
+           - impl From<u16> for u32;
+           - impl From<u8> for u32;
 help: try using a fully qualified path to specify the expected types
    |
 LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(<u32 as Into<T>>::into(0u32))).collect();
    |                                                      +++++++++++++++++++++++    ~
 
 error[E0283]: type annotations needed for `Box<T>`
-  --> $DIR/issue-77982.rs:36:9
+  --> $DIR/issue-77982.rs:37:9
    |
 LL |     let _ = ().foo();
    |         ^      --- type must be known at this point
    |
 note: multiple `impl`s satisfying `(): Foo<'_, _>` found
-  --> $DIR/issue-77982.rs:29:1
+  --> $DIR/issue-77982.rs:30:1
    |
 LL | impl Foo<'static, u32> for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,13 +74,13 @@ LL |     let _: Box<T> = ().foo();
    |          ++++++++
 
 error[E0283]: type annotations needed for `Box<T>`
-  --> $DIR/issue-77982.rs:40:9
+  --> $DIR/issue-77982.rs:41:9
    |
 LL |     let _ = (&()).bar();
    |         ^         --- type must be known at this point
    |
 note: multiple `impl`s satisfying `&(): Bar<'_, _>` found
-  --> $DIR/issue-77982.rs:32:1
+  --> $DIR/issue-77982.rs:33:1
    |
 LL | impl<'a> Bar<'static, u32> for &'a () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,5 +93,4 @@ LL |     let _: Box<T> = (&()).bar();
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

@@ -3,6 +3,9 @@ error[E0282]: type annotations needed for `Result<(), E>`
    |
 LL |     let x = |r| {
    |              ^
+LL |         let v = r?;
+LL |         Ok(v)
+   |         ----- type must be known at this point
    |
 help: consider giving this closure parameter an explicit type, where the type for type parameter `E` is specified
    |

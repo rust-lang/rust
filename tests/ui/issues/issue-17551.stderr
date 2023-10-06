@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `B<T>`
   --> $DIR/issue-17551.rs:6:9
    |
 LL |     let foo = B(marker::PhantomData);
-   |         ^^^
+   |         ^^^     ------------------- type must be known at this point
    |
 help: consider giving `foo` an explicit type, where the type for type parameter `T` is specified
    |

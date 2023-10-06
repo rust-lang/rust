@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed
-  --> $DIR/issue-71584.rs:4:15
+  --> $DIR/issue-71584.rs:5:15
    |
 LL |     d = d % n.into();
    |           -   ^^^^
