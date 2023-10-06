@@ -32,26 +32,6 @@ where
     ) -> Self {
         Self { src, dst, scope, assume, context }
     }
-
-    // FIXME(bryangarza): Delete this when all usages are removed
-    pub(crate) fn map_layouts<F, M>(
-        self,
-        f: F,
-    ) -> Result<MaybeTransmutableQuery<M, C>, Answer<<C as QueryContext>::Ref>>
-    where
-        F: FnOnce(
-            L,
-            L,
-            <C as QueryContext>::Scope,
-            &C,
-        ) -> Result<(M, M), Answer<<C as QueryContext>::Ref>>,
-    {
-        let Self { src, dst, scope, assume, context } = self;
-
-        let (src, dst) = f(src, dst, scope, &context)?;
-
-        Ok(MaybeTransmutableQuery { src, dst, scope, assume, context })
-    }
 }
 
 // FIXME: Nix this cfg, so we can write unit tests independently of rustc
@@ -107,42 +87,42 @@ where
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
         let assume_visibility = self.assume.safety;
-        // FIXME(bryangarza): Refactor this code to get rid of `map_layouts`
-        let query_or_answer = self.map_layouts(|src, dst, scope, context| {
-            // Remove all `Def` nodes from `src`, without checking their visibility.
-            let src = src.prune(&|def| true);
 
-            trace!(?src, "pruned src");
+        let Self { src, dst, scope, assume, context } = self;
 
-            // Remove all `Def` nodes from `dst`, additionally...
-            let dst = if assume_visibility {
-                // ...if visibility is assumed, don't check their visibility.
-                dst.prune(&|def| true)
-            } else {
-                // ...otherwise, prune away all unreachable paths through the `Dst` layout.
-                dst.prune(&|def| context.is_accessible_from(def, scope))
-            };
+        // Remove all `Def` nodes from `src`, without checking their visibility.
+        let src = src.prune(&|def| true);
 
-            trace!(?dst, "pruned dst");
+        trace!(?src, "pruned src");
 
-            // Convert `src` from a tree-based representation to an NFA-based representation.
-            // If the conversion fails because `src` is uninhabited, conclude that the transmutation
-            // is acceptable, because instances of the `src` type do not exist.
-            let src = Nfa::from_tree(src).map_err(|Uninhabited| Answer::Yes)?;
+        // Remove all `Def` nodes from `dst`, additionally...
+        let dst = if assume_visibility {
+            // ...if visibility is assumed, don't check their visibility.
+            dst.prune(&|def| true)
+        } else {
+            // ...otherwise, prune away all unreachable paths through the `Dst` layout.
+            dst.prune(&|def| context.is_accessible_from(def, scope))
+        };
 
-            // Convert `dst` from a tree-based representation to an NFA-based representation.
-            // If the conversion fails because `src` is uninhabited, conclude that the transmutation
-            // is unacceptable, because instances of the `dst` type do not exist.
-            let dst =
-                Nfa::from_tree(dst).map_err(|Uninhabited| Answer::No(Reason::DstIsPrivate))?;
+        trace!(?dst, "pruned dst");
 
-            Ok((src, dst))
-        });
+        // Convert `src` from a tree-based representation to an NFA-based representation.
+        // If the conversion fails because `src` is uninhabited, conclude that the transmutation
+        // is acceptable, because instances of the `src` type do not exist.
+        let src = match Nfa::from_tree(src) {
+            Ok(src) => src,
+            Err(Uninhabited) => return Answer::Yes,
+        };
 
-        match query_or_answer {
-            Ok(query) => query.answer(),
-            Err(answer) => answer,
-        }
+        // Convert `dst` from a tree-based representation to an NFA-based representation.
+        // If the conversion fails because `src` is uninhabited, conclude that the transmutation
+        // is unacceptable, because instances of the `dst` type do not exist.
+        let dst = match Nfa::from_tree(dst) {
+            Ok(dst) => dst,
+            Err(Uninhabited) => return Answer::No(Reason::DstIsPrivate),
+        };
+
+        MaybeTransmutableQuery { src, dst, scope, assume, context }.answer()
     }
 }
 
@@ -156,14 +136,10 @@ where
     #[inline(always)]
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
-        // FIXME(bryangarza): Refactor this code to get rid of `map_layouts`
-        let query_or_answer = self
-            .map_layouts(|src, dst, scope, context| Ok((Dfa::from_nfa(src), Dfa::from_nfa(dst))));
-
-        match query_or_answer {
-            Ok(query) => query.answer(),
-            Err(answer) => answer,
-        }
+        let Self { src, dst, scope, assume, context } = self;
+        let src = Dfa::from_nfa(src);
+        let dst = Dfa::from_nfa(dst);
+        MaybeTransmutableQuery { src, dst, scope, assume, context }.answer()
     }
 }
 
@@ -171,26 +147,8 @@ impl<C> MaybeTransmutableQuery<Dfa<<C as QueryContext>::Ref>, C>
 where
     C: QueryContext,
 {
-    /// Answers whether a `Nfa` is transmutable into another `Nfa`.
-    ///
-    /// This method converts `src` and `dst` to DFAs, then computes an answer using those DFAs.
+    /// Answers whether a `Dfa` is transmutable into another `Dfa`.
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
-        MaybeTransmutableQuery {
-            src: &self.src,
-            dst: &self.dst,
-            scope: self.scope,
-            assume: self.assume,
-            context: self.context,
-        }
-        .answer()
-    }
-}
-
-impl<'l, C> MaybeTransmutableQuery<&'l Dfa<<C as QueryContext>::Ref>, C>
-where
-    C: QueryContext,
-{
-    pub(crate) fn answer(&mut self) -> Answer<<C as QueryContext>::Ref> {
         self.answer_memo(&mut Map::default(), self.src.start, self.dst.start)
     }
 
