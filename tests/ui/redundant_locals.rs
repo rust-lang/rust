@@ -118,3 +118,40 @@ fn macros() {
         let x = x;
     }
 }
+
+struct WithDrop(usize);
+impl Drop for WithDrop {
+    fn drop(&mut self) {}
+}
+
+struct InnerDrop(WithDrop);
+
+struct ComposeDrop {
+    d: WithDrop,
+}
+
+struct WithoutDrop(usize);
+
+fn drop_trait() {
+    let a = WithDrop(1);
+    let b = WithDrop(2);
+    let a = a;
+}
+
+fn without_drop() {
+    let a = WithoutDrop(1);
+    let b = WithoutDrop(2);
+    let a = a;
+}
+
+fn drop_inner() {
+    let a = InnerDrop(WithDrop(1));
+    let b = InnerDrop(WithDrop(2));
+    let a = a;
+}
+
+fn drop_compose() {
+    let a = ComposeDrop { d: WithDrop(1) };
+    let b = ComposeDrop { d: WithDrop(1) };
+    let a = a;
+}

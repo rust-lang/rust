@@ -21,6 +21,18 @@ pub fn derive(_: TokenStream) -> TokenStream {
     output
 }
 
+#[proc_macro_derive(ImplStructWithStdDisplay)]
+pub fn derive_std(_: TokenStream) -> TokenStream {
+    quote! {
+        struct A {}
+        impl ::std::fmt::Display for A {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                write!(f, "A")
+            }
+        }
+    }
+}
+
 #[proc_macro_derive(FieldReassignWithDefault)]
 pub fn derive_foo(_input: TokenStream) -> TokenStream {
     quote! {
@@ -140,4 +152,20 @@ pub fn shadow_derive(_: TokenStream) -> TokenStream {
         )
         .into(),
     ])
+}
+
+#[proc_macro_derive(StructIgnoredUnitPattern)]
+pub fn derive_ignored_unit_pattern(_: TokenStream) -> TokenStream {
+    quote! {
+        struct A;
+        impl A {
+            fn a(&self) -> Result<(), ()> {
+                unimplemented!()
+            }
+
+            pub fn b(&self) {
+                let _ = self.a().unwrap();
+            }
+        }
+    }
 }

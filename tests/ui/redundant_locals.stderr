@@ -1,137 +1,172 @@
-error: redundant redefinition of a binding
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:12:5
+   |
+LL |     let x = x;
+   |     ^^^^^^^^^^
+   |
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:11:9
    |
 LL |     let x = 1;
    |         ^
-LL |     let x = x;
-   |     ^^^^^^^^^^
-   |
-   = help: remove the redefinition of `x`
    = note: `-D clippy::redundant-locals` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_locals)]`
 
-error: redundant redefinition of a binding
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:17:5
+   |
+LL |     let mut x = x;
+   |     ^^^^^^^^^^^^^^
+   |
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:16:9
    |
 LL |     let mut x = 1;
    |         ^^^^^
-LL |     let mut x = x;
-   |     ^^^^^^^^^^^^^^
-   |
-   = help: remove the redefinition of `x`
 
-error: redundant redefinition of a binding
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:47:5
+   |
+LL |     let x = x;
+   |     ^^^^^^^^^^
+   |
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:46:14
    |
 LL | fn parameter(x: i32) {
    |              ^
+
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:52:5
+   |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
-   = help: remove the redefinition of `x`
-
-error: redundant redefinition of a binding
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:51:9
    |
 LL |     let x = 1;
    |         ^
+
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:53:5
+   |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
-   = help: remove the redefinition of `x`
-
-error: redundant redefinition of a binding
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:52:9
    |
 LL |     let x = x;
    |         ^
+
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:54:5
+   |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
-   = help: remove the redefinition of `x`
-
-error: redundant redefinition of a binding
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:53:9
    |
 LL |     let x = x;
    |         ^
+
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:55:5
+   |
 LL |     let x = x;
    |     ^^^^^^^^^^
    |
-   = help: remove the redefinition of `x`
-
-error: redundant redefinition of a binding
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:54:9
    |
 LL |     let x = x;
    |         ^
-LL |     let x = x;
+
+error: redundant redefinition of a binding `a`
+  --> $DIR/redundant_locals.rs:61:5
+   |
+LL |     let a = a;
    |     ^^^^^^^^^^
    |
-   = help: remove the redefinition of `x`
-
-error: redundant redefinition of a binding
+help: `a` is initially defined here
   --> $DIR/redundant_locals.rs:59:9
    |
 LL |     let a = 1;
    |         ^
-LL |     let b = 2;
-LL |     let a = a;
+
+error: redundant redefinition of a binding `b`
+  --> $DIR/redundant_locals.rs:62:5
+   |
+LL |     let b = b;
    |     ^^^^^^^^^^
    |
-   = help: remove the redefinition of `a`
-
-error: redundant redefinition of a binding
+help: `b` is initially defined here
   --> $DIR/redundant_locals.rs:60:9
    |
 LL |     let b = 2;
    |         ^
-LL |     let a = a;
-LL |     let b = b;
-   |     ^^^^^^^^^^
-   |
-   = help: remove the redefinition of `b`
 
-error: redundant redefinition of a binding
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:68:9
+   |
+LL |         let x = x;
+   |         ^^^^^^^^^^
+   |
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:67:13
    |
 LL |         let x = 1;
    |             ^
+
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:75:9
+   |
 LL |         let x = x;
    |         ^^^^^^^^^^
    |
-   = help: remove the redefinition of `x`
-
-error: redundant redefinition of a binding
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:74:13
    |
 LL |         let x = 1;
    |             ^
+
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:78:9
+   |
 LL |         let x = x;
    |         ^^^^^^^^^^
    |
-   = help: remove the redefinition of `x`
-
-error: redundant redefinition of a binding
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:77:6
    |
 LL |     |x: i32| {
    |      ^
+
+error: redundant redefinition of a binding `x`
+  --> $DIR/redundant_locals.rs:97:9
+   |
 LL |         let x = x;
    |         ^^^^^^^^^^
    |
-   = help: remove the redefinition of `x`
-
-error: redundant redefinition of a binding
+help: `x` is initially defined here
   --> $DIR/redundant_locals.rs:94:9
    |
 LL |     let x = 1;
    |         ^
-...
-LL |         let x = x;
-   |         ^^^^^^^^^^
-   |
-   = help: remove the redefinition of `x`
 
-error: aborting due to 13 previous errors
+error: redundant redefinition of a binding `a`
+  --> $DIR/redundant_locals.rs:144:5
+   |
+LL |     let a = a;
+   |     ^^^^^^^^^^
+   |
+help: `a` is initially defined here
+  --> $DIR/redundant_locals.rs:142:9
+   |
+LL |     let a = WithoutDrop(1);
+   |         ^
+
+error: aborting due to 14 previous errors
 

@@ -36,7 +36,8 @@ struct PathAndSpan {
     span: Span,
 }
 
-/// `MacroRefData` includes the name of the macro.
+/// `MacroRefData` includes the name of the macro
+/// and the path from `SourceMap::span_to_filename`.
 #[derive(Debug, Clone)]
 pub struct MacroRefData {
     name: String,

@@ -80,7 +80,6 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
-use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def::{DefKind, Res};
@@ -113,7 +112,7 @@ use rustc_span::{sym, Span};
 use rustc_target::abi::Integer;
 use visitors::Visitable;
 
-use crate::consts::{constant, miri_to_const, Constant};
+use crate::consts::{constant, mir_to_const, Constant};
 use crate::higher::Range;
 use crate::ty::{
     adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type,
@@ -1509,9 +1508,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
-                && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, min_val.to_valtree()))
-                && let min_const_kind = Const::from_value(const_val, bnd_ty)
-                && let Some(min_const) = miri_to_const(cx, min_const_kind)
+                && let Some(min_const) = mir_to_const(cx, Const::from_ty_const(min_val, cx.tcx))
                 && let Some(start_const) = constant(cx, cx.typeck_results(), start)
             {
                 start_const == min_const
@@ -1525,9 +1522,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                     if let rustc_ty::Adt(_, subst) = ty.kind()
                         && let bnd_ty = subst.type_at(0)
                         && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
-                        && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, max_val.to_valtree()))
-                        && let max_const_kind = Const::from_value(const_val, bnd_ty)
-                        && let Some(max_const) = miri_to_const(cx, max_const_kind)
+                        && let Some(max_const) = mir_to_const(cx, Const::from_ty_const(max_val, cx.tcx))
                         && let Some(end_const) = constant(cx, cx.typeck_results(), end)
                     {
                         end_const == max_const
@@ -2456,11 +2451,12 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     })
 }
 
-/// Checks if the item containing the given `HirId` has `#[cfg(test)]` attribute applied
+/// Checks if `id` has a `#[cfg(test)]` attribute applied
 ///
-/// Note: Add `//@compile-flags: --test` to UI tests with a `#[cfg(test)]` function
-pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
-    fn is_cfg_test(attr: &Attribute) -> bool {
+/// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
+/// use [`is_in_cfg_test`]
+pub fn is_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
+    tcx.hir().attrs(id).iter().any(|attr| {
         if attr.has_name(sym::cfg)
             && let Some(items) = attr.meta_item_list()
             && let [item] = &*items
@@ -2470,11 +2466,14 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
         } else {
             false
         }
-    }
+    })
+}
+
+/// Checks if any parent node of `HirId` has `#[cfg(test)]` attribute applied
+pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     tcx.hir()
-        .parent_iter(id)
-        .flat_map(|(parent_id, _)| tcx.hir().attrs(parent_id))
-        .any(is_cfg_test)
+        .parent_id_iter(id)
+        .any(|parent_id| is_cfg_test(tcx, parent_id))
 }
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.

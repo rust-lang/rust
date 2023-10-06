@@ -38,55 +38,61 @@ LL | use wildcard_imports_helper::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:97:13
+  --> $DIR/wildcard_imports.rs:94:13
+   |
+LL |         use self::exports_underscore_ish::*;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `self::exports_underscore_ish::{_Deref, dummy}`
+
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:125:13
    |
 LL |         use crate::fn_mod::*;
    |             ^^^^^^^^^^^^^^^^ help: try: `crate::fn_mod::foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:103:75
+  --> $DIR/wildcard_imports.rs:131:75
    |
 LL |         use wildcard_imports_helper::inner::inner_for_self_import::{self, *};
    |                                                                           ^ help: try: `inner_extern_foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:104:13
+  --> $DIR/wildcard_imports.rs:132:13
    |
 LL |         use wildcard_imports_helper::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:116:20
+  --> $DIR/wildcard_imports.rs:144:20
    |
 LL |         use self::{inner::*, inner2::*};
    |                    ^^^^^^^^ help: try: `inner::inner_foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:116:30
+  --> $DIR/wildcard_imports.rs:144:30
    |
 LL |         use self::{inner::*, inner2::*};
    |                              ^^^^^^^^^ help: try: `inner2::inner_bar`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:123:13
+  --> $DIR/wildcard_imports.rs:151:13
    |
 LL |         use wildcard_imports_helper::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternExportedEnum, ExternExportedStruct, extern_exported}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:152:9
+  --> $DIR/wildcard_imports.rs:180:9
    |
 LL |     use crate::in_fn_test::*;
    |         ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::in_fn_test::{ExportedEnum, ExportedStruct, exported}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:161:9
+  --> $DIR/wildcard_imports.rs:189:9
    |
 LL |     use crate:: in_fn_test::  * ;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate:: in_fn_test::exported`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:162:9
+  --> $DIR/wildcard_imports.rs:190:9
    |
 LL |       use crate:: fn_mod::
    |  _________^
@@ -94,40 +100,40 @@ LL | |         *;
    | |_________^ help: try: `crate:: fn_mod::foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:173:13
+  --> $DIR/wildcard_imports.rs:201:13
    |
 LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:208:17
+  --> $DIR/wildcard_imports.rs:236:17
    |
 LL |             use super::*;
    |                 ^^^^^^^^ help: try: `super::insidefoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:216:13
+  --> $DIR/wildcard_imports.rs:244:13
    |
 LL |         use crate::super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate::super_imports::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:225:17
+  --> $DIR/wildcard_imports.rs:253:17
    |
 LL |             use super::super::*;
    |                 ^^^^^^^^^^^^^^^ help: try: `super::super::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:234:13
+  --> $DIR/wildcard_imports.rs:262:13
    |
 LL |         use super::super::super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::super_imports::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:242:13
+  --> $DIR/wildcard_imports.rs:270:13
    |
 LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`
 
-error: aborting due to 21 previous errors
+error: aborting due to 22 previous errors
 

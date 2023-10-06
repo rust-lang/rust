@@ -47,9 +47,9 @@ declare_clippy_lint! {
     ///     12 + *y
     /// }
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub NEEDLESS_PASS_BY_REF_MUT,
-    suspicious,
+    nursery,
     "using a `&mut` argument when it's not mutated"
 }
 
