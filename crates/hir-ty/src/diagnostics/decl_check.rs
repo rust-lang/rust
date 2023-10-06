@@ -336,48 +336,44 @@ impl<'a> DeclValidator<'a> {
 
         for (id, replacement) in pats_replacements {
             if let Ok(source_ptr) = source_map.pat_syntax(id) {
-                if let Some(expr) = source_ptr.value.as_ref().left() {
+                if let Some(ptr) = source_ptr.value.clone().cast::<ast::IdentPat>() {
                     let root = source_ptr.file_syntax(self.db.upcast());
-                    if let ast::Pat::IdentPat(ident_pat) = expr.to_node(&root) {
-                        let parent = match ident_pat.syntax().parent() {
-                            Some(parent) => parent,
-                            None => continue,
-                        };
-                        let name_ast = match ident_pat.name() {
-                            Some(name_ast) => name_ast,
-                            None => continue,
-                        };
+                    let ident_pat = ptr.to_node(&root);
+                    let parent = match ident_pat.syntax().parent() {
+                        Some(parent) => parent,
+                        None => continue,
+                    };
+                    let name_ast = match ident_pat.name() {
+                        Some(name_ast) => name_ast,
+                        None => continue,
+                    };
 
-                        let is_param = ast::Param::can_cast(parent.kind());
+                    let is_param = ast::Param::can_cast(parent.kind());
 
-                        // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
-                        // because e.g. match arms are patterns as well.
-                        // In other words, we check that it's a named variable binding.
-                        let is_binding = ast::LetStmt::can_cast(parent.kind())
-                            || (ast::MatchArm::can_cast(parent.kind())
-                                && ident_pat.at_token().is_some());
-                        if !(is_param || is_binding) {
-                            // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
-                            continue;
-                        }
-
-                        let ident_type =
-                            if is_param { IdentType::Parameter } else { IdentType::Variable };
-
-                        let diagnostic = IncorrectCase {
-                            file: source_ptr.file_id,
-                            ident_type,
-                            ident: AstPtr::new(&name_ast),
-                            expected_case: replacement.expected_case,
-                            ident_text: replacement
-                                .current_name
-                                .display(self.db.upcast())
-                                .to_string(),
-                            suggested_text: replacement.suggested_text,
-                        };
-
-                        self.sink.push(diagnostic);
+                    // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
+                    // because e.g. match arms are patterns as well.
+                    // In other words, we check that it's a named variable binding.
+                    let is_binding = ast::LetStmt::can_cast(parent.kind())
+                        || (ast::MatchArm::can_cast(parent.kind())
+                            && ident_pat.at_token().is_some());
+                    if !(is_param || is_binding) {
+                        // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
+                        continue;
                     }
+
+                    let ident_type =
+                        if is_param { IdentType::Parameter } else { IdentType::Variable };
+
+                    let diagnostic = IncorrectCase {
+                        file: source_ptr.file_id,
+                        ident_type,
+                        ident: AstPtr::new(&name_ast),
+                        expected_case: replacement.expected_case,
+                        ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
+                        suggested_text: replacement.suggested_text,
+                    };
+
+                    self.sink.push(diagnostic);
                 }
             }
         }

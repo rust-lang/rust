@@ -375,10 +375,7 @@ impl MirEvalError {
                         Err(_) => continue,
                     },
                     MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
-                        Ok(s) => s.map(|it| match it {
-                            Either::Left(e) => e.into(),
-                            Either::Right(e) => e.into(),
-                        }),
+                        Ok(s) => s.map(|it| it.syntax_node_ptr()),
                         Err(_) => continue,
                     },
                     MirSpan::Unknown => continue,
