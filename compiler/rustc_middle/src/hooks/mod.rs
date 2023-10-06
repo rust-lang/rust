@@ -1,3 +1,8 @@
+//! "Hooks" provide a way for `tcx` functionality to be provided by some downstream crate without
+//! everything in rustc having to depend on that crate. This is somewhat similar to queries, but
+//! queries come with a lot of machinery for caching and incremental compilation, whereas hooks are
+//! just plain function pointers without any of the query magic.
+
 use crate::mir;
 use crate::query::TyCtxtAt;
 use crate::ty::{Ty, TyCtxt};
