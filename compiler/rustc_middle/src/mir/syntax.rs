@@ -996,7 +996,7 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///
 /// [UCG#319]: https://github.com/rust-lang/unsafe-code-guidelines/issues/319
 ///
-/// Rust currently requires that every place obey those two rules. This is checked by MIRI and taken
+/// Rust currently requires that every place obey those two rules. This is checked by Miri and taken
 /// advantage of by codegen (via `gep inbounds`). That is possibly subject to change.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Place<'tcx> {
