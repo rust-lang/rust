@@ -4,7 +4,7 @@ mod simd;
 #[cfg(feature="master")]
 use std::iter;
 
-use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
+use gccjit::{BinaryOp, ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -820,74 +820,52 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             };
 
         if value_type.is_u128(&self.cx) {
-            // TODO(antoyo): implement in the normal algorithm below to have a more efficient
-            // implementation (that does not require a call to __popcountdi2).
-            let popcount = self.context.get_builtin_function("__builtin_popcountll");
             let sixty_four = self.gcc_int(value_type, 64);
             let right_shift = self.gcc_lshr(value, sixty_four);
             let high = self.gcc_int_cast(right_shift, self.cx.ulonglong_type);
-            let high = self.context.new_call(None, popcount, &[high]);
+            let high = self.pop_count(high);
             let low = self.gcc_int_cast(value, self.cx.ulonglong_type);
-            let low = self.context.new_call(None, popcount, &[low]);
+            let low = self.pop_count(low);
             let res = high + low;
             return self.gcc_int_cast(res, result_type);
         }
 
-        // First step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x5555555555555555);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 1);
-        let right = shifted & mask;
-        let value = left + right;
+        // Use Wenger's algorithm for population count, gcc's seems to play better with it
+        // for (int counter = 0; value != 0; counter++) {
+        //     value &= value - 1;
+        // }
+        let func = self.current_func.borrow().expect("func");
+        let loop_head = func.new_block("head");
+        let loop_body = func.new_block("body");
+        let loop_tail = func.new_block("tail");
 
-        // Second step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x3333333333333333);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 2);
-        let right = shifted & mask;
-        let value = left + right;
+        let counter_type = self.int_type;
+        let counter = self.current_func().new_local(None, counter_type, "popcount_counter");
+        let val = self.current_func().new_local(None, value_type, "popcount_value");
+        let zero = self.context.new_rvalue_zero(counter_type);
+        self.llbb().add_assignment(None, counter, zero);
+        self.llbb().add_assignment(None, val, value);
+        self.br(loop_head);
 
-        // Third step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x0F0F0F0F0F0F0F0F);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 4);
-        let right = shifted & mask;
-        let value = left + right;
+        // check if value isn't zero
+        self.switch_to_block(loop_head);
+        let zero = self.context.new_rvalue_zero(value_type);
+        let cond = self.context.new_comparison(None, ComparisonOp::NotEquals, val.to_rvalue(), zero);
+        self.cond_br(cond, loop_body, loop_tail);
 
-        if value_type.is_u8(&self.cx) {
-            return self.context.new_cast(None, value, result_type);
-        }
+        // val &= val - 1;
+        self.switch_to_block(loop_body);
+        let sub = val.to_rvalue() - self.context.new_rvalue_one(value_type);
+        loop_body.add_assignment_op(None, val, BinaryOp::BitwiseAnd, sub);
 
-        // Fourth step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x00FF00FF00FF00FF);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 8);
-        let right = shifted & mask;
-        let value = left + right;
+        // counter += 1
+        let one = self.context.new_rvalue_one(counter_type);
+        loop_body.add_assignment_op(None, counter, BinaryOp::Plus, one);
+        self.br(loop_head);
 
-        if value_type.is_u16(&self.cx) {
-            return self.context.new_cast(None, value, result_type);
-        }
-
-        // Fifth step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x0000FFFF0000FFFF);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 16);
-        let right = shifted & mask;
-        let value = left + right;
-
-        if value_type.is_u32(&self.cx) {
-            return self.context.new_cast(None, value, result_type);
-        }
-
-        // Sixth step.
-        let mask = self.context.new_rvalue_from_long(value_type, 0x00000000FFFFFFFF);
-        let left = value & mask;
-        let shifted = value >> self.context.new_rvalue_from_int(value_type, 32);
-        let right = shifted & mask;
-        let value = left + right;
-
-        self.context.new_cast(None, value, result_type)
+        // end of loop
+        self.switch_to_block(loop_tail);
+        self.context.new_cast(None, counter.to_rvalue(), result_type)
     }
 
     // Algorithm from: https://blog.regehr.org/archives/1063
