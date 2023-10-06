@@ -358,6 +358,10 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             let instance = Instance::mono(self.tcx, def_id);
             let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            if !is_mutable {
+                debug_assert_eq!(alloc.mutability.is_not(), self.type_is_freeze(ty));
+            }
+            debug_assert_eq!(alloc.align, self.align_of(ty));
             let llty = self.layout_of(ty).llvm_type(self);
 
             let g = self.get_static_inner(def_id, llty);
@@ -396,7 +400,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 self.statics_to_rauw.borrow_mut().push((g, new_g));
                 new_g
             };
-            set_global_alignment(self, g, self.align_of(ty));
+            set_global_alignment(self, g, alloc.align);
             llvm::LLVMSetInitializer(g, v);
 
             if self.should_assume_dso_local(g, true) {
@@ -405,7 +409,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             // As an optimization, all shared statics which do not have interior
             // mutability are placed into read-only memory.
-            if !is_mutable && self.type_is_freeze(ty) {
+            if !is_mutable && alloc.mutability.is_not() {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }
 
