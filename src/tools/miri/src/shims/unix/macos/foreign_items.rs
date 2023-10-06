@@ -109,6 +109,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
+            // Random generation related shims
+            "getentropy" => {
+                let [buf, bufsize] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.getentropy(buf, bufsize)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Access to command-line arguments
             "_NSGetArgc" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -197,5 +205,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
 
         Ok(EmulateByNameResult::NeedsJumping)
+    }
+
+    fn getentropy(
+        &mut self,
+        buffer_op: &OpTy<'tcx, Provenance>,
+        length_op: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("macos", "getentropy");
+
+        let ptr = this.read_pointer(buffer_op)?;
+        let len = this.read_target_usize(length_op)?;
+        this.gen_random(ptr, len)?;
+
+        Ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }
 }
