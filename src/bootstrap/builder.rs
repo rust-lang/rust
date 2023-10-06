@@ -1654,10 +1654,10 @@ impl<'a> Builder<'a> {
         }
 
         if let Some(host_linker) = self.linker(compiler.host) {
-            hostflags.flag(format!("-Clinker={}", host_linker.display()));
+            hostflags.arg(format!("-Clinker={}", host_linker.display()));
         }
         if self.is_fuse_ld_lld(compiler.host) {
-            hostflags.flag("-Clink-args=-fuse-ld=lld");
+            hostflags.arg("-Clink-args=-fuse-ld=lld");
         }
 
         if let Some(target_linker) = self.linker(target) {
@@ -1742,7 +1742,7 @@ impl<'a> Builder<'a> {
 
         if let Some(x) = self.crt_static(compiler.host) {
             let sign = if x { "+" } else { "-" };
-            hostflags.flag(format!("-Ctarget-feature={sign}crt-static"));
+            hostflags.arg(format!("-Ctarget-feature={sign}crt-static"));
         }
 
         if let Some(map_to) = self.build.debuginfo_map_to(GitRepo::Rustc) {
@@ -2244,7 +2244,7 @@ impl HostFlags {
     const SEPARATOR: &'static str = " ";
 
     /// Adds a host rustc flag.
-    fn flag<S: Into<String>>(&mut self, flag: S) {
+    fn arg<S: Into<String>>(&mut self, flag: S) {
         let value = flag.into().trim().to_string();
         assert!(!value.contains(Self::SEPARATOR));
         self.rustc.push(value);
