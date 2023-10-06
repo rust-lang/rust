@@ -74,10 +74,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
                 span_lint_and_help(
                     cx,
                     REDUNDANT_LOCALS,
-                    vec![binding_pat.span, local.span],
-                    "redundant redefinition of a binding",
-                    None,
-                    &format!("remove the redefinition of `{ident}`"),
+                    local.span,
+                    &format!("redundant redefinition of a binding `{ident}`"),
+                    Some(binding_pat.span),
+                    &format!("`{ident}` is initially defined here"),
                 );
             }
         }
