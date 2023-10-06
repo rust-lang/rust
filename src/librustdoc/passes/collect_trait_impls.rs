@@ -36,7 +36,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     let prims: FxHashSet<PrimitiveType> = local_crate.primitives(tcx).iter().map(|p| p.1).collect();
 
     let crate_items = {
-        let mut coll = ItemCollector::new();
+        let mut coll = ItemAndAliasCollector::new(&cx.cache);
         cx.sess().time("collect_items_for_trait_impls", || coll.visit_crate(&krate));
         coll.items
     };
@@ -235,20 +235,26 @@ impl<'a, 'tcx> DocVisitor for SyntheticImplCollector<'a, 'tcx> {
     }
 }
 
-#[derive(Default)]
-struct ItemCollector {
+struct ItemAndAliasCollector<'cache> {
     items: FxHashSet<ItemId>,
+    cache: &'cache Cache,
 }
 
-impl ItemCollector {
-    fn new() -> Self {
-        Self::default()
+impl<'cache> ItemAndAliasCollector<'cache> {
+    fn new(cache: &'cache Cache) -> Self {
+        ItemAndAliasCollector { items: FxHashSet::default(), cache }
     }
 }
 
-impl DocVisitor for ItemCollector {
+impl<'cache> DocVisitor for ItemAndAliasCollector<'cache> {
     fn visit_item(&mut self, i: &Item) {
         self.items.insert(i.item_id);
+
+        if let TypeAliasItem(alias) = &*i.kind &&
+            let Some(did) = alias.type_.def_id(self.cache)
+        {
+            self.items.insert(ItemId::DefId(did));
+        }
 
         self.visit_item_recur(i)
     }

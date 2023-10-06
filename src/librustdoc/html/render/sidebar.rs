@@ -38,18 +38,19 @@ pub(crate) struct LinkBlock<'a> {
     /// as well as the link to it, e.g. `#implementations`.
     /// Will be rendered inside an `<h3>` tag
     heading: Link<'a>,
+    class: &'static str,
     links: Vec<Link<'a>>,
     /// Render the heading even if there are no links
     force_render: bool,
 }
 
 impl<'a> LinkBlock<'a> {
-    pub fn new(heading: Link<'a>, links: Vec<Link<'a>>) -> Self {
-        Self { heading, links, force_render: false }
+    pub fn new(heading: Link<'a>, class: &'static str, links: Vec<Link<'a>>) -> Self {
+        Self { heading, links, class, force_render: false }
     }
 
-    pub fn forced(heading: Link<'a>) -> Self {
-        Self { heading, links: vec![], force_render: true }
+    pub fn forced(heading: Link<'a>, class: &'static str) -> Self {
+        Self { heading, links: vec![], class, force_render: true }
     }
 
     pub fn should_render(&self) -> bool {
@@ -157,7 +158,7 @@ fn sidebar_struct<'a>(
     };
     let mut items = vec![];
     if let Some(name) = field_name {
-        items.push(LinkBlock::new(Link::new("fields", name), fields));
+        items.push(LinkBlock::new(Link::new("fields", name), "structfield", fields));
     }
     sidebar_assoc_items(cx, it, &mut items);
     items
@@ -214,12 +215,15 @@ fn sidebar_trait<'a>(
         ("foreign-impls", "Implementations on Foreign Types", foreign_impls),
     ]
     .into_iter()
-    .map(|(id, title, items)| LinkBlock::new(Link::new(id, title), items))
+    .map(|(id, title, items)| LinkBlock::new(Link::new(id, title), "", items))
     .collect();
     sidebar_assoc_items(cx, it, &mut blocks);
-    blocks.push(LinkBlock::forced(Link::new("implementors", "Implementors")));
+    blocks.push(LinkBlock::forced(Link::new("implementors", "Implementors"), "impl"));
     if t.is_auto(cx.tcx()) {
-        blocks.push(LinkBlock::forced(Link::new("synthetic-implementors", "Auto Implementors")));
+        blocks.push(LinkBlock::forced(
+            Link::new("synthetic-implementors", "Auto Implementors"),
+            "impl-auto",
+        ));
     }
     blocks
 }
@@ -245,7 +249,7 @@ fn sidebar_type_alias<'a>(
 ) -> Vec<LinkBlock<'a>> {
     let mut items = vec![];
     if let Some(inner_type) = &t.inner_type {
-        items.push(LinkBlock::forced(Link::new("aliased-type", "Aliased type")));
+        items.push(LinkBlock::forced(Link::new("aliased-type", "Aliased type"), "type"));
         match inner_type {
             clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive: _ } => {
                 let mut variants = variants
@@ -256,12 +260,12 @@ fn sidebar_type_alias<'a>(
                     .collect::<Vec<_>>();
                 variants.sort_unstable();
 
-                items.push(LinkBlock::new(Link::new("variants", "Variants"), variants));
+                items.push(LinkBlock::new(Link::new("variants", "Variants"), "variant", variants));
             }
             clean::TypeAliasInnerType::Union { fields }
             | clean::TypeAliasInnerType::Struct { ctor_kind: _, fields } => {
                 let fields = get_struct_fields_name(fields);
-                items.push(LinkBlock::new(Link::new("fields", "Fields"), fields));
+                items.push(LinkBlock::new(Link::new("fields", "Fields"), "field", fields));
             }
         }
     }
@@ -275,7 +279,7 @@ fn sidebar_union<'a>(
     u: &'a clean::Union,
 ) -> Vec<LinkBlock<'a>> {
     let fields = get_struct_fields_name(&u.fields);
-    let mut items = vec![LinkBlock::new(Link::new("fields", "Fields"), fields)];
+    let mut items = vec![LinkBlock::new(Link::new("fields", "Fields"), "structfield", fields)];
     sidebar_assoc_items(cx, it, &mut items);
     items
 }
@@ -340,12 +344,16 @@ fn sidebar_assoc_items<'a>(
 
             sidebar_render_assoc_items(cx, &mut id_map, concrete, synthetic, blanket_impl)
         } else {
-            std::array::from_fn(|_| LinkBlock::new(Link::empty(), vec![]))
+            std::array::from_fn(|_| LinkBlock::new(Link::empty(), "", vec![]))
         };
 
         let mut blocks = vec![
-            LinkBlock::new(Link::new("implementations", "Associated Constants"), assoc_consts),
-            LinkBlock::new(Link::new("implementations", "Methods"), methods),
+            LinkBlock::new(
+                Link::new("implementations", "Associated Constants"),
+                "associatedconstant",
+                assoc_consts,
+            ),
+            LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
         ];
         blocks.append(&mut deref_methods);
         blocks.extend([concrete, synthetic, blanket]);
@@ -414,7 +422,7 @@ fn sidebar_deref_methods<'a>(
                 );
                 // We want links' order to be reproducible so we don't use unstable sort.
                 ret.sort();
-                out.push(LinkBlock::new(Link::new(id, title), ret));
+                out.push(LinkBlock::new(Link::new(id, title), "deref-methods", ret));
             }
         }
 
@@ -453,7 +461,7 @@ fn sidebar_enum<'a>(
         .collect::<Vec<_>>();
     variants.sort_unstable();
 
-    let mut items = vec![LinkBlock::new(Link::new("variants", "Variants"), variants)];
+    let mut items = vec![LinkBlock::new(Link::new("variants", "Variants"), "variant", variants)];
     sidebar_assoc_items(cx, it, &mut items);
     items
 }
@@ -467,7 +475,7 @@ pub(crate) fn sidebar_module_like(
         .filter(|sec| item_sections_in_use.contains(sec))
         .map(|sec| Link::new(sec.id(), sec.name()))
         .collect();
-    LinkBlock::new(Link::empty(), item_sections)
+    LinkBlock::new(Link::empty(), "", item_sections)
 }
 
 fn sidebar_module(items: &[clean::Item]) -> LinkBlock<'static> {
@@ -528,12 +536,21 @@ fn sidebar_render_assoc_items(
     let synthetic = format_impls(synthetic, id_map);
     let blanket = format_impls(blanket_impl, id_map);
     [
-        LinkBlock::new(Link::new("trait-implementations", "Trait Implementations"), concrete),
+        LinkBlock::new(
+            Link::new("trait-implementations", "Trait Implementations"),
+            "trait-implementation",
+            concrete,
+        ),
         LinkBlock::new(
             Link::new("synthetic-implementations", "Auto Trait Implementations"),
+            "synthetic-implementation",
             synthetic,
         ),
-        LinkBlock::new(Link::new("blanket-implementations", "Blanket Implementations"), blanket),
+        LinkBlock::new(
+            Link::new("blanket-implementations", "Blanket Implementations"),
+            "blanket-implementation",
+            blanket,
+        ),
     ]
 }
 

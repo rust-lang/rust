@@ -1,0 +1,40 @@
+// The goal of this test is to check that the inlined type alias impls, generated with JS,
+// have the same display than the "local" ones.
+go-to: "file://" + |DOC_PATH| + "/test_docs/type.SomeOtherTypeWithMethodsAndInlining.html"
+
+// method directly on type alias
+wait-for: "//*[@id='method.some_other_method_directly']"
+
+// methods on foo
+assert: "//*[@id='method.must_use']"
+assert: "//*[@id='method.warning1']"
+assert: "//*[@id='method.warning2']"
+
+// sidebar items
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.as_ref']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.must_use']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.some_other_method_directly']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.warning1']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#method.warning2']"
+assert: "//*[@class='sidebar-elems']//li/a[@href='#impl-AsRef%3Cstr%3E-for-Foo']"
+
+// sorting
+assert-text: (".block.method li:nth-child(1)", 'as_ref')
+assert-text: (".block.method li:nth-child(2)", 'must_use')
+assert-text: (".block.method li:nth-child(3)", 'some_other_method_directly')
+assert-text: (".block.method li:nth-child(4)", 'warning1')
+assert-text: (".block.method li:nth-child(5)", 'warning2')
+
+///////////////////////////////////////////////////////////////////////////
+// Now, if JavaScript is disabled, only the first method will be present //
+///////////////////////////////////////////////////////////////////////////
+javascript: false
+reload:
+
+// method directly on type alias
+wait-for: "//*[@id='method.some_other_method_directly']"
+
+// methods on foo
+assert-false: "//*[@id='method.must_use']"
+assert-false: "//*[@id='method.warning1']"
+assert-false: "//*[@id='method.warning2']"

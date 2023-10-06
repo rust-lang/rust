@@ -934,10 +934,15 @@ fn clean_ty_generics<'tcx>(
 fn clean_ty_alias_inner_type<'tcx>(
     ty: Ty<'tcx>,
     cx: &mut DocContext<'tcx>,
+    ret: &mut Vec<Item>,
 ) -> Option<TypeAliasInnerType> {
     let ty::Adt(adt_def, args) = ty.kind() else {
         return None;
     };
+
+    if !adt_def.did().is_local() {
+        inline::build_impls(cx, adt_def.did(), None, ret);
+    }
 
     Some(if adt_def.is_enum() {
         let variants: rustc_index::IndexVec<_, _> = adt_def
@@ -945,6 +950,10 @@ fn clean_ty_alias_inner_type<'tcx>(
             .iter()
             .map(|variant| clean_variant_def_with_args(variant, args, cx))
             .collect();
+
+        if !adt_def.did().is_local() {
+            inline::record_extern_fqn(cx, adt_def.did(), ItemType::Enum);
+        }
 
         TypeAliasInnerType::Enum {
             variants,
@@ -961,8 +970,14 @@ fn clean_ty_alias_inner_type<'tcx>(
             clean_variant_def_with_args(variant, args, cx).kind.inner_items().cloned().collect();
 
         if adt_def.is_struct() {
+            if !adt_def.did().is_local() {
+                inline::record_extern_fqn(cx, adt_def.did(), ItemType::Struct);
+            }
             TypeAliasInnerType::Struct { ctor_kind: variant.ctor_kind(), fields }
         } else {
+            if !adt_def.did().is_local() {
+                inline::record_extern_fqn(cx, adt_def.did(), ItemType::Union);
+            }
             TypeAliasInnerType::Union { fields }
         }
     })
@@ -2744,14 +2759,24 @@ fn clean_maybe_renamed_item<'tcx>(
                 }
 
                 let ty = cx.tcx.type_of(def_id).instantiate_identity();
-                let inner_type = clean_ty_alias_inner_type(ty, cx);
 
-                TypeAliasItem(Box::new(TypeAlias {
-                    generics,
-                    inner_type,
-                    type_: rustdoc_ty,
-                    item_type: Some(type_),
-                }))
+                let mut ret = Vec::new();
+                let inner_type = clean_ty_alias_inner_type(ty, cx, &mut ret);
+
+                ret.push(generate_item_with_correct_attrs(
+                    cx,
+                    TypeAliasItem(Box::new(TypeAlias {
+                        generics,
+                        inner_type,
+                        type_: rustdoc_ty,
+                        item_type: Some(type_),
+                    })),
+                    item.owner_id.def_id.to_def_id(),
+                    name,
+                    import_id,
+                    renamed,
+                ));
+                return ret;
             }
             ItemKind::Enum(ref def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
