@@ -344,7 +344,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         g
     }
 
-    fn codegen_static_item(&self, def_id: DefId, is_mutable: bool) {
+    fn codegen_static_item(&self, def_id: DefId) {
         unsafe {
             let attrs = self.tcx.codegen_fn_attrs(def_id);
 
@@ -356,7 +356,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             let instance = Instance::mono(self.tcx, def_id);
             let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
-            if !is_mutable {
+            if !self.tcx.is_mutable_static(def_id) {
                 debug_assert_eq!(alloc.mutability.is_not(), self.type_is_freeze(ty));
             }
             debug_assert_eq!(alloc.align, self.align_of(ty));
@@ -409,7 +409,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             // As an optimization, all shared statics which do not have interior
             // mutability are placed into read-only memory.
-            if !is_mutable && alloc.mutability.is_not() {
+            if alloc.mutability.is_not() {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }
 
@@ -555,8 +555,8 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
         gv
     }
 
-    fn codegen_static(&self, def_id: DefId, is_mutable: bool) {
-        self.codegen_static_item(def_id, is_mutable)
+    fn codegen_static(&self, def_id: DefId) {
+        self.codegen_static_item(def_id)
     }
 
     /// Add a global value to a list to be stored in the `llvm.used` variable, an array of ptr.
