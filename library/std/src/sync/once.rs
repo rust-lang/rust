@@ -125,7 +125,7 @@ impl Once {
     ///
     /// # Panics
     ///
-    /// The closure `f` will only be executed once if this is called
+    /// The closure `f` will only be executed once even if this is called
     /// concurrently amongst many threads. If that closure panics, however, then
     /// it will *poison* this [`Once`] instance, causing all future invocations of
     /// `call_once` to also panic.
