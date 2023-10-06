@@ -276,6 +276,18 @@ async fn _f(v: &mut Vec<()>) {
     _ = || || x;
 }
 
+struct Data<T: ?Sized> {
+    value: T,
+}
+// Unsafe functions should not warn.
+unsafe fn get_mut_unchecked<T>(ptr: &mut NonNull<Data<T>>) -> &mut T {
+    &mut (*ptr.as_ptr()).value
+}
+// Unsafe blocks should not warn.
+fn get_mut_unchecked2<T>(ptr: &mut NonNull<Data<T>>) -> &mut T {
+    unsafe { &mut (*ptr.as_ptr()).value }
+}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];
