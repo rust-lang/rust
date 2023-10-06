@@ -149,22 +149,6 @@ where
 {
     /// Answers whether a `Dfa` is transmutable into another `Dfa`.
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
-        MaybeTransmutableQuery {
-            src: &self.src,
-            dst: &self.dst,
-            scope: self.scope,
-            assume: self.assume,
-            context: self.context,
-        }
-        .answer()
-    }
-}
-
-impl<'l, C> MaybeTransmutableQuery<&'l Dfa<<C as QueryContext>::Ref>, C>
-where
-    C: QueryContext,
-{
-    pub(crate) fn answer(&mut self) -> Answer<<C as QueryContext>::Ref> {
         self.answer_memo(&mut Map::default(), self.src.start, self.dst.start)
     }
 
