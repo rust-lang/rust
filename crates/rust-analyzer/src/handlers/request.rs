@@ -2000,8 +2000,18 @@ fn run_rustfmt(
             let workspace = CargoTargetSpec::for_file(&snap, file_id)?;
             let mut cmd = match workspace {
                 Some(spec) => {
-                    let cmd = spec.workspace_root.join(cmd);
-                    process::Command::new(cmd.as_os_str())
+                    // approach: if the command name contains a path seperator, join it with the workspace root.
+                    // however, if the path is absolute, joining will result in the absolute path being preserved.
+                    // as a fallback, rely on $PATH-based discovery.
+                    let cmd_path =
+                        if cfg!(windows) && command.contains(&[std::path::MAIN_SEPARATOR, '/']) {
+                            spec.workspace_root.join(cmd).into()
+                        } else if command.contains(std::path::MAIN_SEPARATOR) {
+                            spec.workspace_root.join(cmd).into()
+                        } else {
+                            cmd
+                        };
+                    process::Command::new(cmd_path)
                 }
                 None => process::Command::new(cmd),
             };
