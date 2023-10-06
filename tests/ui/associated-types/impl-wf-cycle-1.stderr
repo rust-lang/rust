@@ -1,8 +1,12 @@
 error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
   --> $DIR/impl-wf-cycle-1.rs:15:1
    |
-LL | impl<T: Grault> Grault for (T,)
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / impl<T: Grault> Grault for (T,)
+LL | |
+LL | | where
+LL | |     Self::A: Baz,
+LL | |     Self::B: Fiz,
+   | |_________________^
    |
 note: required for `(T,)` to implement `Grault`
   --> $DIR/impl-wf-cycle-1.rs:15:17

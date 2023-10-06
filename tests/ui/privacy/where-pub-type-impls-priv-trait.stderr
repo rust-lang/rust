@@ -41,8 +41,11 @@ LL | trait PrivTr {}
 warning: trait `PrivTr` is more private than the item `S`
   --> $DIR/where-pub-type-impls-priv-trait.rs:41:1
    |
-LL | impl S
-   | ^^^^^^ implementation `S` is reachable at visibility `pub`
+LL | / impl S
+LL | |
+LL | | where
+LL | |     PubTy: PrivTr
+   | |_________________^ implementation `S` is reachable at visibility `pub`
    |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
   --> $DIR/where-pub-type-impls-priv-trait.rs:10:1

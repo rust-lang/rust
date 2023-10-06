@@ -3,7 +3,7 @@ error: internal compiler error: compiler/rustc_const_eval/src/interpret/step.rs:
 
 Box<dyn Any>
 query stack during panic:
-#0 [eval_to_allocation_raw] const-evaluating + checking `<impl at $DIR/issue-80742.rs:25:1: 25:18>::{constant#0}`
+#0 [eval_to_allocation_raw] const-evaluating + checking `<impl at $DIR/issue-80742.rs:25:1: 27:32>::{constant#0}`
 #1 [eval_to_valtree] evaluating type-level constant
 end of query stack
 error: aborting due to previous error

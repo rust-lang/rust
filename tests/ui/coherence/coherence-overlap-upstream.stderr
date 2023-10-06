@@ -2,7 +2,7 @@ error[E0119]: conflicting implementations of trait `Foo` for type `i16`
   --> $DIR/coherence-overlap-upstream.rs:13:1
    |
 LL | impl<T> Foo for T where T: Remote {}
-   | ----------------- first implementation here
+   | --------------------------------- first implementation here
 LL | impl Foo for i16 {}
    | ^^^^^^^^^^^^^^^^ conflicting implementation for `i16`
    |
