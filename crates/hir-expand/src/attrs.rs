@@ -1,7 +1,7 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 use std::{fmt, ops};
 
-use ::tt::Span;
+use ::tt::SpanAnchor as _;
 use base_db::{span::SpanAnchor, CrateId};
 use cfg::CfgExpr;
 use either::Either;

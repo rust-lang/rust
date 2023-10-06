@@ -32,27 +32,37 @@ impl TokenId {
         Self::UNSPECIFIED
     }
 }
-impl Span for TokenId {
-    const DUMMY: Self = TokenId(!0);
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct SpanData<Anchor> {
+pub struct SpanData<Anchor, Ctx> {
     /// The text range of this span, relative to the anchor.
+    /// We need the anchor for incrementality, as storing absolute ranges will require
+    /// recomputation on every change in a file at all times.
     pub range: TextRange,
     pub anchor: Anchor,
+    /// The syntax context of the span.
+    pub ctx: Ctx,
 }
 
-impl<Anchor: Span> Span for SpanData<Anchor> {
-    const DUMMY: Self =
-        SpanData { range: TextRange::empty(TextSize::new(0)), anchor: Anchor::DUMMY };
+impl<Anchor: SpanAnchor, Ctx: SyntaxContext> Span for SpanData<Anchor, Ctx> {
+    const DUMMY: Self = SpanData {
+        range: TextRange::empty(TextSize::new(0)),
+        anchor: Anchor::DUMMY,
+        ctx: Ctx::DUMMY,
+    };
+}
+
+pub trait SpanAnchor: std::fmt::Debug + Copy + Sized + Eq {
+    const DUMMY: Self;
 }
 
 pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
     const DUMMY: Self;
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SyntaxContext(pub u32);
+
+pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {
+    const DUMMY: Self;
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenTree<S> {

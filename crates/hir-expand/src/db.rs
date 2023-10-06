@@ -1,8 +1,9 @@
 //! Defines database & queries for macro expansion.
 
+use ::tt::SyntaxContext;
 use base_db::{
     salsa,
-    span::{SpanAnchor, ROOT_ERASED_FILE_AST_ID},
+    span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
     CrateId, Edition, SourceDatabase,
 };
 use either::Either;
@@ -15,11 +16,13 @@ use syntax::{
 use triomphe::Arc;
 
 use crate::{
-    ast_id_map::AstIdMap, builtin_attr_macro::pseudo_derive_attr_expansion,
-    builtin_fn_macro::EagerExpander, hygiene::HygieneFrame, tt, AstId, BuiltinAttrExpander,
-    BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo, ExpandError, ExpandResult,
-    ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
-    MacroDefKind, MacroFile, ProcMacroExpander, SpanMap, SyntaxContext, SyntaxContextId,
+    ast_id_map::AstIdMap,
+    builtin_attr_macro::pseudo_derive_attr_expansion,
+    builtin_fn_macro::EagerExpander,
+    hygiene::{self, HygieneFrame, SyntaxContextData},
+    tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
+    ExpandError, ExpandResult, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
+    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander, SpanMap,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -89,7 +92,15 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_macro_call(&self, macro_call: MacroCallLoc) -> MacroCallId;
     #[salsa::interned]
-    fn intern_syntax_context(&self, ctx: SyntaxContext) -> SyntaxContextId;
+    fn intern_syntax_context(&self, ctx: SyntaxContextData) -> SyntaxContextId;
+    #[salsa::transparent]
+    #[salsa::invoke(hygiene::apply_mark)]
+    fn apply_mark(
+        &self,
+        ctxt: SyntaxContextData,
+        file_id: HirFileId,
+        transparency: hygiene::Transparency,
+    ) -> SyntaxContextId;
 
     /// Lowers syntactic macro call to a token tree representation. That's a firewall
     /// query, only typing in the macro call itself changes the returned
@@ -225,6 +236,7 @@ pub fn expand_speculative(
         .ranges_with_span(tt::SpanData {
             range: token_to_map.text_range(),
             anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
+            ctx: SyntaxContextId::DUMMY,
         })
         .filter_map(|range| syntax_node.covering_element(range).into_token())
         .min_by_key(|t| {

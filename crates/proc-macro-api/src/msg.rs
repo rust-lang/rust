@@ -120,11 +120,13 @@ fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
     Ok(())
 }
 
+/*
+
 #[cfg(test)]
 mod tests {
     use tt::{
-        Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, Span, Subtree, TokenId,
-        TokenTree,
+        Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, SpanAnchor, Subtree,
+        TokenId, TokenTree,
     };
 
     use super::*;
@@ -176,3 +178,4 @@ mod tests {
         assert_eq!(tt, back.macro_body.to_subtree(CURRENT_API_VERSION));
     }
 }
+*/

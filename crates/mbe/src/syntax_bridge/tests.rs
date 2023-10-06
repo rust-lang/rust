@@ -4,18 +4,24 @@ use syntax::{ast, AstNode};
 use test_utils::extract_annotations;
 use tt::{
     buffer::{TokenBuffer, TokenTreeRef},
-    Leaf, Punct, Spacing, Span,
+    Leaf, Punct, Spacing, SpanAnchor, SyntaxContext,
 };
-
-use crate::syntax_bridge::SpanData;
 
 use super::syntax_node_to_token_tree;
 
 fn check_punct_spacing(fixture: &str) {
+    type SpanData = tt::SpanData<DummyFile, DummyCtx>;
+
     #[derive(PartialEq, Eq, Clone, Copy, Debug)]
     struct DummyFile;
-    impl Span for DummyFile {
+    impl SpanAnchor for DummyFile {
         const DUMMY: Self = DummyFile;
+    }
+
+    #[derive(PartialEq, Eq, Clone, Copy, Debug)]
+    struct DummyCtx;
+    impl SyntaxContext for DummyCtx {
+        const DUMMY: Self = DummyCtx;
     }
 
     let source_file = ast::SourceFile::parse(fixture).ok().unwrap();

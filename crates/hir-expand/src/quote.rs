@@ -247,8 +247,8 @@ mod tests {
         assert_eq!(quoted.to_string(), "hello");
         let t = format!("{quoted:?}");
         expect![[r#"
-            SUBTREE $$ SpanData { range: 0..0, anchor: SpanAnchor { file_id: FileId(0), ast_id: Idx::<RustLanguage>>(0) } } SpanData { range: 0..0, anchor: SpanAnchor { file_id: FileId(0), ast_id: Idx::<RustLanguage>>(0) } }
-              IDENT   hello SpanData { range: 0..0, anchor: SpanAnchor { file_id: FileId(0), ast_id: Idx::<RustLanguage>>(0) } }"#]].assert_eq(&t);
+            SUBTREE $$ SpanData { range: 0..0, anchor: SpanAnchor(FileId(0), 0), ctx: SyntaxContextId(0) } SpanData { range: 0..0, anchor: SpanAnchor(FileId(0), 0), ctx: SyntaxContextId(0) }
+              IDENT   hello SpanData { range: 0..0, anchor: SpanAnchor(FileId(0), 0), ctx: SyntaxContextId(0) }"#]].assert_eq(&t);
     }
 
     #[test]

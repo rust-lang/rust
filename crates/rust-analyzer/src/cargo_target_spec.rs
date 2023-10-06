@@ -210,7 +210,7 @@ mod tests {
 
     use cfg::CfgExpr;
     use hir::HirFileId;
-    use ide_db::base_db::span::{SpanAnchor, ROOT_ERASED_FILE_AST_ID};
+    use ide_db::base_db::span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
     use mbe::syntax_node_to_token_tree;
     use syntax::{
         ast::{self, AstNode},
@@ -221,7 +221,7 @@ mod tests {
         let cfg_expr = {
             let source_file = ast::SourceFile::parse(cfg).ok().unwrap();
             let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-            let tt = syntax_node_to_token_tree(
+            let tt = syntax_node_to_token_tree::<_, SyntaxContextId>(
                 tt.syntax(),
                 SpanAnchor { file_id: HirFileId::from(0), ast_id: ROOT_ERASED_FILE_AST_ID },
                 TextSize::new(0),

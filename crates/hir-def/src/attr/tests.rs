@@ -4,15 +4,25 @@
 use base_db::span::SpanAnchor;
 use mbe::syntax_node_to_token_tree;
 use syntax::{ast, AstNode};
-use tt::Span;
+use tt::{SpanAnchor as _, SyntaxContext};
 
 use crate::attr::{DocAtom, DocExpr};
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+struct DummyCtx;
+impl SyntaxContext for DummyCtx {
+    const DUMMY: Self = DummyCtx;
+}
 
 fn assert_parse_result(input: &str, expected: DocExpr) {
     let source_file = ast::SourceFile::parse(input).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-    let tt =
-        syntax_node_to_token_tree(tt.syntax(), SpanAnchor::DUMMY, 0.into(), &Default::default());
+    let tt = syntax_node_to_token_tree::<_, DummyCtx>(
+        tt.syntax(),
+        SpanAnchor::DUMMY,
+        0.into(),
+        &Default::default(),
+    );
     let cfg = DocExpr::parse(&tt);
     assert_eq!(cfg, expected);
 }

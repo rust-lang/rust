@@ -1,6 +1,7 @@
 use std::fmt;
 
 use salsa::InternId;
+use tt::SyntaxContext;
 use vfs::FileId;
 
 pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
@@ -9,10 +10,17 @@ pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
 pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
     la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(0));
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct SyntaxContext;
+pub type SpanData = tt::SpanData<SpanAnchor, SyntaxContextId>;
 
-pub type SpanData = tt::SpanData<SpanAnchor>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SyntaxContextId(InternId);
+crate::impl_intern_key!(SyntaxContextId);
+
+impl SyntaxContext for SyntaxContextId {
+    // FIXME: This is very much UB, salsa exposes no way to create an InternId in a const context
+    // currently (which kind of makes sense but we need it here!)
+    const DUMMY: Self = SyntaxContextId(unsafe { core::mem::transmute(1) });
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SpanAnchor {
@@ -26,7 +34,7 @@ impl fmt::Debug for SpanAnchor {
     }
 }
 
-impl tt::Span for SpanAnchor {
+impl tt::SpanAnchor for SpanAnchor {
     const DUMMY: Self = SpanAnchor { file_id: HirFileId(0), ast_id: ROOT_ERASED_FILE_AST_ID };
 }
 

@@ -51,7 +51,7 @@ pub type DeclarativeMacro = ::mbe::DeclarativeMacro<tt::SpanData>;
 
 pub mod tt {
     pub use base_db::span::SpanData;
-    pub use tt::{DelimiterKind, Spacing, Span};
+    pub use tt::{DelimiterKind, Spacing, Span, SpanAnchor};
 
     pub type Delimiter = ::tt::Delimiter<SpanData>;
     pub type Subtree = ::tt::Subtree<SpanData>;
@@ -95,44 +95,6 @@ impl fmt::Display for ExpandError {
             ExpandError::Other(it) => f.write_str(it),
         }
     }
-}
-
-/// `MacroCallId` identifies a particular macro invocation, like
-/// `println!("Hello, {}", world)`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SyntaxContextId(base_db::salsa::InternId);
-base_db::impl_intern_key!(SyntaxContextId);
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct SyntaxContext {
-    outer_expn: HirFileId,
-    outer_transparency: Transparency,
-    parent: SyntaxContextId,
-    /// This context, but with all transparent and semi-transparent expansions filtered away.
-    opaque: SyntaxContextId,
-    /// This context, but with all transparent expansions filtered away.
-    opaque_and_semitransparent: SyntaxContextId,
-    /// Name of the crate to which `$crate` with this context would resolve.
-    dollar_crate_name: name::Name,
-}
-
-/// A property of a macro expansion that determines how identifiers
-/// produced by that expansion are resolved.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug)]
-pub enum Transparency {
-    /// Identifier produced by a transparent expansion is always resolved at call-site.
-    /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
-    Transparent,
-    /// Identifier produced by a semi-transparent expansion may be resolved
-    /// either at call-site or at definition-site.
-    /// If it's a local variable, label or `$crate` then it's resolved at def-site.
-    /// Otherwise it's resolved at call-site.
-    /// `macro_rules` macros behave like this, built-in macros currently behave like this too,
-    /// but that's an implementation detail.
-    SemiTransparent,
-    /// Identifier produced by an opaque expansion is always resolved at definition-site.
-    /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
-    Opaque,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

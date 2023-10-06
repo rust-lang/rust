@@ -1,5 +1,6 @@
 //! Builtin macro
 
+use ::tt::Span;
 use base_db::{
     span::{SpanAnchor, ROOT_ERASED_FILE_AST_ID},
     AnchoredPath, Edition, FileId,
@@ -15,7 +16,7 @@ use syntax::{
 use crate::{
     db::ExpandDatabase,
     name, quote,
-    tt::{self, Span},
+    tt::{self},
     EagerCallInfo, ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroCallLoc,
 };
 
