@@ -1290,14 +1290,18 @@ pub fn ice_path() -> &'static Option<PathBuf> {
         if let Some(s) = std::env::var_os("RUST_BACKTRACE") && s == "0" {
             return None;
         }
-        let mut path = match std::env::var("RUSTC_ICE").as_deref() {
-            // Explicitly opting out of writing ICEs to disk.
-            Ok("0") => return None,
-            Ok(s) => PathBuf::from(s),
-            Err(_) => std::env::current_dir().unwrap_or_default(),
+        let mut path = match std::env::var_os("RUSTC_ICE") {
+            Some(s) => {
+                if s == "0" {
+                    // Explicitly opting out of writing ICEs to disk.
+                    return None;
+                }
+                PathBuf::from(s)
+            }
+            None => std::env::current_dir().unwrap_or_default(),
         };
         let now: OffsetDateTime = SystemTime::now().into();
-        let file_now = now.format(&Rfc3339).unwrap_or(String::new());
+        let file_now = now.format(&Rfc3339).unwrap_or_default();
         let pid = std::process::id();
         path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
         Some(path)
@@ -1411,12 +1415,11 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
 
     static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
-    let file = if let Some(path) = ice_path().as_ref() {
+    let file = if let Some(path) = ice_path() {
         // Create the ICE dump target file.
         match crate::fs::File::options().create(true).append(true).open(&path) {
             Ok(mut file) => {
-                handler
-                    .emit_note(session_diagnostics::IcePath { path: path.display().to_string() });
+                handler.emit_note(session_diagnostics::IcePath { path: path.clone() });
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
                     let _ = write!(file, "\n\nrustc version: {version}\nplatform: {triple}");
                 }
@@ -1425,10 +1428,10 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
             Err(err) => {
                 // The path ICE couldn't be written to disk, provide feedback to the user as to why.
                 handler.emit_warning(session_diagnostics::IcePathError {
-                    path: path.display().to_string(),
+                    path: path.clone(),
                     error: err.to_string(),
-                    env_var: std::env::var("RUSTC_ICE")
-                        .ok()
+                    env_var: std::env::var_os("RUSTC_ICE")
+                        .map(PathBuf::from)
                         .map(|env_var| session_diagnostics::IcePathErrorEnv { env_var }),
                 });
                 handler.emit_note(session_diagnostics::IceVersion { version, triple });
