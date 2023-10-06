@@ -1,7 +1,7 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
 use crate::coverageinfo::ffi::CounterMappingRegion;
-use crate::coverageinfo::map_data::FunctionCoverage;
+use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
 use crate::llvm;
 
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
@@ -62,6 +62,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     // Encode coverage mappings and generate function records
     let mut function_data = Vec::new();
     for (instance, function_coverage) in function_coverage_map {
+        let function_coverage = function_coverage.into_finished();
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
 
         let mangled_function_name = tcx.symbol_name(instance).name;
@@ -419,7 +420,7 @@ fn add_unused_function_coverage<'tcx>(
 ) {
     // An unused function's mappings will automatically be rewritten to map to
     // zero, because none of its counters/expressions are marked as seen.
-    let function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
+    let function_coverage = FunctionCoverageCollector::unused(instance, function_coverage_info);
 
     if let Some(coverage_context) = cx.coverage_context() {
         coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);
