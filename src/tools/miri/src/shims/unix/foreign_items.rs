@@ -22,8 +22,10 @@ use shims::unix::macos::foreign_items as macos;
 
 fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {
-        // `signal` is set up as a weak symbol in `init_extern_statics` so we might as well allow it
-        // in `dlsym` as well.
+        // Used for tests.
+        "isatty" => true,
+        // `signal` is set up as a weak symbol in `init_extern_statics` (on Android) so we might as
+        // well allow it in `dlsym`.
         "signal" => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
@@ -588,7 +590,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "getuid"
             if this.frame_in_std() => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                // FOr now, just pretend we always have this fixed UID.
+                // For now, just pretend we always have this fixed UID.
                 this.write_int(super::UID, dest)?;
             }
 
