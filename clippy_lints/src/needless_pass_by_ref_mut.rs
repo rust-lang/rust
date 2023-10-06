@@ -197,20 +197,21 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             };
             let infcx = cx.tcx.infer_ctxt().build();
             euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
+
+            let mut checked_closures = FxHashSet::default();
+
+            // We retrieve all the closures declared in the function because they will not be found
+            // by `euv::Delegate`.
+            let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
+            for_each_expr_with_closures(cx, body, |expr| {
+                if let ExprKind::Closure(closure) = expr.kind {
+                    closures.insert(closure.def_id);
+                }
+                ControlFlow::<()>::Continue(())
+            });
+            check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
+
             if is_async {
-                let mut checked_closures = FxHashSet::default();
-
-                // We retrieve all the closures declared in the async function because they will
-                // not be found by `euv::Delegate`.
-                let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
-                for_each_expr_with_closures(cx, body, |expr| {
-                    if let ExprKind::Closure(closure) = expr.kind {
-                        closures.insert(closure.def_id);
-                    }
-                    ControlFlow::<()>::Continue(())
-                });
-                check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
-
                 while !ctx.async_closures.is_empty() {
                     let async_closures = ctx.async_closures.clone();
                     ctx.async_closures.clear();
