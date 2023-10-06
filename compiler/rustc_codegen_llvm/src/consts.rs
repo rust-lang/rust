@@ -354,8 +354,6 @@ impl<'ll> CodegenCx<'ll, '_> {
             };
             let alloc = alloc.inner();
 
-            let val_llty = self.val_ty(v);
-
             let instance = Instance::mono(self.tcx, def_id);
             let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
             if !is_mutable {
@@ -365,6 +363,8 @@ impl<'ll> CodegenCx<'ll, '_> {
             let llty = self.layout_of(ty).llvm_type(self);
 
             let g = self.get_static_inner(def_id, llty);
+
+            let val_llty = self.val_ty(v);
 
             let g = if val_llty == llty {
                 g
