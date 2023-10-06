@@ -429,6 +429,7 @@ fn compute_hir_hash(
 }
 
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
+    println!("running lower_to_hir");
     let sess = tcx.sess;
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_with_value().get_lang_items(());
@@ -465,6 +466,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
+    println!("exiting lower_to_hir");
     hir::Crate { owners, opt_hir_hash }
 }
 

@@ -8,7 +8,6 @@
 //! * Functions called by the compiler itself.
 
 use crate::errors::DuplicateLangItem;
-use crate::weak_lang_items;
 
 use rustc_ast::visit::Visitor;
 use rustc_hir::def_id::DefId;
@@ -127,13 +126,12 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 
     // Collect lang items in this crate.
     let krate = &tcx.resolver_for_lowering(()).borrow().1;
+    println!("running visit_crate");
     collector.visit_crate(&krate);
+    println!("exiting visit_crate");
 
     // Extract out the found lang items.
-    let LanguageItemCollector { mut items, .. } = collector;
-
-    // Find all required but not-yet-defined lang items.
-    weak_lang_items::check_crate(tcx, &mut items);
+    let LanguageItemCollector { items, .. } = collector;
 
     items
 }

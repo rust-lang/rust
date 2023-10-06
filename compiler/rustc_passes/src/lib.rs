@@ -43,7 +43,6 @@ mod naked_functions;
 mod reachable;
 pub mod stability;
 mod upvars;
-mod weak_lang_items;
 
 fluent_messages! { "../messages.ftl" }
 
