@@ -1,13 +1,15 @@
-use super::*;
-use std::fmt::Write;
+use std::fmt::{self, Write};
+use std::ops::Deref;
 use std::{borrow::Borrow, cmp, iter, ops::Bound};
 
-#[cfg(feature = "randomize")]
-use rand::{seq::SliceRandom, SeedableRng};
-#[cfg(feature = "randomize")]
-use rand_xoshiro::Xoshiro128StarStar;
-
+use rustc_index::Idx;
 use tracing::debug;
+
+use crate::{
+    Abi, AbiAndPrefAlign, Align, FieldsShape, IndexSlice, IndexVec, Integer, LayoutS, Niche,
+    NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding, TargetDataLayout,
+    Variants, WrappingRange,
+};
 
 pub trait LayoutCalculator {
     type TargetDataLayoutRef: Borrow<TargetDataLayout>;
@@ -15,7 +17,11 @@ pub trait LayoutCalculator {
     fn delay_bug(&self, txt: String);
     fn current_data_layout(&self) -> Self::TargetDataLayoutRef;
 
-    fn scalar_pair(&self, a: Scalar, b: Scalar) -> LayoutS {
+    fn scalar_pair<FieldIdx: Idx, VariantIdx: Idx>(
+        &self,
+        a: Scalar,
+        b: Scalar,
+    ) -> LayoutS<FieldIdx, VariantIdx> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         let b_align = b.align(dl);
@@ -31,7 +37,7 @@ pub trait LayoutCalculator {
             .max_by_key(|niche| niche.available(dl));
 
         LayoutS {
-            variants: Variants::Single { index: FIRST_VARIANT },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Arbitrary {
                 offsets: [Size::ZERO, b_offset].into(),
                 memory_index: [0, 1].into(),
@@ -45,13 +51,18 @@ pub trait LayoutCalculator {
         }
     }
 
-    fn univariant(
+    fn univariant<
+        'a,
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+    >(
         &self,
         dl: &TargetDataLayout,
-        fields: &IndexSlice<FieldIdx, Layout<'_>>,
+        fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,
         kind: StructKind,
-    ) -> Option<LayoutS> {
+    ) -> Option<LayoutS<FieldIdx, VariantIdx>> {
         let layout = univariant(self, dl, fields, repr, kind, NicheBias::Start);
         // Enums prefer niches close to the beginning or the end of the variants so that other
         // (smaller) data-carrying variants can be packed into the space after/before the niche.
@@ -114,11 +125,13 @@ pub trait LayoutCalculator {
         layout
     }
 
-    fn layout_of_never_type(&self) -> LayoutS {
+    fn layout_of_never_type<FieldIdx: Idx, VariantIdx: Idx>(
+        &self,
+    ) -> LayoutS<FieldIdx, VariantIdx> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         LayoutS {
-            variants: Variants::Single { index: FIRST_VARIANT },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Uninhabited,
             largest_niche: None,
@@ -129,10 +142,15 @@ pub trait LayoutCalculator {
         }
     }
 
-    fn layout_of_struct_or_enum(
+    fn layout_of_struct_or_enum<
+        'a,
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+    >(
         &self,
         repr: &ReprOptions,
-        variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, Layout<'_>>>,
+        variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         is_enum: bool,
         is_unsafe_cell: bool,
         scalar_valid_range: (Bound<u128>, Bound<u128>),
@@ -140,7 +158,7 @@ pub trait LayoutCalculator {
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
         dont_niche_optimize_enum: bool,
         always_sized: bool,
-    ) -> Option<LayoutS> {
+    ) -> Option<LayoutS<FieldIdx, VariantIdx>> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
 
@@ -155,11 +173,11 @@ pub trait LayoutCalculator {
         // but *not* an encoding of the discriminant (e.g., a tag value).
         // See issue #49298 for more details on the need to leave space
         // for non-ZST uninhabited data (mostly partial initialization).
-        let absent = |fields: &IndexSlice<FieldIdx, Layout<'_>>| {
-            let uninhabited = fields.iter().any(|f| f.abi().is_uninhabited());
+        let absent = |fields: &IndexSlice<FieldIdx, F>| {
+            let uninhabited = fields.iter().any(|f| f.abi.is_uninhabited());
             // We cannot ignore alignment; that might lead us to entirely discard a variant and
             // produce an enum that is less aligned than it should be!
-            let is_1zst = fields.iter().all(|f| f.0.is_1zst());
+            let is_1zst = fields.iter().all(|f| f.is_1zst());
             uninhabited && is_1zst
         };
         let (present_first, present_second) = {
@@ -176,7 +194,7 @@ pub trait LayoutCalculator {
             }
             // If it's a struct, still compute a layout so that we can still compute the
             // field offsets.
-            None => FIRST_VARIANT,
+            None => VariantIdx::new(0),
         };
 
         let is_struct = !is_enum ||
@@ -279,12 +297,12 @@ pub trait LayoutCalculator {
         // variant layouts, so we can't store them in the
         // overall LayoutS. Store the overall LayoutS
         // and the variant LayoutSs here until then.
-        struct TmpLayout {
-            layout: LayoutS,
-            variants: IndexVec<VariantIdx, LayoutS>,
+        struct TmpLayout<FieldIdx: Idx, VariantIdx: Idx> {
+            layout: LayoutS<FieldIdx, VariantIdx>,
+            variants: IndexVec<VariantIdx, LayoutS<FieldIdx, VariantIdx>>,
         }
 
-        let calculate_niche_filling_layout = || -> Option<TmpLayout> {
+        let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx, VariantIdx>> {
             if dont_niche_optimize_enum {
                 return None;
             }
@@ -322,13 +340,14 @@ pub trait LayoutCalculator {
             let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
                 ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
 
-            let count = niche_variants.size_hint().1.unwrap() as u128;
+            let count =
+                (niche_variants.end().index() as u128 - niche_variants.start().index() as u128) + 1;
 
             // Find the field with the largest niche
             let (field_index, niche, (niche_start, niche_scalar)) = variants[largest_variant_index]
                 .iter()
                 .enumerate()
-                .filter_map(|(j, field)| Some((j, field.largest_niche()?)))
+                .filter_map(|(j, field)| Some((j, field.largest_niche?)))
                 .max_by_key(|(_, niche)| niche.available(dl))
                 .and_then(|(j, niche)| Some((j, niche, niche.reserve(dl, count)?)))?;
             let niche_offset =
@@ -443,7 +462,7 @@ pub trait LayoutCalculator {
         let discr_type = repr.discr_type();
         let bits = Integer::from_attr(dl, discr_type).size().bits();
         for (i, mut val) in discriminants {
-            if variants[i].iter().any(|f| f.abi().is_uninhabited()) {
+            if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
                 continue;
             }
             if discr_type.is_signed() {
@@ -484,7 +503,7 @@ pub trait LayoutCalculator {
         if repr.c() {
             for fields in variants {
                 for field in fields {
-                    prefix_align = prefix_align.max(field.align().abi);
+                    prefix_align = prefix_align.max(field.align.abi);
                 }
             }
         }
@@ -503,9 +522,9 @@ pub trait LayoutCalculator {
                 // Find the first field we can't move later
                 // to make room for a larger discriminant.
                 for field_idx in st.fields.index_by_increasing_offset() {
-                    let field = &field_layouts[FieldIdx::from_usize(field_idx)];
-                    if !field.0.is_1zst() {
-                        start_align = start_align.min(field.align().abi);
+                    let field = &field_layouts[FieldIdx::new(field_idx)];
+                    if !field.is_1zst() {
+                        start_align = start_align.min(field.align.abi);
                         break;
                     }
                 }
@@ -587,7 +606,7 @@ pub trait LayoutCalculator {
 
         let tag_mask = ity.size().unsigned_int_max();
         let tag = Scalar::Initialized {
-            value: Int(ity, signed),
+            value: Primitive::Int(ity, signed),
             valid_range: WrappingRange {
                 start: (min as u128 & tag_mask),
                 end: (max as u128 & tag_mask),
@@ -612,7 +631,7 @@ pub trait LayoutCalculator {
                 };
                 // We skip *all* ZST here and later check if we are good in terms of alignment.
                 // This lets us handle some cases involving aligned ZST.
-                let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.0.is_zst());
+                let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
                 let (field, offset) = match (fields.next(), fields.next()) {
                     (None, None) => {
                         common_prim_initialized_in_all_variants = false;
@@ -624,7 +643,7 @@ pub trait LayoutCalculator {
                         break;
                     }
                 };
-                let prim = match field.abi() {
+                let prim = match field.abi {
                     Abi::Scalar(scalar) => {
                         common_prim_initialized_in_all_variants &=
                             matches!(scalar, Scalar::Initialized { .. });
@@ -655,7 +674,7 @@ pub trait LayoutCalculator {
                     // Common prim might be uninit.
                     Scalar::Union { value: prim }
                 };
-                let pair = self.scalar_pair(tag, prim_scalar);
+                let pair = self.scalar_pair::<FieldIdx, VariantIdx>(tag, prim_scalar);
                 let pair_offsets = match pair.fields {
                     FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                         assert_eq!(memory_index.raw, [0, 1]);
@@ -663,8 +682,8 @@ pub trait LayoutCalculator {
                     }
                     _ => panic!(),
                 };
-                if pair_offsets[FieldIdx::from_u32(0)] == Size::ZERO
-                    && pair_offsets[FieldIdx::from_u32(1)] == *offset
+                if pair_offsets[FieldIdx::new(0)] == Size::ZERO
+                    && pair_offsets[FieldIdx::new(1)] == *offset
                     && align == pair.align
                     && size == pair.size
                 {
@@ -721,8 +740,9 @@ pub trait LayoutCalculator {
                 // pick the layout with the larger niche; otherwise,
                 // pick tagged as it has simpler codegen.
                 use cmp::Ordering::*;
-                let niche_size =
-                    |tmp_l: &TmpLayout| tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl));
+                let niche_size = |tmp_l: &TmpLayout<FieldIdx, VariantIdx>| {
+                    tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl))
+                };
                 match (tl.layout.size.cmp(&nl.layout.size), niche_size(&tl).cmp(&niche_size(&nl))) {
                     (Greater, _) => nl,
                     (Equal, Less) => nl,
@@ -742,11 +762,16 @@ pub trait LayoutCalculator {
         Some(best_layout.layout)
     }
 
-    fn layout_of_union(
+    fn layout_of_union<
+        'a,
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+    >(
         &self,
         repr: &ReprOptions,
-        variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, Layout<'_>>>,
-    ) -> Option<LayoutS> {
+        variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
+    ) -> Option<LayoutS<FieldIdx, VariantIdx>> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
@@ -763,24 +788,24 @@ pub trait LayoutCalculator {
         };
 
         let mut size = Size::ZERO;
-        let only_variant = &variants[FIRST_VARIANT];
+        let only_variant = &variants[VariantIdx::new(0)];
         for field in only_variant {
-            if field.0.is_unsized() {
+            if field.is_unsized() {
                 self.delay_bug("unsized field in union".to_string());
             }
 
-            align = align.max(field.align());
-            max_repr_align = max_repr_align.max(field.max_repr_align());
-            size = cmp::max(size, field.size());
+            align = align.max(field.align);
+            max_repr_align = max_repr_align.max(field.max_repr_align);
+            size = cmp::max(size, field.size);
 
-            if field.0.is_zst() {
+            if field.is_zst() {
                 // Nothing more to do for ZST fields
                 continue;
             }
 
             if let Ok(common) = common_non_zst_abi_and_align {
                 // Discard valid range information and allow undef
-                let field_abi = field.abi().to_union();
+                let field_abi = field.abi.to_union();
 
                 if let Some((common_abi, common_align)) = common {
                     if common_abi != field_abi {
@@ -791,15 +816,14 @@ pub trait LayoutCalculator {
                         // have the same alignment
                         if !matches!(common_abi, Abi::Aggregate { .. }) {
                             assert_eq!(
-                                common_align,
-                                field.align().abi,
+                                common_align, field.align.abi,
                                 "non-Aggregate field with matching ABI but differing alignment"
                             );
                         }
                     }
                 } else {
                     // First non-ZST field: record its ABI and alignment
-                    common_non_zst_abi_and_align = Ok(Some((field_abi, field.align().abi)));
+                    common_non_zst_abi_and_align = Ok(Some((field_abi, field.align.abi)));
                 }
             }
         }
@@ -831,7 +855,7 @@ pub trait LayoutCalculator {
         };
 
         Some(LayoutS {
-            variants: Variants::Single { index: FIRST_VARIANT },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Union(NonZeroUsize::new(only_variant.len())?),
             abi,
             largest_niche: None,
@@ -849,14 +873,19 @@ enum NicheBias {
     End,
 }
 
-fn univariant(
+fn univariant<
+    'a,
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+>(
     this: &(impl LayoutCalculator + ?Sized),
     dl: &TargetDataLayout,
-    fields: &IndexSlice<FieldIdx, Layout<'_>>,
+    fields: &IndexSlice<FieldIdx, F>,
     repr: &ReprOptions,
     kind: StructKind,
     niche_bias: NicheBias,
-) -> Option<LayoutS> {
+) -> Option<LayoutS<FieldIdx, VariantIdx>> {
     let pack = repr.pack;
     let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
     let mut max_repr_align = repr.align;
@@ -873,9 +902,12 @@ fn univariant(
         if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
             #[cfg(feature = "randomize")]
             {
+                use rand::{seq::SliceRandom, SeedableRng};
                 // `ReprOptions.layout_seed` is a deterministic seed we can use to randomize field
                 // ordering.
-                let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed.as_u64());
+                let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(
+                    repr.field_shuffle_seed.as_u64(),
+                );
 
                 // Shuffle the ordering of the fields.
                 optimizing.shuffle(&mut rng);
@@ -885,27 +917,27 @@ fn univariant(
             // To allow unsizing `&Foo<Type>` -> `&Foo<dyn Trait>`, the layout of the struct must
             // not depend on the layout of the tail.
             let max_field_align =
-                fields_excluding_tail.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
+                fields_excluding_tail.iter().map(|f| f.align.abi.bytes()).max().unwrap_or(1);
             let largest_niche_size = fields_excluding_tail
                 .iter()
-                .filter_map(|f| f.largest_niche())
+                .filter_map(|f| f.largest_niche)
                 .map(|n| n.available(dl))
                 .max()
                 .unwrap_or(0);
 
             // Calculates a sort key to group fields by their alignment or possibly some
             // size-derived pseudo-alignment.
-            let alignment_group_key = |layout: Layout<'_>| {
+            let alignment_group_key = |layout: &F| {
                 if let Some(pack) = pack {
                     // Return the packed alignment in bytes.
-                    layout.align().abi.min(pack).bytes()
+                    layout.align.abi.min(pack).bytes()
                 } else {
                     // Returns `log2(effective-align)`. This is ok since `pack` applies to all
                     // fields equally. The calculation assumes that size is an integer multiple of
                     // align, except for ZSTs.
-                    let align = layout.align().abi.bytes();
-                    let size = layout.size().bytes();
-                    let niche_size = layout.largest_niche().map(|n| n.available(dl)).unwrap_or(0);
+                    let align = layout.align.abi.bytes();
+                    let size = layout.size.bytes();
+                    let niche_size = layout.largest_niche.map(|n| n.available(dl)).unwrap_or(0);
                     // Group [u8; 4] with align-4 or [u8; 6] with align-2 fields.
                     let size_as_align = align.max(size).trailing_zeros();
                     let size_as_align = if largest_niche_size > 0 {
@@ -940,9 +972,9 @@ fn univariant(
                     // u16 to build a 4-byte group so that the u32 can be placed after it without
                     // padding. This kind of packing can't be achieved by sorting.
                     optimizing.sort_by_key(|&x| {
-                        let f = fields[x];
-                        let field_size = f.size().bytes();
-                        let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
+                        let f = &fields[x];
+                        let field_size = f.size.bytes();
+                        let niche_size = f.largest_niche.map_or(0, |n| n.available(dl));
                         let niche_size_key = match niche_bias {
                             // large niche first
                             NicheBias::Start => !niche_size,
@@ -950,8 +982,8 @@ fn univariant(
                             NicheBias::End => niche_size,
                         };
                         let inner_niche_offset_key = match niche_bias {
-                            NicheBias::Start => f.largest_niche().map_or(0, |n| n.offset.bytes()),
-                            NicheBias::End => f.largest_niche().map_or(0, |n| {
+                            NicheBias::Start => f.largest_niche.map_or(0, |n| n.offset.bytes()),
+                            NicheBias::End => f.largest_niche.map_or(0, |n| {
                                 !(field_size - n.value.size(dl).bytes() - n.offset.bytes())
                             }),
                         };
@@ -975,8 +1007,8 @@ fn univariant(
                     // And put the largest niche in an alignment group at the end
                     // so it can be used as discriminant in jagged enums
                     optimizing.sort_by_key(|&x| {
-                        let f = fields[x];
-                        let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
+                        let f = &fields[x];
+                        let niche_size = f.largest_niche.map_or(0, |n| n.available(dl));
                         (alignment_group_key(f), niche_size)
                     });
                 }
@@ -1012,24 +1044,24 @@ fn univariant(
             ));
         }
 
-        if field.0.is_unsized() {
+        if field.is_unsized() {
             sized = false;
         }
 
         // Invariant: offset < dl.obj_size_bound() <= 1<<61
         let field_align = if let Some(pack) = pack {
-            field.align().min(AbiAndPrefAlign::new(pack))
+            field.align.min(AbiAndPrefAlign::new(pack))
         } else {
-            field.align()
+            field.align
         };
         offset = offset.align_to(field_align.abi);
         align = align.max(field_align);
-        max_repr_align = max_repr_align.max(field.max_repr_align());
+        max_repr_align = max_repr_align.max(field.max_repr_align);
 
         debug!("univariant offset: {:?} field: {:#?}", offset, field);
         offsets[i] = offset;
 
-        if let Some(mut niche) = field.largest_niche() {
+        if let Some(mut niche) = field.largest_niche {
             let available = niche.available(dl);
             // Pick up larger niches.
             let prefer_new_niche = match niche_bias {
@@ -1044,7 +1076,7 @@ fn univariant(
             }
         }
 
-        offset = offset.checked_add(field.size(), dl)?;
+        offset = offset.checked_add(field.size, dl)?;
     }
 
     // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
@@ -1068,7 +1100,7 @@ fn univariant(
         inverse_memory_index.invert_bijective_mapping()
     } else {
         debug_assert!(inverse_memory_index.iter().copied().eq(fields.indices()));
-        inverse_memory_index.into_iter().map(FieldIdx::as_u32).collect()
+        inverse_memory_index.into_iter().map(|it| it.index() as u32).collect()
     };
     let size = min_size.align_to(align.abi);
     let mut layout_of_single_non_zst_field = None;
@@ -1077,7 +1109,7 @@ fn univariant(
     if sized && size.bytes() > 0 {
         // We skip *all* ZST here and later check if we are good in terms of alignment.
         // This lets us handle some cases involving aligned ZST.
-        let mut non_zst_fields = fields.iter_enumerated().filter(|&(_, f)| !f.0.is_zst());
+        let mut non_zst_fields = fields.iter_enumerated().filter(|&(_, f)| !f.is_zst());
 
         match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {
             // We have exactly one non-ZST field.
@@ -1085,18 +1117,17 @@ fn univariant(
                 layout_of_single_non_zst_field = Some(field);
 
                 // Field fills the struct and it has a scalar or scalar pair ABI.
-                if offsets[i].bytes() == 0 && align.abi == field.align().abi && size == field.size()
-                {
-                    match field.abi() {
+                if offsets[i].bytes() == 0 && align.abi == field.align.abi && size == field.size {
+                    match field.abi {
                         // For plain scalars, or vectors of them, we can't unpack
                         // newtypes for `#[repr(C)]`, as that affects C ABIs.
                         Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
-                            abi = field.abi();
+                            abi = field.abi;
                         }
                         // But scalar pairs are Rust-specific and get
                         // treated as aggregates by C ABIs anyway.
                         Abi::ScalarPair(..) => {
-                            abi = field.abi();
+                            abi = field.abi;
                         }
                         _ => {}
                     }
@@ -1105,7 +1136,7 @@ fn univariant(
 
             // Two non-ZST fields, and they're both scalars.
             (Some((i, a)), Some((j, b)), None) => {
-                match (a.abi(), b.abi()) {
+                match (a.abi, b.abi) {
                     (Abi::Scalar(a), Abi::Scalar(b)) => {
                         // Order by the memory placement, not source order.
                         let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
@@ -1113,7 +1144,7 @@ fn univariant(
                         } else {
                             ((j, b), (i, a))
                         };
-                        let pair = this.scalar_pair(a, b);
+                        let pair = this.scalar_pair::<FieldIdx, VariantIdx>(a, b);
                         let pair_offsets = match pair.fields {
                             FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                 assert_eq!(memory_index.raw, [0, 1]);
@@ -1121,8 +1152,8 @@ fn univariant(
                             }
                             _ => panic!(),
                         };
-                        if offsets[i] == pair_offsets[FieldIdx::from_usize(0)]
-                            && offsets[j] == pair_offsets[FieldIdx::from_usize(1)]
+                        if offsets[i] == pair_offsets[FieldIdx::new(0)]
+                            && offsets[j] == pair_offsets[FieldIdx::new(1)]
                             && align == pair.align
                             && size == pair.size
                         {
@@ -1138,13 +1169,13 @@ fn univariant(
             _ => {}
         }
     }
-    if fields.iter().any(|f| f.abi().is_uninhabited()) {
+    if fields.iter().any(|f| f.abi.is_uninhabited()) {
         abi = Abi::Uninhabited;
     }
 
     let unadjusted_abi_align = if repr.transparent() {
         match layout_of_single_non_zst_field {
-            Some(l) => l.unadjusted_abi_align(),
+            Some(l) => l.unadjusted_abi_align,
             None => {
                 // `repr(transparent)` with all ZST fields.
                 align.abi
@@ -1155,7 +1186,7 @@ fn univariant(
     };
 
     Some(LayoutS {
-        variants: Variants::Single { index: FIRST_VARIANT },
+        variants: Variants::Single { index: VariantIdx::new(0) },
         fields: FieldsShape::Arbitrary { offsets, memory_index },
         abi,
         largest_niche,
@@ -1166,17 +1197,22 @@ fn univariant(
     })
 }
 
-fn format_field_niches(
-    layout: &LayoutS,
-    fields: &IndexSlice<FieldIdx, Layout<'_>>,
+fn format_field_niches<
+    'a,
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+>(
+    layout: &LayoutS<FieldIdx, VariantIdx>,
+    fields: &IndexSlice<FieldIdx, F>,
     dl: &TargetDataLayout,
 ) -> String {
     let mut s = String::new();
     for i in layout.fields.index_by_increasing_offset() {
         let offset = layout.fields.offset(i);
-        let f = fields[i.into()];
-        write!(s, "[o{}a{}s{}", offset.bytes(), f.align().abi.bytes(), f.size().bytes()).unwrap();
-        if let Some(n) = f.largest_niche() {
+        let f = &fields[FieldIdx::new(i)];
+        write!(s, "[o{}a{}s{}", offset.bytes(), f.align.abi.bytes(), f.size.bytes()).unwrap();
+        if let Some(n) = f.largest_niche {
             write!(
                 s,
                 " n{}b{}s{}",
