@@ -3,6 +3,7 @@ use super::suggestions::{get_explanation_based_on_obligation, TypeErrCtxtExt as 
 use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch};
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt};
 use crate::traits::error_reporting::infer_ctxt_ext::InferCtxtExt;
 use crate::traits::error_reporting::{ambiguity, ambiguity::Ambiguity::*};
@@ -40,7 +41,7 @@ use rustc_session::config::{DumpSolverProofTree, TraitSolver};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
-use rustc_span::{ExpnKind, Span, DUMMY_SP};
+use rustc_span::{BytePos, ExpnKind, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 use std::iter;
@@ -105,6 +106,13 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> Option<ErrorGuaranteed>;
 
     fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool;
+
+    fn try_conversion_context(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
+        err: &mut Diagnostic,
+    );
 
     fn report_const_param_not_wf(
         &self,
@@ -508,6 +516,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         };
 
                         let mut err = struct_span_err!(self.tcx.sess, span, E0277, "{}", err_msg);
+
+                        if is_try_conversion {
+                            self.try_conversion_context(&obligation, trait_ref.skip_binder(), &mut err);
+                        }
 
                         if is_try_conversion && let Some(ret_span) = self.return_type_span(&obligation) {
                             err.span_label(
@@ -980,6 +992,136 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return true;
         }
         false
+    }
+
+    /// When the `E` of the resulting `Result<T, E>` in an expression `foo().bar().baz()?`,
+    /// identify thoe method chain sub-expressions that could or could not have been annotated
+    /// with `?`.
+    fn try_conversion_context(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
+        err: &mut Diagnostic,
+    ) {
+        let span = obligation.cause.span;
+        struct V<'v> {
+            search_span: Span,
+            found: Option<&'v hir::Expr<'v>>,
+        }
+        impl<'v> Visitor<'v> for V<'v> {
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+                if let hir::ExprKind::Match(expr, _arms, hir::MatchSource::TryDesugar(_)) = ex.kind
+                {
+                    if ex.span.with_lo(ex.span.hi() - BytePos(1)).source_equal(self.search_span) {
+                        if let hir::ExprKind::Call(_, [expr, ..]) = expr.kind {
+                            self.found = Some(expr);
+                            return;
+                        }
+                    }
+                }
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+        let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
+        let body_id = match self.tcx.hir().find(hir_id) {
+            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
+                body_id
+            }
+            _ => return,
+        };
+        let mut v = V { search_span: span, found: None };
+        v.visit_body(self.tcx.hir().body(*body_id));
+        let Some(expr) = v.found else {
+            return;
+        };
+        let Some(typeck) = &self.typeck_results else {
+            return;
+        };
+        let Some((ObligationCauseCode::QuestionMark, Some(y))) = obligation.cause.code().parent()
+        else {
+            return;
+        };
+        if !self.tcx.is_diagnostic_item(sym::FromResidual, y.def_id()) {
+            return;
+        }
+        let self_ty = trait_ref.self_ty();
+
+        let mut prev_ty = self.resolve_vars_if_possible(
+            typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
+        );
+        let mut annotate_expr = |span: Span, prev_ty: Ty<'tcx>, self_ty: Ty<'tcx>| -> bool {
+            // We always look at the `E` type, because that's the only one affected by `?`. If the
+            // incorrect `Result<T, E>` is because of the `T`, we'll get an E0308 on the whole
+            // expression, after the `?` has "unwrapped" the `T`.
+            let ty::Adt(def, args) = prev_ty.kind() else {
+                return false;
+            };
+            let Some(arg) = args.get(1) else {
+                return false;
+            };
+            if !self.tcx.is_diagnostic_item(sym::Result, def.did()) {
+                return false;
+            }
+            let can = if self
+                .infcx
+                .type_implements_trait(
+                    self.tcx.get_diagnostic_item(sym::From).unwrap(),
+                    [self_ty.into(), *arg],
+                    obligation.param_env,
+                )
+                .must_apply_modulo_regions()
+            {
+                "can"
+            } else {
+                "can't"
+            };
+            err.span_label(
+                span,
+                format!("this {can} be annotated with `?` because it has type `{prev_ty}`"),
+            );
+            true
+        };
+
+        // The following logic is simlar to `point_at_chain`, but that's focused on associated types
+        let mut expr = expr;
+        while let hir::ExprKind::MethodCall(_path_segment, rcvr_expr, _args, span) = expr.kind {
+            // Point at every method call in the chain with the `Result` type.
+            // let foo = bar.iter().map(mapper)?;
+            //               ------ -----------
+            expr = rcvr_expr;
+            if !annotate_expr(span, prev_ty, self_ty) {
+                break;
+            }
+
+            prev_ty = self.resolve_vars_if_possible(
+                typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
+            );
+
+            if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
+                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
+                && let Some(parent) = self.tcx.hir().find_parent(binding.hir_id)
+            {
+                // We've reached the root of the method call chain...
+                if let hir::Node::Local(local) = parent
+                    && let Some(binding_expr) = local.init
+                {
+                    // ...and it is a binding. Get the binding creation and continue the chain.
+                    expr = binding_expr;
+                }
+                if let hir::Node::Param(_param) = parent {
+                    // ...and it is a an fn argument.
+                    break;
+                }
+            }
+        }
+        // `expr` is now the "root" expression of the method call chain, which can be any
+        // expression kind, like a method call or a path. If this expression is `Result<T, E>` as
+        // well, then we also point at it.
+        prev_ty = self.resolve_vars_if_possible(
+            typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
+        );
+        annotate_expr(expr.span, prev_ty, self_ty);
     }
 
     fn report_const_param_not_wf(
