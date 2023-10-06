@@ -297,6 +297,11 @@ fn true_setter(b: &mut bool) -> impl FnOnce() + '_ {
     move || set_true(b)
 }
 
+// Should not warn.
+fn filter_copy<T: Copy>(predicate: &mut impl FnMut(T) -> bool) -> impl FnMut(&T) -> bool + '_ {
+    move |&item| predicate(item)
+}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];
