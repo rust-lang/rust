@@ -13,6 +13,7 @@ use crate::errors::{
 };
 use crate::weak_lang_items;
 
+use rustc_ast::visit::Visitor;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -35,6 +36,8 @@ struct LanguageItemCollector<'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
 }
+
+impl<'tcx, 'ast> Visitor<'ast> for LanguageItemCollector<'tcx> {}
 
 impl<'tcx> LanguageItemCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> LanguageItemCollector<'tcx> {
@@ -217,6 +220,8 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 
     // Collect lang items in this crate.
     let crate_items = tcx.hir_crate_items(());
+    let krate = &tcx.resolver_for_lowering().borrow().1;
+    collector.visit_crate(&krate);
 
     for id in crate_items.items() {
         collector

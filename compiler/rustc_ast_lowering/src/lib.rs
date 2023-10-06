@@ -431,11 +431,11 @@ fn compute_hir_hash(
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     let sess = tcx.sess;
     // Queries that borrow `resolver_for_lowering`.
+    tcx.ensure_with_value().get_lang_items(());
     tcx.ensure_with_value().output_filenames(());
     tcx.ensure_with_value().early_lint_checks(());
     tcx.ensure_with_value().debugger_visualizers(LOCAL_CRATE);
     let (mut resolver, krate) = tcx.resolver_for_lowering(()).steal();
-
     let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
