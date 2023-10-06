@@ -10,6 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_expand::base::SyntaxExtension;
+use rustc_fs_util::try_canonicalize;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
@@ -31,7 +32,7 @@ use std::error::Error;
 use std::ops::Fn;
 use std::path::Path;
 use std::time::Duration;
-use std::{cmp, env, iter};
+use std::{cmp, iter};
 
 pub struct CStore {
     metadata_loader: Box<MetadataLoaderDyn>,
@@ -677,7 +678,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         stable_crate_id: StableCrateId,
     ) -> Result<&'static [ProcMacro], CrateError> {
         // Make sure the path contains a / or the linker will search for it.
-        let path = env::current_dir().unwrap().join(path);
+        let path = try_canonicalize(path).unwrap();
         let lib = load_dylib(&path, 5).map_err(|err| CrateError::DlOpen(err))?;
 
         let sym_name = self.sess.generate_proc_macro_decls_symbol(stable_crate_id);
