@@ -8,9 +8,19 @@ pub fn rint(x: f64) -> f64 {
         x
     } else {
         let ans = if is_positive {
-            x + one_over_e - one_over_e
+            #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
+            let x = force_eval!(x);
+            let xplusoneovere = x + one_over_e;
+            #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
+            let xplusoneovere = force_eval!(xplusoneovere);
+            xplusoneovere - one_over_e
         } else {
-            x - one_over_e + one_over_e
+            #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
+            let x = force_eval!(x);
+            let xminusoneovere = x - one_over_e;
+            #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
+            let xminusoneovere = force_eval!(xminusoneovere);
+            xminusoneovere + one_over_e
         };
 
         if ans == 0.0 {
