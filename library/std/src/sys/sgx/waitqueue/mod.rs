@@ -18,6 +18,7 @@ mod unsafe_list;
 
 use crate::num::NonZeroUsize;
 use crate::ops::{Deref, DerefMut};
+use crate::panic::{self, AssertUnwindSafe};
 use crate::time::Duration;
 
 use super::abi::thread;
@@ -147,7 +148,8 @@ impl WaitQueue {
     /// Adds the calling thread to the `WaitVariable`'s wait queue, then wait
     /// until a wakeup event.
     ///
-    /// This function does not return until this thread has been awoken.
+    /// This function does not return until this thread has been awoken. When `before_wait` panics,
+    /// this function will abort.
     pub fn wait<T, F: FnOnce()>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>, before_wait: F) {
         // very unsafe: check requirements of UnsafeList::push
         unsafe {
@@ -157,8 +159,13 @@ impl WaitQueue {
             }));
             let entry = guard.queue.inner.push(&mut entry);
             drop(guard);
-            before_wait();
+            if let Err(_e) = panic::catch_unwind(AssertUnwindSafe(|| before_wait())) {
+                rtabort!("Panic before wait on wakeup event")
+            }
             while !entry.lock().wake {
+                // `entry.wake` is only set in `notify_one` and `notify_all` functions. Both ensure
+                // the entry is removed from the queue _before_ setting this bool. There are no
+                // other references to `entry`.
                 // don't panic, this would invalidate `entry` during unwinding
                 let eventset = rtunwrap!(Ok, usercalls::wait(EV_UNPARK, WAIT_INDEFINITE));
                 rtassert!(eventset & EV_UNPARK == EV_UNPARK);
@@ -169,6 +176,7 @@ impl WaitQueue {
     /// Adds the calling thread to the `WaitVariable`'s wait queue, then wait
     /// until a wakeup event or timeout. If event was observed, returns true.
     /// If not, it will remove the calling thread from the wait queue.
+    /// When `before_wait` panics, this function will abort.
     pub fn wait_timeout<T, F: FnOnce()>(
         lock: &SpinMutex<WaitVariable<T>>,
         timeout: Duration,
@@ -181,9 +189,13 @@ impl WaitQueue {
                 wake: false,
             }));
             let entry_lock = lock.lock().queue.inner.push(&mut entry);
-            before_wait();
+            if let Err(_e) = panic::catch_unwind(AssertUnwindSafe(|| before_wait())) {
+                rtabort!("Panic before wait on wakeup event or timeout")
+            }
             usercalls::wait_timeout(EV_UNPARK, timeout, || entry_lock.lock().wake);
-            // acquire the wait queue's lock first to avoid deadlock.
+            // acquire the wait queue's lock first to avoid deadlock
+            // and ensure no other function can simultaneously access the list
+            // (e.g., `notify_one` or `notify_all`)
             let mut guard = lock.lock();
             let success = entry_lock.lock().wake;
             if !success {
@@ -204,8 +216,8 @@ impl WaitQueue {
     ) -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>> {
         // SAFETY: lifetime of the pop() return value is limited to the map
         // closure (The closure return value is 'static). The underlying
-        // stack frame won't be freed until after the WaitGuard created below
-        // is dropped.
+        // stack frame won't be freed until after the lock on the queue is released
+        // (i.e., `guard` is dropped).
         unsafe {
             let tcs = guard.queue.inner.pop().map(|entry| -> Tcs {
                 let mut entry_guard = entry.lock();
@@ -231,7 +243,7 @@ impl WaitQueue {
     ) -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>> {
         // SAFETY: lifetime of the pop() return values are limited to the
         // while loop body. The underlying stack frames won't be freed until
-        // after the WaitGuard created below is dropped.
+        // after the lock on the queue is released (i.e., `guard` is dropped).
         unsafe {
             let mut count = 0;
             while let Some(entry) = guard.queue.inner.pop() {
