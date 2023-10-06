@@ -6,7 +6,7 @@ use rustc_apfloat::Float;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_hir::{
     def::DefKind,
-    def_id::{CrateNum, DefId, LOCAL_CRATE},
+    def_id::{CrateNum, LOCAL_CRATE},
 };
 use rustc_middle::middle::{
     codegen_fn_attrs::CodegenFnAttrFlags, dependency_format::Linkage,
@@ -25,118 +25,139 @@ use super::backtrace::EvalContextExt as _;
 use crate::helpers::target_os_is_unix;
 use crate::*;
 
-/// Returned by `emulate_foreign_item_by_name`.
-pub enum EmulateByNameResult<'mir, 'tcx> {
+/// Type of dynamic symbols (for `dlsym` et al)
+#[derive(Debug, Copy, Clone)]
+pub struct DynSym(Symbol);
+
+#[allow(clippy::should_implement_trait)]
+impl DynSym {
+    pub fn from_str(name: &str) -> Self {
+        DynSym(Symbol::intern(name))
+    }
+}
+
+/// Returned by `emulate_foreign_item_inner`.
+pub enum EmulateForeignItemResult {
     /// The caller is expected to jump to the return block.
     NeedsJumping,
     /// Jumping has already been taken care of.
     AlreadyJumped,
-    /// A MIR body has been found for the function.
-    MirBody(&'mir mir::Body<'tcx>, ty::Instance<'tcx>),
     /// The item is not supported.
     NotSupported,
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    /// Returns the minimum alignment for the target architecture for allocations of the given size.
-    fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
-        let this = self.eval_context_ref();
-        // List taken from `library/std/src/sys/common/alloc.rs`.
-        // This list should be kept in sync with the one from libstd.
-        let min_align = match this.tcx.sess.target.arch.as_ref() {
-            "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
-            "x86_64" | "aarch64" | "mips64" | "mips64r6" | "s390x" | "sparc64" | "loongarch64" =>
-                16,
-            arch => bug!("unsupported target architecture for malloc: `{}`", arch),
+    /// Emulates calling a foreign item, failing if the item is not supported.
+    /// This function will handle `goto_block` if needed.
+    /// Returns Ok(None) if the foreign item was completely handled
+    /// by this function.
+    /// Returns Ok(Some(body)) if processing the foreign item
+    /// is delegated to another function.
+    fn emulate_foreign_item(
+        &mut self,
+        link_name: Symbol,
+        abi: Abi,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
+        ret: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
+    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+        let this = self.eval_context_mut();
+        let tcx = this.tcx.tcx;
+
+        // First: functions that diverge.
+        let ret = match ret {
+            None =>
+                match link_name.as_str() {
+                    "miri_start_panic" => {
+                        // `check_shim` happens inside `handle_miri_start_panic`.
+                        this.handle_miri_start_panic(abi, link_name, args, unwind)?;
+                        return Ok(None);
+                    }
+                    // This matches calls to the foreign item `panic_impl`.
+                    // The implementation is provided by the function with the `#[panic_handler]` attribute.
+                    "panic_impl" => {
+                        // We don't use `check_shim` here because we are just forwarding to the lang
+                        // item. Argument count checking will be performed when the returned `Body` is
+                        // called.
+                        this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
+                        let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
+                        let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
+                        return Ok(Some((
+                            this.load_mir(panic_impl_instance.def, None)?,
+                            panic_impl_instance,
+                        )));
+                    }
+                    #[rustfmt::skip]
+                    | "exit"
+                    | "ExitProcess"
+                    => {
+                        let exp_abi = if link_name.as_str() == "exit" {
+                            Abi::C { unwind: false }
+                        } else {
+                            Abi::System { unwind: false }
+                        };
+                        let [code] = this.check_shim(abi, exp_abi, link_name, args)?;
+                        // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
+                        let code = this.read_scalar(code)?.to_i32()?;
+                        throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
+                    }
+                    "abort" => {
+                        let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                        throw_machine_stop!(TerminationInfo::Abort(
+                            "the program aborted execution".to_owned()
+                        ))
+                    }
+                    _ => {
+                        if let Some(body) = this.lookup_exported_symbol(link_name)? {
+                            return Ok(Some(body));
+                        }
+                        this.handle_unsupported(format!(
+                            "can't call (diverging) foreign function: {link_name}"
+                        ))?;
+                        return Ok(None);
+                    }
+                },
+            Some(p) => p,
         };
-        // Windows always aligns, even small allocations.
-        // Source: <https://support.microsoft.com/en-us/help/286470/how-to-use-pageheap-exe-in-windows-xp-windows-2000-and-windows-server>
-        // But jemalloc does not, so for the C heap we only align if the allocation is sufficiently big.
-        if kind == MiriMemoryKind::WinHeap || size >= min_align {
-            return Align::from_bytes(min_align).unwrap();
-        }
-        // We have `size < min_align`. Round `size` *down* to the next power of two and use that.
-        fn prev_power_of_two(x: u64) -> u64 {
-            let next_pow2 = x.next_power_of_two();
-            if next_pow2 == x {
-                // x *is* a power of two, just use that.
-                x
-            } else {
-                // x is between two powers, so next = 2*prev.
-                next_pow2 / 2
+
+        // Second: functions that return immediately.
+        match this.emulate_foreign_item_inner(link_name, abi, args, dest)? {
+            EmulateForeignItemResult::NeedsJumping => {
+                trace!("{:?}", this.dump_place(dest));
+                this.go_to_block(ret);
+            }
+            EmulateForeignItemResult::AlreadyJumped => (),
+            EmulateForeignItemResult::NotSupported => {
+                if let Some(body) = this.lookup_exported_symbol(link_name)? {
+                    return Ok(Some(body));
+                }
+
+                this.handle_unsupported(format!(
+                    "can't call foreign function `{link_name}` on OS `{os}`",
+                    os = this.tcx.sess.target.os,
+                ))?;
+                return Ok(None);
             }
         }
-        Align::from_bytes(prev_power_of_two(size)).unwrap()
+
+        Ok(None)
     }
 
-    fn malloc(
+    /// Emulates a call to a `DynSym`.
+    fn emulate_dyn_sym(
         &mut self,
-        size: u64,
-        zero_init: bool,
-        kind: MiriMemoryKind,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
-        let this = self.eval_context_mut();
-        if size == 0 {
-            Ok(Pointer::null())
-        } else {
-            let align = this.min_align(size, kind);
-            let ptr = this.allocate_ptr(Size::from_bytes(size), align, kind.into())?;
-            if zero_init {
-                // We just allocated this, the access is definitely in-bounds and fits into our address space.
-                this.write_bytes_ptr(
-                    ptr.into(),
-                    iter::repeat(0u8).take(usize::try_from(size).unwrap()),
-                )
-                .unwrap();
-            }
-            Ok(ptr.into())
-        }
-    }
-
-    fn free(
-        &mut self,
-        ptr: Pointer<Option<Provenance>>,
-        kind: MiriMemoryKind,
+        sym: DynSym,
+        abi: Abi,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
+        ret: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        if !this.ptr_is_null(ptr)? {
-            this.deallocate_ptr(ptr, None, kind.into())?;
-        }
+        let res = self.emulate_foreign_item(sym.0, abi, args, dest, ret, unwind)?;
+        assert!(res.is_none(), "DynSyms that delegate are not supported");
         Ok(())
-    }
-
-    fn realloc(
-        &mut self,
-        old_ptr: Pointer<Option<Provenance>>,
-        new_size: u64,
-        kind: MiriMemoryKind,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
-        let this = self.eval_context_mut();
-        let new_align = this.min_align(new_size, kind);
-        if this.ptr_is_null(old_ptr)? {
-            if new_size == 0 {
-                Ok(Pointer::null())
-            } else {
-                let new_ptr =
-                    this.allocate_ptr(Size::from_bytes(new_size), new_align, kind.into())?;
-                Ok(new_ptr.into())
-            }
-        } else {
-            if new_size == 0 {
-                this.deallocate_ptr(old_ptr, None, kind.into())?;
-                Ok(Pointer::null())
-            } else {
-                let new_ptr = this.reallocate_ptr(
-                    old_ptr,
-                    None,
-                    Size::from_bytes(new_size),
-                    new_align,
-                    kind.into(),
-                )?;
-                Ok(new_ptr.into())
-            }
-        }
     }
 
     /// Lookup the body of a function that has `link_name` as the symbol name.
@@ -233,6 +254,78 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
+    fn malloc(
+        &mut self,
+        size: u64,
+        zero_init: bool,
+        kind: MiriMemoryKind,
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+        let this = self.eval_context_mut();
+        if size == 0 {
+            Ok(Pointer::null())
+        } else {
+            let align = this.min_align(size, kind);
+            let ptr = this.allocate_ptr(Size::from_bytes(size), align, kind.into())?;
+            if zero_init {
+                // We just allocated this, the access is definitely in-bounds and fits into our address space.
+                this.write_bytes_ptr(
+                    ptr.into(),
+                    iter::repeat(0u8).take(usize::try_from(size).unwrap()),
+                )
+                .unwrap();
+            }
+            Ok(ptr.into())
+        }
+    }
+
+    fn free(
+        &mut self,
+        ptr: Pointer<Option<Provenance>>,
+        kind: MiriMemoryKind,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        if !this.ptr_is_null(ptr)? {
+            this.deallocate_ptr(ptr, None, kind.into())?;
+        }
+        Ok(())
+    }
+
+    fn realloc(
+        &mut self,
+        old_ptr: Pointer<Option<Provenance>>,
+        new_size: u64,
+        kind: MiriMemoryKind,
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+        let this = self.eval_context_mut();
+        let new_align = this.min_align(new_size, kind);
+        if this.ptr_is_null(old_ptr)? {
+            if new_size == 0 {
+                Ok(Pointer::null())
+            } else {
+                let new_ptr =
+                    this.allocate_ptr(Size::from_bytes(new_size), new_align, kind.into())?;
+                Ok(new_ptr.into())
+            }
+        } else {
+            if new_size == 0 {
+                this.deallocate_ptr(old_ptr, None, kind.into())?;
+                Ok(Pointer::null())
+            } else {
+                let new_ptr = this.reallocate_ptr(
+                    old_ptr,
+                    None,
+                    Size::from_bytes(new_size),
+                    new_align,
+                    kind.into(),
+                )?;
+                Ok(new_ptr.into())
+            }
+        }
+    }
+}
+
+impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Read bytes from a `(ptr, len)` argument
     fn read_byte_slice<'i>(&'i self, bytes: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, &'i [u8]>
     where
@@ -246,115 +339,47 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(bytes)
     }
 
-    /// Emulates calling a foreign item, failing if the item is not supported.
-    /// This function will handle `goto_block` if needed.
-    /// Returns Ok(None) if the foreign item was completely handled
-    /// by this function.
-    /// Returns Ok(Some(body)) if processing the foreign item
-    /// is delegated to another function.
-    fn emulate_foreign_item(
-        &mut self,
-        def_id: DefId,
-        abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
-        ret: Option<mir::BasicBlock>,
-        unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        let this = self.eval_context_mut();
-        let link_name = this.item_link_name(def_id);
-        let tcx = this.tcx.tcx;
-
-        // First: functions that diverge.
-        let ret = match ret {
-            None =>
-                match link_name.as_str() {
-                    "miri_start_panic" => {
-                        // `check_shim` happens inside `handle_miri_start_panic`.
-                        this.handle_miri_start_panic(abi, link_name, args, unwind)?;
-                        return Ok(None);
-                    }
-                    // This matches calls to the foreign item `panic_impl`.
-                    // The implementation is provided by the function with the `#[panic_handler]` attribute.
-                    "panic_impl" => {
-                        // We don't use `check_shim` here because we are just forwarding to the lang
-                        // item. Argument count checking will be performed when the returned `Body` is
-                        // called.
-                        this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
-                        let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
-                        let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
-                        return Ok(Some((
-                            this.load_mir(panic_impl_instance.def, None)?,
-                            panic_impl_instance,
-                        )));
-                    }
-                    #[rustfmt::skip]
-                    | "exit"
-                    | "ExitProcess"
-                    => {
-                        let exp_abi = if link_name.as_str() == "exit" {
-                            Abi::C { unwind: false }
-                        } else {
-                            Abi::System { unwind: false }
-                        };
-                        let [code] = this.check_shim(abi, exp_abi, link_name, args)?;
-                        // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
-                        let code = this.read_scalar(code)?.to_i32()?;
-                        throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
-                    }
-                    "abort" => {
-                        let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                        throw_machine_stop!(TerminationInfo::Abort(
-                            "the program aborted execution".to_owned()
-                        ))
-                    }
-                    _ => {
-                        if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                            return Ok(Some(body));
-                        }
-                        this.handle_unsupported(format!(
-                            "can't call (diverging) foreign function: {link_name}"
-                        ))?;
-                        return Ok(None);
-                    }
-                },
-            Some(p) => p,
+    /// Returns the minimum alignment for the target architecture for allocations of the given size.
+    fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
+        let this = self.eval_context_ref();
+        // List taken from `library/std/src/sys/common/alloc.rs`.
+        // This list should be kept in sync with the one from libstd.
+        let min_align = match this.tcx.sess.target.arch.as_ref() {
+            "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
+            "x86_64" | "aarch64" | "mips64" | "mips64r6" | "s390x" | "sparc64" | "loongarch64" =>
+                16,
+            arch => bug!("unsupported target architecture for malloc: `{}`", arch),
         };
-
-        // Second: functions that return immediately.
-        match this.emulate_foreign_item_by_name(link_name, abi, args, dest)? {
-            EmulateByNameResult::NeedsJumping => {
-                trace!("{:?}", this.dump_place(dest));
-                this.go_to_block(ret);
-            }
-            EmulateByNameResult::AlreadyJumped => (),
-            EmulateByNameResult::MirBody(mir, instance) => return Ok(Some((mir, instance))),
-            EmulateByNameResult::NotSupported => {
-                if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                    return Ok(Some(body));
-                }
-
-                this.handle_unsupported(format!(
-                    "can't call foreign function `{link_name}` on OS `{os}`",
-                    os = this.tcx.sess.target.os,
-                ))?;
-                return Ok(None);
+        // Windows always aligns, even small allocations.
+        // Source: <https://support.microsoft.com/en-us/help/286470/how-to-use-pageheap-exe-in-windows-xp-windows-2000-and-windows-server>
+        // But jemalloc does not, so for the C heap we only align if the allocation is sufficiently big.
+        if kind == MiriMemoryKind::WinHeap || size >= min_align {
+            return Align::from_bytes(min_align).unwrap();
+        }
+        // We have `size < min_align`. Round `size` *down* to the next power of two and use that.
+        fn prev_power_of_two(x: u64) -> u64 {
+            let next_pow2 = x.next_power_of_two();
+            if next_pow2 == x {
+                // x *is* a power of two, just use that.
+                x
+            } else {
+                // x is between two powers, so next = 2*prev.
+                next_pow2 / 2
             }
         }
-
-        Ok(None)
+        Align::from_bytes(prev_power_of_two(size)).unwrap()
     }
 
     /// Emulates calling the internal __rust_* allocator functions
     fn emulate_allocator(
         &mut self,
         default: impl FnOnce(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
+    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
 
         let Some(allocator_kind) = this.tcx.allocator_kind(()) else {
             // in real code, this symbol does not exist without an allocator
-            return Ok(EmulateByNameResult::NotSupported);
+            return Ok(EmulateForeignItemResult::NotSupported);
         };
 
         match allocator_kind {
@@ -364,23 +389,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // and not execute any Miri shim. Somewhat unintuitively doing so is done
                 // by returning `NotSupported`, which triggers the `lookup_exported_symbol`
                 // fallback case in `emulate_foreign_item`.
-                return Ok(EmulateByNameResult::NotSupported);
+                return Ok(EmulateForeignItemResult::NotSupported);
             }
             AllocatorKind::Default => {
                 default(this)?;
-                Ok(EmulateByNameResult::NeedsJumping)
+                Ok(EmulateForeignItemResult::NeedsJumping)
             }
         }
     }
 
-    /// Emulates calling a foreign item using its name.
-    fn emulate_foreign_item_by_name(
+    fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
+    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
 
         // First deal with any external C functions in linked .so file.
@@ -391,7 +415,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
             if this.call_external_c_fct(link_name, dest, args)? {
-                return Ok(EmulateByNameResult::NeedsJumping);
+                return Ok(EmulateForeignItemResult::NeedsJumping);
             }
         }
 
@@ -591,7 +615,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "__rust_alloc" => return this.emulate_allocator(default),
                     "miri_alloc" => {
                         default(this)?;
-                        return Ok(EmulateByNameResult::NeedsJumping);
+                        return Ok(EmulateForeignItemResult::NeedsJumping);
                     }
                     _ => unreachable!(),
                 }
@@ -651,7 +675,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                     "miri_dealloc" => {
                         default(this)?;
-                        return Ok(EmulateByNameResult::NeedsJumping);
+                        return Ok(EmulateForeignItemResult::NeedsJumping);
                     }
                     _ => unreachable!(),
                 }
@@ -1045,19 +1069,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ =>
                 return match this.tcx.sess.target.os.as_ref() {
                     target_os if target_os_is_unix(target_os) =>
-                        shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_by_name(
+                        shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
                     "windows" =>
-                        shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_by_name(
+                        shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
-                    _ => Ok(EmulateByNameResult::NotSupported),
+                    _ => Ok(EmulateForeignItemResult::NotSupported),
                 },
         };
         // We only fall through to here if we did *not* hit the `_` arm above,
         // i.e., if we actually emulated the function with one of the shims.
-        Ok(EmulateByNameResult::NeedsJumping)
+        Ok(EmulateForeignItemResult::NeedsJumping)
     }
 
     /// Check some basic requirements for this allocation request:

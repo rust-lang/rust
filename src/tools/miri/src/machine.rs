@@ -707,11 +707,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 );
             }
             "android" => {
-                // "signal"
+                // "signal" -- just needs a non-zero pointer value (function does not even get called),
+                // but we arrange for this to be callable anyway (it will then do nothing).
                 let layout = this.machine.layouts.const_raw_ptr;
-                let dlsym = Dlsym::from_str("signal".as_bytes(), &this.tcx.sess.target.os)?
-                    .expect("`signal` must be an actual dlsym on android");
-                let ptr = this.fn_ptr(FnVal::Other(dlsym));
+                let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str("signal")));
                 let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
                 Self::alloc_extern_static(this, "signal", val)?;
                 // A couple zero-initialized pointer-sized extern statics.
@@ -867,7 +866,7 @@ impl<'mir, 'tcx> MiriInterpCxExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {
 /// Machine hook implementations.
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     type MemoryKind = MiriMemoryKind;
-    type ExtraFnVal = Dlsym;
+    type ExtraFnVal = DynSym;
 
     type FrameExtra = FrameExtra<'tcx>;
     type AllocExtra = AllocExtra<'tcx>;
@@ -939,15 +938,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     #[inline(always)]
     fn call_extra_fn(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
-        fn_val: Dlsym,
+        fn_val: DynSym,
         abi: Abi,
         args: &[FnArg<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        _unwind: mir::UnwindAction,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
-        ecx.call_dlsym(fn_val, abi, &args, dest, ret)
+        ecx.emulate_dyn_sym(fn_val, abi, &args, dest, ret, unwind)
     }
 
     #[inline(always)]
