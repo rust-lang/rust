@@ -39,6 +39,7 @@ use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::DefiningAnchor;
+use rustc_middle::ty::_match::MatchAgainstFreshVars;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::relate::TypeRelation;
@@ -2642,7 +2643,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         current: ty::PolyTraitPredicate<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        let mut matcher = ty::_match::Match::new(self.tcx(), param_env);
+        let mut matcher = MatchAgainstFreshVars::new(self.tcx(), param_env);
         matcher.relate(previous, current).is_ok()
     }
 
@@ -3115,9 +3116,6 @@ fn bind_generator_hidden_types_above<'tcx>(
             bty.instantiate(tcx, args)
         })
         .collect();
-    if considering_regions {
-        debug_assert!(!hidden_types.has_erased_regions());
-    }
     let bound_vars =
         tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
             (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon)),

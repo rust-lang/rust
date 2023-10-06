@@ -277,7 +277,7 @@ pub fn spin_loop() {
 /// - Treats the call to `contains` and its result as volatile: the body of `benchmark` cannot
 ///   optimize this away
 ///
-/// This makes our benchmark much more realistic to how the function would be used in situ, where
+/// This makes our benchmark much more realistic to how the function would actually be used, where
 /// arguments are usually not known at compile time and the result is used in some way.
 #[inline]
 #[stable(feature = "bench_black_box", since = "1.66.0")]

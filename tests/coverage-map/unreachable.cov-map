@@ -1,0 +1,24 @@
+Function name: unreachable::UNREACHABLE_CLOSURE::{closure#0}
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 0f, 27, 00, 49]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 15, 39) to (start + 0, 73)
+
+Function name: unreachable::unreachable_function
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 11, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 17, 1) to (start + 2, 2)
+
+Function name: unreachable::unreachable_intrinsic
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 16, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 22, 1) to (start + 2, 2)
+

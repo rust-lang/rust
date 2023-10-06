@@ -13,7 +13,7 @@ use std::{env, fs};
 
 #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use bootstrap::t;
-use bootstrap::{Build, Config, Subcommand, VERSION};
+use bootstrap::{find_recent_config_change_ids, Build, Config, Subcommand, CONFIG_CHANGE_HISTORY};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
@@ -42,7 +42,7 @@ fn main() {
             }
             err => {
                 drop(err);
-                println!("warning: build directory locked by process {pid}, waiting for lock");
+                println!("WARNING: build directory locked by process {pid}, waiting for lock");
                 let mut lock = t!(build_lock.write());
                 t!(lock.write(&process::id().to_string().as_ref()));
                 lock
@@ -51,7 +51,7 @@ fn main() {
     }
 
     #[cfg(any(not(any(unix, windows)), target_os = "solaris"))]
-    println!("warning: file locking not supported for target, not locking build directory");
+    println!("WARNING: file locking not supported for target, not locking build directory");
 
     // check_version warnings are not printed during setup
     let changelog_suggestion =
@@ -61,7 +61,7 @@ fn main() {
     // changelog warning, not the `x.py setup` message.
     let suggest_setup = config.config.is_none() && !matches!(config.cmd, Subcommand::Setup { .. });
     if suggest_setup {
-        println!("warning: you have not made a `config.toml`");
+        println!("WARNING: you have not made a `config.toml`");
         println!(
             "help: consider running `./x.py setup` or copying `config.example.toml` by running \
             `cp config.example.toml config.toml`"
@@ -74,7 +74,7 @@ fn main() {
     Build::new(config).build();
 
     if suggest_setup {
-        println!("warning: you have not made a `config.toml`");
+        println!("WARNING: you have not made a `config.toml`");
         println!(
             "help: consider running `./x.py setup` or copying `config.example.toml` by running \
             `cp config.example.toml config.toml`"
@@ -91,7 +91,7 @@ fn main() {
         contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
     }) {
         println!(
-            "warning: You have the pre-push script installed to .git/hooks/pre-commit. \
+            "WARNING: You have the pre-push script installed to .git/hooks/pre-commit. \
                   Consider moving it to .git/hooks/pre-push instead, which runs less often."
         );
     }
@@ -104,19 +104,34 @@ fn main() {
 fn check_version(config: &Config) -> Option<String> {
     let mut msg = String::new();
 
-    let suggestion = if let Some(seen) = config.changelog_seen {
-        if seen != VERSION {
-            msg.push_str("warning: there have been changes to x.py since you last updated.\n");
-            format!("update `config.toml` to use `changelog-seen = {VERSION}` instead")
+    if config.changelog_seen.is_some() {
+        msg.push_str("WARNING: The use of `changelog-seen` is deprecated. Please refer to `change-id` option in `config.example.toml` instead.\n");
+    }
+
+    let latest_config_id = CONFIG_CHANGE_HISTORY.last().unwrap();
+    let suggestion = if let Some(id) = config.change_id {
+        if &id != latest_config_id {
+            msg.push_str("WARNING: there have been changes to x.py since you last updated.\n");
+            let change_links: Vec<String> = find_recent_config_change_ids(id)
+                .iter()
+                .map(|id| format!("https://github.com/rust-lang/rust/pull/{id}"))
+                .collect();
+            if !change_links.is_empty() {
+                msg.push_str("To see more detail about these changes, visit the following PRs:\n");
+                for link in change_links {
+                    msg.push_str(&format!("  - {link}\n"));
+                }
+            }
+            msg.push_str("WARNING: there have been changes to x.py since you last updated.\n");
+            format!("update `config.toml` to use `change-id = {latest_config_id}` instead")
         } else {
             return None;
         }
     } else {
-        msg.push_str("warning: x.py has made several changes recently you may want to look at\n");
-        format!("add `changelog-seen = {VERSION}` at the top of `config.toml`")
+        msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
+        format!("add `change-id = {latest_config_id}` at the top of `config.toml`")
     };
 
-    msg.push_str("help: consider looking at the changes in `src/bootstrap/CHANGELOG.md`\n");
     msg.push_str("note: to silence this warning, ");
     msg.push_str(&suggestion);
 

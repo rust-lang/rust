@@ -9,6 +9,7 @@ use std::future::Future;
 use std::marker::PhantomData;
 
 trait Lockable<K, V> {
+    #[allow(async_fn_in_trait)]
     async fn lock_all_entries(&self) -> impl Future<Output = Guard<'_>>;
 }
 

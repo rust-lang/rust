@@ -45,6 +45,8 @@ error: not in the table
    |
 LL |         struct PrivStruct;
    |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
   --> $DIR/effective_visibilities.rs:25:9
@@ -81,6 +83,8 @@ error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImpl
    |
 LL |             A(
    |             ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
   --> $DIR/effective_visibilities.rs:38:17

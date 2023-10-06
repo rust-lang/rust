@@ -183,7 +183,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // The `Box<T>` temporary created here is not a part of the HIR,
                 // and therefore is not considered during generator auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
-                let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span).internal());
+                let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span));
                 this.cfg.push(
                     block,
                     Statement { source_info, kind: StatementKind::StorageLive(result) },

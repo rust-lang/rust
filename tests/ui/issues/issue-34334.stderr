@@ -19,7 +19,8 @@ LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_rece
    |                                                                                       ^^^^^^^ value of type `Vec<(u32, _, _)>` cannot be built from `std::iter::Iterator<Item=()>`
    |
    = help: the trait `FromIterator<()>` is not implemented for `Vec<(u32, _, _)>`
-   = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
+   = help: the trait `FromIterator<(u32, _, _)>` is implemented for `Vec<(u32, _, _)>`
+   = help: for that trait implementation, expected `(u32, _, _)`, found `()`
 note: the method call chain might not have had the expected associated types
   --> $DIR/issue-34334.rs:5:43
    |

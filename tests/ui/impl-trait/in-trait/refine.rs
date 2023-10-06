@@ -45,4 +45,15 @@ impl Late for D {
     //~^ ERROR impl method signature does not match trait method signature
 }
 
+mod unreachable {
+    pub trait UnreachablePub {
+        fn bar() -> impl Sized;
+    }
+
+    struct E;
+    impl UnreachablePub for E {
+        fn bar() {}
+    }
+}
+
 fn main() {}

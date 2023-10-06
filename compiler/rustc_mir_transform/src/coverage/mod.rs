@@ -9,13 +9,11 @@ mod tests;
 
 use self::counters::{BcbCounter, CoverageCounters};
 use self::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
-use self::spans::{CoverageSpan, CoverageSpans};
+use self::spans::CoverageSpans;
 
 use crate::MirPass;
 
-use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::sync::Lrc;
-use rustc_index::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
@@ -154,7 +152,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let body_span = self.body_span;
 
         ////////////////////////////////////////////////////
-        // Compute `CoverageSpan`s from the `CoverageGraph`.
+        // Compute coverage spans from the `CoverageGraph`.
         let coverage_spans = CoverageSpans::generate_coverage_spans(
             &self.mir_body,
             fn_sig_span,
@@ -164,32 +162,33 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         ////////////////////////////////////////////////////
         // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
-        // every `CoverageSpan` has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
+        // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
         // and all `Expression` dependencies (operands) are also generated, for any other
-        // `BasicCoverageBlock`s not already associated with a `CoverageSpan`.
+        // `BasicCoverageBlock`s not already associated with a coverage span.
         //
         // Intermediate expressions (used to compute other `Expression` values), which have no
         // direct association with any `BasicCoverageBlock`, are accumulated inside `coverage_counters`.
+        let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
         let result = self
             .coverage_counters
-            .make_bcb_counters(&mut self.basic_coverage_blocks, &coverage_spans);
+            .make_bcb_counters(&mut self.basic_coverage_blocks, bcb_has_coverage_spans);
 
         if let Ok(()) = result {
             ////////////////////////////////////////////////////
-            // Remove the counter or edge counter from of each `CoverageSpan`s associated
+            // Remove the counter or edge counter from of each coverage cpan's associated
             // `BasicCoverageBlock`, and inject a `Coverage` statement into the MIR.
             //
-            // `Coverage` statements injected from `CoverageSpan`s will include the code regions
+            // `Coverage` statements injected from coverage spans will include the code regions
             // (source code start and end positions) to be counted by the associated counter.
             //
-            // These `CoverageSpan`-associated counters are removed from their associated
+            // These coverage-span-associated counters are removed from their associated
             // `BasicCoverageBlock`s so that the only remaining counters in the `CoverageGraph`
             // are indirect counters (to be injected next, without associated code regions).
-            self.inject_coverage_span_counters(coverage_spans);
+            self.inject_coverage_span_counters(&coverage_spans);
 
             ////////////////////////////////////////////////////
             // For any remaining `BasicCoverageBlock` counters (that were not associated with
-            // any `CoverageSpan`), inject `Coverage` statements (_without_ code region `Span`s)
+            // any coverage span), inject `Coverage` statements (_without_ code region spans)
             // to ensure `BasicCoverageBlock` counters that other `Expression`s may depend on
             // are in fact counted, even though they don't directly contribute to counting
             // their own independent code region's coverage.
@@ -214,47 +213,40 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
     }
 
-    /// Inject a counter for each `CoverageSpan`. There can be multiple `CoverageSpan`s for a given
-    /// BCB, but only one actual counter needs to be incremented per BCB. `bb_counters` maps each
-    /// `bcb` to its `Counter`, when injected. Subsequent `CoverageSpan`s for a BCB that already has
-    /// a `Counter` will inject an `Expression` instead, and compute its value by adding `ZERO` to
-    /// the BCB `Counter` value.
-    fn inject_coverage_span_counters(&mut self, coverage_spans: Vec<CoverageSpan>) {
+    /// Injects a single [`StatementKind::Coverage`] for each BCB that has one
+    /// or more coverage spans.
+    fn inject_coverage_span_counters(&mut self, coverage_spans: &CoverageSpans) {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
         let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
 
-        let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
-        for covspan in coverage_spans {
-            let bcb = covspan.bcb;
-            let span = covspan.span;
-            let counter_kind = if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
-                self.coverage_counters.make_identity_counter(counter_operand)
-            } else if let Some(counter_kind) = self.coverage_counters.take_bcb_counter(bcb) {
-                bcb_counters[bcb] = Some(counter_kind.as_operand());
-                counter_kind
-            } else {
+        for (bcb, spans) in coverage_spans.bcbs_with_coverage_spans() {
+            let counter_kind = self.coverage_counters.take_bcb_counter(bcb).unwrap_or_else(|| {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
-            };
+            });
 
-            let code_region = make_code_region(source_map, file_name, span, body_span);
+            // Convert the coverage spans into a vector of code regions to be
+            // associated with this BCB's coverage statement.
+            let code_regions = spans
+                .iter()
+                .map(|&span| make_code_region(source_map, file_name, span, body_span))
+                .collect::<Vec<_>>();
 
             inject_statement(
                 self.mir_body,
                 self.make_mir_coverage_kind(&counter_kind),
                 self.bcb_leader_bb(bcb),
-                Some(code_region),
+                code_regions,
             );
         }
     }
 
-    /// `inject_coverage_span_counters()` looped through the `CoverageSpan`s and injected the
-    /// counter from the `CoverageSpan`s `BasicCoverageBlock`, removing it from the BCB in the
-    /// process (via `take_counter()`).
+    /// At this point, any BCB with coverage counters has already had its counter injected
+    /// into MIR, and had its counter removed from `coverage_counters` (via `take_counter()`).
     ///
     /// Any other counter associated with a `BasicCoverageBlock`, or its incoming edge, but not
-    /// associated with a `CoverageSpan`, should only exist if the counter is an `Expression`
+    /// associated with a coverage span, should only exist if the counter is an `Expression`
     /// dependency (one of the expression operands). Collect them, and inject the additional
     /// counters into the MIR, without a reportable coverage span.
     fn inject_indirect_counters(&mut self) {
@@ -303,7 +295,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         self.mir_body,
                         self.make_mir_coverage_kind(&counter_kind),
                         inject_to_bb,
-                        None,
+                        Vec::new(),
                     );
                 }
                 BcbCounter::Expression { .. } => inject_intermediate_expression(
@@ -368,20 +360,14 @@ fn inject_statement(
     mir_body: &mut mir::Body<'_>,
     counter_kind: CoverageKind,
     bb: BasicBlock,
-    some_code_region: Option<CodeRegion>,
+    code_regions: Vec<CodeRegion>,
 ) {
-    debug!(
-        "  injecting statement {:?} for {:?} at code region: {:?}",
-        counter_kind, bb, some_code_region
-    );
+    debug!("  injecting statement {counter_kind:?} for {bb:?} at code regions: {code_regions:?}");
     let data = &mut mir_body[bb];
     let source_info = data.terminator().source_info;
     let statement = Statement {
         source_info,
-        kind: StatementKind::Coverage(Box::new(Coverage {
-            kind: counter_kind,
-            code_region: some_code_region,
-        })),
+        kind: StatementKind::Coverage(Box::new(Coverage { kind: counter_kind, code_regions })),
     };
     data.statements.insert(0, statement);
 }
@@ -395,7 +381,10 @@ fn inject_intermediate_expression(mir_body: &mut mir::Body<'_>, expression: Cove
     let source_info = data.terminator().source_info;
     let statement = Statement {
         source_info,
-        kind: StatementKind::Coverage(Box::new(Coverage { kind: expression, code_region: None })),
+        kind: StatementKind::Coverage(Box::new(Coverage {
+            kind: expression,
+            code_regions: Vec::new(),
+        })),
     };
     data.statements.push(statement);
 }

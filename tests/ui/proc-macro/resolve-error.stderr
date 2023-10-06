@@ -44,6 +44,8 @@ error: cannot find derive macro `attr_proc_macra` in this scope
    |
 LL | #[derive(attr_proc_macra)]
    |          ^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot find derive macro `Dlona` in this scope
   --> $DIR/resolve-error.rs:40:10
@@ -66,6 +68,8 @@ LL | #[derive(Dlona)]
    |
 LL | pub fn derive_clonea(input: TokenStream) -> TokenStream {
    | ------------------------------------------------------- similarly named derive macro `Clona` defined here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot find derive macro `Dlone` in this scope
   --> $DIR/resolve-error.rs:35:10
@@ -84,6 +88,8 @@ LL | #[derive(Dlone)]
   --> $SRC_DIR/core/src/clone.rs:LL:COL
    |
    = note: similarly named derive macro `Clone` defined here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot find attribute `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:32:3
@@ -123,6 +129,8 @@ LL | #[derive(FooWithLongNan)]
    |
 LL | pub fn derive_foo(input: TokenStream) -> TokenStream {
    | ---------------------------------------------------- similarly named derive macro `FooWithLongName` defined here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 14 previous errors
 

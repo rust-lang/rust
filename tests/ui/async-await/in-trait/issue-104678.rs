@@ -8,6 +8,7 @@ use std::future::Future;
 pub trait Pool {
     type Conn;
 
+    #[allow(async_fn_in_trait)]
     async fn async_callback<'a, F: FnOnce(&'a Self::Conn) -> Fut, Fut: Future<Output = ()>>(
         &'a self,
         callback: F,

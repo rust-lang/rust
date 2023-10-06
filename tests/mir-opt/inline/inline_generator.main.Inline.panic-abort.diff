@@ -40,6 +40,8 @@
 +         StorageDead(_3);
 +         StorageLive(_5);
 +         _5 = const false;
++         StorageLive(_6);
++         StorageLive(_7);
 +         _6 = (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb3, 1: bb7, 3: bb8, otherwise: bb9];
@@ -48,6 +50,8 @@
       bb1: {
 -         _3 = &mut _4;
 -         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new(move _3) -> [return: bb2, unwind unreachable];
++         StorageDead(_7);
++         StorageDead(_6);
 +         StorageDead(_5);
 +         StorageDead(_2);
 +         drop(_4) -> [return: bb2, unwind unreachable];

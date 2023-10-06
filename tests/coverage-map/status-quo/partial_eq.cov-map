@@ -1,27 +1,27 @@
 Function name: <partial_eq::Version as core::clone::Clone>::clone (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 04, 0a, 00, 0f]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 04, 0a, 00, 0f]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 4, 10) to (start + 0, 15)
+- Code(Zero) at (prev + 4, 10) to (start + 0, 15)
 
 Function name: <partial_eq::Version as core::cmp::Ord>::cmp (unused)
-Raw bytes (14): 0x[01, 01, 00, 02, 01, 04, 33, 00, 34, 00, 00, 35, 00, 36]
+Raw bytes (14): 0x[01, 01, 00, 02, 00, 04, 33, 00, 34, 00, 00, 35, 00, 36]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 2
-- Code(Counter(0)) at (prev + 4, 51) to (start + 0, 52)
+- Code(Zero) at (prev + 4, 51) to (start + 0, 52)
 - Code(Zero) at (prev + 0, 53) to (start + 0, 54)
 
 Function name: <partial_eq::Version as core::cmp::PartialEq>::eq (unused)
-Raw bytes (14): 0x[01, 01, 00, 02, 01, 04, 18, 00, 19, 00, 00, 20, 00, 21]
+Raw bytes (14): 0x[01, 01, 00, 02, 00, 04, 18, 00, 19, 00, 00, 20, 00, 21]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 2
-- Code(Counter(0)) at (prev + 4, 24) to (start + 0, 25)
+- Code(Zero) at (prev + 4, 24) to (start + 0, 25)
 - Code(Zero) at (prev + 0, 32) to (start + 0, 33)
 
 Function name: <partial_eq::Version as core::cmp::PartialOrd>::partial_cmp

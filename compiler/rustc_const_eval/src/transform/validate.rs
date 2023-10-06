@@ -7,7 +7,7 @@ use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt, Variance};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -15,6 +15,8 @@ use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
 use crate::util::is_within_packed;
+
+use crate::util::relate_types;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -602,7 +604,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        crate::util::is_subtype(self.tcx, self.param_env, src, dest)
+        // After borrowck subtyping should be fully explicit via
+        // `Subtype` projections.
+        let variance = if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+            Variance::Invariant
+        } else {
+            Variance::Covariant
+        };
+
+        crate::util::relate_types(self.tcx, self.param_env, variance, src, dest)
     }
 }
 
@@ -751,6 +761,23 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     _ => {
                         self.fail(location, format!("{:?} does not have fields", parent_ty.ty));
                     }
+                }
+            }
+            ProjectionElem::Subtype(ty) => {
+                if !relate_types(
+                    self.tcx,
+                    self.param_env,
+                    Variance::Covariant,
+                    ty,
+                    place_ref.ty(&self.body.local_decls, self.tcx).ty,
+                ) {
+                    self.fail(
+                        location,
+                        format!(
+                            "Failed subtyping {ty:#?} and {:#?}",
+                            place_ref.ty(&self.body.local_decls, self.tcx).ty
+                        ),
+                    )
                 }
             }
             _ => {}
@@ -1088,6 +1115,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // LHS and RHS of the assignment must have the same type.
                 let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
                 let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
+
                 if !self.mir_assign_valid_types(right_ty, left_ty) {
                     self.fail(
                         location,

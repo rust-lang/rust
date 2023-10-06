@@ -6,6 +6,7 @@ LL |         Err("")?;
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the trait `From<Infallible>` is implemented for `TryFromSliceError`
+   = help: for that trait implementation, expected `Infallible`, found `&str`
    = note: required for `Result<u32, TryFromSliceError>` to implement `FromResidual<Result<Infallible, &str>>`
 
 error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == &str`

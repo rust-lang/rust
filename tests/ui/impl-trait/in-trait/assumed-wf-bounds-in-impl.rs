@@ -9,6 +9,7 @@ trait AsyncLendingIterator {
     where
         Self: 'a;
 
+    #[allow(async_fn_in_trait)]
     async fn next(&mut self) -> Option<Self::Item<'_>>;
 }
 

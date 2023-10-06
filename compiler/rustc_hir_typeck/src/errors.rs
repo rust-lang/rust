@@ -110,7 +110,7 @@ pub struct AddressOfTemporaryTaken {
 pub enum AddReturnTypeSuggestion {
     #[suggestion(
         hir_typeck_add_return_type_add,
-        code = "-> {found} ",
+        code = " -> {found}",
         applicability = "machine-applicable"
     )]
     Add {
@@ -120,7 +120,7 @@ pub enum AddReturnTypeSuggestion {
     },
     #[suggestion(
         hir_typeck_add_return_type_missing_here,
-        code = "-> _ ",
+        code = " -> _",
         applicability = "has-placeholders"
     )]
     MissingHere {

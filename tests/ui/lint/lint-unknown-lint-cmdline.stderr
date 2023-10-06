@@ -11,20 +11,24 @@ warning[E0602]: unknown lint: `dead_cod`
 warning[E0602]: unknown lint: `bogus`
    |
    = note: requested on the command line with `-D bogus`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning[E0602]: unknown lint: `dead_cod`
    |
    = help: did you mean: `dead_code`
    = note: requested on the command line with `-D dead_cod`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning[E0602]: unknown lint: `bogus`
    |
    = note: requested on the command line with `-D bogus`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning[E0602]: unknown lint: `dead_cod`
    |
    = help: did you mean: `dead_code`
    = note: requested on the command line with `-D dead_cod`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 6 warnings emitted
 

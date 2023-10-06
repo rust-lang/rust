@@ -18,20 +18,20 @@ use crate::ty::{self, InferConst, Ty, TyCtxt};
 /// Like subtyping, matching is really a binary relation, so the only
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
-pub struct Match<'tcx> {
+pub struct MatchAgainstFreshVars<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'tcx> Match<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Match<'tcx> {
-        Match { tcx, param_env }
+impl<'tcx> MatchAgainstFreshVars<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> MatchAgainstFreshVars<'tcx> {
+        MatchAgainstFreshVars { tcx, param_env }
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
+impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
     fn tag(&self) -> &'static str {
-        "Match"
+        "MatchAgainstFreshVars"
     }
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx

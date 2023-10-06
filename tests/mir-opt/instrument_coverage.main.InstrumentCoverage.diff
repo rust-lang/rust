@@ -8,12 +8,12 @@
       let mut _3: !;
   
       bb0: {
-+         Coverage::Counter(0) for /the/src/instrument_coverage.rs:11:1 - 11:11;
++         Coverage::Counter(0) for [/the/src/instrument_coverage.rs:11:1 - 11:11];
           goto -> bb1;
       }
   
       bb1: {
-+         Coverage::Expression(0) = Counter(0) + Counter(1) for /the/src/instrument_coverage.rs:12:5 - 13:17;
++         Coverage::Expression(0) = Counter(0) + Counter(1) for [/the/src/instrument_coverage.rs:12:5 - 13:17];
           falseUnwind -> [real: bb2, unwind: bb6];
       }
   
@@ -27,15 +27,14 @@
       }
   
       bb4: {
-+         Coverage::Expression(2) = Expression(1) + Zero for /the/src/instrument_coverage.rs:17:1 - 17:2;
-+         Coverage::Expression(1) = Expression(0) - Counter(1) for /the/src/instrument_coverage.rs:14:13 - 14:18;
++         Coverage::Expression(1) = Expression(0) - Counter(1) for [/the/src/instrument_coverage.rs:14:13 - 14:18, /the/src/instrument_coverage.rs:17:1 - 17:2];
           _0 = const ();
           StorageDead(_2);
           return;
       }
   
       bb5: {
-+         Coverage::Counter(1) for /the/src/instrument_coverage.rs:15:10 - 15:11;
++         Coverage::Counter(1) for [/the/src/instrument_coverage.rs:15:10 - 15:11];
           _1 = const ();
           StorageDead(_2);
           goto -> bb1;

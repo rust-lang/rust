@@ -528,7 +528,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 arg.make_indirect();
             } else {
                 // We want to pass small aggregates as immediates, but using
-                // a LLVM aggregate type for this leads to bad optimizations,
+                // an LLVM aggregate type for this leads to bad optimizations,
                 // so we pick an appropriately sized integer type instead.
                 arg.cast_to(Reg { kind: RegKind::Integer, size });
             }

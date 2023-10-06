@@ -27,6 +27,7 @@ LL | #[cfg(FALSE)] fn e() { let _ = foo(#![attr]); }
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
    = note: outer attributes, like `#[test]`, annotate the item following them
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: expected expression, found `)`
   --> $DIR/attr-stmt-expr-attr-bad.rs:7:44

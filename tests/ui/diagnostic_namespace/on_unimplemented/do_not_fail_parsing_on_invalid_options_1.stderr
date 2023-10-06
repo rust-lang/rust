@@ -35,6 +35,8 @@ warning: malformed `on_unimplemented` attribute
    |
 LL | #[diagnostic::on_unimplemented(unsupported = "foo")]
    |                                ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:31:14
@@ -60,6 +62,8 @@ warning: malformed `on_unimplemented` attribute
    |
 LL | #[diagnostic::on_unimplemented(message = "Boom", unsupported = "Bar")]
    |                                                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Boom
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:33:14
@@ -85,6 +89,8 @@ warning: malformed `on_unimplemented` attribute
    |
 LL | #[diagnostic::on_unimplemented(message = "Boom", on(_Self = "i32", message = "whatever"))]
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: Boom
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:35:15

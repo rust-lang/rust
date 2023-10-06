@@ -9,6 +9,7 @@
 // [basic] compile-flags: -Z stack-protector=basic
 // [none] compile-flags: -Z stack-protector=none
 // compile-flags: -C opt-level=2 -Z merge-functions=disabled
+// min-llvm-version: 17.0.2
 
 #![crate_type = "lib"]
 
@@ -371,7 +372,7 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
 
 
     // all: __stack_chk_fail
-    // strong: __stack_chk_fail
+    // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail

@@ -68,6 +68,7 @@ use crate::slice::{self, SliceIndex};
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
+#[rustc_diagnostic_item = "NonNull"]
 pub struct NonNull<T: ?Sized> {
     pointer: *const T,
 }

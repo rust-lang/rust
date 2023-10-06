@@ -373,6 +373,8 @@ LL | trait TRS1: Iterator<Item: Copy, Item: Send> {}
    |                      ----------  ^^^^^^^^^^ re-bound here
    |                      |
    |                      `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
   --> $DIR/duplicate.rs:197:34
@@ -389,6 +391,8 @@ LL | trait TRS2: Iterator<Item: Copy, Item: Copy> {}
    |                      ----------  ^^^^^^^^^^ re-bound here
    |                      |
    |                      `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
   --> $DIR/duplicate.rs:200:37
@@ -405,6 +409,8 @@ LL | trait TRS3: Iterator<Item: 'static, Item: 'static> {}
    |                      -------------  ^^^^^^^^^^^^^ re-bound here
    |                      |
    |                      `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
   --> $DIR/duplicate.rs:205:29
@@ -445,6 +451,8 @@ LL |     Self: Iterator<Item: Copy, Item: Send>,
    |                    ----------  ^^^^^^^^^^ re-bound here
    |                    |
    |                    `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
   --> $DIR/duplicate.rs:230:32
@@ -461,6 +469,8 @@ LL |     Self: Iterator<Item: Copy, Item: Copy>,
    |                    ----------  ^^^^^^^^^^ re-bound here
    |                    |
    |                    `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
   --> $DIR/duplicate.rs:237:35
@@ -477,6 +487,8 @@ LL |     Self: Iterator<Item: 'static, Item: 'static>,
    |                    -------------  ^^^^^^^^^^^^^ re-bound here
    |                    |
    |                    `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
   --> $DIR/duplicate.rs:255:40

@@ -38,6 +38,7 @@ LL | #[derive(NonExistent)]
    |          ^^^^^^^^^^^
    |
    = note: import resolution is stuck, try simplifying macro imports
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot determine resolution for the derive macro `NonExistent`
   --> $DIR/issue-55457.rs:5:10
@@ -46,6 +47,7 @@ LL | #[derive(NonExistent)]
    |          ^^^^^^^^^^^
    |
    = note: import resolution is stuck, try simplifying macro imports
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 6 previous errors
 

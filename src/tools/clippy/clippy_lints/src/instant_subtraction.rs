@@ -130,11 +130,7 @@ fn is_instant_now_call(cx: &LateContext<'_>, expr_block: &'_ Expr<'_>) -> bool {
 
 fn is_an_instant(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let expr_ty = cx.typeck_results().expr_ty(expr);
-
-    match expr_ty.kind() {
-        rustc_middle::ty::Adt(def, _) => clippy_utils::match_def_path(cx, def.did(), &clippy_utils::paths::INSTANT),
-        _ => false,
-    }
+    ty::is_type_diagnostic_item(cx, expr_ty, sym::Instant)
 }
 
 fn is_a_duration(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {

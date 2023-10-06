@@ -130,9 +130,6 @@ resolve_generic_params_from_outer_item_ty_param = type parameter from outer item
 resolve_glob_import_doesnt_reexport =
     glob import doesn't reexport anything because no candidate is public enough
 
-resolve_help_try_using_local_generic_param =
-    try using a local generic parameter instead
-
 resolve_ident_bound_more_than_once_in_parameter_list =
     identifier `{$identifier}` is bound more than once in this parameter list
     .label = used as parameter more than once
@@ -249,9 +246,6 @@ resolve_self_in_generic_param_default =
     generic parameters cannot use `Self` in their defaults
     .label = `Self` in generic parameter default
 
-resolve_self_type_implicitly_declared_by_impl =
-    `Self` type implicitly declared here, by this `impl`
-
 resolve_tool_module_imported =
     cannot use a tool module through an import
     .note = the tool module imported here
@@ -266,12 +260,6 @@ resolve_trait_impl_mismatch =
     item `{$name}` is an associated {$kind}, which doesn't match its trait `{$trait_path}`
     .label = does not match trait
     .label_trait_item = item in trait
-
-resolve_try_adding_local_generic_param_on_method =
-    try adding a local generic parameter in this method instead
-
-resolve_try_using_local_generic_parameter =
-    try using a local generic parameter instead
 
 resolve_try_using_similarly_named_label =
     try using similarly named label

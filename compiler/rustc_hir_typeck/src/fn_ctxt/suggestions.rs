@@ -782,8 +782,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::FnRetTy::Return(hir_ty) => {
-                let span = hir_ty.span;
-
                 if let hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
                     && let hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::OpaqueTy(op_ty),
@@ -799,28 +797,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     debug!(?found);
                     if found.is_suggestable(self.tcx, false) {
                         if term.span.is_empty() {
-                            err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                            err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span: term.span, found: found.to_string() });
                             return true;
                         } else {
-                            err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span, expected });
+                            err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span: term.span, expected });
                         }
                     }
-                }
-
-                // Only point to return type if the expected type is the return type, as if they
-                // are not, the expectation must have been caused by something else.
-                debug!("return type {:?}", hir_ty);
-                let ty = self.astconv().ast_ty_to_ty(hir_ty);
-                debug!("return type {:?}", ty);
-                debug!("expected type {:?}", expected);
-                let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
-                let ty = Binder::bind_with_vars(ty, bound_vars);
-                let ty = self.normalize(span, ty);
-                let ty = self.tcx.erase_late_bound_regions(ty);
-                if self.can_coerce(expected, ty) {
-                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span, expected });
-                    self.try_suggest_return_impl_trait(err, expected, ty, fn_id);
-                    return true;
+                } else {
+                    // Only point to return type if the expected type is the return type, as if they
+                    // are not, the expectation must have been caused by something else.
+                    debug!("return type {:?}", hir_ty);
+                    let ty = self.astconv().ast_ty_to_ty(hir_ty);
+                    debug!("return type {:?}", ty);
+                    debug!("expected type {:?}", expected);
+                    let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
+                    let ty = Binder::bind_with_vars(ty, bound_vars);
+                    let ty = self.normalize(hir_ty.span, ty);
+                    let ty = self.tcx.erase_late_bound_regions(ty);
+                    if self.can_coerce(expected, ty) {
+                        err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span: hir_ty.span, expected });
+                        self.try_suggest_return_impl_trait(err, expected, ty, fn_id);
+                        return true;
+                    }
                 }
             }
             _ => {}
@@ -1686,5 +1684,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             false
         }
+    }
+
+    pub(crate) fn is_field_suggestable(
+        &self,
+        field: &ty::FieldDef,
+        hir_id: HirId,
+        span: Span,
+    ) -> bool {
+        // The field must be visible in the containing module.
+        field.vis.is_accessible_from(self.tcx.parent_module(hir_id), self.tcx)
+            // The field must not be unstable.
+            && !matches!(
+                self.tcx.eval_stability(field.did, None, rustc_span::DUMMY_SP, None),
+                rustc_middle::middle::stability::EvalResult::Deny { .. }
+            )
+            // If the field is from an external crate it must not be `doc(hidden)`.
+            && (field.did.is_local() || !self.tcx.is_doc_hidden(field.did))
+            // If the field is hygienic it must come from the same syntax context.
+            && self.tcx.def_ident_span(field.did).unwrap().normalize_to_macros_2_0().eq_ctxt(span)
     }
 }

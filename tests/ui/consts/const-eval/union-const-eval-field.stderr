@@ -1,20 +1,22 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/union-const-eval-field.rs:28:37
+  --> $DIR/union-const-eval-field.rs:26:37
    |
 LL |     const FIELD3: Field3 = unsafe { UNION.field3 };
    |                                     ^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 note: erroneous constant encountered
-  --> $DIR/union-const-eval-field.rs:31:5
+  --> $DIR/union-const-eval-field.rs:29:5
    |
 LL |     FIELD3
    |     ^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/union-const-eval-field.rs:31:5
+  --> $DIR/union-const-eval-field.rs:29:5
    |
 LL |     FIELD3
    |     ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to previous error
 

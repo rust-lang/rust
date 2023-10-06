@@ -146,6 +146,7 @@ pub trait FromIterator<A>: Sized {
     /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "from_iter_fn"]
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 

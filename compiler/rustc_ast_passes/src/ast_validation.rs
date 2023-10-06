@@ -52,7 +52,8 @@ struct AstValidator<'a> {
     /// Are we inside a trait impl?
     in_trait_impl: bool,
 
-    in_const_trait_impl: bool,
+    /// Are we inside a const trait defn or impl?
+    in_const_trait_or_impl: bool,
 
     has_proc_macro_decls: bool,
 
@@ -78,11 +79,19 @@ impl<'a> AstValidator<'a> {
         f: impl FnOnce(&mut Self),
     ) {
         let old = mem::replace(&mut self.in_trait_impl, is_in);
-        let old_const =
-            mem::replace(&mut self.in_const_trait_impl, matches!(constness, Some(Const::Yes(_))));
+        let old_const = mem::replace(
+            &mut self.in_const_trait_or_impl,
+            matches!(constness, Some(Const::Yes(_))),
+        );
         f(self);
         self.in_trait_impl = old;
-        self.in_const_trait_impl = old_const;
+        self.in_const_trait_or_impl = old_const;
+    }
+
+    fn with_in_trait(&mut self, is_const: bool, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.in_const_trait_or_impl, is_const);
+        f(self);
+        self.in_const_trait_or_impl = old;
     }
 
     fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
@@ -933,23 +942,26 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
             ItemKind::Trait(box Trait { is_auto, generics, bounds, items, .. }) => {
-                if *is_auto == IsAuto::Yes {
-                    // Auto traits cannot have generics, super traits nor contain items.
-                    self.deny_generic_params(generics, item.ident.span);
-                    self.deny_super_traits(bounds, item.ident.span);
-                    self.deny_where_clause(&generics.where_clause, item.ident.span);
-                    self.deny_items(items, item.ident.span);
-                }
+                let is_const_trait = attr::contains_name(&item.attrs, sym::const_trait);
+                self.with_in_trait(is_const_trait, |this| {
+                    if *is_auto == IsAuto::Yes {
+                        // Auto traits cannot have generics, super traits nor contain items.
+                        this.deny_generic_params(generics, item.ident.span);
+                        this.deny_super_traits(bounds, item.ident.span);
+                        this.deny_where_clause(&generics.where_clause, item.ident.span);
+                        this.deny_items(items, item.ident.span);
+                    }
 
-                // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
-                // context for the supertraits.
-                self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
-                self.visit_generics(generics);
-                self.with_tilde_const_allowed(|this| {
-                    walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                    // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
+                    // context for the supertraits.
+                    this.visit_vis(&item.vis);
+                    this.visit_ident(item.ident);
+                    this.visit_generics(generics);
+                    this.with_tilde_const_allowed(|this| {
+                        walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                    });
+                    walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
-                walk_list!(self, visit_assoc_item, items, AssocCtxt::Trait);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again
             }
@@ -1278,7 +1290,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         let tilde_const_allowed =
             matches!(fk.header(), Some(FnHeader { constness: ast::Const::Yes(_), .. }))
-                || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
+                || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)) if self.in_const_trait_or_impl);
 
         let disallowed = (!tilde_const_allowed).then(|| DisallowTildeConstContext::Fn(fk));
 
@@ -1363,7 +1375,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_ty, ty);
             }
             AssocItemKind::Fn(box Fn { sig, generics, body, .. })
-                if self.in_const_trait_impl
+                if self.in_const_trait_or_impl
                     || ctxt == AssocCtxt::Trait
                     || matches!(sig.header.constness, Const::Yes(_)) =>
             {
@@ -1510,7 +1522,7 @@ pub fn check_crate(
         features,
         extern_mod: None,
         in_trait_impl: false,
-        in_const_trait_impl: false,
+        in_const_trait_or_impl: false,
         has_proc_macro_decls: false,
         outer_impl_trait: None,
         disallow_tilde_const: None,

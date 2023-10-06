@@ -321,7 +321,7 @@ impl<'tcx> TransformVisitor<'tcx> {
 
     // Create a statement which reads the discriminant into a temporary
     fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
-        let temp_decl = LocalDecl::new(self.discr_ty, body.span).internal();
+        let temp_decl = LocalDecl::new(self.discr_ty, body.span);
         let local_decls_len = body.local_decls.push(temp_decl);
         let temp = Place::from(local_decls_len);
 

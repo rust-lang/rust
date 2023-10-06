@@ -39,36 +39,48 @@ error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
    |
 LL | #[repr(align(16.0))]
    |        ^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0589]: invalid `repr(align)` attribute: not a power of two
   --> $DIR/repr-align.rs:7:8
    |
 LL | #[repr(align(15))]
    |        ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0589]: invalid `repr(align)` attribute: larger than 2^29
   --> $DIR/repr-align.rs:11:8
    |
 LL | #[repr(align(4294967296))]
    |        ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
   --> $DIR/repr-align.rs:18:8
    |
 LL | #[repr(align(16.0))]
    |        ^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0589]: invalid `repr(align)` attribute: not a power of two
   --> $DIR/repr-align.rs:22:8
    |
 LL | #[repr(align(15))]
    |        ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0589]: invalid `repr(align)` attribute: larger than 2^29
   --> $DIR/repr-align.rs:26:8
    |
 LL | #[repr(align(4294967296))]
    |        ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 12 previous errors
 

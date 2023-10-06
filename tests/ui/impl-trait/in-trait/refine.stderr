@@ -30,8 +30,8 @@ LL |     fn bar() {}
    = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
 help: replace the return type so that it matches the trait
    |
-LL |     fn bar() -> impl Sized {}
-   |              +++++++++++++
+LL |     fn bar()-> impl Sized  {}
+   |             +++++++++++++
 
 error: impl trait in impl method signature does not match trait method signature
   --> $DIR/refine.rs:22:17

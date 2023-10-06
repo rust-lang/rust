@@ -66,7 +66,6 @@ infer_await_both_futures = consider `await`ing on both `Future`s
 infer_await_future = consider `await`ing on the `Future`
 infer_await_note = calling an async function returns a future
 
-infer_borrowed_too_long = a value of type `{$ty}` is borrowed for too long
 infer_but_calling_introduces = {$has_param_name ->
     [true] `{$param_name}`
     *[false] `fn` parameter
@@ -181,8 +180,6 @@ infer_more_targeted = {$has_param_name ->
 } but calling `{$ident}` introduces an implicit `'static` lifetime requirement
 
 infer_msl_introduces_static = introduces a `'static` lifetime requirement
-infer_msl_trait_note = this has an implicit `'static` lifetime requirement
-infer_msl_trait_sugg = consider relaxing the implicit `'static` requirement
 infer_msl_unmet_req = because this has an unmet lifetime requirement
 infer_need_type_info_in_generator =
     type inside {$generator_kind ->
@@ -233,7 +230,6 @@ infer_prlf_known_limitation = this is a known limitation that will be removed in
 infer_prlf_must_outlive_with_sup = ...must outlive the lifetime `{$sup_symbol}` defined here
 infer_prlf_must_outlive_without_sup = ...must outlive the lifetime defined here
 infer_reborrow = ...so that reference does not outlive borrowed content
-infer_reborrow_upvar = ...so that closure can access `{$name}`
 infer_ref_longer_than_data = in type `{$ty}`, reference has a longer lifetime than the data it references
 
 infer_reference_outlives_referent = ...so that the reference type `{$name}` does not outlive the data it points at

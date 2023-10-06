@@ -249,6 +249,7 @@ fn place_components_conflict<'tcx>(
                 | (ProjectionElem::ConstantIndex { .. }, _, _)
                 | (ProjectionElem::Subslice { .. }, _, _)
                 | (ProjectionElem::OpaqueCast { .. }, _, _)
+                | (ProjectionElem::Subtype(_), _, _)
                 | (ProjectionElem::Downcast { .. }, _, _) => {
                     // Recursive case. This can still be disjoint on a
                     // further iteration if this a shallow access and
@@ -508,6 +509,7 @@ fn place_projection_conflict<'tcx>(
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subtype(_)
             | ProjectionElem::OpaqueCast { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(..),

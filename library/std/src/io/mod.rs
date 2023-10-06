@@ -1830,6 +1830,7 @@ pub trait Write {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "IoSeek")]
 pub trait Seek {
     /// Seek to an offset, in bytes, in a stream.
     ///
@@ -2893,6 +2894,7 @@ impl<B: BufRead> Iterator for Split<B> {
 /// [`lines`]: BufRead::lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "IoLines")]
 pub struct Lines<B> {
     buf: B,
 }

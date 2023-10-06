@@ -302,6 +302,7 @@ LL | |     /// level changes.
    = help: if you meant to use a literal backtick, escape it
             change: or `None` if it isn't.
            to this: or `None\` if it isn't.
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unescaped backtick
   --> $DIR/unescaped_backticks.rs:323:5
@@ -321,6 +322,7 @@ LL | |     /// level changes.
    = help: if you meant to use a literal backtick, escape it
             change: `on_event` should be called.
            to this: `on_event\` should be called.
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unescaped backtick
   --> $DIR/unescaped_backticks.rs:323:5
@@ -340,6 +342,7 @@ LL | |     /// level changes.
    = help: if you meant to use a literal backtick, escape it
             change: [`rebuild_interest_cache`][rebuild] is called after the value of the max
            to this: [`rebuild_interest_cache\`][rebuild] is called after the value of the max
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unescaped backtick
   --> $DIR/unescaped_backticks.rs:349:56

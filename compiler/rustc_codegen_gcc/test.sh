@@ -214,7 +214,7 @@ function setup_rustc() {
     rm config.toml || true
 
     cat > config.toml <<EOF
-changelog-seen = 2
+change-id = 115898
 
 [rust]
 codegen-backends = []

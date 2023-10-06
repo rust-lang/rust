@@ -514,7 +514,7 @@ pub enum FakeReadCause {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct Coverage {
     pub kind: CoverageKind,
-    pub code_region: Option<CodeRegion>,
+    pub code_regions: Vec<CodeRegion>,
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -996,7 +996,7 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///
 /// [UCG#319]: https://github.com/rust-lang/unsafe-code-guidelines/issues/319
 ///
-/// Rust currently requires that every place obey those two rules. This is checked by MIRI and taken
+/// Rust currently requires that every place obey those two rules. This is checked by Miri and taken
 /// advantage of by codegen (via `gep inbounds`). That is possibly subject to change.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Place<'tcx> {
@@ -1075,6 +1075,18 @@ pub enum ProjectionElem<V, T> {
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.
     OpaqueCast(T),
+
+    /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
+    /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
+    /// explicit during optimizations and codegen.
+    ///
+    /// This projection doesn't impact the runtime behavior of the program except for potentially changing
+    /// some type metadata of the interpreter or codegen backend.
+    ///
+    /// This goal is achieved with mir_transform pass `Subtyper`, which runs right after
+    /// borrowchecker, as we only care about subtyping that can affect trait selection and
+    /// `TypeId`.
+    Subtype(T),
 }
 
 /// Alias for projections as they appear in places, where the base is a place

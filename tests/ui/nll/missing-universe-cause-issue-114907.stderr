@@ -38,6 +38,7 @@ LL |     accept(callback);
    |
    = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0308]: mismatched types
   --> $DIR/missing-universe-cause-issue-114907.rs:33:5
@@ -73,6 +74,8 @@ error: higher-ranked subtype error
    |
 LL |     accept(callback);
    |                     ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 6 previous errors
 

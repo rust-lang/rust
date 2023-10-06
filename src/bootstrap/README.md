@@ -181,11 +181,10 @@ Some general areas that you may be interested in modifying are:
   `Config` struct.
 * Adding a sanity check? Take a look at `bootstrap/sanity.rs`.
 
-If you make a major change, please remember to:
+If you make a major change on bootstrap configuration, please remember to:
 
-+ Update `VERSION` in `src/bootstrap/main.rs`.
-* Update `changelog-seen = N` in `config.example.toml`.
-* Add an entry in `src/bootstrap/CHANGELOG.md`.
++ Update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/lib.rs`.
+* Update `change-id = {pull-request-id}` in `config.example.toml`.
 
 A 'major change' includes
 
@@ -193,7 +192,7 @@ A 'major change' includes
 * A change in the default options.
 
 Changes that do not affect contributors to the compiler or users
-building rustc from source don't need an update to `VERSION`.
+building rustc from source don't need an update to `CONFIG_CHANGE_HISTORY`.
 
 If you have any questions, feel free to reach out on the `#t-infra/bootstrap` channel
 at [Rust Bootstrap Zulip server][rust-bootstrap-zulip]. When you encounter bugs,
@@ -201,3 +200,8 @@ please file issues on the [Rust issue tracker][rust-issue-tracker].
 
 [rust-bootstrap-zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-infra.2Fbootstrap
 [rust-issue-tracker]: https://github.com/rust-lang/rust/issues
+
+## Changelog
+
+Because we do not release bootstrap with versions, we also do not maintain CHANGELOG files. To
+review the changes made to bootstrap, simply run `git log --no-merges --oneline -- src/bootstrap`.

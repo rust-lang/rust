@@ -5,6 +5,7 @@ LL |     <E as From<_>>::from(never);
    |      ^ the trait `From<()>` is not implemented for `E`
    |
    = help: the trait `From<!>` is implemented for `E`
+   = help: for that trait implementation, expected `!`, found `()`
 
 error: aborting due to previous error
 

@@ -164,6 +164,7 @@ note: union defined here, with 2 lifetime parameters: `'t`, `'k`
    |
 LL | pub union Qux<'t, 'k, I> {
    |           ^^^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
@@ -182,6 +183,7 @@ note: union defined here, with 2 lifetime parameters: `'t`, `'k`
    |
 LL | pub union Qux<'t, 'k, I> {
    |           ^^^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
@@ -200,6 +202,7 @@ note: union defined here, with 2 lifetime parameters: `'t`, `'k`
    |
 LL | pub union Qux<'t, 'k, I> {
    |           ^^^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
@@ -218,6 +221,7 @@ note: union defined here, with 2 lifetime parameters: `'t`, `'k`
    |
 LL | pub union Qux<'t, 'k, I> {
    |           ^^^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
@@ -254,6 +258,7 @@ note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
    |
 LL | trait Tar<'t, 'k, I> {}
    |       ^^^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
@@ -272,6 +277,7 @@ note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
    |
 LL | trait Tar<'t, 'k, I> {}
    |       ^^^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
@@ -290,6 +296,7 @@ note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
    |
 LL | trait Tar<'t, 'k, I> {}
    |       ^^^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
@@ -308,6 +315,7 @@ note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
    |
 LL | trait Tar<'t, 'k, I> {}
    |       ^^^ --  --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing lifetime argument
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());

@@ -570,6 +570,11 @@ message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x
 message = "Third-party dependency whitelist may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
 
+[mentions."src/bootstrap/config.rs"]
+message = "This PR changes `src/bootstrap/config.rs`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/lib.rs` and `change-id` in `config.example.toml`."
+[mentions."config.example.toml"]
+message = "This PR changes `config.example.toml`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/lib.rs` and `change-id` in `config.example.toml`."
+
 [mentions."src/bootstrap/defaults/config.compiler.toml"]
 message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
 [mentions."src/bootstrap/defaults/config.codegen.toml"]
@@ -589,7 +594,7 @@ cc = ["@nnethercote"]
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
-users_on_vacation = ["jyn514", "jackh726"]
+users_on_vacation = ["jyn514", "jackh726", "WaffleLapkin"]
 
 [assign.adhoc_groups]
 compiler-team = [

@@ -1422,6 +1422,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(Err("foo").unwrap_or_else(count), 3);
     /// ```
     #[inline]
+    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap_or_else<F: FnOnce(E) -> T>(self, op: F) -> T {
         match self {

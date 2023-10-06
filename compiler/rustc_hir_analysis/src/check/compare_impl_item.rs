@@ -16,6 +16,7 @@ use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::util::ExplicitSelf;
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{
     self, GenericArgs, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
@@ -1188,7 +1189,7 @@ fn report_trait_method_mismatch<'tcx>(
                     let ap = Applicability::MachineApplicable;
                     match sig.decl.output {
                         hir::FnRetTy::DefaultReturn(sp) => {
-                            let sugg = format!("-> {} ", trait_sig.output());
+                            let sugg = format!(" -> {}", trait_sig.output());
                             diag.span_suggestion_verbose(sp, msg, sugg, ap);
                         }
                         hir::FnRetTy::Return(hir_ty) => {
@@ -2279,16 +2280,16 @@ pub(super) fn check_type_bounds<'tcx>(
                 //
                 // impl<T> X for T where T: X { type Y = <T as X>::Y; }
             }
-            _ => predicates.push(ty::Clause::from_projection_clause(
-                tcx,
+            _ => predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_ty: tcx.mk_alias_ty(trait_ty.def_id, rebased_args),
                         term: normalize_impl_ty.into(),
                     },
                     bound_vars,
-                ),
-            )),
+                )
+                .to_predicate(tcx),
+            ),
         };
         ty::ParamEnv::new(tcx.mk_clauses(&predicates), Reveal::UserFacing)
     };

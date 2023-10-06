@@ -98,7 +98,7 @@ Example content:
 
 ```toml
 profile = "compiler"
-changelog-seen = 2
+change-id = 115898
 ```
 
 2. Compile the Rust toolchain for an `x86_64-unknown-linux-gnu` host (for both `aarch64` and `x86_64` targets)

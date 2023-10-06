@@ -3,14 +3,17 @@
 //! This module contains various tools for comparing and ordering values. In
 //! summary:
 //!
-//! * [`Eq`] and [`PartialEq`] are traits that allow you to define total and
-//!   partial equality between values, respectively. Implementing them overloads
-//!   the `==` and `!=` operators.
+//! * [`PartialEq<Rhs>`] overloads the `==` and `!=` operators. In cases where
+//!   `Rhs` (the right hand side's type) is `Self`, this trait corresponds to a
+//!   partial equivalence relation.
+//! * [`Eq`] indicates that the overloaded `==` operator corresponds to an
+//!   equivalence relation.
 //! * [`Ord`] and [`PartialOrd`] are traits that allow you to define total and
 //!   partial orderings between values, respectively. Implementing them overloads
 //!   the `<`, `<=`, `>`, and `>=` operators.
 //! * [`Ordering`] is an enum returned by the main functions of [`Ord`] and
-//!   [`PartialOrd`], and describes an ordering.
+//!   [`PartialOrd`], and describes an ordering of two values (less, equal, or
+//!   greater).
 //! * [`Reverse`] is a struct that allows you to easily reverse an ordering.
 //! * [`max`] and [`min`] are functions that build off of [`Ord`] and allow you
 //!   to find the maximum or minimum of two values.
@@ -27,16 +30,21 @@ pub(crate) use bytewise::BytewiseEq;
 
 use self::Ordering::*;
 
-/// Trait for equality comparisons.
+/// Trait for comparisons using the equality operator.
+///
+/// Implementing this trait for types provides the `==` and `!=` operators for
+/// those types.
 ///
 /// `x.eq(y)` can also be written `x == y`, and `x.ne(y)` can be written `x != y`.
 /// We use the easier-to-read infix notation in the remainder of this documentation.
 ///
-/// This trait allows for partial equality, for types that do not have a full
-/// equivalence relation. For example, in floating point numbers `NaN != NaN`,
-/// so floating point types implement `PartialEq` but not [`trait@Eq`].
-/// Formally speaking, when `Rhs == Self`, this trait corresponds to a [partial equivalence
-/// relation](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
+/// This trait allows for comparisons using the equality operator, for types
+/// that do not have a full equivalence relation. For example, in floating point
+/// numbers `NaN != NaN`, so floating point types implement `PartialEq` but not
+/// [`trait@Eq`]. Formally speaking, when `Rhs == Self`, this trait corresponds
+/// to a [partial equivalence relation].
+///
+/// [partial equivalence relation]: https://en.wikipedia.org/wiki/Partial_equivalence_relation
 ///
 /// Implementations must ensure that `eq` and `ne` are consistent with each other:
 ///
@@ -242,15 +250,15 @@ pub macro PartialEq($item:item) {
     /* compiler built-in */
 }
 
-/// Trait for equality comparisons which are [equivalence relations](
+/// Trait for comparisons corresponding to [equivalence relations](
 /// https://en.wikipedia.org/wiki/Equivalence_relation).
 ///
-/// This means, that in addition to `a == b` and `a != b` being strict inverses, the equality must
-/// be (for all `a`, `b` and `c`):
+/// This means, that in addition to `a == b` and `a != b` being strict inverses,
+/// the relation must be (for all `a`, `b` and `c`):
 ///
 /// - reflexive: `a == a`;
-/// - symmetric: `a == b` implies `b == a`; and
-/// - transitive: `a == b` and `b == c` implies `a == c`.
+/// - symmetric: `a == b` implies `b == a` (required by `PartialEq` as well); and
+/// - transitive: `a == b` and `b == c` implies `a == c` (required by `PartialEq` as well).
 ///
 /// This property cannot be checked by the compiler, and therefore `Eq` implies
 /// [`PartialEq`], and has no extra methods.
@@ -259,6 +267,10 @@ pub macro PartialEq($item:item) {
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
 /// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
 /// methods.
+///
+/// Implement `Eq` in addition to `PartialEq` if it's guaranteed that
+/// `PartialEq::eq(a, a)` always returns `true` (reflexivity), in addition to
+/// the symmetric and transitive properties already required by `PartialEq`.
 ///
 /// ## Derivable
 ///
@@ -676,11 +688,18 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// ## Corollaries
 ///
-/// From the above and the requirements of `PartialOrd`, it follows that `<` defines a strict total order.
-/// This means that for all `a`, `b` and `c`:
+/// From the above and the requirements of `PartialOrd`, it follows that for
+/// all `a`, `b` and `c`:
 ///
 /// - exactly one of `a < b`, `a == b` or `a > b` is true; and
 /// - `<` is transitive: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+///
+/// Mathematically speaking, the `<` operator defines a strict [weak order]. In
+/// cases where `==` conforms to mathematical equality, it also defines a
+/// strict [total order].
+///
+/// [weak order]: https://en.wikipedia.org/wiki/Weak_ordering
+/// [total order]: https://en.wikipedia.org/wiki/Total_order
 ///
 /// ## Derivable
 ///
@@ -790,6 +809,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "ord_cmp_method"]
     fn cmp(&self, other: &Self) -> Ordering;
 
     /// Compares and returns the maximum of two values.
@@ -919,6 +939,20 @@ pub macro Ord($item:item) {
 /// - irreflexivity of `<` and `>`: `!(a < a)`, `!(a > a)`
 /// - transitivity of `>`: if `a > b` and `b > c` then `a > c`
 /// - duality of `partial_cmp`: `partial_cmp(a, b) == partial_cmp(b, a).map(Ordering::reverse)`
+///
+/// ## Strict and non-strict partial orders
+///
+/// The `<` and `>` operators behave according to a *strict* partial order.
+/// However, `<=` and `>=` do **not** behave according to a *non-strict*
+/// partial order.
+/// That is because mathematically, a non-strict partial order would require
+/// reflexivity, i.e. `a <= a` would need to be true for every `a`. This isn't
+/// always the case for types that implement `PartialOrd`, for example:
+///
+/// ```
+/// let a = f64::sqrt(-1.0);
+/// assert_eq!(a <= a, false);
+/// ```
 ///
 /// ## Derivable
 ///

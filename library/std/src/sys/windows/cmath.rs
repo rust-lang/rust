@@ -1,6 +1,6 @@
 #![cfg(not(test))]
 
-use libc::{c_double, c_float, c_int};
+use core::ffi::{c_double, c_float, c_int};
 
 extern "C" {
     pub fn acos(n: c_double) -> c_double;
@@ -33,7 +33,7 @@ pub use self::shims::*;
 
 #[cfg(not(all(target_env = "msvc", target_arch = "x86")))]
 mod shims {
-    use libc::c_float;
+    use core::ffi::c_float;
 
     extern "C" {
         pub fn acosf(n: c_float) -> c_float;
@@ -52,7 +52,7 @@ mod shims {
 // back to f32. While not precisely correct should be "correct enough" for now.
 #[cfg(all(target_env = "msvc", target_arch = "x86"))]
 mod shims {
-    use libc::c_float;
+    use core::ffi::c_float;
 
     #[inline]
     pub unsafe fn acosf(n: c_float) -> c_float {

@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
-  --> $DIR/suggest-ret-on-async-w-late.rs:7:5
+  --> $DIR/suggest-ret-on-async-w-late.rs:10:5
    |
 LL | async fn ice(_: &i32) {
-   |                       - help: try adding a return type: `-> bool`
+   |                      - help: try adding a return type: `-> bool`
 LL |     true
    |     ^^^^ expected `()`, found `bool`
 

@@ -5,7 +5,7 @@
       let mut _0: bool;
   
       bb0: {
-+         Coverage::Counter(0) for /the/src/instrument_coverage.rs:20:1 - 22:2;
++         Coverage::Counter(0) for [/the/src/instrument_coverage.rs:20:1 - 22:2];
           _0 = const true;
           return;
       }

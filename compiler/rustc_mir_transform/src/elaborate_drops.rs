@@ -271,7 +271,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let tcx = self.tcx;
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.body.span);
-        self.drop_flags[index].get_or_insert_with(|| patch.new_internal(tcx.types.bool, span));
+        self.drop_flags[index].get_or_insert_with(|| patch.new_temp(tcx.types.bool, span));
     }
 
     fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {

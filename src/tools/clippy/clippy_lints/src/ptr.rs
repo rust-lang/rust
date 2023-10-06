@@ -4,9 +4,8 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::expr_sig;
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, paths};
+use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local};
 use hir::LifetimeName;
-use if_chain::if_chain;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdMap;
@@ -271,60 +270,43 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 }
 
 fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    // (fn_path, arg_indices) - `arg_indices` are the `arg` positions where null would cause U.B.
-    const INVALID_NULL_PTR_USAGE_TABLE: [(&[&str], &[usize]); 13] = [
-        (&paths::SLICE_FROM_RAW_PARTS, &[0]),
-        (&paths::SLICE_FROM_RAW_PARTS_MUT, &[0]),
-        (&paths::PTR_COPY, &[0, 1]),
-        (&paths::PTR_COPY_NONOVERLAPPING, &[0, 1]),
-        (&paths::PTR_READ, &[0]),
-        (&paths::PTR_READ_UNALIGNED, &[0]),
-        (&paths::PTR_READ_VOLATILE, &[0]),
-        (&paths::PTR_REPLACE, &[0]),
-        (&paths::PTR_SLICE_FROM_RAW_PARTS, &[0]),
-        (&paths::PTR_SLICE_FROM_RAW_PARTS_MUT, &[0]),
-        (&paths::PTR_SWAP, &[0, 1]),
-        (&paths::PTR_SWAP_NONOVERLAPPING, &[0, 1]),
-        (&paths::PTR_WRITE_BYTES, &[0]),
-    ];
-    let invalid_null_ptr_usage_table_diag_items: [(Option<DefId>, &[usize]); 3] = [
-        (cx.tcx.get_diagnostic_item(sym::ptr_write), &[0]),
-        (cx.tcx.get_diagnostic_item(sym::ptr_write_unaligned), &[0]),
-        (cx.tcx.get_diagnostic_item(sym::ptr_write_volatile), &[0]),
-    ];
+    if let ExprKind::Call(fun, args) = expr.kind
+        && let ExprKind::Path(ref qpath) = fun.kind
+        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
+        && let Some(name) = cx.tcx.get_diagnostic_name(fun_def_id)
+    {
+        // `arg` positions where null would cause U.B.
+        let arg_indices: &[_] = match name {
+            sym::ptr_read
+            | sym::ptr_read_unaligned
+            | sym::ptr_read_volatile
+            | sym::ptr_replace
+            | sym::ptr_slice_from_raw_parts
+            | sym::ptr_slice_from_raw_parts_mut
+            | sym::ptr_write
+            | sym::ptr_write_bytes
+            | sym::ptr_write_unaligned
+            | sym::ptr_write_volatile
+            | sym::slice_from_raw_parts
+            | sym::slice_from_raw_parts_mut => &[0],
+            sym::ptr_copy
+            | sym::ptr_copy_nonoverlapping
+            | sym::ptr_swap
+            | sym::ptr_swap_nonoverlapping => &[0, 1],
+            _ => return,
+        };
 
-    if_chain! {
-        if let ExprKind::Call(fun, args) = expr.kind;
-        if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
-        let fun_def_path = cx.get_def_path(fun_def_id).into_iter().map(Symbol::to_ident_string).collect::<Vec<_>>();
-        if let Some(arg_indices) = INVALID_NULL_PTR_USAGE_TABLE
-            .iter()
-            .find_map(|&(fn_path, indices)| if fn_path == fun_def_path { Some(indices) } else { None })
-            .or_else(|| {
-                invalid_null_ptr_usage_table_diag_items
-                    .iter()
-                    .find_map(|&(def_id, indices)| {
-                        if def_id == Some(fun_def_id) {
-                            Some(indices)
-                        } else {
-                            None
-                        }
-                    })
-            });
-        then {
-            for &arg_idx in arg_indices {
-                if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg)) {
-                    span_lint_and_sugg(
-                        cx,
-                        INVALID_NULL_PTR_USAGE,
-                        arg.span,
-                        "pointer must be non-null",
-                        "change this to",
-                        "core::ptr::NonNull::dangling().as_ptr()".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                }
+        for &arg_idx in arg_indices {
+            if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg)) {
+                span_lint_and_sugg(
+                    cx,
+                    INVALID_NULL_PTR_USAGE,
+                    arg.span,
+                    "pointer must be non-null",
+                    "change this to",
+                    "core::ptr::NonNull::dangling().as_ptr()".to_string(),
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }

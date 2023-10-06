@@ -9,6 +9,8 @@ error[E0433]: failed to resolve: maybe a missing crate `Absolute`?
    |
 LL | #[derive(::Absolute)]
    |            ^^^^^^^^ maybe a missing crate `Absolute`?
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

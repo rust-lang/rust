@@ -23,8 +23,12 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     if !tcx.impl_method_has_trait_impl_trait_tys(impl_m.def_id) {
         return;
     }
-    // crate-private traits don't have any library guarantees, there's no need to do this check.
-    if !tcx.visibility(trait_m.container_id(tcx)).is_public() {
+    // unreachable traits don't have any library guarantees, there's no need to do this check.
+    if trait_m
+        .container_id(tcx)
+        .as_local()
+        .is_some_and(|trait_def_id| !tcx.effective_visibilities(()).is_reachable(trait_def_id))
+    {
         return;
     }
 

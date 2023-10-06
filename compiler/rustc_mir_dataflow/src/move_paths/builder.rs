@@ -227,10 +227,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     }
                     _ => bug!("Unexpected type {place_ty:#?}"),
                 },
-                // `OpaqueCast` only transmutes the type, so no moves there and
-                // `Downcast` only changes information about a `Place` without moving
+                // `OpaqueCast`:Only transmutes the type, so no moves there.
+                // `Downcast`  :Only changes information about a `Place` without moving.
+                // `Subtype`   :Only transmutes the type, so moves.
                 // So it's safe to skip these.
-                ProjectionElem::OpaqueCast(_) | ProjectionElem::Downcast(_, _) => (),
+                ProjectionElem::OpaqueCast(_)
+                | ProjectionElem::Subtype(_)
+                | ProjectionElem::Downcast(_, _) => (),
             }
             if union_path.is_none() {
                 // inlined from add_move_path because of a borrowck conflict with the iterator

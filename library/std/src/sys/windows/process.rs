@@ -19,8 +19,7 @@ use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
-use crate::sys::c;
-use crate::sys::c::NonZeroDWORD;
+use crate::sys::c::{self, NonZeroDWORD, EXIT_FAILURE, EXIT_SUCCESS};
 use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
@@ -30,7 +29,7 @@ use crate::sys::stdio;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
 
-use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
+use core::ffi::c_void;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command

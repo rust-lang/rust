@@ -639,18 +639,24 @@ warning: use of deprecated associated type `lint_stability::TraitWithAssociatedT
    |
 LL |         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
    |                                                ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`: text
   --> $DIR/lint-stability-deprecated.rs:102:13
    |
 LL |             TypeDeprecated = u16,
    |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`: text
   --> $DIR/lint-stability-deprecated.rs:102:13
    |
 LL |             TypeDeprecated = u16,
    |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 108 warnings emitted
 

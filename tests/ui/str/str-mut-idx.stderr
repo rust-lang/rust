@@ -31,7 +31,8 @@ LL |     s[1usize] = bot();
    |       ^^^^^^ string indices are ranges of `usize`
    |
    = help: the trait `SliceIndex<str>` is not implemented for `usize`
-   = help: the trait `SliceIndex<[T]>` is implemented for `usize`
+   = help: the trait `SliceIndex<[_]>` is implemented for `usize`
+   = help: for that trait implementation, expected `[_]`, found `str`
    = note: required for `str` to implement `Index<usize>`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
@@ -45,7 +46,8 @@ LL |     s.get_mut(1);
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
-   = help: the trait `SliceIndex<[T]>` is implemented for `usize`
+   = help: the trait `SliceIndex<[_]>` is implemented for `usize`
+   = help: for that trait implementation, expected `[_]`, found `str`
 note: required by a bound in `core::str::<impl str>::get_mut`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 
@@ -60,7 +62,8 @@ LL |     s.get_unchecked_mut(1);
    = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
-   = help: the trait `SliceIndex<[T]>` is implemented for `usize`
+   = help: the trait `SliceIndex<[_]>` is implemented for `usize`
+   = help: for that trait implementation, expected `[_]`, found `str`
 note: required by a bound in `core::str::<impl str>::get_unchecked_mut`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 

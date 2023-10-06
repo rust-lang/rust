@@ -102,7 +102,7 @@ fn override_toml() {
         &[
             "check".to_owned(),
             "--config=/does/not/exist".to_owned(),
-            "--set=changelog-seen=1".to_owned(),
+            "--set=change-id=1".to_owned(),
             "--set=rust.lto=fat".to_owned(),
             "--set=rust.deny-warnings=false".to_owned(),
             "--set=build.gdb=\"bar\"".to_owned(),
@@ -112,7 +112,7 @@ fn override_toml() {
         |&_| {
             toml::from_str(
                 r#"
-changelog-seen = 0
+change-id = 0
 [rust]
 lto = "off"
 deny-warnings = true
@@ -129,7 +129,7 @@ build-config = {}
             .unwrap()
         },
     );
-    assert_eq!(config.changelog_seen, Some(1), "setting top-level value");
+    assert_eq!(config.change_id, Some(1), "setting top-level value");
     assert_eq!(
         config.rust_lto,
         crate::config::RustcLto::Fat,
@@ -156,10 +156,10 @@ fn override_toml_duplicate() {
         &[
             "check".to_owned(),
             "--config=/does/not/exist".to_owned(),
-            "--set=changelog-seen=1".to_owned(),
-            "--set=changelog-seen=2".to_owned(),
+            "--set=change-id=1".to_owned(),
+            "--set=change-id=2".to_owned(),
         ],
-        |&_| toml::from_str("changelog-seen = 0").unwrap(),
+        |&_| toml::from_str("change-id = 0").unwrap(),
     );
 }
 
