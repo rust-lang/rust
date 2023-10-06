@@ -12,8 +12,8 @@ use shims::unix::linux::sync::futex;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
-pub fn is_dyn_sym(_name: &str) -> bool {
-    false
+pub fn is_dyn_sym(name: &str) -> bool {
+    matches!(name, "getrandom")
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}

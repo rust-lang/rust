@@ -20,6 +20,23 @@ use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
 use shims::unix::macos::foreign_items as macos;
 
+fn is_dyn_sym(name: &str, target_os: &str) -> bool {
+    match name {
+        // `signal` is set up as a weak symbol in `init_extern_statics` so we might as well allow it
+        // in `dlsym` as well.
+        "signal" => true,
+        // Give specific OSes a chance to allow their symbols.
+        _ =>
+            match target_os {
+                "android" => android::is_dyn_sym(name),
+                "freebsd" => freebsd::is_dyn_sym(name),
+                "linux" => linux::is_dyn_sym(name),
+                "macos" => macos::is_dyn_sym(name),
+                target_os => panic!("unsupported Unix OS {target_os}"),
+            },
+    }
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_foreign_item_inner(
@@ -237,14 +254,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.read_target_usize(handle)?;
                 let symbol = this.read_pointer(symbol)?;
                 let name = this.read_c_str(symbol)?;
-                let is_dyn_sym = |name| match &*this.tcx.sess.target.os {
-                    "android" => android::is_dyn_sym(name),
-                    "freebsd" => freebsd::is_dyn_sym(name),
-                    "linux" => linux::is_dyn_sym(name),
-                    "macos" => macos::is_dyn_sym(name),
-                    target_os => panic!("unsupported Unix OS {target_os}"),
-                };
-                if let Ok(name) = str::from_utf8(name) && is_dyn_sym(name) {
+                if let Ok(name) = str::from_utf8(name) && is_dyn_sym(name, &this.tcx.sess.target.os) {
                     let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
                     this.write_pointer(ptr, dest)?;
                 } else {
