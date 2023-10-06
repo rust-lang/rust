@@ -220,7 +220,7 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 
     // Collect lang items in this crate.
     let crate_items = tcx.hir_crate_items(());
-    let krate = &tcx.resolver_for_lowering().borrow().1;
+    let krate = &tcx.resolver_for_lowering(()).borrow().1;
     collector.visit_crate(&krate);
 
     for id in crate_items.items() {
