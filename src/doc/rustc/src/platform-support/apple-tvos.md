@@ -52,7 +52,7 @@ The targets can be built by enabling them for a `rustc` build in `config.toml`, 
 ```toml
 [build]
 build-stage = 1
-target = ["aarch64-apple-tvos", "x86_64-apple-tvos"]
+target = ["aarch64-apple-tvos", "x86_64-apple-tvos", "aarch64-apple-tvos-sim"]
 ```
 
 It's possible that cargo under `-Zbuild-std` may also be used to target them.
@@ -67,6 +67,8 @@ Rust programs can be built for these targets
 $ rustc --target aarch64-apple-tvos your-code.rs
 ...
 $ rustc --target x86_64-apple-tvos your-code.rs
+...
+$ rustc --target aarch64-apple-tvos-sim your-code.rs
 ```
 
 ## Testing
