@@ -3,11 +3,9 @@ use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::needs_ordered_drop;
 use rustc_ast::Mutability;
 use rustc_hir::def::Res;
-use rustc_hir::{
-    BindingAnnotation, ByRef, Expr, ExprKind, HirId, Local, Node, Pat, PatKind, QPath,
-};
+use rustc_hir::{BindingAnnotation, ByRef, ExprKind, HirId, Local, Node, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::{in_external_macro, is_from_async_await};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
 use rustc_span::DesugaringKind;
@@ -39,7 +37,7 @@ declare_clippy_lint! {
     ///   // no redefinition with the same name
     /// }
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub REDUNDANT_LOCALS,
     correctness,
     "redundant redefinition of a local binding"
@@ -68,21 +66,18 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             // the local does not change the effect of assignments to the binding. see #11290
             if !affects_assignments(cx, mutability, binding_id, local.hir_id);
             // the local does not affect the code's drop behavior
-            if !affects_drop_behavior(cx, binding_id, local.hir_id, expr);
+            if !needs_ordered_drop(cx, cx.typeck_results().expr_ty(expr));
             // the local is user-controlled
             if !in_external_macro(cx.sess(), local.span);
             if !is_from_proc_macro(cx, expr);
-            // Async function parameters are lowered into the closure body, so we can't lint them.
-            // see `lower_maybe_async_body` in `rust_ast_lowering`
-            if !is_from_async_await(local.span);
             then {
                 span_lint_and_help(
                     cx,
                     REDUNDANT_LOCALS,
-                    vec![binding_pat.span, local.span],
-                    "redundant redefinition of a binding",
-                    None,
-                    &format!("remove the redefinition of `{ident}`"),
+                    local.span,
+                    &format!("redundant redefinition of a binding `{ident}`"),
+                    Some(binding_pat.span),
+                    &format!("`{ident}` is initially defined here"),
                 );
             }
         }
@@ -108,19 +103,4 @@ fn affects_assignments(cx: &LateContext<'_>, mutability: Mutability, bind: HirId
 
     // the binding is mutable and the rebinding is in a different scope than the original binding
     mutability == Mutability::Mut && hir.get_enclosing_scope(bind) != hir.get_enclosing_scope(rebind)
-}
-
-/// Check if a rebinding of a local affects the code's drop behavior.
-fn affects_drop_behavior<'tcx>(
-    cx: &LateContext<'tcx>,
-    bind: HirId,
-    rebind: HirId,
-    rebind_expr: &Expr<'tcx>,
-) -> bool {
-    let hir = cx.tcx.hir();
-
-    // the rebinding is in a different scope than the original binding
-    // and the type of the binding cares about drop order
-    hir.get_enclosing_scope(bind) != hir.get_enclosing_scope(rebind)
-        && needs_ordered_drop(cx, cx.typeck_results().expr_ty(rebind_expr))
 }

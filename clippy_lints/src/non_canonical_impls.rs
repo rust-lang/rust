@@ -102,7 +102,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub NON_CANONICAL_PARTIAL_ORD_IMPL,
     suspicious,
     "non-canonical implementation of `PartialOrd` on an `Ord` type"

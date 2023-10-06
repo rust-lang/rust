@@ -27,7 +27,7 @@ declare_clippy_lint! {
     ///
     /// impl std::error::Error for Error { ... }
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub ERROR_IMPL_ERROR,
     restriction,
     "exported types named `Error` that implement `Error`"

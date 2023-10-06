@@ -1,5 +1,5 @@
 error: matching over `()` is more explicit
-  --> $DIR/ignored_unit_patterns.rs:10:12
+  --> $DIR/ignored_unit_patterns.rs:11:12
    |
 LL |         Ok(_) => {},
    |            ^ help: use `()` instead of `_`: `()`
@@ -8,28 +8,40 @@ LL |         Ok(_) => {},
    = help: to override `-D warnings` add `#[allow(clippy::ignored_unit_patterns)]`
 
 error: matching over `()` is more explicit
-  --> $DIR/ignored_unit_patterns.rs:11:13
+  --> $DIR/ignored_unit_patterns.rs:12:13
    |
 LL |         Err(_) => {},
    |             ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> $DIR/ignored_unit_patterns.rs:13:15
+  --> $DIR/ignored_unit_patterns.rs:14:15
    |
 LL |     if let Ok(_) = foo() {}
    |               ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> $DIR/ignored_unit_patterns.rs:15:28
+  --> $DIR/ignored_unit_patterns.rs:16:28
    |
 LL |     let _ = foo().map_err(|_| todo!());
    |                            ^ help: use `()` instead of `_`: `()`
 
 error: matching over `()` is more explicit
-  --> $DIR/ignored_unit_patterns.rs:21:9
+  --> $DIR/ignored_unit_patterns.rs:22:16
+   |
+LL |             Ok(_) => {},
+   |                ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:24:17
+   |
+LL |             Err(_) => {},
+   |                 ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:36:9
    |
 LL |     let _ = foo().unwrap();
    |         ^ help: use `()` instead of `_`: `()`
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 

@@ -294,7 +294,7 @@ define_Conf! {
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
@@ -743,4 +743,45 @@ fn calculate_dimensions(fields: &[&str]) -> (usize, Vec<usize>) {
         .collect::<Vec<_>>();
 
     (rows, column_widths)
+}
+
+#[cfg(test)]
+mod tests {
+    use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+    use serde::de::IgnoredAny;
+    use std::fs;
+    use walkdir::WalkDir;
+
+    #[test]
+    fn configs_are_tested() {
+        let mut names: FxHashSet<String> = super::metadata::get_configuration_metadata()
+            .into_iter()
+            .map(|meta| meta.name.replace('_', "-"))
+            .collect();
+
+        let toml_files = WalkDir::new("../tests")
+            .into_iter()
+            .map(Result::unwrap)
+            .filter(|entry| entry.file_name() == "clippy.toml");
+
+        for entry in toml_files {
+            let file = fs::read_to_string(entry.path()).unwrap();
+            #[allow(clippy::zero_sized_map_values)]
+            if let Ok(map) = toml::from_str::<FxHashMap<String, IgnoredAny>>(&file) {
+                for name in map.keys() {
+                    names.remove(name.as_str());
+                }
+            }
+        }
+
+        assert!(
+            names.remove("allow-one-hash-in-raw-strings"),
+            "remove this when #11481 is fixed"
+        );
+
+        assert!(
+            names.is_empty(),
+            "Configuration variable lacks test: {names:?}\nAdd a test to `tests/ui-toml`"
+        );
+    }
 }

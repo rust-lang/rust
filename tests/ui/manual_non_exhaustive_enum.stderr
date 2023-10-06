@@ -22,23 +22,5 @@ LL |     _C,
    = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
 
-error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_enum.rs:15:1
-   |
-LL | / enum Ep {
-LL | |
-LL | |     A,
-LL | |     B,
-LL | |     #[doc(hidden)]
-LL | |     _C,
-LL | | }
-   | |_^
-   |
-help: remove this variant
-  --> $DIR/manual_non_exhaustive_enum.rs:20:5
-   |
-LL |     _C,
-   |     ^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

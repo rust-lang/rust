@@ -32,8 +32,6 @@ fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<K
     //~^ ERROR: mutable key type
     //~| NOTE: `-D clippy::mutable-key-type` implied by `-D warnings`
     //~| ERROR: mutable key type
-    //~| ERROR: this argument is a mutable reference, but not used mutably
-    //~| NOTE: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
     let _other: HashMap<Key, bool> = HashMap::new();
     //~^ ERROR: mutable key type
     m.keys().cloned().collect()
