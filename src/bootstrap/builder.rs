@@ -1438,6 +1438,20 @@ impl<'a> Builder<'a> {
             }
         }
 
+        // FIXME(rust-lang/cargo#5754) we shouldn't be using special command arguments
+        // to the host invocation here, but rather Cargo should know what flags to pass rustc
+        // itself.
+        if stage == 0 {
+            hostflags.arg("--cfg=bootstrap");
+        }
+        // Cargo doesn't pass RUSTFLAGS to proc_macros:
+        // https://github.com/rust-lang/cargo/issues/4423
+        // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
+        // We also declare that the flag is expected, which we need to do to not
+        // get warnings about it being unexpected.
+        hostflags.arg("-Zunstable-options");
+        hostflags.arg("--check-cfg=values(bootstrap)");
+
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
