@@ -8,6 +8,7 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(round_ties_even)]
+#![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(trait_upcasting)]
 // Configure clippy and other lints
@@ -86,9 +87,8 @@ pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy, Provenance as _};
 
-pub use crate::shims::dlsym::{Dlsym, EvalContextExt as _};
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
-pub use crate::shims::foreign_items::EvalContextExt as _;
+pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::intrinsics::EvalContextExt as _;
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};

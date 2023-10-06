@@ -9,7 +9,6 @@ pub mod unix;
 pub mod windows;
 mod x86;
 
-pub mod dlsym;
 pub mod env;
 pub mod os_str;
 pub mod panic;
@@ -58,7 +57,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // foreign function
             // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
             let args = this.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
-            return this.emulate_foreign_item(instance.def_id(), abi, &args, dest, ret, unwind);
+            let link_name = this.item_link_name(instance.def_id());
+            return this.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
         }
 
         // Otherwise, load the MIR.

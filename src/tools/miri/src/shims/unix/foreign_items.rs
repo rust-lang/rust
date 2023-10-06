@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::str;
 
 use log::trace;
 
@@ -14,9 +15,14 @@ use shims::unix::mem::EvalContextExt as _;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
+use shims::unix::android::foreign_items as android;
+use shims::unix::freebsd::foreign_items as freebsd;
+use shims::unix::linux::foreign_items as linux;
+use shims::unix::macos::foreign_items as macos;
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    fn emulate_foreign_item_by_name(
+    fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
@@ -25,7 +31,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
-        // See `fn emulate_foreign_item_by_name` in `shims/foreign_items.rs` for the general pattern.
+        // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
         #[rustfmt::skip]
         match link_name.as_str() {
             // Environment related shims
@@ -230,9 +236,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [handle, symbol] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_target_usize(handle)?;
                 let symbol = this.read_pointer(symbol)?;
-                let symbol_name = this.read_c_str(symbol)?;
-                if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.os)? {
-                    let ptr = this.fn_ptr(FnVal::Other(dlsym));
+                let name = this.read_c_str(symbol)?;
+                let is_dyn_sym = |name| match &*this.tcx.sess.target.os {
+                    "android" => android::is_dyn_sym(name),
+                    "freebsd" => freebsd::is_dyn_sym(name),
+                    "linux" => linux::is_dyn_sym(name),
+                    "macos" => macos::is_dyn_sym(name),
+                    target_os => panic!("unsupported Unix OS {target_os}"),
+                };
+                if let Ok(name) = str::from_utf8(name) && is_dyn_sym(name) {
+                    let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
@@ -609,10 +622,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ => {
                 let target_os = &*this.tcx.sess.target.os;
                 return match target_os {
-                    "android" => shims::unix::android::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
-                    "freebsd" => shims::unix::freebsd::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
-                    "linux" => shims::unix::linux::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
-                    "macos" => shims::unix::macos::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
+                    "android" => android::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
+                    "freebsd" => freebsd::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
+                    "linux" => linux::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
+                    "macos" => macos::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     _ => Ok(EmulateByNameResult::NotSupported),
                 };
             }
