@@ -43,21 +43,6 @@ impl ErrorHandled {
         }
     }
 
-    pub fn emit_err(&self, tcx: TyCtxt<'_>) -> ErrorGuaranteed {
-        match self {
-            &ErrorHandled::Reported(err, span) => {
-                if !err.is_tainted_by_errors && !span.is_dummy() {
-                    tcx.sess.emit_err(error::ErroneousConstant { span });
-                }
-                err.error
-            }
-            &ErrorHandled::TooGeneric(span) => tcx.sess.delay_span_bug(
-                span,
-                "encountered TooGeneric error when monomorphic data was expected",
-            ),
-        }
-    }
-
     pub fn emit_note(&self, tcx: TyCtxt<'_>) {
         match self {
             &ErrorHandled::Reported(err, span) => {

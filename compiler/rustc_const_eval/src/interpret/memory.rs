@@ -536,7 +536,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 // We don't give a span -- statics don't need that, they cannot be generic or associated.
-                let val = self.ctfe_query(None, |tcx| tcx.eval_static_initializer(def_id))?;
+                let val = self.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
                 (val, Some(def_id))
             }
         };
