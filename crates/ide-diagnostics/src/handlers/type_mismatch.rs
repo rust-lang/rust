@@ -1,4 +1,3 @@
-use either::Either;
 use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
@@ -14,9 +13,11 @@ use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticCode, Dia
 // This diagnostic is triggered when the type of an expression or pattern does not match
 // the expected type.
 pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Diagnostic {
-    let display_range = match &d.expr_or_pat {
-        Either::Left(expr) => {
-            adjusted_display_range::<ast::Expr>(ctx, expr.clone().map(|it| it.into()), &|expr| {
+    let display_range = match &d.expr_or_pat.value {
+        expr if ast::Expr::can_cast(expr.kind()) => adjusted_display_range::<ast::Expr>(
+            ctx,
+            InFile { file_id: d.expr_or_pat.file_id, value: expr.syntax_node_ptr() },
+            &|expr| {
                 let salient_token_range = match expr {
                     ast::Expr::IfExpr(it) => it.if_token()?.text_range(),
                     ast::Expr::LoopExpr(it) => it.loop_token()?.text_range(),
@@ -32,10 +33,15 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
 
                 cov_mark::hit!(type_mismatch_range_adjustment);
                 Some(salient_token_range)
-            })
-        }
-        Either::Right(pat) => {
-            ctx.sema.diagnostics_display_range(pat.clone().map(|it| it.into())).range
+            },
+        ),
+        pat => {
+            ctx.sema
+                .diagnostics_display_range(InFile {
+                    file_id: d.expr_or_pat.file_id,
+                    value: pat.syntax_node_ptr(),
+                })
+                .range
         }
     };
     let mut diag = Diagnostic::new(
@@ -57,14 +63,12 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
 
-    match &d.expr_or_pat {
-        Either::Left(expr_ptr) => {
-            add_reference(ctx, d, expr_ptr, &mut fixes);
-            add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
-            remove_semicolon(ctx, d, expr_ptr, &mut fixes);
-            str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
-        }
-        Either::Right(_pat_ptr) => {}
+    if let Some(expr_ptr) = d.expr_or_pat.value.clone().cast::<ast::Expr>() {
+        let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr.clone() };
+        add_reference(ctx, d, expr_ptr, &mut fixes);
+        add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
+        remove_semicolon(ctx, d, expr_ptr, &mut fixes);
+        str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
     }
 
     if fixes.is_empty() {

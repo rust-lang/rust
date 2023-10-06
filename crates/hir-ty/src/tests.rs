@@ -269,12 +269,7 @@ fn pat_node(
     Some(match body_source_map.pat_syntax(pat) {
         Ok(sp) => {
             let root = db.parse_or_expand(sp.file_id);
-            sp.map(|ptr| {
-                ptr.either(
-                    |it| it.to_node(&root).syntax().clone(),
-                    |it| it.to_node(&root).syntax().clone(),
-                )
-            })
+            sp.map(|ptr| ptr.to_node(&root).syntax().clone())
         }
         Err(SyntheticSyntax) => return None,
     })
@@ -303,12 +298,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
                 Ok(sp) => {
                     let root = db.parse_or_expand(sp.file_id);
-                    sp.map(|ptr| {
-                        ptr.either(
-                            |it| it.to_node(&root).syntax().clone(),
-                            |it| it.to_node(&root).syntax().clone(),
-                        )
-                    })
+                    sp.map(|ptr| ptr.to_node(&root).syntax().clone())
                 }
                 Err(SyntheticSyntax) => continue,
             };

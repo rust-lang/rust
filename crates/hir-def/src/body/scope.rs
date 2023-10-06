@@ -475,10 +475,7 @@ fn foo() {
             .pat_syntax(*body.bindings[resolved.binding()].definitions.first().unwrap())
             .unwrap();
 
-        let local_name = pat_src.value.either(
-            |it| it.syntax_node_ptr().to_node(file.syntax()),
-            |it| it.syntax_node_ptr().to_node(file.syntax()),
-        );
+        let local_name = pat_src.value.syntax_node_ptr().to_node(file.syntax());
         assert_eq!(local_name.text_range(), expected_name.syntax().text_range());
     }
 
