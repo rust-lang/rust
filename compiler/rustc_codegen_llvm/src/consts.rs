@@ -343,30 +343,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         self.instances.borrow_mut().insert(Instance::mono(self.tcx, def_id), g);
         g
     }
-}
 
-impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
-    fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
-        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
-            unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                let llalign = align.bytes() as u32;
-                if llalign > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, llalign);
-                }
-            }
-            return gv;
-        }
-        let gv = self.static_addr_of_mut(cv, align, kind);
-        unsafe {
-            llvm::LLVMSetGlobalConstant(gv, True);
-        }
-        self.const_globals.borrow_mut().insert(cv, gv);
-        gv
-    }
-
-    fn codegen_static(&self, def_id: DefId, is_mutable: bool) {
+    fn codegen_static_item(&self, def_id: DefId, is_mutable: bool) {
         unsafe {
             let attrs = self.tcx.codegen_fn_attrs(def_id);
 
@@ -549,6 +527,32 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 self.add_used_global(g);
             }
         }
+    }
+}
+
+impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
+    fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
+        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                let llalign = align.bytes() as u32;
+                if llalign > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, llalign);
+                }
+            }
+            return gv;
+        }
+        let gv = self.static_addr_of_mut(cv, align, kind);
+        unsafe {
+            llvm::LLVMSetGlobalConstant(gv, True);
+        }
+        self.const_globals.borrow_mut().insert(cv, gv);
+        gv
+    }
+
+    fn codegen_static(&self, def_id: DefId, is_mutable: bool) {
+        self.codegen_static_item(def_id, is_mutable)
     }
 
     /// Add a global value to a list to be stored in the `llvm.used` variable, an array of ptr.
