@@ -961,7 +961,7 @@ declare_clippy_lint! {
     ///     _ => todo!(),
     /// }
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub REDUNDANT_GUARDS,
     complexity,
     "checks for unnecessary guards in match expressions"

@@ -1,0 +1,114 @@
+error: `IntoIterator` implemented for a reference type without an `iter` method
+  --> $DIR/into_iter_without_iter.rs:10:9
+   |
+LL | /         impl<'a> IntoIterator for &'a S {
+LL | |
+LL | |             type IntoIter = std::slice::Iter<'a, u8>;
+LL | |             type Item = &'a u8;
+...  |
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+   = note: `-D clippy::into-iter-without-iter` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::into_iter_without_iter)]`
+help: consider implementing `iter`
+   |
+LL ~         
+LL + impl S {
+LL +     fn iter(&self) -> std::slice::Iter<'a, u8> {
+LL +         <&Self as IntoIterator>::into_iter(self)
+LL +     }
+LL + }
+   |
+
+error: `IntoIterator` implemented for a reference type without an `iter_mut` method
+  --> $DIR/into_iter_without_iter.rs:18:9
+   |
+LL | /         impl<'a> IntoIterator for &'a mut S {
+LL | |
+LL | |             type IntoIter = std::slice::IterMut<'a, u8>;
+LL | |             type Item = &'a mut u8;
+...  |
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: consider implementing `iter_mut`
+   |
+LL ~         
+LL + impl S {
+LL +     fn iter_mut(&mut self) -> std::slice::IterMut<'a, u8> {
+LL +         <&mut Self as IntoIterator>::into_iter(self)
+LL +     }
+LL + }
+   |
+
+error: `IntoIterator` implemented for a reference type without an `iter` method
+  --> $DIR/into_iter_without_iter.rs:29:9
+   |
+LL | /         impl<'a, T> IntoIterator for &'a S<T> {
+LL | |
+LL | |             type IntoIter = std::slice::Iter<'a, T>;
+LL | |             type Item = &'a T;
+...  |
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: consider implementing `iter`
+   |
+LL ~         
+LL + impl S<T> {
+LL +     fn iter(&self) -> std::slice::Iter<'a, T> {
+LL +         <&Self as IntoIterator>::into_iter(self)
+LL +     }
+LL + }
+   |
+
+error: `IntoIterator` implemented for a reference type without an `iter_mut` method
+  --> $DIR/into_iter_without_iter.rs:37:9
+   |
+LL | /         impl<'a, T> IntoIterator for &'a mut S<T> {
+LL | |
+LL | |             type IntoIter = std::slice::IterMut<'a, T>;
+LL | |             type Item = &'a mut T;
+...  |
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: consider implementing `iter_mut`
+   |
+LL ~         
+LL + impl S<T> {
+LL +     fn iter_mut(&mut self) -> std::slice::IterMut<'a, T> {
+LL +         <&mut Self as IntoIterator>::into_iter(self)
+LL +     }
+LL + }
+   |
+
+error: `IntoIterator` implemented for a reference type without an `iter_mut` method
+  --> $DIR/into_iter_without_iter.rs:93:9
+   |
+LL | /         impl<'a, T> IntoIterator for &mut S<'a, T> {
+LL | |
+LL | |             type IntoIter = std::slice::IterMut<'a, T>;
+LL | |             type Item = &'a mut T;
+...  |
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: consider implementing `iter_mut`
+   |
+LL ~         
+LL + impl S<'a, T> {
+LL +     fn iter_mut(&mut self) -> std::slice::IterMut<'a, T> {
+LL +         <&mut Self as IntoIterator>::into_iter(self)
+LL +     }
+LL + }
+   |
+
+error: aborting due to 5 previous errors
+

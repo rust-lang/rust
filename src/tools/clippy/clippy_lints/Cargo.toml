@@ -1,6 +1,6 @@
 [package]
 name = "clippy_lints"
-version = "0.1.74"
+version = "0.1.75"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -27,6 +27,9 @@ unicode-script = { version = "0.5", default-features = false }
 semver = "1.0"
 rustc-semver = "1.1"
 url = "2.2"
+
+[dev-dependencies]
+walkdir = "2.3"
 
 [features]
 deny-warnings = ["clippy_utils/deny-warnings"]
