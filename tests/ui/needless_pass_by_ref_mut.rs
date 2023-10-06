@@ -270,6 +270,12 @@ pub async fn closure4(n: &mut usize) {
     })();
 }
 
+// Should not warn.
+async fn _f(v: &mut Vec<()>) {
+    let x = || v.pop();
+    _ = || || x;
+}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];
