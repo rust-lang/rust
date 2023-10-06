@@ -17,7 +17,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::Lto;
 use rustc_target::abi::{
@@ -147,11 +147,10 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
 fn check_and_apply_linkage<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     attrs: &CodegenFnAttrs,
-    ty: Ty<'tcx>,
+    llty: &'ll Type,
     sym: &str,
     def_id: DefId,
 ) -> &'ll Value {
-    let llty = cx.layout_of(ty).llvm_type(cx);
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
@@ -245,9 +244,9 @@ impl<'ll> CodegenCx<'ll, '_> {
         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
 
         debug!("get_static: sym={} instance={:?} fn_attrs={:?}", sym, instance, fn_attrs);
+        let llty = self.layout_of(ty).llvm_type(self);
 
         let g = if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
-            let llty = self.layout_of(ty).llvm_type(self);
             if let Some(g) = self.get_declared_value(sym) {
                 if self.val_ty(g) != self.type_ptr() {
                     span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
@@ -264,7 +263,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             g
         } else {
-            check_and_apply_linkage(self, fn_attrs, ty, sym, def_id)
+            check_and_apply_linkage(self, fn_attrs, llty, sym, def_id)
         };
 
         // Thread-local statics in some other crate need to *always* be linked
