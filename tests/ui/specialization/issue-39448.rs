@@ -22,6 +22,7 @@ trait FromA<T> {
 }
 
 impl<T: A, U: A + FromA<T>> FromA<T> for U {
+    //~^ ERROR cycle detected when computing whether impls specialize one another
     default fn from(x: T) -> Self {
         ToA::to(x)
     }
@@ -42,7 +43,7 @@ where
 
 #[allow(dead_code)]
 fn foo<T: A, U: A>(x: T, y: U) -> U {
-    x.foo(y.to()).to() //~ ERROR overflow evaluating the requirement
+    x.foo(y.to()).to()
 }
 
 fn main() {
