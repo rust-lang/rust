@@ -184,6 +184,8 @@ macro_rules! make_mir_visitor {
 
             visit_place_fns!($($mutability)?);
 
+            /// This is called for every constant in the MIR body and every `required_consts`
+            /// (i.e., including consts that have been dead-code-eliminated).
             fn visit_constant(
                 &mut self,
                 constant: & $($mutability)? ConstOperand<'tcx>,
