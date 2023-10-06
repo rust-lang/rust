@@ -1287,7 +1287,7 @@ pub fn ice_path() -> &'static Option<PathBuf> {
         if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
             return None;
         }
-        if let Ok("0") = std::env::var("RUST_BACKTRACE").as_deref() {
+        if let Some(s) = std::env::var_os("RUST_BACKTRACE") && s == "0" {
             return None;
         }
         let mut path = match std::env::var("RUSTC_ICE").as_deref() {
@@ -1322,7 +1322,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
     // by the user. Compiler developers and other rustc users can
     // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
     // (e.g. `RUST_BACKTRACE=1`)
-    if std::env::var("RUST_BACKTRACE").is_err() {
+    if std::env::var_os("RUST_BACKTRACE").is_none() {
         std::env::set_var("RUST_BACKTRACE", "full");
     }
 
