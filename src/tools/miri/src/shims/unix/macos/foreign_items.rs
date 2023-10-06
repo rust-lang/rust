@@ -6,9 +6,13 @@ use shims::foreign_items::EmulateByNameResult;
 use shims::unix::fs::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
+pub fn is_dyn_sym(name: &str) -> bool {
+    matches!(name, "getentropy")
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    fn emulate_foreign_item_by_name(
+    fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
@@ -17,7 +21,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
-        // See `fn emulate_foreign_item_by_name` in `shims/foreign_items.rs` for the general pattern.
+        // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
 
         match link_name.as_str() {
             // errno
@@ -113,8 +117,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "getentropy" => {
                 let [buf, bufsize] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.getentropy(buf, bufsize)?;
-                this.write_scalar(result, dest)?;
+                let buf = this.read_pointer(buf)?;
+                let bufsize = this.read_target_usize(bufsize)?;
+
+                this.gen_random(buf, bufsize)?;
+
+                this.write_scalar(Scalar::from_i32(0), dest)?; // KERN_SUCCESS
             }
 
             // Access to command-line arguments
@@ -205,20 +213,5 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
 
         Ok(EmulateByNameResult::NeedsJumping)
-    }
-
-    fn getentropy(
-        &mut self,
-        buffer_op: &OpTy<'tcx, Provenance>,
-        length_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-        this.assert_target_os("macos", "getentropy");
-
-        let ptr = this.read_pointer(buffer_op)?;
-        let len = this.read_target_usize(length_op)?;
-        this.gen_random(ptr, len)?;
-
-        Ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }
 }

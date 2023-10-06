@@ -6,7 +6,7 @@ use rustc_apfloat::Float;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_hir::{
     def::DefKind,
-    def_id::{CrateNum, DefId, LOCAL_CRATE},
+    def_id::{CrateNum, LOCAL_CRATE},
 };
 use rustc_middle::middle::{
     codegen_fn_attrs::CodegenFnAttrFlags, dependency_format::Linkage,
@@ -25,7 +25,18 @@ use super::backtrace::EvalContextExt as _;
 use crate::helpers::target_os_is_unix;
 use crate::*;
 
-/// Returned by `emulate_foreign_item_by_name`.
+/// Type of dynamic symbols (for `dlsym` et al)
+#[derive(Debug, Copy, Clone)]
+pub struct DynSym(Symbol);
+
+#[allow(clippy::should_implement_trait)]
+impl DynSym {
+    pub fn from_str(name: &str) -> Self {
+        DynSym(Symbol::intern(name))
+    }
+}
+
+/// Returned by `emulate_foreign_item_inner`.
 pub enum EmulateByNameResult<'mir, 'tcx> {
     /// The caller is expected to jump to the return block.
     NeedsJumping,
@@ -254,7 +265,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// is delegated to another function.
     fn emulate_foreign_item(
         &mut self,
-        def_id: DefId,
+        link_name: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
@@ -262,7 +273,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
-        let link_name = this.item_link_name(def_id);
         let tcx = this.tcx.tcx;
 
         // First: functions that diverge.
@@ -322,7 +332,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
 
         // Second: functions that return immediately.
-        match this.emulate_foreign_item_by_name(link_name, abi, args, dest)? {
+        match this.emulate_foreign_item_inner(link_name, abi, args, dest)? {
             EmulateByNameResult::NeedsJumping => {
                 trace!("{:?}", this.dump_place(dest));
                 this.go_to_block(ret);
@@ -343,6 +353,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         Ok(None)
+    }
+
+    /// Emulates a call to a `DynSym`.
+    fn emulate_dyn_sym(
+        &mut self,
+        sym: DynSym,
+        abi: Abi,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
+        ret: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
+    ) -> InterpResult<'tcx> {
+        let res = self.emulate_foreign_item(sym.0, abi, args, dest, ret, unwind)?;
+        assert!(res.is_none(), "DynSyms that delegate are not supported");
+        Ok(())
     }
 
     /// Emulates calling the internal __rust_* allocator functions
@@ -373,8 +398,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    /// Emulates calling a foreign item using its name.
-    fn emulate_foreign_item_by_name(
+    fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
@@ -1045,11 +1069,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ =>
                 return match this.tcx.sess.target.os.as_ref() {
                     target_os if target_os_is_unix(target_os) =>
-                        shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_by_name(
+                        shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
                     "windows" =>
-                        shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_by_name(
+                        shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
                     _ => Ok(EmulateByNameResult::NotSupported),
