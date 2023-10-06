@@ -42,6 +42,16 @@ impl Compiler {
                     "/usr/s390x-linux-gnu".to_owned(),
                 ];
             }
+            "riscv64gc-unknown-linux-gnu" => {
+                // We are cross-compiling for riscv64. Use the correct linker and run tests in qemu.
+                self.rustflags.push("-Clinker=riscv64-linux-gnu-gcc".to_owned());
+                self.rustdocflags.push("-Clinker=riscv64-linux-gnu-gcc".to_owned());
+                self.runner = vec![
+                    "qemu-riscv64".to_owned(),
+                    "-L".to_owned(),
+                    "/usr/riscv64-linux-gnu".to_owned(),
+                ];
+            }
             "x86_64-pc-windows-gnu" => {
                 // We are cross-compiling for Windows. Run tests in wine.
                 self.runner = vec!["wine".to_owned()];
