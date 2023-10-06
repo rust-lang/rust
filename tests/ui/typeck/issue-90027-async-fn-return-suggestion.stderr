@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-90027-async-fn-return-suggestion.rs:4:5
    |
 LL | async fn hello() {
-   |                  - help: try adding a return type: `-> i32`
+   |                 - help: try adding a return type: `-> i32`
 LL |     0
    |     ^ expected `()`, found integer
 

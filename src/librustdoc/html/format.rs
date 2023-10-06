@@ -326,8 +326,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                         bounds_display.truncate(bounds_display.len() - " + ".len());
                         write!(f, "{}: {bounds_display}", lifetime.print())
                     }
-                    // FIXME(fmease): Render bound params.
-                    clean::WherePredicate::EqPredicate { lhs, rhs, bound_params: _ } => {
+                    clean::WherePredicate::EqPredicate { lhs, rhs } => {
                         if f.alternate() {
                             write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
                         } else {

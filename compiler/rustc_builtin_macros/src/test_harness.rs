@@ -169,29 +169,15 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
     }
 }
 
-// Beware, this is duplicated in librustc_passes/entry.rs (with
-// `rustc_hir::Item`), so make sure to keep them in sync.
-fn entry_point_type(item: &ast::Item, depth: usize) -> EntryPointType {
+fn entry_point_type(item: &ast::Item, at_root: bool) -> EntryPointType {
     match item.kind {
         ast::ItemKind::Fn(..) => {
-            if attr::contains_name(&item.attrs, sym::start) {
-                EntryPointType::Start
-            } else if attr::contains_name(&item.attrs, sym::rustc_main) {
-                EntryPointType::RustcMainAttr
-            } else if item.ident.name == sym::main {
-                if depth == 0 {
-                    // This is a top-level function so can be 'main'
-                    EntryPointType::MainNamed
-                } else {
-                    EntryPointType::OtherMain
-                }
-            } else {
-                EntryPointType::None
-            }
+            rustc_ast::entry::entry_point_type(&item.attrs, at_root, Some(item.ident.name))
         }
         _ => EntryPointType::None,
     }
 }
+
 /// A folder used to remove any entry points (like fn main) because the harness
 /// generator will provide its own
 struct EntryPointCleaner<'a> {
@@ -210,7 +196,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         // Remove any #[rustc_main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
-        let item = match entry_point_type(&item, self.depth) {
+        let item = match entry_point_type(&item, self.depth == 0) {
             EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start => {
                 item.map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
                     let allow_dead_code = attr::mk_attr_nested_word(

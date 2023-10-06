@@ -33,9 +33,9 @@ All tier 1 targets with host tools support the full standard library.
 target | notes
 -------|-------
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1, glibc 2.17+) [^missing-stack-probes]
-`i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support]
-`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support]
-`i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+)
+`i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support] [^x86_32-floats-return-ABI]
+`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support] [^x86_32-floats-return-ABI]
+`i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+) [^x86_32-floats-return-ABI]
 `x86_64-apple-darwin` | 64-bit macOS (10.12+, Sierra+)
 `x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
 `x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
@@ -47,7 +47,10 @@ target | notes
 
 [^windows-support]: Only Windows 10 currently undergoes automated testing. Earlier versions of Windows rely on testing and support from the community.
 
+[^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. See [issue #114479][x86-32-float-issue].
+
 [77071]: https://github.com/rust-lang/rust/issues/77071
+[x86-32-float-issue]: https://github.com/rust-lang/rust/issues/114479
 
 ## Tier 1
 
@@ -150,12 +153,12 @@ target | std | notes
 `armv7r-none-eabi` | * | Bare ARMv7-R
 `armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
 `asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
-`i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE
-`i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
-`i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
-[`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
-`i686-unknown-freebsd` | ✓ | 32-bit FreeBSD
-`i686-unknown-linux-musl` | ✓ | 32-bit Linux with MUSL
+`i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE [^x86_32-floats-x87]
+`i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17) [^x86_32-floats-x87]
+`i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL [^x86_32-floats-x87]
+[`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android [^x86_32-floats-return-ABI]
+`i686-unknown-freebsd` | ✓ | 32-bit FreeBSD [^x86_32-floats-return-ABI]
+`i686-unknown-linux-musl` | ✓ | 32-bit Linux with MUSL [^x86_32-floats-return-ABI]
 [`i686-unknown-uefi`](platform-support/unknown-uefi.md) | * | 32-bit UEFI
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64S ABI)
@@ -194,6 +197,8 @@ target | std | notes
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 `x86_64-unknown-redox` | ✓ | Redox OS
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | * | 64-bit UEFI
+
+[^x86_32-floats-x87]: Floating-point support on `i586` targets is non-compliant: the `x87` registers and instructions used for these targets do not provide IEEE-754-compliant behavior, in particular when it comes to rounding and NaN payload bits. See [issue #114479][x86-32-float-issue].
 
 [Fortanix ABI]: https://edp.fortanix.com/
 
@@ -264,18 +269,18 @@ target | std | host | notes
 `bpfel-unknown-none` | * |  | BPF (little endian)
 `csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux(little endian)
 `hexagon-unknown-linux-musl` | ? |  |
-`i386-apple-ios` | ✓ |  | 32-bit x86 iOS
-[`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |
-`i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+)
-`i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
-[`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
-`i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
-[`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd
-[`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2
-[`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
-`i686-uwp-windows-gnu` | ? |  |
-`i686-uwp-windows-msvc` | ? |  |
-`i686-wrs-vxworks` | ? |  |
+`i386-apple-ios` | ✓ |  | 32-bit x86 iOS [^x86_32-floats-return-ABI]
+[`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS  [^x86_32-floats-return-ABI]
+`i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+) [^x86_32-floats-return-ABI]
+`i686-pc-windows-msvc` | * |  | 32-bit Windows XP support [^x86_32-floats-return-ABI]
+[`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ | [^x86_32-floats-return-ABI]
+`i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku [^x86_32-floats-return-ABI]
+[`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd [^x86_32-floats-return-ABI]
+[`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2 [^x86_32-floats-return-ABI]
+[`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD [^x86_32-floats-return-ABI]
+`i686-uwp-windows-gnu` | ? |  | [^x86_32-floats-return-ABI]
+`i686-uwp-windows-msvc` | ? |  | [^x86_32-floats-return-ABI]
+`i686-wrs-vxworks` | ? |  | [^x86_32-floats-return-ABI]
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 `mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
 [`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux MUSL

@@ -288,9 +288,9 @@ rustc_index::newtype_index! {
 ///     not relevant to coverage analysis. `FalseUnwind`, for example, can be treated the same as
 ///     a `Goto`, and merged with its successor into the same BCB.
 ///
-/// Each BCB with at least one computed `CoverageSpan` will have no more than one `Counter`.
+/// Each BCB with at least one computed coverage span will have no more than one `Counter`.
 /// In some cases, a BCB's execution count can be computed by `Expression`. Additional
-/// disjoint `CoverageSpan`s in a BCB can also be counted by `Expression` (by adding `ZERO`
+/// disjoint coverage spans in a BCB can also be counted by `Expression` (by adding `ZERO`
 /// to the BCB's primary counter or expression).
 ///
 /// The BCB CFG is critical to simplifying the coverage analysis by ensuring graph path-based

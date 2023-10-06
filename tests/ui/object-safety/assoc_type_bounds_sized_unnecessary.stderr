@@ -14,6 +14,7 @@ LL | fn foo(_: &dyn Foo<Bar = ()>) {}
    |                    ^^^^^^^^ help: remove this bound
    |
    = note: this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unnecessary associated type bound for not object safe associated type
   --> $DIR/assoc_type_bounds_sized_unnecessary.rs:9:20
@@ -22,6 +23,7 @@ LL | fn foo(_: &dyn Foo<Bar = ()>) {}
    |                    ^^^^^^^^ help: remove this bound
    |
    = note: this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 3 warnings emitted
 

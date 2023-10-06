@@ -10,6 +10,7 @@ use std::pin::Pin;
 use std::task::Poll;
 
 pub trait MyTrait {
+    #[allow(async_fn_in_trait)]
     async fn foo(&self) -> i32;
 }
 

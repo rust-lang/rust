@@ -7,27 +7,23 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 29, 1) to (start + 2, 2)
 
 Function name: closure_macro::main
-Raw bytes (49): 0x[01, 01, 05, 01, 05, 02, 00, 05, 00, 02, 00, 05, 02, 07, 01, 21, 01, 01, 21, 02, 02, 09, 00, 0f, 05, 00, 12, 00, 13, 07, 00, 12, 00, 13, 0b, 00, 54, 00, 55, 0f, 02, 09, 02, 0b, 13, 03, 01, 00, 02]
+Raw bytes (43): 0x[01, 01, 02, 01, 05, 05, 02, 07, 01, 21, 01, 01, 21, 02, 02, 09, 00, 0f, 05, 00, 12, 00, 13, 02, 00, 12, 00, 13, 05, 00, 54, 00, 55, 02, 02, 09, 02, 0b, 07, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 5
+Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Expression(0, Sub), rhs = Zero
-- expression 2 operands: lhs = Counter(1), rhs = Zero
-- expression 3 operands: lhs = Expression(0, Sub), rhs = Zero
-- expression 4 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 7
 - Code(Counter(0)) at (prev + 33, 1) to (start + 1, 33)
 - Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 15)
     = (c0 - c1)
 - Code(Counter(1)) at (prev + 0, 18) to (start + 0, 19)
-- Code(Expression(1, Add)) at (prev + 0, 18) to (start + 0, 19)
-    = ((c0 - c1) + Zero)
-- Code(Expression(2, Add)) at (prev + 0, 84) to (start + 0, 85)
-    = (c1 + Zero)
-- Code(Expression(3, Add)) at (prev + 2, 9) to (start + 2, 11)
-    = ((c0 - c1) + Zero)
-- Code(Expression(4, Add)) at (prev + 3, 1) to (start + 0, 2)
+- Code(Expression(0, Sub)) at (prev + 0, 18) to (start + 0, 19)
+    = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 84) to (start + 0, 85)
+- Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 2, 11)
+    = (c0 - c1)
+- Code(Expression(1, Add)) at (prev + 3, 1) to (start + 0, 2)
     = (c1 + (c0 - c1))
 
 Function name: closure_macro::main::{closure#0}

@@ -81,6 +81,7 @@ note: the lifetime requirement is introduced here
    |
 LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider specifying the type of the closure parameters
    |
 LL |     let f = |x: &_, y: &_, z: u32| ();

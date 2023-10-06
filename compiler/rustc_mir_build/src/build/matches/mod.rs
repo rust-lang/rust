@@ -1798,7 +1798,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fake_borrow_ty =
                     Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                 let mut fake_borrow_temp = LocalDecl::new(fake_borrow_ty, temp_span);
-                fake_borrow_temp.internal = self.local_decls[matched_place.local].internal;
                 fake_borrow_temp.local_info = ClearCrossCrate::Set(Box::new(LocalInfo::FakeBorrow));
                 let fake_borrow_temp = self.local_decls.push(fake_borrow_temp);
 
@@ -2268,7 +2267,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ty: var_ty,
             user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
             source_info,
-            internal: false,
             local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(BindingForm::Var(
                 VarBindingForm {
                     binding_mode,
@@ -2298,7 +2296,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ty: Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, var_ty),
                 user_ty: None,
                 source_info,
-                internal: false,
                 local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(
                     BindingForm::RefForGuard,
                 ))),

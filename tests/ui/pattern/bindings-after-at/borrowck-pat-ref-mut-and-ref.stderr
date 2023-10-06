@@ -307,6 +307,7 @@ LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false 
    |                                                                  ^ move occurs because `b` has type `&mut U`, which does not implement the `Copy` trait
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0507]: cannot move out of `a` in pattern guard
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:109:66
@@ -323,6 +324,7 @@ LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false 
    |                                                                  ^ move occurs because `a` has type `&mut Result<U, U>`, which does not implement the `Copy` trait
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:117:9

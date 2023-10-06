@@ -61,6 +61,8 @@ LL |     x == y;
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: `'a` and `'b` must be the same: replace one with the other
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-comparisons.rs:16:5
@@ -93,6 +95,8 @@ LL |     f == g;
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: `'a` and `'b` must be the same: replace one with the other
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 6 previous errors
 

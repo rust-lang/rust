@@ -237,7 +237,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         if self.const_kind() == hir::ConstContext::ConstFn {
             for (idx, local) in body.local_decls.iter_enumerated() {
                 // Handle the return place below.
-                if idx == RETURN_PLACE || local.internal {
+                if idx == RETURN_PLACE {
                     continue;
                 }
 
@@ -664,6 +664,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | ProjectionElem::Downcast(..)
             | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Subtype(..)
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {}
         }
@@ -886,7 +887,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
 
-                // `begin_panic` and `panic_display` are generic functions that accept
+                // `begin_panic` and `#[rustc_const_panic_str]` functions accept generic
                 // types other than str. Check to enforce that only str can be used in
                 // const-eval.
 
@@ -898,8 +899,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 }
 
-                // const-eval of the `panic_display` fn assumes the argument is `&&str`
-                if Some(callee) == tcx.lang_items().panic_display() {
+                // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
+                if tcx.has_attr(callee, sym::rustc_const_panic_str) {
                     match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
                         {

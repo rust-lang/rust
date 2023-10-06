@@ -10,7 +10,7 @@ use crate::sys::stack_overflow;
 use crate::sys_common::FromInner;
 use crate::time::Duration;
 
-use libc::c_void;
+use core::ffi::c_void;
 
 use super::to_u16s;
 

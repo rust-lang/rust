@@ -85,7 +85,7 @@ fn univariant_uninterned<'tcx>(
     fields: &IndexSlice<FieldIdx, Layout<'_>>,
     repr: &ReprOptions,
     kind: StructKind,
-) -> Result<LayoutS, &'tcx LayoutError<'tcx>> {
+) -> Result<LayoutS<FieldIdx, VariantIdx>, &'tcx LayoutError<'tcx>> {
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {

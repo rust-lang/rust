@@ -58,6 +58,8 @@ pub use core::time::TryFromFloatSecsError;
 /// some seconds may be longer than others). An instant may jump forwards or
 /// experience time dilation (slow down or speed up), but it will never go
 /// backwards.
+/// As part of this non-guarantee it is also not specified whether system suspends count as
+/// elapsed time or not. The behavior varies across platforms and rust versions.
 ///
 /// Instants are opaque types that can only be compared to one another. There is
 /// no method to get "the number of seconds" from an instant. Instead, it only
@@ -151,6 +153,7 @@ pub use core::time::TryFromFloatSecsError;
 ///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]
 pub struct Instant(time::Instant);
 
 /// A measurement of the system clock, useful for talking to

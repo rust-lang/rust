@@ -30,7 +30,7 @@ fn clif_sig_from_fn_abi<'tcx>(
     let inputs = fn_abi.args.iter().flat_map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter());
 
     let (return_ptr, returns) = fn_abi.ret.get_abi_return(tcx);
-    // Sometimes the first param is an pointer to the place where the return value needs to be stored.
+    // Sometimes the first param is a pointer to the place where the return value needs to be stored.
     let params: Vec<_> = return_ptr.into_iter().chain(inputs).collect();
 
     Signature { params, returns, call_conv }

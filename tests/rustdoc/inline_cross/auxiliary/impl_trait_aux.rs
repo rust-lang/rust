@@ -15,7 +15,7 @@ pub fn func4<T: Iterator<Item = impl Clone>>(_x: T) {}
 
 pub fn func5(
     _f: impl for<'any> Fn(&'any str, &'any str) -> bool + for<'r> Other<T<'r> = ()>,
-    _a: impl for<'alpha, 'beta> Auxiliary<'alpha, Item<'beta> = fn(&'beta ())>,
+    _a: impl for<'beta, 'alpha, '_gamma> Auxiliary<'alpha, Item<'beta> = fn(&'beta ())>,
 ) {}
 
 pub trait Other {

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::match_type;
+use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_diag_item_method, is_trait_method, match_def_path, path_to_local_id, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
@@ -62,7 +62,7 @@ impl LateLintPass<'_> for LinesFilterMapOk {
         if let ExprKind::MethodCall(fm_method, fm_receiver, [fm_arg], fm_span) = expr.kind &&
             is_trait_method(cx, expr, sym::Iterator) &&
             (fm_method.ident.as_str() == "filter_map" || fm_method.ident.as_str() == "flat_map") &&
-            match_type(cx, cx.typeck_results().expr_ty_adjusted(fm_receiver), &paths::STD_IO_LINES)
+            is_type_diagnostic_item(cx, cx.typeck_results().expr_ty_adjusted(fm_receiver), sym::IoLines)
         {
             let lint = match &fm_arg.kind {
                 // Detect `Result::ok`

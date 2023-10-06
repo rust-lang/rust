@@ -26,9 +26,9 @@ error: lifetime may not live long enough
   --> $DIR/impl-trait-missing-lifetime.rs:16:69
    |
 LL | async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-   |                                                    --------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
-   |                                                    |
-   |                                                    return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
+   | -----------------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   | |
+   | return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
 
 error: aborting due to 3 previous errors
 

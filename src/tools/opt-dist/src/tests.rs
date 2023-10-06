@@ -61,7 +61,7 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
 
     let config_content = format!(
         r#"profile = "user"
-changelog-seen = 2
+change-id = 115898
 
 [build]
 rustc = "{rustc}"

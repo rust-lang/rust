@@ -180,6 +180,7 @@ impl<T: ?Sized> Deref for &mut T {
 pub trait DerefMut: Deref {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "deref_mut_method"]
     fn deref_mut(&mut self) -> &mut Self::Target;
 }
 

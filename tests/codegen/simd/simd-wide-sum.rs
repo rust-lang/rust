@@ -11,14 +11,14 @@
 #![feature(portable_simd)]
 
 use std::simd::{Simd, SimdUint};
-const N: usize = 8;
+const N: usize = 16;
 
 #[no_mangle]
 // CHECK-LABEL: @wider_reduce_simd
 pub fn wider_reduce_simd(x: Simd<u8, N>) -> u16 {
-    // CHECK: zext <8 x i8>
-    // CHECK-SAME: to <8 x i16>
-    // CHECK: call i16 @llvm.vector.reduce.add.v8i16(<8 x i16>
+    // CHECK: zext <16 x i8>
+    // CHECK-SAME: to <16 x i16>
+    // CHECK: call i16 @llvm.vector.reduce.add.v16i16(<16 x i16>
     let x: Simd<u16, N> = x.cast();
     x.reduce_sum()
 }
@@ -26,9 +26,9 @@ pub fn wider_reduce_simd(x: Simd<u8, N>) -> u16 {
 #[no_mangle]
 // CHECK-LABEL: @wider_reduce_loop
 pub fn wider_reduce_loop(x: Simd<u8, N>) -> u16 {
-    // CHECK: zext <8 x i8>
-    // CHECK-SAME: to <8 x i16>
-    // CHECK: call i16 @llvm.vector.reduce.add.v8i16(<8 x i16>
+    // CHECK: zext <16 x i8>
+    // CHECK-SAME: to <16 x i16>
+    // CHECK: call i16 @llvm.vector.reduce.add.v16i16(<16 x i16>
     let mut sum = 0_u16;
     for i in 0..N {
         sum += u16::from(x[i]);
@@ -39,9 +39,9 @@ pub fn wider_reduce_loop(x: Simd<u8, N>) -> u16 {
 #[no_mangle]
 // CHECK-LABEL: @wider_reduce_iter
 pub fn wider_reduce_iter(x: Simd<u8, N>) -> u16 {
-    // CHECK: zext <8 x i8>
-    // CHECK-SAME: to <8 x i16>
-    // CHECK: call i16 @llvm.vector.reduce.add.v8i16(<8 x i16>
+    // CHECK: zext <16 x i8>
+    // CHECK-SAME: to <16 x i16>
+    // CHECK: call i16 @llvm.vector.reduce.add.v16i16(<16 x i16>
     x.as_array().iter().copied().map(u16::from).sum()
 }
 
@@ -52,8 +52,8 @@ pub fn wider_reduce_iter(x: Simd<u8, N>) -> u16 {
 #[no_mangle]
 // CHECK-LABEL: @wider_reduce_into_iter
 pub fn wider_reduce_into_iter(x: Simd<u8, N>) -> u16 {
-    // CHECK: zext <8 x i8>
-    // CHECK-SAME: to <8 x i16>
-    // CHECK: call i16 @llvm.vector.reduce.add.v8i16(<8 x i16>
+    // FIXME: It would be nice if this was exactly the same as the above tests,
+    // but at the time of writing this comment, that didn't happen on LLVM main.
+    // CHECK: call i16 @llvm.vector.reduce.add
     x.to_array().into_iter().map(u16::from).sum()
 }

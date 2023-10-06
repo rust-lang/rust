@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{match_type, peel_mid_ty_refs_is_mutable};
-use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, paths, peel_ref_operators};
+use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
+use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, peel_ref_operators};
 use rustc_ast::Mutability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, HirId, Local, Node, PatKind, PathSegment, StmtKind};
@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
         // Don't lint `Peekable`s returned from a block
         if let Some(expr) = block.expr
             && let Some(ty) = cx.typeck_results().expr_ty_opt(peel_ref_operators(cx, expr))
-            && match_type(cx, ty, &paths::PEEKABLE)
+            && is_type_diagnostic_item(cx, ty, sym::IterPeekable)
         {
             return;
         }
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
                 && !init.span.from_expansion()
                 && let Some(ty) = cx.typeck_results().expr_ty_opt(init)
                 && let (ty, _, Mutability::Mut) = peel_mid_ty_refs_is_mutable(ty)
-                && match_type(cx, ty, &paths::PEEKABLE)
+                && is_type_diagnostic_item(cx, ty, sym::IterPeekable)
             {
                 let mut vis = PeekableVisitor::new(cx, binding);
 
@@ -222,7 +222,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
 fn arg_is_mut_peekable(cx: &LateContext<'_>, arg: &Expr<'_>) -> bool {
     if let Some(ty) = cx.typeck_results().expr_ty_opt(arg)
         && let (ty, _, Mutability::Mut) = peel_mid_ty_refs_is_mutable(ty)
-        && match_type(cx, ty, &paths::PEEKABLE)
+        && is_type_diagnostic_item(cx, ty, sym::IterPeekable)
     {
         true
     } else {

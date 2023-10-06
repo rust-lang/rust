@@ -96,8 +96,6 @@ hir_analysis_enum_discriminant_overflowed = enum discriminant overflowed
     .label = overflowed on value after {$discr}
     .note = explicitly set `{$item_name} = {$wrapped_discr}` if that is desired outcome
 
-hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
-
 hir_analysis_field_already_declared =
     field `{$field_name}` is already declared
     .label = field already declared

@@ -7,7 +7,8 @@ LL |     Foo::<usize>::foo((1i32, 1i32, 1i32));
    |     required by a bound introduced by this call
    |
    = help: the trait `Foo<usize>` is not implemented for `(i32, i32, i32)`
-   = help: the trait `Foo<A>` is implemented for `(A, B, C)`
+   = help: the trait `Foo<i32>` is implemented for `(i32, i32, i32)`
+   = help: for that trait implementation, expected `i32`, found `usize`
 
 error: aborting due to previous error
 

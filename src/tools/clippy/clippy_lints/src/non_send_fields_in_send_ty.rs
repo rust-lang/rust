@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{is_lint_allowed, match_def_path, paths};
+use clippy_utils::is_lint_allowed;
 use rustc_ast::ImplPolarity;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
@@ -233,7 +233,7 @@ fn contains_pointer_like<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> b
                     return true;
                 },
                 ty::Adt(adt_def, _) => {
-                    if match_def_path(cx, adt_def.did(), &paths::PTR_NON_NULL) {
+                    if cx.tcx.is_diagnostic_item(sym::NonNull, adt_def.did()) {
                         return true;
                     }
                 },

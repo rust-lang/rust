@@ -1,6 +1,6 @@
 use core::iter::Peekable;
 
-/// A iterator for deduping the key of a sorted iterator.
+/// An iterator for deduping the key of a sorted iterator.
 /// When encountering the duplicated key, only the last key-value pair is yielded.
 ///
 /// Used by [`BTreeMap::bulk_build_from_sorted_iter`][1].

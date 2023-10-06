@@ -15,6 +15,8 @@ LL | #![forbid(non_snake_case)]
 LL |
 LL | #[allow(non_snake_case)]
    |         ^^^^^^^^^^^^^^ overruled by previous forbid
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

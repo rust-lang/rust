@@ -31,7 +31,7 @@ index d95b5b7f17f..00b6f0e3635 100644
 EOF
 
 cat > config.toml <<EOF
-changelog-seen = 2
+change-id = 115898
 
 [llvm]
 ninja = false

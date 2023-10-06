@@ -48,6 +48,8 @@
 -         _1 = <{generator@$DIR/inline_generator.rs:16:5: 16:8} as Generator<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb5];
 +         StorageLive(_5);
 +         _5 = const false;
++         StorageLive(_6);
++         StorageLive(_7);
 +         _6 = (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb5, 1: bb9, 3: bb10, otherwise: bb11];
@@ -55,6 +57,8 @@
   
 -     bb3: {
 +     bb1: {
++         StorageDead(_7);
++         StorageDead(_6);
 +         StorageDead(_5);
           StorageDead(_2);
 -         drop(_4) -> [return: bb4, unwind: bb6];

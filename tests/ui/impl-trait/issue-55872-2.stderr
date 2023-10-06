@@ -9,6 +9,8 @@ error: type parameter `T` is part of concrete type but not used in parameter lis
    |
 LL |         async {}
    |         ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

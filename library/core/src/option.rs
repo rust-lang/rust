@@ -743,8 +743,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(option_as_slice)]
-    ///
     /// assert_eq!(
     ///     [Some(1234).as_slice(), None.as_slice()],
     ///     [&[1234][..], &[][..]],
@@ -755,15 +753,13 @@ impl<T> Option<T> {
     /// borrowing) [`[_]::first`](slice::first):
     ///
     /// ```rust
-    /// #![feature(option_as_slice)]
-    ///
     /// for i in [Some(1234_u16), None] {
     ///     assert_eq!(i.as_ref(), i.as_slice().first());
     /// }
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "option_as_slice", issue = "108545")]
+    #[stable(feature = "option_as_slice", since = "CURRENT_RUSTC_VERSION")]
     pub fn as_slice(&self) -> &[T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
@@ -794,8 +790,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(option_as_slice)]
-    ///
     /// assert_eq!(
     ///     [Some(1234).as_mut_slice(), None.as_mut_slice()],
     ///     [&mut [1234][..], &mut [][..]],
@@ -806,8 +800,6 @@ impl<T> Option<T> {
     /// our original `Option`:
     ///
     /// ```rust
-    /// #![feature(option_as_slice)]
-    ///
     /// let mut x = Some(1234);
     /// x.as_mut_slice()[0] += 1;
     /// assert_eq!(x, Some(1235));
@@ -817,13 +809,11 @@ impl<T> Option<T> {
     /// is [`[_]::first_mut`](slice::first_mut):
     ///
     /// ```rust
-    /// #![feature(option_as_slice)]
-    ///
     /// assert_eq!(Some(123).as_mut_slice().first_mut(), Some(&mut 123))
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "option_as_slice", issue = "108545")]
+    #[stable(feature = "option_as_slice", since = "CURRENT_RUSTC_VERSION")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to

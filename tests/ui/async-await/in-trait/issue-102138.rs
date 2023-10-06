@@ -10,6 +10,8 @@ async fn yield_now() {}
 
 trait AsyncIterator {
     type Item;
+
+    #[allow(async_fn_in_trait)]
     async fn next(&mut self) -> Option<Self::Item>;
 }
 

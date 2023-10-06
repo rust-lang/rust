@@ -44,7 +44,7 @@ pub fn extract_verify_if_eq<'tcx>(
     test_ty: Ty<'tcx>,
 ) -> Option<ty::Region<'tcx>> {
     assert!(!verify_if_eq_b.has_escaping_bound_vars());
-    let mut m = Match::new(tcx, param_env);
+    let mut m = MatchAgainstHigherRankedOutlives::new(tcx, param_env);
     let verify_if_eq = verify_if_eq_b.skip_binder();
     m.relate(verify_if_eq.ty, test_ty).ok()?;
 
@@ -87,24 +87,32 @@ pub(super) fn can_match_erased_ty<'tcx>(
         // pointless micro-optimization
         true
     } else {
-        Match::new(tcx, param_env).relate(outlives_ty, erased_ty).is_ok()
+        MatchAgainstHigherRankedOutlives::new(tcx, param_env).relate(outlives_ty, erased_ty).is_ok()
     }
 }
 
-struct Match<'tcx> {
+struct MatchAgainstHigherRankedOutlives<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     pattern_depth: ty::DebruijnIndex,
     map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
 }
 
-impl<'tcx> Match<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Match<'tcx> {
-        Match { tcx, param_env, pattern_depth: ty::INNERMOST, map: FxHashMap::default() }
+impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> MatchAgainstHigherRankedOutlives<'tcx> {
+        MatchAgainstHigherRankedOutlives {
+            tcx,
+            param_env,
+            pattern_depth: ty::INNERMOST,
+            map: FxHashMap::default(),
+        }
     }
 }
 
-impl<'tcx> Match<'tcx> {
+impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
     /// Creates the "Error" variant that signals "no match".
     fn no_match<T>(&self) -> RelateResult<'tcx, T> {
         Err(TypeError::Mismatch)
@@ -134,7 +142,7 @@ impl<'tcx> Match<'tcx> {
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
+impl<'tcx> TypeRelation<'tcx> for MatchAgainstHigherRankedOutlives<'tcx> {
     fn tag(&self) -> &'static str {
         "Match"
     }

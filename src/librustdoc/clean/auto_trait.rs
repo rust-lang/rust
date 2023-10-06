@@ -551,8 +551,8 @@ where
                 WherePredicate::RegionPredicate { lifetime, bounds } => {
                     lifetime_to_bounds.entry(lifetime).or_default().extend(bounds);
                 }
-                WherePredicate::EqPredicate { lhs, rhs, bound_params } => {
-                    match *lhs {
+                WherePredicate::EqPredicate { lhs, rhs } => {
+                    match lhs {
                         Type::QPath(box QPathData {
                             ref assoc,
                             ref self_type,
@@ -590,14 +590,13 @@ where
                                 GenericArgs::AngleBracketed { ref mut bindings, .. } => {
                                     bindings.push(TypeBinding {
                                         assoc: assoc.clone(),
-                                        kind: TypeBindingKind::Equality { term: *rhs },
+                                        kind: TypeBindingKind::Equality { term: rhs },
                                     });
                                 }
                                 GenericArgs::Parenthesized { .. } => {
                                     existing_predicates.push(WherePredicate::EqPredicate {
                                         lhs: lhs.clone(),
                                         rhs,
-                                        bound_params,
                                     });
                                     continue; // If something other than a Fn ends up
                                     // with parentheses, leave it alone

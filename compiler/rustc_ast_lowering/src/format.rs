@@ -410,15 +410,11 @@ fn expand_format_args<'hir>(
     let format_options = use_format_options.then(|| {
         // Generate:
         //     &[format_spec_0, format_spec_1, format_spec_2]
-        let elements: Vec<_> = fmt
-            .template
-            .iter()
-            .filter_map(|piece| {
-                let FormatArgsPiece::Placeholder(placeholder) = piece else { return None };
-                Some(make_format_spec(ctx, macsp, placeholder, &mut argmap))
-            })
-            .collect();
-        ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
+        let elements = ctx.arena.alloc_from_iter(fmt.template.iter().filter_map(|piece| {
+            let FormatArgsPiece::Placeholder(placeholder) = piece else { return None };
+            Some(make_format_spec(ctx, macsp, placeholder, &mut argmap))
+        }));
+        ctx.expr_array_ref(macsp, elements)
     });
 
     let arguments = fmt.arguments.all_args();
@@ -477,10 +473,8 @@ fn expand_format_args<'hir>(
         //         <core::fmt::Argument>::new_debug(&arg2),
         //         …
         //     ]
-        let elements: Vec<_> = arguments
-            .iter()
-            .zip(argmap)
-            .map(|(arg, ((_, ty), placeholder_span))| {
+        let elements = ctx.arena.alloc_from_iter(arguments.iter().zip(argmap).map(
+            |(arg, ((_, ty), placeholder_span))| {
                 let placeholder_span =
                     placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
                 let arg_span = match arg.kind {
@@ -493,9 +487,9 @@ fn expand_format_args<'hir>(
                     hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg),
                 ));
                 make_argument(ctx, placeholder_span, ref_arg, ty)
-            })
-            .collect();
-        ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
+            },
+        ));
+        ctx.expr_array_ref(macsp, elements)
     } else {
         // Generate:
         //     &match (&arg0, &arg1, &…) {
@@ -528,19 +522,14 @@ fn expand_format_args<'hir>(
                 make_argument(ctx, placeholder_span, arg, ty)
             },
         ));
-        let elements: Vec<_> = arguments
-            .iter()
-            .map(|arg| {
-                let arg_expr = ctx.lower_expr(&arg.expr);
-                ctx.expr(
-                    arg.expr.span.with_ctxt(macsp.ctxt()),
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg_expr),
-                )
-            })
-            .collect();
-        let args_tuple = ctx
-            .arena
-            .alloc(ctx.expr(macsp, hir::ExprKind::Tup(ctx.arena.alloc_from_iter(elements))));
+        let elements = ctx.arena.alloc_from_iter(arguments.iter().map(|arg| {
+            let arg_expr = ctx.lower_expr(&arg.expr);
+            ctx.expr(
+                arg.expr.span.with_ctxt(macsp.ctxt()),
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg_expr),
+            )
+        }));
+        let args_tuple = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Tup(elements)));
         let array = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Array(args)));
         let match_arms = ctx.arena.alloc_from_iter([ctx.arm(args_pat, array)]);
         let match_expr = ctx.arena.alloc(ctx.expr_match(

@@ -21,6 +21,7 @@ note: the module `baz` is defined here
    |
 LL |     mod baz {
    |     ^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:141:18

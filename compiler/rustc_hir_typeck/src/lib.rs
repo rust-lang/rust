@@ -5,7 +5,6 @@
 #![feature(box_patterns)]
 #![feature(min_specialization)]
 #![feature(control_flow_enum)]
-#![feature(option_as_slice)]
 #![recursion_limit = "256"]
 
 #[macro_use]

@@ -9,6 +9,8 @@ error[E0220]: associated type `Res` not found for `Self`
    |
 LL | trait MkSvc<Target, Req> = Svc<Target> where Self::Res: Svc<Req>;
    |                                                    ^^^ there is a similarly named associated type `Res` in the trait `Svc`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

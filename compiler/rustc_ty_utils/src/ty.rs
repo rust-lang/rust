@@ -3,9 +3,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
-};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{ToPredicate, TypeSuperVisitable, TypeVisitable};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
@@ -214,10 +213,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // strategy, then just reinterpret the associated type like an opaque :^)
             let default_ty = self.tcx.type_of(shifted_alias_ty.def_id).instantiate(self.tcx, shifted_alias_ty.args);
 
-            self.predicates.push(ty::Clause::from_projection_clause(self.tcx, ty::Binder::bind_with_vars(
+            self.predicates.push(ty::Binder::bind_with_vars(
                 ty::ProjectionPredicate { projection_ty: shifted_alias_ty, term: default_ty.into() },
                 self.bound_vars,
-            )));
+            ).to_predicate(self.tcx));
 
             // We walk the *un-shifted* alias ty, because we're tracking the de bruijn
             // binder depth, and if we were to walk `shifted_alias_ty` instead, we'd

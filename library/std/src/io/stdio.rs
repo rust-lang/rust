@@ -611,6 +611,7 @@ static STDOUT: OnceLock<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = OnceLo
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "io_stdout")]
 pub fn stdout() -> Stdout {
     Stdout {
         inner: STDOUT
@@ -847,6 +848,7 @@ pub struct StderrLock<'a> {
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "io_stderr")]
 pub fn stderr() -> Stderr {
     // Note that unlike `stdout()` we don't use `at_exit` here to register a
     // destructor. Stderr is not buffered, so there's no need to run a

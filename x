@@ -8,7 +8,7 @@
 set -eu
 
 # syntax check
-sh -n $0
+sh -n "$0"
 
 realpath() {
     if [ -d "$1" ]; then

@@ -21,6 +21,7 @@ note: unsafe traits like `Sync` should be implemented explicitly
    |
 LL |          Sync,
    |          ^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

@@ -1042,6 +1042,12 @@ def bootstrap(args):
     """Configure, fetch, build and run the initial bootstrap"""
     rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
 
+    if not os.path.exists(os.path.join(rust_root, '.git')) and \
+            os.path.exists(os.path.join(rust_root, '.github')):
+        eprint("warn: Looks like you are trying to bootstrap Rust from a source that is neither a "
+               "git clone nor distributed tarball.\nThis build may fail due to missing submodules "
+               "unless you put them in place manually.")
+
     # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`,
     # then `config.toml` in the root directory.
     toml_path = args.config or os.getenv('RUST_BOOTSTRAP_CONFIG')

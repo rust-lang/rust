@@ -1,3 +1,5 @@
+// ignore-tidy-filelength :(
+
 mod ambiguity;
 pub mod on_unimplemented;
 pub mod suggestions;
@@ -67,6 +69,7 @@ pub enum CandidateSimilarity {
 pub struct ImplCandidate<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
     pub similarity: CandidateSimilarity,
+    impl_def_id: DefId,
 }
 
 enum GetSafeTransmuteErrorAndReason {
@@ -1331,6 +1334,7 @@ trait InferCtxtPrivExt<'tcx> {
         body_def_id: LocalDefId,
         err: &mut Diagnostic,
         other: bool,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> bool;
 
     fn report_similar_impl_candidates_for_root_obligation(
@@ -1918,8 +1922,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                 let imp = self.tcx.impl_trait_ref(def_id).unwrap().skip_binder();
 
-                self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false)
-                    .map(|similarity| ImplCandidate { trait_ref: imp, similarity })
+                self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false).map(
+                    |similarity| ImplCandidate { trait_ref: imp, similarity, impl_def_id: def_id },
+                )
             })
             .collect();
         if candidates.iter().any(|c| matches!(c.similarity, CandidateSimilarity::Exact { .. })) {
@@ -1938,7 +1943,82 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         body_def_id: LocalDefId,
         err: &mut Diagnostic,
         other: bool,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
+        // If we have a single implementation, try to unify it with the trait ref
+        // that failed. This should uncover a better hint for what *is* implemented.
+        if let [single] = &impl_candidates {
+            if self.probe(|_| {
+                let ocx = ObligationCtxt::new(self);
+                let obligation_trait_ref = self.instantiate_binder_with_placeholders(trait_ref);
+                let impl_args = self.fresh_args_for_item(DUMMY_SP, single.impl_def_id);
+                let impl_trait_ref = ocx.normalize(
+                    &ObligationCause::dummy(),
+                    param_env,
+                    ty::EarlyBinder::bind(single.trait_ref).instantiate(self.tcx, impl_args),
+                );
+
+                ocx.register_obligations(
+                    self.tcx
+                        .predicates_of(single.impl_def_id)
+                        .instantiate(self.tcx, impl_args)
+                        .into_iter()
+                        .map(|(clause, _)| {
+                            Obligation::new(self.tcx, ObligationCause::dummy(), param_env, clause)
+                        }),
+                );
+                if !ocx.select_where_possible().is_empty() {
+                    return false;
+                }
+
+                let mut terrs = vec![];
+                for (obligation_arg, impl_arg) in
+                    std::iter::zip(obligation_trait_ref.args, impl_trait_ref.args)
+                {
+                    if let Err(terr) =
+                        ocx.eq(&ObligationCause::dummy(), param_env, impl_arg, obligation_arg)
+                    {
+                        terrs.push(terr);
+                    }
+                    if !ocx.select_where_possible().is_empty() {
+                        return false;
+                    }
+                }
+
+                // Literally nothing unified, just give up.
+                if terrs.len() == impl_trait_ref.args.len() {
+                    return false;
+                }
+
+                let cand =
+                    self.resolve_vars_if_possible(impl_trait_ref).fold_with(&mut BottomUpFolder {
+                        tcx: self.tcx,
+                        ty_op: |ty| ty,
+                        lt_op: |lt| lt,
+                        ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
+                    });
+                err.highlighted_help(vec![
+                    (format!("the trait `{}` ", cand.print_only_trait_path()), Style::NoStyle),
+                    ("is".to_string(), Style::Highlight),
+                    (" implemented for `".to_string(), Style::NoStyle),
+                    (cand.self_ty().to_string(), Style::Highlight),
+                    ("`".to_string(), Style::NoStyle),
+                ]);
+
+                if let [TypeError::Sorts(exp_found)] = &terrs[..] {
+                    let exp_found = self.resolve_vars_if_possible(*exp_found);
+                    err.help(format!(
+                        "for that trait implementation, expected `{}`, found `{}`",
+                        exp_found.expected, exp_found.found
+                    ));
+                }
+
+                true
+            }) {
+                return true;
+            }
+        }
+
         let other = if other { "other " } else { "" };
         let report = |candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
             if candidates.is_empty() {
@@ -2062,9 +2142,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             })
             .collect();
         impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref));
+        let mut impl_candidates: Vec<_> =
+            impl_candidates.into_iter().map(|cand| cand.trait_ref).collect();
         impl_candidates.dedup();
 
-        report(impl_candidates.into_iter().map(|cand| cand.trait_ref).collect(), err)
+        report(impl_candidates, err)
     }
 
     fn report_similar_impl_candidates_for_root_obligation(
@@ -2108,6 +2190,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 body_def_id,
                 err,
                 true,
+                obligation.param_env,
             );
         }
     }
@@ -2316,6 +2399,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             obligation.cause.body_id,
                             &mut err,
                             false,
+                            obligation.param_env,
                         );
                     }
                 }
@@ -3051,6 +3135,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 body_def_id,
                 err,
                 true,
+                obligation.param_env,
             ) {
                 self.report_similar_impl_candidates_for_root_obligation(
                     &obligation,

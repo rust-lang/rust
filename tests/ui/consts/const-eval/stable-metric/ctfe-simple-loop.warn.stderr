@@ -40,6 +40,7 @@ help: the constant being evaluated
    |
 LL | const Y: u32 = simple_loop(35);
    | ^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: constant evaluation is taking a long time
   --> $DIR/ctfe-simple-loop.rs:9:5

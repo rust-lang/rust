@@ -19,6 +19,7 @@ LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                              ^
    |
    = help: consider extracting the value of the `static` to a `const`, and referring to that
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

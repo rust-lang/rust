@@ -506,9 +506,8 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                 lifetime: convert_lifetime(lifetime),
                 bounds: bounds.into_tcx(tcx),
             },
-            // FIXME(fmease): Convert bound parameters as well.
-            EqPredicate { lhs, rhs, bound_params: _ } => {
-                WherePredicate::EqPredicate { lhs: (*lhs).into_tcx(tcx), rhs: (*rhs).into_tcx(tcx) }
+            EqPredicate { lhs, rhs } => {
+                WherePredicate::EqPredicate { lhs: lhs.into_tcx(tcx), rhs: rhs.into_tcx(tcx) }
             }
         }
     }

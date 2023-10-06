@@ -74,6 +74,7 @@ LL |         #[cfg(feature = $expr)]
 LL | generate_s10!(concat!("nonexistent"));
    | ------------------------------------- in this macro invocation
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 11 previous errors

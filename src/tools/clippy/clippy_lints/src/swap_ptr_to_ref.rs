@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{match_def_path, path_def_id, paths};
+use clippy_utils::path_def_id;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::{sym, Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -42,7 +42,7 @@ impl LateLintPass<'_> for SwapPtrToRef {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
         if let ExprKind::Call(fn_expr, [arg1, arg2]) = e.kind
             && let Some(fn_id) = path_def_id(cx, fn_expr)
-            && match_def_path(cx, fn_id, &paths::MEM_SWAP)
+            && cx.tcx.is_diagnostic_item(sym::mem_swap, fn_id)
             && let ctxt = e.span.ctxt()
             && let (from_ptr1, arg1_span) = is_ptr_to_ref(cx, arg1, ctxt)
             && let (from_ptr2, arg2_span) = is_ptr_to_ref(cx, arg2, ctxt)

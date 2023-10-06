@@ -21,6 +21,8 @@ LL | trait Trait: Copy<dyn Send> {}
    |              ^^^^---------- help: remove these generics
    |              |
    |              expected 0 generic arguments
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:8:21

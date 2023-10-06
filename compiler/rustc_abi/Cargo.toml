@@ -15,7 +15,9 @@ rustc_serialize = { path = "../rustc_serialize", optional = true  }
 
 [features]
 default = ["nightly", "randomize"]
-randomize = ["rand", "rand_xoshiro"]
+randomize = ["rand", "rand_xoshiro", "nightly"]
+# rust-analyzer depends on this crate and we therefore require it to built on a stable toolchain
+# without depending on rustc_data_structures, rustc_macros and rustc_serialize
 nightly = [
     "rustc_data_structures",
     "rustc_index/nightly",

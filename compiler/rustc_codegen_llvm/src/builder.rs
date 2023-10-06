@@ -3,6 +3,7 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -1225,9 +1226,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn do_not_inline(&mut self, llret: &'ll Value) {
-        let noinline = llvm::AttributeKind::NoInline.create_attr(self.llcx);
-        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[noinline]);
+    fn apply_attrs_to_cleanup_callsite(&mut self, llret: &'ll Value) {
+        if llvm_util::get_version() < (17, 0, 2) {
+            // Work around https://github.com/llvm/llvm-project/issues/66984.
+            let noinline = llvm::AttributeKind::NoInline.create_attr(self.llcx);
+            attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[noinline]);
+        } else {
+            // Cleanup is always the cold path.
+            let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
+            attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
+        }
     }
 }
 

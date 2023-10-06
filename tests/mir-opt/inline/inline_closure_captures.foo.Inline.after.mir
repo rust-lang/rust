@@ -41,6 +41,8 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         _7 = (move _8,);
         StorageLive(_9);
         _9 = move (_7.0: i32);
+        StorageLive(_10);
+        StorageLive(_12);
         StorageLive(_11);
         _10 = ((*_6).0: &i32);
         _11 = (*_10);
@@ -50,6 +52,8 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         _0 = (move _11, move _13);
         StorageDead(_13);
         StorageDead(_11);
+        StorageDead(_12);
+        StorageDead(_10);
         StorageDead(_9);
         StorageDead(_8);
         StorageDead(_7);

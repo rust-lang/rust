@@ -21,6 +21,8 @@ name: CI
       - auto
       - try
       - try-perf
+      - automation/bors/try
+      - automation/bors/try-merge
       - master
   pull_request:
     branches:
@@ -262,9 +264,6 @@ jobs:
             os: ubuntu-20.04-4core-16gb
             env: {}
           - name: test-various
-            os: ubuntu-20.04-8core-32gb
-            env: {}
-          - name: wasm32
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu
@@ -542,7 +541,7 @@ jobs:
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
       AWS_REGION: us-west-1
       CACHE_DOMAIN: ci-caches.rust-lang.org
-    if: "github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
+    if: "github.event_name == 'push' && (((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust') || ((github.ref == 'refs/heads/automation/bors/try') && github.repository == 'rust-lang/rust'))"
     strategy:
       matrix:
         include:

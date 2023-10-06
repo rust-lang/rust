@@ -20,6 +20,8 @@ note: erroneous constant encountered
    |
 LL |     let _: &'static _ = &C;
    |                         ^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to previous error
 

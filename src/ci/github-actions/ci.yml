@@ -281,6 +281,8 @@ on:
       - auto
       - try
       - try-perf
+      - automation/bors/try
+      - automation/bors/try-merge
       - master
   pull_request:
     branches:
@@ -425,9 +427,6 @@ jobs:
             <<: *job-linux-4c
 
           - name: test-various
-            <<: *job-linux-8c
-
-          - name: wasm32
             <<: *job-linux-8c
 
           - name: x86_64-gnu
@@ -691,7 +690,7 @@ jobs:
     env:
       DIST_TRY_BUILD: 1
       <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'
+    if: github.event_name == 'push' && (((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust') || ((github.ref == 'refs/heads/automation/bors/try') && github.repository == 'rust-lang/rust'))
     strategy:
       matrix:
         include:

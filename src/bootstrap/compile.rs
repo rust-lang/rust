@@ -158,6 +158,25 @@ impl Step for Std {
         target_deps.extend(copy_third_party_objects(builder, &compiler, target));
         target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
 
+        // The LLD wrappers and `rust-lld` are self-contained linking components that can be
+        // necessary to link the stdlib on some targets. We'll also need to copy these binaries to
+        // the `stage0-sysroot` to ensure the linker is found when bootstrapping on such a target.
+        if compiler.stage == 0 && compiler.host == builder.config.build {
+            // We want to copy the host `bin` folder within the `rustlib` folder in the sysroot.
+            let src_sysroot_bin = builder
+                .rustc_snapshot_sysroot()
+                .join("lib")
+                .join("rustlib")
+                .join(compiler.host.triple)
+                .join("bin");
+            if src_sysroot_bin.exists() {
+                let target_sysroot_bin =
+                    builder.sysroot_libdir(compiler, target).parent().unwrap().join("bin");
+                t!(fs::create_dir_all(&target_sysroot_bin));
+                builder.cp_r(&src_sysroot_bin, &target_sysroot_bin);
+            }
+        }
+
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
         for krate in &*self.crates {

@@ -143,6 +143,7 @@ LL | #[derive(my_macro)]
    |          ^^^^^^^^
    |
    = note: `my_macro` is in scope, but it is a function-like macro
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 20 previous errors
 

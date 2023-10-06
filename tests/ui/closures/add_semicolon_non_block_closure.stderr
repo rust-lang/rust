@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/add_semicolon_non_block_closure.rs:8:12
    |
 LL | fn main() {
-   |           - expected `()` because of default return type
+   |          - expected `()` because of default return type
 LL |     foo(|| bar())
    |            ^^^^^ expected `()`, found `i32`
    |

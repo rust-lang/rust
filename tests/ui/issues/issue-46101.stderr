@@ -9,6 +9,8 @@ error[E0433]: failed to resolve: partially resolved path in a derive macro
    |
 LL | #[derive(Foo::Anything)]
    |          ^^^^^^^^^^^^^ partially resolved path in a derive macro
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

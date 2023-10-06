@@ -5,6 +5,7 @@
 #![allow(incomplete_features)]
 
 pub trait Foo {
+    #[allow(async_fn_in_trait)]
     async fn foo(&mut self);
 }
 

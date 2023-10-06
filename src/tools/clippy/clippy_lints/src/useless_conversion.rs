@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lin
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
-use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, match_def_path, path_to_local, paths};
+use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, path_to_local};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
@@ -331,7 +331,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         let a = cx.typeck_results().expr_ty(e);
                         let b = cx.typeck_results().expr_ty(arg);
                         if_chain! {
-                            if match_def_path(cx, def_id, &paths::TRY_FROM);
+                            if cx.tcx.is_diagnostic_item(sym::try_from_fn, def_id);
                             if is_type_diagnostic_item(cx, a, sym::Result);
                             if let ty::Adt(_, args) = a.kind();
                             if let Some(a_type) = args.types().next();

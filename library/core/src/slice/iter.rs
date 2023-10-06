@@ -59,6 +59,7 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
+#[rustc_diagnostic_item = "SliceIter"]
 pub struct Iter<'a, T: 'a> {
     /// The pointer to the next element to return, or the past-the-end location
     /// if the iterator is empty.

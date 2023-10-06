@@ -1,6 +1,7 @@
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
 use rustc_data_structures::graph::WithNumNodes;
+use rustc_index::IndexVec;
 use rustc_middle::mir::{
     self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
@@ -9,6 +10,48 @@ use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
 use std::cell::OnceCell;
+
+pub(super) struct CoverageSpans {
+    /// Map from BCBs to their list of coverage spans.
+    bcb_to_spans: IndexVec<BasicCoverageBlock, Vec<Span>>,
+}
+
+impl CoverageSpans {
+    pub(super) fn generate_coverage_spans(
+        mir_body: &mir::Body<'_>,
+        fn_sig_span: Span,
+        body_span: Span,
+        basic_coverage_blocks: &CoverageGraph,
+    ) -> Self {
+        let coverage_spans = CoverageSpansGenerator::generate_coverage_spans(
+            mir_body,
+            fn_sig_span,
+            body_span,
+            basic_coverage_blocks,
+        );
+
+        // Group the coverage spans by BCB, with the BCBs in sorted order.
+        let mut bcb_to_spans = IndexVec::from_elem_n(Vec::new(), basic_coverage_blocks.num_nodes());
+        for CoverageSpan { bcb, span, .. } in coverage_spans {
+            bcb_to_spans[bcb].push(span);
+        }
+
+        Self { bcb_to_spans }
+    }
+
+    pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
+        !self.bcb_to_spans[bcb].is_empty()
+    }
+
+    pub(super) fn bcbs_with_coverage_spans(
+        &self,
+    ) -> impl Iterator<Item = (BasicCoverageBlock, &[Span])> {
+        self.bcb_to_spans.iter_enumerated().filter_map(|(bcb, spans)| {
+            // Only yield BCBs that have at least one coverage span.
+            (!spans.is_empty()).then_some((bcb, spans.as_slice()))
+        })
+    }
+}
 
 #[derive(Debug, Copy, Clone)]
 pub(super) enum CoverageStatement {
@@ -35,7 +78,7 @@ impl CoverageStatement {
 /// or is subsumed by the `Span` associated with this `CoverageSpan`, and it's `BasicBlock`
 /// `dominates()` the `BasicBlock`s in this `CoverageSpan`.
 #[derive(Debug, Clone)]
-pub(super) struct CoverageSpan {
+struct CoverageSpan {
     pub span: Span,
     pub expn_span: Span,
     pub current_macro_or_none: OnceCell<Option<Symbol>>,
@@ -162,7 +205,7 @@ impl CoverageSpan {
 ///  * Merge spans that represent continuous (both in source code and control flow), non-branching
 ///    execution
 ///  * Carve out (leave uncovered) any span that will be counted by another MIR (notably, closures)
-pub struct CoverageSpans<'a, 'tcx> {
+struct CoverageSpansGenerator<'a, 'tcx> {
     /// The MIR, used to look up `BasicBlockData`.
     mir_body: &'a mir::Body<'tcx>,
 
@@ -218,7 +261,7 @@ pub struct CoverageSpans<'a, 'tcx> {
     refined_spans: Vec<CoverageSpan>,
 }
 
-impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
+impl<'a, 'tcx> CoverageSpansGenerator<'a, 'tcx> {
     /// Generate a minimal set of `CoverageSpan`s, each representing a contiguous code region to be
     /// counted.
     ///
@@ -246,7 +289,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
         body_span: Span,
         basic_coverage_blocks: &'a CoverageGraph,
     ) -> Vec<CoverageSpan> {
-        let mut coverage_spans = CoverageSpans {
+        let mut coverage_spans = Self {
             mir_body,
             fn_sig_span,
             body_span,
@@ -734,7 +777,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
-pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
+fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -781,7 +824,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
 
 /// If the MIR `Terminator` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
-pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
+fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
     match terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from
@@ -828,7 +871,7 @@ pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Sp
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
 #[inline]
-pub(super) fn function_source_span(span: Span, body_span: Span) -> Span {
+fn function_source_span(span: Span, body_span: Span) -> Span {
     let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
     if body_span.contains(original_span) { original_span } else { body_span }
 }

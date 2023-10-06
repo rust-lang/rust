@@ -48,6 +48,7 @@
   
       bb0: {
           StorageLive(_3);
+          StorageLive(_9);
           StorageLive(_10);
           StorageLive(_11);
           _9 = discriminant(_1);
@@ -57,6 +58,7 @@
       bb1: {
           StorageDead(_11);
           StorageDead(_10);
+          StorageDead(_9);
           _5 = discriminant(_3);
           switchInt(move _5) -> [0: bb2, 1: bb4, otherwise: bb3];
       }

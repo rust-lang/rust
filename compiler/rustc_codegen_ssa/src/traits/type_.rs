@@ -30,7 +30,7 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_ptr_ext(&self, address_space: AddressSpace) -> Self::Type;
     fn element_type(&self, ty: Self::Type) -> Self::Type;
 
-    /// Returns the number of elements in `self` if it is a LLVM vector type.
+    /// Returns the number of elements in `self` if it is an LLVM vector type.
     fn vector_length(&self, ty: Self::Type) -> usize;
 
     fn float_width(&self, ty: Self::Type) -> usize;

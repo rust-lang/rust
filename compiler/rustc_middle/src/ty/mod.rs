@@ -578,11 +578,6 @@ impl rustc_errors::IntoDiagnosticArg for Clause<'_> {
 pub struct Clause<'tcx>(Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>);
 
 impl<'tcx> Clause<'tcx> {
-    pub fn from_projection_clause(tcx: TyCtxt<'tcx>, pred: PolyProjectionPredicate<'tcx>) -> Self {
-        let pred: Predicate<'tcx> = pred.to_predicate(tcx);
-        pred.expect_clause()
-    }
-
     pub fn as_predicate(self) -> Predicate<'tcx> {
         Predicate(self.0)
     }
@@ -1296,9 +1291,22 @@ impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for TraitPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::Clause(ClauseKind::Trait(self)).to_predicate(tcx)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::Trait(p))).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        let p: Predicate<'tcx> = self.to_predicate(tcx);
+        p.expect_clause()
     }
 }
 
@@ -1340,9 +1348,10 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for ProjectionPredicate<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for TraitPredicate<'tcx> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Clause(ClauseKind::Trait(self)).to_predicate(tcx)
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyProjectionPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        let p: Predicate<'tcx> = self.to_predicate(tcx);
+        p.expect_clause()
     }
 }
 
@@ -1743,30 +1752,9 @@ impl<'tcx> ParamEnv<'tcx> {
         Self::new(List::empty(), self.reveal())
     }
 
-    /// Creates a suitable environment in which to perform trait
-    /// queries on the given value. When type-checking, this is simply
-    /// the pair of the environment plus value. But when reveal is set to
-    /// All, then if `value` does not reference any type parameters, we will
-    /// pair it with the empty environment. This improves caching and is generally
-    /// invisible.
-    ///
-    /// N.B., we preserve the environment when type-checking because it
-    /// is possible for the user to have wacky where-clauses like
-    /// `where Box<u32>: Copy`, which are clearly never
-    /// satisfiable. We generally want to behave as if they were true,
-    /// although the surrounding function is never reachable.
+    /// Creates a pair of param-env and value for use in queries.
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
-        match self.reveal() {
-            Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
-
-            Reveal::All => {
-                if value.is_global() {
-                    ParamEnvAnd { param_env: self.without_caller_bounds(), value }
-                } else {
-                    ParamEnvAnd { param_env: self, value }
-                }
-            }
-        }
+        ParamEnvAnd { param_env: self, value }
     }
 }
 

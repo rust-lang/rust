@@ -13,6 +13,7 @@ LL | use ::foo;
    |       ^^^
    |
    = note: failed to mmap file 'auxiliary/libfoo.rlib'
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

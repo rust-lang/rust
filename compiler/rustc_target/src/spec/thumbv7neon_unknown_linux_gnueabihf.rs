@@ -4,7 +4,7 @@ use crate::spec::{Target, TargetOptions};
 // (for consistency with Android and Debian-based distributions)
 // and with NEON unconditionally enabled and, therefore, with 32 FPU
 // registers enabled as well. See section A2.6.2 on page A2-56 in
-// https://static.docs.arm.com/ddi0406/cd/DDI0406C_d_armv7ar_arm.pdf
+// https://web.archive.org/web/20210307234416/https://static.docs.arm.com/ddi0406/cd/DDI0406C_d_armv7ar_arm.pdf
 
 pub fn target() -> Target {
     Target {

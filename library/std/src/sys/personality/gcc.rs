@@ -95,7 +95,7 @@ const UNWIND_DATA_REG: (i32, i32) = (4, 5); // a0, a1
 cfg_if::cfg_if! {
     if #[cfg(all(target_arch = "arm", not(target_os = "ios"), not(target_os = "tvos"), not(target_os = "watchos"), not(target_os = "netbsd")))] {
         // ARM EHABI personality routine.
-        // https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
+        // https://web.archive.org/web/20190728160938/https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
         //
         // iOS uses the default routine instead since it uses SjLj unwinding.
         #[lang = "eh_personality"]

@@ -84,6 +84,7 @@ impl fmt::Write for PadAdapter<'_, '_> {
 #[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
+#[rustc_diagnostic_item = "DebugStruct"]
 pub struct DebugStruct<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
     result: fmt::Result,
