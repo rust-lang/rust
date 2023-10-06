@@ -288,6 +288,15 @@ fn get_mut_unchecked2<T>(ptr: &mut NonNull<Data<T>>) -> &mut T {
     unsafe { &mut (*ptr.as_ptr()).value }
 }
 
+fn set_true(b: &mut bool) {
+    *b = true;
+}
+
+// Should not warn.
+fn true_setter(b: &mut bool) -> impl FnOnce() + '_ {
+    move || set_true(b)
+}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];
