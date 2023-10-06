@@ -1,6 +1,9 @@
 pub trait Aaaaaaa {}
 
+pub trait Bbbbbbb {}
+
 impl Aaaaaaa for () {}
+impl Bbbbbbb for () {}
 
 pub fn bbbbbbb() -> impl Aaaaaaa {
     ()
@@ -17,5 +20,8 @@ impl Ccccccc {
     }
     pub fn fffffff(&self, x: impl Aaaaaaa) -> impl Aaaaaaa {
         x
+    }
+    pub fn ggggggg(&self) -> impl Aaaaaaa + Bbbbbbb {
+        ()
     }
 }

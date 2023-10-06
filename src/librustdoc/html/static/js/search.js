@@ -1555,7 +1555,7 @@ function initSearch(rawSearchIndex) {
                         return false;
                     }
                 }
-            } else if (fnType.id !== null) {
+            } else {
                 if (queryElem.id === typeNameIdOfArrayOrSlice &&
                     (fnType.id === typeNameIdOfSlice || fnType.id === typeNameIdOfArray)
                 ) {
