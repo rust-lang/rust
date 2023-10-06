@@ -383,9 +383,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
         // Vectors, even for non-power-of-two sizes, have the same layout as
         // arrays but don't count as aggregate types
-        // While LLVM theoretically supports non-power-of-two sizes, and they
-        // often work fine, sometimes x86-isel deals with them horribly
-        // (see #115212) so for now only use power-of-two ones.
         if let FieldsShape::Array { count, .. } = self.layout.fields()
             && count.is_power_of_two()
             && let element = self.field(cx, 0)
@@ -396,8 +393,19 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             // up suppressing vectorization as it introduces shifts when it
             // extracts all the individual values.
 
-            let ety = element.llvm_type(cx);
-            return Some(cx.type_vector(ety, *count));
+            if *count <= 2 {
+                // For short arrays, use LLVM's array type which it will unpack
+                // out in optimizations to a scalar or pair of scalars.
+                // (Having types like `<1 x u8>` is silly.)
+                let ety = element.llvm_type(cx);
+                return Some(cx.type_array(ety, *count));
+            } else if count.is_power_of_two() {
+                // While LLVM theoretically supports non-power-of-two sizes, and they
+                // often work fine, sometimes x86-isel deals with them horribly
+                // (see #115212) so for now only use power-of-two ones.
+                let ety = element.llvm_type(cx);
+                return Some(cx.type_vector(ety, *count));
+            }
         }
 
         // FIXME: The above only handled integer arrays; surely more things

@@ -1,4 +1,5 @@
 // compile-flags: -O
+// min-llvm-version: 17 (earlier versions have trouble merging the loads)
 
 #![crate_type = "lib"]
 
