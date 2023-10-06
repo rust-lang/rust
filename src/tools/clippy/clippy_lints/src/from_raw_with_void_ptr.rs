@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_c_void;
-use clippy_utils::{match_def_path, path_def_id, paths};
+use clippy_utils::path_def_id;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -68,7 +68,7 @@ fn def_id_matches_type(cx: &LateContext<'_>, def_id: DefId) -> Option<&'static s
         }
     }
 
-    if match_def_path(cx, def_id, &paths::WEAK_RC) || match_def_path(cx, def_id, &paths::WEAK_ARC) {
+    if matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::RcWeak | sym::ArcWeak)) {
         Some("Weak")
     } else {
         None

@@ -1509,12 +1509,14 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
+    #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_load"]
     pub fn unaligned_volatile_load<T>(src: *const T) -> T;
     /// Performs a volatile store to the `dst` pointer.
     /// The pointer is not required to be aligned.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
+    #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
     pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
     /// Returns the square root of an `f32`
@@ -2666,6 +2668,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
@@ -2761,6 +2764,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[rustc_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
@@ -2834,6 +2838,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[rustc_diagnostic_item = "ptr_write_bytes"]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]

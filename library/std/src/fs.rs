@@ -184,6 +184,7 @@ pub struct DirEntry(fs_imp::DirEntry);
 /// ```
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "FsOpenOptions")]
 pub struct OpenOptions(fs_imp::OpenOptions);
 
 /// Representation of the various timestamps on a file.
@@ -201,6 +202,7 @@ pub struct FileTimes(fs_imp::FileTimes);
 /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "FsPermissions")]
 pub struct Permissions(fs_imp::FilePermissions);
 
 /// A structure representing a type of file with accessors for each file type.
@@ -2241,6 +2243,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// ```
 #[doc(alias = "mkdir")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_create_dir")]
 pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     DirBuilder::new().create(path.as_ref())
 }

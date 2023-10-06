@@ -1,9 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_drop, is_copy};
-use clippy_utils::{
-    any_parent_is_automatically_derived, contains_name, get_parent_expr, is_from_proc_macro, match_def_path, paths,
-};
+use clippy_utils::{any_parent_is_automatically_derived, contains_name, get_parent_expr, is_from_proc_macro};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -14,7 +12,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -91,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
             if let ExprKind::Path(ref qpath) = path.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
-            if match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD);
+            if cx.tcx.is_diagnostic_item(sym::default_fn, def_id);
             if !is_update_syntax_base(cx, expr);
             // Detect and ignore <Foo as Default>::default() because these calls do explicitly name the type.
             if let QPath::Resolved(None, _path) = qpath;
@@ -268,7 +266,7 @@ fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool
         if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
         then {
             // right hand side of assignment is `Default::default`
-            match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD)
+            cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
         } else {
             false
         }

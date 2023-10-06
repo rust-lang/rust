@@ -758,6 +758,7 @@ impl<T: Clone> Bound<&T> {
 /// `RangeBounds` is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.
 #[stable(feature = "collections_range", since = "1.28.0")]
+#[rustc_diagnostic_item = "RangeBounds"]
 pub trait RangeBounds<T: ?Sized> {
     /// Start index bound.
     ///

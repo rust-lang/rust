@@ -723,15 +723,12 @@ pub unsafe fn uninitialized<T>() -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[rustc_diagnostic_item = "mem_swap"]
 pub const fn swap<T>(x: &mut T, y: &mut T) {
     // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
     // reinterpretation of values as (chunkable) byte arrays, and the loop in the
     // block optimization in `swap_slice` is hard to rewrite back
     // into the (unoptimized) direct swapping implementation, so we disable it.
-    // FIXME(eddyb) the block optimization also prevents MIR optimizations from
-    // understanding `mem::replace`, `Option::take`, etc. - a better overall
-    // solution might be to make `ptr::swap_nonoverlapping` into an intrinsic, which
-    // a backend can choose to implement using the block optimization, or not.
     #[cfg(not(any(target_arch = "spirv")))]
     {
         // For types that are larger multiples of their alignment, the simple way
@@ -768,11 +765,14 @@ pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
     // And LLVM actually optimizes it to 3×memcpy if called with
     // a type larger than it's willing to keep in a register.
     // Having typed reads and writes in MIR here is also good as
-    // it lets MIRI and CTFE understand them better, including things
+    // it lets Miri and CTFE understand them better, including things
     // like enforcing type validity for them.
     // Importantly, read+copy_nonoverlapping+write introduces confusing
     // asymmetry to the behaviour where one value went through read+write
     // whereas the other was copied over by the intrinsic (see #94371).
+    // Furthermore, using only read+write here benefits limited backends
+    // such as SPIR-V that work on an underlying *typed* view of memory,
+    // and thus have trouble with Rust's untyped memory operations.
 
     // SAFETY: exclusive references are always valid to read/write,
     // including being aligned, and nothing here panics so it's drop-safe.

@@ -55,6 +55,7 @@ pub trait ToOwned {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "cloning is often expensive and is not expected to have side effects"]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "to_owned_method")]
     fn to_owned(&self) -> Self::Owned;
 
     /// Uses borrowed data to replace owned data, usually by cloning.
