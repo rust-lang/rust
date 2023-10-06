@@ -68,8 +68,20 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         function_coverage_entries.iter().flat_map(|(_, fn_cov)| fn_cov.all_file_names());
     let global_file_table = GlobalFileTable::new(tcx, all_file_names);
 
+    // Encode all filenames referenced by counters/expressions in this module
+    let filenames_buffer = global_file_table.filenames_buffer();
+    let filenames_size = filenames_buffer.len();
+    let filenames_val = cx.const_bytes(filenames_buffer);
+    let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
+
+    // Generate the LLVM IR representation of the coverage map and store it in a well-known global
+    let cov_data_val = generate_coverage_map(cx, version, filenames_size, filenames_val);
+    coverageinfo::save_cov_data_to_mod(cx, cov_data_val);
+
+    let mut unused_function_names = Vec::new();
+    let covfun_section_name = coverageinfo::covfun_section_name(cx);
+
     // Encode coverage mappings and generate function records
-    let mut function_data = Vec::new();
     for (instance, function_coverage) in function_coverage_entries {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
 
@@ -92,23 +104,6 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
             }
         }
 
-        function_data.push((mangled_function_name, source_hash, is_used, coverage_mapping_buffer));
-    }
-
-    // Encode all filenames referenced by counters/expressions in this module
-    let filenames_buffer = global_file_table.filenames_buffer();
-
-    let filenames_size = filenames_buffer.len();
-    let filenames_val = cx.const_bytes(filenames_buffer);
-    let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
-
-    // Generate the LLVM IR representation of the coverage map and store it in a well-known global
-    let cov_data_val = generate_coverage_map(cx, version, filenames_size, filenames_val);
-
-    let mut unused_function_names = Vec::new();
-
-    let covfun_section_name = coverageinfo::covfun_section_name(cx);
-    for (mangled_function_name, source_hash, is_used, coverage_mapping_buffer) in function_data {
         if !is_used {
             unused_function_names.push(mangled_function_name);
         }
@@ -142,9 +137,6 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         llvm::set_linkage(array, llvm::Linkage::InternalLinkage);
         llvm::set_initializer(array, initializer);
     }
-
-    // Save the coverage data value to LLVM IR
-    coverageinfo::save_cov_data_to_mod(cx, cov_data_val);
 }
 
 /// Maps "global" (per-CGU) file ID numbers to their underlying filenames.
