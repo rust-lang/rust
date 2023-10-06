@@ -236,7 +236,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             freshener: infcx.freshener(),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
-            treat_inductive_cycle: TreatInductiveCycleAs::Recur,
+            treat_inductive_cycle: TreatInductiveCycleAs::Ambig,
         }
     }
 
