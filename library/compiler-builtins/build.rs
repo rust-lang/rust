@@ -320,6 +320,7 @@ mod c {
         // include them.
         if target_os != "ios"
             && target_os != "watchos"
+            && target_os != "tvos"
             && (target_vendor != "apple" || target_arch != "x86")
         {
             sources.extend(&[
@@ -391,6 +392,7 @@ mod c {
         if target_arch == "arm"
             && target_os != "ios"
             && target_os != "watchos"
+            && target_os != "tvos"
             && target_env != "msvc"
         {
             sources.extend(&[
