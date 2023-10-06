@@ -77,6 +77,10 @@ features = [
     "Win32_System_Time",
 ]
 
+[target.'cfg(unix)'.dependencies.nix]
+version = "0.27.1"
+features = ["user"]
+
 [dev-dependencies]
 pretty_assertions = "1.4"
 

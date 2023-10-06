@@ -368,7 +368,7 @@ impl Build {
         // https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/bootstrap.py#L796-L797
         let is_sudo = match env::var_os("SUDO_USER") {
             Some(_sudo_user) => {
-                let uid = unsafe { libc::getuid() };
+                let uid = nix::unistd::Uid::current().as_raw();
                 uid == 0
             }
             None => false,
