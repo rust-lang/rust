@@ -640,7 +640,37 @@ function preLoadCss(cssUrl) {
         window.register_implementors(window.pending_implementors);
     }
 
-    // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+type.impl&type=code>
+    /**
+     * <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+type.impl&type=code>
+     *
+     * [RUSTDOCIMPL] type.impl
+     *
+     * This code inlines implementations into the type alias docs at runtime. It's done at
+     * runtime because some crates have many type aliases and many methods, and we don't want
+     * to generate *O*`(types*methods)` HTML text. The data inside is mostly HTML fragments,
+     * wrapped in JSON.
+     *
+     * - It only includes docs generated for the current crate. This function accepts an
+     *   object mapping crate names to the set of impls.
+     *
+     * - It filters down to the set of applicable impls. The Rust type checker is used to
+     *   tag each HTML blob with the set of type aliases that can actually use it, so the
+     *   JS only needs to consult the attached list of type aliases.
+     *
+     * - It renames the ID attributes, to avoid conflicting IDs in the resulting DOM.
+     *
+     * - It adds the necessary items to the sidebar. If it's an inherent impl, that means
+     *   adding methods, associated types, and associated constants. If it's a trait impl,
+     *   that means adding it to the trait impl sidebar list.
+     *
+     * - It adds the HTML block itself. If it's an inherent impl, it goes after the type
+     *   alias's own inherent impls. If it's a trait impl, it goes in the Trait
+     *   Implementations section.
+     *
+     * - After processing all of the impls, it sorts the sidebar items by name.
+     *
+     * @param {{[cratename: string]: Array<Array<string|0>>}} impl
+     */
     window.register_type_impls = imp => {
         if (!imp || !imp[window.currentCrate]) {
             return;
@@ -677,9 +707,9 @@ function preLoadCss(cssUrl) {
                     "trait-implementations-list" :
                     "implementations-list";
                 const outputListHeaderId = isTrait ? "trait-implementations" : "implementations";
-                const outputListH = document.createElement("h2");
-                outputListH.id = outputListHeaderId;
-                outputListH.innerText = outputListName;
+                const outputListHeader = document.createElement("h2");
+                outputListHeader.id = outputListHeaderId;
+                outputListHeader.innerText = outputListName;
                 outputList = document.createElement("div");
                 outputList.id = outputListId;
                 if (isTrait) {
@@ -694,16 +724,16 @@ function preLoadCss(cssUrl) {
                     sidebarTraitList.className = "block trait-implementation";
                     sidebarSection.appendChild(sidebarTraitList);
                     const mainContent = document.querySelector("#main-content");
-                    mainContent.appendChild(outputListH);
+                    mainContent.appendChild(outputListHeader);
                     mainContent.appendChild(outputList);
                 } else {
                     implementations = outputList;
                     if (trait_implementations) {
-                        document.insertBefore(outputListH, trait_implementations);
+                        document.insertBefore(outputListHeader, trait_implementations);
                         document.insertBefore(outputList, trait_implementations);
                     } else {
                         const mainContent = document.querySelector("#main-content");
-                        mainContent.appendChild(outputListH);
+                        mainContent.appendChild(outputListHeader);
                         mainContent.appendChild(outputList);
                     }
                 }
@@ -757,20 +787,20 @@ function preLoadCss(cssUrl) {
                         const blockClass = hasClass(item, "associatedtype") ? "associatedtype" : (
                             hasClass(item, "associatedconstant") ? "associatedconstant" : (
                             "method"));
-                        const blockH = document.createElement("h3");
-                        const blockA = document.createElement("a");
-                        blockA.href = "#implementations";
-                        blockA.innerText = blockTitle;
-                        blockH.appendChild(blockA);
+                        const blockHeader = document.createElement("h3");
+                        const blockLink = document.createElement("a");
+                        blockLink.href = "#implementations";
+                        blockLink.innerText = blockTitle;
+                        blockHeader.appendChild(blockLink);
                         block = document.createElement("ul");
                         block.className = `block ${blockClass}`;
                         const insertionReference = methods || sidebarTraitList;
                         if (insertionReference) {
                             const insertionReferenceH = insertionReference.previousElementSibling;
-                            sidebarSection.insertBefore(blockH, insertionReferenceH);
+                            sidebarSection.insertBefore(blockHeader, insertionReferenceH);
                             sidebarSection.insertBefore(block, insertionReferenceH);
                         } else {
-                            sidebarSection.appendChild(blockH);
+                            sidebarSection.appendChild(blockHeader);
                             sidebarSection.appendChild(block);
                         }
                         if (hasClass(item, "associatedtype")) {
