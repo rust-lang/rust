@@ -362,7 +362,7 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
     }
 
     // Update the list of all implementors for traits
-    let dst = cx.dst.join("implementors");
+    let dst = cx.dst.join("trait.impl");
     let cache = cx.cache();
     for (&did, imps) in &cache.implementors {
         // Private modules can leak through to this phase of rustdoc, which

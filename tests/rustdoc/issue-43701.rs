@@ -2,4 +2,4 @@
 
 pub use std::vec::Vec;
 
-// @!has implementors/core/clone/trait.Clone.js
+// @!has trait.impl/core/clone/trait.Clone.js

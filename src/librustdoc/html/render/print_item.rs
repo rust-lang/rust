@@ -1101,7 +1101,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // ```
     //
     // Basically, we want `C::Baz` and `A::Foo` to show the same set of
-    // impls, which is easier if they both treat `/implementors/A/trait.Foo.js`
+    // impls, which is easier if they both treat `/trait.impl/A/trait.Foo.js`
     // as the Single Source of Truth.
     //
     // We also want the `impl Baz for Quux` to be written to
@@ -1110,7 +1110,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // because that'll load faster, and it's better for SEO. And we don't want
     // the same impl to show up twice on the same page.
     //
-    // To make this work, the implementors JS file has a structure kinda
+    // To make this work, the trait.impl/A/trait.Foo.js JS file has a structure kinda
     // like this:
     //
     // ```js
@@ -1127,7 +1127,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // So C's HTML will have something like this:
     //
     // ```html
-    // <script src="/implementors/A/trait.Foo.js"
+    // <script src="/trait.impl/A/trait.Foo.js"
     //     data-ignore-extern-crates="A,B" async></script>
     // ```
     //
@@ -1137,7 +1137,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // [JSONP]: https://en.wikipedia.org/wiki/JSONP
     let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
         .take(cx.current.len())
-        .chain(std::iter::once("implementors"))
+        .chain(std::iter::once("trait.impl"))
         .collect();
     if let Some(did) = it.item_id.as_def_id() &&
         let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) } &&
