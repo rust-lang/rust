@@ -225,6 +225,10 @@ parse_expected_semi_found_str = expected `;`, found `{$token}`
 
 parse_expected_statement_after_outer_attr = expected statement after outer attribute
 
+parse_expected_struct_field = expected one of `,`, `:`, or `{"}"}`, found `{$token}`
+    .label = expected one of `,`, `:`, or `{"}"}`
+    .ident_label = while parsing this struct field
+
 parse_expected_trait_in_trait_impl_found_type = expected a trait, found type
 
 parse_extern_crate_name_with_dashes = crate name using dashes are not valid in `extern crate` statements

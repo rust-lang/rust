@@ -2,8 +2,9 @@ error: expected one of `,`, `:`, or `}`, found `a`
   --> $DIR/removed-syntax-with-2.rs:8:31
    |
 LL |     let b = S { foo: (), with a };
-   |             -                 ^ expected one of `,`, `:`, or `}`
-   |             |
+   |             -            ---- ^ expected one of `,`, `:`, or `}`
+   |             |            |
+   |             |            while parsing this struct field
    |             while parsing this struct
 
 error[E0063]: missing field `bar` in initializer of `S`
