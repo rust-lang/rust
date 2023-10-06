@@ -302,6 +302,9 @@ mod spurious_read {
             Ok(Self { state, prot: self.prot })
         }
 
+        /// Remove the protector.
+        /// This does not perform the implicit read on function exit because
+        /// `LocStateProt` does not have enough context to apply its effect.
         fn end_protector(&self) -> Self {
             Self { prot: false, state: self.state }
         }
@@ -351,7 +354,8 @@ mod spurious_read {
         }
 
         /// Perform a read on the given pointer if its state is `initialized`.
-        /// Must be called just after reborrowing a pointer.
+        /// Must be called just after reborrowing a pointer, and just after
+        /// removing a protector.
         fn read_if_initialized(self, ptr: PtrSelector) -> Result<Self, ()> {
             let initialized = match ptr {
                 PtrSelector::X => self.x.state.initialized,
@@ -368,14 +372,16 @@ mod spurious_read {
             }
         }
 
+        /// Remove the protector of `x`, including the implicit read on function exit.
         fn end_protector_x(self) -> Result<Self, ()> {
             let x = self.x.end_protector();
-            Ok(Self { x, ..self })
+            Self { x, ..self }.read_if_initialized(PtrSelector::X)
         }
 
+        /// Remove the protector of `y`, including the implicit read on function exit.
         fn end_protector_y(self) -> Result<Self, ()> {
             let y = self.y.end_protector();
-            Ok(Self { y, ..self })
+            Self { y, ..self }.read_if_initialized(PtrSelector::Y)
         }
 
         fn retag_y(self, new_y: LocStateProt) -> Result<Self, ()> {
@@ -504,11 +510,9 @@ mod spurious_read {
     }
 
     #[test]
-    #[should_panic]
-    // This is why `Reserved -> Frozen` on foreign read for protected references
-    // prevents the insertion of spurious reads: the transition can cause UB in the target
-    // later down the line.
-    fn reserved_frozen_protected_distinguishable() {
+    // `Reserved(aliased=false)` and `Reserved(aliased=true)` are properly indistinguishable
+    // under the conditions where we want to insert a spurious read.
+    fn reserved_aliased_protected_indistinguishable() {
         let source = LocStateProtPair {
             xy_rel: RelPosXY::MutuallyForeign,
             x: LocStateProt {
@@ -522,8 +526,8 @@ mod spurious_read {
         };
         let acc = TestAccess { ptr: PtrSelector::X, kind: AccessKind::Read };
         let target = source.clone().perform_test_access(&acc).unwrap();
-        assert!(source.y.state.permission.is_reserved(None));
-        assert!(target.y.state.permission.is_frozen());
+        assert!(source.y.state.permission.is_reserved_with_conflicted(false));
+        assert!(target.y.state.permission.is_reserved_with_conflicted(true));
         assert!(!source.distinguishable::<(), ()>(&target))
     }
 
@@ -599,7 +603,6 @@ mod spurious_read {
     }
 
     #[test]
-    #[should_panic]
     /// For each of the patterns described above, execute it once
     /// as-is, and once with a spurious read inserted. Report any UB
     /// in the target but not in the source.

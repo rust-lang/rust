@@ -12,6 +12,7 @@ fn main() {
     two_mut_protected_same_alloc();
     direct_mut_to_const_raw();
     local_addr_of_mut();
+    returned_mut_is_usable();
 
     // Stacked Borrows tests
     read_does_not_invalidate1();
@@ -91,6 +92,24 @@ fn two_mut_protected_same_alloc() {
 
     let mut data = (0u8, 1u8);
     write_second(&mut data.0, &mut data.1);
+}
+
+// This checks that a reborrowed mutable reference returned from a function
+// is actually writeable.
+// The fact that this is not obvious is due to the addition of
+// implicit reads on function exit that might freeze the return value.
+fn returned_mut_is_usable() {
+    fn reborrow(x: &mut u8) -> &mut u8 {
+        let y = &mut *x;
+        // Activate the reference so that it is vulnerable to foreign reads.
+        *y = *y;
+        y
+        // An implicit read through `x` is inserted here.
+    }
+    let mut data = 0;
+    let x = &mut data;
+    let y = reborrow(x);
+    *y = 1;
 }
 
 // ----- The tests below were taken from Stacked Borrows ----
