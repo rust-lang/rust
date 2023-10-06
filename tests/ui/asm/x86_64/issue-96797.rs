@@ -14,10 +14,10 @@ fn my_func() {}
 global_asm!("
 .globl call_foobar
 .type call_foobar,@function
-.section .text.call_foobar,\"ax\",@progbits
+.pushsection .text.call_foobar,\"ax\",@progbits
 call_foobar: jmp {}
 .size call_foobar, .-call_foobar
-.text
+.popsection
 ", sym foobar);
 
 fn foobar() {}
