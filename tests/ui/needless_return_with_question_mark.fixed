@@ -5,6 +5,7 @@
     clippy::unit_arg,
     clippy::useless_conversion,
     clippy::diverging_sub_expression,
+    clippy::let_unit_value,
     unused
 )]
 
@@ -58,4 +59,21 @@ fn main() -> Result<(), ()> {
     };
 
     Err(())
+}
+
+fn issue11616() -> Result<(), ()> {
+    let _x: String = {
+        return Err(())?;
+    };
+    let _x: () = {
+        Err(())?;
+        //~^ ERROR: unneeded `return` statement with `?` operator
+    };
+    let _x = match 1 {
+        1 => vec![1, 2],
+        _ => {
+            return Err(())?;
+        },
+    };
+    Ok(())
 }
