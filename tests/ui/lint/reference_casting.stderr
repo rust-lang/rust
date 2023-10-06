@@ -158,7 +158,16 @@ LL |     let _num = &mut *num;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:68:9
+  --> $DIR/reference_casting.rs:68:16
+   |
+LL |     let _num = &mut *(cell as *const _ as *mut i32);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+   = note: even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
+
+error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:72:9
    |
 LL |         &mut *((this as *const _) as *mut _)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -166,7 +175,7 @@ LL |         &mut *((this as *const _) as *mut _)
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:73:18
+  --> $DIR/reference_casting.rs:77:18
    |
 LL |         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,7 +183,7 @@ LL |         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *con
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:78:18
+  --> $DIR/reference_casting.rs:82:18
    |
 LL |         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -182,7 +191,7 @@ LL |         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *con
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:88:5
+  --> $DIR/reference_casting.rs:92:5
    |
 LL |     *(a as *const _ as *mut _) = String::from("Replaced");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -190,7 +199,7 @@ LL |     *(a as *const _ as *mut _) = String::from("Replaced");
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:90:5
+  --> $DIR/reference_casting.rs:94:5
    |
 LL |     *(a as *const _ as *mut String) += " world";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -198,7 +207,7 @@ LL |     *(a as *const _ as *mut String) += " world";
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:92:5
+  --> $DIR/reference_casting.rs:96:5
    |
 LL |     *std::ptr::from_ref(num).cast_mut() += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,7 +215,7 @@ LL |     *std::ptr::from_ref(num).cast_mut() += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:94:5
+  --> $DIR/reference_casting.rs:98:5
    |
 LL |     *std::ptr::from_ref({ num }).cast_mut() += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -214,7 +223,7 @@ LL |     *std::ptr::from_ref({ num }).cast_mut() += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:96:5
+  --> $DIR/reference_casting.rs:100:5
    |
 LL |     *{ std::ptr::from_ref(num) }.cast_mut() += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -222,7 +231,7 @@ LL |     *{ std::ptr::from_ref(num) }.cast_mut() += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:98:5
+  --> $DIR/reference_casting.rs:102:5
    |
 LL |     *(std::ptr::from_ref({ num }) as *mut i32) += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -230,7 +239,7 @@ LL |     *(std::ptr::from_ref({ num }) as *mut i32) += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:100:5
+  --> $DIR/reference_casting.rs:104:5
    |
 LL |     *std::mem::transmute::<_, *mut i32>(num) += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -238,7 +247,7 @@ LL |     *std::mem::transmute::<_, *mut i32>(num) += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:102:5
+  --> $DIR/reference_casting.rs:106:5
    |
 LL |     *(std::mem::transmute::<_, *mut i32>(num) as *mut i32) += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -246,7 +255,7 @@ LL |     *(std::mem::transmute::<_, *mut i32>(num) as *mut i32) += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:104:5
+  --> $DIR/reference_casting.rs:108:5
    |
 LL | /     std::ptr::write(
 LL | |
@@ -258,7 +267,16 @@ LL | |     );
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:111:5
+  --> $DIR/reference_casting.rs:113:5
+   |
+LL |     *((&std::cell::UnsafeCell::new(0)) as *const _ as *mut i32) = 5;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+   = note: even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:117:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -268,7 +286,7 @@ LL |     *value = 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:114:5
+  --> $DIR/reference_casting.rs:120:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -279,7 +297,7 @@ LL |     *value_rebind = 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:116:5
+  --> $DIR/reference_casting.rs:122:5
    |
 LL |     *(num as *const i32).cast::<i32>().cast_mut() = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -287,7 +305,7 @@ LL |     *(num as *const i32).cast::<i32>().cast_mut() = 2;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:118:5
+  --> $DIR/reference_casting.rs:124:5
    |
 LL |     *(num as *const _ as usize as *mut i32) = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -295,7 +313,7 @@ LL |     *(num as *const _ as usize as *mut i32) = 2;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:120:5
+  --> $DIR/reference_casting.rs:126:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -306,7 +324,7 @@ LL |     std::ptr::write(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:122:5
+  --> $DIR/reference_casting.rs:128:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -317,7 +335,7 @@ LL |     std::ptr::write_unaligned(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:124:5
+  --> $DIR/reference_casting.rs:130:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happend here
@@ -328,12 +346,12 @@ LL |     std::ptr::write_volatile(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:128:9
+  --> $DIR/reference_casting.rs:134:9
    |
 LL |         *(this as *const _ as *mut _) = a;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
-error: aborting due to 38 previous errors
+error: aborting due to 40 previous errors
 

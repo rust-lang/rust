@@ -43,19 +43,19 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
 
         let init = cx.expr_or_init(e);
 
-        let orig_cast = if is_cast_from_const_to_mut(cx, init) {
-            if init.span != e.span { Some(init.span) } else { None }
-        } else {
+        let Some(ty_has_interior_mutability) = is_cast_from_const_to_mut(cx, init) else {
             return;
         };
+        let orig_cast = if init.span != e.span { Some(init.span) } else { None };
+        let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
 
         cx.emit_spanned_lint(
             INVALID_REFERENCE_CASTING,
             expr.span,
             if is_assignment {
-                InvalidReferenceCastingDiag::AssignToRef { orig_cast }
+                InvalidReferenceCastingDiag::AssignToRef { orig_cast, ty_has_interior_mutability }
             } else {
-                InvalidReferenceCastingDiag::BorrowAsMut { orig_cast }
+                InvalidReferenceCastingDiag::BorrowAsMut { orig_cast, ty_has_interior_mutability }
             },
         );
     }
@@ -104,7 +104,10 @@ fn is_operation_we_care_about<'tcx>(
     deref_assign_or_addr_of(e).or_else(|| ptr_write(cx, e))
 }
 
-fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, orig_expr: &'tcx Expr<'tcx>) -> bool {
+fn is_cast_from_const_to_mut<'tcx>(
+    cx: &LateContext<'tcx>,
+    orig_expr: &'tcx Expr<'tcx>,
+) -> Option<bool> {
     let mut need_check_freeze = false;
     let mut e = orig_expr;
 
@@ -112,7 +115,7 @@ fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, orig_expr: &'tcx Expr
 
     // Bail out early if the end type is **not** a mutable pointer.
     if !matches!(end_ty.kind(), ty::RawPtr(TypeAndMut { ty: _, mutbl: Mutability::Mut })) {
-        return false;
+        return None;
     }
 
     loop {
@@ -155,10 +158,11 @@ fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, orig_expr: &'tcx Expr
         //
         // We also consider non concrete skeleton types (ie generics)
         // to be an issue since there is no way to make it safe for abitrary types.
-        !need_check_freeze
-            || inner_ty.is_freeze(cx.tcx, cx.param_env)
-            || !inner_ty.has_concrete_skeleton()
+        let inner_ty_has_interior_mutability =
+            !inner_ty.is_freeze(cx.tcx, cx.param_env) && inner_ty.has_concrete_skeleton();
+        (!need_check_freeze || !inner_ty_has_interior_mutability)
+            .then_some(inner_ty_has_interior_mutability)
     } else {
-        false
+        None
     }
 }
