@@ -707,7 +707,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 );
             }
             "android" => {
-                // "signal"
+                // "signal" -- just needs a non-zero pointer value (function does not even get called),
+                // but we arrange for this to be callable anyway (it will then do nothing).
                 let layout = this.machine.layouts.const_raw_ptr;
                 let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str("signal")));
                 let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
