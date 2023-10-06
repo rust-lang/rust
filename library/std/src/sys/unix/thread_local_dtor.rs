@@ -67,7 +67,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 // workaround below is to register, via _tlv_atexit, a custom DTOR list once per
 // thread. thread_local dtors are pushed to the DTOR list without calling
 // _tlv_atexit.
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::cell::Cell;
     use crate::mem;
