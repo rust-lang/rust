@@ -27,6 +27,7 @@ pub(crate) mod file_lines;
 #[allow(unreachable_pub)]
 pub(crate) mod lists;
 pub(crate) mod macro_names;
+pub(crate) mod style_edition;
 
 // This macro defines configuration options used in rustfmt. Each option
 // is defined as follows:
