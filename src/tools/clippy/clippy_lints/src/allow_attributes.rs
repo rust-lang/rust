@@ -8,6 +8,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usage of the `#[allow]` attribute and suggests replacing it with
     /// the `#[expect]` (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
     ///
@@ -19,7 +20,6 @@ declare_clippy_lint! {
     /// (`#![allow]`) are usually used to enable or disable lints on a global scale.
     ///
     /// ### Why is this bad?
-    ///
     /// `#[expect]` attributes suppress the lint emission, but emit a warning, if
     /// the expectation is unfulfilled. This can be useful to be notified when the
     /// lint is no longer triggered.

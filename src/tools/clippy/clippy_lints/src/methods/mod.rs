@@ -2970,7 +2970,7 @@ declare_clippy_lint! {
     /// assert_eq!((*any_box).type_id(), TypeId::of::<i32>());
     /// //          ^ dereference first, to call `type_id` on `dyn Any`
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub TYPE_ID_ON_BOX,
     suspicious,
     "calling `.type_id()` on `Box<dyn Any>`"
@@ -3368,6 +3368,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// ### What it does
     /// Looks for calls to [`Stdin::read_line`] to read a line from the standard input
     /// into a string, then later attempting to parse this string into a type without first trimming it, which will
     /// always fail because the string has a trailing newline in it.
@@ -3390,7 +3391,7 @@ declare_clippy_lint! {
     /// //                  ^^^^^^^^^^^ remove the trailing newline
     /// assert_eq!(num, 42);
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub READ_LINE_WITHOUT_TRIM,
     correctness,
     "calling `Stdin::read_line`, then trying to parse it without first trimming"
@@ -3418,7 +3419,7 @@ declare_clippy_lint! {
     /// # let c = 'c';
     /// matches!(c, '\\' | '.' | '+' | '*' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub STRING_LIT_CHARS_ANY,
     restriction,
     "checks for `<string_lit>.chars().any(|i| i == c)`"
@@ -3453,7 +3454,7 @@ declare_clippy_lint! {
     ///     })
     /// }
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub FORMAT_COLLECT,
     perf,
     "`format!`ing every element in a collection, then collecting the strings into a new `String`"
@@ -3474,7 +3475,7 @@ declare_clippy_lint! {
     /// let y = v.iter().collect::<Vec<_>>();
     /// assert_eq!(x, y);
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub ITER_SKIP_ZERO,
     correctness,
     "disallows `.skip(0)`"
@@ -3505,7 +3506,7 @@ declare_clippy_lint! {
     /// # let v = vec![];
     /// _ = v.into_iter().filter(|i| i % 2 == 0).map(|i| really_expensive_fn(i));
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.73.0"]
     pub FILTER_MAP_BOOL_THEN,
     style,
     "checks for usage of `bool::then` in `Iterator::filter_map`"

@@ -312,7 +312,7 @@ declare_clippy_lint! {
     /// # let status_code = 200;
     /// if status_code <= 400 && status_code > 500 {}
     /// ```
-    #[clippy::version = "1.71.0"]
+    #[clippy::version = "1.73.0"]
     pub IMPOSSIBLE_COMPARISONS,
     correctness,
     "double comparisons that will never evaluate to `true`"
@@ -332,7 +332,7 @@ declare_clippy_lint! {
     /// # let status_code = 200;
     /// if status_code <= 400 && status_code < 500 {}
     /// ```
-    #[clippy::version = "1.71.0"]
+    #[clippy::version = "1.73.0"]
     pub REDUNDANT_COMPARISONS,
     correctness,
     "double comparisons where one of them can be removed"

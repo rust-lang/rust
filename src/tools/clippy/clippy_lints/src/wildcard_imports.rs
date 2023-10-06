@@ -132,6 +132,7 @@ impl LateLintPass<'_> for WildcardImports {
             if self.warn_on_all || !self.check_exceptions(item, use_path.segments);
             let used_imports = cx.tcx.names_imported_by_glob_use(item.owner_id.def_id);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
+            if !used_imports.contains(&kw::Underscore);
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let import_source_snippet = snippet_with_applicability(cx, use_path.span, "..", &mut applicability);

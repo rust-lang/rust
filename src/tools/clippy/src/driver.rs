@@ -26,6 +26,8 @@ use std::ops::Deref;
 use std::path::Path;
 use std::process::exit;
 
+use anstream::println;
+
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
 fn arg_value<'a, T: Deref<Target = str>>(
@@ -162,39 +164,15 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     }
 }
 
+#[allow(clippy::ignored_unit_patterns)]
 fn display_help() {
-    println!(
-        "\
-Checks a package to catch common mistakes and improve your Rust code.
-
-Usage:
-    cargo clippy [options] [--] [<opts>...]
-
-Common options:
-    -h, --help               Print this message
-        --rustc              Pass all args to rustc
-    -V, --version            Print version info and exit
-
-For the other options see `cargo check --help`.
-
-To allow or deny a lint from the command line you can use `cargo clippy --`
-with:
-
-    -W --warn OPT       Set lint warnings
-    -A --allow OPT      Set lint allowed
-    -D --deny OPT       Set lint denied
-    -F --forbid OPT     Set lint forbidden
-
-You can use tool lints to allow or deny lints from your code, eg.:
-
-    #[allow(clippy::needless_lifetimes)]
-"
-    );
+    println!("{}", help_message());
 }
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml";
 
 #[allow(clippy::too_many_lines)]
+#[allow(clippy::ignored_unit_patterns)]
 pub fn main() {
     let handler = EarlyErrorHandler::new(ErrorOutputType::default());
 
@@ -236,6 +214,7 @@ pub fn main() {
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
             let version_info = rustc_tools_util::get_version_info!();
+
             println!("{version_info}");
             exit(0);
         }
@@ -291,4 +270,26 @@ pub fn main() {
             rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var }).run()
         }
     }))
+}
+
+#[must_use]
+fn help_message() -> &'static str {
+    color_print::cstr!(
+        "Checks a file to catch common mistakes and improve your Rust code.
+Run <cyan>clippy-driver</> with the same arguments you use for <cyan>rustc</>
+
+<green,bold>Usage</>:
+    <cyan,bold>clippy-driver</> <cyan>[OPTIONS] INPUT</>
+
+<green,bold>Common options:</>
+    <cyan,bold>-h</>, <cyan,bold>--help</>               Print this message
+    <cyan,bold>-V</>, <cyan,bold>--version</>            Print version info and exit
+    <cyan,bold>--rustc</>                  Pass all arguments to <cyan>rustc</>
+
+<green,bold>Allowing / Denying lints</>
+You can use tool lints to allow or deny lints from your code, e.g.:
+
+    <yellow,bold>#[allow(clippy::needless_lifetimes)]</>
+"
+    )
 }

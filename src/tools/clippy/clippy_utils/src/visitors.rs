@@ -62,6 +62,27 @@ where
         }
     }
 }
+impl<'tcx, A, B> Visitable<'tcx> for (A, B)
+where
+    A: Visitable<'tcx>,
+    B: Visitable<'tcx>,
+{
+    fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
+        let (a, b) = self;
+        a.visit(visitor);
+        b.visit(visitor);
+    }
+}
+impl<'tcx, T> Visitable<'tcx> for Option<T>
+where
+    T: Visitable<'tcx>,
+{
+    fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
+        if let Some(x) = self {
+            x.visit(visitor);
+        }
+    }
+}
 macro_rules! visitable_ref {
     ($t:ident, $f:ident) => {
         impl<'tcx> Visitable<'tcx> for &'tcx $t<'tcx> {
@@ -747,4 +768,27 @@ pub fn contains_break_or_continue(expr: &Expr<'_>) -> bool {
         }
     })
     .is_some()
+}
+
+/// If the local is only used once in `visitable` returns the path expression referencing the given
+/// local
+pub fn local_used_once<'tcx>(
+    cx: &LateContext<'tcx>,
+    visitable: impl Visitable<'tcx>,
+    id: HirId,
+) -> Option<&'tcx Expr<'tcx>> {
+    let mut expr = None;
+
+    let cf = for_each_expr_with_closures(cx, visitable, |e| {
+        if path_to_local_id(e, id) && expr.replace(e).is_some() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    });
+    if cf.is_some() {
+        return None;
+    }
+
+    expr
 }

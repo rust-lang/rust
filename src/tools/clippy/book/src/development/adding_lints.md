@@ -261,7 +261,7 @@ impl EarlyLintPass for FooFunctions {}
 [declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
 [example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
-[category_level_mapping]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L110
+[category_level_mapping]: ../index.html
 
 ## Lint registration
 

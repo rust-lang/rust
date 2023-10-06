@@ -15,6 +15,10 @@ declare_clippy_lint! {
     /// A good custom message should be more about why the failure of the assertion is problematic
     /// and not what is failed because the assertion already conveys that.
     ///
+    /// Although the same reasoning applies to testing functions, this lint ignores them as they would be too noisy.
+    /// Also, in most cases understanding the test failure would be easier
+    /// compared to understanding a complex invariant distributed around the codebase.
+    ///
     /// ### Known problems
     /// This lint cannot check the quality of the custom panic messages.
     /// Hence, you can suppress this lint simply by adding placeholder messages
