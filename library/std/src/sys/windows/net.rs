@@ -15,7 +15,7 @@ use crate::sys_common::net;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
-use libc::{c_int, c_long, c_ulong, c_ushort};
+use core::ffi::{c_int, c_long, c_ulong, c_ushort};
 
 pub type wrlen_t = i32;
 
