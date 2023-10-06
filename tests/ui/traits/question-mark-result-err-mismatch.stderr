@@ -1,0 +1,83 @@
+error[E0277]: `?` couldn't convert the error to `String`
+  --> $DIR/question-mark-result-err-mismatch.rs:12:22
+   |
+LL |   fn foo() -> Result<String, String> {
+   |               ---------------------- expected `String` because of this
+...
+LL |           .ok_or_else(|| {
+   |  __________-
+LL | |             "Couldn't split the test string"
+LL | |         });
+   | |__________- this can be annotated with `?` because it has type `Result<&str, &str>`
+LL |       let one = x
+LL |           .map(|s| ())
+   |            ----------- this can be annotated with `?` because it has type `Result<(), &str>`
+LL |           .map_err(|_| ())
+   |            --------------- this can't be annotated with `?` because it has type `Result<(), ()>`
+LL |           .map(|()| "")?;
+   |            ------------^ the trait `From<()>` is not implemented for `String`
+   |            |
+   |            this can't be annotated with `?` because it has type `Result<&str, ()>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the following other types implement trait `From<T>`:
+             <String as From<char>>
+             <String as From<Box<str>>>
+             <String as From<Cow<'a, str>>>
+             <String as From<&str>>
+             <String as From<&mut str>>
+             <String as From<&String>>
+   = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
+
+error[E0277]: `?` couldn't convert the error to `String`
+  --> $DIR/question-mark-result-err-mismatch.rs:28:25
+   |
+LL | fn bar() -> Result<(), String> {
+   |             ------------------ expected `String` because of this
+LL |     let x = foo();
+   |             ----- this can be annotated with `?` because it has type `Result<String, String>`
+LL |     let one = x
+LL |         .map(|s| ())
+   |          ----------- this can be annotated with `?` because it has type `Result<(), String>`
+LL |         .map_err(|_| ())?;
+   |          ---------------^ the trait `From<()>` is not implemented for `String`
+   |          |
+   |          this can't be annotated with `?` because it has type `Result<(), ()>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the following other types implement trait `From<T>`:
+             <String as From<char>>
+             <String as From<Box<str>>>
+             <String as From<Cow<'a, str>>>
+             <String as From<&str>>
+             <String as From<&mut str>>
+             <String as From<&String>>
+   = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
+
+error[E0277]: `?` couldn't convert the error to `String`
+  --> $DIR/question-mark-result-err-mismatch.rs:47:11
+   |
+LL |   fn baz() -> Result<String, String> {
+   |               ---------------------- expected `String` because of this
+...
+LL |           .ok_or_else(|| {
+   |  __________-
+LL | |             "Couldn't split the test string";
+LL | |         })?;
+   | |          -^ the trait `From<()>` is not implemented for `String`
+   | |__________|
+   |            this can't be annotated with `?` because it has type `Result<&str, ()>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the following other types implement trait `From<T>`:
+             <String as From<char>>
+             <String as From<Box<str>>>
+             <String as From<Cow<'a, str>>>
+             <String as From<&str>>
+             <String as From<&mut str>>
+             <String as From<&String>>
+   = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

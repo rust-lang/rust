@@ -4,7 +4,9 @@ error[E0277]: `?` couldn't convert the error to `()`
 LL | fn a() -> Result<i32, ()> {
    |           --------------- expected `()` because of this
 LL |     Err(5)?;
-   |           ^ the trait `From<{integer}>` is not implemented for `()`
+   |     ------^ the trait `From<{integer}>` is not implemented for `()`
+   |     |
+   |     this can't be annotated with `?` because it has type `Result<_, {integer}>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:

@@ -3640,14 +3640,16 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     && let Some(failed_pred) = failed_pred.to_opt_poly_projection_pred()
                     && let Some(found) = failed_pred.skip_binder().term.ty()
                 {
-                    type_diffs = vec![Sorts(ty::error::ExpectedFound {
-                        expected: Ty::new_alias(
-                            self.tcx,
-                            ty::Projection,
-                            where_pred.skip_binder().projection_ty,
-                        ),
-                        found,
-                    })];
+                    type_diffs = vec![
+                        Sorts(ty::error::ExpectedFound {
+                            expected: Ty::new_alias(
+                                self.tcx,
+                                ty::Projection,
+                                where_pred.skip_binder().projection_ty,
+                            ),
+                            found,
+                        }),
+                    ];
                 }
             }
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
