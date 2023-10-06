@@ -147,9 +147,7 @@ impl<C> MaybeTransmutableQuery<Dfa<<C as QueryContext>::Ref>, C>
 where
     C: QueryContext,
 {
-    /// Answers whether a `Nfa` is transmutable into another `Nfa`.
-    ///
-    /// This method converts `src` and `dst` to DFAs, then computes an answer using those DFAs.
+    /// Answers whether a `Dfa` is transmutable into another `Dfa`.
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
         MaybeTransmutableQuery {
             src: &self.src,
