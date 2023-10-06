@@ -4,14 +4,13 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+rustc_driver = { path = "../rustc_driver" }
 rustc_hir = { path = "../rustc_hir" }
+rustc_interface = { path = "../rustc_interface" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-rustc_driver = { path = "../rustc_driver" }
-rustc_interface = { path = "../rustc_interface" }
-rustc_session = {path = "../rustc_session" }
-tracing = "0.1"
 stable_mir = {path = "../stable_mir" }
+tracing = "0.1"
 
 [features]
