@@ -225,9 +225,20 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn get_static(&self, def_id: DefId) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
-        if let Some(&g) = self.instances.borrow().get(&instance) {
+        trace!(?instance);
+        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+        trace!(?ty);
+        let llty = self.layout_of(ty).llvm_type(self);
+        self.get_static_inner(def_id, llty)
+    }
+
+    #[instrument(level = "debug", skip(self, llty))]
+    pub(crate) fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
+        if let Some(&g) = self.instances.borrow().get(&Instance::mono(self.tcx, def_id)) {
+            trace!("used cached value");
             return g;
         }
 
@@ -239,12 +250,10 @@ impl<'ll> CodegenCx<'ll, '_> {
                  statics defined in the same CGU, but did not for `{def_id:?}`"
         );
 
-        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
-        let sym = self.tcx.symbol_name(instance).name;
+        let sym = self.tcx.symbol_name(Instance::mono(self.tcx, def_id)).name;
         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
 
-        debug!("get_static: sym={} instance={:?} fn_attrs={:?}", sym, instance, fn_attrs);
-        let llty = self.layout_of(ty).llvm_type(self);
+        debug!(?sym, ?fn_attrs);
 
         let g = if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
             if let Some(g) = self.get_declared_value(sym) {
@@ -331,7 +340,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
         }
 
-        self.instances.borrow_mut().insert(instance, g);
+        self.instances.borrow_mut().insert(Instance::mono(self.tcx, def_id), g);
         g
     }
 }
@@ -367,13 +376,14 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
             };
             let alloc = alloc.inner();
 
-            let g = self.get_static(def_id);
-
             let val_llty = self.val_ty(v);
 
             let instance = Instance::mono(self.tcx, def_id);
             let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
             let llty = self.layout_of(ty).llvm_type(self);
+
+            let g = self.get_static_inner(def_id, llty);
+
             let g = if val_llty == llty {
                 g
             } else {
