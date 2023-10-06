@@ -203,31 +203,6 @@ pub(crate) fn mapping_version() -> u32 {
     unsafe { llvm::LLVMRustCoverageMappingVersion() }
 }
 
-pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    cov_data_val: &'ll llvm::Value,
-) {
-    let covmap_var_name = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
-    })
-    .expect("Rust Coverage Mapping var name failed UTF-8 conversion");
-    debug!("covmap var name: {:?}", covmap_var_name);
-
-    let covmap_section_name = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMapSectionNameToString(cx.llmod, s);
-    })
-    .expect("Rust Coverage section name failed UTF-8 conversion");
-    debug!("covmap section name: {:?}", covmap_section_name);
-
-    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(cov_data_val), &covmap_var_name);
-    llvm::set_initializer(llglobal, cov_data_val);
-    llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
-    llvm::set_section(llglobal, &covmap_section_name);
-    llvm::set_alignment(llglobal, VAR_ALIGN_BYTES);
-    cx.add_used_global(llglobal);
-}
-
 pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     covfun_section_name: &str,

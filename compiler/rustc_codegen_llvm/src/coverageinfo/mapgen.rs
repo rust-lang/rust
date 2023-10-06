@@ -5,7 +5,7 @@ use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector}
 use crate::llvm;
 
 use itertools::Itertools as _;
-use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, StaticMethods};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -70,13 +70,8 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Encode all filenames referenced by counters/expressions in this module
     let filenames_buffer = global_file_table.filenames_buffer();
-    let filenames_size = filenames_buffer.len();
-    let filenames_val = cx.const_bytes(filenames_buffer);
+    save_covmap_filenames_record(cx, version, filenames_buffer);
     let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
-
-    // Generate the LLVM IR representation of the coverage map and store it in a well-known global
-    let cov_data_val = generate_coverage_map(cx, version, filenames_size, filenames_val);
-    coverageinfo::save_cov_data_to_mod(cx, cov_data_val);
 
     let mut unused_function_names = Vec::new();
     let covfun_section_name = coverageinfo::covfun_section_name(cx);
@@ -288,15 +283,8 @@ fn encode_mappings_for_function(
     })
 }
 
-/// Construct coverage map header and the array of function records, and combine them into the
-/// coverage map. Save the coverage map data into the LLVM IR as a static global using a
-/// specific, well-known section and name.
-fn generate_coverage_map<'ll>(
-    cx: &CodegenCx<'ll, '_>,
-    version: u32,
-    filenames_size: usize,
-    filenames_val: &'ll llvm::Value,
-) -> &'ll llvm::Value {
+fn save_covmap_filenames_record(cx: &CodegenCx<'_, '_>, version: u32, filenames_buffer: &[u8]) {
+    let filenames_size = filenames_buffer.len();
     debug!("cov map: filenames_size = {}, 0-based version = {}", filenames_size, version);
 
     // Create the coverage data header (Note, fields 0 and 2 are now always zero,
@@ -311,7 +299,30 @@ fn generate_coverage_map<'ll>(
     );
 
     // Create the complete LLVM coverage data value to add to the LLVM IR
-    cx.const_struct(&[cov_data_header_val, filenames_val], /*packed=*/ false)
+    let covmap_val = cx.const_struct(
+        &[cov_data_header_val, cx.const_bytes(filenames_buffer)],
+        /*packed=*/ false,
+    );
+
+    let covmap_var_name = llvm::build_string(|s| unsafe {
+        llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
+    })
+    .expect("Rust Coverage Mapping var name failed UTF-8 conversion");
+    debug!("covmap var name: {:?}", covmap_var_name);
+
+    let covmap_section_name = llvm::build_string(|s| unsafe {
+        llvm::LLVMRustCoverageWriteMapSectionNameToString(cx.llmod, s);
+    })
+    .expect("Rust Coverage section name failed UTF-8 conversion");
+    debug!("covmap section name: {:?}", covmap_section_name);
+
+    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(covmap_val), &covmap_var_name);
+    llvm::set_initializer(llglobal, covmap_val);
+    llvm::set_global_constant(llglobal, true);
+    llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
+    llvm::set_section(llglobal, &covmap_section_name);
+    llvm::set_alignment(llglobal, coverageinfo::VAR_ALIGN_BYTES);
+    cx.add_used_global(llglobal);
 }
 
 /// Construct a function record and combine it with the function's coverage mapping data.
