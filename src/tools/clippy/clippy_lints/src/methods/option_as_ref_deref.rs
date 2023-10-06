@@ -32,8 +32,7 @@ pub(super) fn check(
         return;
     }
 
-    let deref_aliases: [&[&str]; 8] = [
-        &paths::DEREF_MUT_TRAIT_METHOD,
+    let deref_aliases: [&[&str]; 7] = [
         &paths::CSTRING_AS_C_STR,
         &paths::OS_STRING_AS_OS_STR,
         &paths::PATH_BUF_AS_PATH,
@@ -49,6 +48,7 @@ pub(super) fn check(
                 .opt_def_id()
                 .map_or(false, |fun_def_id| {
                     cx.tcx.is_diagnostic_item(sym::deref_method, fun_def_id)
+                        || cx.tcx.is_diagnostic_item(sym::deref_mut_method, fun_def_id)
                         || deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
                 })
         },
@@ -70,6 +70,7 @@ pub(super) fn check(
                         then {
                             let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap();
                             cx.tcx.is_diagnostic_item(sym::deref_method, method_did)
+                                || cx.tcx.is_diagnostic_item(sym::deref_mut_method, method_did)
                                 || deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
                         } else {
                             false

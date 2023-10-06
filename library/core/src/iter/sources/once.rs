@@ -61,6 +61,7 @@ pub fn once<T>(value: T) -> Once<T> {
 /// This `struct` is created by the [`once()`] function. See its documentation for more.
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
+#[rustc_diagnostic_item = "IterOnce"]
 pub struct Once<T> {
     inner: crate::option::IntoIter<T>,
 }

@@ -4,7 +4,7 @@ use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
-use clippy_utils::{get_trait_def_id, is_self, paths};
+use clippy_utils::is_self;
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diagnostic};
@@ -115,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             need!(cx.tcx.lang_items().fn_trait()),
             need!(cx.tcx.lang_items().fn_once_trait()),
             need!(cx.tcx.lang_items().fn_mut_trait()),
-            need!(get_trait_def_id(cx, &paths::RANGE_ARGUMENT_TRAIT)),
+            need!(cx.tcx.get_diagnostic_item(sym::RangeBounds)),
         ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());

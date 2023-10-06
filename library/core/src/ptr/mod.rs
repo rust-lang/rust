@@ -494,6 +494,7 @@ mod mut_ptr;
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
+#[rustc_diagnostic_item = "ptr_drop_in_place"]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
@@ -740,6 +741,7 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
+#[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data.cast(), len)
 }
@@ -772,6 +774,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
+#[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     from_raw_parts_mut(data.cast(), len)
 }
@@ -850,6 +853,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[rustc_diagnostic_item = "ptr_swap"]
 pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
@@ -911,6 +915,7 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[rustc_diagnostic_item = "ptr_swap_nonoverlapping"]
 pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     #[allow(unused)]
     macro_rules! attempt_swap_as_chunks {
@@ -1022,6 +1027,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+#[rustc_diagnostic_item = "ptr_replace"]
 pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
@@ -1147,6 +1153,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[rustc_allow_const_fn_unstable(const_mut_refs, const_maybe_uninit_as_mut_ptr)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[rustc_diagnostic_item = "ptr_read"]
 pub const unsafe fn read<T>(src: *const T) -> T {
     // It would be semantically correct to implement this via `copy_nonoverlapping`
     // and `MaybeUninit`, as was done before PR #109035. Calling `assume_init`
@@ -1264,6 +1271,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[rustc_allow_const_fn_unstable(const_mut_refs, const_maybe_uninit_as_mut_ptr)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[rustc_diagnostic_item = "ptr_read_unaligned"]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
@@ -1539,6 +1547,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[rustc_diagnostic_item = "ptr_read_volatile"]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
@@ -1865,6 +1874,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline(always)]
 #[must_use = "pointer comparison produces a value"]
+#[rustc_diagnostic_item = "ptr_eq"]
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }

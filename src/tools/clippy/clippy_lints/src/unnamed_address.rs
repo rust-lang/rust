@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -96,7 +96,7 @@ impl LateLintPass<'_> for UnnamedAddress {
             if let ExprKind::Call(func, [ref _left, ref _right]) = expr.kind;
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
-            if match_def_path(cx, def_id, &paths::PTR_EQ);
+            if cx.tcx.is_diagnostic_item(sym::ptr_eq, def_id);
             let ty_param = cx.typeck_results().node_args(func.hir_id).type_at(0);
             if ty_param.is_trait();
             then {

@@ -153,6 +153,7 @@ pub use core::time::TryFromFloatSecsError;
 ///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]
 pub struct Instant(time::Instant);
 
 /// A measurement of the system clock, useful for talking to

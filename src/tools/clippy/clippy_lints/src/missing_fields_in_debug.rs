@@ -1,9 +1,9 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::match_type;
+use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{for_each_expr, Visitable};
-use clippy_utils::{is_path_lang_item, paths};
+use clippy_utils::is_path_lang_item;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
@@ -114,9 +114,11 @@ fn should_lint<'tcx>(
         if let ExprKind::MethodCall(path, recv, ..) = &expr.kind {
             let recv_ty = typeck_results.expr_ty(recv).peel_refs();
 
-            if path.ident.name == sym::debug_struct && match_type(cx, recv_ty, &paths::FORMATTER) {
+            if path.ident.name == sym::debug_struct && is_type_diagnostic_item(cx, recv_ty, sym::Formatter) {
                 has_debug_struct = true;
-            } else if path.ident.name == sym!(finish_non_exhaustive) && match_type(cx, recv_ty, &paths::DEBUG_STRUCT) {
+            } else if path.ident.name == sym!(finish_non_exhaustive)
+                && is_type_diagnostic_item(cx, recv_ty, sym::DebugStruct)
+            {
                 has_finish_non_exhaustive = true;
             }
         }
@@ -137,7 +139,7 @@ fn as_field_call<'tcx>(
 ) -> Option<Symbol> {
     if let ExprKind::MethodCall(path, recv, [debug_field, _], _) = &expr.kind
         && let recv_ty = typeck_results.expr_ty(recv).peel_refs()
-        && match_type(cx, recv_ty, &paths::DEBUG_STRUCT)
+        && is_type_diagnostic_item(cx, recv_ty, sym::DebugStruct)
         && path.ident.name == sym::field
         && let ExprKind::Lit(lit) = &debug_field.kind
         && let LitKind::Str(sym, ..) = lit.node
