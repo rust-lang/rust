@@ -79,8 +79,8 @@ call-function: ("check-colors", {
 set-window-size: (851, 600)
 
 // Check the size and count in tabs
-assert-text: ("#search-tabs > button:nth-child(1) > .count", " (23) ")
-assert-text: ("#search-tabs > button:nth-child(2) > .count", " (4)  ")
+assert-text: ("#search-tabs > button:nth-child(1) > .count", " (24) ")
+assert-text: ("#search-tabs > button:nth-child(2) > .count", " (5)  ")
 assert-text: ("#search-tabs > button:nth-child(3) > .count", " (0)  ")
 store-property: ("#search-tabs > button:nth-child(1)", {"offsetWidth": buttonWidth})
 assert-property: ("#search-tabs > button:nth-child(2)", {"offsetWidth": |buttonWidth|})
