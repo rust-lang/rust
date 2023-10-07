@@ -680,12 +680,14 @@ function preLoadCss(cssUrl) {
 
         let implementations = document.getElementById("implementations-list");
         let trait_implementations = document.getElementById("trait-implementations-list");
+        let trait_implementations_header = document.getElementById("trait-implementations");
 
         // We want to include the current type alias's impls, and no others.
         const script = document.querySelector("script[data-self-path]");
         const selfPath = script ? script.getAttribute("data-self-path") : null;
 
         // These sidebar blocks need filled in, too.
+        const mainContent = document.querySelector("#main-content");
         const sidebarSection = document.querySelector(".sidebar section");
         let methods = document.querySelector(".sidebar .block.method");
         let associatedTypes = document.querySelector(".sidebar .block.associatedtype");
@@ -719,18 +721,18 @@ function preLoadCss(cssUrl) {
                     const h = document.createElement("h3");
                     h.appendChild(link);
                     trait_implementations = outputList;
+                    trait_implementations_header = outputListHeader;
                     sidebarSection.appendChild(h);
                     sidebarTraitList = document.createElement("ul");
                     sidebarTraitList.className = "block trait-implementation";
                     sidebarSection.appendChild(sidebarTraitList);
-                    const mainContent = document.querySelector("#main-content");
                     mainContent.appendChild(outputListHeader);
                     mainContent.appendChild(outputList);
                 } else {
                     implementations = outputList;
                     if (trait_implementations) {
-                        document.insertBefore(outputListHeader, trait_implementations);
-                        document.insertBefore(outputList, trait_implementations);
+                        mainContent.insertBefore(outputListHeader, trait_implementations_header);
+                        mainContent.insertBefore(outputList, trait_implementations_header);
                     } else {
                         const mainContent = document.querySelector("#main-content");
                         mainContent.appendChild(outputListHeader);
@@ -762,7 +764,14 @@ function preLoadCss(cssUrl) {
                     }
                 }
                 if (i !== 0) {
+                    const oldHref = `#${el.id}`;
+                    const newHref = `#${el.id}-${i}`;
                     el.id = `${el.id}-${i}`;
+                    onEachLazy(template.content.querySelectorAll("a[href]"), link => {
+                        if (link.getAttribute("href") === oldHref) {
+                            link.href = newHref;
+                        }
+                    });
                 }
                 idMap.set(el.id, i + 1);
             });

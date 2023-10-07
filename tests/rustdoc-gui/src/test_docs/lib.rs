@@ -167,6 +167,26 @@ impl SomeOtherTypeWithMethodsAndInlining {
     pub fn some_other_method_directly(&self) {}
 }
 
+/// Another type alias, this time with methods.
+pub struct UnderlyingFooBarBaz;
+pub type SomeOtherTypeWithMethodsAndInliningAndTraits = UnderlyingFooBarBaz;
+
+impl AsRef<str> for UnderlyingFooBarBaz {
+    fn as_ref(&self) -> &str {
+        "hello"
+    }
+}
+
+impl UnderlyingFooBarBaz {
+    pub fn inherent_fn(&self) {}
+}
+
+impl AsRef<u8> for SomeOtherTypeWithMethodsAndInliningAndTraits {
+    fn as_ref(&self) -> &u8 {
+        b"hello"
+    }
+}
+
 pub mod huge_amount_of_consts {
     include!(concat!(env!("OUT_DIR"), "/huge_amount_of_consts.rs"));
 }

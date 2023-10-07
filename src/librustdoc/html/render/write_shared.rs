@@ -530,7 +530,11 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             .values()
             .flat_map(|AliasedTypeImpl { impl_, type_aliases }| {
                 let mut ret = Vec::new();
-                let trait_ = impl_.inner_impl().trait_.as_ref().map(|path| path.last().to_string());
+                let trait_ = impl_
+                    .inner_impl()
+                    .trait_
+                    .as_ref()
+                    .map(|trait_| format!("{:#}", trait_.print(cx)));
                 // render_impl will filter out "impossible-to-call" methods
                 // to make that functionality work here, it needs to be called with
                 // each type alias, and if it gives a different result, split the impl
@@ -538,12 +542,25 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                     let mut buf = Buffer::html();
                     cx.id_map = Default::default();
                     cx.deref_id_map = Default::default();
+                    let target_did = impl_
+                        .inner_impl()
+                        .trait_
+                        .as_ref()
+                        .map(|trait_| trait_.def_id())
+                        .or_else(|| impl_.inner_impl().for_.def_id(cache));
+                    let provided_methods;
+                    let assoc_link = if let Some(target_did) = target_did {
+                        provided_methods = impl_.inner_impl().provided_trait_methods(cx.tcx());
+                        AssocItemLink::GotoSource(ItemId::DefId(target_did), &provided_methods)
+                    } else {
+                        AssocItemLink::Anchor(None)
+                    };
                     super::render_impl(
                         &mut buf,
                         cx,
                         *impl_,
                         &type_alias_item,
-                        AssocItemLink::Anchor(None),
+                        assoc_link,
                         RenderMode::Normal,
                         None,
                         &[],

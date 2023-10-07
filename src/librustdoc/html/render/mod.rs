@@ -55,7 +55,6 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
