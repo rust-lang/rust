@@ -47,7 +47,7 @@ impl Compiler {
                 self.runner = vec!["wine".to_owned()];
             }
             _ => {
-                println!("Unknown non-native platform");
+                eprintln!("Unknown non-native platform");
             }
         }
     }
@@ -209,14 +209,14 @@ pub(crate) fn spawn_and_wait(mut cmd: Command) {
 pub(crate) fn retry_spawn_and_wait(tries: u64, mut cmd: Command) {
     for i in 1..tries + 1 {
         if i != 1 {
-            println!("Command failed. Attempt {i}/{tries}:");
+            eprintln!("Command failed. Attempt {i}/{tries}:");
         }
         if cmd.spawn().unwrap().wait().unwrap().success() {
             return;
         }
         std::thread::sleep(std::time::Duration::from_secs(i * 5));
     }
-    println!("The command has failed after {tries} attempts.");
+    eprintln!("The command has failed after {tries} attempts.");
     process::exit(1);
 }
 
