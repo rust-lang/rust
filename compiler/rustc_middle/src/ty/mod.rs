@@ -2510,16 +2510,26 @@ impl<'tcx> TyCtxt<'tcx> {
     // FIXME(vincenzopalazzo): move the HirId to a LocalDefId
     pub fn adjust_ident_and_get_scope(
         self,
-        mut ident: Ident,
+        ident: Ident,
         scope: DefId,
         block: hir::HirId,
     ) -> (Ident, DefId) {
-        let scope = ident
-            .span
+        let (span, scope) = self.adjust_span_and_get_scope(ident.span, scope, block);
+        (Ident { span, ..ident }, scope)
+    }
+
+    // FIXME(vincenzopalazzo): move the HirId to a LocalDefId
+    pub fn adjust_span_and_get_scope(
+        self,
+        mut span: Span,
+        scope: DefId,
+        block: hir::HirId,
+    ) -> (Span, DefId) {
+        let scope = span
             .normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope))
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
             .unwrap_or_else(|| self.parent_module(block).to_def_id());
-        (ident, scope)
+        (span, scope)
     }
 
     /// Returns `true` if the debuginfo for `span` should be collapsed to the outermost expansion

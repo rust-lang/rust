@@ -1659,10 +1659,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.report_unknown_field(
                         adt_ty,
                         variant,
-                        expr,
                         field,
                         ast_fields,
                         adt.variant_descr(),
+                        expr.span,
                     )
                 };
 
@@ -2046,16 +2046,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         variant: &'tcx ty::VariantDef,
-        expr: &hir::Expr<'_>,
         field: &hir::ExprField<'_>,
         skip_fields: &[hir::ExprField<'_>],
         kind_name: &str,
+        expr_span: Span,
     ) -> ErrorGuaranteed {
         if variant.is_recovered() {
             let guar = self
                 .tcx
                 .sess
-                .delay_span_bug(expr.span, "parser recovered but no error was emitted");
+                .delay_span_bug(expr_span, "parser recovered but no error was emitted");
             self.set_tainted_by_errors(guar);
             return guar;
         }
@@ -2099,7 +2099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     err.span_label(field.ident.span, "field does not exist");
                     err.span_suggestion_verbose(
-                        expr.span,
+                        expr_span,
                         format!(
                             "`{adt}::{variant}` is a tuple {kind_name}, use the appropriate syntax",
                             adt = ty,
@@ -2117,7 +2117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(variant_ident_span, format!("`{ty}` defined here"));
                     err.span_label(field.ident.span, "field does not exist");
                     err.span_suggestion_verbose(
-                        expr.span,
+                        expr_span,
                         format!("`{ty}` is a tuple {kind_name}, use the appropriate syntax",),
                         format!("{ty}(/* fields */)"),
                         Applicability::HasPlaceholders,
@@ -2125,8 +2125,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             },
             _ => {
-                // prevent all specified fields from being suggested
-                let available_field_names = self.available_field_names(variant, expr, skip_fields);
+                // Prevent all specified fields from being suggested with `skip_fields`.
+                let available_field_names =
+                    self.available_field_names(variant, field.ident.span, skip_fields);
                 if let Some(field_name) =
                     find_best_match_for_name(&available_field_names, field.ident.name, None)
                 {
@@ -2170,15 +2171,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn available_field_names(
         &self,
         variant: &'tcx ty::VariantDef,
-        expr: &hir::Expr<'_>,
+        span: Span,
         skip_fields: &[hir::ExprField<'_>],
     ) -> Vec<Symbol> {
+        let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+        let (span, def_scope) = self.tcx.adjust_span_and_get_scope(span, variant.def_id, block);
+
         variant
             .fields
             .iter()
             .filter(|field| {
                 skip_fields.iter().all(|&skip| skip.ident.name != field.name)
-                    && self.is_field_suggestable(field, expr.hir_id, expr.span)
+                    && self.is_field_suggestable(field, def_scope, span)
             })
             .map(|field| field.name)
             .collect()
@@ -2409,7 +2413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.suggest_first_deref_field(&mut err, expr, base, ident);
             }
             ty::Adt(def, _) if !def.is_enum() => {
-                self.suggest_fields_on_recordish(&mut err, expr, def, ident);
+                self.suggest_fields_on_recordish(&mut err, def, ident);
             }
             ty::Param(param_ty) => {
                 self.point_at_param_definition(&mut err, param_ty);
@@ -2571,11 +2575,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_fields_on_recordish(
         &self,
         err: &mut Diagnostic,
-        expr: &hir::Expr<'_>,
         def: ty::AdtDef<'tcx>,
         field: Ident,
     ) {
-        let available_field_names = self.available_field_names(def.non_enum_variant(), expr, &[]);
+        let available_field_names =
+            self.available_field_names(def.non_enum_variant(), field.span, &[]);
         if let Some(suggested_field_name) =
             find_best_match_for_name(&available_field_names, field.name, None)
         {

@@ -1407,7 +1407,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 adt.variant_descr(),
                 &inexistent_fields,
                 &mut unmentioned_fields,
-                pat,
                 variant,
                 args,
             ))
@@ -1431,10 +1430,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.emit_err(errors::UnionPatDotDot { span: pat.span });
             }
         } else if !unmentioned_fields.is_empty() {
+            let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+            // It's hard to pinpoint who is to blame for the unmentioned fields and for whom those
+            // fields are actually inaccessible since the fields that *are* mentioned may come from
+            // different expansions. Instead of employing a heuristic that tries to find the most
+            // relevant expansion, just blame the struct pattern `pat` which isn't great but
+            // at least it's technically correct.
+            let (span, def_scope) =
+                self.tcx.adjust_span_and_get_scope(pat.span, variant.def_id, block);
+
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
                 .iter()
                 .copied()
-                .filter(|(field, _)| self.is_field_suggestable(field, pat.hir_id, pat.span))
+                .filter(|(field, _)| self.is_field_suggestable(field, def_scope, span))
                 .collect();
 
             if !has_rest_pat {
@@ -1570,7 +1578,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         kind_name: &str,
         inexistent_fields: &[&hir::PatField<'tcx>],
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
-        pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
@@ -1614,7 +1621,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             if let [(field_def, field)] = unmentioned_fields.as_slice()
-                && self.is_field_suggestable(field_def, pat.hir_id, pat.span)
+                && let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id)
+                && let (span, def_scope) =
+                    self.tcx.adjust_span_and_get_scope(pat_field.ident.span, variant.def_id, block)
+                && self.is_field_suggestable(field_def, def_scope, span)
             {
                 let suggested_name =
                     find_best_match_for_name(&[field.name], pat_field.ident.name, None);
@@ -1881,17 +1891,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let len = unmentioned_fields.len();
         let (prefix, postfix, sp) = match fields {
             [] => match &pat.kind {
-                PatKind::Struct(path, [], false) => {
+                PatKind::Struct(path, [], false) if path.span().eq_ctxt(pat.span) => {
                     (" { ", " }", path.span().shrink_to_hi().until(pat.span.shrink_to_hi()))
                 }
                 _ => return err,
             },
             [.., field] => {
-                // Account for last field having a trailing comma or parse recovery at the tail of
-                // the pattern to avoid invalid suggestion (#78511).
-                let tail = field.span.shrink_to_hi().with_hi(pat.span.hi());
                 match &pat.kind {
-                    PatKind::Struct(..) => (", ", " }", tail),
+                    // Account for last field having a trailing comma or parse recovery at the tail of
+                    // the pattern to avoid invalid suggestion (#78511).
+                    PatKind::Struct(..) if field.span.eq_ctxt(pat.span) => {
+                        (", ", " }", field.span.shrink_to_hi().with_hi(pat.span.hi()))
+                    }
                     _ => return err,
                 }
             }

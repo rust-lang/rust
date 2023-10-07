@@ -1,5 +1,5 @@
 error[E0560]: struct `Crate` has no field named `fiel`
-  --> $DIR/dont-suggest-hygienic-fields.rs:44:34
+  --> $DIR/dont-suggest-hygienic-fields.rs:78:34
    |
 LL | environment!();
    | -------------- in this macro invocation
@@ -9,26 +9,37 @@ LL |     const CRATE: Crate = Crate { fiel: () };
    |
    = note: this error originates in the macro `environment` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0560]: struct `Case` has no field named `fiel`
+  --> $DIR/dont-suggest-hygienic-fields.rs:84:31
+   |
+LL | environment!();
+   | -------------- in this macro invocation
+...
+LL |     const CASE: Case = Case { fiel: () };
+   |                               ^^^^ help: a field with a similar name exists: `field`
+   |
+   = note: this error originates in the macro `environment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0609]: no field `field` on type `Compound`
-  --> $DIR/dont-suggest-hygienic-fields.rs:24:16
+  --> $DIR/dont-suggest-hygienic-fields.rs:47:16
    |
 LL |     let _ = ty.field;
    |                ^^^^^ unknown field
 
 error[E0609]: no field `fieeld` on type `Compound`
-  --> $DIR/dont-suggest-hygienic-fields.rs:25:16
+  --> $DIR/dont-suggest-hygienic-fields.rs:48:16
    |
 LL |     let _ = ty.fieeld;
    |                ^^^^^^ unknown field
 
 error[E0026]: struct `Compound` does not have a field named `field`
-  --> $DIR/dont-suggest-hygienic-fields.rs:27:20
+  --> $DIR/dont-suggest-hygienic-fields.rs:50:20
    |
 LL |     let Compound { field } = ty;
    |                    ^^^^^ struct `Compound` does not have this field
 
 error: pattern requires `..` due to inaccessible fields
-  --> $DIR/dont-suggest-hygienic-fields.rs:27:9
+  --> $DIR/dont-suggest-hygienic-fields.rs:50:9
    |
 LL |     let Compound { field } = ty;
    |         ^^^^^^^^^^^^^^^^^^
@@ -39,12 +50,41 @@ LL |     let Compound { field, .. } = ty;
    |                         ++++
 
 error[E0609]: no field `0` on type `Component`
-  --> $DIR/dont-suggest-hygienic-fields.rs:34:16
+  --> $DIR/dont-suggest-hygienic-fields.rs:57:16
    |
 LL |     let _ = ty.0;
    |                ^ unknown field
 
-error: aborting due to 6 previous errors
+error[E0609]: no field `field` on type `main::Casket`
+  --> $DIR/dont-suggest-hygienic-fields.rs:59:35
+   |
+LL |     let _ = inject_into_expr_bad!(field);
+   |                                   ^^^^^ unknown field
 
-Some errors have detailed explanations: E0026, E0560, E0609.
+error[E0026]: struct `main::Casket` does not have a field named `field`
+  --> $DIR/dont-suggest-hygienic-fields.rs:61:26
+   |
+LL |     inject_into_pat_bad!(field: _);
+   |                          ^^^^^ struct `main::Casket` does not have this field
+
+error[E0027]: pattern does not mention field `field`
+  --> $DIR/dont-suggest-hygienic-fields.rs:41:9
+   |
+LL |     let Casket { $( $any )* } = CASKET;
+   |         ^^^^^^^^^^^^^^^^^^^^^ missing field `field`
+...
+LL |     inject_into_pat_bad!(field: _);
+   |     ------------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `inject_into_pat_bad` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `fiel` on type `Carton`
+  --> $DIR/dont-suggest-hygienic-fields.rs:102:43
+   |
+LL |     let _ = inject_into_expr_good!(field, fiel);
+   |                                           ^^^^ help: a field with a similar name exists: `field`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0026, E0027, E0560, E0609.
 For more information about an error, try `rustc --explain E0026`.
