@@ -56,8 +56,8 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// It's not bad, but having them is idiomatic and allows the type to be used in iterator chains
-    /// by just calling `.iter()`, instead of the more awkward `<&Type>::into_iter` or `(&val).iter()` syntax
-    /// in case of ambiguity with another `Intoiterator` impl.
+    /// by just calling `.iter()`, instead of the more awkward `<&Type>::into_iter` or `(&val).into_iter()` syntax
+    /// in case of ambiguity with another `IntoIterator` impl.
     ///
     /// ### Example
     /// ```rust
