@@ -113,6 +113,8 @@ $ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) rustc +$(cat $CG_
     <dd>Display the time it took to perform codegen for a crate</dd>
     <dt>CG_RUSTFLAGS</dt>
     <dd>Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`.</dd>
+    <dt>CG_GCCJIT_DUMP_TO_FILE</dt>
+    <dd>Dump a C-like representation to /tmp/gccjit_dumps and enable debug info in order to debug this C-like representation.</dd>
 </dl>
 
 ## Licensing
