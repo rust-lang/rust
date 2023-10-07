@@ -10,10 +10,6 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-#![feature(rustc_private)]
-#![feature(ptr_metadata)]
-#![feature(type_alias_impl_trait)] // Used to define opaque types.
-#![feature(intra_doc_pointers)]
 
 pub mod rustc_internal;
 

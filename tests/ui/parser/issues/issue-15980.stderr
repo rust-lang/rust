@@ -11,15 +11,10 @@ help: escape `return` to use it as an identifier
    |
 LL |             r#return
    |             ++
-
-error: expected one of `.`, `=>`, `?`, or an operator, found reserved identifier `_`
-  --> $DIR/issue-15980.rs:13:9
+help: you might have meant to start a match arm after the match guard
    |
-LL |         }
-   |          - expected one of `.`, `=>`, `?`, or an operator
-LL |
-LL |         _ => {}
-   |         ^ unexpected token
+LL |         Err(ref e) if e.kind == io::EndOfFile => {
+   |                                               ++
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

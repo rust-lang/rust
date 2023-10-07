@@ -250,17 +250,6 @@ pub(crate) fn verify_func(
 }
 
 fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
-    if let Err(err) =
-        fx.mir.post_mono_checks(fx.tcx, ty::ParamEnv::reveal_all(), |c| Ok(fx.monomorphize(c)))
-    {
-        err.emit_err(fx.tcx);
-        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
-        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
-        // compilation should have been aborted
-        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-        return;
-    }
-
     let arg_uninhabited = fx
         .mir
         .args_iter()

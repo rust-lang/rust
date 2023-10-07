@@ -14,6 +14,4 @@ fn main() {
     <Struct as Ambiguous<_>>::method();
     //~^ ERROR type annotations needed
     //~| NOTE cannot infer type of the type parameter `A`
-    //~| ERROR type annotations needed
-    //~| NOTE infer type of the type parameter `A`
 }

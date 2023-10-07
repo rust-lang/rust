@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `Vec<T>`
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:24:9
    |
 LL |     let mut x = Vec::new();
-   |         ^^^^^
+   |         ^^^^^   ---------- type must be known at this point
    |
 help: consider giving `x` an explicit type, where the type for type parameter `T` is specified
    |

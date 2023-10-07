@@ -508,10 +508,12 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "clippy"
-version = "0.1.74"
+version = "0.1.75"
 dependencies = [
+ "anstream",
  "clippy_lints",
  "clippy_utils",
+ "color-print",
  "filetime",
  "futures",
  "if_chain",
@@ -546,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.74"
+version = "0.1.75"
 dependencies = [
  "arrayvec",
  "cargo_metadata",
@@ -566,11 +568,12 @@ dependencies = [
  "unicode-normalization",
  "unicode-script",
  "url",
+ "walkdir",
 ]
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.74"
+version = "0.1.75"
 dependencies = [
  "arrayvec",
  "if_chain",
@@ -601,6 +604,27 @@ dependencies = [
  "once_cell",
  "owo-colors",
  "tracing-error",
+]
+
+[[package]]
+name = "color-print"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a858372ff14bab9b1b30ea504f2a4bc534582aee3e42ba2d41d2a7baba63d5d"
+dependencies = [
+ "color-print-proc-macro",
+]
+
+[[package]]
+name = "color-print-proc-macro"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57e37866456a721d0a404439a1adae37a31be4e0055590d053dfe6981e05003f"
+dependencies = [
+ "nom",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -933,7 +957,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.74"
+version = "0.1.75"
 dependencies = [
  "itertools",
  "quote",
@@ -4311,7 +4335,6 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
- "rustc_macros",
  "rustc_middle",
  "rustc_query_system",
  "rustc_serialize",
@@ -4417,7 +4440,6 @@ dependencies = [
  "rustc_hir",
  "rustc_interface",
  "rustc_middle",
- "rustc_session",
  "rustc_span",
  "rustc_target",
  "stable_mir",
@@ -4991,6 +5013,7 @@ version = "0.0.0"
 dependencies = [
  "addr2line",
  "alloc",
+ "cc",
  "cfg-if",
  "compiler_builtins",
  "core",

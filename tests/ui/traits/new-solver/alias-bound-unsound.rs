@@ -27,6 +27,5 @@ fn main() {
     //~| ERROR overflow evaluating the requirement `<() as Foo>::Item well-formed`
     //~| ERROR overflow evaluating the requirement `String <: <() as Foo>::Item`
     //~| ERROR overflow evaluating the requirement `&<() as Foo>::Item well-formed`
-    //~| ERROR type annotations needed
     println!("{x}");
 }

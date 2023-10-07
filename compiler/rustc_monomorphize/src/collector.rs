@@ -1426,6 +1426,8 @@ fn collect_used_items<'tcx>(
         );
     }
 
+    // Here we rely on the visitor also visiting `required_consts`, so that we evaluate them
+    // and abort compilation if any of them errors.
     MirUsedCollector {
         tcx,
         body: &body,

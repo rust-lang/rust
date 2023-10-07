@@ -135,10 +135,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
 }
 
 fn stmt_might_diverge(stmt: &Stmt<'_>) -> bool {
-    match stmt.kind {
-        StmtKind::Item(..) => false,
-        _ => true,
-    }
+    !matches!(stmt.kind, StmtKind::Item(..))
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
@@ -148,7 +145,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
             ExprKind::Block(block, ..) => match (block.stmts, block.expr) {
                 (stmts, Some(e)) => {
                     if stmts.iter().all(|stmt| !stmt_might_diverge(stmt)) {
-                        self.visit_expr(e)
+                        self.visit_expr(e);
                     }
                 },
                 ([first @ .., stmt], None) => {

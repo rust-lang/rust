@@ -27,6 +27,5 @@ fn impls<T: Trait>() {}
 
 fn main() {
     impls::<W<_>>();
-    //~^ ERROR type annotations needed
-    //~| ERROR overflow evaluating the requirement
+    //~^ ERROR overflow evaluating the requirement
 }

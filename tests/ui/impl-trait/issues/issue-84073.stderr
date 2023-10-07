@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `RaceBuilder<T, Never<T>>`
   --> $DIR/issue-84073.rs:32:16
    |
 LL |     Race::new(|race| race.when());
-   |                ^^^^
+   |                ^^^^  ---- type must be known at this point
    |
 help: consider giving this closure parameter an explicit type, where the type for type parameter `T` is specified
    |

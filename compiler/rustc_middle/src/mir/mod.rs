@@ -2,7 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
-use crate::mir::interpret::{AllocRange, ConstAllocation, ErrorHandled, Scalar};
+use crate::mir::interpret::{AllocRange, ConstAllocation, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
@@ -567,34 +567,6 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn is_custom_mir(&self) -> bool {
         self.injection_phase.is_some()
-    }
-
-    /// *Must* be called once the full substitution for this body is known, to ensure that the body
-    /// is indeed fit for code generation or consumption more generally.
-    ///
-    /// Sadly there's no nice way to represent an "arbitrary normalizer", so we take one for
-    /// constants specifically. (`Option<GenericArgsRef>` could be used for that, but the fact
-    /// that `Instance::args_for_mir_body` is private and instead instance exposes normalization
-    /// functions makes it seem like exposing the generic args is not the intended strategy.)
-    ///
-    /// Also sadly, CTFE doesn't even know whether it runs on MIR that is already polymorphic or still monomorphic,
-    /// so we cannot just immediately ICE on TooGeneric.
-    ///
-    /// Returns Ok(()) if everything went fine, and `Err` if a problem occurred and got reported.
-    pub fn post_mono_checks(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        normalize_const: impl Fn(Const<'tcx>) -> Result<Const<'tcx>, ErrorHandled>,
-    ) -> Result<(), ErrorHandled> {
-        // For now, the only thing we have to check is is to ensure that all the constants used in
-        // the body successfully evaluate.
-        for &const_ in &self.required_consts {
-            let c = normalize_const(const_.const_)?;
-            c.eval(tcx, param_env, Some(const_.span))?;
-        }
-
-        Ok(())
     }
 }
 

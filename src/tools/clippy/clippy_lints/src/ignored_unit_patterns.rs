@@ -37,6 +37,10 @@ declare_lint_pass!(IgnoredUnitPatterns => [IGNORED_UNIT_PATTERNS]);
 
 impl<'tcx> LateLintPass<'tcx> for IgnoredUnitPatterns {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
+        if pat.span.from_expansion() {
+            return;
+        }
+
         match cx.tcx.hir().get_parent(pat.hir_id) {
             Node::Param(param) if matches!(cx.tcx.hir().get_parent(param.hir_id), Node::Item(_)) => {
                 // Ignore function parameters
