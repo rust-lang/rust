@@ -257,7 +257,7 @@ x--expand-yaml-anchors--remove:
           if-no-files-found: ignore
           retention-days: 5
         # Having `always` makes metric collection always happen even if the prior
-        # steps fail. This is useful for because the whole point of metrics is to
+        # steps fail. This is useful  because the whole point of metrics is to
         # help gathering information about the runtime of the CI.
         if: always() && !env.SKIP_JOB
         <<: *step
