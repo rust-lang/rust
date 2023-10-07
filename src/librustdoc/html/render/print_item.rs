@@ -1261,6 +1261,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                         variants_count,
                         has_stripped_entries,
                         *is_non_exhaustive,
+                        it.def_id().unwrap(),
                     )
                 });
                 item_variants(w, cx, it, &variants);
@@ -1425,6 +1426,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             count_variants,
             e.has_stripped_entries(),
             it.is_non_exhaustive(),
+            it.def_id().unwrap(),
         );
     });
 
@@ -1436,21 +1438,6 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     let def_id = it.item_id.expect_def_id();
     write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
     write!(w, "{}", document_type_layout(cx, def_id));
-}
-
-fn get_parent_enum_def_id(
-    cx: &mut Context<'_>,
-    variant_def_id: rustc_hir::def_id::LocalDefId,
-) -> DefId {
-    use rustc_hir::{ItemKind, Node};
-    let variant_hir_id = cx.tcx().hir().local_def_id_to_hir_id(variant_def_id);
-
-    for (_, node) in cx.tcx().hir().parent_iter(variant_hir_id) {
-        if let Node::Item(item) = node && matches!(item.kind, ItemKind::Enum(..)) {
-            return item.owner_id.to_def_id();
-        }
-    }
-    panic!("No parent enum found for variant {variant_def_id:?}");
 }
 
 /// It'll return true if all variants are C-like variants and if at least one of them has a value
@@ -1478,15 +1465,12 @@ fn display_c_like_variant(
     variant: &clean::Variant,
     index: rustc_target::abi::VariantIdx,
     should_show_c_like_variants_value: bool,
+    enum_def_id: DefId,
 ) {
     let name = item.name.unwrap();
     if let Some(ref value) = variant.discriminant {
         write!(w, "{} = {}", name.as_str(), value.value(cx.tcx(), true));
-    } else if should_show_c_like_variants_value &&
-        let Some(variant_def_id) = item.item_id.as_def_id() &&
-        let Some(variant_def_id) = variant_def_id.as_local()
-    {
-        let enum_def_id = get_parent_enum_def_id(cx, variant_def_id);
+    } else if should_show_c_like_variants_value {
         let adt_def = cx.tcx().adt_def(enum_def_id);
         let discr = adt_def.discriminant_for_variant(cx.tcx(), index);
         if discr.ty.is_signed() {
@@ -1507,6 +1491,7 @@ fn render_enum_fields(
     count_variants: usize,
     has_stripped_entries: bool,
     is_non_exhaustive: bool,
+    enum_def_id: DefId,
 ) {
     let should_show_c_like_variants_value = should_show_c_like_variants_value(variants);
     if !g.is_some_and(|g| print_where_clause_and_check(w, g, cx)) {
@@ -1538,6 +1523,7 @@ fn render_enum_fields(
                         var,
                         index,
                         should_show_c_like_variants_value,
+                        enum_def_id,
                     ),
                     clean::VariantKind::Tuple(ref s) => {
                         write!(w, "{}({})", v.name.unwrap(), print_tuple_struct_fields(cx, s));
@@ -1608,6 +1594,7 @@ fn item_variants(
                 var,
                 index,
                 should_show_c_like_variants_value,
+                it.def_id().unwrap(),
             );
         } else {
             w.write_str(variant.name.unwrap().as_str());
