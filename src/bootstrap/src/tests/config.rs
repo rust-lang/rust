@@ -1,6 +1,6 @@
-use crate::config::TomlConfig;
-
+use crate::core::config::TomlConfig;
 use super::{Config, Flags};
+
 use clap::CommandFactory;
 use serde::Deserialize;
 use std::{
@@ -18,7 +18,7 @@ fn parse(config: &str) -> Config {
 
 #[test]
 fn download_ci_llvm() {
-    if crate::llvm::is_ci_llvm_modified(&parse("")) {
+    if crate::core::build_steps::llvm::is_ci_llvm_modified(&parse("")) {
         eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
         return;
     }
@@ -137,7 +137,7 @@ build-config = {}
     assert_eq!(config.change_id, Some(1), "setting top-level value");
     assert_eq!(
         config.rust_lto,
-        crate::config::RustcLto::Fat,
+        crate::core::config::RustcLto::Fat,
         "setting string value without quotes"
     );
     assert_eq!(config.gdb, Some("bar".into()), "setting string value with quotes");
@@ -175,7 +175,7 @@ fn profile_user_dist() {
             "profile = \"user\"".to_owned()
         } else {
             assert!(file.ends_with("config.dist.toml"));
-            std::fs::read_to_string(dbg!(file)).unwrap()
+            std::fs::read_to_string(file).unwrap()
         };
         toml::from_str(&contents)
             .and_then(|table: toml::Value| TomlConfig::deserialize(table))

@@ -1,6 +1,6 @@
 use super::*;
-use crate::config::{Config, DryRun, TargetSelection};
-use crate::doc::DocumentationFormat;
+use crate::core::config::{Config, DryRun, TargetSelection};
+use crate::core::build_steps::doc::DocumentationFormat;
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
@@ -158,7 +158,7 @@ fn alias_and_path_for_library() {
 
 #[test]
 fn test_beta_rev_parsing() {
-    use crate::extract_beta_rev;
+    use crate::utils::helpers::extract_beta_rev;
 
     // single digit revision
     assert_eq!(extract_beta_rev("1.99.9-beta.7 (xxxxxx)"), Some("7".to_string()));
@@ -174,7 +174,7 @@ fn test_beta_rev_parsing() {
 
 mod defaults {
     use super::{configure, first, run_build};
-    use crate::builder::*;
+    use crate::core::builder::*;
     use crate::Config;
     use pretty_assertions::assert_eq;
 
@@ -285,7 +285,7 @@ mod defaults {
 
 mod dist {
     use super::{first, run_build, Config};
-    use crate::builder::*;
+    use crate::core::builder::*;
     use pretty_assertions::assert_eq;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
