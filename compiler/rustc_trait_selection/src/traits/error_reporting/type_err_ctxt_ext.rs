@@ -1049,38 +1049,24 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut prev_ty = self.resolve_vars_if_possible(
             typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
         );
-        let mut annotate_expr = |span: Span, prev_ty: Ty<'tcx>, self_ty: Ty<'tcx>| -> bool {
-            // We always look at the `E` type, because that's the only one affected by `?`. If the
-            // incorrect `Result<T, E>` is because of the `T`, we'll get an E0308 on the whole
-            // expression, after the `?` has "unwrapped" the `T`.
+
+        // We always look at the `E` type, because that's the only one affected by `?`. If the
+        // incorrect `Result<T, E>` is because of the `T`, we'll get an E0308 on the whole
+        // expression, after the `?` has "unwrapped" the `T`.
+        let get_e_type = |prev_ty: Ty<'tcx>| -> Option<Ty<'tcx>> {
             let ty::Adt(def, args) = prev_ty.kind() else {
-                return false;
+                return None;
             };
             let Some(arg) = args.get(1) else {
-                return false;
+                return None;
             };
             if !self.tcx.is_diagnostic_item(sym::Result, def.did()) {
-                return false;
+                return None;
             }
-            let can = if self
-                .infcx
-                .type_implements_trait(
-                    self.tcx.get_diagnostic_item(sym::From).unwrap(),
-                    [self_ty.into(), *arg],
-                    obligation.param_env,
-                )
-                .must_apply_modulo_regions()
-            {
-                "can"
-            } else {
-                "can't"
-            };
-            err.span_label(
-                span,
-                format!("this {can} be annotated with `?` because it has type `{prev_ty}`"),
-            );
-            true
+            Some(arg.as_type()?)
         };
+
+        let mut chain = vec![];
 
         // The following logic is simlar to `point_at_chain`, but that's focused on associated types
         let mut expr = expr;
@@ -1089,9 +1075,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // let foo = bar.iter().map(mapper)?;
             //               ------ -----------
             expr = rcvr_expr;
-            if !annotate_expr(span, prev_ty, self_ty) {
-                break;
-            }
+            chain.push((span, prev_ty));
 
             prev_ty = self.resolve_vars_if_possible(
                 typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
@@ -1121,7 +1105,41 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         prev_ty = self.resolve_vars_if_possible(
             typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
         );
-        annotate_expr(expr.span, prev_ty, self_ty);
+        chain.push((expr.span, prev_ty));
+
+        let mut prev = None;
+        for (span, err_ty) in chain.into_iter().rev() {
+            let err_ty = get_e_type(err_ty);
+            let err_ty = match (err_ty, prev) {
+                (Some(err_ty), Some(prev)) if !self.can_eq(obligation.param_env, err_ty, prev) => {
+                    err_ty
+                }
+                (Some(err_ty), None) => err_ty,
+                _ => {
+                    prev = err_ty;
+                    continue;
+                }
+            };
+            if self
+                .infcx
+                .type_implements_trait(
+                    self.tcx.get_diagnostic_item(sym::From).unwrap(),
+                    [self_ty, err_ty],
+                    obligation.param_env,
+                )
+                .must_apply_modulo_regions()
+            {
+                err.span_label(span, format!("this has type `Result<_, {err_ty}>`"));
+            } else {
+                err.span_label(
+                span,
+                format!(
+                    "this can't be annotated with `?` because it has type `Result<_, {err_ty}>`",
+                ),
+            );
+            }
+            prev = Some(err_ty);
+        }
     }
 
     fn report_const_param_not_wf(
