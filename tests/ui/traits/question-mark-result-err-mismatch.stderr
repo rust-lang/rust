@@ -8,16 +8,12 @@ LL |           .ok_or_else(|| {
    |  __________-
 LL | |             "Couldn't split the test string"
 LL | |         });
-   | |__________- this can be annotated with `?` because it has type `Result<&str, &str>`
-LL |       let one = x
-LL |           .map(|s| ())
-   |            ----------- this can be annotated with `?` because it has type `Result<(), &str>`
+   | |__________- this has type `Result<_, &str>`
+...
 LL |           .map_err(|_| ())
-   |            --------------- this can't be annotated with `?` because it has type `Result<(), ()>`
+   |            --------------- this can't be annotated with `?` because it has type `Result<_, ()>`
 LL |           .map(|()| "")?;
-   |            ------------^ the trait `From<()>` is not implemented for `String`
-   |            |
-   |            this can't be annotated with `?` because it has type `Result<&str, ()>`
+   |                        ^ the trait `From<()>` is not implemented for `String`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:
@@ -30,19 +26,17 @@ LL |           .map(|()| "")?;
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:28:25
+  --> $DIR/question-mark-result-err-mismatch.rs:27:25
    |
 LL | fn bar() -> Result<(), String> {
    |             ------------------ expected `String` because of this
 LL |     let x = foo();
-   |             ----- this can be annotated with `?` because it has type `Result<String, String>`
-LL |     let one = x
-LL |         .map(|s| ())
-   |          ----------- this can be annotated with `?` because it has type `Result<(), String>`
+   |             ----- this has type `Result<_, String>`
+...
 LL |         .map_err(|_| ())?;
    |          ---------------^ the trait `From<()>` is not implemented for `String`
    |          |
-   |          this can't be annotated with `?` because it has type `Result<(), ()>`
+   |          this can't be annotated with `?` because it has type `Result<_, ()>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:
@@ -55,7 +49,7 @@ LL |         .map_err(|_| ())?;
    = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:47:11
+  --> $DIR/question-mark-result-err-mismatch.rs:46:11
    |
 LL |   fn baz() -> Result<String, String> {
    |               ---------------------- expected `String` because of this
@@ -66,7 +60,7 @@ LL | |             "Couldn't split the test string";
 LL | |         })?;
    | |          -^ the trait `From<()>` is not implemented for `String`
    | |__________|
-   |            this can't be annotated with `?` because it has type `Result<&str, ()>`
+   |            this can't be annotated with `?` because it has type `Result<_, ()>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:
