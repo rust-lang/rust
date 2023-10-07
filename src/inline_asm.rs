@@ -6,6 +6,7 @@ use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::InlineAsmOperand;
 use rustc_span::sym;
 use rustc_target::asm::*;
+use target_lexicon::BinaryFormat;
 
 use crate::prelude::*;
 
@@ -589,11 +590,29 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
     }
 
     fn generate_asm_wrapper(&self, asm_name: &str) -> String {
+        let binary_format = crate::target_triple(self.tcx.sess).binary_format;
+
         let mut generated_asm = String::new();
-        writeln!(generated_asm, ".globl {}", asm_name).unwrap();
-        writeln!(generated_asm, ".type {},@function", asm_name).unwrap();
-        writeln!(generated_asm, ".section .text.{},\"ax\",@progbits", asm_name).unwrap();
-        writeln!(generated_asm, "{}:", asm_name).unwrap();
+        match binary_format {
+            BinaryFormat::Elf => {
+                writeln!(generated_asm, ".globl {}", asm_name).unwrap();
+                writeln!(generated_asm, ".type {},@function", asm_name).unwrap();
+                writeln!(generated_asm, ".section .text.{},\"ax\",@progbits", asm_name).unwrap();
+                writeln!(generated_asm, "{}:", asm_name).unwrap();
+            }
+            BinaryFormat::Macho => {
+                writeln!(generated_asm, ".globl _{}", asm_name).unwrap();
+                writeln!(generated_asm, "_{}:", asm_name).unwrap();
+            }
+            BinaryFormat::Coff => {
+                writeln!(generated_asm, ".globl {}", asm_name).unwrap();
+                writeln!(generated_asm, "{}:", asm_name).unwrap();
+            }
+            _ => self
+                .tcx
+                .sess
+                .fatal(format!("Unsupported binary format for inline asm: {binary_format:?}")),
+        }
 
         let is_x86 = matches!(self.arch, InlineAsmArch::X86 | InlineAsmArch::X86_64);
 
@@ -690,8 +709,19 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         if is_x86 {
             generated_asm.push_str(".att_syntax\n");
         }
-        writeln!(generated_asm, ".size {name}, .-{name}", name = asm_name).unwrap();
-        generated_asm.push_str(".text\n");
+
+        match binary_format {
+            BinaryFormat::Elf => {
+                writeln!(generated_asm, ".size {name}, .-{name}", name = asm_name).unwrap();
+                generated_asm.push_str(".text\n");
+            }
+            BinaryFormat::Macho | BinaryFormat::Coff => {}
+            _ => self
+                .tcx
+                .sess
+                .fatal(format!("Unsupported binary format for inline asm: {binary_format:?}")),
+        }
+
         generated_asm.push_str("\n\n");
 
         generated_asm
