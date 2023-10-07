@@ -431,6 +431,17 @@ pub(crate) struct ExpectedElseBlock {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_expected_struct_field)]
+pub(crate) struct ExpectedStructField {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub token: Token,
+    #[label(parse_ident_label)]
+    pub ident_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_outer_attribute_not_allowed_on_if_else)]
 pub(crate) struct OuterAttributeNotAllowedOnIfElse {
     #[primary_span]

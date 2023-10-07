@@ -158,7 +158,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            infcx.err_ctxt().report_fulfillment_errors(&errors);
+            infcx.err_ctxt().report_fulfillment_errors(errors);
             error = true;
         }
         // now we can take the return type of the given main function

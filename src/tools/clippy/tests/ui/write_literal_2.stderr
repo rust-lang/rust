@@ -1,14 +1,3 @@
-error: unnecessary raw string literal
-  --> $DIR/write_literal_2.rs:13:24
-   |
-LL |     writeln!(v, r"{}", r"{hello}");
-   |                        -^^^^^^^^^
-   |                        |
-   |                        help: use a string literal instead: `"{hello}"`
-   |
-   = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`
-
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:10:23
    |
@@ -36,7 +25,7 @@ LL +     writeln!(v, r"{{hello}}");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:17:23
+  --> $DIR/write_literal_2.rs:15:23
    |
 LL |     writeln!(v, "{}", '\'');
    |                       ^^^^
@@ -48,7 +37,7 @@ LL +     writeln!(v, "'");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:19:23
+  --> $DIR/write_literal_2.rs:17:23
    |
 LL |     writeln!(v, "{}", '"');
    |                       ^^^
@@ -60,13 +49,13 @@ LL +     writeln!(v, "\"");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:21:24
+  --> $DIR/write_literal_2.rs:19:24
    |
 LL |     writeln!(v, r"{}", '"');
    |                        ^^^
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:23:24
+  --> $DIR/write_literal_2.rs:21:24
    |
 LL |     writeln!(v, r"{}", '\'');
    |                        ^^^^
@@ -78,59 +67,32 @@ LL +     writeln!(v, r"'");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:28:9
+  --> $DIR/write_literal_2.rs:26:9
    |
 LL | /         "hello \
-LL | |
-LL | |         world!"
+LL | |         world!",
    | |_______________^
    |
 help: try
    |
 LL ~         "some hello \
-LL +
-LL ~         world!"
+LL ~         world!",
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:36:9
+  --> $DIR/write_literal_2.rs:34:9
    |
-LL |         "1",
-   |         ^^^
+LL |         "1", "2", "3",
+   |         ^^^^^^^^^^^^^
    |
 help: try
    |
 LL ~         "some 1\
-LL ~         {} \\ {}",
+LL ~         2 \\ 3",
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:37:9
-   |
-LL |         "2",
-   |         ^^^
-   |
-help: try
-   |
-LL ~         2 \\ {}",
-LL ~         "1",
-   |
-
-error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:38:9
-   |
-LL |         "3",
-   |         ^^^
-   |
-help: try
-   |
-LL ~         {} \\ 3",
-LL |         "1",
-LL ~         "2",
-   |
-
-error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:41:23
+  --> $DIR/write_literal_2.rs:36:23
    |
 LL |     writeln!(v, "{}", "\\");
    |                       ^^^^
@@ -142,7 +104,7 @@ LL +     writeln!(v, "\\");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:43:24
+  --> $DIR/write_literal_2.rs:38:24
    |
 LL |     writeln!(v, r"{}", "\\");
    |                        ^^^^
@@ -154,7 +116,7 @@ LL +     writeln!(v, r"\");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:45:26
+  --> $DIR/write_literal_2.rs:40:26
    |
 LL |     writeln!(v, r#"{}"#, "\\");
    |                          ^^^^
@@ -166,7 +128,7 @@ LL +     writeln!(v, r#"\"#);
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:47:23
+  --> $DIR/write_literal_2.rs:42:23
    |
 LL |     writeln!(v, "{}", r"\");
    |                       ^^^^
@@ -178,7 +140,7 @@ LL +     writeln!(v, "\\");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:49:23
+  --> $DIR/write_literal_2.rs:44:23
    |
 LL |     writeln!(v, "{}", "\r");
    |                       ^^^^
@@ -190,16 +152,10 @@ LL +     writeln!(v, "\r");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:52:28
+  --> $DIR/write_literal_2.rs:47:28
    |
 LL |     writeln!(v, r#"{}{}"#, '#', '"');
-   |                            ^^^
+   |                            ^^^^^^^^
 
-error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:52:33
-   |
-LL |     writeln!(v, r#"{}{}"#, '#', '"');
-   |                                 ^^^
-
-error: aborting due to 18 previous errors
+error: aborting due to 14 previous errors
 

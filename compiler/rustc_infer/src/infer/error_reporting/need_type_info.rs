@@ -27,7 +27,7 @@ use std::iter;
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
-    /// let x = "hello".chars().rev().collect();
+    /// let x;
     /// ```
     E0282,
     /// An implementation cannot be chosen unambiguously because of lack of information.

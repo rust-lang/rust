@@ -57,7 +57,7 @@ pub fn ensure_wf<'tcx>(
     ocx.register_obligation(obligation);
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors);
+        infcx.err_ctxt().report_fulfillment_errors(errors);
         false
     } else {
         // looks WF!

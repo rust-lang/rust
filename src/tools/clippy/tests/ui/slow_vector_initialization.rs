@@ -103,8 +103,6 @@ fn from_empty_vec() {
 }
 
 fn do_stuff(vec: &mut [u8]) {}
-//~^ ERROR: this argument is a mutable reference, but not used mutably
-//~| NOTE: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
 
 fn extend_vector_with_manipulations_between() {
     let len = 300;

@@ -1,9 +1,17 @@
-error[E0282]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/normalizes_to_ignores_unnormalizable_candidate.rs:36:5
    |
 LL |     foo(unconstrained())
-   |     ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
+   |     ^^^ --------------- type must be known at this point
+   |     |
+   |     cannot infer type of the type parameter `T` declared on the function `foo`
    |
+   = note: cannot satisfy `_: Trait`
+note: required by a bound in `foo`
+  --> $DIR/normalizes_to_ignores_unnormalizable_candidate.rs:19:11
+   |
+LL | fn foo<T: Trait<Assoc = u8>>(x: T) {}
+   |           ^^^^^^^^^^^^^^^^^ required by this bound in `foo`
 help: consider specifying the generic argument
    |
 LL |     foo::<T>(unconstrained())
@@ -11,4 +19,4 @@ LL |     foo::<T>(unconstrained())
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

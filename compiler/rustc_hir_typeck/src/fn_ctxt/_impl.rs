@@ -564,7 +564,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !errors.is_empty() {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
-            self.err_ctxt().report_fulfillment_errors(&errors);
+            self.err_ctxt().report_fulfillment_errors(errors);
         }
     }
 
@@ -577,7 +577,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
-            self.err_ctxt().report_fulfillment_errors(&result);
+            self.err_ctxt().report_fulfillment_errors(result);
         }
     }
 
@@ -1477,7 +1477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 Ok(normalized_ty) => normalized_ty,
                 Err(errors) => {
-                    let guar = self.err_ctxt().report_fulfillment_errors(&errors);
+                    let guar = self.err_ctxt().report_fulfillment_errors(errors);
                     return Ty::new_error(self.tcx,guar);
                 }
             }

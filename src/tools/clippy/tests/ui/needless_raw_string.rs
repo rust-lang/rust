@@ -18,4 +18,8 @@ fn main() {
         multiline
         string
     "#;
+
+    r"no hashes";
+    br"no hashes";
+    cr"no hashes";
 }

@@ -1,18 +1,3 @@
-error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
-  --> $DIR/slice-issue-87994.rs:3:12
-   |
-LL |   for _ in v[1..] {
-   |            ^^^^^^ the trait `IntoIterator` is not implemented for `[i32]`
-   |
-   = note: the trait bound `[i32]: IntoIterator` is not satisfied
-   = note: required for `[i32]` to implement `IntoIterator`
-help: consider borrowing here
-   |
-LL |   for _ in &v[1..] {
-   |            +
-LL |   for _ in &mut v[1..] {
-   |            ++++
-
 error[E0277]: `[i32]` is not an iterator
   --> $DIR/slice-issue-87994.rs:3:12
    |
@@ -28,7 +13,22 @@ LL |   for _ in &v[1..] {
 LL |   for _ in &mut v[1..] {
    |            ++++
 
-error[E0277]: the size for values of type `[K]` cannot be known at compilation time
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/slice-issue-87994.rs:3:12
+   |
+LL |   for _ in v[1..] {
+   |            ^^^^^^ the trait `IntoIterator` is not implemented for `[i32]`
+   |
+   = note: the trait bound `[i32]: IntoIterator` is not satisfied
+   = note: required for `[i32]` to implement `IntoIterator`
+help: consider borrowing here
+   |
+LL |   for _ in &v[1..] {
+   |            +
+LL |   for _ in &mut v[1..] {
+   |            ++++
+
+error[E0277]: `[K]` is not an iterator
   --> $DIR/slice-issue-87994.rs:11:13
    |
 LL |   for i2 in v2[1..] {
@@ -43,7 +43,7 @@ LL |   for i2 in &v2[1..] {
 LL |   for i2 in &mut v2[1..] {
    |             ++++
 
-error[E0277]: `[K]` is not an iterator
+error[E0277]: the size for values of type `[K]` cannot be known at compilation time
   --> $DIR/slice-issue-87994.rs:11:13
    |
 LL |   for i2 in v2[1..] {

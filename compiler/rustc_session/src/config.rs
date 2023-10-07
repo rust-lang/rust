@@ -813,7 +813,6 @@ impl Input {
                 FileName::Anon(_) => None,
                 FileName::MacroExpansion(_) => None,
                 FileName::ProcMacroSourceCode(_) => None,
-                FileName::CfgSpec(_) => None,
                 FileName::CliCrateAttr(_) => None,
                 FileName::Custom(_) => None,
                 FileName::DocTest(path, _) => Some(path),

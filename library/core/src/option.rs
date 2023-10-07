@@ -1475,7 +1475,7 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or(self, optb: Option<T>) -> Option<T> {
         match self {
-            Some(x) => Some(x),
+            x @ Some(_) => x,
             None => optb,
         }
     }
@@ -1500,7 +1500,7 @@ impl<T> Option<T> {
         F: FnOnce() -> Option<T>,
     {
         match self {
-            Some(x) => Some(x),
+            x @ Some(_) => x,
             None => f(),
         }
     }
@@ -1530,8 +1530,8 @@ impl<T> Option<T> {
     #[stable(feature = "option_xor", since = "1.37.0")]
     pub fn xor(self, optb: Option<T>) -> Option<T> {
         match (self, optb) {
-            (Some(a), None) => Some(a),
-            (None, Some(b)) => Some(b),
+            (a @ Some(_), None) => a,
+            (None, b @ Some(_)) => b,
             _ => None,
         }
     }

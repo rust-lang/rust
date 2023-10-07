@@ -170,3 +170,11 @@ fn not_fire() {
         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ ..] => data,
     };
 }
+
+fn issue11579() {
+    let msg = match Some("hi") {
+        //~^ ERROR: this could be rewritten as `let...else`
+        Some(m) => m,
+        _ => unreachable!("can't happen"),
+    };
+}

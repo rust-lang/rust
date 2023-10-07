@@ -18,7 +18,5 @@ where
 
 fn main() {
     let a = A(B);
-    a.method();
-    //~^ ERROR type annotations needed
-    //~| ERROR type annotations needed
+    a.method(); //~ ERROR type annotations needed
 }

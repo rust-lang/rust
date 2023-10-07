@@ -479,6 +479,46 @@ pub trait Into<T>: Sized {
 /// - `From<T> for U` implies [`Into`]`<U> for T`
 /// - `From` is reflexive, which means that `From<T> for T` is implemented
 ///
+/// # When to implement `From`
+///
+/// While there's no technical restrictions on which conversions can be done using
+/// a `From` implementation, the general expectation is that the conversions
+/// should typically be restricted as follows:
+///
+/// * The conversion is *infallible*: if the conversion can fail, use [`TryFrom`]
+///   instead; don't provide a `From` impl that panics.
+///
+/// * The conversion is *lossless*: semantically, it should not lose or discard
+///   information. For example, `i32: From<u16>` exists, where the original
+///   value can be recovered using `u16: TryFrom<i32>`.  And `String: From<&str>`
+///   exists, where you can get something equivalent to the original value via
+///   `Deref`.  But `From` cannot be used to convert from `u32` to `u16`, since
+///   that cannot succeed in a lossless way.  (There's some wiggle room here for
+///   information not considered semantically relevant.  For example,
+///   `Box<[T]>: From<Vec<T>>` exists even though it might not preserve capacity,
+///   like how two vectors can be equal despite differing capacities.)
+///
+/// * The conversion is *value-preserving*: the conceptual kind and meaning of
+///   the resulting value is the same, even though the Rust type and technical
+///   representation might be different.  For example `-1_i8 as u8` is *lossless*,
+///   since `as` casting back can recover the original value, but that conversion
+///   is *not* available via `From` because `-1` and `255` are different conceptual
+///   values (despite being identical bit patterns technically).  But
+///   `f32: From<i16>` *is* available because `1_i16` and `1.0_f32` are conceptually
+///   the same real number (despite having very different bit patterns technically).
+///   `String: From<char>` is available because they're both *text*, but
+///   `String: From<u32>` is *not* available, since `1` (a number) and `"1"`
+///   (text) are too different.  (Converting values to text is instead covered
+///   by the [`Display`](crate::fmt::Display) trait.)
+///
+/// * The conversion is *obvious*: it's the only reasonable conversion between
+///   the two types.  Otherwise it's better to have it be a named method or
+///   constructor, like how [`str::as_bytes`] is a method and how integers have
+///   methods like [`u32::from_ne_bytes`], [`u32::from_le_bytes`], and
+///   [`u32::from_be_bytes`], none of which are `From` implementations.  Whereas
+///   there's only one reasonable way to wrap an [`Ipv6Addr`](crate::net::Ipv6Addr)
+///   into an [`IpAddr`](crate::net::IpAddr), thus `IpAddr: From<Ipv6Addr>` exists.
+///
 /// # Examples
 ///
 /// [`String`] implements `From<&str>`:

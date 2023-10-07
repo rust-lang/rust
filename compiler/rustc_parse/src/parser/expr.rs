@@ -2834,7 +2834,7 @@ impl<'a> Parser<'a> {
             )?;
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
-                let mut cond = this.parse_expr_res(Restrictions::ALLOW_LET, None)?;
+                let mut cond = this.parse_match_guard_condition()?;
 
                 CondChecker { parser: this, forbid_let_reason: None }.visit_expr(&mut cond);
 
@@ -2860,9 +2860,9 @@ impl<'a> Parser<'a> {
                 {
                     err.span_suggestion(
                         this.token.span,
-                        "try using a fat arrow here",
+                        "use a fat arrow to start a match arm",
                         "=>",
-                        Applicability::MaybeIncorrect,
+                        Applicability::MachineApplicable,
                     );
                     err.emit();
                     this.bump();
@@ -2979,6 +2979,33 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_match_guard_condition(&mut self) -> PResult<'a, P<Expr>> {
+        self.parse_expr_res(Restrictions::ALLOW_LET | Restrictions::IN_IF_GUARD, None).map_err(
+            |mut err| {
+                if self.prev_token == token::OpenDelim(Delimiter::Brace) {
+                    let sugg_sp = self.prev_token.span.shrink_to_lo();
+                    // Consume everything within the braces, let's avoid further parse
+                    // errors.
+                    self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
+                    let msg = "you might have meant to start a match arm after the match guard";
+                    if self.eat(&token::CloseDelim(Delimiter::Brace)) {
+                        let applicability = if self.token.kind != token::FatArrow {
+                            // We have high confidence that we indeed didn't have a struct
+                            // literal in the match guard, but rather we had some operation
+                            // that ended in a path, immediately followed by a block that was
+                            // meant to be the match arm.
+                            Applicability::MachineApplicable
+                        } else {
+                            Applicability::MaybeIncorrect
+                        };
+                        err.span_suggestion_verbose(sugg_sp, msg, "=> ".to_string(), applicability);
+                    }
+                }
+                err
+            },
+        )
+    }
+
     pub(crate) fn is_builtin(&self) -> bool {
         self.token.is_keyword(kw::Builtin) && self.look_ahead(1, |t| *t == token::Pound)
     }
@@ -3049,9 +3076,10 @@ impl<'a> Parser<'a> {
                     || self.look_ahead(2, |t| t == &token::Colon)
                         && (
                             // `{ ident: token, ` cannot start a block.
-                            self.look_ahead(4, |t| t == &token::Comma) ||
-                // `{ ident: ` cannot start a block unless it's a type ascription `ident: Type`.
-                self.look_ahead(3, |t| !t.can_begin_type())
+                            self.look_ahead(4, |t| t == &token::Comma)
+                                // `{ ident: ` cannot start a block unless it's a type ascription
+                                // `ident: Type`.
+                                || self.look_ahead(3, |t| !t.can_begin_type())
                         )
             )
     }
@@ -3091,6 +3119,7 @@ impl<'a> Parser<'a> {
         let mut fields = ThinVec::new();
         let mut base = ast::StructRest::None;
         let mut recover_async = false;
+        let in_if_guard = self.restrictions.contains(Restrictions::IN_IF_GUARD);
 
         let mut async_block_err = |e: &mut Diagnostic, span: Span| {
             recover_async = true;
@@ -3126,6 +3155,26 @@ impl<'a> Parser<'a> {
                         async_block_err(&mut e, pth.span);
                     } else {
                         e.span_label(pth.span, "while parsing this struct");
+                    }
+
+                    if let Some((ident, _)) = self.token.ident()
+                        && !self.token.is_reserved_ident()
+                        && self.look_ahead(1, |t| {
+                            AssocOp::from_token(&t).is_some()
+                                || matches!(t.kind, token::OpenDelim(_))
+                                || t.kind == token::Dot
+                        })
+                    {
+                        // Looks like they tried to write a shorthand, complex expression.
+                        e.span_suggestion_verbose(
+                            self.token.span.shrink_to_lo(),
+                            "try naming a field",
+                            &format!("{ident}: ", ),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    if in_if_guard && close_delim == Delimiter::Brace {
+                        return Err(e);
                     }
 
                     if !recover {
@@ -3172,19 +3221,6 @@ impl<'a> Parser<'a> {
                                 "try adding a comma",
                                 ",",
                                 Applicability::MachineApplicable,
-                            );
-                        } else if is_shorthand
-                            && (AssocOp::from_token(&self.token).is_some()
-                                || matches!(&self.token.kind, token::OpenDelim(_))
-                                || self.token.kind == token::Dot)
-                        {
-                            // Looks like they tried to write a shorthand, complex expression.
-                            let ident = parsed_field.expect("is_shorthand implies Some").ident;
-                            e.span_suggestion(
-                                ident.span.shrink_to_lo(),
-                                "try naming a field",
-                                &format!("{ident}: "),
-                                Applicability::HasPlaceholders,
                             );
                         }
                     }
@@ -3288,6 +3324,24 @@ impl<'a> Parser<'a> {
 
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
+            // Proactively check whether parsing the field will be incorrect.
+            let is_wrong = this.token.is_ident()
+                && !this.token.is_reserved_ident()
+                && !this.look_ahead(1, |t| {
+                    t == &token::Colon
+                        || t == &token::Eq
+                        || t == &token::Comma
+                        || t == &token::CloseDelim(Delimiter::Brace)
+                        || t == &token::CloseDelim(Delimiter::Parenthesis)
+                });
+            if is_wrong {
+                return Err(errors::ExpectedStructField {
+                    span: this.look_ahead(1, |t| t.span),
+                    ident_span: this.token.span,
+                    token: this.look_ahead(1, |t| t.clone()),
+                }
+                .into_diagnostic(&self.sess.span_diagnostic));
+            }
             let (ident, expr) = if is_shorthand {
                 // Mimic `x: x` for the `x` field shorthand.
                 let ident = this.parse_ident_common(false)?;

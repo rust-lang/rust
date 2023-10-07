@@ -1,14 +1,3 @@
-error[E0282]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:45:15
-   |
-LL |     ref_thing.method();
-   |               ^^^^^^
-   |
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     <Thing as Method<T>>::method(ref_thing);
-   |     +++++++++++++++++++++++++++++         ~
-
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:45:15
    |
@@ -29,7 +18,7 @@ LL |     <Thing as Method<T>>::method(ref_thing);
    |     +++++++++++++++++++++++++++++         ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:48:15
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:46:15
    |
 LL |     ref_thing.by_self();
    |               ^^^^^^^
@@ -48,7 +37,7 @@ LL |     <&Thing as MethodRef<T>>::by_self(ref_thing);
    |     ++++++++++++++++++++++++++++++++++         ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:51:15
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:49:15
    |
 LL |     mut_thing.method();
    |               ^^^^^^
@@ -67,7 +56,7 @@ LL |     <Thing as Method<T>>::method(mut_thing);
    |     +++++++++++++++++++++++++++++         ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:52:15
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:50:15
    |
 LL |     mut_thing.mut_method();
    |               ^^^^^^^^^^
@@ -86,7 +75,7 @@ LL |     <Thing as Method<T>>::mut_method(mut_thing);
    |     +++++++++++++++++++++++++++++++++         ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:53:15
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:51:15
    |
 LL |     mut_thing.by_self();
    |               ^^^^^^^
@@ -105,7 +94,7 @@ LL |     <&Thing as MethodRef<T>>::by_self(mut_thing);
    |     ++++++++++++++++++++++++++++++++++         ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:56:14
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:54:14
    |
 LL |     deref_to.method();
    |              ^^^^^^
@@ -124,7 +113,7 @@ LL |     <Thing as Method<T>>::method(deref_to);
    |     +++++++++++++++++++++++++++++        ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:57:14
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:55:14
    |
 LL |     deref_to.mut_method();
    |              ^^^^^^^^^^
@@ -143,7 +132,7 @@ LL |     <Thing as Method<T>>::mut_method(deref_to);
    |     +++++++++++++++++++++++++++++++++        ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:58:14
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:56:14
    |
 LL |     deref_to.by_self();
    |              ^^^^^^^
@@ -162,7 +151,7 @@ LL |     <&Thing as MethodRef<T>>::by_self(deref_to);
    |     ++++++++++++++++++++++++++++++++++        ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:61:20
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:59:20
    |
 LL |     deref_deref_to.method();
    |                    ^^^^^^
@@ -181,7 +170,7 @@ LL |     <Thing as Method<T>>::method(deref_deref_to);
    |     +++++++++++++++++++++++++++++              ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:62:20
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:60:20
    |
 LL |     deref_deref_to.mut_method();
    |                    ^^^^^^^^^^
@@ -200,7 +189,7 @@ LL |     <Thing as Method<T>>::mut_method(deref_deref_to);
    |     +++++++++++++++++++++++++++++++++              ~
 
 error[E0283]: type annotations needed
-  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:63:20
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:61:20
    |
 LL |     deref_deref_to.by_self();
    |                    ^^^^^^^
@@ -218,7 +207,6 @@ help: try using a fully qualified path to specify the expected types
 LL |     <&Thing as MethodRef<T>>::by_self(deref_deref_to);
    |     ++++++++++++++++++++++++++++++++++              ~
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.
