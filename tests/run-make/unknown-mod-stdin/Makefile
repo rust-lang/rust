@@ -4,11 +4,5 @@ include ../tools.mk
 
 all:
 	echo 'mod unknown;' | $(RUSTC) --crate-type rlib - >$(TMPDIR)/unknown-mod.stdout 2>$(TMPDIR)/unknown-mod.stderr || echo "failed successfully"
-
-ifdef RUSTC_BLESS_TEST
-	cp "$(TMPDIR)"/unknown-mod.stdout unknown-mod.stdout
-	cp "$(TMPDIR)"/unknown-mod.stderr unknown-mod.stderr
-else
-	$(DIFF) unknown-mod.stdout "$(TMPDIR)"/unknown-mod.stdout
-	$(DIFF) unknown-mod.stderr "$(TMPDIR)"/unknown-mod.stderr
-endif
+	$(RUSTC_TEST_OP) "$(TMPDIR)"/unknown-mod.stdout unknown-mod.stdout
+	$(RUSTC_TEST_OP) "$(TMPDIR)"/unknown-mod.stderr unknown-mod.stderr
