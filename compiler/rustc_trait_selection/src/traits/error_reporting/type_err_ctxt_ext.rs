@@ -41,7 +41,7 @@ use rustc_session::config::{DumpSolverProofTree, TraitSolver};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, ExpnKind, Span, DUMMY_SP};
+use rustc_span::{BytePos, ExpnKind, Span, Symbol, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 use std::iter;
@@ -1045,6 +1045,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return;
         }
         let self_ty = trait_ref.self_ty();
+        let found_ty = trait_ref.args.get(1).and_then(|a| a.as_type());
 
         let mut prev_ty = self.resolve_vars_if_possible(
             typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
@@ -1070,16 +1071,79 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         // The following logic is simlar to `point_at_chain`, but that's focused on associated types
         let mut expr = expr;
-        while let hir::ExprKind::MethodCall(_path_segment, rcvr_expr, _args, span) = expr.kind {
+        while let hir::ExprKind::MethodCall(path_segment, rcvr_expr, args, span) = expr.kind {
             // Point at every method call in the chain with the `Result` type.
             // let foo = bar.iter().map(mapper)?;
             //               ------ -----------
             expr = rcvr_expr;
             chain.push((span, prev_ty));
 
-            prev_ty = self.resolve_vars_if_possible(
+            let next_ty = self.resolve_vars_if_possible(
                 typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
             );
+
+            let is_diagnostic_item = |symbol: Symbol, ty: Ty<'tcx>| {
+                let ty::Adt(def, _) = ty.kind() else {
+                    return false;
+                };
+                self.tcx.is_diagnostic_item(symbol, def.did())
+            };
+            // For each method in the chain, see if this is `Result::map_err` or
+            // `Option::ok_or_else` and if it is, see if the closure passed to it has an incorrect
+            // trailing `;`.
+            if let Some(ty) = get_e_type(prev_ty)
+                && let Some(found_ty) = found_ty
+                // Ideally we would instead use `FnCtxt::lookup_method_for_diagnostic` for 100%
+                // accurate check, but we are in the wrong stage to do that and looking for
+                // `Result::map_err` by checking the Self type and the path segment is enough.
+                // sym::ok_or_else
+                && (
+                    ( // Result::map_err
+                        path_segment.ident.name == sym::map_err
+                            && is_diagnostic_item(sym::Result, next_ty)
+                    ) || ( // Option::ok_or_else
+                        path_segment.ident.name == sym::ok_or_else
+                            && is_diagnostic_item(sym::Option, next_ty)
+                    )
+                )
+                // Found `Result<_, ()>?`
+                && let ty::Tuple(tys) = found_ty.kind()
+                && tys.is_empty()
+                // The current method call returns `Result<_, ()>`
+                && self.can_eq(obligation.param_env, ty, found_ty)
+                // There's a single argument in the method call and it is a closure
+                && args.len() == 1
+                && let Some(arg) = args.get(0)
+                && let hir::ExprKind::Closure(closure) = arg.kind
+                // The closure has a block for its body with no tail expression
+                && let body = self.tcx.hir().body(closure.body)
+                && let hir::ExprKind::Block(block, _) = body.value.kind
+                && let None = block.expr
+                // The last statement is of a type that can be converted to the return error type
+                && let [.., stmt] = block.stmts
+                && let hir::StmtKind::Semi(expr) = stmt.kind
+                && let expr_ty = self.resolve_vars_if_possible(
+                    typeck.expr_ty_adjusted_opt(expr)
+                        .unwrap_or(Ty::new_misc_error(self.tcx)),
+                )
+                && self
+                    .infcx
+                    .type_implements_trait(
+                        self.tcx.get_diagnostic_item(sym::From).unwrap(),
+                        [self_ty, expr_ty],
+                        obligation.param_env,
+                    )
+                    .must_apply_modulo_regions()
+            {
+                err.span_suggestion_short(
+                    stmt.span.with_lo(expr.span.hi()),
+                    "remove this semicolon",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            }
+
+            prev_ty = next_ty;
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path

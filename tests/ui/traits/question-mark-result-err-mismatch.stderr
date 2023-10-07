@@ -1,5 +1,5 @@
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:12:22
+  --> $DIR/question-mark-result-err-mismatch.rs:14:22
    |
 LL |   fn foo() -> Result<String, String> {
    |               ---------------------- expected `String` because of this
@@ -10,8 +10,12 @@ LL | |             "Couldn't split the test string"
 LL | |         });
    | |__________- this has type `Result<_, &str>`
 ...
-LL |           .map_err(|_| ())
-   |            --------------- this can't be annotated with `?` because it has type `Result<_, ()>`
+LL |           .map_err(|e| {
+   |  __________-
+LL | |             e;
+   | |              - help: remove this semicolon
+LL | |         })
+   | |__________- this can't be annotated with `?` because it has type `Result<_, ()>`
 LL |           .map(|()| "")?;
    |                        ^ the trait `From<()>` is not implemented for `String`
    |
@@ -26,7 +30,7 @@ LL |           .map(|()| "")?;
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:27:25
+  --> $DIR/question-mark-result-err-mismatch.rs:30:25
    |
 LL | fn bar() -> Result<(), String> {
    |             ------------------ expected `String` because of this
@@ -49,7 +53,7 @@ LL |         .map_err(|_| ())?;
    = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:46:11
+  --> $DIR/question-mark-result-err-mismatch.rs:50:11
    |
 LL |   fn baz() -> Result<String, String> {
    |               ---------------------- expected `String` because of this
@@ -57,6 +61,7 @@ LL |   fn baz() -> Result<String, String> {
 LL |           .ok_or_else(|| {
    |  __________-
 LL | |             "Couldn't split the test string";
+   | |                                             - help: remove this semicolon
 LL | |         })?;
    | |          -^ the trait `From<()>` is not implemented for `String`
    | |__________|
