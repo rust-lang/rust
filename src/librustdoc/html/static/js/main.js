@@ -1337,6 +1337,13 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
     // it gets the sidebar to restore its size.
     let desiredSidebarSize = null;
 
+    // Sidebar resize debouncer.
+    //
+    // The sidebar itself is resized instantly, but the body HTML can be too
+    // big for that, causing reflow jank. To reduce this, we queue up a separate
+    // animation frame and throttle it.
+    let pendingSidebarResizingFrame = false;
+
     // If this page has no sidebar at all, bail out.
     const resizer = document.querySelector(".sidebar-resizer");
     const sidebar = document.querySelector(".sidebar");
@@ -1360,12 +1367,26 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
         if (isSrcPage) {
             window.rustdocCloseSourceSidebar();
             updateLocalStorage("src-sidebar-width", null);
+            // [RUSTDOCIMPL] CSS variable fast path
+            //
+            // The sidebar width variable is attached to the <html> element by
+            // storage.js, because the sidebar and resizer don't exist yet.
+            // But the resize code, in `resize()`, sets the property on the
+            // sidebar and resizer elements (which are the only elements that
+            // use the variable) to avoid recalculating CSS on the entire
+            // document on every frame.
+            //
+            // So, to clear it, we need to clear all three.
             document.documentElement.style.removeProperty("--src-sidebar-width");
+            sidebar.style.removeProperty("--src-sidebar-width");
+            resizer.style.removeProperty("--src-sidebar-width");
         } else {
             addClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "true");
             updateLocalStorage("desktop-sidebar-width", null);
             document.documentElement.style.removeProperty("--desktop-sidebar-width");
+            sidebar.style.removeProperty("--desktop-sidebar-width");
+            resizer.style.removeProperty("--desktop-sidebar-width");
         }
     }
 
@@ -1384,15 +1405,27 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
         }
     }
 
-    // Call this to set the correct CSS variable and setting.
-    // This function doesn't enforce size constraints. Do that before calling it!
+    /**
+     * Call this to set the correct CSS variable and setting.
+     * This function doesn't enforce size constraints. Do that before calling it!
+     *
+     * @param {number} size - CSS px width of the sidebar.
+     */
     function changeSidebarSize(size) {
         if (isSrcPage) {
             updateLocalStorage("src-sidebar-width", size);
-            document.documentElement.style.setProperty("--src-sidebar-width", size + "px");
+            // [RUSTDOCIMPL] CSS variable fast path
+            //
+            // While this property is set on the HTML element at load time,
+            // because the sidebar isn't actually loaded yet,
+            // we scope this update to the sidebar to avoid hitting a slow
+            // path in WebKit.
+            sidebar.style.setProperty("--src-sidebar-width", size + "px");
+            resizer.style.setProperty("--src-sidebar-width", size + "px");
         } else {
             updateLocalStorage("desktop-sidebar-width", size);
-            document.documentElement.style.setProperty("--desktop-sidebar-width", size + "px");
+            sidebar.style.setProperty("--desktop-sidebar-width", size + "px");
+            resizer.style.setProperty("--desktop-sidebar-width", size + "px");
         }
     }
 
@@ -1424,6 +1457,19 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
             const constrainedPos = Math.min(pos, window.innerWidth - BODY_MIN, SIDEBAR_MAX);
             changeSidebarSize(constrainedPos);
             desiredSidebarSize = constrainedPos;
+            if (pendingSidebarResizingFrame !== false) {
+                clearTimeout(pendingSidebarResizingFrame);
+            }
+            pendingSidebarResizingFrame = setTimeout(() => {
+                if (currentPointerId === null || pendingSidebarResizingFrame === false) {
+                    return;
+                }
+                pendingSidebarResizingFrame = false;
+                document.documentElement.style.setProperty(
+                    "--resizing-sidebar-width",
+                    desiredSidebarSize + "px"
+                );
+            }, 100);
         }
     }
     // Respond to the window resize event.
@@ -1447,6 +1493,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
         window.removeEventListener("pointermove", resize, false);
         window.removeEventListener("pointerup", stopResize, false);
         removeClass(document.documentElement, "sidebar-resizing");
+        document.documentElement.style.removeProperty( "--resizing-sidebar-width");
         if (resizer.releasePointerCapture) {
             resizer.releasePointerCapture(currentPointerId);
             currentPointerId = null;
@@ -1472,6 +1519,8 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
         window.addEventListener("pointerup", stopResize, false);
         addClass(resizer, "active");
         addClass(document.documentElement, "sidebar-resizing");
+        const pos = e.clientX - sidebar.offsetLeft - 3;
+        document.documentElement.style.setProperty( "--resizing-sidebar-width", pos + "px");
         desiredSidebarSize = null;
     }
     resizer.addEventListener("pointerdown", initResize, false);
