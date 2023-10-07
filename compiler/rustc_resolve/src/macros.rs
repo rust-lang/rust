@@ -854,7 +854,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let feature = stability.feature;
 
                 let is_allowed = |feature| {
-                    self.active_features.contains(&feature) || span.allows_unstable(feature)
+                    self.declared_features.contains(&feature) || span.allows_unstable(feature)
                 };
                 let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
                 if !is_allowed(feature) && !allowed_by_implication {
