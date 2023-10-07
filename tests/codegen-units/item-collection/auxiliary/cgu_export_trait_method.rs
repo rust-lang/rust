@@ -1,3 +1,5 @@
+// compile-flags: -Copt-level=0
+
 #![crate_type = "lib"]
 
 pub trait Trait : Sized {

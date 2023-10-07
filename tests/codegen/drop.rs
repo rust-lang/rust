@@ -7,10 +7,12 @@
 struct SomeUniqueName;
 
 impl Drop for SomeUniqueName {
+    #[inline(never)]
     fn drop(&mut self) {
     }
 }
 
+#[inline(never)]
 pub fn possibly_unwinding() {
 }
 

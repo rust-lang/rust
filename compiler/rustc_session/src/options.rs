@@ -1452,6 +1452,8 @@ options! {
         "combine CGUs into a single one"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
+    cross_crate_inline_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "threshold to allow cross crate inlining of functions"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
     debug_macros: bool = (false, parse_bool, [TRACKED],

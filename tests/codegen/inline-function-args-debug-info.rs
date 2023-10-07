@@ -6,6 +6,7 @@
 
 #![crate_type = "lib"]
 
+#[inline(never)]
 pub fn outer_function(x: usize, y: usize) -> usize {
     inner_function(x, y) + 1
 }
@@ -13,8 +14,8 @@ pub fn outer_function(x: usize, y: usize) -> usize {
 #[inline]
 fn inner_function(aaaa: usize, bbbb: usize) -> usize {
     // CHECK: !DILocalVariable(name: "aaaa", arg: 1
-    // CHECK-SAME: line: 14
+    // CHECK-SAME: line: 15
     // CHECK: !DILocalVariable(name: "bbbb", arg: 2
-    // CHECK-SAME: line: 14
+    // CHECK-SAME: line: 15
     aaaa + bbbb
 }

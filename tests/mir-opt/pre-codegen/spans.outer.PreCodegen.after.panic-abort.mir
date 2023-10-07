@@ -4,17 +4,14 @@ fn outer(_1: u8) -> u8 {
     debug v => _1;                       // in scope 0 at $DIR/spans.rs:9:14: 9:15
     let mut _0: u8;                      // return place in scope 0 at $DIR/spans.rs:9:24: 9:26
     let mut _2: &u8;                     // in scope 0 at $DIR/spans.rs:10:11: 10:13
+    scope 1 (inlined inner) {            // at $DIR/spans.rs:10:5: 10:14
+        debug x => _2;                   // in scope 1 at $DIR/spans.rs:13:14: 13:15
+    }
 
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/spans.rs:10:11: 10:13
         _2 = &_1;                        // scope 0 at $DIR/spans.rs:10:11: 10:13
-        _0 = inner(move _2) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/spans.rs:10:5: 10:14
-                                         // mir::ConstOperand
-                                         // + span: $DIR/spans.rs:10:5: 10:10
-                                         // + const_: Const { ty: for<'a> fn(&'a u8) -> u8 {inner}, val: Value(inner) }
-    }
-
-    bb1: {
+        _0 = _1;                         // scope 1 at $DIR/spans.rs:14:5: 14:7
         StorageDead(_2);                 // scope 0 at $DIR/spans.rs:10:13: 10:14
         return;                          // scope 0 at $DIR/spans.rs:11:2: 11:2
     }

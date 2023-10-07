@@ -3,6 +3,7 @@ pub fn outer() -> usize {
     inner()
 }
 
+#[inline(never)]
 fn index() -> usize {
     loop {}
 }

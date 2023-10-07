@@ -18,43 +18,10 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::abi::Abi;
 
-// Returns true if the given item must be inlined because it may be
-// monomorphized or it was marked with `#[inline]`. This will only return
-// true for functions.
-fn item_might_be_inlined(tcx: TyCtxt<'_>, item: &hir::Item<'_>, attrs: &CodegenFnAttrs) -> bool {
-    if attrs.requests_inline() {
-        return true;
-    }
-
-    match item.kind {
-        hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => true,
-        hir::ItemKind::Impl { .. } | hir::ItemKind::Fn(..) => {
-            let generics = tcx.generics_of(item.owner_id);
-            generics.requires_monomorphization(tcx)
-        }
-        _ => false,
-    }
-}
-
-fn method_might_be_inlined(
-    tcx: TyCtxt<'_>,
-    impl_item: &hir::ImplItem<'_>,
-    impl_src: LocalDefId,
-) -> bool {
-    let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id().owner.to_def_id());
-    let generics = tcx.generics_of(impl_item.owner_id);
-    if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
-        return true;
-    }
-    if let hir::ImplItemKind::Fn(method_sig, _) = &impl_item.kind {
-        if method_sig.header.is_const() {
-            return true;
-        }
-    }
-    match tcx.hir().find_by_def_id(impl_src) {
-        Some(Node::Item(item)) => item_might_be_inlined(tcx, &item, codegen_fn_attrs),
-        Some(..) | None => span_bug!(impl_item.span, "impl did is not an item"),
-    }
+fn item_might_be_inlined(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    tcx.generics_of(def_id).requires_monomorphization(tcx)
+        || tcx.cross_crate_inlinable(def_id)
+        || tcx.is_const_fn(def_id)
 }
 
 // Information needed while computing reachability.
@@ -150,9 +117,7 @@ impl<'tcx> ReachableContext<'tcx> {
 
         match self.tcx.hir().find_by_def_id(def_id) {
             Some(Node::Item(item)) => match item.kind {
-                hir::ItemKind::Fn(..) => {
-                    item_might_be_inlined(self.tcx, &item, self.tcx.codegen_fn_attrs(def_id))
-                }
+                hir::ItemKind::Fn(..) => item_might_be_inlined(self.tcx, def_id.into()),
                 _ => false,
             },
             Some(Node::TraitItem(trait_method)) => match trait_method.kind {
@@ -164,9 +129,7 @@ impl<'tcx> ReachableContext<'tcx> {
             Some(Node::ImplItem(impl_item)) => match impl_item.kind {
                 hir::ImplItemKind::Const(..) => true,
                 hir::ImplItemKind::Fn(..) => {
-                    let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                    let impl_did = self.tcx.hir().get_parent_item(hir_id);
-                    method_might_be_inlined(self.tcx, impl_item, impl_did.def_id)
+                    item_might_be_inlined(self.tcx, impl_item.hir_id().owner.to_def_id())
                 }
                 hir::ImplItemKind::Type(_) => false,
             },
@@ -226,11 +189,7 @@ impl<'tcx> ReachableContext<'tcx> {
             Node::Item(item) => {
                 match item.kind {
                     hir::ItemKind::Fn(.., body) => {
-                        if item_might_be_inlined(
-                            self.tcx,
-                            &item,
-                            self.tcx.codegen_fn_attrs(item.owner_id),
-                        ) {
+                        if item_might_be_inlined(self.tcx, item.owner_id.into()) {
                             self.visit_nested_body(body);
                         }
                     }
@@ -279,8 +238,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     self.visit_nested_body(body);
                 }
                 hir::ImplItemKind::Fn(_, body) => {
-                    let impl_def_id = self.tcx.local_parent(search_item);
-                    if method_might_be_inlined(self.tcx, impl_item, impl_def_id) {
+                    if item_might_be_inlined(self.tcx, impl_item.hir_id().owner.to_def_id()) {
                         self.visit_nested_body(body)
                     }
                 }
