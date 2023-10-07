@@ -261,6 +261,7 @@ x--expand-yaml-anchors--remove:
         # help gathering information about the runtime of the CI.
         if: always() && !env.SKIP_JOB
         <<: *step
+
   # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
   # Check out their documentation for more information on why they're needed.
 
