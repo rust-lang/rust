@@ -1,10 +1,13 @@
-//! Generates descriptors structure for unstable feature from Unstable Book
+//! Generates descriptor structures for unstable features from the unstable book
+//! and lints from rustc, rustdoc, and clippy.
 use std::{borrow::Cow, fs, path::Path};
 
 use itertools::Itertools;
 use stdx::format_to;
 use test_utils::project_root;
 use xshell::{cmd, Shell};
+
+const DESTINATION: &str = "crates/ide-db/src/generated/lints.rs";
 
 /// This clones rustc repo, and so is not worth to keep up-to-date. We update
 /// manually by un-ignoring the test from time to time.
@@ -14,11 +17,21 @@ fn sourcegen_lint_completions() {
     let sh = &Shell::new().unwrap();
 
     let rust_repo = project_root().join("./target/rust");
-    if !rust_repo.exists() {
+    if rust_repo.exists() {
+        cmd!(sh, "git -C {rust_repo} pull --rebase").run().unwrap();
+    } else {
         cmd!(sh, "git clone --depth=1 https://github.com/rust-lang/rust {rust_repo}")
             .run()
             .unwrap();
     }
+    // need submodules for Cargo to parse the workspace correctly
+    cmd!(
+        sh,
+        "git -C {rust_repo} submodule update --init --recursive --depth=1 --
+         compiler library src/tools"
+    )
+    .run()
+    .unwrap();
 
     let mut contents = String::from(
         r"
@@ -27,17 +40,28 @@ pub struct Lint {
     pub label: &'static str,
     pub description: &'static str,
 }
+
 pub struct LintGroup {
     pub lint: Lint,
     pub children: &'static [&'static str],
 }
+
 ",
     );
 
     generate_lint_descriptor(sh, &mut contents);
     contents.push('\n');
 
-    generate_feature_descriptor(&mut contents, &rust_repo.join("src/doc/unstable-book/src"));
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let unstable_book = project_root().join("./target/unstable-book-gen");
+    cmd!(
+        sh,
+        "{cargo} run --manifest-path {rust_repo}/src/tools/unstable-book-gen/Cargo.toml --
+         {rust_repo}/library {rust_repo}/compiler {rust_repo}/src {unstable_book}"
+    )
+    .run()
+    .unwrap();
+    generate_feature_descriptor(&mut contents, &unstable_book.join("src"));
     contents.push('\n');
 
     let lints_json = project_root().join("./target/clippy_lints.json");
@@ -51,7 +75,7 @@ pub struct LintGroup {
 
     let contents = sourcegen::add_preamble("sourcegen_lints", sourcegen::reformat(contents));
 
-    let destination = project_root().join("crates/ide-db/src/generated/lints.rs");
+    let destination = project_root().join(DESTINATION);
     sourcegen::ensure_file_contents(destination.as_path(), &contents);
 }
 
@@ -179,8 +203,8 @@ fn find_and_slice<'a>(i: &'a str, p: &str) -> &'a str {
     &i[idx + p.len()..]
 }
 
-/// Parses the unstable book root directory at `src_dir` and prints a constant
-/// with the list of unstable features into `buf`.
+/// Parses the unstable book `src_dir` and prints a constant with the list of
+/// unstable features into `buf`.
 ///
 /// It does this by looking for all `.md` files in the `language-features` and
 /// `library-features` directories, and using the file name as the feature

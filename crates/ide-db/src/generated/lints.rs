@@ -9,6 +9,7 @@ pub struct LintGroup {
     pub lint: Lint,
     pub children: &'static [&'static str],
 }
+
 pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "absolute_paths_not_starting_with_crate",
@@ -952,6 +953,39 @@ pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &[LintGroup {
 
 pub const FEATURES: &[Lint] = &[
     Lint {
+        label: "aarch64_ver_target_feature",
+        description: r##"# `aarch64_ver_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "abi_amdgpu_kernel",
+        description: r##"# `abi_amdgpu_kernel`
+
+The tracking issue for this feature is: [#51575]
+
+[#51575]: https://github.com/rust-lang/rust/issues/51575
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "abi_avr_interrupt",
+        description: r##"# `abi_avr_interrupt`
+
+The tracking issue for this feature is: [#69664]
+
+[#69664]: https://github.com/rust-lang/rust/issues/69664
+
+------------------------
+"##,
+    },
+    Lint {
         label: "abi_c_cmse_nonsecure_call",
         description: r##"# `abi_c_cmse_nonsecure_call`
 
@@ -1154,6 +1188,121 @@ $ cat $(find -name '*.s')
 "##,
     },
     Lint {
+        label: "abi_riscv_interrupt",
+        description: r##"# `abi_riscv_interrupt`
+
+The tracking issue for this feature is: [#111889]
+
+[#111889]: https://github.com/rust-lang/rust/issues/111889
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "abi_unadjusted",
+        description: r##"# `abi_unadjusted`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "abi_vectorcall",
+        description: r##"# `abi_vectorcall`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "abi_x86_interrupt",
+        description: r##"# `abi_x86_interrupt`
+
+The tracking issue for this feature is: [#40180]
+
+[#40180]: https://github.com/rust-lang/rust/issues/40180
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "absolute_path",
+        description: r##"# `absolute_path`
+
+The tracking issue for this feature is: [#92750]
+
+[#92750]: https://github.com/rust-lang/rust/issues/92750
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "addr_parse_ascii",
+        description: r##"# `addr_parse_ascii`
+
+The tracking issue for this feature is: [#101035]
+
+[#101035]: https://github.com/rust-lang/rust/issues/101035
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "adt_const_params",
+        description: r##"# `adt_const_params`
+
+The tracking issue for this feature is: [#95174]
+
+[#95174]: https://github.com/rust-lang/rust/issues/95174
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "alloc_error_handler",
+        description: r##"# `alloc_error_handler`
+
+The tracking issue for this feature is: [#51540]
+
+[#51540]: https://github.com/rust-lang/rust/issues/51540
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "alloc_error_hook",
+        description: r##"# `alloc_error_hook`
+
+The tracking issue for this feature is: [#51245]
+
+[#51245]: https://github.com/rust-lang/rust/issues/51245
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "alloc_internals",
+        description: r##"# `alloc_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "alloc_layout_extra",
+        description: r##"# `alloc_layout_extra`
+
+The tracking issue for this feature is: [#55724]
+
+[#55724]: https://github.com/rust-lang/rust/issues/55724
+
+------------------------
+"##,
+    },
+    Lint {
         label: "allocator_api",
         description: r##"# `allocator_api`
 
@@ -1179,6 +1328,165 @@ TBD
 This feature does not have a tracking issue, it is an unstable implementation
 detail of the `global_allocator` feature not intended for use outside the
 compiler.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "allow_internal_unsafe",
+        description: r##"# `allow_internal_unsafe`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "allow_internal_unstable",
+        description: r##"# `allow_internal_unstable`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "anonymous_lifetime_in_impl_trait",
+        description: r##"# `anonymous_lifetime_in_impl_trait`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "arbitrary_self_types",
+        description: r##"# `arbitrary_self_types`
+
+The tracking issue for this feature is: [#44874]
+
+[#44874]: https://github.com/rust-lang/rust/issues/44874
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "arc_unwrap_or_clone",
+        description: r##"# `arc_unwrap_or_clone`
+
+The tracking issue for this feature is: [#93610]
+
+[#93610]: https://github.com/rust-lang/rust/issues/93610
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "arm_target_feature",
+        description: r##"# `arm_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "array_chunks",
+        description: r##"# `array_chunks`
+
+The tracking issue for this feature is: [#74985]
+
+[#74985]: https://github.com/rust-lang/rust/issues/74985
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "array_into_iter_constructors",
+        description: r##"# `array_into_iter_constructors`
+
+The tracking issue for this feature is: [#91583]
+
+[#91583]: https://github.com/rust-lang/rust/issues/91583
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "array_methods",
+        description: r##"# `array_methods`
+
+The tracking issue for this feature is: [#76118]
+
+[#76118]: https://github.com/rust-lang/rust/issues/76118
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "array_try_from_fn",
+        description: r##"# `array_try_from_fn`
+
+The tracking issue for this feature is: [#89379]
+
+[#89379]: https://github.com/rust-lang/rust/issues/89379
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "array_try_map",
+        description: r##"# `array_try_map`
+
+The tracking issue for this feature is: [#79711]
+
+[#79711]: https://github.com/rust-lang/rust/issues/79711
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "array_windows",
+        description: r##"# `array_windows`
+
+The tracking issue for this feature is: [#75027]
+
+[#75027]: https://github.com/rust-lang/rust/issues/75027
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "as_array_of_cells",
+        description: r##"# `as_array_of_cells`
+
+The tracking issue for this feature is: [#88248]
+
+[#88248]: https://github.com/rust-lang/rust/issues/88248
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ascii_char",
+        description: r##"# `ascii_char`
+
+The tracking issue for this feature is: [#110998]
+
+[#110998]: https://github.com/rust-lang/rust/issues/110998
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ascii_char_variants",
+        description: r##"# `ascii_char_variants`
+
+The tracking issue for this feature is: [#110998]
+
+[#110998]: https://github.com/rust-lang/rust/issues/110998
 
 ------------------------
 "##,
@@ -1394,6 +1702,138 @@ This feature adds a `may_unwind` option to `asm!` which allows an `asm` block to
 "##,
     },
     Lint {
+        label: "assert_matches",
+        description: r##"# `assert_matches`
+
+The tracking issue for this feature is: [#82775]
+
+[#82775]: https://github.com/rust-lang/rust/issues/82775
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "associated_const_equality",
+        description: r##"# `associated_const_equality`
+
+The tracking issue for this feature is: [#92827]
+
+[#92827]: https://github.com/rust-lang/rust/issues/92827
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "associated_type_bounds",
+        description: r##"# `associated_type_bounds`
+
+The tracking issue for this feature is: [#52662]
+
+[#52662]: https://github.com/rust-lang/rust/issues/52662
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "associated_type_defaults",
+        description: r##"# `associated_type_defaults`
+
+The tracking issue for this feature is: [#29661]
+
+[#29661]: https://github.com/rust-lang/rust/issues/29661
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "async_closure",
+        description: r##"# `async_closure`
+
+The tracking issue for this feature is: [#62290]
+
+[#62290]: https://github.com/rust-lang/rust/issues/62290
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "async_fn_in_trait",
+        description: r##"# `async_fn_in_trait`
+
+The tracking issue for this feature is: [#91611]
+
+[#91611]: https://github.com/rust-lang/rust/issues/91611
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "async_fn_track_caller",
+        description: r##"# `async_fn_track_caller`
+
+The tracking issue for this feature is: [#110011]
+
+[#110011]: https://github.com/rust-lang/rust/issues/110011
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "async_iter_from_iter",
+        description: r##"# `async_iter_from_iter`
+
+The tracking issue for this feature is: [#81798]
+
+[#81798]: https://github.com/rust-lang/rust/issues/81798
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "async_iterator",
+        description: r##"# `async_iterator`
+
+The tracking issue for this feature is: [#79024]
+
+[#79024]: https://github.com/rust-lang/rust/issues/79024
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "atomic_bool_fetch_not",
+        description: r##"# `atomic_bool_fetch_not`
+
+The tracking issue for this feature is: [#98485]
+
+[#98485]: https://github.com/rust-lang/rust/issues/98485
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "atomic_from_mut",
+        description: r##"# `atomic_from_mut`
+
+The tracking issue for this feature is: [#76314]
+
+[#76314]: https://github.com/rust-lang/rust/issues/76314
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "atomic_from_ptr",
+        description: r##"# `atomic_from_ptr`
+
+The tracking issue for this feature is: [#108652]
+
+[#108652]: https://github.com/rust-lang/rust/issues/108652
+
+------------------------
+"##,
+    },
+    Lint {
         label: "auto_traits",
         description: r##"# `auto_traits`
 
@@ -1504,6 +1944,116 @@ Auto traits cannot have supertraits. This is for soundness reasons, as the inter
 "##,
     },
     Lint {
+        label: "avx512_target_feature",
+        description: r##"# `avx512_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "backtrace_frames",
+        description: r##"# `backtrace_frames`
+
+The tracking issue for this feature is: [#79676]
+
+[#79676]: https://github.com/rust-lang/rust/issues/79676
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "bigint_helper_methods",
+        description: r##"# `bigint_helper_methods`
+
+The tracking issue for this feature is: [#85532]
+
+[#85532]: https://github.com/rust-lang/rust/issues/85532
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "binary_heap_as_slice",
+        description: r##"# `binary_heap_as_slice`
+
+The tracking issue for this feature is: [#83659]
+
+[#83659]: https://github.com/rust-lang/rust/issues/83659
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "binary_heap_drain_sorted",
+        description: r##"# `binary_heap_drain_sorted`
+
+The tracking issue for this feature is: [#59278]
+
+[#59278]: https://github.com/rust-lang/rust/issues/59278
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "binary_heap_into_iter_sorted",
+        description: r##"# `binary_heap_into_iter_sorted`
+
+The tracking issue for this feature is: [#59278]
+
+[#59278]: https://github.com/rust-lang/rust/issues/59278
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "bound_as_ref",
+        description: r##"# `bound_as_ref`
+
+The tracking issue for this feature is: [#80996]
+
+[#80996]: https://github.com/rust-lang/rust/issues/80996
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "bound_map",
+        description: r##"# `bound_map`
+
+The tracking issue for this feature is: [#86026]
+
+[#86026]: https://github.com/rust-lang/rust/issues/86026
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "box_into_boxed_slice",
+        description: r##"# `box_into_boxed_slice`
+
+The tracking issue for this feature is: [#71582]
+
+[#71582]: https://github.com/rust-lang/rust/issues/71582
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "box_into_inner",
+        description: r##"# `box_into_inner`
+
+The tracking issue for this feature is: [#80437]
+
+[#80437]: https://github.com/rust-lang/rust/issues/80437
+
+------------------------
+"##,
+    },
+    Lint {
         label: "box_patterns",
         description: r##"# `box_patterns`
 
@@ -1535,6 +2085,105 @@ fn main() {
     }
 }
 ```
+"##,
+    },
+    Lint {
+        label: "bpf_target_feature",
+        description: r##"# `bpf_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "btree_cursors",
+        description: r##"# `btree_cursors`
+
+The tracking issue for this feature is: [#107540]
+
+[#107540]: https://github.com/rust-lang/rust/issues/107540
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "btree_extract_if",
+        description: r##"# `btree_extract_if`
+
+The tracking issue for this feature is: [#70530]
+
+[#70530]: https://github.com/rust-lang/rust/issues/70530
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "btreemap_alloc",
+        description: r##"# `btreemap_alloc`
+
+The tracking issue for this feature is: [#32838]
+
+[#32838]: https://github.com/rust-lang/rust/issues/32838
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "buf_read_has_data_left",
+        description: r##"# `buf_read_has_data_left`
+
+The tracking issue for this feature is: [#86423]
+
+[#86423]: https://github.com/rust-lang/rust/issues/86423
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "builtin_syntax",
+        description: r##"# `builtin_syntax`
+
+The tracking issue for this feature is: [#110680]
+
+[#110680]: https://github.com/rust-lang/rust/issues/110680
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "byte_slice_trim_ascii",
+        description: r##"# `byte_slice_trim_ascii`
+
+The tracking issue for this feature is: [#94035]
+
+[#94035]: https://github.com/rust-lang/rust/issues/94035
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "c_size_t",
+        description: r##"# `c_size_t`
+
+The tracking issue for this feature is: [#88345]
+
+[#88345]: https://github.com/rust-lang/rust/issues/88345
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "c_str_literals",
+        description: r##"# `c_str_literals`
+
+The tracking issue for this feature is: [#105723]
+
+[#105723]: https://github.com/rust-lang/rust/issues/105723
+
+------------------------
 "##,
     },
     Lint {
@@ -1635,6 +2284,94 @@ This feature is internal to the Rust compiler and is not intended for general us
 "##,
     },
     Lint {
+        label: "can_vector",
+        description: r##"# `can_vector`
+
+The tracking issue for this feature is: [#69941]
+
+[#69941]: https://github.com/rust-lang/rust/issues/69941
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cell_leak",
+        description: r##"# `cell_leak`
+
+The tracking issue for this feature is: [#69099]
+
+[#69099]: https://github.com/rust-lang/rust/issues/69099
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cell_update",
+        description: r##"# `cell_update`
+
+The tracking issue for this feature is: [#50186]
+
+[#50186]: https://github.com/rust-lang/rust/issues/50186
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_accessible",
+        description: r##"# `cfg_accessible`
+
+The tracking issue for this feature is: [#64797]
+
+[#64797]: https://github.com/rust-lang/rust/issues/64797
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_eval",
+        description: r##"# `cfg_eval`
+
+The tracking issue for this feature is: [#82679]
+
+[#82679]: https://github.com/rust-lang/rust/issues/82679
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_match",
+        description: r##"# `cfg_match`
+
+The tracking issue for this feature is: [#115585]
+
+[#115585]: https://github.com/rust-lang/rust/issues/115585
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_overflow_checks",
+        description: r##"# `cfg_overflow_checks`
+
+The tracking issue for this feature is: [#111466]
+
+[#111466]: https://github.com/rust-lang/rust/issues/111466
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_relocation_model",
+        description: r##"# `cfg_relocation_model`
+
+The tracking issue for this feature is: [#114929]
+
+[#114929]: https://github.com/rust-lang/rust/issues/114929
+
+------------------------
+"##,
+    },
+    Lint {
         label: "cfg_sanitize",
         description: r##"# `cfg_sanitize`
 
@@ -1670,6 +2407,61 @@ fn b() {
     }
 }
 ```
+"##,
+    },
+    Lint {
+        label: "cfg_target_abi",
+        description: r##"# `cfg_target_abi`
+
+The tracking issue for this feature is: [#80970]
+
+[#80970]: https://github.com/rust-lang/rust/issues/80970
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_target_compact",
+        description: r##"# `cfg_target_compact`
+
+The tracking issue for this feature is: [#96901]
+
+[#96901]: https://github.com/rust-lang/rust/issues/96901
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_target_has_atomic",
+        description: r##"# `cfg_target_has_atomic`
+
+The tracking issue for this feature is: [#94039]
+
+[#94039]: https://github.com/rust-lang/rust/issues/94039
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_target_has_atomic_equal_alignment",
+        description: r##"# `cfg_target_has_atomic_equal_alignment`
+
+The tracking issue for this feature is: [#93822]
+
+[#93822]: https://github.com/rust-lang/rust/issues/93822
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cfg_target_thread_local",
+        description: r##"# `cfg_target_thread_local`
+
+The tracking issue for this feature is: [#29594]
+
+[#29594]: https://github.com/rust-lang/rust/issues/29594
+
+------------------------
 "##,
     },
     Lint {
@@ -1741,6 +2533,48 @@ extern {
 "##,
     },
     Lint {
+        label: "char_indices_offset",
+        description: r##"# `char_indices_offset`
+
+The tracking issue for this feature is: [#83871]
+
+[#83871]: https://github.com/rust-lang/rust/issues/83871
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "char_internals",
+        description: r##"# `char_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "char_min",
+        description: r##"# `char_min`
+
+The tracking issue for this feature is: [#114298]
+
+[#114298]: https://github.com/rust-lang/rust/issues/114298
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "closure_lifetime_binder",
+        description: r##"# `closure_lifetime_binder`
+
+The tracking issue for this feature is: [#97362]
+
+[#97362]: https://github.com/rust-lang/rust/issues/97362
+
+------------------------
+"##,
+    },
+    Lint {
         label: "closure_track_caller",
         description: r##"# `closure_track_caller`
 
@@ -1754,6 +2588,17 @@ Allows using the `#[track_caller]` attribute on closures and generators.
 Calls made to the closure or generator will have caller information
 available through `std::panic::Location::caller()`, just like using
 `#[track_caller]` on a function.
+"##,
+    },
+    Lint {
+        label: "cmp_minmax",
+        description: r##"# `cmp_minmax`
+
+The tracking issue for this feature is: [#115939]
+
+[#115939]: https://github.com/rust-lang/rust/issues/115939
+
+------------------------
 "##,
     },
     Lint {
@@ -1842,10 +2687,43 @@ $ arm-none-eabi-objdump -D function.o
 "##,
     },
     Lint {
+        label: "coerce_unsized",
+        description: r##"# `coerce_unsized`
+
+The tracking issue for this feature is: [#18598]
+
+[#18598]: https://github.com/rust-lang/rust/issues/18598
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "collapse_debuginfo",
+        description: r##"# `collapse_debuginfo`
+
+The tracking issue for this feature is: [#100758]
+
+[#100758]: https://github.com/rust-lang/rust/issues/100758
+
+------------------------
+"##,
+    },
+    Lint {
         label: "compiler_builtins",
         description: r##"# `compiler_builtins`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "concat_bytes",
+        description: r##"# `concat_bytes`
+
+The tracking issue for this feature is: [#87555]
+
+[#87555]: https://github.com/rust-lang/rust/issues/87555
 
 ------------------------
 "##,
@@ -1874,6 +2752,1030 @@ fn main() {
     assert_eq!(f(), 23);
 }
 ```
+"##,
+    },
+    Lint {
+        label: "const_align_of_val",
+        description: r##"# `const_align_of_val`
+
+The tracking issue for this feature is: [#46571]
+
+[#46571]: https://github.com/rust-lang/rust/issues/46571
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_align_of_val_raw",
+        description: r##"# `const_align_of_val_raw`
+
+The tracking issue for this feature is: [#46571]
+
+[#46571]: https://github.com/rust-lang/rust/issues/46571
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_align_offset",
+        description: r##"# `const_align_offset`
+
+The tracking issue for this feature is: [#90962]
+
+[#90962]: https://github.com/rust-lang/rust/issues/90962
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_alloc_error",
+        description: r##"# `const_alloc_error`
+
+The tracking issue for this feature is: [#92523]
+
+[#92523]: https://github.com/rust-lang/rust/issues/92523
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_alloc_layout",
+        description: r##"# `const_alloc_layout`
+
+The tracking issue for this feature is: [#67521]
+
+[#67521]: https://github.com/rust-lang/rust/issues/67521
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_arguments_as_str",
+        description: r##"# `const_arguments_as_str`
+
+The tracking issue for this feature is: [#103900]
+
+[#103900]: https://github.com/rust-lang/rust/issues/103900
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_array_from_ref",
+        description: r##"# `const_array_from_ref`
+
+The tracking issue for this feature is: [#90206]
+
+[#90206]: https://github.com/rust-lang/rust/issues/90206
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_array_into_iter_constructors",
+        description: r##"# `const_array_into_iter_constructors`
+
+The tracking issue for this feature is: [#91583]
+
+[#91583]: https://github.com/rust-lang/rust/issues/91583
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_assert_type2",
+        description: r##"# `const_assert_type2`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_assume",
+        description: r##"# `const_assume`
+
+The tracking issue for this feature is: [#76972]
+
+[#76972]: https://github.com/rust-lang/rust/issues/76972
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_async_blocks",
+        description: r##"# `const_async_blocks`
+
+The tracking issue for this feature is: [#85368]
+
+[#85368]: https://github.com/rust-lang/rust/issues/85368
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_bigint_helper_methods",
+        description: r##"# `const_bigint_helper_methods`
+
+The tracking issue for this feature is: [#85532]
+
+[#85532]: https://github.com/rust-lang/rust/issues/85532
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_black_box",
+        description: r##"# `const_black_box`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_box",
+        description: r##"# `const_box`
+
+The tracking issue for this feature is: [#92521]
+
+[#92521]: https://github.com/rust-lang/rust/issues/92521
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_btree_len",
+        description: r##"# `const_btree_len`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_caller_location",
+        description: r##"# `const_caller_location`
+
+The tracking issue for this feature is: [#76156]
+
+[#76156]: https://github.com/rust-lang/rust/issues/76156
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_cell_into_inner",
+        description: r##"# `const_cell_into_inner`
+
+The tracking issue for this feature is: [#78729]
+
+[#78729]: https://github.com/rust-lang/rust/issues/78729
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_char_from_u32_unchecked",
+        description: r##"# `const_char_from_u32_unchecked`
+
+The tracking issue for this feature is: [#89259]
+
+[#89259]: https://github.com/rust-lang/rust/issues/89259
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_closures",
+        description: r##"# `const_closures`
+
+The tracking issue for this feature is: [#106003]
+
+[#106003]: https://github.com/rust-lang/rust/issues/106003
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_collections_with_hasher",
+        description: r##"# `const_collections_with_hasher`
+
+The tracking issue for this feature is: [#102575]
+
+[#102575]: https://github.com/rust-lang/rust/issues/102575
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_cow_is_borrowed",
+        description: r##"# `const_cow_is_borrowed`
+
+The tracking issue for this feature is: [#65143]
+
+[#65143]: https://github.com/rust-lang/rust/issues/65143
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_cstr_from_ptr",
+        description: r##"# `const_cstr_from_ptr`
+
+The tracking issue for this feature is: [#113219]
+
+[#113219]: https://github.com/rust-lang/rust/issues/113219
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_discriminant",
+        description: r##"# `const_discriminant`
+
+The tracking issue for this feature is: [#69821]
+
+[#69821]: https://github.com/rust-lang/rust/issues/69821
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_eval_select",
+        description: r##"# `const_eval_select`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_exact_div",
+        description: r##"# `const_exact_div`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_extern_fn",
+        description: r##"# `const_extern_fn`
+
+The tracking issue for this feature is: [#64926]
+
+[#64926]: https://github.com/rust-lang/rust/issues/64926
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_float_bits_conv",
+        description: r##"# `const_float_bits_conv`
+
+The tracking issue for this feature is: [#72447]
+
+[#72447]: https://github.com/rust-lang/rust/issues/72447
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_float_classify",
+        description: r##"# `const_float_classify`
+
+The tracking issue for this feature is: [#72505]
+
+[#72505]: https://github.com/rust-lang/rust/issues/72505
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_fmt_arguments_new",
+        description: r##"# `const_fmt_arguments_new`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_fn_floating_point_arithmetic",
+        description: r##"# `const_fn_floating_point_arithmetic`
+
+The tracking issue for this feature is: [#57241]
+
+[#57241]: https://github.com/rust-lang/rust/issues/57241
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_for",
+        description: r##"# `const_for`
+
+The tracking issue for this feature is: [#87575]
+
+[#87575]: https://github.com/rust-lang/rust/issues/87575
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_format_args",
+        description: r##"# `const_format_args`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_hash",
+        description: r##"# `const_hash`
+
+The tracking issue for this feature is: [#104061]
+
+[#104061]: https://github.com/rust-lang/rust/issues/104061
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_heap",
+        description: r##"# `const_heap`
+
+The tracking issue for this feature is: [#79597]
+
+[#79597]: https://github.com/rust-lang/rust/issues/79597
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_index_range_slice_index",
+        description: r##"# `const_index_range_slice_index`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_inherent_unchecked_arith",
+        description: r##"# `const_inherent_unchecked_arith`
+
+The tracking issue for this feature is: [#85122]
+
+[#85122]: https://github.com/rust-lang/rust/issues/85122
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_int_unchecked_arith",
+        description: r##"# `const_int_unchecked_arith`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_intoiterator_identity",
+        description: r##"# `const_intoiterator_identity`
+
+The tracking issue for this feature is: [#90603]
+
+[#90603]: https://github.com/rust-lang/rust/issues/90603
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_intrinsic_compare_bytes",
+        description: r##"# `const_intrinsic_compare_bytes`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_intrinsic_forget",
+        description: r##"# `const_intrinsic_forget`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_intrinsic_raw_eq",
+        description: r##"# `const_intrinsic_raw_eq`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_io_structs",
+        description: r##"# `const_io_structs`
+
+The tracking issue for this feature is: [#78812]
+
+[#78812]: https://github.com/rust-lang/rust/issues/78812
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_ip",
+        description: r##"# `const_ip`
+
+The tracking issue for this feature is: [#76205]
+
+[#76205]: https://github.com/rust-lang/rust/issues/76205
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_ipv4",
+        description: r##"# `const_ipv4`
+
+The tracking issue for this feature is: [#76205]
+
+[#76205]: https://github.com/rust-lang/rust/issues/76205
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_ipv6",
+        description: r##"# `const_ipv6`
+
+The tracking issue for this feature is: [#76205]
+
+[#76205]: https://github.com/rust-lang/rust/issues/76205
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_likely",
+        description: r##"# `const_likely`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_location_fields",
+        description: r##"# `const_location_fields`
+
+The tracking issue for this feature is: [#102911]
+
+[#102911]: https://github.com/rust-lang/rust/issues/102911
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_maybe_uninit_array_assume_init",
+        description: r##"# `const_maybe_uninit_array_assume_init`
+
+The tracking issue for this feature is: [#96097]
+
+[#96097]: https://github.com/rust-lang/rust/issues/96097
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_maybe_uninit_as_mut_ptr",
+        description: r##"# `const_maybe_uninit_as_mut_ptr`
+
+The tracking issue for this feature is: [#75251]
+
+[#75251]: https://github.com/rust-lang/rust/issues/75251
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_maybe_uninit_assume_init",
+        description: r##"# `const_maybe_uninit_assume_init`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_maybe_uninit_assume_init_read",
+        description: r##"# `const_maybe_uninit_assume_init_read`
+
+The tracking issue for this feature is: [#63567]
+
+[#63567]: https://github.com/rust-lang/rust/issues/63567
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_maybe_uninit_uninit_array",
+        description: r##"# `const_maybe_uninit_uninit_array`
+
+The tracking issue for this feature is: [#96097]
+
+[#96097]: https://github.com/rust-lang/rust/issues/96097
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_maybe_uninit_write",
+        description: r##"# `const_maybe_uninit_write`
+
+The tracking issue for this feature is: [#63567]
+
+[#63567]: https://github.com/rust-lang/rust/issues/63567
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_maybe_uninit_zeroed",
+        description: r##"# `const_maybe_uninit_zeroed`
+
+The tracking issue for this feature is: [#91850]
+
+[#91850]: https://github.com/rust-lang/rust/issues/91850
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_mut_refs",
+        description: r##"# `const_mut_refs`
+
+The tracking issue for this feature is: [#57349]
+
+[#57349]: https://github.com/rust-lang/rust/issues/57349
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_nonnull_new",
+        description: r##"# `const_nonnull_new`
+
+The tracking issue for this feature is: [#93235]
+
+[#93235]: https://github.com/rust-lang/rust/issues/93235
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_num_midpoint",
+        description: r##"# `const_num_midpoint`
+
+The tracking issue for this feature is: [#110840]
+
+[#110840]: https://github.com/rust-lang/rust/issues/110840
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_option",
+        description: r##"# `const_option`
+
+The tracking issue for this feature is: [#67441]
+
+[#67441]: https://github.com/rust-lang/rust/issues/67441
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_option_ext",
+        description: r##"# `const_option_ext`
+
+The tracking issue for this feature is: [#91930]
+
+[#91930]: https://github.com/rust-lang/rust/issues/91930
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_pin",
+        description: r##"# `const_pin`
+
+The tracking issue for this feature is: [#76654]
+
+[#76654]: https://github.com/rust-lang/rust/issues/76654
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_pointer_byte_offsets",
+        description: r##"# `const_pointer_byte_offsets`
+
+The tracking issue for this feature is: [#96283]
+
+[#96283]: https://github.com/rust-lang/rust/issues/96283
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_pointer_is_aligned",
+        description: r##"# `const_pointer_is_aligned`
+
+The tracking issue for this feature is: [#104203]
+
+[#104203]: https://github.com/rust-lang/rust/issues/104203
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_precise_live_drops",
+        description: r##"# `const_precise_live_drops`
+
+The tracking issue for this feature is: [#73255]
+
+[#73255]: https://github.com/rust-lang/rust/issues/73255
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_pref_align_of",
+        description: r##"# `const_pref_align_of`
+
+The tracking issue for this feature is: [#91971]
+
+[#91971]: https://github.com/rust-lang/rust/issues/91971
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_ptr_as_ref",
+        description: r##"# `const_ptr_as_ref`
+
+The tracking issue for this feature is: [#91822]
+
+[#91822]: https://github.com/rust-lang/rust/issues/91822
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_ptr_is_null",
+        description: r##"# `const_ptr_is_null`
+
+The tracking issue for this feature is: [#74939]
+
+[#74939]: https://github.com/rust-lang/rust/issues/74939
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_ptr_sub_ptr",
+        description: r##"# `const_ptr_sub_ptr`
+
+The tracking issue for this feature is: [#95892]
+
+[#95892]: https://github.com/rust-lang/rust/issues/95892
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_ptr_write",
+        description: r##"# `const_ptr_write`
+
+The tracking issue for this feature is: [#86302]
+
+[#86302]: https://github.com/rust-lang/rust/issues/86302
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_range_bounds",
+        description: r##"# `const_range_bounds`
+
+The tracking issue for this feature is: [#108082]
+
+[#108082]: https://github.com/rust-lang/rust/issues/108082
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_raw_ptr_comparison",
+        description: r##"# `const_raw_ptr_comparison`
+
+The tracking issue for this feature is: [#53020]
+
+[#53020]: https://github.com/rust-lang/rust/issues/53020
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_refs_to_cell",
+        description: r##"# `const_refs_to_cell`
+
+The tracking issue for this feature is: [#80384]
+
+[#80384]: https://github.com/rust-lang/rust/issues/80384
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_replace",
+        description: r##"# `const_replace`
+
+The tracking issue for this feature is: [#83164]
+
+[#83164]: https://github.com/rust-lang/rust/issues/83164
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_result",
+        description: r##"# `const_result`
+
+The tracking issue for this feature is: [#82814]
+
+[#82814]: https://github.com/rust-lang/rust/issues/82814
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_size_of_val",
+        description: r##"# `const_size_of_val`
+
+The tracking issue for this feature is: [#46571]
+
+[#46571]: https://github.com/rust-lang/rust/issues/46571
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_size_of_val_raw",
+        description: r##"# `const_size_of_val_raw`
+
+The tracking issue for this feature is: [#46571]
+
+[#46571]: https://github.com/rust-lang/rust/issues/46571
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_slice_first_last",
+        description: r##"# `const_slice_first_last`
+
+The tracking issue for this feature is: [#83570]
+
+[#83570]: https://github.com/rust-lang/rust/issues/83570
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_slice_from_mut_ptr_range",
+        description: r##"# `const_slice_from_mut_ptr_range`
+
+The tracking issue for this feature is: [#89792]
+
+[#89792]: https://github.com/rust-lang/rust/issues/89792
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_slice_from_ptr_range",
+        description: r##"# `const_slice_from_ptr_range`
+
+The tracking issue for this feature is: [#89792]
+
+[#89792]: https://github.com/rust-lang/rust/issues/89792
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_slice_from_raw_parts_mut",
+        description: r##"# `const_slice_from_raw_parts_mut`
+
+The tracking issue for this feature is: [#67456]
+
+[#67456]: https://github.com/rust-lang/rust/issues/67456
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_slice_from_ref",
+        description: r##"# `const_slice_from_ref`
+
+The tracking issue for this feature is: [#90206]
+
+[#90206]: https://github.com/rust-lang/rust/issues/90206
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_slice_index",
+        description: r##"# `const_slice_index`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_slice_ptr_len",
+        description: r##"# `const_slice_ptr_len`
+
+The tracking issue for this feature is: [#71146]
+
+[#71146]: https://github.com/rust-lang/rust/issues/71146
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_slice_split_at_mut",
+        description: r##"# `const_slice_split_at_mut`
+
+The tracking issue for this feature is: [#101804]
+
+[#101804]: https://github.com/rust-lang/rust/issues/101804
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_str_from_utf8",
+        description: r##"# `const_str_from_utf8`
+
+The tracking issue for this feature is: [#91006]
+
+[#91006]: https://github.com/rust-lang/rust/issues/91006
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_str_from_utf8_unchecked_mut",
+        description: r##"# `const_str_from_utf8_unchecked_mut`
+
+The tracking issue for this feature is: [#91005]
+
+[#91005]: https://github.com/rust-lang/rust/issues/91005
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_swap",
+        description: r##"# `const_swap`
+
+The tracking issue for this feature is: [#83163]
+
+[#83163]: https://github.com/rust-lang/rust/issues/83163
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_trait_impl",
+        description: r##"# `const_trait_impl`
+
+The tracking issue for this feature is: [#67792]
+
+[#67792]: https://github.com/rust-lang/rust/issues/67792
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_try",
+        description: r##"# `const_try`
+
+The tracking issue for this feature is: [#74935]
+
+[#74935]: https://github.com/rust-lang/rust/issues/74935
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_type_id",
+        description: r##"# `const_type_id`
+
+The tracking issue for this feature is: [#77125]
+
+[#77125]: https://github.com/rust-lang/rust/issues/77125
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_type_name",
+        description: r##"# `const_type_name`
+
+The tracking issue for this feature is: [#63084]
+
+[#63084]: https://github.com/rust-lang/rust/issues/63084
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_unicode_case_lookup",
+        description: r##"# `const_unicode_case_lookup`
+
+The tracking issue for this feature is: [#101400]
+
+[#101400]: https://github.com/rust-lang/rust/issues/101400
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_unsafecell_get_mut",
+        description: r##"# `const_unsafecell_get_mut`
+
+The tracking issue for this feature is: [#88836]
+
+[#88836]: https://github.com/rust-lang/rust/issues/88836
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_waker",
+        description: r##"# `const_waker`
+
+The tracking issue for this feature is: [#102012]
+
+[#102012]: https://github.com/rust-lang/rust/issues/102012
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "container_error_extra",
+        description: r##"# `container_error_extra`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "control_flow_enum",
+        description: r##"# `control_flow_enum`
+
+The tracking issue for this feature is: [#75744]
+
+[#75744]: https://github.com/rust-lang/rust/issues/75744
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "convert_float_to_int",
+        description: r##"# `convert_float_to_int`
+
+The tracking issue for this feature is: [#67057]
+
+[#67057]: https://github.com/rust-lang/rust/issues/67057
+
+------------------------
 "##,
     },
     Lint {
@@ -1947,6 +3849,81 @@ fn bar() {
 "##,
     },
     Lint {
+        label: "cow_is_borrowed",
+        description: r##"# `cow_is_borrowed`
+
+The tracking issue for this feature is: [#65143]
+
+[#65143]: https://github.com/rust-lang/rust/issues/65143
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "csky_target_feature",
+        description: r##"# `csky_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cstr_count_bytes",
+        description: r##"# `cstr_count_bytes`
+
+The tracking issue for this feature is: [#114441]
+
+[#114441]: https://github.com/rust-lang/rust/issues/114441
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "cursor_remaining",
+        description: r##"# `cursor_remaining`
+
+The tracking issue for this feature is: [#86369]
+
+[#86369]: https://github.com/rust-lang/rust/issues/86369
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "custom_code_classes_in_docs",
+        description: r##"# `custom_code_classes_in_docs`
+
+The tracking issue for this feature is: [#79483]
+
+[#79483]: https://github.com/rust-lang/rust/issues/79483
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "custom_inner_attributes",
+        description: r##"# `custom_inner_attributes`
+
+The tracking issue for this feature is: [#54726]
+
+[#54726]: https://github.com/rust-lang/rust/issues/54726
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "custom_mir",
+        description: r##"# `custom_mir`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
         label: "custom_test_frameworks",
         description: r##"# `custom_test_frameworks`
 
@@ -1983,10 +3960,65 @@ const WILL_FAIL: i32 = 4;
 "##,
     },
     Lint {
+        label: "deadline_api",
+        description: r##"# `deadline_api`
+
+The tracking issue for this feature is: [#46316]
+
+[#46316]: https://github.com/rust-lang/rust/issues/46316
+
+------------------------
+"##,
+    },
+    Lint {
         label: "dec2flt",
         description: r##"# `dec2flt`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "decl_macro",
+        description: r##"# `decl_macro`
+
+The tracking issue for this feature is: [#39412]
+
+[#39412]: https://github.com/rust-lang/rust/issues/39412
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "default_type_parameter_fallback",
+        description: r##"# `default_type_parameter_fallback`
+
+The tracking issue for this feature is: [#27336]
+
+[#27336]: https://github.com/rust-lang/rust/issues/27336
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "deprecated_safe",
+        description: r##"# `deprecated_safe`
+
+The tracking issue for this feature is: [#94978]
+
+[#94978]: https://github.com/rust-lang/rust/issues/94978
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "deprecated_suggestion",
+        description: r##"# `deprecated_suggestion`
+
+The tracking issue for this feature is: [#94785]
+
+[#94785]: https://github.com/rust-lang/rust/issues/94785
 
 ------------------------
 "##,
@@ -2001,10 +4033,92 @@ This feature is internal to the Rust compiler and is not intended for general us
 "##,
     },
     Lint {
+        label: "derive_const",
+        description: r##"# `derive_const`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
         label: "derive_eq",
         description: r##"# `derive_eq`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "diagnostic_namespace",
+        description: r##"# `diagnostic_namespace`
+
+The tracking issue for this feature is: [#111996]
+
+[#111996]: https://github.com/rust-lang/rust/issues/111996
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "dir_entry_ext2",
+        description: r##"# `dir_entry_ext2`
+
+The tracking issue for this feature is: [#85573]
+
+[#85573]: https://github.com/rust-lang/rust/issues/85573
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "discriminant_kind",
+        description: r##"# `discriminant_kind`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "dispatch_from_dyn",
+        description: r##"# `dispatch_from_dyn`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "div_duration",
+        description: r##"# `div_duration`
+
+The tracking issue for this feature is: [#63139]
+
+[#63139]: https://github.com/rust-lang/rust/issues/63139
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "do_not_recommend",
+        description: r##"# `do_not_recommend`
+
+The tracking issue for this feature is: [#51992]
+
+[#51992]: https://github.com/rust-lang/rust/issues/51992
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "doc_auto_cfg",
+        description: r##"# `doc_auto_cfg`
+
+The tracking issue for this feature is: [#43781]
+
+[#43781]: https://github.com/rust-lang/rust/issues/43781
 
 ------------------------
 "##,
@@ -2057,6 +4171,17 @@ pub struct Icon {
 
 [#43781]: https://github.com/rust-lang/rust/issues/43781
 [#43348]: https://github.com/rust-lang/rust/issues/43348
+"##,
+    },
+    Lint {
+        label: "doc_cfg_hide",
+        description: r##"# `doc_cfg_hide`
+
+The tracking issue for this feature is: [#43781]
+
+[#43781]: https://github.com/rust-lang/rust/issues/43781
+
+------------------------
 "##,
     },
     Lint {
@@ -2125,6 +4250,180 @@ See also its documentation in [the rustdoc book][rustdoc-book-notable_trait].
 "##,
     },
     Lint {
+        label: "downcast_unchecked",
+        description: r##"# `downcast_unchecked`
+
+The tracking issue for this feature is: [#90850]
+
+[#90850]: https://github.com/rust-lang/rust/issues/90850
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "drain_keep_rest",
+        description: r##"# `drain_keep_rest`
+
+The tracking issue for this feature is: [#101122]
+
+[#101122]: https://github.com/rust-lang/rust/issues/101122
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "dropck_eyepatch",
+        description: r##"# `dropck_eyepatch`
+
+The tracking issue for this feature is: [#34761]
+
+[#34761]: https://github.com/rust-lang/rust/issues/34761
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "duration_constants",
+        description: r##"# `duration_constants`
+
+The tracking issue for this feature is: [#57391]
+
+[#57391]: https://github.com/rust-lang/rust/issues/57391
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "duration_consts_float",
+        description: r##"# `duration_consts_float`
+
+The tracking issue for this feature is: [#72440]
+
+[#72440]: https://github.com/rust-lang/rust/issues/72440
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "dyn_star",
+        description: r##"# `dyn_star`
+
+The tracking issue for this feature is: [#102425]
+
+[#102425]: https://github.com/rust-lang/rust/issues/102425
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "edition_panic",
+        description: r##"# `edition_panic`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "effects",
+        description: r##"# `effects`
+
+The tracking issue for this feature is: [#102090]
+
+[#102090]: https://github.com/rust-lang/rust/issues/102090
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "entry_insert",
+        description: r##"# `entry_insert`
+
+The tracking issue for this feature is: [#65225]
+
+[#65225]: https://github.com/rust-lang/rust/issues/65225
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ermsb_target_feature",
+        description: r##"# `ermsb_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "error_generic_member_access",
+        description: r##"# `error_generic_member_access`
+
+The tracking issue for this feature is: [#99301]
+
+[#99301]: https://github.com/rust-lang/rust/issues/99301
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "error_in_core",
+        description: r##"# `error_in_core`
+
+The tracking issue for this feature is: [#103765]
+
+[#103765]: https://github.com/rust-lang/rust/issues/103765
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "error_iter",
+        description: r##"# `error_iter`
+
+The tracking issue for this feature is: [#58520]
+
+[#58520]: https://github.com/rust-lang/rust/issues/58520
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "error_reporter",
+        description: r##"# `error_reporter`
+
+The tracking issue for this feature is: [#90172]
+
+[#90172]: https://github.com/rust-lang/rust/issues/90172
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "error_type_id",
+        description: r##"# `error_type_id`
+
+The tracking issue for this feature is: [#60784]
+
+[#60784]: https://github.com/rust-lang/rust/issues/60784
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "exact_size_is_empty",
+        description: r##"# `exact_size_is_empty`
+
+The tracking issue for this feature is: [#35428]
+
+[#35428]: https://github.com/rust-lang/rust/issues/35428
+
+------------------------
+"##,
+    },
+    Lint {
         label: "exclusive_range_pattern",
         description: r##"# `exclusive_range_pattern`
 
@@ -2155,6 +4454,72 @@ stabilized.
 "##,
     },
     Lint {
+        label: "exclusive_wrapper",
+        description: r##"# `exclusive_wrapper`
+
+The tracking issue for this feature is: [#98407]
+
+[#98407]: https://github.com/rust-lang/rust/issues/98407
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "exhaustive_patterns",
+        description: r##"# `exhaustive_patterns`
+
+The tracking issue for this feature is: [#51085]
+
+[#51085]: https://github.com/rust-lang/rust/issues/51085
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "exit_status_error",
+        description: r##"# `exit_status_error`
+
+The tracking issue for this feature is: [#84908]
+
+[#84908]: https://github.com/rust-lang/rust/issues/84908
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "exitcode_exit_method",
+        description: r##"# `exitcode_exit_method`
+
+The tracking issue for this feature is: [#97100]
+
+[#97100]: https://github.com/rust-lang/rust/issues/97100
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "explicit_tail_calls",
+        description: r##"# `explicit_tail_calls`
+
+The tracking issue for this feature is: [#112788]
+
+[#112788]: https://github.com/rust-lang/rust/issues/112788
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "extend_one",
+        description: r##"# `extend_one`
+
+The tracking issue for this feature is: [#72631]
+
+[#72631]: https://github.com/rust-lang/rust/issues/72631
+
+------------------------
+"##,
+    },
+    Lint {
         label: "extended_varargs_abi_support",
         description: r##"# `extended_varargs_abi_support`
 
@@ -2166,6 +4531,28 @@ The tracking issue for this feature is: [#100189]
 
 This feature adds the possibility of using `sysv64`, `win64` or `efiapi` calling
 conventions on functions with varargs.
+"##,
+    },
+    Lint {
+        label: "extern_types",
+        description: r##"# `extern_types`
+
+The tracking issue for this feature is: [#43467]
+
+[#43467]: https://github.com/rust-lang/rust/issues/43467
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "extract_if",
+        description: r##"# `extract_if`
+
+The tracking issue for this feature is: [#43244]
+
+[#43244]: https://github.com/rust-lang/rust/issues/43244
+
+------------------------
 "##,
     },
     Lint {
@@ -2303,6 +4690,72 @@ against are compatible with those of the `#[ffi_pure]`.
 "##,
     },
     Lint {
+        label: "ffi_returns_twice",
+        description: r##"# `ffi_returns_twice`
+
+The tracking issue for this feature is: [#58314]
+
+[#58314]: https://github.com/rust-lang/rust/issues/58314
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "file_create_new",
+        description: r##"# `file_create_new`
+
+The tracking issue for this feature is: [#105135]
+
+[#105135]: https://github.com/rust-lang/rust/issues/105135
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "file_set_times",
+        description: r##"# `file_set_times`
+
+The tracking issue for this feature is: [#98245]
+
+[#98245]: https://github.com/rust-lang/rust/issues/98245
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "float_gamma",
+        description: r##"# `float_gamma`
+
+The tracking issue for this feature is: [#99842]
+
+[#99842]: https://github.com/rust-lang/rust/issues/99842
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "float_minimum_maximum",
+        description: r##"# `float_minimum_maximum`
+
+The tracking issue for this feature is: [#91079]
+
+[#91079]: https://github.com/rust-lang/rust/issues/91079
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "float_next_up_down",
+        description: r##"# `float_next_up_down`
+
+The tracking issue for this feature is: [#91399]
+
+[#91399]: https://github.com/rust-lang/rust/issues/91399
+
+------------------------
+"##,
+    },
+    Lint {
         label: "flt2dec",
         description: r##"# `flt2dec`
 
@@ -2312,10 +4765,39 @@ This feature is internal to the Rust compiler and is not intended for general us
 "##,
     },
     Lint {
+        label: "fmt_helpers_for_derive",
+        description: r##"# `fmt_helpers_for_derive`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
         label: "fmt_internals",
         description: r##"# `fmt_internals`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "fn_align",
+        description: r##"# `fn_align`
+
+The tracking issue for this feature is: [#82232]
+
+[#82232]: https://github.com/rust-lang/rust/issues/82232
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "fn_ptr_trait",
+        description: r##"# `fn_ptr_trait`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -2357,6 +4839,90 @@ fn main() {
     assert_eq!(adder(2), 5);
 }
 ```
+"##,
+    },
+    Lint {
+        label: "forget_unsized",
+        description: r##"# `forget_unsized`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "format_args_nl",
+        description: r##"# `format_args_nl`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "fs_try_exists",
+        description: r##"# `fs_try_exists`
+
+The tracking issue for this feature is: [#83186]
+
+[#83186]: https://github.com/rust-lang/rust/issues/83186
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "fundamental",
+        description: r##"# `fundamental`
+
+The tracking issue for this feature is: [#29635]
+
+[#29635]: https://github.com/rust-lang/rust/issues/29635
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "future_join",
+        description: r##"# `future_join`
+
+The tracking issue for this feature is: [#91642]
+
+[#91642]: https://github.com/rust-lang/rust/issues/91642
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "gen_future",
+        description: r##"# `gen_future`
+
+The tracking issue for this feature is: [#50547]
+
+[#50547]: https://github.com/rust-lang/rust/issues/50547
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "generator_clone",
+        description: r##"# `generator_clone`
+
+The tracking issue for this feature is: [#95360]
+
+[#95360]: https://github.com/rust-lang/rust/issues/95360
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "generator_trait",
+        description: r##"# `generator_trait`
+
+The tracking issue for this feature is: [#43122]
+
+[#43122]: https://github.com/rust-lang/rust/issues/43122
+
+------------------------
 "##,
     },
     Lint {
@@ -2610,6 +5176,92 @@ does.
 "##,
     },
     Lint {
+        label: "generic_arg_infer",
+        description: r##"# `generic_arg_infer`
+
+The tracking issue for this feature is: [#85077]
+
+[#85077]: https://github.com/rust-lang/rust/issues/85077
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "generic_assert",
+        description: r##"# `generic_assert`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "generic_assert_internals",
+        description: r##"# `generic_assert_internals`
+
+The tracking issue for this feature is: [#44838]
+
+[#44838]: https://github.com/rust-lang/rust/issues/44838
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "generic_associated_types_extended",
+        description: r##"# `generic_associated_types_extended`
+
+The tracking issue for this feature is: [#95451]
+
+[#95451]: https://github.com/rust-lang/rust/issues/95451
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "generic_const_exprs",
+        description: r##"# `generic_const_exprs`
+
+The tracking issue for this feature is: [#76560]
+
+[#76560]: https://github.com/rust-lang/rust/issues/76560
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "generic_const_items",
+        description: r##"# `generic_const_items`
+
+The tracking issue for this feature is: [#113521]
+
+[#113521]: https://github.com/rust-lang/rust/issues/113521
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "get_many_mut",
+        description: r##"# `get_many_mut`
+
+The tracking issue for this feature is: [#104642]
+
+[#104642]: https://github.com/rust-lang/rust/issues/104642
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "get_mut_unchecked",
+        description: r##"# `get_mut_unchecked`
+
+The tracking issue for this feature is: [#63292]
+
+[#63292]: https://github.com/rust-lang/rust/issues/63292
+
+------------------------
+"##,
+    },
+    Lint {
         label: "half_open_range_patterns_in_slices",
         description: r##"# `half_open_range_patterns_in_slices`
 
@@ -2641,6 +5293,136 @@ fn main() {
     let [(a @ 3..), c] = xs else { return; };
 }
 ```
+"##,
+    },
+    Lint {
+        label: "hash_extract_if",
+        description: r##"# `hash_extract_if`
+
+The tracking issue for this feature is: [#59618]
+
+[#59618]: https://github.com/rust-lang/rust/issues/59618
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "hash_raw_entry",
+        description: r##"# `hash_raw_entry`
+
+The tracking issue for this feature is: [#56167]
+
+[#56167]: https://github.com/rust-lang/rust/issues/56167
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "hash_set_entry",
+        description: r##"# `hash_set_entry`
+
+The tracking issue for this feature is: [#60896]
+
+[#60896]: https://github.com/rust-lang/rust/issues/60896
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "hasher_prefixfree_extras",
+        description: r##"# `hasher_prefixfree_extras`
+
+The tracking issue for this feature is: [#96762]
+
+[#96762]: https://github.com/rust-lang/rust/issues/96762
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "hashmap_internals",
+        description: r##"# `hashmap_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "hexagon_target_feature",
+        description: r##"# `hexagon_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "hint_must_use",
+        description: r##"# `hint_must_use`
+
+The tracking issue for this feature is: [#94745]
+
+[#94745]: https://github.com/rust-lang/rust/issues/94745
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "if_let_guard",
+        description: r##"# `if_let_guard`
+
+The tracking issue for this feature is: [#51114]
+
+[#51114]: https://github.com/rust-lang/rust/issues/51114
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "impl_trait_in_assoc_type",
+        description: r##"# `impl_trait_in_assoc_type`
+
+The tracking issue for this feature is: [#63063]
+
+[#63063]: https://github.com/rust-lang/rust/issues/63063
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "impl_trait_in_fn_trait_return",
+        description: r##"# `impl_trait_in_fn_trait_return`
+
+The tracking issue for this feature is: [#99697]
+
+[#99697]: https://github.com/rust-lang/rust/issues/99697
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "imported_main",
+        description: r##"# `imported_main`
+
+The tracking issue for this feature is: [#28937]
+
+[#28937]: https://github.com/rust-lang/rust/issues/28937
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "inherent_associated_types",
+        description: r##"# `inherent_associated_types`
+
+The tracking issue for this feature is: [#8995]
+
+[#8995]: https://github.com/rust-lang/rust/issues/8995
+
+------------------------
 "##,
     },
     Lint {
@@ -2708,6 +5490,46 @@ match some_int {
 "##,
     },
     Lint {
+        label: "inplace_iteration",
+        description: r##"# `inplace_iteration`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "int_roundings",
+        description: r##"# `int_roundings`
+
+The tracking issue for this feature is: [#88581]
+
+[#88581]: https://github.com/rust-lang/rust/issues/88581
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "integer_atomics",
+        description: r##"# `integer_atomics`
+
+The tracking issue for this feature is: [#99069]
+
+[#99069]: https://github.com/rust-lang/rust/issues/99069
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "internal_impls_macro",
+        description: r##"# `internal_impls_macro`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
         label: "internal_output_capture",
         description: r##"# `internal_output_capture`
 
@@ -2770,6 +5592,92 @@ As with any other FFI functions, these are always `unsafe` to call.
 "##,
     },
     Lint {
+        label: "io_error_downcast",
+        description: r##"# `io_error_downcast`
+
+The tracking issue for this feature is: [#99262]
+
+[#99262]: https://github.com/rust-lang/rust/issues/99262
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "io_error_more",
+        description: r##"# `io_error_more`
+
+The tracking issue for this feature is: [#86442]
+
+[#86442]: https://github.com/rust-lang/rust/issues/86442
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "io_error_uncategorized",
+        description: r##"# `io_error_uncategorized`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "io_slice_advance",
+        description: r##"# `io_slice_advance`
+
+The tracking issue for this feature is: [#62726]
+
+[#62726]: https://github.com/rust-lang/rust/issues/62726
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ip",
+        description: r##"# `ip`
+
+The tracking issue for this feature is: [#27709]
+
+[#27709]: https://github.com/rust-lang/rust/issues/27709
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ip_bits",
+        description: r##"# `ip_bits`
+
+The tracking issue for this feature is: [#113744]
+
+[#113744]: https://github.com/rust-lang/rust/issues/113744
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ip_in_core",
+        description: r##"# `ip_in_core`
+
+The tracking issue for this feature is: [#108443]
+
+[#108443]: https://github.com/rust-lang/rust/issues/108443
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "is_ascii_octdigit",
+        description: r##"# `is_ascii_octdigit`
+
+The tracking issue for this feature is: [#101288]
+
+[#101288]: https://github.com/rust-lang/rust/issues/101288
+
+------------------------
+"##,
+    },
+    Lint {
         label: "is_sorted",
         description: r##"# `is_sorted`
 
@@ -2782,6 +5690,160 @@ The tracking issue for this feature is: [#53485]
 Add the methods `is_sorted`, `is_sorted_by` and `is_sorted_by_key` to `[T]`;
 add the methods `is_sorted`, `is_sorted_by` and `is_sorted_by_key` to
 `Iterator`.
+"##,
+    },
+    Lint {
+        label: "isqrt",
+        description: r##"# `isqrt`
+
+The tracking issue for this feature is: [#116226]
+
+[#116226]: https://github.com/rust-lang/rust/issues/116226
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_advance_by",
+        description: r##"# `iter_advance_by`
+
+The tracking issue for this feature is: [#77404]
+
+[#77404]: https://github.com/rust-lang/rust/issues/77404
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_array_chunks",
+        description: r##"# `iter_array_chunks`
+
+The tracking issue for this feature is: [#100450]
+
+[#100450]: https://github.com/rust-lang/rust/issues/100450
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_collect_into",
+        description: r##"# `iter_collect_into`
+
+The tracking issue for this feature is: [#94780]
+
+[#94780]: https://github.com/rust-lang/rust/issues/94780
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_from_generator",
+        description: r##"# `iter_from_generator`
+
+The tracking issue for this feature is: [#43122]
+
+[#43122]: https://github.com/rust-lang/rust/issues/43122
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_intersperse",
+        description: r##"# `iter_intersperse`
+
+The tracking issue for this feature is: [#79524]
+
+[#79524]: https://github.com/rust-lang/rust/issues/79524
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_is_partitioned",
+        description: r##"# `iter_is_partitioned`
+
+The tracking issue for this feature is: [#62544]
+
+[#62544]: https://github.com/rust-lang/rust/issues/62544
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_map_windows",
+        description: r##"# `iter_map_windows`
+
+The tracking issue for this feature is: [#87155]
+
+[#87155]: https://github.com/rust-lang/rust/issues/87155
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_next_chunk",
+        description: r##"# `iter_next_chunk`
+
+The tracking issue for this feature is: [#98326]
+
+[#98326]: https://github.com/rust-lang/rust/issues/98326
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_order_by",
+        description: r##"# `iter_order_by`
+
+The tracking issue for this feature is: [#64295]
+
+[#64295]: https://github.com/rust-lang/rust/issues/64295
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_partition_in_place",
+        description: r##"# `iter_partition_in_place`
+
+The tracking issue for this feature is: [#62543]
+
+[#62543]: https://github.com/rust-lang/rust/issues/62543
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iter_repeat_n",
+        description: r##"# `iter_repeat_n`
+
+The tracking issue for this feature is: [#104434]
+
+[#104434]: https://github.com/rust-lang/rust/issues/104434
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iterator_try_collect",
+        description: r##"# `iterator_try_collect`
+
+The tracking issue for this feature is: [#94047]
+
+[#94047]: https://github.com/rust-lang/rust/issues/94047
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "iterator_try_reduce",
+        description: r##"# `iterator_try_reduce`
+
+The tracking issue for this feature is: [#87053]
+
+[#87053]: https://github.com/rust-lang/rust/issues/87053
+
+------------------------
 "##,
     },
     Lint {
@@ -2904,6 +5966,81 @@ An up-to-date list of all language items can be found [here] in the compiler cod
 "##,
     },
     Lint {
+        label: "large_assignments",
+        description: r##"# `large_assignments`
+
+The tracking issue for this feature is: [#83518]
+
+[#83518]: https://github.com/rust-lang/rust/issues/83518
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "layout_for_ptr",
+        description: r##"# `layout_for_ptr`
+
+The tracking issue for this feature is: [#69835]
+
+[#69835]: https://github.com/rust-lang/rust/issues/69835
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "lazy_cell",
+        description: r##"# `lazy_cell`
+
+The tracking issue for this feature is: [#109736]
+
+[#109736]: https://github.com/rust-lang/rust/issues/109736
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "lazy_cell_consume",
+        description: r##"# `lazy_cell_consume`
+
+The tracking issue for this feature is: [#109736]
+
+[#109736]: https://github.com/rust-lang/rust/issues/109736
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "lazy_type_alias",
+        description: r##"# `lazy_type_alias`
+
+The tracking issue for this feature is: [#112792]
+
+[#112792]: https://github.com/rust-lang/rust/issues/112792
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "let_chains",
+        description: r##"# `let_chains`
+
+The tracking issue for this feature is: [#53667]
+
+[#53667]: https://github.com/rust-lang/rust/issues/53667
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "liballoc_internals",
+        description: r##"# `liballoc_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
         label: "libstd_sys_internals",
         description: r##"# `libstd_sys_internals`
 
@@ -2917,6 +6054,127 @@ This feature is internal to the Rust compiler and is not intended for general us
         description: r##"# `link_cfg`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "link_llvm_intrinsics",
+        description: r##"# `link_llvm_intrinsics`
+
+The tracking issue for this feature is: [#29602]
+
+[#29602]: https://github.com/rust-lang/rust/issues/29602
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "linkage",
+        description: r##"# `linkage`
+
+The tracking issue for this feature is: [#29603]
+
+[#29603]: https://github.com/rust-lang/rust/issues/29603
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "linked_list_cursors",
+        description: r##"# `linked_list_cursors`
+
+The tracking issue for this feature is: [#58533]
+
+[#58533]: https://github.com/rust-lang/rust/issues/58533
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "linked_list_remove",
+        description: r##"# `linked_list_remove`
+
+The tracking issue for this feature is: [#69210]
+
+[#69210]: https://github.com/rust-lang/rust/issues/69210
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "lint_reasons",
+        description: r##"# `lint_reasons`
+
+The tracking issue for this feature is: [#54503]
+
+[#54503]: https://github.com/rust-lang/rust/issues/54503
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "linux_pidfd",
+        description: r##"# `linux_pidfd`
+
+The tracking issue for this feature is: [#82971]
+
+[#82971]: https://github.com/rust-lang/rust/issues/82971
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "log_syntax",
+        description: r##"# `log_syntax`
+
+The tracking issue for this feature is: [#29598]
+
+[#29598]: https://github.com/rust-lang/rust/issues/29598
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "macro_metavar_expr",
+        description: r##"# `macro_metavar_expr`
+
+The tracking issue for this feature is: [#83527]
+
+[#83527]: https://github.com/rust-lang/rust/issues/83527
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "map_entry_replace",
+        description: r##"# `map_entry_replace`
+
+The tracking issue for this feature is: [#44286]
+
+[#44286]: https://github.com/rust-lang/rust/issues/44286
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "map_many_mut",
+        description: r##"# `map_many_mut`
+
+The tracking issue for this feature is: [#97601]
+
+[#97601]: https://github.com/rust-lang/rust/issues/97601
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "map_try_insert",
+        description: r##"# `map_try_insert`
+
+The tracking issue for this feature is: [#82766]
+
+[#82766]: https://github.com/rust-lang/rust/issues/82766
 
 ------------------------
 "##,
@@ -2961,6 +6219,116 @@ feature, which applied to all empty traits (without needing an opt-in).
 "##,
     },
     Lint {
+        label: "maybe_uninit_array_assume_init",
+        description: r##"# `maybe_uninit_array_assume_init`
+
+The tracking issue for this feature is: [#96097]
+
+[#96097]: https://github.com/rust-lang/rust/issues/96097
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "maybe_uninit_as_bytes",
+        description: r##"# `maybe_uninit_as_bytes`
+
+The tracking issue for this feature is: [#93092]
+
+[#93092]: https://github.com/rust-lang/rust/issues/93092
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "maybe_uninit_slice",
+        description: r##"# `maybe_uninit_slice`
+
+The tracking issue for this feature is: [#63569]
+
+[#63569]: https://github.com/rust-lang/rust/issues/63569
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "maybe_uninit_uninit_array",
+        description: r##"# `maybe_uninit_uninit_array`
+
+The tracking issue for this feature is: [#96097]
+
+[#96097]: https://github.com/rust-lang/rust/issues/96097
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "maybe_uninit_uninit_array_transpose",
+        description: r##"# `maybe_uninit_uninit_array_transpose`
+
+The tracking issue for this feature is: [#96097]
+
+[#96097]: https://github.com/rust-lang/rust/issues/96097
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "maybe_uninit_write_slice",
+        description: r##"# `maybe_uninit_write_slice`
+
+The tracking issue for this feature is: [#79995]
+
+[#79995]: https://github.com/rust-lang/rust/issues/79995
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "mem_copy_fn",
+        description: r##"# `mem_copy_fn`
+
+The tracking issue for this feature is: [#98262]
+
+[#98262]: https://github.com/rust-lang/rust/issues/98262
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "min_specialization",
+        description: r##"# `min_specialization`
+
+The tracking issue for this feature is: [#31844]
+
+[#31844]: https://github.com/rust-lang/rust/issues/31844
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "mips_target_feature",
+        description: r##"# `mips_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "more_float_constants",
+        description: r##"# `more_float_constants`
+
+The tracking issue for this feature is: [#103883]
+
+[#103883]: https://github.com/rust-lang/rust/issues/103883
+
+------------------------
+"##,
+    },
+    Lint {
         label: "more_qualified_paths",
         description: r##"# `more_qualified_paths`
 
@@ -2994,6 +6362,59 @@ impl A for Foo {
 "##,
     },
     Lint {
+        label: "multiple_supertrait_upcastable",
+        description: r##"# `multiple_supertrait_upcastable`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "must_not_suspend",
+        description: r##"# `must_not_suspend`
+
+The tracking issue for this feature is: [#83310]
+
+[#83310]: https://github.com/rust-lang/rust/issues/83310
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "mutex_unlock",
+        description: r##"# `mutex_unlock`
+
+The tracking issue for this feature is: [#81872]
+
+[#81872]: https://github.com/rust-lang/rust/issues/81872
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "mutex_unpoison",
+        description: r##"# `mutex_unpoison`
+
+The tracking issue for this feature is: [#96469]
+
+[#96469]: https://github.com/rust-lang/rust/issues/96469
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "naked_functions",
+        description: r##"# `naked_functions`
+
+The tracking issue for this feature is: [#32408]
+
+[#32408]: https://github.com/rust-lang/rust/issues/32408
+
+------------------------
+"##,
+    },
+    Lint {
         label: "native_link_modifiers_as_needed",
         description: r##"# `native_link_modifiers_as_needed`
 
@@ -3013,6 +6434,26 @@ This modifier translates to `--as-needed` for ld-like linkers, and to `-dead_str
 The modifier does nothing for linkers that don't support it (e.g. `link.exe`).
 
 The default for this modifier is unclear, some targets currently specify it as `+as-needed`, some do not. We may want to try making `+as-needed` a default for all targets.
+"##,
+    },
+    Lint {
+        label: "needs_panic_runtime",
+        description: r##"# `needs_panic_runtime`
+
+The tracking issue for this feature is: [#32837]
+
+[#32837]: https://github.com/rust-lang/rust/issues/32837
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "negative_bounds",
+        description: r##"# `negative_bounds`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
 "##,
     },
     Lint {
@@ -3077,6 +6518,50 @@ This serves two purposes:
 "##,
     },
     Lint {
+        label: "never_type",
+        description: r##"# `never_type`
+
+The tracking issue for this feature is: [#35121]
+
+[#35121]: https://github.com/rust-lang/rust/issues/35121
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "never_type_fallback",
+        description: r##"# `never_type_fallback`
+
+The tracking issue for this feature is: [#65992]
+
+[#65992]: https://github.com/rust-lang/rust/issues/65992
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "new_uninit",
+        description: r##"# `new_uninit`
+
+The tracking issue for this feature is: [#63291]
+
+[#63291]: https://github.com/rust-lang/rust/issues/63291
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "no_core",
+        description: r##"# `no_core`
+
+The tracking issue for this feature is: [#29639]
+
+[#29639]: https://github.com/rust-lang/rust/issues/29639
+
+------------------------
+"##,
+    },
+    Lint {
         label: "no_sanitize",
         description: r##"# `no_sanitize`
 
@@ -3107,6 +6592,319 @@ fn foo() {
   // ...
 }
 ```
+"##,
+    },
+    Lint {
+        label: "non_exhaustive_omitted_patterns_lint",
+        description: r##"# `non_exhaustive_omitted_patterns_lint`
+
+The tracking issue for this feature is: [#89554]
+
+[#89554]: https://github.com/rust-lang/rust/issues/89554
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "non_lifetime_binders",
+        description: r##"# `non_lifetime_binders`
+
+The tracking issue for this feature is: [#108185]
+
+[#108185]: https://github.com/rust-lang/rust/issues/108185
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "nonzero_ops",
+        description: r##"# `nonzero_ops`
+
+The tracking issue for this feature is: [#84186]
+
+[#84186]: https://github.com/rust-lang/rust/issues/84186
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "noop_waker",
+        description: r##"# `noop_waker`
+
+The tracking issue for this feature is: [#98286]
+
+[#98286]: https://github.com/rust-lang/rust/issues/98286
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "num_midpoint",
+        description: r##"# `num_midpoint`
+
+The tracking issue for this feature is: [#110840]
+
+[#110840]: https://github.com/rust-lang/rust/issues/110840
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "numfmt",
+        description: r##"# `numfmt`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "object_safe_for_dispatch",
+        description: r##"# `object_safe_for_dispatch`
+
+The tracking issue for this feature is: [#43561]
+
+[#43561]: https://github.com/rust-lang/rust/issues/43561
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "offset_of",
+        description: r##"# `offset_of`
+
+The tracking issue for this feature is: [#106655]
+
+[#106655]: https://github.com/rust-lang/rust/issues/106655
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "omit_gdb_pretty_printer_section",
+        description: r##"# `omit_gdb_pretty_printer_section`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "once_cell_try",
+        description: r##"# `once_cell_try`
+
+The tracking issue for this feature is: [#109737]
+
+[#109737]: https://github.com/rust-lang/rust/issues/109737
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "one_sided_range",
+        description: r##"# `one_sided_range`
+
+The tracking issue for this feature is: [#69780]
+
+[#69780]: https://github.com/rust-lang/rust/issues/69780
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "optimize_attribute",
+        description: r##"# `optimize_attribute`
+
+The tracking issue for this feature is: [#54882]
+
+[#54882]: https://github.com/rust-lang/rust/issues/54882
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "option_get_or_insert_default",
+        description: r##"# `option_get_or_insert_default`
+
+The tracking issue for this feature is: [#82901]
+
+[#82901]: https://github.com/rust-lang/rust/issues/82901
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "option_take_if",
+        description: r##"# `option_take_if`
+
+The tracking issue for this feature is: [#98934]
+
+[#98934]: https://github.com/rust-lang/rust/issues/98934
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "option_zip",
+        description: r##"# `option_zip`
+
+The tracking issue for this feature is: [#70086]
+
+[#70086]: https://github.com/rust-lang/rust/issues/70086
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_abort",
+        description: r##"# `panic_abort`
+
+The tracking issue for this feature is: [#32837]
+
+[#32837]: https://github.com/rust-lang/rust/issues/32837
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_always_abort",
+        description: r##"# `panic_always_abort`
+
+The tracking issue for this feature is: [#84438]
+
+[#84438]: https://github.com/rust-lang/rust/issues/84438
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_backtrace_config",
+        description: r##"# `panic_backtrace_config`
+
+The tracking issue for this feature is: [#93346]
+
+[#93346]: https://github.com/rust-lang/rust/issues/93346
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_can_unwind",
+        description: r##"# `panic_can_unwind`
+
+The tracking issue for this feature is: [#92988]
+
+[#92988]: https://github.com/rust-lang/rust/issues/92988
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_info_message",
+        description: r##"# `panic_info_message`
+
+The tracking issue for this feature is: [#66745]
+
+[#66745]: https://github.com/rust-lang/rust/issues/66745
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_internals",
+        description: r##"# `panic_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_runtime",
+        description: r##"# `panic_runtime`
+
+The tracking issue for this feature is: [#32837]
+
+[#32837]: https://github.com/rust-lang/rust/issues/32837
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_unwind",
+        description: r##"# `panic_unwind`
+
+The tracking issue for this feature is: [#32837]
+
+[#32837]: https://github.com/rust-lang/rust/issues/32837
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "panic_update_hook",
+        description: r##"# `panic_update_hook`
+
+The tracking issue for this feature is: [#92649]
+
+[#92649]: https://github.com/rust-lang/rust/issues/92649
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "path_file_prefix",
+        description: r##"# `path_file_prefix`
+
+The tracking issue for this feature is: [#86319]
+
+[#86319]: https://github.com/rust-lang/rust/issues/86319
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "pattern",
+        description: r##"# `pattern`
+
+The tracking issue for this feature is: [#27721]
+
+[#27721]: https://github.com/rust-lang/rust/issues/27721
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "peer_credentials_unix_socket",
+        description: r##"# `peer_credentials_unix_socket`
+
+The tracking issue for this feature is: [#42839]
+
+[#42839]: https://github.com/rust-lang/rust/issues/42839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "pin_deref_mut",
+        description: r##"# `pin_deref_mut`
+
+The tracking issue for this feature is: [#86918]
+
+[#86918]: https://github.com/rust-lang/rust/issues/86918
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "platform_intrinsics",
+        description: r##"# `platform_intrinsics`
+
+The tracking issue for this feature is: [#27731]
+
+[#27731]: https://github.com/rust-lang/rust/issues/27731
+
+------------------------
 "##,
     },
     Lint {
@@ -3228,10 +7026,209 @@ including those provided by plugins loaded by `foo.rs`.
 "##,
     },
     Lint {
+        label: "pointer_byte_offsets",
+        description: r##"# `pointer_byte_offsets`
+
+The tracking issue for this feature is: [#96283]
+
+[#96283]: https://github.com/rust-lang/rust/issues/96283
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "pointer_is_aligned",
+        description: r##"# `pointer_is_aligned`
+
+The tracking issue for this feature is: [#96284]
+
+[#96284]: https://github.com/rust-lang/rust/issues/96284
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "pointer_like_trait",
+        description: r##"# `pointer_like_trait`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "portable_simd",
+        description: r##"# `portable_simd`
+
+The tracking issue for this feature is: [#86656]
+
+[#86656]: https://github.com/rust-lang/rust/issues/86656
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "powerpc_target_feature",
+        description: r##"# `powerpc_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "precise_pointer_size_matching",
+        description: r##"# `precise_pointer_size_matching`
+
+The tracking issue for this feature is: [#56354]
+
+[#56354]: https://github.com/rust-lang/rust/issues/56354
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "prelude_2024",
+        description: r##"# `prelude_2024`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "prelude_import",
+        description: r##"# `prelude_import`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
         label: "print_internals",
         description: r##"# `print_internals`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_byte_character",
+        description: r##"# `proc_macro_byte_character`
+
+The tracking issue for this feature is: [#115268]
+
+[#115268]: https://github.com/rust-lang/rust/issues/115268
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_def_site",
+        description: r##"# `proc_macro_def_site`
+
+The tracking issue for this feature is: [#54724]
+
+[#54724]: https://github.com/rust-lang/rust/issues/54724
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_diagnostic",
+        description: r##"# `proc_macro_diagnostic`
+
+The tracking issue for this feature is: [#54140]
+
+[#54140]: https://github.com/rust-lang/rust/issues/54140
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_expand",
+        description: r##"# `proc_macro_expand`
+
+The tracking issue for this feature is: [#90765]
+
+[#90765]: https://github.com/rust-lang/rust/issues/90765
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_hygiene",
+        description: r##"# `proc_macro_hygiene`
+
+The tracking issue for this feature is: [#54727]
+
+[#54727]: https://github.com/rust-lang/rust/issues/54727
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_internals",
+        description: r##"# `proc_macro_internals`
+
+The tracking issue for this feature is: [#27812]
+
+[#27812]: https://github.com/rust-lang/rust/issues/27812
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_quote",
+        description: r##"# `proc_macro_quote`
+
+The tracking issue for this feature is: [#54722]
+
+[#54722]: https://github.com/rust-lang/rust/issues/54722
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_span",
+        description: r##"# `proc_macro_span`
+
+The tracking issue for this feature is: [#54725]
+
+[#54725]: https://github.com/rust-lang/rust/issues/54725
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "proc_macro_tracked_env",
+        description: r##"# `proc_macro_tracked_env`
+
+The tracking issue for this feature is: [#99515]
+
+[#99515]: https://github.com/rust-lang/rust/issues/99515
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "process_exitcode_internals",
+        description: r##"# `process_exitcode_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "process_internals",
+        description: r##"# `process_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -3250,6 +7247,207 @@ The tracking issue for this feature is: [#42524](https://github.com/rust-lang/ru
         description: r##"# `profiler_runtime_lib`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_addr_eq",
+        description: r##"# `ptr_addr_eq`
+
+The tracking issue for this feature is: [#116324]
+
+[#116324]: https://github.com/rust-lang/rust/issues/116324
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_alignment_type",
+        description: r##"# `ptr_alignment_type`
+
+The tracking issue for this feature is: [#102070]
+
+[#102070]: https://github.com/rust-lang/rust/issues/102070
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_as_uninit",
+        description: r##"# `ptr_as_uninit`
+
+The tracking issue for this feature is: [#75402]
+
+[#75402]: https://github.com/rust-lang/rust/issues/75402
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_from_ref",
+        description: r##"# `ptr_from_ref`
+
+The tracking issue for this feature is: [#106116]
+
+[#106116]: https://github.com/rust-lang/rust/issues/106116
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_internals",
+        description: r##"# `ptr_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_mask",
+        description: r##"# `ptr_mask`
+
+The tracking issue for this feature is: [#98290]
+
+[#98290]: https://github.com/rust-lang/rust/issues/98290
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_metadata",
+        description: r##"# `ptr_metadata`
+
+The tracking issue for this feature is: [#81513]
+
+[#81513]: https://github.com/rust-lang/rust/issues/81513
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_sub_ptr",
+        description: r##"# `ptr_sub_ptr`
+
+The tracking issue for this feature is: [#95892]
+
+[#95892]: https://github.com/rust-lang/rust/issues/95892
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ptr_to_from_bits",
+        description: r##"# `ptr_to_from_bits`
+
+The tracking issue for this feature is: [#91126]
+
+[#91126]: https://github.com/rust-lang/rust/issues/91126
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "pub_crate_should_not_need_unstable_attr",
+        description: r##"# `pub_crate_should_not_need_unstable_attr`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "raw_os_error_ty",
+        description: r##"# `raw_os_error_ty`
+
+The tracking issue for this feature is: [#107792]
+
+[#107792]: https://github.com/rust-lang/rust/issues/107792
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "raw_os_nonzero",
+        description: r##"# `raw_os_nonzero`
+
+The tracking issue for this feature is: [#82363]
+
+[#82363]: https://github.com/rust-lang/rust/issues/82363
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "raw_ref_op",
+        description: r##"# `raw_ref_op`
+
+The tracking issue for this feature is: [#64490]
+
+[#64490]: https://github.com/rust-lang/rust/issues/64490
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "raw_slice_split",
+        description: r##"# `raw_slice_split`
+
+The tracking issue for this feature is: [#95595]
+
+[#95595]: https://github.com/rust-lang/rust/issues/95595
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "raw_vec_internals",
+        description: r##"# `raw_vec_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "read_buf",
+        description: r##"# `read_buf`
+
+The tracking issue for this feature is: [#78485]
+
+[#78485]: https://github.com/rust-lang/rust/issues/78485
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "ready_into_inner",
+        description: r##"# `ready_into_inner`
+
+The tracking issue for this feature is: [#101196]
+
+[#101196]: https://github.com/rust-lang/rust/issues/101196
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "receiver_trait",
+        description: r##"# `receiver_trait`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "register_tool",
+        description: r##"# `register_tool`
+
+The tracking issue for this feature is: [#66079]
+
+[#66079]: https://github.com/rust-lang/rust/issues/66079
 
 ------------------------
 "##,
@@ -3277,10 +7475,140 @@ enum Foo {
 "##,
     },
     Lint {
+        label: "repr_simd",
+        description: r##"# `repr_simd`
+
+The tracking issue for this feature is: [#27731]
+
+[#27731]: https://github.com/rust-lang/rust/issues/27731
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "restricted_std",
+        description: r##"# `restricted_std`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "result_flattening",
+        description: r##"# `result_flattening`
+
+The tracking issue for this feature is: [#70142]
+
+[#70142]: https://github.com/rust-lang/rust/issues/70142
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "result_option_inspect",
+        description: r##"# `result_option_inspect`
+
+The tracking issue for this feature is: [#91345]
+
+[#91345]: https://github.com/rust-lang/rust/issues/91345
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "return_position_impl_trait_in_trait",
+        description: r##"# `return_position_impl_trait_in_trait`
+
+The tracking issue for this feature is: [#91611]
+
+[#91611]: https://github.com/rust-lang/rust/issues/91611
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "return_type_notation",
+        description: r##"# `return_type_notation`
+
+The tracking issue for this feature is: [#109417]
+
+[#109417]: https://github.com/rust-lang/rust/issues/109417
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "riscv_target_feature",
+        description: r##"# `riscv_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "round_char_boundary",
+        description: r##"# `round_char_boundary`
+
+The tracking issue for this feature is: [#93743]
+
+[#93743]: https://github.com/rust-lang/rust/issues/93743
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "round_ties_even",
+        description: r##"# `round_ties_even`
+
+The tracking issue for this feature is: [#96710]
+
+[#96710]: https://github.com/rust-lang/rust/issues/96710
+
+------------------------
+"##,
+    },
+    Lint {
         label: "rt",
         description: r##"# `rt`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "rtm_target_feature",
+        description: r##"# `rtm_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "rust_cold_cc",
+        description: r##"# `rust_cold_cc`
+
+The tracking issue for this feature is: [#97544]
+
+[#97544]: https://github.com/rust-lang/rust/issues/97544
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "rustc_allow_const_fn_unstable",
+        description: r##"# `rustc_allow_const_fn_unstable`
+
+The tracking issue for this feature is: [#69399]
+
+[#69399]: https://github.com/rust-lang/rust/issues/69399
 
 ------------------------
 "##,
@@ -3343,10 +7671,392 @@ error: aborting due to 2 previous errors
 "##,
     },
     Lint {
+        label: "rustc_private",
+        description: r##"# `rustc_private`
+
+The tracking issue for this feature is: [#27812]
+
+[#27812]: https://github.com/rust-lang/rust/issues/27812
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "rustdoc_internals",
+        description: r##"# `rustdoc_internals`
+
+The tracking issue for this feature is: [#90418]
+
+[#90418]: https://github.com/rust-lang/rust/issues/90418
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "rustdoc_missing_doc_code_examples",
+        description: r##"# `rustdoc_missing_doc_code_examples`
+
+The tracking issue for this feature is: [#101730]
+
+[#101730]: https://github.com/rust-lang/rust/issues/101730
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "sealed",
+        description: r##"# `sealed`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "seek_stream_len",
+        description: r##"# `seek_stream_len`
+
+The tracking issue for this feature is: [#59359]
+
+[#59359]: https://github.com/rust-lang/rust/issues/59359
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "set_ptr_value",
+        description: r##"# `set_ptr_value`
+
+The tracking issue for this feature is: [#75091]
+
+[#75091]: https://github.com/rust-lang/rust/issues/75091
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "setgroups",
+        description: r##"# `setgroups`
+
+The tracking issue for this feature is: [#90747]
+
+[#90747]: https://github.com/rust-lang/rust/issues/90747
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "sgx_platform",
+        description: r##"# `sgx_platform`
+
+The tracking issue for this feature is: [#56975]
+
+[#56975]: https://github.com/rust-lang/rust/issues/56975
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "simd_ffi",
+        description: r##"# `simd_ffi`
+
+The tracking issue for this feature is: [#27731]
+
+[#27731]: https://github.com/rust-lang/rust/issues/27731
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "sized_type_properties",
+        description: r##"# `sized_type_properties`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_as_chunks",
+        description: r##"# `slice_as_chunks`
+
+The tracking issue for this feature is: [#74985]
+
+[#74985]: https://github.com/rust-lang/rust/issues/74985
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_concat_ext",
+        description: r##"# `slice_concat_ext`
+
+The tracking issue for this feature is: [#27747]
+
+[#27747]: https://github.com/rust-lang/rust/issues/27747
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_concat_trait",
+        description: r##"# `slice_concat_trait`
+
+The tracking issue for this feature is: [#27747]
+
+[#27747]: https://github.com/rust-lang/rust/issues/27747
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_first_last_chunk",
+        description: r##"# `slice_first_last_chunk`
+
+The tracking issue for this feature is: [#111774]
+
+[#111774]: https://github.com/rust-lang/rust/issues/111774
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_flatten",
+        description: r##"# `slice_flatten`
+
+The tracking issue for this feature is: [#95629]
+
+[#95629]: https://github.com/rust-lang/rust/issues/95629
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_from_ptr_range",
+        description: r##"# `slice_from_ptr_range`
+
+The tracking issue for this feature is: [#89792]
+
+[#89792]: https://github.com/rust-lang/rust/issues/89792
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_group_by",
+        description: r##"# `slice_group_by`
+
+The tracking issue for this feature is: [#80552]
+
+[#80552]: https://github.com/rust-lang/rust/issues/80552
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_index_methods",
+        description: r##"# `slice_index_methods`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_internals",
+        description: r##"# `slice_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_iter_mut_as_mut_slice",
+        description: r##"# `slice_iter_mut_as_mut_slice`
+
+The tracking issue for this feature is: [#93079]
+
+[#93079]: https://github.com/rust-lang/rust/issues/93079
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_partition_dedup",
+        description: r##"# `slice_partition_dedup`
+
+The tracking issue for this feature is: [#54279]
+
+[#54279]: https://github.com/rust-lang/rust/issues/54279
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_pattern",
+        description: r##"# `slice_pattern`
+
+The tracking issue for this feature is: [#56345]
+
+[#56345]: https://github.com/rust-lang/rust/issues/56345
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_ptr_get",
+        description: r##"# `slice_ptr_get`
+
+The tracking issue for this feature is: [#74265]
+
+[#74265]: https://github.com/rust-lang/rust/issues/74265
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_ptr_len",
+        description: r##"# `slice_ptr_len`
+
+The tracking issue for this feature is: [#71146]
+
+[#71146]: https://github.com/rust-lang/rust/issues/71146
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_range",
+        description: r##"# `slice_range`
+
+The tracking issue for this feature is: [#76393]
+
+[#76393]: https://github.com/rust-lang/rust/issues/76393
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_split_at_unchecked",
+        description: r##"# `slice_split_at_unchecked`
+
+The tracking issue for this feature is: [#76014]
+
+[#76014]: https://github.com/rust-lang/rust/issues/76014
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_swap_unchecked",
+        description: r##"# `slice_swap_unchecked`
+
+The tracking issue for this feature is: [#88539]
+
+[#88539]: https://github.com/rust-lang/rust/issues/88539
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "slice_take",
+        description: r##"# `slice_take`
+
+The tracking issue for this feature is: [#62280]
+
+[#62280]: https://github.com/rust-lang/rust/issues/62280
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "solid_ext",
+        description: r##"# `solid_ext`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "sort_floats",
+        description: r##"# `sort_floats`
+
+The tracking issue for this feature is: [#93396]
+
+[#93396]: https://github.com/rust-lang/rust/issues/93396
+
+------------------------
+"##,
+    },
+    Lint {
         label: "sort_internals",
         description: r##"# `sort_internals`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "spec_option_partial_eq",
+        description: r##"# `spec_option_partial_eq`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "specialization",
+        description: r##"# `specialization`
+
+The tracking issue for this feature is: [#31844]
+
+[#31844]: https://github.com/rust-lang/rust/issues/31844
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "split_array",
+        description: r##"# `split_array`
+
+The tracking issue for this feature is: [#90091]
+
+[#90091]: https://github.com/rust-lang/rust/issues/90091
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "split_as_slice",
+        description: r##"# `split_as_slice`
+
+The tracking issue for this feature is: [#96137]
+
+[#96137]: https://github.com/rust-lang/rust/issues/96137
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "sse4a_target_feature",
+        description: r##"# `sse4a_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "staged_api",
+        description: r##"# `staged_api`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -3415,10 +8125,96 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
 "##,
     },
     Lint {
+        label: "std_internals",
+        description: r##"# `std_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "stdio_makes_pipe",
+        description: r##"# `stdio_makes_pipe`
+
+The tracking issue for this feature is: [#98288]
+
+[#98288]: https://github.com/rust-lang/rust/issues/98288
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "stdsimd",
+        description: r##"# `stdsimd`
+
+The tracking issue for this feature is: [#48556]
+
+[#48556]: https://github.com/rust-lang/rust/issues/48556
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "step_trait",
+        description: r##"# `step_trait`
+
+The tracking issue for this feature is: [#42168]
+
+[#42168]: https://github.com/rust-lang/rust/issues/42168
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "stmt_expr_attributes",
+        description: r##"# `stmt_expr_attributes`
+
+The tracking issue for this feature is: [#15701]
+
+[#15701]: https://github.com/rust-lang/rust/issues/15701
+
+------------------------
+"##,
+    },
+    Lint {
         label: "str_internals",
         description: r##"# `str_internals`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "str_split_inclusive_remainder",
+        description: r##"# `str_split_inclusive_remainder`
+
+The tracking issue for this feature is: [#77998]
+
+[#77998]: https://github.com/rust-lang/rust/issues/77998
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "str_split_remainder",
+        description: r##"# `str_split_remainder`
+
+The tracking issue for this feature is: [#77998]
+
+[#77998]: https://github.com/rust-lang/rust/issues/77998
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "str_split_whitespace_remainder",
+        description: r##"# `str_split_whitespace_remainder`
+
+The tracking issue for this feature is: [#77998]
+
+[#77998]: https://github.com/rust-lang/rust/issues/77998
 
 ------------------------
 "##,
@@ -3447,6 +8243,127 @@ fn main() {
     //~^ WARNING: strict provenance disallows casting integer `usize` to pointer `*const u8`
 }
 ```
+"##,
+    },
+    Lint {
+        label: "strict_provenance_atomic_ptr",
+        description: r##"# `strict_provenance_atomic_ptr`
+
+The tracking issue for this feature is: [#99108]
+
+[#99108]: https://github.com/rust-lang/rust/issues/99108
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "string_deref_patterns",
+        description: r##"# `string_deref_patterns`
+
+The tracking issue for this feature is: [#87121]
+
+[#87121]: https://github.com/rust-lang/rust/issues/87121
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "string_extend_from_within",
+        description: r##"# `string_extend_from_within`
+
+The tracking issue for this feature is: [#103806]
+
+[#103806]: https://github.com/rust-lang/rust/issues/103806
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "string_remove_matches",
+        description: r##"# `string_remove_matches`
+
+The tracking issue for this feature is: [#72826]
+
+[#72826]: https://github.com/rust-lang/rust/issues/72826
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "structural_match",
+        description: r##"# `structural_match`
+
+The tracking issue for this feature is: [#31434]
+
+[#31434]: https://github.com/rust-lang/rust/issues/31434
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "sync_unsafe_cell",
+        description: r##"# `sync_unsafe_cell`
+
+The tracking issue for this feature is: [#95439]
+
+[#95439]: https://github.com/rust-lang/rust/issues/95439
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "target_feature_11",
+        description: r##"# `target_feature_11`
+
+The tracking issue for this feature is: [#69098]
+
+[#69098]: https://github.com/rust-lang/rust/issues/69098
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "tbm_target_feature",
+        description: r##"# `tbm_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "tcp_linger",
+        description: r##"# `tcp_linger`
+
+The tracking issue for this feature is: [#88494]
+
+[#88494]: https://github.com/rust-lang/rust/issues/88494
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "tcp_quickack",
+        description: r##"# `tcp_quickack`
+
+The tracking issue for this feature is: [#96256]
+
+[#96256]: https://github.com/rust-lang/rust/issues/96256
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "tcplistener_into_incoming",
+        description: r##"# `tcplistener_into_incoming`
+
+The tracking issue for this feature is: [#88339]
+
+[#88339]: https://github.com/rust-lang/rust/issues/88339
+
+------------------------
 "##,
     },
     Lint {
@@ -3612,10 +8529,83 @@ even when using either of the above.
 "##,
     },
     Lint {
+        label: "test_2018_feature",
+        description: r##"# `test_2018_feature`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "test_unstable_lint",
+        description: r##"# `test_unstable_lint`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "thin_box",
+        description: r##"# `thin_box`
+
+The tracking issue for this feature is: [#92791]
+
+[#92791]: https://github.com/rust-lang/rust/issues/92791
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "thread_id_value",
+        description: r##"# `thread_id_value`
+
+The tracking issue for this feature is: [#67939]
+
+[#67939]: https://github.com/rust-lang/rust/issues/67939
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "thread_local",
+        description: r##"# `thread_local`
+
+The tracking issue for this feature is: [#29594]
+
+[#29594]: https://github.com/rust-lang/rust/issues/29594
+
+------------------------
+"##,
+    },
+    Lint {
         label: "thread_local_internals",
         description: r##"# `thread_local_internals`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "thread_sleep_until",
+        description: r##"# `thread_sleep_until`
+
+The tracking issue for this feature is: [#113752]
+
+[#113752]: https://github.com/rust-lang/rust/issues/113752
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "thread_spawn_unchecked",
+        description: r##"# `thread_spawn_unchecked`
+
+The tracking issue for this feature is: [#55132]
+
+[#55132]: https://github.com/rust-lang/rust/issues/55132
 
 ------------------------
 "##,
@@ -3661,6 +8651,17 @@ note: trace_macro
 
     Finished dev [unoptimized + debuginfo] target(s) in 0.60 secs
 ```
+"##,
+    },
+    Lint {
+        label: "track_path",
+        description: r##"# `track_path`
+
+The tracking issue for this feature is: [#99515]
+
+[#99515]: https://github.com/rust-lang/rust/issues/99515
+
+------------------------
 "##,
     },
     Lint {
@@ -3730,6 +8731,28 @@ impl<T: Foo + ?Sized> Bar for T {}
 let bar: &dyn Bar = &123;
 let foo: &dyn Foo = bar;
 ```
+"##,
+    },
+    Lint {
+        label: "transmutability",
+        description: r##"# `transmutability`
+
+The tracking issue for this feature is: [#99571]
+
+[#99571]: https://github.com/rust-lang/rust/issues/99571
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "transmute_generic_consts",
+        description: r##"# `transmute_generic_consts`
+
+The tracking issue for this feature is: [#109929]
+
+[#109929]: https://github.com/rust-lang/rust/issues/109929
+
+------------------------
 "##,
     },
     Lint {
@@ -3820,6 +8843,59 @@ their application of these optimizations.
 "##,
     },
     Lint {
+        label: "trivial_bounds",
+        description: r##"# `trivial_bounds`
+
+The tracking issue for this feature is: [#48214]
+
+[#48214]: https://github.com/rust-lang/rust/issues/48214
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "trusted_len",
+        description: r##"# `trusted_len`
+
+The tracking issue for this feature is: [#37572]
+
+[#37572]: https://github.com/rust-lang/rust/issues/37572
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "trusted_len_next_unchecked",
+        description: r##"# `trusted_len_next_unchecked`
+
+The tracking issue for this feature is: [#37572]
+
+[#37572]: https://github.com/rust-lang/rust/issues/37572
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "trusted_random_access",
+        description: r##"# `trusted_random_access`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "trusted_step",
+        description: r##"# `trusted_step`
+
+The tracking issue for this feature is: [#85731]
+
+[#85731]: https://github.com/rust-lang/rust/issues/85731
+
+------------------------
+"##,
+    },
+    Lint {
         label: "try_blocks",
         description: r##"# `try_blocks`
 
@@ -3851,6 +8927,92 @@ let result: Result<i32, ParseIntError> = try {
 };
 assert!(result.is_err());
 ```
+"##,
+    },
+    Lint {
+        label: "try_find",
+        description: r##"# `try_find`
+
+The tracking issue for this feature is: [#63178]
+
+[#63178]: https://github.com/rust-lang/rust/issues/63178
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "try_reserve_kind",
+        description: r##"# `try_reserve_kind`
+
+The tracking issue for this feature is: [#48043]
+
+[#48043]: https://github.com/rust-lang/rust/issues/48043
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "try_trait_v2",
+        description: r##"# `try_trait_v2`
+
+The tracking issue for this feature is: [#84277]
+
+[#84277]: https://github.com/rust-lang/rust/issues/84277
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "try_trait_v2_residual",
+        description: r##"# `try_trait_v2_residual`
+
+The tracking issue for this feature is: [#91285]
+
+[#91285]: https://github.com/rust-lang/rust/issues/91285
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "try_trait_v2_yeet",
+        description: r##"# `try_trait_v2_yeet`
+
+The tracking issue for this feature is: [#96374]
+
+[#96374]: https://github.com/rust-lang/rust/issues/96374
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "tuple_trait",
+        description: r##"# `tuple_trait`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "type_alias_impl_trait",
+        description: r##"# `type_alias_impl_trait`
+
+The tracking issue for this feature is: [#63063]
+
+[#63063]: https://github.com/rust-lang/rust/issues/63063
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "type_ascription",
+        description: r##"# `type_ascription`
+
+The tracking issue for this feature is: [#23416]
+
+[#23416]: https://github.com/rust-lang/rust/issues/23416
+
+------------------------
 "##,
     },
     Lint {
@@ -3891,6 +9053,39 @@ fn main () {
 "##,
     },
     Lint {
+        label: "type_name_of_val",
+        description: r##"# `type_name_of_val`
+
+The tracking issue for this feature is: [#66359]
+
+[#66359]: https://github.com/rust-lang/rust/issues/66359
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "type_privacy_lints",
+        description: r##"# `type_privacy_lints`
+
+The tracking issue for this feature is: [#48054]
+
+[#48054]: https://github.com/rust-lang/rust/issues/48054
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "uefi_std",
+        description: r##"# `uefi_std`
+
+The tracking issue for this feature is: [#100499]
+
+[#100499]: https://github.com/rust-lang/rust/issues/100499
+
+------------------------
+"##,
+    },
+    Lint {
         label: "unboxed_closures",
         description: r##"# `unboxed_closures`
 
@@ -3917,6 +9112,59 @@ extern "rust-call" fn add_args(args: (u32, u32)) -> u32 {
 
 fn main() {}
 ```
+"##,
+    },
+    Lint {
+        label: "unchecked_math",
+        description: r##"# `unchecked_math`
+
+The tracking issue for this feature is: [#85122]
+
+[#85122]: https://github.com/rust-lang/rust/issues/85122
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unicode_internals",
+        description: r##"# `unicode_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unique_rc_arc",
+        description: r##"# `unique_rc_arc`
+
+The tracking issue for this feature is: [#112566]
+
+[#112566]: https://github.com/rust-lang/rust/issues/112566
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unix_file_vectored_at",
+        description: r##"# `unix_file_vectored_at`
+
+The tracking issue for this feature is: [#89517]
+
+[#89517]: https://github.com/rust-lang/rust/issues/89517
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unix_set_mark",
+        description: r##"# `unix_set_mark`
+
+The tracking issue for this feature is: [#96467]
+
+[#96467]: https://github.com/rust-lang/rust/issues/96467
+
+------------------------
 "##,
     },
     Lint {
@@ -3983,6 +9231,81 @@ reset `SIGPIPE` to `SIG_DFL`.
 
 If `#[unix_sigpipe = "..."]` is specified, no matter what its value is, the signal disposition of
 `SIGPIPE` is no longer reset. This means that the child inherits the parent's `SIGPIPE` behavior.
+"##,
+    },
+    Lint {
+        label: "unix_socket_ancillary_data",
+        description: r##"# `unix_socket_ancillary_data`
+
+The tracking issue for this feature is: [#76915]
+
+[#76915]: https://github.com/rust-lang/rust/issues/76915
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unix_socket_peek",
+        description: r##"# `unix_socket_peek`
+
+The tracking issue for this feature is: [#76923]
+
+[#76923]: https://github.com/rust-lang/rust/issues/76923
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unnamed_fields",
+        description: r##"# `unnamed_fields`
+
+The tracking issue for this feature is: [#49804]
+
+[#49804]: https://github.com/rust-lang/rust/issues/49804
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unsafe_cell_from_mut",
+        description: r##"# `unsafe_cell_from_mut`
+
+The tracking issue for this feature is: [#111645]
+
+[#111645]: https://github.com/rust-lang/rust/issues/111645
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unsafe_pin_internals",
+        description: r##"# `unsafe_pin_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unsize",
+        description: r##"# `unsize`
+
+The tracking issue for this feature is: [#18598]
+
+[#18598]: https://github.com/rust-lang/rust/issues/18598
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unsized_fn_params",
+        description: r##"# `unsized_fn_params`
+
+The tracking issue for this feature is: [#48055]
+
+[#48055]: https://github.com/rust-lang/rust/issues/48055
+
+------------------------
 "##,
     },
     Lint {
@@ -4196,10 +9519,164 @@ fn main() {
 "##,
     },
     Lint {
+        label: "unwrap_infallible",
+        description: r##"# `unwrap_infallible`
+
+The tracking issue for this feature is: [#61695]
+
+[#61695]: https://github.com/rust-lang/rust/issues/61695
+
+------------------------
+"##,
+    },
+    Lint {
         label: "update_panic_count",
         description: r##"# `update_panic_count`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "used_with_arg",
+        description: r##"# `used_with_arg`
+
+The tracking issue for this feature is: [#93798]
+
+[#93798]: https://github.com/rust-lang/rust/issues/93798
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "utf16_extra",
+        description: r##"# `utf16_extra`
+
+The tracking issue for this feature is: [#94919]
+
+[#94919]: https://github.com/rust-lang/rust/issues/94919
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "utf16_extra_const",
+        description: r##"# `utf16_extra_const`
+
+The tracking issue for this feature is: [#94919]
+
+[#94919]: https://github.com/rust-lang/rust/issues/94919
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "utf8_chunks",
+        description: r##"# `utf8_chunks`
+
+The tracking issue for this feature is: [#99543]
+
+[#99543]: https://github.com/rust-lang/rust/issues/99543
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "variant_count",
+        description: r##"# `variant_count`
+
+The tracking issue for this feature is: [#73662]
+
+[#73662]: https://github.com/rust-lang/rust/issues/73662
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "vec_into_raw_parts",
+        description: r##"# `vec_into_raw_parts`
+
+The tracking issue for this feature is: [#65816]
+
+[#65816]: https://github.com/rust-lang/rust/issues/65816
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "vec_push_within_capacity",
+        description: r##"# `vec_push_within_capacity`
+
+The tracking issue for this feature is: [#100486]
+
+[#100486]: https://github.com/rust-lang/rust/issues/100486
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "vec_split_at_spare",
+        description: r##"# `vec_split_at_spare`
+
+The tracking issue for this feature is: [#81944]
+
+[#81944]: https://github.com/rust-lang/rust/issues/81944
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "waker_getters",
+        description: r##"# `waker_getters`
+
+The tracking issue for this feature is: [#87021]
+
+[#87021]: https://github.com/rust-lang/rust/issues/87021
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "wasi_ext",
+        description: r##"# `wasi_ext`
+
+The tracking issue for this feature is: [#71213]
+
+[#71213]: https://github.com/rust-lang/rust/issues/71213
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "wasm_abi",
+        description: r##"# `wasm_abi`
+
+The tracking issue for this feature is: [#83788]
+
+[#83788]: https://github.com/rust-lang/rust/issues/83788
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "wasm_target_feature",
+        description: r##"# `wasm_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "windows_by_handle",
+        description: r##"# `windows_by_handle`
+
+The tracking issue for this feature is: [#63010]
+
+[#63010]: https://github.com/rust-lang/rust/issues/63010
 
 ------------------------
 "##,
@@ -4232,10 +9709,114 @@ This feature is internal to the Rust compiler and is not intended for general us
 "##,
     },
     Lint {
+        label: "windows_process_exit_code_from",
+        description: r##"# `windows_process_exit_code_from`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "windows_process_extensions_async_pipes",
+        description: r##"# `windows_process_extensions_async_pipes`
+
+The tracking issue for this feature is: [#98289]
+
+[#98289]: https://github.com/rust-lang/rust/issues/98289
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "windows_process_extensions_force_quotes",
+        description: r##"# `windows_process_extensions_force_quotes`
+
+The tracking issue for this feature is: [#82227]
+
+[#82227]: https://github.com/rust-lang/rust/issues/82227
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "windows_process_extensions_main_thread_handle",
+        description: r##"# `windows_process_extensions_main_thread_handle`
+
+The tracking issue for this feature is: [#96723]
+
+[#96723]: https://github.com/rust-lang/rust/issues/96723
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "windows_process_extensions_raw_attribute",
+        description: r##"# `windows_process_extensions_raw_attribute`
+
+The tracking issue for this feature is: [#114854]
+
+[#114854]: https://github.com/rust-lang/rust/issues/114854
+
+------------------------
+"##,
+    },
+    Lint {
         label: "windows_stdio",
         description: r##"# `windows_stdio`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "with_negative_coherence",
+        description: r##"# `with_negative_coherence`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "wrapping_int_impl",
+        description: r##"# `wrapping_int_impl`
+
+The tracking issue for this feature is: [#32463]
+
+[#32463]: https://github.com/rust-lang/rust/issues/32463
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "wrapping_next_power_of_two",
+        description: r##"# `wrapping_next_power_of_two`
+
+The tracking issue for this feature is: [#32463]
+
+[#32463]: https://github.com/rust-lang/rust/issues/32463
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "write_all_vectored",
+        description: r##"# `write_all_vectored`
+
+The tracking issue for this feature is: [#70436]
+
+[#70436]: https://github.com/rust-lang/rust/issues/70436
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "yeet_desugar_details",
+        description: r##"# `yeet_desugar_details`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
