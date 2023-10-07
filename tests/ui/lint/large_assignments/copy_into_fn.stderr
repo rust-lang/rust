@@ -1,0 +1,31 @@
+error: moving 9999 bytes
+  --> $DIR/copy_into_fn.rs:14:13
+   |
+LL |     one_arg(Data([0; 9999]));
+   |             ^^^^^^^^^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+note: the lint level is defined here
+  --> $DIR/copy_into_fn.rs:5:9
+   |
+LL | #![deny(large_assignments)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: moving 9999 bytes
+  --> $DIR/copy_into_fn.rs:17:15
+   |
+LL |     many_args(Data([0; 9999]), true, Data([0; 9999]));
+   |               ^^^^^^^^^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: moving 9999 bytes
+  --> $DIR/copy_into_fn.rs:17:38
+   |
+LL |     many_args(Data([0; 9999]), true, Data([0; 9999]));
+   |                                      ^^^^^^^^^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: aborting due to 3 previous errors
+
