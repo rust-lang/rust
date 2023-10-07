@@ -132,10 +132,7 @@
                     <span></span> {# This empty span is a hacky fix for Safari - See #93184 #}
                     {% if page.css_class != "src" %}
                     <div id="sidebar-button" tabindex="-1"> {# #}
-                        <a href="{{page.root_path|safe}}{{layout.krate|safe}}/all.html" title="show sidebar"> {# #}
-                            <img width="22" height="22" alt="Show sidebar" {#+ #}
-                            src="{{static_root_path|safe}}{{files.sidebar_svg}}"> {# #}
-                        </a> {# #}
+                        <a href="{{page.root_path|safe}}{{layout.krate|safe}}/all.html" title="show sidebar"></a> {# #}
                     </div> {# #}
                     {% endif %}
                     <input {#+ #}

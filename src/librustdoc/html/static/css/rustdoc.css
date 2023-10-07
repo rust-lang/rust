@@ -1597,6 +1597,16 @@ a.tooltip:hover::after {
 	border-color: var(--settings-button-border-focus);
 }
 
+#sidebar-button > a:before {
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
+		fill="none" stroke="black">\
+		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+		<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
+		<path d="m7.6121 3v16 M5.375 7.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
+	width: 22px;
+	height: 22px;
+}
+
 #copy-path {
 	color: var(--copy-path-button-color);
 	background: var(--main-background-color);
@@ -1981,6 +1991,17 @@ in src-script.js and main.js
 	/* We don't display these buttons on mobile devices. */
 	#copy-path, #help-button {
 		display: none;
+	}
+
+	/* sidebar button becomes topbar button */
+	#sidebar-button > a:before {
+		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+			viewBox="0 0 22 22" fill="none" stroke="black">\
+			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+			<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
+			<path d="m3 7.375h16m0-3h-4" stroke-width="1.25"/></svg>');
+		width: 22px;
+		height: 22px;
 	}
 
 	/* Display an alternating layout on tablets and phones */
@@ -2690,7 +2711,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 }
 
 :root[data-theme="ayu"] #settings-menu > a img,
-:root[data-theme="ayu"] #sidebar-button > a img {
+:root[data-theme="ayu"] #sidebar-button > a:before {
 	filter: invert(100);
 }
 /* End theme: ayu */
