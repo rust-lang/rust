@@ -1055,31 +1055,35 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // For each method in the chain, see if this is `Result::map_err` or
             // `Option::ok_or_else` and if it is, see if the closure passed to it has an incorrect
             // trailing `;`.
-            // Ideally we would instead use `FnCtxt::lookup_method_for_diagnostic` for 100%
-            // accurate check, but we are in the wrong stage to do that and looking for
-            // `Result::map_err` by checking the Self type and the path segment is enough.
-            // sym::ok_or_else
             if let Some(ty) = get_e_type(prev_ty)
                 && let Some(found_ty) = found_ty
+                // Ideally we would instead use `FnCtxt::lookup_method_for_diagnostic` for 100%
+                // accurate check, but we are in the wrong stage to do that and looking for
+                // `Result::map_err` by checking the Self type and the path segment is enough.
+                // sym::ok_or_else
                 && (
-                    (
+                    ( // Result::map_err
                         path_segment.ident.name == sym::map_err
                             && is_diagnostic_item(sym::Result, next_ty)
-                    ) || (
+                    ) || ( // Option::ok_or_else
                         path_segment.ident.name == sym::ok_or_else
                             && is_diagnostic_item(sym::Option, next_ty)
                     )
                 )
-                && [sym::map_err, sym::ok_or_else].contains(&path_segment.ident.name)
+                // Found `Result<_, ()>?`
                 && let ty::Tuple(tys) = found_ty.kind()
                 && tys.is_empty()
+                // The current method call returns `Result<_, ()>`
                 && self.can_eq(obligation.param_env, ty, found_ty)
+                // There's a single argument in the method call and it is a closure
                 && args.len() == 1
                 && let Some(arg) = args.get(0)
                 && let hir::ExprKind::Closure(closure) = arg.kind
+                // The closure has a block for its body with no tail expression
                 && let body = self.tcx.hir().body(closure.body)
                 && let hir::ExprKind::Block(block, _) = body.value.kind
                 && let None = block.expr
+                // The last statement is of a type that can be converted to the return error type
                 && let [.., stmt] = block.stmts
                 && let hir::StmtKind::Semi(expr) = stmt.kind
                 && let expr_ty = self.resolve_vars_if_possible(
