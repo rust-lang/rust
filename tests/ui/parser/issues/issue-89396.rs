@@ -8,9 +8,9 @@ fn main() {
     let _ = match opt {
         Some(_) = true,
         //~^ ERROR: expected one of
-        //~| HELP: try using a fat arrow here
+        //~| HELP: use a fat arrow to start a match arm
         None -> false,
         //~^ ERROR: expected one of
-        //~| HELP: try using a fat arrow here
+        //~| HELP: use a fat arrow to start a match arm
     };
 }
