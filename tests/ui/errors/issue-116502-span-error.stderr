@@ -1,0 +1,120 @@
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/issue-116502-span-error.rs:15:13
+   |
+LL |             _
+   |             ^ `_` not allowed here
+...
+LL |     let x: m!() = m!();
+   |                   ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/issue-116502-span-error.rs:15:13
+   |
+LL |             _
+   |             ^ `_` not allowed here
+...
+LL |     std::cell::Cell::<m!()>::new(m!());
+   |                                  ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/issue-116502-span-error.rs:15:13
+   |
+LL |             _
+   |             ^
+   |             |
+   |             not allowed in type signatures
+   |             not allowed in type signatures
+   |             not allowed in type signatures
+...
+LL |     struct S<T = m!()>(m!(), T)
+   |                  ----  ---- in this macro invocation
+   |                  |
+   |                  in this macro invocation
+LL |     where
+LL |         T: Trait<m!()>;
+   |                  ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use type parameters instead
+   |
+LL ~             U
+LL |
+ ...
+LL |     }
+LL ~     struct S<U>(m!(), T)
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for implementations
+  --> $DIR/issue-116502-span-error.rs:15:13
+   |
+LL |             _
+   |             ^
+   |             |
+   |             not allowed in type signatures
+   |             not allowed in type signatures
+   |             not allowed in type signatures
+...
+LL |     impl<T> std::ops::Index<m!()> for dyn Trait<(m!(), T)>
+   |                             ----                 ---- in this macro invocation
+   |                             |
+   |                             in this macro invocation
+LL |     where
+LL |         T: Trait<m!()>,
+   |                  ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use type parameters instead
+   |
+LL ~             U
+LL |
+ ...
+LL |     std::cell::Cell::<m!()>::new(m!());
+LL ~     impl<T, U> std::ops::Index<m!()> for dyn Trait<(m!(), T)>
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/issue-116502-span-error.rs:15:13
+   |
+LL |             _
+   |             ^ not allowed in type signatures
+...
+LL |         type Output = m!();
+   |                       ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/issue-116502-span-error.rs:15:13
+   |
+LL |             _
+   |             ^
+   |             |
+   |             not allowed in type signatures
+   |             not allowed in type signatures
+...
+LL |         fn index(&self, i: m!()) -> &m!() {
+   |                            ----      ---- in this macro invocation
+   |                            |
+   |                            in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use type parameters instead
+   |
+LL ~             T
+LL |
+ ...
+LL |         type Output = m!();
+LL ~         fn index<T>(&self, i: m!()) -> &m!() {
+   |
+help: try replacing `_` with the type in the corresponding trait method signature
+   |
+LL |             {type error}
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

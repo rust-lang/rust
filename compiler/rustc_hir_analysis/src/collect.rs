@@ -186,8 +186,18 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
 
     let params = generics.map(|g| g.params).unwrap_or_default();
     let type_name = params.next_type_param_name(None);
+
+    let mut placeholder_spans: Vec<Span> = vec![];
+    for span in &placeholder_types {
+        if placeholder_spans.iter().any(|sp| sp.source_equal(*span)) {
+            continue;
+        } else {
+            placeholder_spans.push(*span);
+        }
+    }
+
     let mut sugg: Vec<_> =
-        placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
+        placeholder_spans.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
 
     if let Some(generics) = generics {
         if let Some(arg) = params.iter().find(|arg| {
