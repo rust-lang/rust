@@ -241,6 +241,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, &this.thir[fun]));
+                let arg_spans = ClearCrossCrate::Set(
+                    args.iter().map(|arg| this.thir.exprs[*arg].span).collect::<Vec<_>>(),
+                );
                 let args: Vec<_> = args
                     .into_iter()
                     .copied()
@@ -259,6 +262,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::Call {
                         func: fun,
                         args,
+                        arg_spans,
                         unwind: UnwindAction::Continue,
                         destination,
                         // The presence or absence of a return edge affects control-flow sensitive

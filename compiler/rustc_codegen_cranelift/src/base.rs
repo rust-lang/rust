@@ -424,6 +424,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             TerminatorKind::Call {
                 func,
                 args,
+                arg_spans: _,
                 destination,
                 target,
                 fn_span,

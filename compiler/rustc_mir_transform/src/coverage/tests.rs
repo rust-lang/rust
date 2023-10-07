@@ -135,6 +135,7 @@ impl<'tcx> MockBlocks<'tcx> {
             TerminatorKind::Call {
                 func: Operand::Copy(self.dummy_place.clone()),
                 args: vec![],
+                arg_spans: ClearCrossCrate::default(),
                 destination: self.dummy_place.clone(),
                 target: Some(TEMP_BLOCK),
                 unwind: UnwindAction::Continue,

@@ -2,7 +2,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_middle::{mir::*, thir::*, ty};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::build::custom::ParseError;
@@ -121,9 +121,11 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     .iter()
                     .map(|arg| self.parse_operand(*arg))
                     .collect::<PResult<Vec<_>>>()?;
+                let arg_spans = ClearCrossCrate::Set(args.iter().map(|_| DUMMY_SP).collect());
                 Ok(TerminatorKind::Call {
                     func: fun,
                     args,
+                    arg_spans,
                     destination,
                     target: Some(target),
                     unwind: UnwindAction::Continue,

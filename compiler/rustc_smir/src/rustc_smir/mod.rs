@@ -939,6 +939,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             mir::TerminatorKind::Call {
                 func,
                 args,
+                arg_spans: _,
                 destination,
                 target,
                 unwind,

@@ -170,6 +170,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::Call {
                         func: exchange_malloc,
                         args: vec![Operand::Move(size), Operand::Move(align)],
+                        arg_spans: ClearCrossCrate::default(),
                         destination: storage,
                         target: Some(success),
                         unwind: UnwindAction::Continue,

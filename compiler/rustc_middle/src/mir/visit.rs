@@ -518,6 +518,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Call {
                         func,
                         args,
+                        arg_spans: _,
                         destination,
                         target: _,
                         unwind: _,

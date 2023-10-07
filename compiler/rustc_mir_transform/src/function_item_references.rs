@@ -31,6 +31,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
         if let TerminatorKind::Call {
             func,
             args,
+            arg_spans: _,
             destination: _,
             target: _,
             unwind: _,

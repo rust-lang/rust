@@ -125,6 +125,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::Call {
                 func,
                 args,
+                arg_spans: _,
                 destination,
                 target: _,
                 unwind: _,

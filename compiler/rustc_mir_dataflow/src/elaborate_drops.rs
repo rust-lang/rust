@@ -657,6 +657,7 @@ where
                         self.source_info.span,
                     ),
                     args: vec![Operand::Move(Place::from(ref_place))],
+                    arg_spans: ClearCrossCrate::default(),
                     destination: unit_temp,
                     target: Some(succ),
                     unwind: unwind.into_action(),

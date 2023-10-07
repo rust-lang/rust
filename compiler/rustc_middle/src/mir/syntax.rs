@@ -6,6 +6,7 @@
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 
 use crate::mir::coverage::CoverageKind;
+use crate::mir::ClearCrossCrate;
 use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::GenericArgsRef;
@@ -675,6 +676,10 @@ pub enum TerminatorKind<'tcx> {
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
         args: Vec<Operand<'tcx>>,
+        /// The spans of the args
+        /// (e.g. `a` and `b` in `x.foo(a, b)`).
+        /// Has the same length as `args` if set.
+        arg_spans: ClearCrossCrate<Vec<Span>>,
         /// Where the returned value will be written
         destination: Place<'tcx>,
         /// Where to go after this call returns. If none, the call necessarily diverges.

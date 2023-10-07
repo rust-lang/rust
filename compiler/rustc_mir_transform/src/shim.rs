@@ -524,6 +524,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             TerminatorKind::Call {
                 func,
                 args: vec![Operand::Move(ref_loc)],
+                arg_spans: ClearCrossCrate::default(),
                 destination: dest,
                 target: Some(next),
                 unwind: UnwindAction::Cleanup(cleanup),
@@ -814,6 +815,7 @@ fn build_call_shim<'tcx>(
         TerminatorKind::Call {
             func: callee,
             args,
+            arg_spans: ClearCrossCrate::default(),
             destination: Place::return_place(),
             target: Some(BasicBlock::new(1)),
             unwind: if let Some(Adjustment::RefMut) = rcvr_adjustment {

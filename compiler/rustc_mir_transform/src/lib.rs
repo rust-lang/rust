@@ -202,6 +202,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 terminator.kind = TerminatorKind::Call {
                     func,
                     args: arguments,
+                    arg_spans: ClearCrossCrate::default(),
                     destination,
                     target,
                     unwind,

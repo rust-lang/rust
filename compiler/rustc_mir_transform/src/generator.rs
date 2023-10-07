@@ -1661,6 +1661,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             TerminatorKind::Call {
                 func,
                 args,
+                arg_spans: _,
                 destination,
                 target: Some(_),
                 unwind: _,
