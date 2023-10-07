@@ -53,7 +53,7 @@
 //! _c = *_b // replaced by _c = _a
 //! ```
 
-use rustc_const_eval::interpret::MemoryKind;
+use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemoryKind};
 use rustc_const_eval::interpret::{ImmTy, InterpCx, MemPlaceMeta, OpTy, Projectable, Scalar};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -840,10 +840,13 @@ fn op_to_prop_const<'tcx>(
     if let Either::Left(mplace) = op.as_mplace_or_imm()
         && let MemPlaceMeta::None = mplace.meta()
     {
+        intern_const_alloc_for_constprop(ecx, &mplace).ok()?;
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
         let (alloc_id, offset) = pointer.into_parts();
-        if matches!(ecx.tcx.try_get_global_alloc(alloc_id), Some(GlobalAlloc::Memory(_))) {
-            return Some(ConstValue::Indirect { alloc_id, offset })
+        match ecx.tcx.global_alloc(alloc_id) {
+            GlobalAlloc::Memory(_) => return Some(ConstValue::Indirect { alloc_id, offset }),
+            // Fallthrough to copying the data.
+            _ => {}
         }
     }
 
