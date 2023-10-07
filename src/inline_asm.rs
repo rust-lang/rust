@@ -44,7 +44,9 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 ) {
     // FIXME add .eh_frame unwind info directives
 
-    if !template.is_empty() {
+    if !template.is_empty()
+        && (cfg!(not(feature = "inline_asm")) || fx.tcx.sess.target.is_like_windows)
+    {
         // Used by panic_abort
         if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
             fx.bcx.ins().trap(TrapCode::User(1));
