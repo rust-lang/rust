@@ -250,7 +250,7 @@ x--expand-yaml-anchors--remove:
         <<: *step
 
       - name: upload metrics to GitHub Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: metrics
           path: build/cpu-usage.csv
