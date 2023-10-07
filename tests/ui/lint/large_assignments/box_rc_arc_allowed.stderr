@@ -1,8 +1,8 @@
 error: moving 9999 bytes
-  --> $DIR/box_rc_arc_allowed.rs:16:13
+  --> $DIR/box_rc_arc_allowed.rs:16:25
    |
 LL |     let _ = NotBox::new([0; 9999]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^ value moved from here
+   |                         ^^^^^^^^^ value moved from here
    |
    = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 note: the lint level is defined here

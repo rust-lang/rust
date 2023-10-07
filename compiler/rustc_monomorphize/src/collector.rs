@@ -173,7 +173,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Local, Location};
+use rustc_middle::mir::{self, ClearCrossCrate, Local, Location};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -612,8 +612,8 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     }
 
     fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
-        let limit = self.tcx.move_size_limit().0;
-        if limit == 0 {
+        let limit = self.tcx.move_size_limit();
+        if limit.0 == 0 {
             return;
         }
 
@@ -625,18 +625,86 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             return;
         }
 
-        let limit = Size::from_bytes(limit);
-        let ty = operand.ty(self.body, self.tcx);
-        let ty = self.monomorphize(ty);
-        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else { return };
-        if layout.size <= limit {
-            return;
-        }
-        debug!(?layout);
         let source_info = self.body.source_info(location);
         debug!(?source_info);
-        for span in &self.move_size_spans {
-            if span.overlaps(source_info.span) {
+
+        if let Some(too_large_size) = self.operand_size_if_too_large(limit, operand) {
+            self.lint_large_assignment(limit.0, too_large_size, location, source_info.span);
+        };
+    }
+
+    fn check_fn_args_move_size(
+        &mut self,
+        callee_ty: Ty<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        arg_spans: &ClearCrossCrate<Vec<Span>>,
+        fn_span: Span,
+        location: Location,
+    ) {
+        let limit = self.tcx.move_size_limit();
+        if limit.0 == 0 {
+            return;
+        }
+
+        if args.is_empty() {
+            return;
+        }
+
+        let ClearCrossCrate::Set(arg_spans) = arg_spans else {
+            return;
+        };
+        assert_eq!(args.len(), arg_spans.len());
+
+        // Allow large moves into container types that themselves are cheap to move
+        let ty::FnDef(def_id, _) = *callee_ty.kind() else {
+            return;
+        };
+        if self
+            .skip_move_check_fns
+            .get_or_insert_with(|| build_skip_move_check_fns(self.tcx))
+            .contains(&def_id)
+        {
+            return;
+        }
+
+        debug!(?def_id, ?fn_span);
+
+        for (idx, arg) in args.iter().enumerate() {
+            if let Some(too_large_size) = self.operand_size_if_too_large(limit, arg) {
+                self.lint_large_assignment(limit.0, too_large_size, location, arg_spans[idx]);
+            };
+        }
+    }
+
+    fn operand_size_if_too_large(
+        &mut self,
+        limit: Limit,
+        operand: &mir::Operand<'tcx>,
+    ) -> Option<Size> {
+        let ty = operand.ty(self.body, self.tcx);
+        let ty = self.monomorphize(ty);
+        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else {
+            return None;
+        };
+        if layout.size.bytes_usize() > limit.0 {
+            debug!(?layout);
+            Some(layout.size)
+        } else {
+            None
+        }
+    }
+
+    fn lint_large_assignment(
+        &mut self,
+        limit: usize,
+        too_large_size: Size,
+        location: Location,
+        span: Span,
+    ) {
+        let source_info = self.body.source_info(location);
+        debug!(?source_info);
+        for reported_span in &self.move_size_spans {
+            if reported_span.overlaps(span) {
                 return;
             }
         }
@@ -653,46 +721,10 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         self.tcx.emit_spanned_lint(
             LARGE_ASSIGNMENTS,
             lint_root,
-            source_info.span,
-            LargeAssignmentsLint {
-                span: source_info.span,
-                size: layout.size.bytes(),
-                limit: limit.bytes(),
-            },
+            span,
+            LargeAssignmentsLint { span, size: too_large_size.bytes(), limit: limit as u64 },
         );
-        self.move_size_spans.push(source_info.span);
-    }
-
-    fn check_fn_args_move_size(
-        &mut self,
-        callee_ty: Ty<'tcx>,
-        args: &[mir::Operand<'tcx>],
-        location: Location,
-    ) {
-        let limit = self.tcx.move_size_limit();
-        if limit.0 == 0 {
-            return;
-        }
-
-        if args.is_empty() {
-            return;
-        }
-
-        // Allow large moves into container types that themselves are cheap to move
-        let ty::FnDef(def_id, _) = *callee_ty.kind() else {
-            return;
-        };
-        if self
-            .skip_move_check_fns
-            .get_or_insert_with(|| build_skip_move_check_fns(self.tcx))
-            .contains(&def_id)
-        {
-            return;
-        }
-
-        for arg in args {
-            self.check_operand_move_size(arg, location);
-        }
+        self.move_size_spans.push(span);
     }
 }
 
@@ -811,10 +843,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         };
 
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, ref args, .. } => {
+            mir::TerminatorKind::Call {
+                ref func, ref args, ref arg_spans, ref fn_span, ..
+            } => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
-                self.check_fn_args_move_size(callee_ty, args, location);
+                self.check_fn_args_move_size(callee_ty, args, arg_spans, *fn_span, location);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
