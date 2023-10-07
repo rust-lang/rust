@@ -8,7 +8,9 @@ fn foo() -> Result<String, String> { //~ NOTE expected `String` because of this
         });
     let one = x
         .map(|s| ())
-        .map_err(|_| ()) //~ NOTE this can't be annotated with `?` because it has type `Result<_, ()>`
+        .map_err(|e| { //~ NOTE this can't be annotated with `?` because it has type `Result<_, ()>`
+            e; //~ HELP remove this semicolon
+        })
         .map(|()| "")?; //~ ERROR `?` couldn't convert the error to `String`
     //~^ NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
@@ -17,6 +19,7 @@ fn foo() -> Result<String, String> { //~ NOTE expected `String` because of this
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
     //~| NOTE required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
+    //~| HELP the following other types implement trait `From<T>`:
     Ok(one.to_string())
 }
 
@@ -33,6 +36,7 @@ fn bar() -> Result<(), String> { //~ NOTE expected `String` because of this
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
     //~| NOTE required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
+    //~| HELP the following other types implement trait `From<T>`:
     Ok(one)
 }
 
@@ -42,7 +46,7 @@ fn baz() -> Result<String, String> { //~ NOTE expected `String` because of this
         .split_whitespace()
         .next()
         .ok_or_else(|| { //~ NOTE this can't be annotated with `?` because it has type `Result<_, ()>`
-            "Couldn't split the test string";
+            "Couldn't split the test string"; //~ HELP remove this semicolon
         })?;
     //~^ ERROR `?` couldn't convert the error to `String`
     //~| NOTE in this expansion of desugaring of operator `?`
@@ -52,6 +56,7 @@ fn baz() -> Result<String, String> { //~ NOTE expected `String` because of this
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
     //~| NOTE required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
+    //~| HELP the following other types implement trait `From<T>`:
     Ok(one.to_string())
 }
 
