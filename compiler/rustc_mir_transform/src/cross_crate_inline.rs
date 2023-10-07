@@ -62,13 +62,36 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     };
 
     let mir = tcx.optimized_mir(def_id);
-    let mut checker =
-        CostChecker { tcx, callee_body: mir, calls: 0, statements: 0, landing_pads: 0, resumes: 0 };
+    let mut checker = CostChecker {
+        tcx,
+        callee_body: mir,
+        calls: 0,
+        statements: 0,
+        landing_pads: 0,
+        resumes: 0,
+        branches: 0,
+        asserts: 0,
+    };
     checker.visit_body(mir);
-    checker.calls == 0
+    let is_leaf = checker.calls == 0
         && checker.resumes == 0
         && checker.landing_pads == 0
-        && checker.statements <= threshold
+        && checker.statements <= threshold;
+
+    let is_trivial_wrapper = checker.calls == 1
+        && checker.resumes == 0
+        && checker.landing_pads == 0
+        && mir.basic_blocks.len() == 2;
+
+    if is_trivial_wrapper {
+        let span = tcx.def_span(def_id);
+        tcx.sess.emit_warning(crate::errors::SuggestAddingInline {
+            place: span,
+            suggest_inline: span.with_hi(span.lo()),
+            statements: checker.statements,
+        });
+    }
+    is_leaf
 }
 
 struct CostChecker<'b, 'tcx> {
@@ -78,6 +101,8 @@ struct CostChecker<'b, 'tcx> {
     statements: usize,
     landing_pads: usize,
     resumes: usize,
+    branches: usize,
+    asserts: usize,
 }
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
@@ -111,7 +136,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 }
             }
             TerminatorKind::Assert { unwind, .. } => {
-                self.calls += 1;
+                self.asserts += 1;
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.landing_pads += 1;
                 }
@@ -122,6 +147,10 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.landing_pads += 1;
                 }
+            }
+            TerminatorKind::SwitchInt { .. } => {
+                self.statements += 1;
+                self.branches += 1;
             }
             TerminatorKind::Return => {}
             _ => self.statements += 1,

@@ -278,3 +278,13 @@ pub(crate) struct MustNotSuspendReason {
     pub span: Span,
     pub reason: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(mir_transform_small_fn_without_inline)]
+pub struct SuggestAddingInline {
+    #[primary_span]
+    pub place: Span,
+    #[suggestion(code = "#[inline]\n", applicability = "machine-applicable")]
+    pub suggest_inline: Span,
+    pub statements: usize,
+}

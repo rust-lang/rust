@@ -42,6 +42,9 @@ mir_transform_requires_unsafe = {$details} is unsafe and requires unsafe {$op_in
     }
     .not_inherited = items do not inherit unsafety from separate enclosing items
 
+mir_transform_small_fn_without_inline = this function looks small ({$statements}) but doesn't have #[inline], consider adding it
+    .suggestion = add the inline attribute
+
 mir_transform_target_feature_call_label = call to function with `#[target_feature]`
 mir_transform_target_feature_call_note = can only be called if the required target features are available
 
