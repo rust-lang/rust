@@ -16,7 +16,7 @@ use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::OnceCell;
 
-pub use crate::utils::dylib_util::{dylib_path, dylib_path_var};
+pub use crate::utils::dylib::{dylib_path, dylib_path_var};
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///

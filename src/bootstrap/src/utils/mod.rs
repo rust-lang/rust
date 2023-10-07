@@ -5,7 +5,7 @@
 pub(crate) mod cache;
 pub(crate) mod cc_detect;
 pub(crate) mod channel;
-pub(crate) mod dylib_util;
+pub(crate) mod dylib;
 pub(crate) mod helpers;
 pub(crate) mod job;
 #[cfg(feature = "build-metrics")]

@@ -25,7 +25,7 @@ use dylib_util::{dylib_path, dylib_path_var};
 #[path = "../utils/bin_helpers.rs"]
 mod bin_helpers;
 
-#[path = "../utils/dylib_util.rs"]
+#[path = "../utils/dylib.rs"]
 mod dylib_util;
 
 fn main() {
