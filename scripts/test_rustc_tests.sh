@@ -11,14 +11,8 @@ pushd rust
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
-for test in $(rg --files-with-matches "lto|// needs-asm-support" tests/{codegen-units,ui,incremental}); do
+for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
   rm $test
-done
-
-for test in tests/run-make/**/Makefile; do
-  if rg "# needs-asm-support" $test >/dev/null; then
-    rm -r $(dirname $test)
-  fi
 done
 
 for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
@@ -36,8 +30,9 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 rm -r tests/run-make/comment-section # cg_clif doesn't yet write the .comment section
 
 # requires stack unwinding
-# FIXME add needs-unwind to this test
+# FIXME add needs-unwind to these tests
 rm -r tests/run-make/libtest-junit
+rm tests/ui/asm/may_unwind.rs
 
 # extra warning about -Cpanic=abort for proc macros
 rm tests/ui/proc-macro/crt-static.rs
@@ -78,6 +73,8 @@ rm -r tests/run-make/symbols-include-type-name # --emit=asm not supported
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
 rm -r tests/run-make/use-extern-for-plugins # same
+rm tests/ui/asm/x86_64/issue-82869.rs # vector regs in inline asm not yet supported
+rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 
 # requires LTO
 rm -r tests/run-make/cdylib
