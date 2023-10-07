@@ -249,11 +249,9 @@ flavor. Valid options are:
 * `gcc`: use the `cc` executable, which is typically gcc or clang on many systems.
 * `ld`: use the `ld` executable.
 * `msvc`: use the `link.exe` executable from Microsoft Visual Studio MSVC.
-* `ptx-linker`: use
-  [`rust-ptx-linker`](https://github.com/denzp/rust-ptx-linker) for Nvidia
-  NVPTX GPGPU support.
-* `bpf-linker`: use
-  [`bpf-linker`](https://github.com/alessandrod/bpf-linker) for eBPF support.
+* `ptx`: use [`rust-ptx-linker`](https://github.com/denzp/rust-ptx-linker)
+  for Nvidia NVPTX GPGPU support.
+* `bpf`: use [`bpf-linker`](https://github.com/alessandrod/bpf-linker) for eBPF support.
 * `wasm-ld`: use the [`wasm-ld`](https://lld.llvm.org/WebAssembly.html)
   executable, a port of LLVM `lld` for WebAssembly.
 * `ld64.lld`: use the LLVM `lld` executable with the [`-flavor darwin`
