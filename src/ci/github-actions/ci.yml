@@ -249,6 +249,18 @@ x--expand-yaml-anchors--remove:
         if: success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
         <<: *step
 
+      - name: upload metrics to GitHub Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics
+          path: build/cpu-usage.csv
+          if-no-files-found: ignore
+          retention-days: 5
+        # Having `always` makes metric collection always happen even if the prior
+        # steps fail. This is useful for because the whole point of metrics is to
+        # help gathering information about the runtime of the CI.
+        if: always() && !env.SKIP_JOB
+        <<: *step
   # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
   # Check out their documentation for more information on why they're needed.
 
