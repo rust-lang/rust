@@ -15,19 +15,24 @@
 //! switching compilers for the bootstrap and for build scripts will probably
 //! never get replaced.
 
-include!("../dylib_util.rs");
-include!("./_helper.rs");
-
 use std::env;
 use std::path::PathBuf;
-use std::process::{exit, Child, Command};
+use std::process::{Child, Command};
 use std::time::Instant;
+
+use dylib_util::{dylib_path, dylib_path_var};
+
+#[path = "../utils/bin_helpers.rs"]
+mod bin_helpers;
+
+#[path = "../utils/dylib_util.rs"]
+mod dylib_util;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
-    let verbose = parse_rustc_verbose();
+    let verbose = bin_helpers::parse_rustc_verbose();
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)

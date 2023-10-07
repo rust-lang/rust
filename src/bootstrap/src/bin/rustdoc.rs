@@ -5,17 +5,21 @@
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
-use std::process::{exit, Command};
+use std::process::Command;
 
-include!("../dylib_util.rs");
+use dylib_util::{dylib_path, dylib_path_var};
 
-include!("./_helper.rs");
+#[path = "../utils/bin_helpers.rs"]
+mod bin_helpers;
+
+#[path = "../utils/dylib_util.rs"]
+mod dylib_util;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
 
-    let stage = parse_rustc_stage();
-    let verbose = parse_rustc_verbose();
+    let stage = bin_helpers::parse_rustc_stage();
+    let verbose = bin_helpers::parse_rustc_verbose();
 
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
