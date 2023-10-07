@@ -15,9 +15,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::cache::INTERNER;
-use crate::config::Target;
-use crate::util::output;
+use crate::core::config::Target;
+use crate::utils::cache::INTERNER;
+use crate::utils::helpers::output;
 use crate::Build;
 
 pub struct Finder {

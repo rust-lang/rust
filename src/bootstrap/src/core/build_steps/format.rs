@@ -1,7 +1,7 @@
 //! Runs rustfmt on the repository.
 
-use crate::builder::Builder;
-use crate::util::{output, program_out_of_date, t};
+use crate::core::builder::Builder;
+use crate::utils::helpers::{output, program_out_of_date, t};
 use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;

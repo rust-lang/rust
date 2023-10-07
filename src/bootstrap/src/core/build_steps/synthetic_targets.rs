@@ -7,8 +7,8 @@
 //! one of the target specs already defined in this module, or create new ones by adding a new step
 //! that calls create_synthetic_target.
 
-use crate::builder::{Builder, ShouldRun, Step};
-use crate::config::TargetSelection;
+use crate::core::builder::{Builder, ShouldRun, Step};
+use crate::core::config::TargetSelection;
 use crate::Compiler;
 use std::process::{Command, Stdio};
 
@@ -76,7 +76,7 @@ fn create_synthetic_target(
 
     std::fs::write(&path, &serde_json::to_vec_pretty(&spec).unwrap()).unwrap();
     let target = TargetSelection::create_synthetic(&name, path.to_str().unwrap());
-    crate::cc_detect::find_target(builder, target);
+    crate::utils::cc_detect::find_target(builder, target);
 
     target
 }

@@ -13,21 +13,24 @@ use std::process::{Command, Stdio};
 
 use clap_complete::shells;
 
-use crate::builder::crate_description;
-use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
-use crate::cache::Interned;
-use crate::cache::INTERNER;
-use crate::compile;
-use crate::config::TargetSelection;
-use crate::dist;
-use crate::doc::DocumentationFormat;
-use crate::flags::Subcommand;
-use crate::llvm;
-use crate::render_tests::add_flags_and_try_run_tests;
-use crate::synthetic_targets::MirOptPanicAbortSyntheticTarget;
-use crate::tool::{self, SourceType, Tool};
-use crate::toolstate::ToolState;
-use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t, up_to_date};
+use crate::core::build_steps::compile;
+use crate::core::build_steps::dist;
+use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::llvm;
+use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
+use crate::core::build_steps::tool::{self, SourceType, Tool};
+use crate::core::build_steps::toolstate::ToolState;
+use crate::core::builder::crate_description;
+use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
+use crate::core::config::flags::get_completion;
+use crate::core::config::flags::Subcommand;
+use crate::core::config::TargetSelection;
+use crate::utils;
+use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::helpers::{
+    self, add_link_lib_path, dylib_path, dylib_path_var, output, t, up_to_date,
+};
+use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
@@ -167,7 +170,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         // Run the linkchecker.
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         builder.run_delaying_failure(linkchecker.arg(builder.out.join(host.triple).join("doc")));
     }
 
@@ -219,7 +222,11 @@ impl Step for HtmlCheck {
         }
         // Ensure that a few different kinds of documentation are available.
         builder.default_doc(&[]);
-        builder.ensure(crate::doc::Rustc::new(builder.top_stage, self.target, builder));
+        builder.ensure(crate::core::build_steps::doc::Rustc::new(
+            builder.top_stage,
+            self.target,
+            builder,
+        ));
 
         builder.run_delaying_failure(
             builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)),
@@ -260,7 +267,7 @@ impl Step for Cargotest {
         let out_dir = builder.out.join("ct");
         t!(fs::create_dir_all(&out_dir));
 
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
         builder.run_delaying_failure(
             cmd.arg(&cargo)
@@ -328,7 +335,7 @@ impl Step for Cargo {
             builder,
         );
 
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         add_flags_and_try_run_tests(builder, &mut cargo);
     }
 }
@@ -642,7 +649,7 @@ impl Step for Miri {
         // does not understand the flags added by `add_flags_and_try_run_test`.
         let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
         {
-            let _time = util::timeit(&builder);
+            let _time = helpers::timeit(&builder);
             builder.run(&mut cargo);
         }
 
@@ -658,7 +665,7 @@ impl Step for Miri {
 
             let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
             {
-                let _time = util::timeit(&builder);
+                let _time = helpers::timeit(&builder);
                 builder.run(&mut cargo);
             }
         }
@@ -698,7 +705,7 @@ impl Step for Miri {
 
         let mut cargo = Command::from(cargo);
         {
-            let _time = util::timeit(&builder);
+            let _time = helpers::timeit(&builder);
             builder.run(&mut cargo);
         }
     }
@@ -859,7 +866,7 @@ impl Step for RustdocTheme {
         if builder.is_fuse_ld_lld(self.compiler.host) {
             cmd.env(
                 "RUSTDOC_LLD_NO_THREADS",
-                util::lld_flag_no_threads(self.compiler.host.contains("windows")),
+                helpers::lld_flag_no_threads(self.compiler.host.contains("windows")),
             );
         }
         builder.run_delaying_failure(&mut cmd);
@@ -900,7 +907,8 @@ impl Step for RustdocJSStd {
             .arg("--test-folder")
             .arg(builder.src.join("tests/rustdoc-js-std"));
         for path in &builder.paths {
-            if let Some(p) = util::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder) {
+            if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder)
+            {
                 if !p.ends_with(".js") {
                     eprintln!("A non-js file was given: `{}`", path.display());
                     panic!("Cannot run rustdoc-js-std tests");
@@ -908,7 +916,7 @@ impl Step for RustdocJSStd {
                 command.arg("--test-file").arg(path);
             }
         }
-        builder.ensure(crate::doc::Std::new(
+        builder.ensure(crate::core::build_steps::doc::Std::new(
             builder.top_stage,
             self.target,
             builder,
@@ -1035,7 +1043,7 @@ impl Step for RustdocGUI {
             .env("RUSTC", builder.rustc(self.compiler));
 
         for path in &builder.paths {
-            if let Some(p) = util::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
+            if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
                 if !p.ends_with(".goml") {
                     eprintln!("A non-goml file was given: `{}`", path.display());
                     panic!("Cannot run rustdoc-gui tests");
@@ -1058,7 +1066,7 @@ impl Step for RustdocGUI {
             cmd.arg("--npm").arg(npm);
         }
 
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         let _guard = builder.msg_sysroot_tool(
             Kind::Test,
             self.compiler.stage,
@@ -1066,7 +1074,7 @@ impl Step for RustdocGUI {
             self.compiler.host,
             self.target,
         );
-        crate::render_tests::try_run_tests(builder, &mut cmd, true);
+        try_run_tests(builder, &mut cmd, true);
     }
 }
 
@@ -1126,7 +1134,7 @@ help: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                 );
                 crate::exit!(1);
             }
-            crate::format::format(&builder, !builder.config.cmd.bless(), &[]);
+            crate::core::build_steps::format::format(&builder, !builder.config.cmd.bless(), &[]);
         }
 
         builder.info("tidy check");
@@ -1138,10 +1146,10 @@ help: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
             .map(|filename| builder.src.join("src/etc/completions").join(filename));
         if builder.config.cmd.bless() {
-            builder.ensure(crate::run::GenerateCompletions);
-        } else if crate::flags::get_completion(shells::Bash, &bash).is_some()
-            || crate::flags::get_completion(shells::Fish, &fish).is_some()
-            || crate::flags::get_completion(shells::PowerShell, &powershell).is_some()
+            builder.ensure(crate::core::build_steps::run::GenerateCompletions);
+        } else if get_completion(shells::Bash, &bash).is_some()
+            || get_completion(shells::Fish, &fish).is_some()
+            || get_completion(shells::PowerShell, &powershell).is_some()
             || crate::flags::get_completion(shells::Zsh, &zsh).is_some()
         {
             eprintln!(
@@ -1403,10 +1411,10 @@ impl Step for MirOpt {
                     // have been detected by bootstrap if the target we're testing wasn't in the
                     // --target flags.
                     if !builder.cc.borrow().contains_key(&target_32bit) {
-                        crate::cc_detect::find_target(builder, target_32bit);
+                        utils::cc_detect::find_target(builder, target_32bit);
                     }
                     if !builder.cc.borrow().contains_key(&target_64bit) {
-                        crate::cc_detect::find_target(builder, target_64bit);
+                        utils::cc_detect::find_target(builder, target_64bit);
                     }
 
                     vec![target_32bit, target_64bit]
@@ -1679,7 +1687,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
 
-        if util::forcing_clang_based_tests() {
+        if helpers::forcing_clang_based_tests() {
             let clang_exe = builder.llvm_out(target).join("bin").join("clang");
             cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
         }
@@ -1698,7 +1706,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         // Get test-args by striping suite path
         let mut test_args: Vec<&str> = paths
             .iter()
-            .filter_map(|p| util::is_valid_test_suite_arg(p, suite_path, builder))
+            .filter_map(|p| helpers::is_valid_test_suite_arg(p, suite_path, builder))
             .collect();
 
         test_args.append(&mut builder.config.test_args());
@@ -1887,7 +1895,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             compiler.host,
             target,
         );
-        crate::render_tests::try_run_tests(builder, &mut cmd, false);
+        try_run_tests(builder, &mut cmd, false);
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
@@ -1909,8 +1917,8 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 "Check compiletest suite={} mode={} compare_mode={} ({} -> {})",
                 suite, mode, compare_mode, &compiler.host, target
             ));
-            let _time = util::timeit(&builder);
-            crate::render_tests::try_run_tests(builder, &mut cmd, false);
+            let _time = helpers::timeit(&builder);
+            try_run_tests(builder, &mut cmd, false);
         }
     }
 }
@@ -1981,7 +1989,7 @@ impl BookTest {
             compiler.host,
             compiler.host,
         );
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         let toolstate = if builder.run_delaying_failure(&mut rustbook_cmd) {
             ToolState::TestPass
         } else {
@@ -2003,7 +2011,7 @@ impl BookTest {
         // Do a breadth-first traversal of the `src/doc` directory and just run
         // tests for all files that end in `*.md`
         let mut stack = vec![builder.src.join(self.path)];
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         let mut files = Vec::new();
         while let Some(p) = stack.pop() {
             if p.is_dir() {
@@ -2114,7 +2122,7 @@ impl Step for ErrorIndex {
 
         let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         builder.run_quiet(&mut tool);
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
@@ -2236,7 +2244,7 @@ fn run_cargo_test<'a>(
 ) -> bool {
     let mut cargo =
         prepare_cargo_test(cargo, libtest_args, crates, primary_crate, compiler, target, builder);
-    let _time = util::timeit(&builder);
+    let _time = helpers::timeit(&builder);
     let _group = description.into().and_then(|what| {
         builder.msg_sysroot_tool(Kind::Test, compiler.stage, what, compiler.host, target)
     });
@@ -2631,7 +2639,7 @@ impl Step for RemoteCopyLibs {
         for f in t!(builder.sysroot_libdir(compiler, target).read_dir()) {
             let f = t!(f);
             let name = f.file_name().into_string().unwrap();
-            if util::is_dylib(&name) {
+            if helpers::is_dylib(&name) {
                 builder.run(Command::new(&tool).arg("push").arg(f.path()));
             }
         }
@@ -2676,7 +2684,9 @@ impl Step for Distcheck {
                 .current_dir(&dir),
         );
         builder.run(
-            Command::new(util::make(&builder.config.build.triple)).arg("check").current_dir(&dir),
+            Command::new(helpers::make(&builder.config.build.triple))
+                .arg("check")
+                .current_dir(&dir),
         );
 
         // Now make sure that rust-src has all of libstd's dependencies
@@ -2833,7 +2843,7 @@ impl Step for LintDocs {
     /// Tests that the lint examples in the rustc book generate the correct
     /// lints and have the expected format.
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(crate::doc::RustcBook {
+        builder.ensure(crate::core::build_steps::doc::RustcBook {
             compiler: self.compiler,
             target: self.target,
             validate: true,
@@ -3052,7 +3062,7 @@ impl Step for CodegenCranelift {
             &compiler.host,
             target
         ));
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
 
         // FIXME handle vendoring for source tarballs before removing the --skip-test below
         let download_dir = builder.out.join("cg_clif_download");

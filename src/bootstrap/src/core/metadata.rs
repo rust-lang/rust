@@ -3,8 +3,8 @@ use std::process::Command;
 
 use serde_derive::Deserialize;
 
-use crate::cache::INTERNER;
-use crate::util::output;
+use crate::utils::cache::INTERNER;
+use crate::utils::helpers::output;
 use crate::{t, Build, Crate};
 
 /// For more information, see the output of

@@ -9,9 +9,9 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use crate::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
-use crate::cache::Interned;
-use crate::util::t;
+use crate::core::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
+use crate::utils::cache::Interned;
+use crate::utils::helpers::t;
 use crate::{Build, Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

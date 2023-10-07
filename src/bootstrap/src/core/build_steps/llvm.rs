@@ -16,11 +16,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::channel;
-use crate::config::{Config, TargetSelection};
-use crate::util::get_clang_cl_resource_dir;
-use crate::util::{self, exe, output, t, up_to_date};
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::config::{Config, TargetSelection};
+use crate::utils::channel;
+use crate::utils::helpers::{self, exe, get_clang_cl_resource_dir, output, t, up_to_date};
 use crate::{CLang, GitRepo, Kind};
 
 use build_helper::ci::CiEnv;
@@ -281,7 +280,7 @@ impl Step for Llvm {
 
         let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
         t!(stamp.remove());
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
         // https://llvm.org/docs/CMake.html
@@ -410,7 +409,7 @@ impl Step for Llvm {
 
         let mut enabled_llvm_projects = Vec::new();
 
-        if util::forcing_clang_based_tests() {
+        if helpers::forcing_clang_based_tests() {
             enabled_llvm_projects.push("clang");
             enabled_llvm_projects.push("compiler-rt");
         }
@@ -528,8 +527,12 @@ impl Step for Llvm {
 
             // If the shared library exists in LLVM's `/build/lib/` or `/lib/` folders, strip its
             // debuginfo.
-            crate::compile::strip_debug(builder, target, &out_dir.join("lib").join(&lib_name));
-            crate::compile::strip_debug(
+            crate::core::build_steps::compile::strip_debug(
+                builder,
+                target,
+                &out_dir.join("lib").join(&lib_name),
+            );
+            crate::core::build_steps::compile::strip_debug(
                 builder,
                 target,
                 &out_dir.join("build").join("lib").join(&lib_name),
@@ -846,7 +849,7 @@ impl Step for Lld {
         }
 
         let _guard = builder.msg_unstaged(Kind::Build, "LLD", target);
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
@@ -877,7 +880,7 @@ impl Step for Lld {
         // `LD_LIBRARY_PATH` overrides)
         //
         if builder.config.rpath_enabled(target)
-            && util::use_host_linker(target)
+            && helpers::use_host_linker(target)
             && builder.config.llvm_link_shared()
             && target.contains("linux")
         {
@@ -970,7 +973,7 @@ impl Step for Sanitizers {
 
         let _guard = builder.msg_unstaged(Kind::Build, "sanitizers", self.target);
         t!(stamp.remove());
-        let _time = util::timeit(&builder);
+        let _time = helpers::timeit(&builder);
 
         let mut cfg = cmake::Config::new(&compiler_rt_dir);
         cfg.profile("Release");

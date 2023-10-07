@@ -1,13 +1,15 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::config::TargetSelection;
-use crate::dist::distdir;
-use crate::flags::get_completion;
-use crate::test;
-use crate::tool::{self, SourceType, Tool};
-use crate::util::output;
+use clap_complete::shells;
+
+use crate::core::build_steps::dist::distdir;
+use crate::core::build_steps::test;
+use crate::core::build_steps::tool::{self, SourceType, Tool};
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::config::flags::get_completion;
+use crate::core::config::TargetSelection;
+use crate::utils::helpers::output;
 use crate::Mode;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

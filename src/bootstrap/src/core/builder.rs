@@ -12,20 +12,15 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use crate::cache::{Cache, Interned, INTERNER};
-use crate::config::{DryRun, SplitDebuginfo, TargetSelection};
-use crate::doc;
-use crate::flags::{Color, Subcommand};
-use crate::install;
-use crate::llvm;
-use crate::run;
-use crate::setup;
-use crate::test;
-use crate::tool::{self, SourceType};
-use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
+use crate::core::build_steps::llvm;
+use crate::core::build_steps::tool::{self, SourceType};
+use crate::core::build_steps::{check, clean, compile, dist, doc, install, run, setup, test};
+use crate::core::config::flags::{Color, Subcommand};
+use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
+use crate::utils::cache::{Cache, Interned, INTERNER};
+use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
+use crate::Crate;
 use crate::EXTRA_CHECK_CFGS;
-use crate::{check, compile, Crate};
-use crate::{clean, dist};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -35,6 +30,10 @@ pub use crate::Compiler;
 // Once they get stabilized and reach beta.
 use clap::ValueEnum;
 use once_cell::sync::{Lazy, OnceCell};
+
+#[cfg(test)]
+#[path = "../tests/builder.rs"]
+mod tests;
 
 pub struct Builder<'a> {
     pub build: &'a Build,
@@ -723,7 +722,7 @@ impl<'a> Builder<'a> {
                 check::Bootstrap
             ),
             Kind::Test => describe!(
-                crate::toolstate::ToolStateCheck,
+                crate::core::build_steps::toolstate::ToolStateCheck,
                 test::ExpandYamlAnchors,
                 test::Tidy,
                 test::Ui,
@@ -1297,8 +1296,8 @@ impl<'a> Builder<'a> {
 
         // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
-        cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
-        if let Some(e) = env::var_os(util::dylib_path_var()) {
+        cargo.env("REAL_LIBRARY_PATH_VAR", &helpers::dylib_path_var());
+        if let Some(e) = env::var_os(helpers::dylib_path_var()) {
             cargo.env("REAL_LIBRARY_PATH", e);
         }
 
@@ -1311,7 +1310,7 @@ impl<'a> Builder<'a> {
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
-            if crate::llvm::prebuilt_llvm_config(self, target).is_err() {
+            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target).is_err() {
                 cargo.env("RUST_CHECK", "1");
             }
         }
@@ -1643,7 +1642,7 @@ impl<'a> Builder<'a> {
         // argument manually via `-C link-args=-Wl,-rpath,...`. Plus isn't it
         // fun to pass a flag to a tool to pass a flag to pass a flag to a tool
         // to change a flag in a binary?
-        if self.config.rpath_enabled(target) && util::use_host_linker(target) {
+        if self.config.rpath_enabled(target) && helpers::use_host_linker(target) {
             let libdir = self.sysroot_libdir_relative(compiler).to_str().unwrap();
             let rpath = if target.contains("apple") {
                 // Note that we need to take one extra step on macOS to also pass
@@ -2196,9 +2195,6 @@ impl<'a> Builder<'a> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;
 
 /// Represents flag values in `String` form with whitespace delimiter to pass it to the compiler later.
 ///

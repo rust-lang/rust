@@ -1,12 +1,11 @@
 #![cfg_attr(feature = "build-metrics", allow(unused))]
 
+use clap::Parser;
+use std::path::PathBuf;
 use std::str::FromStr;
 
-use std::path::PathBuf;
-
-use clap::Parser;
-
-use crate::{builder::Builder, tool::Tool};
+use crate::core::build_steps::tool::Tool;
+use crate::core::builder::Builder;
 
 /// Suggests a list of possible `x.py` commands to run based on modified files in branch.
 pub fn suggest(builder: &Builder<'_>, run: bool) {
@@ -62,7 +61,7 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
         for sug in suggestions {
             let mut build: crate::Build = builder.build.clone();
             build.config.paths = sug.2;
-            build.config.cmd = crate::flags::Flags::parse_from(["x.py", sug.0]).cmd;
+            build.config.cmd = crate::core::config::flags::Flags::parse_from(["x.py", sug.0]).cmd;
             if let Some(stage) = sug.1 {
                 build.config.stage = stage;
             }

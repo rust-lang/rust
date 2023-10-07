@@ -19,16 +19,16 @@ use std::process::Command;
 use object::read::archive::ArchiveFile;
 use object::BinaryFormat;
 
-use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
-use crate::cache::{Interned, INTERNER};
-use crate::channel;
-use crate::compile;
-use crate::config::TargetSelection;
-use crate::doc::DocumentationFormat;
-use crate::llvm;
-use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
-use crate::tool::{self, Tool};
-use crate::util::{exe, is_dylib, output, t, timeit};
+use crate::core::build_steps::compile;
+use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::llvm;
+use crate::core::build_steps::tool::{self, Tool};
+use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::core::config::TargetSelection;
+use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::channel;
+use crate::utils::helpers::{exe, is_dylib, output, t, timeit};
+use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
@@ -104,7 +104,7 @@ impl Step for JsonDocs {
     /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        builder.ensure(crate::doc::Std::new(
+        builder.ensure(crate::core::build_steps::doc::Std::new(
             builder.top_stage,
             host,
             builder,
@@ -488,7 +488,7 @@ impl Step for Rustc {
             let man_src = builder.src.join("src/doc/man");
             let man_dst = image.join("share/man/man1");
 
-            // don't use our `bootstrap::util::{copy, cp_r}`, because those try
+            // don't use our `bootstrap::{copy, cp_r}`, because those try
             // to hardlink, and we don't want to edit the source templates
             for file_entry in builder.read_dir(&man_src) {
                 let page_src = file_entry.path();
@@ -2060,7 +2060,7 @@ impl Step for LlvmTools {
             }
         }
 
-        builder.ensure(crate::llvm::Llvm { target });
+        builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
         let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
@@ -2119,10 +2119,10 @@ impl Step for RustDev {
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
 
-        builder.ensure(crate::llvm::Llvm { target });
+        builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
         // We want to package `lld` to use it with `download-ci-llvm`.
-        builder.ensure(crate::llvm::Lld { target });
+        builder.ensure(crate::core::build_steps::llvm::Lld { target });
 
         let src_bindir = builder.llvm_out(target).join("bin");
         // If updating this list, you likely want to change

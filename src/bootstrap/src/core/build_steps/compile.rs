@@ -19,16 +19,17 @@ use std::str;
 
 use serde_derive::Deserialize;
 
-use crate::builder::crate_description;
-use crate::builder::Cargo;
-use crate::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
-use crate::cache::{Interned, INTERNER};
-use crate::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
-use crate::dist;
-use crate::llvm;
-use crate::tool::SourceType;
-use crate::util::get_clang_cl_resource_dir;
-use crate::util::{exe, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date};
+use crate::core::build_steps::dist;
+use crate::core::build_steps::llvm;
+use crate::core::build_steps::tool::SourceType;
+use crate::core::builder::crate_description;
+use crate::core::builder::Cargo;
+use crate::core::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
+use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
+use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::helpers::{
+    exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date,
+};
 use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
 use filetime::FileTime;
@@ -510,7 +511,7 @@ impl Step for StdLink {
         let (libdir, hostdir) = if self.force_recompile && builder.download_rustc() {
             // NOTE: copies part of `sysroot_libdir` to avoid having to add a new `force_recompile` argument there too
             let lib = builder.sysroot_libdir_relative(self.compiler);
-            let sysroot = builder.ensure(crate::compile::Sysroot {
+            let sysroot = builder.ensure(crate::core::build_steps::compile::Sysroot {
                 compiler: self.compiler,
                 force_recompile: self.force_recompile,
             });
@@ -1016,7 +1017,8 @@ pub fn rustc_cargo_env(
     // detected that LLVM is already built and good to go which helps prevent
     // busting caches (e.g. like #71152).
     if builder.config.llvm_enabled() {
-        let building_is_expensive = crate::llvm::prebuilt_llvm_config(builder, target).is_err();
+        let building_is_expensive =
+            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target).is_err();
         // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
         let can_skip_build = builder.kind == Kind::Check && builder.top_stage == stage;
         let should_skip_build = building_is_expensive && can_skip_build;
@@ -1684,7 +1686,7 @@ impl Step for Assemble {
             builder.copy(&lld_install.join("bin").join(&src_exe), &libdir_bin.join(&dst_exe));
             let self_contained_lld_dir = libdir_bin.join("gcc-ld");
             t!(fs::create_dir(&self_contained_lld_dir));
-            let lld_wrapper_exe = builder.ensure(crate::tool::LldWrapper {
+            let lld_wrapper_exe = builder.ensure(crate::core::build_steps::tool::LldWrapper {
                 compiler: build_compiler,
                 target: target_compiler.host,
             });

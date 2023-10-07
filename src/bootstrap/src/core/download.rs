@@ -11,13 +11,10 @@ use build_helper::ci::CiEnv;
 use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 
-use crate::{
-    config::RustfmtMetadata,
-    llvm::detect_llvm_sha,
-    t,
-    util::{check_run, exe, program_out_of_date},
-    Config,
-};
+use crate::core::build_steps::llvm::detect_llvm_sha;
+use crate::core::config::RustfmtMetadata;
+use crate::utils::helpers::{check_run, exe, program_out_of_date};
+use crate::{t, Config};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
 

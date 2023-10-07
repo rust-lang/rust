@@ -1,10 +1,12 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use crate::builder::{crate_description, Alias, Builder, Kind, RunConfig, ShouldRun, Step};
-use crate::cache::Interned;
-use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo};
-use crate::config::TargetSelection;
-use crate::tool::{prepare_tool_cargo, SourceType};
+use crate::core::build_steps::compile::{
+    add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
+};
+use crate::core::build_steps::tool::{prepare_tool_cargo, SourceType};
+use crate::core::builder::{crate_description, Alias, Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::core::config::TargetSelection;
+use crate::utils::cache::Interned;
 use crate::INTERNER;
 use crate::{Compiler, Mode, Subcommand};
 use std::path::{Path, PathBuf};
@@ -16,7 +18,7 @@ pub struct Std {
     ///
     /// This shouldn't be used from other steps; see the comment on [`compile::Rustc`].
     ///
-    /// [`compile::Rustc`]: crate::compile::Rustc
+    /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
     crates: Interned<Vec<String>>,
 }
 
@@ -193,7 +195,7 @@ pub struct Rustc {
     ///
     /// This shouldn't be used from other steps; see the comment on [`compile::Rustc`].
     ///
-    /// [`compile::Rustc`]: crate::compile::Rustc
+    /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
     crates: Interned<Vec<String>>,
 }
 
@@ -237,8 +239,8 @@ impl Step for Rustc {
             // the sysroot for the compiler to find. Otherwise, we're going to
             // fail when building crates that need to generate code (e.g., build
             // scripts and their dependencies).
-            builder.ensure(crate::compile::Std::new(compiler, compiler.host));
-            builder.ensure(crate::compile::Std::new(compiler, target));
+            builder.ensure(crate::core::build_steps::compile::Std::new(compiler, compiler.host));
+            builder.ensure(crate::core::build_steps::compile::Std::new(compiler, target));
         } else {
             builder.ensure(Std::new(target));
         }
@@ -387,7 +389,7 @@ impl Step for RustAnalyzer {
             &["rust-analyzer/in-rust-tree".to_owned()],
         );
 
-        cargo.allow_features(crate::tool::RustAnalyzer::ALLOW_FEATURES);
+        cargo.allow_features(crate::core::build_steps::tool::RustAnalyzer::ALLOW_FEATURES);
 
         // For ./x.py clippy, don't check those targets because
         // linting tests and benchmarks can produce very noisy results

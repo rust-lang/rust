@@ -4,6 +4,7 @@
 //! how the build runs.
 
 #[cfg(test)]
+#[path = "../../tests/config.rs"]
 mod tests;
 
 use std::cell::{Cell, RefCell};
@@ -17,18 +18,19 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 
-use crate::cache::{Interned, INTERNER};
-use crate::cc_detect::{ndk_compiler, Language};
-use crate::channel::{self, GitInfo};
-use crate::compile::CODEGEN_BACKEND_PREFIX;
-pub use crate::flags::Subcommand;
-use crate::flags::{Color, Flags, Warnings};
-use crate::util::{exe, output, t};
+use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
+use crate::core::config::flags::{Color, Flags, Warnings};
+use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::cc_detect::{ndk_compiler, Language};
+use crate::utils::channel::{self, GitInfo};
+use crate::utils::helpers::{exe, output, t};
 use build_helper::exit;
 use once_cell::sync::OnceCell;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
+
+pub use crate::core::config::flags::Subcommand;
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -547,7 +549,7 @@ impl Target {
 /// `Config` structure.
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct TomlConfig {
+pub(crate) struct TomlConfig {
     changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
     change_id: Option<usize>,
     build: Option<Build>,
@@ -1269,7 +1271,7 @@ impl Config {
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
         if !config.out.is_absolute() {
             // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
-            config.out = crate::util::absolute(&config.out);
+            config.out = crate::utils::helpers::absolute(&config.out);
         }
 
         config.initial_rustc = if let Some(rustc) = build.rustc {
@@ -1527,11 +1529,12 @@ impl Config {
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert_eq!(s, "if-available", "unknown option `{s}` for download-ci-llvm");
-                    crate::llvm::is_ci_llvm_available(&config, asserts)
+                    crate::core::build_steps::llvm::is_ci_llvm_available(&config, asserts)
                 }
                 Some(StringOrBool::Bool(b)) => b,
                 None => {
-                    config.channel == "dev" && crate::llvm::is_ci_llvm_available(&config, asserts)
+                    config.channel == "dev"
+                        && crate::core::build_steps::llvm::is_ci_llvm_available(&config, asserts)
                 }
             };
 
@@ -1573,8 +1576,8 @@ impl Config {
                 config.llvm_link_shared.set(Some(true));
             }
         } else {
-            config.llvm_from_ci =
-                config.channel == "dev" && crate::llvm::is_ci_llvm_available(&config, false);
+            config.llvm_from_ci = config.channel == "dev"
+                && crate::core::build_steps::llvm::is_ci_llvm_available(&config, false);
         }
 
         if let Some(t) = toml.target {

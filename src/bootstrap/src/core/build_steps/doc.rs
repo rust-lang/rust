@@ -10,13 +10,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::builder::crate_description;
-use crate::builder::{Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
-use crate::cache::{Interned, INTERNER};
-use crate::compile;
-use crate::config::{Config, TargetSelection};
-use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
-use crate::util::{dir_is_empty, symlink_dir, t, up_to_date};
+use crate::core::build_steps::compile;
+use crate::core::build_steps::tool::{self, prepare_tool_cargo, SourceType, Tool};
+use crate::core::builder::crate_description;
+use crate::core::builder::{Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
+use crate::core::config::{Config, TargetSelection};
+use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::helpers::{dir_is_empty, symlink_dir, t, up_to_date};
 use crate::Mode;
 
 macro_rules! submodule_helper {
