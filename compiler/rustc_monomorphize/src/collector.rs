@@ -432,7 +432,7 @@ fn collect_items_rec<'tcx>(
                         hir::InlineAsmOperand::SymFn { anon_const } => {
                             let fn_ty =
                                 tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items, &[]);
+                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);
@@ -593,11 +593,9 @@ struct MirUsedCollector<'a, 'tcx> {
     instance: Instance<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
-    /// If true, we should temporarily skip move size checks, because we are
-    /// processing an operand to a `skip_move_check_fns` function call.
-    skip_move_size_check: bool,
+    visiting_call_terminator: bool,
     /// Set of functions for which it is OK to move large data into.
-    skip_move_check_fns: Vec<DefId>,
+    skip_move_check_fns: Option<Vec<DefId>>,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -613,7 +611,20 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         )
     }
 
-    fn check_move_size(&mut self, limit: usize, operand: &mir::Operand<'tcx>, location: Location) {
+    fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
+        let limit = self.tcx.move_size_limit().0;
+        if limit == 0 {
+            return;
+        }
+
+        // This function is called by visit_operand() which visits _all_
+        // operands, including TerminatorKind::Call operands. But if
+        // check_fn_args_move_size() has been called, the operands have already
+        // been visited. Do not visit them again.
+        if self.visiting_call_terminator {
+            return;
+        }
+
         let limit = Size::from_bytes(limit);
         let ty = operand.ty(self.body, self.tcx);
         let ty = self.monomorphize(ty);
@@ -650,6 +661,38 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             },
         );
         self.move_size_spans.push(source_info.span);
+    }
+
+    fn check_fn_args_move_size(
+        &mut self,
+        callee_ty: Ty<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        location: Location,
+    ) {
+        let limit = self.tcx.move_size_limit();
+        if limit.0 == 0 {
+            return;
+        }
+
+        if args.is_empty() {
+            return;
+        }
+
+        // Allow large moves into container types that themselves are cheap to move
+        let ty::FnDef(def_id, _) = *callee_ty.kind() else {
+            return;
+        };
+        if self
+            .skip_move_check_fns
+            .get_or_insert_with(|| build_skip_move_check_fns(self.tcx))
+            .contains(&def_id)
+        {
+            return;
+        }
+
+        for arg in args {
+            self.check_operand_move_size(arg, location);
+        }
     }
 }
 
@@ -696,14 +739,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             ) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
                 let fn_ty = self.monomorphize(fn_ty);
-                visit_fn_use(
-                    self.tcx,
-                    fn_ty,
-                    false,
-                    span,
-                    &mut self.output,
-                    &self.skip_move_check_fns,
-                );
+                visit_fn_use(self.tcx, fn_ty, false, span, &mut self.output);
             }
             mir::Rvalue::Cast(
                 mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
@@ -775,17 +811,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         };
 
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, .. } => {
+            mir::TerminatorKind::Call { ref func, ref args, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
-                self.skip_move_size_check = visit_fn_use(
-                    self.tcx,
-                    callee_ty,
-                    true,
-                    source,
-                    &mut self.output,
-                    &self.skip_move_check_fns,
-                )
+                self.check_fn_args_move_size(callee_ty, args, location);
+                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -797,7 +827,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
                             let fn_ty = self.monomorphize(value.const_.ty());
-                            visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output, &[]);
+                            visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
                             let instance = Instance::mono(self.tcx, def_id);
@@ -835,16 +865,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             push_mono_lang_item(self, reason.lang_item());
         }
 
+        self.visiting_call_terminator = matches!(terminator.kind, mir::TerminatorKind::Call { .. });
         self.super_terminator(terminator, location);
-        self.skip_move_size_check = false;
+        self.visiting_call_terminator = false;
     }
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
-        let move_size_limit = self.tcx.move_size_limit().0;
-        if move_size_limit > 0 && !self.skip_move_size_check {
-            self.check_move_size(move_size_limit, operand, location);
-        }
+        self.check_operand_move_size(operand, location);
     }
 
     fn visit_local(
@@ -873,11 +901,8 @@ fn visit_fn_use<'tcx>(
     is_direct_call: bool,
     source: Span,
     output: &mut MonoItems<'tcx>,
-    skip_move_check_fns: &[DefId],
-) -> bool {
-    let mut skip_move_size_check = false;
+) {
     if let ty::FnDef(def_id, args) = *ty.kind() {
-        skip_move_size_check = skip_move_check_fns.contains(&def_id);
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
         } else {
@@ -888,7 +913,6 @@ fn visit_fn_use<'tcx>(
         };
         visit_instance_use(tcx, instance, is_direct_call, source, output);
     }
-    skip_move_size_check
 }
 
 fn visit_instance_use<'tcx>(
@@ -1395,6 +1419,29 @@ fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> 
     return None;
 }
 
+fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
+    let mut skip_move_check_fns = vec![];
+    add_assoc_fn(
+        tcx,
+        tcx.lang_items().owned_box(),
+        Ident::from_str("new"),
+        &mut skip_move_check_fns,
+    );
+    add_assoc_fn(
+        tcx,
+        tcx.get_diagnostic_item(sym::Arc),
+        Ident::from_str("new"),
+        &mut skip_move_check_fns,
+    );
+    add_assoc_fn(
+        tcx,
+        tcx.get_diagnostic_item(sym::Rc),
+        Ident::from_str("new"),
+        &mut skip_move_check_fns,
+    );
+    skip_move_check_fns
+}
+
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
 #[instrument(skip(tcx, output), level = "debug")]
 fn collect_used_items<'tcx>(
@@ -1404,28 +1451,6 @@ fn collect_used_items<'tcx>(
 ) {
     let body = tcx.instance_mir(instance.def);
 
-    let mut skip_move_check_fns = vec![];
-    if tcx.move_size_limit().0 > 0 {
-        add_assoc_fn(
-            tcx,
-            tcx.lang_items().owned_box(),
-            Ident::from_str("new"),
-            &mut skip_move_check_fns,
-        );
-        add_assoc_fn(
-            tcx,
-            tcx.get_diagnostic_item(sym::Arc),
-            Ident::from_str("new"),
-            &mut skip_move_check_fns,
-        );
-        add_assoc_fn(
-            tcx,
-            tcx.get_diagnostic_item(sym::Rc),
-            Ident::from_str("new"),
-            &mut skip_move_check_fns,
-        );
-    }
-
     // Here we rely on the visitor also visiting `required_consts`, so that we evaluate them
     // and abort compilation if any of them errors.
     MirUsedCollector {
@@ -1434,8 +1459,8 @@ fn collect_used_items<'tcx>(
         output,
         instance,
         move_size_spans: vec![],
-        skip_move_size_check: false,
-        skip_move_check_fns,
+        visiting_call_terminator: false,
+        skip_move_check_fns: None,
     }
     .visit_body(&body);
 }
