@@ -1360,7 +1360,7 @@ impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
+impl<'a, P: Pattern<'a, Searcher: DoubleEndedSearcher<'a>>> DoubleEndedIterator
     for SplitInclusive<'a, P>
 {
     #[inline]
