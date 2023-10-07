@@ -2964,31 +2964,22 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
     }
 }
 
-/// When using the linker flavors opting in to `lld`, or the unstable `-Zgcc-ld=lld` flag, add the
-/// necessary paths and arguments to invoke it:
+/// When using the linker flavors opting in to `lld`, add the necessary paths and arguments to
+/// invoke it:
 /// - when the self-contained linker flag is active: the build of `lld` distributed with rustc,
 /// - or any `lld` available to `cc`.
 fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
-    let unstable_use_lld = sess.opts.unstable_opts.gcc_ld.is_some();
-    debug!("add_lld_args requested, flavor: '{flavor:?}', `-Zgcc-ld=lld`: {unstable_use_lld}");
-
-    // Sanity check: using the old unstable `-Zgcc-ld=lld` option requires a `cc`-using flavor.
-    let flavor_uses_cc = flavor.uses_cc();
-    if unstable_use_lld && !flavor_uses_cc {
-        sess.emit_fatal(errors::OptionGccOnly);
-    }
+    debug!("add_lld_args requested, flavor: '{flavor:?}'");
 
     // If the flavor doesn't use a C/C++ compiler to invoke the linker, or doesn't opt in to `lld`,
     // we don't need to do anything.
-    let use_lld = flavor.uses_lld() || unstable_use_lld;
-    if !flavor_uses_cc || !use_lld {
+    if !(flavor.uses_cc() && flavor.uses_lld()) {
         return;
     }
 
     // 1. Implement the "self-contained" part of this feature by adding rustc distribution
     //    directories to the tool's search path.
-    let self_contained_linker = sess.opts.cg.link_self_contained.linker() || unstable_use_lld;
-    if self_contained_linker {
+    if sess.opts.cg.link_self_contained.linker() {
         for path in sess.get_tools_search_paths(false) {
             cmd.arg({
                 let mut arg = OsString::from("-B");
@@ -3012,13 +3003,13 @@ fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         // shown in issue #101653 and the discussion in PR #101792.
         //
         // It could be required in some cases of cross-compiling with
-        // `-Zgcc-ld=lld`, but this is generally unspecified, and we don't know
+        // LLD, but this is generally unspecified, and we don't know
         // which specific versions of clang, macOS SDK, host and target OS
         // combinations impact us here.
         //
         // So we do a simple first-approximation until we know more of what the
         // Apple targets require (and which would be handled prior to hitting this
-        // `-Zgcc-ld=lld` codepath anyway), but the expectation is that until then
+        // LLD codepath anyway), but the expectation is that until then
         // this should be manually passed if needed. We specify the target when
         // targeting a different linker flavor on macOS, and that's also always
         // the case when targeting WASM.

@@ -3167,9 +3167,9 @@ impl PpMode {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
-        ErrorOutputType, InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto,
-        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
-        Passes, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        ErrorOutputType, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
+        LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Passes,
+        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
         SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
@@ -3266,7 +3266,6 @@ pub(crate) mod dep_tracking {
         SymbolManglingVersion,
         SourceFileHashAlgorithm,
         TrimmedDefPaths,
-        Option<LdImpl>,
         OutFileName,
         OutputType,
         RealFileName,

@@ -168,8 +168,6 @@ codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple time
 
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
-codegen_ssa_option_gcc_only = option `-Z gcc-ld` is used even though linker flavor is not gcc
-
 codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` failed: {$status}
     .note = {$output}
 

@@ -490,10 +490,6 @@ pub struct RlibArchiveBuildFailure {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_option_gcc_only)]
-pub struct OptionGccOnly;
-
-#[derive(Diagnostic)]
 pub enum ExtractBundledLibsError<'a> {
     #[diag(codegen_ssa_extract_bundled_libs_open_file)]
     OpenFile { rlib: &'a Path, error: Box<dyn std::error::Error> },
