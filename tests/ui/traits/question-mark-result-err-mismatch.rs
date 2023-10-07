@@ -3,7 +3,7 @@ fn foo() -> Result<String, String> { //~ NOTE expected `String` because of this
     let x = test
         .split_whitespace()
         .next()
-        .ok_or_else(|| { //~ NOTE this has type `Result<_, &str>`
+        .ok_or_else(|| {
             "Couldn't split the test string"
         });
     let one = x
@@ -15,11 +15,9 @@ fn foo() -> Result<String, String> { //~ NOTE expected `String` because of this
     //~^ NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
-    //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
     //~| NOTE required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
-    //~| HELP the following other types implement trait `From<T>`:
     Ok(one.to_string())
 }
 
@@ -52,11 +50,9 @@ fn baz() -> Result<String, String> { //~ NOTE expected `String` because of this
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
-    //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
     //~| NOTE required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
-    //~| HELP the following other types implement trait `From<T>`:
     Ok(one.to_string())
 }
 

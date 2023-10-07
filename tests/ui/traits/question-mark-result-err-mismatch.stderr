@@ -4,12 +4,6 @@ error[E0277]: `?` couldn't convert the error to `String`
 LL |   fn foo() -> Result<String, String> {
    |               ---------------------- expected `String` because of this
 ...
-LL |           .ok_or_else(|| {
-   |  __________-
-LL | |             "Couldn't split the test string"
-LL | |         });
-   | |__________- this has type `Result<_, &str>`
-...
 LL |           .map_err(|e| {
    |  __________-
 LL | |             e;
@@ -20,17 +14,10 @@ LL |           .map(|()| "")?;
    |                        ^ the trait `From<()>` is not implemented for `String`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = help: the following other types implement trait `From<T>`:
-             <String as From<char>>
-             <String as From<Box<str>>>
-             <String as From<Cow<'a, str>>>
-             <String as From<&str>>
-             <String as From<&mut str>>
-             <String as From<&String>>
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:30:25
+  --> $DIR/question-mark-result-err-mismatch.rs:28:25
    |
 LL | fn bar() -> Result<(), String> {
    |             ------------------ expected `String` because of this
@@ -53,7 +40,7 @@ LL |         .map_err(|_| ())?;
    = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:50:11
+  --> $DIR/question-mark-result-err-mismatch.rs:48:11
    |
 LL |   fn baz() -> Result<String, String> {
    |               ---------------------- expected `String` because of this
@@ -68,13 +55,6 @@ LL | |         })?;
    |            this can't be annotated with `?` because it has type `Result<_, ()>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = help: the following other types implement trait `From<T>`:
-             <String as From<char>>
-             <String as From<Box<str>>>
-             <String as From<Cow<'a, str>>>
-             <String as From<&str>>
-             <String as From<&mut str>>
-             <String as From<&String>>
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error: aborting due to 3 previous errors

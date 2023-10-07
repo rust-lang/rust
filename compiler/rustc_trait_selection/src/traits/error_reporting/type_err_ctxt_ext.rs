@@ -112,7 +112,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         err: &mut Diagnostic,
-    );
+    ) -> bool;
 
     fn report_const_param_not_wf(
         &self,
@@ -517,8 +517,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         let mut err = struct_span_err!(self.tcx.sess, span, E0277, "{}", err_msg);
 
+                        let mut suggested = false;
                         if is_try_conversion {
-                            self.try_conversion_context(&obligation, trait_ref.skip_binder(), &mut err);
+                            suggested = self.try_conversion_context(&obligation, trait_ref.skip_binder(), &mut err);
                         }
 
                         if is_try_conversion && let Some(ret_span) = self.return_type_span(&obligation) {
@@ -621,8 +622,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         self.suggest_floating_point_literal(&obligation, &mut err, &trait_ref);
                         self.suggest_dereferencing_index(&obligation, &mut err, trait_predicate);
-                        let mut suggested =
-                            self.suggest_dereferences(&obligation, &mut err, trait_predicate);
+                        suggested |= self.suggest_dereferences(&obligation, &mut err, trait_predicate);
                         suggested |= self.suggest_fn_call(&obligation, &mut err, trait_predicate);
                         let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
                         suggested = if let &[cand] = &impl_candidates[..] {
@@ -1002,7 +1002,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         err: &mut Diagnostic,
-    ) {
+    ) -> bool {
         let span = obligation.cause.span;
         struct V<'v> {
             search_span: Span,
@@ -1027,22 +1027,22 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
                 body_id
             }
-            _ => return,
+            _ => return false,
         };
         let mut v = V { search_span: span, found: None };
         v.visit_body(self.tcx.hir().body(*body_id));
         let Some(expr) = v.found else {
-            return;
+            return false;
         };
         let Some(typeck) = &self.typeck_results else {
-            return;
+            return false;
         };
         let Some((ObligationCauseCode::QuestionMark, Some(y))) = obligation.cause.code().parent()
         else {
-            return;
+            return false;
         };
         if !self.tcx.is_diagnostic_item(sym::FromResidual, y.def_id()) {
-            return;
+            return false;
         }
         let self_ty = trait_ref.self_ty();
         let found_ty = trait_ref.args.get(1).and_then(|a| a.as_type());
@@ -1067,6 +1067,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             Some(arg.as_type()?)
         };
 
+        let mut suggested = false;
         let mut chain = vec![];
 
         // The following logic is simlar to `point_at_chain`, but that's focused on associated types
@@ -1135,6 +1136,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                     .must_apply_modulo_regions()
             {
+                suggested = true;
                 err.span_suggestion_short(
                     stmt.span.with_lo(expr.span.hi()),
                     "remove this semicolon",
@@ -1193,17 +1195,20 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 )
                 .must_apply_modulo_regions()
             {
-                err.span_label(span, format!("this has type `Result<_, {err_ty}>`"));
+                if !suggested {
+                    err.span_label(span, format!("this has type `Result<_, {err_ty}>`"));
+                }
             } else {
                 err.span_label(
-                span,
-                format!(
-                    "this can't be annotated with `?` because it has type `Result<_, {err_ty}>`",
-                ),
-            );
+                    span,
+                    format!(
+                        "this can't be annotated with `?` because it has type `Result<_, {err_ty}>`",
+                    ),
+                );
             }
             prev = Some(err_ty);
         }
+        suggested
     }
 
     fn report_const_param_not_wf(
