@@ -129,19 +129,25 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>, supports_128bit_integers: bool) -> Self {
         let check_overflow = tcx.sess.overflow_checks();
 
-        let i8_type = context.new_c_type(CType::Int8t);
-        let i16_type = context.new_c_type(CType::Int16t);
-        let i32_type = context.new_c_type(CType::Int32t);
-        let i64_type = context.new_c_type(CType::Int64t);
-        let u8_type = context.new_c_type(CType::UInt8t);
-        let u16_type = context.new_c_type(CType::UInt16t);
-        let u32_type = context.new_c_type(CType::UInt32t);
-        let u64_type = context.new_c_type(CType::UInt64t);
+        let create_type = |ctype, rust_type| {
+            let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
+            let align = layout.align.abi.bytes();
+            context.new_c_type(ctype).get_aligned(align)
+        };
+
+        let i8_type = create_type(CType::Int8t, tcx.types.i8);
+        let i16_type = create_type(CType::Int16t, tcx.types.i16);
+        let i32_type = create_type(CType::Int32t, tcx.types.i32);
+        let i64_type = create_type(CType::Int64t, tcx.types.i64);
+        let u8_type = create_type(CType::UInt8t, tcx.types.u8);
+        let u16_type = create_type(CType::UInt16t, tcx.types.u16);
+        let u32_type = create_type(CType::UInt32t, tcx.types.u32);
+        let u64_type = create_type(CType::UInt64t, tcx.types.u64);
 
         let (i128_type, u128_type) =
             if supports_128bit_integers {
-                let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
-                let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
+                let i128_type = create_type(CType::Int128t, tcx.types.i128);
+                let u128_type = create_type(CType::UInt128t, tcx.types.u128);
                 (i128_type, u128_type)
             }
             else {
@@ -265,15 +271,16 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn is_native_int_type(&self, typ: Type<'gcc>) -> bool {
+        // TODO: cache those types to not query libgccjit everytime this is called.
         let types = [
-            self.u8_type,
-            self.u16_type,
-            self.u32_type,
-            self.u64_type,
-            self.i8_type,
-            self.i16_type,
-            self.i32_type,
-            self.i64_type,
+            self.context.new_c_type(CType::UInt8t),
+            self.context.new_c_type(CType::UInt16t),
+            self.context.new_c_type(CType::UInt32t),
+            self.context.new_c_type(CType::UInt64t),
+            self.context.new_c_type(CType::Int8t),
+            self.context.new_c_type(CType::Int16t),
+            self.context.new_c_type(CType::Int32t),
+            self.context.new_c_type(CType::Int64t),
         ];
 
         for native_type in types {
