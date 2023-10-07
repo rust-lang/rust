@@ -28,70 +28,28 @@ use std::str;
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
-use channel::GitInfo;
-use config::{DryRun, Target};
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
+use termcolor::{ColorChoice, StandardStream, WriteColor};
+use utils::channel::GitInfo;
 
-use crate::builder::Kind;
-use crate::config::{LlvmLibunwind, TargetSelection};
-use crate::util::{
-    dir_is_empty, exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed,
+use crate::core::builder;
+use crate::core::builder::Kind;
+use crate::core::config::flags;
+use crate::core::config::{DryRun, Target};
+use crate::core::config::{LlvmLibunwind, TargetSelection};
+use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, mtime, output, run, run_suppressed, symlink_dir,
+    try_run_suppressed,
 };
 
-mod builder;
-mod cache;
-mod cc_detect;
-mod channel;
-mod check;
-mod clean;
-mod compile;
-mod config;
-mod dist;
-mod doc;
-mod download;
-mod flags;
-mod format;
-mod install;
-mod llvm;
-mod metadata;
-mod render_tests;
-mod run;
-mod sanity;
-mod setup;
-mod suggest;
-mod synthetic_targets;
-mod tarball;
-mod test;
-mod tool;
-mod toolstate;
-pub mod util;
+mod core;
+mod utils;
 
-#[cfg(feature = "build-metrics")]
-mod metrics;
-
-#[cfg(windows)]
-mod job;
-
-#[cfg(all(unix, not(target_os = "haiku")))]
-mod job {
-    pub unsafe fn setup(build: &mut crate::Build) {
-        if build.config.low_priority {
-            libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
-        }
-    }
-}
-
-#[cfg(any(target_os = "haiku", target_os = "hermit", not(any(unix, windows))))]
-mod job {
-    pub unsafe fn setup(_build: &mut crate::Build) {}
-}
-
-pub use crate::builder::PathSet;
-use crate::cache::{Interned, INTERNER};
-pub use crate::config::Config;
-pub use crate::flags::Subcommand;
-use termcolor::{ColorChoice, StandardStream, WriteColor};
+pub use crate::core::builder::PathSet;
+pub use crate::core::config::flags::Subcommand;
+pub use crate::core::config::Config;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -210,12 +168,12 @@ pub struct Build {
     src: PathBuf,
     out: PathBuf,
     bootstrap_out: PathBuf,
-    cargo_info: channel::GitInfo,
-    rust_analyzer_info: channel::GitInfo,
-    clippy_info: channel::GitInfo,
-    miri_info: channel::GitInfo,
-    rustfmt_info: channel::GitInfo,
-    in_tree_llvm_info: channel::GitInfo,
+    cargo_info: GitInfo,
+    rust_analyzer_info: GitInfo,
+    clippy_info: GitInfo,
+    miri_info: GitInfo,
+    rustfmt_info: GitInfo,
+    in_tree_llvm_info: GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
     doc_tests: DocTests,
@@ -248,7 +206,7 @@ pub struct Build {
     prerelease_version: Cell<Option<u32>>,
 
     #[cfg(feature = "build-metrics")]
-    metrics: metrics::BuildMetrics,
+    metrics: crate::utils::metrics::BuildMetrics,
 }
 
 #[derive(Debug, Clone)]
@@ -372,16 +330,15 @@ impl Build {
         let is_sudo = false;
 
         let omit_git_hash = config.omit_git_hash;
-        let rust_info = channel::GitInfo::new(omit_git_hash, &src);
-        let cargo_info = channel::GitInfo::new(omit_git_hash, &src.join("src/tools/cargo"));
-        let rust_analyzer_info =
-            channel::GitInfo::new(omit_git_hash, &src.join("src/tools/rust-analyzer"));
-        let clippy_info = channel::GitInfo::new(omit_git_hash, &src.join("src/tools/clippy"));
-        let miri_info = channel::GitInfo::new(omit_git_hash, &src.join("src/tools/miri"));
-        let rustfmt_info = channel::GitInfo::new(omit_git_hash, &src.join("src/tools/rustfmt"));
+        let rust_info = GitInfo::new(omit_git_hash, &src);
+        let cargo_info = GitInfo::new(omit_git_hash, &src.join("src/tools/cargo"));
+        let rust_analyzer_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rust-analyzer"));
+        let clippy_info = GitInfo::new(omit_git_hash, &src.join("src/tools/clippy"));
+        let miri_info = GitInfo::new(omit_git_hash, &src.join("src/tools/miri"));
+        let rustfmt_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rustfmt"));
 
         // we always try to use git for LLVM builds
-        let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
+        let in_tree_llvm_info = GitInfo::new(false, &src.join("src/llvm-project"));
 
         let initial_target_libdir_str = if config.dry_run() {
             "/dummy/lib/path/to/lib/".to_string()
@@ -474,7 +431,7 @@ impl Build {
             prerelease_version: Cell::new(None),
 
             #[cfg(feature = "build-metrics")]
-            metrics: metrics::BuildMetrics::init(),
+            metrics: crate::utils::metrics::BuildMetrics::init(),
         };
 
         // If local-rust is the same major.minor as the current version, then force a
@@ -493,7 +450,7 @@ impl Build {
         }
 
         build.verbose("finding compilers");
-        cc_detect::find(&build);
+        utils::cc_detect::find(&build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
         // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
@@ -501,7 +458,7 @@ impl Build {
         // Similarly, for `setup` we don't actually need submodules or cargo metadata.
         if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
             build.verbose("running sanity check");
-            sanity::check(&mut build);
+            crate::core::sanity::check(&mut build);
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
             // Cargo.toml files.
@@ -513,7 +470,7 @@ impl Build {
             build.update_existing_submodules();
 
             build.verbose("learning about cargo");
-            metadata::build(&mut build);
+            crate::core::metadata::build(&mut build);
         }
 
         // Make a symbolic link so we can use a consistent directory in the documentation.
@@ -549,7 +506,7 @@ impl Build {
 
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
-        if !channel::GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
+        if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
             && !dir_is_empty(&absolute_path)
         {
             return;
@@ -663,7 +620,7 @@ impl Build {
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
             let submodule = Path::new(line.splitn(2, ' ').nth(1).unwrap());
             // Don't update the submodule unless it's already been cloned.
-            if channel::GitInfo::new(false, submodule).is_managed_git_subrepository() {
+            if GitInfo::new(false, submodule).is_managed_git_subrepository() {
                 self.update_submodule(submodule);
             }
         }
@@ -672,7 +629,7 @@ impl Build {
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
-            job::setup(self);
+            crate::utils::job::setup(self);
         }
 
         // Download rustfmt early so that it can be used in rust-analyzer configs.
@@ -681,10 +638,14 @@ impl Build {
         // hardcoded subcommands
         match &self.config.cmd {
             Subcommand::Format { check } => {
-                return format::format(&builder::Builder::new(&self), *check, &self.config.paths);
+                return core::build_steps::format::format(
+                    &builder::Builder::new(&self),
+                    *check,
+                    &self.config.paths,
+                );
             }
             Subcommand::Suggest { run } => {
-                return suggest::suggest(&builder::Builder::new(&self), *run);
+                return core::build_steps::suggest::suggest(&builder::Builder::new(&self), *run);
             }
             _ => (),
         }
@@ -1065,7 +1026,7 @@ impl Build {
 
     /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
     ///
-    /// [`Step`]: crate::builder::Step
+    /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
     fn msg(
@@ -1093,7 +1054,7 @@ impl Build {
 
     /// Return a `Group` guard for a [`Step`] that is only built once and isn't affected by `--stage`.
     ///
-    /// [`Step`]: crate::builder::Step
+    /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
     fn msg_unstaged(
@@ -1253,7 +1214,7 @@ impl Build {
             // that are only existed in CXX libraries
             Some(self.cxx.borrow()[&target].path().into())
         } else if target != self.config.build
-            && util::use_host_linker(target)
+            && helpers::use_host_linker(target)
             && !target.contains("msvc")
         {
             Some(self.cc(target))
@@ -1278,7 +1239,7 @@ impl Build {
                 options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
             }
 
-            let no_threads = util::lld_flag_no_threads(target.contains("windows"));
+            let no_threads = helpers::lld_flag_no_threads(target.contains("windows"));
             options[1] = Some(format!("-Clink-arg=-Wl,{no_threads}"));
         }
 
@@ -1418,7 +1379,7 @@ impl Build {
         fn extract_beta_rev_from_file<P: AsRef<Path>>(version_file: P) -> Option<String> {
             let version = fs::read_to_string(version_file).ok()?;
 
-            extract_beta_rev(&version)
+            helpers::extract_beta_rev(&version)
         }
 
         if let Some(s) = self.prerelease_version.get() {
@@ -1732,7 +1693,7 @@ impl Build {
     /// Returns if config.ninja is enabled, and checks for ninja existence,
     /// exiting with a nicer error message if not.
     fn ninja(&self) -> bool {
-        let mut cmd_finder = crate::sanity::Finder::new();
+        let mut cmd_finder = crate::core::sanity::Finder::new();
 
         if self.config.ninja_in_file {
             // Some Linux distros rename `ninja` to `ninja-build`.
@@ -1796,17 +1757,6 @@ to download LLVM rather than building it.
         stream.reset().unwrap();
         result
     }
-}
-
-/// Extract the beta revision from the full version string.
-///
-/// The full version string looks like "a.b.c-beta.y". And we need to extract
-/// the "y" part from the string.
-pub fn extract_beta_rev(version: &str) -> Option<String> {
-    let parts = version.splitn(2, "-beta.").collect::<Vec<_>>();
-    let count = parts.get(1).and_then(|s| s.find(' ').map(|p| (&s[..p]).to_string()));
-
-    count
 }
 
 #[cfg(unix)]

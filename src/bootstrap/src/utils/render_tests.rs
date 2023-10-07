@@ -6,7 +6,7 @@
 //! and rustc) libtest doesn't include the rendered human-readable output as a JSON field. We had
 //! to reimplement all the rendering logic in this module because of that.
 
-use crate::builder::Builder;
+use crate::core::builder::Builder;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;

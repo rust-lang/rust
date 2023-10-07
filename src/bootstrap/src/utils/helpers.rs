@@ -12,9 +12,11 @@ use std::process::{Command, Stdio};
 use std::str;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use crate::builder::Builder;
-use crate::config::{Config, TargetSelection};
+use crate::core::builder::Builder;
+use crate::core::config::{Config, TargetSelection};
 use crate::OnceCell;
+
+pub use crate::utils::dylib_util::{dylib_path, dylib_path_var};
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
@@ -80,8 +82,6 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
     }
     cmd.env(dylib_path_var(), t!(env::join_paths(list)));
 }
-
-include!("dylib_util.rs");
 
 /// Adds a list of lookup paths to `cmd`'s link library lookup path.
 pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
@@ -293,23 +293,6 @@ pub fn output(cmd: &mut Command) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
-pub fn output_result(cmd: &mut Command) -> Result<String, String> {
-    let output = match cmd.stderr(Stdio::inherit()).output() {
-        Ok(status) => status,
-        Err(e) => return Err(format!("failed to run command: {cmd:?}: {e}")),
-    };
-    if !output.status.success() {
-        return Err(format!(
-            "command did not execute successfully: {:?}\n\
-             expected success, got: {}\n{}",
-            cmd,
-            output.status,
-            String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
-        ));
-    }
-    Ok(String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?)
-}
-
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
 pub fn mtime(path: &Path) -> SystemTime {
     fs::metadata(path).and_then(|f| f.modified()).unwrap_or(UNIX_EPOCH)
@@ -494,4 +477,15 @@ pub fn lld_flag_no_threads(is_windows: bool) -> &'static str {
 
 pub fn dir_is_empty(dir: &Path) -> bool {
     t!(std::fs::read_dir(dir)).next().is_none()
+}
+
+/// Extract the beta revision from the full version string.
+///
+/// The full version string looks like "a.b.c-beta.y". And we need to extract
+/// the "y" part from the string.
+pub fn extract_beta_rev(version: &str) -> Option<String> {
+    let parts = version.splitn(2, "-beta.").collect::<Vec<_>>();
+    let count = parts.get(1).and_then(|s| s.find(' ').map(|p| (&s[..p]).to_string()));
+
+    count
 }

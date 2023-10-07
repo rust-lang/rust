@@ -152,6 +152,9 @@ pub struct Flags {
     /// generate PGO profile with llvm built for rustc
     #[arg(global(true), long)]
     pub llvm_profile_generate: bool,
+    /// Enable BOLT link flags
+    #[arg(global(true), long)]
+    pub enable_bolt_settings: bool,
     /// Additional reproducible artifacts that should be added to the reproducible artifacts archive.
     #[arg(global(true), long)]
     pub reproducible_artifact: Vec<String>,

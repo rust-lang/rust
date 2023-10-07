@@ -9,8 +9,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use crate::util::output;
-use crate::util::t;
+use crate::utils::helpers::{output, t};
 use crate::Build;
 
 #[derive(Clone, Default)]

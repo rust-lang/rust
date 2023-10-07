@@ -4,8 +4,8 @@
 //! As this module requires additional dependencies not present during local builds, it's cfg'd
 //! away whenever the `build.metrics` config option is not set to `true`.
 
-use crate::builder::{Builder, Step};
-use crate::util::t;
+use crate::core::builder::{Builder, Step};
+use crate::utils::helpers::t;
 use crate::Build;
 use build_helper::metrics::{
     JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats, Test,

@@ -1,7 +1,4 @@
-// Various utilities for working with dylib paths.
-//
-// This file is meant to be included directly to avoid a dependency on the bootstrap library from
-// the rustc and rustdoc wrappers. This improves compilation time by reducing the linking time.
+//! Various utilities for working with dylib paths.
 
 /// Returns the environment variable which the dynamic library lookup path
 /// resides in for this platform.
@@ -21,10 +18,10 @@ pub fn dylib_path_var() -> &'static str {
 
 /// Parses the `dylib_path_var()` environment variable, returning a list of
 /// paths that are members of this lookup path.
-pub fn dylib_path() -> Vec<PathBuf> {
-    let var = match env::var_os(dylib_path_var()) {
+pub fn dylib_path() -> Vec<std::path::PathBuf> {
+    let var = match std::env::var_os(dylib_path_var()) {
         Some(v) => v,
         None => return vec![],
     };
-    env::split_paths(&var).collect()
+    std::env::split_paths(&var).collect()
 }

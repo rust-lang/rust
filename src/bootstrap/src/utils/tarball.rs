@@ -3,9 +3,10 @@ use std::{
     process::Command,
 };
 
-use crate::builder::Builder;
-use crate::channel;
-use crate::util::t;
+use crate::core::build_steps::dist::distdir;
+use crate::core::builder::Builder;
+use crate::utils::channel;
+use crate::utils::helpers::t;
 
 #[derive(Copy, Clone)]
 pub(crate) enum OverlayKind {
@@ -112,7 +113,7 @@ impl<'a> Tarball<'a> {
     }
 
     fn new_inner(builder: &'a Builder<'a>, component: &str, target: Option<String>) -> Self {
-        let pkgname = crate::dist::pkgname(builder, component);
+        let pkgname = crate::core::build_steps::dist::pkgname(builder, component);
 
         let mut temp_dir = builder.out.join("tmp").join("tarball").join(component);
         if let Some(target) = &target {
@@ -265,7 +266,7 @@ impl<'a> Tarball<'a> {
         t!(std::fs::rename(&self.image_dir, &dest));
 
         self.run(|this, cmd| {
-            let distdir = crate::dist::distdir(this.builder);
+            let distdir = distdir(this.builder);
             t!(std::fs::create_dir_all(&distdir));
             cmd.arg("tarball")
                 .arg("--input")
@@ -292,7 +293,7 @@ impl<'a> Tarball<'a> {
             .arg("--non-installed-overlay")
             .arg(&self.overlay_dir)
             .arg("--output-dir")
-            .arg(crate::dist::distdir(self.builder));
+            .arg(distdir(self.builder));
     }
 
     fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> GeneratedTarball {
@@ -306,11 +307,11 @@ impl<'a> Tarball<'a> {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
         }
 
-        let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
+        let mut cmd = self.builder.tool_cmd(crate::core::build_steps::tool::Tool::RustInstaller);
 
         let package_name = self.package_name();
         self.builder.info(&format!("Dist {package_name}"));
-        let _time = crate::util::timeit(self.builder);
+        let _time = crate::utils::helpers::timeit(self.builder);
 
         build_cli(&self, &mut cmd);
         cmd.arg("--work-dir").arg(&self.temp_dir);
@@ -344,7 +345,7 @@ impl<'a> Tarball<'a> {
             .unwrap_or("gz");
 
         GeneratedTarball {
-            path: crate::dist::distdir(self.builder).join(format!("{package_name}.tar.{ext}")),
+            path: distdir(self.builder).join(format!("{package_name}.tar.{ext}")),
             decompressed_output,
             work: self.temp_dir,
         }

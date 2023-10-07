@@ -14,7 +14,7 @@ use std::sync::Mutex;
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
 use once_cell::sync::Lazy;
 
-use crate::builder::Step;
+use crate::core::builder::Step;
 
 pub struct Interned<T>(usize, PhantomData<*const T>);
 
