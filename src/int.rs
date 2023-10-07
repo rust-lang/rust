@@ -36,7 +36,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.cx.context.new_unary_op(None, operation, typ, a)
         }
         else {
-            // TODO(antoyo): use __negdi2 and __negti2 instead?
             let element_type = typ.dyncast_array().expect("element type");
             let values = [
                 self.cx.context.new_unary_op(None, UnaryOp::BitwiseNegate, element_type, self.low(a)),
@@ -52,9 +51,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.cx.context.new_unary_op(None, UnaryOp::Minus, a.get_type(), a)
         }
         else {
-            let param_a = self.context.new_parameter(None, a_type, "a");
-            let func = self.context.new_function(None, FunctionType::Extern, a_type, &[param_a], "__negti2", false);
-            self.context.new_call(None, func, &[a])
+            self.gcc_add(self.gcc_not(a), self.gcc_int(a_type, 1))
         }
     }
 
