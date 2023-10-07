@@ -66,10 +66,13 @@ pub struct FrameState {
     /// `stacked_borrows::GlobalState` upon function return, and if we attempt to pop a protected
     /// tag, to identify which call is responsible for protecting the tag.
     /// See `Stack::item_popped` for more explanation.
+    /// Tree Borrows also needs to know which allocation these tags
+    /// belong to so that it can perform a read through them immediately before
+    /// the frame gets popped.
     ///
     /// This will contain one tag per reference passed to the function, so
     /// a size of 2 is enough for the vast majority of functions.
-    pub protected_tags: SmallVec<[BorTag; 2]>,
+    pub protected_tags: SmallVec<[(AllocId, BorTag); 2]>,
 }
 
 impl VisitTags for FrameState {
@@ -208,7 +211,7 @@ impl GlobalStateInner {
     }
 
     pub fn end_call(&mut self, frame: &machine::FrameExtra<'_>) {
-        for tag in &frame
+        for (_, tag) in &frame
             .borrow_tracker
             .as_ref()
             .expect("we should have borrow tracking data")
@@ -305,7 +308,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn protect_place(
+        &mut self,
+        place: &MPlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
@@ -448,6 +454,19 @@ impl AllocState {
         match self {
             AllocState::StackedBorrows(sb) => sb.borrow_mut().remove_unreachable_tags(tags),
             AllocState::TreeBorrows(tb) => tb.borrow_mut().remove_unreachable_tags(tags),
+        }
+    }
+
+    /// Tree Borrows needs to be told when a tag stops being protected.
+    pub fn release_protector<'tcx>(
+        &self,
+        machine: &MiriMachine<'_, 'tcx>,
+        global: &GlobalState,
+        tag: BorTag,
+    ) -> InterpResult<'tcx> {
+        match self {
+            AllocState::StackedBorrows(_sb) => Ok(()),
+            AllocState::TreeBorrows(tb) => tb.borrow_mut().release_protector(machine, global, tag),
         }
     }
 }

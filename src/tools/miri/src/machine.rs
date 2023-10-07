@@ -707,11 +707,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 );
             }
             "android" => {
-                // "signal"
+                // "signal" -- just needs a non-zero pointer value (function does not even get called),
+                // but we arrange for this to be callable anyway (it will then do nothing).
                 let layout = this.machine.layouts.const_raw_ptr;
-                let dlsym = Dlsym::from_str("signal".as_bytes(), &this.tcx.sess.target.os)?
-                    .expect("`signal` must be an actual dlsym on android");
-                let ptr = this.fn_ptr(FnVal::Other(dlsym));
+                let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str("signal")));
                 let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
                 Self::alloc_extern_static(this, "signal", val)?;
                 // A couple zero-initialized pointer-sized extern statics.
@@ -867,7 +866,7 @@ impl<'mir, 'tcx> MiriInterpCxExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {
 /// Machine hook implementations.
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     type MemoryKind = MiriMemoryKind;
-    type ExtraFnVal = Dlsym;
+    type ExtraFnVal = DynSym;
 
     type FrameExtra = FrameExtra<'tcx>;
     type AllocExtra = AllocExtra<'tcx>;
@@ -939,15 +938,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     #[inline(always)]
     fn call_extra_fn(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
-        fn_val: Dlsym,
+        fn_val: DynSym,
         abi: Abi,
         args: &[FnArg<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        _unwind: mir::UnwindAction,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
-        ecx.call_dlsym(fn_val, abi, &args, dest, ret)
+        ecx.emulate_dyn_sym(fn_val, abi, &args, dest, ret, unwind)
     }
 
     #[inline(always)]
@@ -1275,19 +1274,25 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         place: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
-        // We do need to write `uninit` so that even after the call ends, the former contents of
-        // this place cannot be observed any more.
-        ecx.write_uninit(place)?;
         // If we have a borrow tracker, we also have it set up protection so that all reads *and
         // writes* during this call are insta-UB.
-        if ecx.machine.borrow_tracker.is_some() {
+        let protected_place = if ecx.machine.borrow_tracker.is_some() {
             // Have to do `to_op` first because a `Place::Local` doesn't imply the local doesn't have an address.
             if let Either::Left(place) = ecx.place_to_op(place)?.as_mplace_or_imm() {
-                ecx.protect_place(&place)?;
+                ecx.protect_place(&place)?.into()
             } else {
                 // Locals that don't have their address taken are as protected as they can ever be.
+                place.clone()
             }
-        }
+        } else {
+            // No borrow tracker.
+            place.clone()
+        };
+        // We do need to write `uninit` so that even after the call ends, the former contents of
+        // this place cannot be observed any more. We do the write after retagging so that for
+        // Tree Borrows, this is considered to activate the new tag.
+        ecx.write_uninit(&protected_place)?;
+        // Now we throw away the protected place, ensuring its tag is never used again.
         Ok(())
     }
 
@@ -1382,8 +1387,34 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         // We want this *before* the return value copy, because the return place itself is protected
         // until we do `end_call` here.
-        if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
-            borrow_tracker.borrow_mut().end_call(&frame.extra);
+        if let Some(global_borrow_tracker) = &ecx.machine.borrow_tracker {
+            // The body of this loop needs `global_borrow_tracker` immutably
+            // so we can't move this code inside the following `end_call`.
+            for (alloc_id, tag) in &frame
+                .extra
+                .borrow_tracker
+                .as_ref()
+                .expect("we should have borrow tracking data")
+                .protected_tags
+            {
+                // Just because the tag is protected doesn't guarantee that
+                // the allocation still exists (weak protectors allow deallocations)
+                // so we must check that the allocation exists.
+                // If it does exist, then we have the guarantee that the
+                // pointer is readable, and the implicit read access inserted
+                // will never cause UB on the pointer itself.
+                let (_, _, kind) = ecx.get_alloc_info(*alloc_id);
+                if matches!(kind, AllocKind::LiveData) {
+                    let alloc_extra = ecx.get_alloc_extra(*alloc_id).unwrap();
+                    let alloc_borrow_tracker = &alloc_extra.borrow_tracker.as_ref().unwrap();
+                    alloc_borrow_tracker.release_protector(
+                        &ecx.machine,
+                        global_borrow_tracker,
+                        *tag,
+                    )?;
+                }
+            }
+            global_borrow_tracker.borrow_mut().end_call(&frame.extra);
         }
         Ok(())
     }

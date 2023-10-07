@@ -19,6 +19,7 @@ pub enum AccessCause {
     Explicit(AccessKind),
     Reborrow,
     Dealloc,
+    FnExit,
 }
 
 impl fmt::Display for AccessCause {
@@ -27,6 +28,7 @@ impl fmt::Display for AccessCause {
             Self::Explicit(kind) => write!(f, "{kind}"),
             Self::Reborrow => write!(f, "reborrow"),
             Self::Dealloc => write!(f, "deallocation"),
+            Self::FnExit => write!(f, "protector release"),
         }
     }
 }
@@ -38,6 +40,7 @@ impl AccessCause {
             Self::Explicit(kind) => format!("{rel} {kind}"),
             Self::Reborrow => format!("reborrow (acting as a {rel} read access)"),
             Self::Dealloc => format!("deallocation (acting as a {rel} write access)"),
+            Self::FnExit => format!("protector release (acting as a {rel} read access)"),
         }
     }
 }
@@ -52,7 +55,9 @@ pub struct Event {
     /// Relative position of the tag to the one used for the access.
     pub is_foreign: bool,
     /// User-visible range of the access.
-    pub access_range: AllocRange,
+    /// `None` means that this is an implicit access to the entire allocation
+    /// (used for the implicit read on protector release).
+    pub access_range: Option<AllocRange>,
     /// The transition recorded by this event only occured on a subrange of
     /// `access_range`: a single access on `access_range` triggers several events,
     /// each with their own mutually disjoint `transition_range`. No-op transitions
@@ -123,7 +128,17 @@ impl HistoryData {
             // NOTE: `transition_range` is explicitly absent from the error message, it has no significance
             // to the user. The meaningful one is `access_range`.
             let access = access_cause.print_as_access(is_foreign);
-            self.events.push((Some(span.data()), format!("{this} later transitioned to {endpoint} due to a {access} at offsets {access_range:?}", endpoint = transition.endpoint())));
+            let access_range_text = match access_range {
+                Some(r) => format!("at offsets {r:?}"),
+                None => format!("on every location previously accessed by this tag"),
+            };
+            self.events.push((
+                Some(span.data()),
+                format!(
+                    "{this} later transitioned to {endpoint} due to a {access} {access_range_text}",
+                    endpoint = transition.endpoint()
+                ),
+            ));
             self.events
                 .push((None, format!("this transition corresponds to {}", transition.summary())));
         }
@@ -745,7 +760,7 @@ const DEFAULT_FORMATTER: DisplayFmt = DisplayFmt {
         bot: '─',
         warning_text: "Warning: this tree is indicative only. Some tags may have been hidden.",
     },
-    perm: DisplayFmtPermission { open: "|", sep: "|", close: "|", uninit: "---", range_sep: ".." },
+    perm: DisplayFmtPermission { open: "|", sep: "|", close: "|", uninit: "----", range_sep: ".." },
     padding: DisplayFmtPadding {
         join_middle: "├",
         join_last: "└",

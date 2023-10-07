@@ -436,6 +436,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             ProtectorKind::WeakProtector => "weakly protected",
             ProtectorKind::StrongProtector => "strongly protected",
         };
+        let item_tag = item.tag();
         let call_id = self
             .machine
             .threads
@@ -444,7 +445,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             .map(|frame| {
                 frame.extra.borrow_tracker.as_ref().expect("we should have borrow tracking data")
             })
-            .find(|frame| frame.protected_tags.contains(&item.tag()))
+            .find(|frame| frame.protected_tags.iter().any(|(_, tag)| tag == &item_tag))
             .map(|frame| frame.call_id)
             .unwrap(); // FIXME: Surely we should find something, but a panic seems wrong here?
         match self.operation {

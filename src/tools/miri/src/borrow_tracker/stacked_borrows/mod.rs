@@ -719,7 +719,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
 
         if let Some(protect) = new_perm.protector() {
             // See comment in `Stack::item_invalidated` for why we store the tag twice.
-            this.frame_mut().extra.borrow_tracker.as_mut().unwrap().protected_tags.push(new_tag);
+            this.frame_mut()
+                .extra
+                .borrow_tracker
+                .as_mut()
+                .unwrap()
+                .protected_tags
+                .push((alloc_id, new_tag));
             this.machine
                 .borrow_tracker
                 .as_mut()
@@ -810,6 +816,32 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
     }
 
+    fn sb_retag_place(
+        &mut self,
+        place: &MPlaceTy<'tcx, Provenance>,
+        new_perm: NewPermission,
+        info: RetagInfo, // diagnostics info about this retag
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
+        let this = self.eval_context_mut();
+        let size = this.size_and_align_of_mplace(place)?.map(|(size, _)| size);
+        // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
+        // bail out -- we cannot reasonably figure out which memory range to reborrow.
+        // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
+        let size = match size {
+            Some(size) => size,
+            None => return Ok(place.clone()),
+        };
+
+        // Compute new borrow.
+        let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
+
+        // Reborrow.
+        let new_prov = this.sb_reborrow(place, size, new_perm, new_tag, info)?;
+
+        // Adjust place.
+        Ok(place.clone().map_provenance(|_| new_prov))
+    }
+
     /// Retags an individual pointer, returning the retagged version.
     /// `kind` indicates what kind of reference is being created.
     fn sb_retag_reference(
@@ -819,27 +851,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         info: RetagInfo, // diagnostics info about this retag
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
-        // We want a place for where the ptr *points to*, so we get one.
         let place = this.ref_to_mplace(val)?;
-        let size = this.size_and_align_of_mplace(&place)?.map(|(size, _)| size);
-        // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
-        // bail out -- we cannot reasonably figure out which memory range to reborrow.
-        // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
-        let size = match size {
-            Some(size) => size,
-            None => return Ok(val.clone()),
-        };
-
-        // Compute new borrow.
-        let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
-
-        // Reborrow.
-        let new_prov = this.sb_reborrow(&place, size, new_perm, new_tag, info)?;
-
-        // Adjust pointer.
-        let new_place = place.map_provenance(|_| new_prov);
-
-        // Return new pointer.
+        let new_place = this.sb_retag_place(&place, new_perm, info)?;
         Ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
     }
 }
@@ -972,26 +985,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// call.
     ///
     /// This is used to ensure soundness of in-place function argument/return passing.
-    fn sb_protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn sb_protect_place(
+        &mut self,
+        place: &MPlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
 
-        // We have to turn the place into a pointer to use the usual retagging logic.
-        // (The pointer type does not matter, so we use a raw pointer.)
-        let ptr = this.mplace_to_ref(place)?;
-        // Reborrow it. With protection! That is the entire point.
+        // Retag it. With protection! That is the entire point.
         let new_perm = NewPermission::Uniform {
             perm: Permission::Unique,
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        let _new_ptr = this.sb_retag_reference(
-            &ptr,
+        this.sb_retag_place(
+            place,
             new_perm,
             RetagInfo { cause: RetagCause::InPlaceFnPassing, in_field: false },
-        )?;
-        // We just throw away `new_ptr`, so nobody can access this memory while it is protected.
-
-        Ok(())
+        )
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.

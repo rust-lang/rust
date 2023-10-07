@@ -212,12 +212,9 @@ impl<'a, V> UniValMap<V> {
 
 impl<'a, V> UniEntry<'a, V> {
     /// Insert in the map and get the value.
-    pub fn or_insert_with<F>(&mut self, default: F) -> &mut V
-    where
-        F: FnOnce() -> V,
-    {
+    pub fn or_insert(&mut self, default: V) -> &mut V {
         if self.inner.is_none() {
-            *self.inner = Some(default());
+            *self.inner = Some(default);
         }
         self.inner.as_mut().unwrap()
     }

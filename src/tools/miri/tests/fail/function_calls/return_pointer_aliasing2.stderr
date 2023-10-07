@@ -19,11 +19,17 @@ LL | |             let ptr = &raw mut _x;
 LL | |         }
 LL | |     }
    | |_____^
-help: the protected tag <TAG> was created here, in the initial state Active
+help: the protected tag <TAG> was created here, in the initial state Reserved
   --> $DIR/return_pointer_aliasing2.rs:LL:CC
    |
 LL |     unsafe { ptr.write(0) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^
+help: the protected tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+  --> $DIR/return_pointer_aliasing2.rs:LL:CC
+   |
+LL |     unsafe { ptr.write(0) };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
    = note: inside `myfun` at $DIR/return_pointer_aliasing2.rs:LL:CC
 note: inside `main`

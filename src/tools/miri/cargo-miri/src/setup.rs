@@ -74,7 +74,17 @@ pub fn setup(
         }
     };
     // Sysroot configuration and build details.
-    let sysroot_config = if std::env::var_os("MIRI_NO_STD").is_some() {
+    let no_std = match std::env::var_os("MIRI_NO_STD") {
+        None =>
+        // No-std heuristic taken from rust/src/bootstrap/config.rs
+        // (https://github.com/rust-lang/rust/blob/25b5af1b3a0b9e2c0c57b223b2d0e3e203869b2c/src/bootstrap/config.rs#L549-L555).
+            target.contains("-none")
+                || target.contains("nvptx")
+                || target.contains("switch")
+                || target.contains("-uefi"),
+        Some(val) => val != "0",
+    };
+    let sysroot_config = if no_std {
         SysrootConfig::NoStd
     } else {
         SysrootConfig::WithStd {
