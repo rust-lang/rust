@@ -3244,7 +3244,7 @@ fn format_generics(
                     if brace_pos == BracePos::None {
                         span.hi()
                     } else {
-                        context.snippet_provider.span_before(span, "{")
+                        context.snippet_provider.span_before_last(span, "{")
                     },
                 ),
                 shape,
