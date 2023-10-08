@@ -1001,6 +1001,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx.binary_ptr_op(bin_op, left, right)
     }
 
+    #[inline(always)]
+    fn generate_nan<F: rustc_apfloat::Float>(ecx: &InterpCx<'mir, 'tcx, Self>, inputs: &[F]) -> F {
+        ecx.generate_nan(inputs)
+    }
+
     fn thread_local_static_base_pointer(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         def_id: DefId,
