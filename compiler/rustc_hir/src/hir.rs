@@ -3771,14 +3771,26 @@ impl<'hir> Node<'hir> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
-    // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 24);
+    #[cfg(bootstrap)]
     static_assert_size!(Expr<'_>, 64);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(Expr<'_>, 56);
+    #[cfg(bootstrap)]
     static_assert_size!(ExprKind<'_>, 48);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(FnDecl<'_>, 40);
+    #[cfg(bootstrap)]
     static_assert_size!(ForeignItem<'_>, 72);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(ForeignItem<'_>, 64);
+    #[cfg(bootstrap)]
     static_assert_size!(ForeignItemKind<'_>, 40);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(ForeignItemKind<'_>, 32);
+    // tidy-alphabetical-start
     static_assert_size!(GenericArg<'_>, 32);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
