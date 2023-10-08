@@ -14,9 +14,4 @@ else
 	$(CC) "$(TMPDIR)"/exporter.obj exporter.def -shared -o "$(TMPDIR)"/exporter.dll
 endif
 	"$(TMPDIR)"/driver > "$(TMPDIR)"/output.txt
-
-ifdef RUSTC_BLESS_TEST
-	cp "$(TMPDIR)"/output.txt output.txt
-else
-	$(DIFF) output.txt "$(TMPDIR)"/output.txt
-endif
+	$(RUSTC_TEST_OP) "$(TMPDIR)"/output.txt output.txt

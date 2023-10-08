@@ -27,9 +27,4 @@ else
 	$(CC) "$(TMPDIR)"/extern_2.obj -shared -o "$(TMPDIR)"/extern_2.dll
 endif
 	$(call RUN,driver) > "$(TMPDIR)"/output.txt
-
-ifdef RUSTC_BLESS_TEST
-	cp "$(TMPDIR)"/output.txt output.txt
-else
-	$(DIFF) output.txt "$(TMPDIR)"/output.txt
-endif
+	$(RUSTC_TEST_OP) "$(TMPDIR)"/output.txt output.txt
