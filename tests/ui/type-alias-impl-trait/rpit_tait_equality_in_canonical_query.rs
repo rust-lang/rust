@@ -7,7 +7,14 @@
 
 // revisions: current next
 //[next] compile-flags: -Ztrait-solver=next
-// check-pass
+//[next] check-pass
+
+//[current] known-bug: #108498
+//[current] failure-status: 101
+//[current] normalize-stderr-test: "DefId\(.*?\]::" -> "DefId("
+//[current] normalize-stderr-test: "(?m)^note: .*\n" -> ""
+//[current] normalize-stderr-test: "(?m)^ *\d+: .*\n" -> ""
+//[current] normalize-stderr-test: "(?m)^ *at .*\n" -> ""
 
 #![feature(type_alias_impl_trait)]
 
