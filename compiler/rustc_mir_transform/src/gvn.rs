@@ -1327,25 +1327,48 @@ impl<'tcx> VnState<'_, 'tcx> {
                     return None;
                 }
 
-                let Value::Projection(base, elem) = *self.get(value) else {
-                    break;
-                };
-
-                let elem = match elem {
-                    ProjectionElem::Deref => ProjectionElem::Deref,
-                    ProjectionElem::Downcast(name, read_variant) => {
-                        ProjectionElem::Downcast(name, read_variant)
+                match *self.get(value) {
+                    Value::Projection(base, elem) => {
+                        let elem = match elem {
+                            ProjectionElem::Deref => ProjectionElem::Deref,
+                            ProjectionElem::Downcast(name, read_variant) => {
+                                ProjectionElem::Downcast(name, read_variant)
+                            }
+                            ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty),
+                            ProjectionElem::ConstantIndex {
+                                offset,
+                                min_length,
+                                from_end: false,
+                            } => ProjectionElem::ConstantIndex {
+                                offset,
+                                min_length,
+                                from_end: false,
+                            },
+                            // Not allowed in debuginfo.
+                            _ => return None,
+                        };
+                        projections.push(elem);
+                        value = base;
                     }
-                    ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
-                        ProjectionElem::ConstantIndex { offset, min_length, from_end: false }
+                    Value::Address { place: target, kind: _, provenance: _ }
+                        if projections.is_empty()
+                            && target.projection.iter().all(|e| e.can_use_in_debuginfo()) =>
+                    {
+                        var_debug_info
+                            .composite
+                            .get_or_insert_with(|| {
+                                Box::new(VarDebugInfoFragment {
+                                    ty: self.local_decls[place.local].ty,
+                                    projection: Vec::new(),
+                                })
+                            })
+                            .projection
+                            .push(PlaceElem::Deref);
+                        *place = target;
+                        break;
                     }
-                    // Not allowed in debuginfo.
                     _ => return None,
-                };
-
-                projections.push(elem);
-                value = base;
+                }
             }
 
             return None;
