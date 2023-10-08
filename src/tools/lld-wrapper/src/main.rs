@@ -4,8 +4,8 @@
 //! two arguments the `<flavor>` command line interface is used to process the remaining arguments.
 //! If no `-flavor` argument is present the flavor is determined by the executable name.
 //!
-//! In Rust with `-Z gcc-ld=lld` we have gcc or clang invoke rust-lld. Since there is no way to
-//! make gcc/clang pass `-flavor <flavor>` as the first two arguments in the linker invocation
+//! With `-Clink-self-contained=+linker` we have gcc or clang invoke rust-lld. Since there is no way
+//! to make gcc/clang pass `-flavor <flavor>` as the first two arguments in the linker invocation
 //! and since Windows does not support symbolic links for files this wrapper is used in place of a
 //! symbolic link. It execs `../rust-lld -flavor <flavor>` by propagating the flavor argument
 //! obtained from the wrapper's name as the first two arguments.
