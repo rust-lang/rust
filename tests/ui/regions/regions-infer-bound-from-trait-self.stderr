@@ -7,7 +7,7 @@ LL |     fn foo(self, x: Inv<'a>) {
 LL |         check_bound(x, self)
    |         ^^^^^^^^^^^^^^^^^^^^ ...so that the type `Self` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | trait InheritsFromNothing<'a> : Sized where Self: 'a {
    |                                       ++++++++++++++

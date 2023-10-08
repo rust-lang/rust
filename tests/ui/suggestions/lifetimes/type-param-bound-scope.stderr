@@ -7,7 +7,7 @@ LL |     fn foo(self, lt: Inv<'a>) {
 LL |         check_bound(self, lt)
    |         ^^^^^^^^^^^^^^^^^^^^^ ...so that the type `Self` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | trait Trait1<'a>: Sized where Self: 'a {
    |                         ++++++++++++++
@@ -20,7 +20,7 @@ LL |     fn foo<'a>(self, lt: Inv<'a>) {
 LL |         check_bound(self, lt)
    |         ^^^^^^^^^^^^^^^^^^^^^ ...so that the type `Self` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn foo<'a>(self, lt: Inv<'a>) where Self: 'a {
    |                                   ++++++++++++++
@@ -33,7 +33,7 @@ LL |     fn foo<'a>(arg: T, lt: Inv<'a>) {
 LL |         check_bound(arg, lt)
    |         ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn foo<'a>(arg: T, lt: Inv<'a>) where T: 'a {
    |                                     +++++++++++
@@ -47,7 +47,7 @@ LL |     fn foo<T>(arg: T, lt: Inv<'a>) {
 LL |         check_bound(arg, lt)
    |         ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn foo<T: 'a>(arg: T, lt: Inv<'a>) {
    |             ++++
@@ -61,7 +61,7 @@ LL |     fn foo(self, lt: Inv<'a>) {
 LL |         check_bound(self, lt);
    |         ^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl<'a, T: 'a> Trait5<'a> for T {
    |           ++++

@@ -2433,7 +2433,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             err.multipart_suggestion_verbose(
-                format!("{msg}..."),
+                format!("{msg}"),
                 suggs,
                 Applicability::MaybeIncorrect, // Issue #41966
             );

@@ -7,7 +7,7 @@ LL | {
 LL |     wf::<&'x T>();
    |     ^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn func<'x, T:Trait1<'x> + 'x>(t: &'x T::Foo)
    |                          ++++

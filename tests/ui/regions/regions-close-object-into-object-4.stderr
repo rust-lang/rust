@@ -7,7 +7,7 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |     the parameter type `U` must be valid for the static lifetime...
    |     ...so that the type `U` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn i<'a, T, U: 'static>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
    |              +++++++++
@@ -21,7 +21,7 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |     the parameter type `U` must be valid for the static lifetime...
    |     ...so that the type `U` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn i<'a, T, U: 'static>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
    |              +++++++++
@@ -36,7 +36,7 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |     ...so that the type `U` will meet its required lifetime bounds
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn i<'a, T, U: 'static>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
    |              +++++++++
@@ -76,7 +76,7 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |              the parameter type `U` must be valid for the static lifetime...
    |              ...so that the type `U` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn i<'a, T, U: 'static>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
    |              +++++++++

@@ -6,7 +6,7 @@ LL |     impl<'a, T> Trait<'a, T> for () {
 LL |         type Opaque = impl Sized + 'a;
    |                       ^^^^^^^^^^^^^^^ ...so that the type `&'a T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     impl<'a, T: 'a> Trait<'a, T> for () {
    |               ++++
@@ -19,7 +19,7 @@ LL |     impl<'a, T> Trait<'a, T> for () {
 LL |         type Opaque = impl Sized + 'a;
    |                       ^^^^^^^^^^^^^^^ ...so that the reference type `&'a T` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     impl<'a, T: 'a> Trait<'a, T> for () {
    |               ++++

@@ -9,7 +9,7 @@ LL | |         t.test();
 LL | |     });
    | |______^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn func<'a, T: Test + 'a>(_dummy: &Foo, foo: &Foo<'a>, t: T) {
    |         +++         ++++                         ++++

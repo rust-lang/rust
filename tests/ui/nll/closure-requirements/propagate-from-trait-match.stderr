@@ -31,7 +31,7 @@ LL | fn supply<'a, T>(value: T)
 LL |         require(value);
    |         ^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     T: Trait<'a> + 'a,
    |                  ++++

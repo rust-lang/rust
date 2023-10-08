@@ -7,7 +7,7 @@ LL |     Box::new(item)
    |     the associated type `<T as Iter>::Item` must be valid for the static lifetime...
    |     ...so that the type `<T as Iter>::Item` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn bad1<T: Iter>(v: T) -> Box<dyn X + 'static> where <T as Iter>::Item: 'static
    |                                                ++++++++++++++++++++++++++++++++
@@ -21,7 +21,7 @@ LL |     Box::new(item)
    |     the associated type `<T as Iter>::Item` must be valid for the static lifetime...
    |     ...so that the type `<T as Iter>::Item` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     where Box<T::Item> : X, <T as Iter>::Item: 'static
    |                           ++++++++++++++++++++++++++++
@@ -35,7 +35,7 @@ LL | fn bad3<'a, T: Iter>(v: T) -> Box<dyn X + 'a>
 LL |     Box::new(item)
    |     ^^^^^^^^^^^^^^ ...so that the type `<T as Iter>::Item` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn bad3<'a, T: Iter>(v: T) -> Box<dyn X + 'a> where <T as Iter>::Item: 'a
    |                                               +++++++++++++++++++++++++++
@@ -49,7 +49,7 @@ LL | fn bad4<'a, T: Iter>(v: T) -> Box<dyn X + 'a>
 LL |     Box::new(item)
    |     ^^^^^^^^^^^^^^ ...so that the type `<T as Iter>::Item` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     where Box<T::Item> : X, <T as Iter>::Item: 'a
    |                           +++++++++++++++++++++++

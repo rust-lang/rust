@@ -30,7 +30,7 @@ LL | fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
 LL |         require(&x, &y)
    |         ^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn no_region<'a, T: 'a>(a: Cell<&'a ()>, b: T) {
    |                   ++++
@@ -93,7 +93,7 @@ LL | fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
 LL |         require(&x, &y)
    |         ^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     T: 'b + 'a,
    |           ++++

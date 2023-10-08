@@ -56,7 +56,7 @@ note: ...that is required by this bound
    |
 LL |         T: 'static,
    |            ^^^^^^^
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     type Opaque<T: 'static> = impl Sized;
    |                  +++++++++

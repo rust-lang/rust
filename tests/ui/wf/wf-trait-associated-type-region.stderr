@@ -7,7 +7,7 @@ LL |     type Type1;
 LL |     type Type2 = &'a Self::Type1;
    |                  ^^^^^^^^^^^^^^^ ...so that the reference type `&'a <Self as SomeTrait<'a>>::Type1` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     type Type2 = &'a Self::Type1 where <Self as SomeTrait<'a>>::Type1: 'a;
    |                                  ++++++++++++++++++++++++++++++++++++++++

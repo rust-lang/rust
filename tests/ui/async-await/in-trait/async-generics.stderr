@@ -7,7 +7,7 @@ LL |     async fn foo(&self) -> &(T, U);
    |     |            the parameter type `U` must be valid for the anonymous lifetime as defined here...
    |     ...so that the reference type `&(T, U)` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     async fn foo<'a>(&'a self) -> &'a (T, U) where U: 'a;
    |                 ++++  ++           ++        +++++++++++
@@ -21,7 +21,7 @@ LL |     async fn foo(&self) -> &(T, U);
    |     |            the parameter type `T` must be valid for the anonymous lifetime as defined here...
    |     ...so that the reference type `&(T, U)` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     async fn foo<'a>(&'a self) -> &'a (T, U) where T: 'a;
    |                 ++++  ++           ++        +++++++++++

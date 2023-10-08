@@ -6,7 +6,7 @@ LL | fn bar1<'a,A>(x: Inv<'a>, a: A) {
 LL |     check_bound(x, a)
    |     ^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn bar1<'a,A: 'a>(x: Inv<'a>, a: A) {
    |             ++++
@@ -19,7 +19,7 @@ LL | fn bar2<'a,'b,A:Is<'b>>(x: Inv<'a>, y: Inv<'b>, a: A) {
 LL |     check_bound(x, a)
    |     ^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn bar2<'a,'b,A:Is<'b> + 'a>(x: Inv<'a>, y: Inv<'b>, a: A) {
    |                        ++++

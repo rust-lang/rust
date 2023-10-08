@@ -27,7 +27,7 @@ LL |     fn test<A>() where Ty<A>: 'static { assert_static::<A>() }
    |                                         the parameter type `A` must be valid for the static lifetime...
    |                                         ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn test<A: 'static>() where Ty<A>: 'static { assert_static::<A>() }
    |              +++++++++

@@ -6,7 +6,7 @@ LL | fn region_static<'a, T>(cell: Cell<&'a usize>, t: T) {
 LL |     outlives(cell, t)
    |     ^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn region_static<'a, T: 'a>(cell: Cell<&'a usize>, t: T) {
    |                       ++++

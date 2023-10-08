@@ -6,7 +6,7 @@ LL | fn no_restriction<T>(x: &()) -> &() {
 LL |     with_restriction::<T>(x)
    |     ^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn no_restriction<'a, T: 'a>(x: &'a ()) -> &'a () {
    |                   +++  ++++      ++         ++

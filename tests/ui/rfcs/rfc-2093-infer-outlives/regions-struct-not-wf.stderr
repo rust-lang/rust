@@ -6,7 +6,7 @@ LL | impl<'a, T> Trait<'a, T> for usize {
 LL |     type Out = &'a T;
    |                ^^^^^ ...so that the reference type `&'a T` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl<'a, T: 'a> Trait<'a, T> for usize {
    |           ++++
@@ -24,7 +24,7 @@ note: ...that is required by this bound
    |
 LL | struct RefOk<'a, T:'a> {
    |                    ^^
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl<'a, T: 'a> Trait<'a, T> for u32 {
    |           ++++

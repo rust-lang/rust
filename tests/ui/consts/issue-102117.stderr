@@ -7,7 +7,7 @@ LL |                 type_id: TypeId::of::<T>(),
    |                          the parameter type `T` must be valid for the static lifetime...
    |                          ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     pub fn new<T: 'static>() -> &'static Self {
    |                 +++++++++
@@ -22,7 +22,7 @@ LL |                 type_id: TypeId::of::<T>(),
    |                          ...so that the type `T` will meet its required lifetime bounds
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     pub fn new<T: 'static>() -> &'static Self {
    |                 +++++++++

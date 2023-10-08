@@ -37,7 +37,7 @@ LL | |         *dest = g.get();
 LL | |     }
    | |_____^ ...so that the type `G` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL ~ fn bar<'a, G, T>(g: G, dest: &'a mut T) -> impl FnOnce() + 'a
 LL | where
@@ -56,7 +56,7 @@ LL | |         *dest = g.get();
 LL | |     }
    | |_____^ ...so that the type `G` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn qux<'b, 'a, G: 'a + 'b, T>(g: G, dest: &'b mut T) -> impl FnOnce() + 'b
    |        +++           ++++                  ++                           ~~
@@ -72,7 +72,7 @@ LL | |             *dest = g.get();
 LL | |         }
    | |_________^ ...so that the type `G` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn qux<'c, 'b, G: Get<T> + 'b + 'c, T>(g: G, dest: &'c mut T) -> impl FnOnce() + 'c {
    |            +++                    ++++                  ++                           ~~
@@ -90,7 +90,7 @@ LL | |         *dest = g.get();
 LL | |     }
    | |_____^ ...so that the type `G` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn bat<'b, 'a, G: 'a + 'b, T>(g: G, dest: &'b mut T) -> impl FnOnce() + 'b + 'a
    |        +++           ++++                  ++                           ~~
@@ -120,7 +120,7 @@ LL | |         *dest = g.get();
 LL | |     }
    | |_____^ ...so that the type `G` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     G: Get<T> + 'a,
    |               ++++

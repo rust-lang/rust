@@ -42,7 +42,7 @@ LL | fn test_early_type<'a: 'a, T>() {
 LL |     || { None::<&'a T>; };
    |          ^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test_early_type<'a: 'a, T: 'a>() {
    |                             ++++
@@ -55,7 +55,7 @@ LL | fn test_late_type<'a, T>() {
 LL |     || { None::<&'a T>; };
    |          ^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test_late_type<'a, T: 'a>() {
    |                        ++++

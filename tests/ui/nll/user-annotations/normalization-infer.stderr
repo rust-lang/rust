@@ -7,7 +7,7 @@ LL |     let _: <(_,) as Tr>::Ty = a;
    |            the parameter type `A` must be valid for the static lifetime...
    |            ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test1<A: 'static, B, C, D>(a: A, b: B, c: C) {
    |           +++++++++
@@ -21,7 +21,7 @@ LL |     Some::<<(_,) as Tr>::Ty>(b);
    |     the parameter type `B` must be valid for the static lifetime...
    |     ...so that the type `B` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test1<A, B: 'static, C, D>(a: A, b: B, c: C) {
    |              +++++++++
@@ -35,7 +35,7 @@ LL |     || -> <(_,) as Tr>::Ty { c };
    |           the parameter type `C` must be valid for the static lifetime...
    |           ...so that the type `C` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test1<A, B, C: 'static, D>(a: A, b: B, c: C) {
    |                 +++++++++
@@ -49,7 +49,7 @@ LL |     |d: <(_,) as Tr>::Ty| -> D { d };
    |      the parameter type `D` must be valid for the static lifetime...
    |      ...so that the type `D` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test1<A, B, C, D: 'static>(a: A, b: B, c: C) {
    |                    +++++++++
@@ -63,7 +63,7 @@ LL |     let _: Alias<_, _> = (a, 0u8);
    |            the parameter type `A` must be valid for the static lifetime...
    |            ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test2<A: 'static, B, C>(a: A, b: B, c: C) {
    |           +++++++++
@@ -77,7 +77,7 @@ LL |     Some::<Alias<_, _>>((b, 0u8));
    |     the parameter type `B` must be valid for the static lifetime...
    |     ...so that the type `B` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test2<A, B: 'static, C>(a: A, b: B, c: C) {
    |              +++++++++
@@ -91,7 +91,7 @@ LL |     || -> Alias<_, _> { (c, 0u8) };
    |           the parameter type `C` must be valid for the static lifetime...
    |           ...so that the type `C` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test2<A, B, C: 'static>(a: A, b: B, c: C) {
    |                 +++++++++

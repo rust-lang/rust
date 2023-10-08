@@ -7,7 +7,7 @@ LL | fn no_region<'a, T>(mut x: T) -> Box<dyn Anything + 'a>
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^ ...so that the type `<T as Iterator>::Item` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     T: Iterator, <T as Iterator>::Item: 'a
    |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -21,7 +21,7 @@ LL | fn wrong_region<'a, 'b, T>(mut x: T) -> Box<dyn Anything + 'a>
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^ ...so that the type `<T as Iterator>::Item` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     T: 'b + Iterator, <T as Iterator>::Item: 'a
    |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~

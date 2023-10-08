@@ -7,7 +7,7 @@ LL |
 LL |     (d, p)
    |     ^^^^^^ ...so that the type `impl Sized` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn foo<'a>(d: impl Sized + 'a, p: &'a mut ()) -> impl Sized + 'a {
    |       ++++               ++++      ++                         ~~
@@ -21,7 +21,7 @@ LL | fn foo1<'b>(d: impl Sized, p: &'b mut ()) -> impl Sized + '_ {
 LL |     (d, p)
    |     ^^^^^^ ...so that the type `impl Sized` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn foo1<'b>(d: impl Sized + 'b, p: &'b mut ()) -> impl Sized + '_ {
    |                           ++++
@@ -35,7 +35,7 @@ LL |
 LL |     (d, p)
    |     ^^^^^^ ...so that the type `impl Sized + 'a` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn foo2<'b, 'a>(d: impl Sized + 'a + 'b, p: &'b mut ()) -> impl Sized + 'b {
    |         +++                        ++++      ++                         ~~
@@ -49,7 +49,7 @@ LL |
 LL |     (d, p)
    |     ^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn bar<'a, T : Sized + 'a>(d: T, p: &'a  mut ()) -> impl Sized + 'a {
    |        +++           ++++            ++                          ~~
@@ -63,7 +63,7 @@ LL | fn bar1<'b, T : Sized>(d: T, p: &'b mut ()) -> impl Sized + '_ {
 LL |     (d, p)
    |     ^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn bar1<'b, T : Sized + 'b>(d: T, p: &'b mut ()) -> impl Sized + '_ {
    |                       ++++
@@ -77,7 +77,7 @@ LL |
 LL |     (d, p)
    |     ^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn bar2<'b, 'a, T : Sized + 'a + 'b>(d: T, p: &'b mut ()) -> impl Sized + 'b {
    |         +++                    ++++            ++                         ~~

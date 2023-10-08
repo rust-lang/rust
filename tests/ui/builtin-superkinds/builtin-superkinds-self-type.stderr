@@ -12,7 +12,7 @@ note: ...that is required by this bound
    |
 LL | trait Foo : Sized+Sync+'static {
    |                        ^^^^^^^
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl <T: Sync + 'static> Foo for T { }
    |               +++++++++

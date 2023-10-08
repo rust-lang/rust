@@ -6,7 +6,7 @@ LL |     type Item<'a> = &'a mut T;
    |               |
    |               the parameter type `T` must be valid for the lifetime `'a` as defined here...
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     type Item<'a> = &'a mut T where T: 'a;
    |                               +++++++++++

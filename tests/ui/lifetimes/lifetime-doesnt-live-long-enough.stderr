@@ -7,7 +7,7 @@ LL |     foo: &'static T
    |          the parameter type `T` must be valid for the static lifetime...
    |          ...so that the reference type `&'static T` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | struct Foo<T: 'static> {
    |             +++++++++
@@ -20,7 +20,7 @@ LL |     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
    |                          |
    |                          the parameter type `K` must be valid for the lifetime `'a` as defined here...
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() where K: 'a {
    |                                                     +++++++++++
@@ -33,7 +33,7 @@ LL |     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
    |                         |
    |                         the parameter type `M` must be valid for the lifetime `'a` as defined here...
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b + 'a>() {
    |                                                            ++++
@@ -46,7 +46,7 @@ LL |     fn foo<'a, L: X<&'a Nested<K>>>();
    |            |
    |            the parameter type `K` must be valid for the lifetime `'a` as defined here...
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn foo<'a, L: X<&'a Nested<K>>>() where K: 'a;
    |                                       +++++++++++
@@ -59,7 +59,7 @@ LL |     fn bar<'a, L: X<&'a Nested<Self>>>();
    |            |
    |            the parameter type `Self` must be valid for the lifetime `'a` as defined here...
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn bar<'a, L: X<&'a Nested<Self>>>() where Self: 'a;
    |                                          ++++++++++++++
@@ -72,7 +72,7 @@ LL |     fn baz<'a, L, M: X<&'a Nested<L>>>() {
    |            |
    |            the parameter type `L` must be valid for the lifetime `'a` as defined here...
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     fn baz<'a, L: 'a, M: X<&'a Nested<L>>>() {
    |                 ++++

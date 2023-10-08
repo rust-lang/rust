@@ -7,7 +7,7 @@ LL |     Box::new(v) as Box<dyn SomeTrait + 'static>
    |     the parameter type `A` must be valid for the static lifetime...
    |     ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn make_object1<A: SomeTrait + 'static>(v: A) -> Box<dyn SomeTrait + 'static> {
    |                              +++++++++
@@ -20,7 +20,7 @@ LL | fn make_object3<'a, 'b, A: SomeTrait + 'a>(v: A) -> Box<dyn SomeTrait + 'b>
 LL |     Box::new(v) as Box<dyn SomeTrait + 'b>
    |     ^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn make_object3<'a, 'b, A: SomeTrait + 'a + 'b>(v: A) -> Box<dyn SomeTrait + 'b> {
    |                                           ++++

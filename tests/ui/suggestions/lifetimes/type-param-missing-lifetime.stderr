@@ -7,7 +7,7 @@ LL |     async fn foo<A>(self, arg: A, _: &str) -> &str {
 LL |         check_bound(arg, self.0 .0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL ~ impl<'a, X> MyTy<Elided<'a, X>> {
 LL ~     async fn foo<A: 'a>(self, arg: A, _: &str) -> &str {
@@ -22,7 +22,7 @@ LL |         lt: Inv<'_>,
 LL |         check_bound(arg, lt);
    |         ^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL ~     async fn foo2<'b>(
 LL |         arg: A,
@@ -42,7 +42,7 @@ LL |     async fn bar2<'b>(_dummy: &'a u8, arg: A, lt: Inv<'_>) {
 LL |         check_bound(arg, lt);
    |         ^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     async fn bar2<'c, 'b>(_dummy: &'a u8, arg: A, lt: Inv<'c>) where A: 'c {
    |                   +++                                     ~~   +++++++++++
@@ -56,7 +56,7 @@ LL |     async fn foo3(self) {
 LL |         check_bound(self.0 .1, self.0 .0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl<'a, A: 'a> MyTy<Elided<'a, A>> {
    |      +++  ++++              ~~

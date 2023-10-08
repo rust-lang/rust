@@ -7,7 +7,7 @@ LL | fn foo<'a, T>() -> &'a ()
 LL |     bar::<T::Output>()
    |     ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     T: MyTrait<'a> + 'a,
    |                    ++++

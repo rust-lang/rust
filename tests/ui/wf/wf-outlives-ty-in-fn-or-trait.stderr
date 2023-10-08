@@ -6,7 +6,7 @@ LL | impl<'a, T> Trait<'a, T> for usize {
 LL |     type Out = &'a fn(T);
    |                ^^^^^^^^^ ...so that the reference type `&'a fn(T)` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl<'a, T: 'a> Trait<'a, T> for usize {
    |           ++++
@@ -19,7 +19,7 @@ LL | impl<'a, T> Trait<'a, T> for u32 {
 LL |     type Out = &'a dyn Baz<T>;
    |                ^^^^^^^^^^^^^^ ...so that the reference type `&'a (dyn Baz<T> + 'a)` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl<'a, T: 'a> Trait<'a, T> for u32 {
    |           ++++
