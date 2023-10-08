@@ -1,23 +1,15 @@
 error[E0311]: the parameter type `T` may not live long enough
   --> $DIR/E0311.rs:6:5
    |
-LL |     with_restriction::<T>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-note: the parameter type `T` must be valid for the anonymous lifetime defined here...
-  --> $DIR/E0311.rs:5:25
-   |
 LL | fn no_restriction<T>(x: &()) -> &() {
-   |                         ^^^
-note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/E0311.rs:6:5
-   |
+   |                         --- the parameter type `T` must be valid for the anonymous lifetime defined here...
 LL |     with_restriction::<T>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^
-help: consider adding an explicit lifetime bound...
+   |     ^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-LL | fn no_restriction<'a, T: 'a>(x: &'a ()) -> &() {
-   |                   +++  ++++      ++
+help: consider adding an explicit lifetime bound
+   |
+LL | fn no_restriction<'a, T: 'a>(x: &'a ()) -> &'a () {
+   |                   +++  ++++      ++         ++
 
 error: aborting due to previous error
 

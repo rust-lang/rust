@@ -37,10 +37,12 @@ LL |     || { None::<&'a &'b ()>; };
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/issue-98589-closures-relate-named-regions.rs:26:10
    |
+LL | fn test_early_type<'a: 'a, T>() {
+   |                    -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
 LL |     || { None::<&'a T>; };
    |          ^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test_early_type<'a: 'a, T: 'a>() {
    |                             ++++
@@ -48,10 +50,12 @@ LL | fn test_early_type<'a: 'a, T: 'a>() {
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/issue-98589-closures-relate-named-regions.rs:32:10
    |
+LL | fn test_late_type<'a, T>() {
+   |                   -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
 LL |     || { None::<&'a T>; };
    |          ^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn test_late_type<'a, T: 'a>() {
    |                        ++++
