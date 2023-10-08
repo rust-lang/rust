@@ -1,3 +1,5 @@
+use std::iter::FromIterator;
+
 use gccjit::ToRValue;
 use gccjit::{BinaryOp, RValue, Type};
 #[cfg(feature = "master")]
@@ -154,6 +156,58 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // FIXME(antoyo): allow comparing vector types as equal in libgccjit.
         let arg2 = bx.context.new_bitcast(None, args[1].immediate(), arg1.get_type());
         return Ok(compare_simd_types(bx, arg1, arg2, in_elem, llret_ty, cmp_op));
+    }
+
+    if name == sym::simd_bswap {
+        let vector = args[0].immediate();
+        let ret = match in_elem.kind() {
+            ty::Int(i) if i.bit_width() == Some(8) => vector,
+            ty::Uint(i) if i.bit_width() == Some(8) => vector,
+            ty::Int(_) | ty::Uint(_) => {
+                let v_type = vector.get_type();
+                let vector_type = v_type.unqualified().dyncast_vector().expect("vector type");
+                let elem_type = vector_type.get_element_type();
+                let elem_size_bytes = elem_type.get_size();
+                let type_size_bytes = elem_size_bytes as u64 * in_len;
+
+                let shuffle_indices = Vec::from_iter(0..type_size_bytes);
+                let byte_vector_type = bx.context.new_vector_type(bx.type_u8(), type_size_bytes);
+                let byte_vector = bx.context.new_bitcast(None, args[0].immediate(), byte_vector_type);
+
+                #[cfg(not(feature = "master"))]
+                let shuffled = {
+                    let new_elements: Vec<_> = shuffle_indices.chunks_exact(elem_size_bytes as _)
+                        .flat_map(|x| x.iter().rev())
+                        .map(|&i| {
+                            let index = bx.context.new_rvalue_from_long(bx.u64_type, i as _);
+                            bx.extract_element(byte_vector, index)
+                        })
+                        .collect();
+
+                    bx.context.new_rvalue_from_vector(None, byte_vector_type, &new_elements)
+                };
+                #[cfg(feature = "master")]
+                let shuffled = {
+                    let indices: Vec<_> = shuffle_indices.chunks_exact(elem_size_bytes as _)
+                        .flat_map(|x| x.iter().rev())
+                        .map(|&i| bx.context.new_rvalue_from_int(bx.u8_type, i as _))
+                        .collect();
+
+                    let mask = bx.context.new_rvalue_from_vector(None, byte_vector_type, &indices);
+                    bx.context.new_rvalue_vector_perm(None, byte_vector, byte_vector, mask)
+                };
+                bx.context.new_bitcast(None, shuffled, v_type)
+            }
+            _ => {
+                return_error!(InvalidMonomorphization::UnsupportedOperation {
+                    span,
+                    name,
+                    in_ty,
+                    in_elem,
+                });
+            }
+        };
+        return Ok(ret);
     }
 
     if name == sym::simd_shuffle {
