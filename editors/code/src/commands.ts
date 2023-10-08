@@ -21,6 +21,7 @@ import type { LanguageClient } from "vscode-languageclient/node";
 import { LINKED_COMMANDS } from "./client";
 import type { DependencyId } from "./dependencies_provider";
 import { unwrapUndefinable } from "./undefinable";
+import { log } from "./util";
 
 export * from "./ast_inspector";
 export * from "./run";
@@ -947,7 +948,24 @@ export function openDocs(ctx: CtxInit): Cmd {
         const position = editor.selection.active;
         const textDocument = { uri: editor.document.uri.toString() };
 
-        const doclink = await client.sendRequest(ra.openDocs, { position, textDocument });
+        const doclinks = await client.sendRequest(ra.openDocs, { position, textDocument });
+
+        let fileType = vscode.FileType.Unknown;
+        if (typeof doclinks.local === "string") {
+            try {
+                fileType = (await vscode.workspace.fs.stat(vscode.Uri.parse(doclinks.local))).type;
+            } catch (e) {
+                log.debug("stat() threw error. Falling back to web version", e);
+            }
+        }
+
+        let doclink;
+        if (fileType & vscode.FileType.File) {
+            // file does exist locally
+            doclink = doclinks.local;
+        } else {
+            doclink = doclinks.web;
+        }
 
         if (doclink != null) {
             await vscode.env.openExternal(vscode.Uri.parse(doclink));
