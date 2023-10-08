@@ -2,6 +2,77 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Sometimes when `format_code_in_doc_comments=true` was set some line comments were converted to block comments [#5533](https://github.com/rust-lang/rustfmt/issues/5533)
+- rustfmt will no longer remove the braces in match arms when the block has a labeled [#5676](https://github.com/rust-lang/rustfmt/issues/5676)
+  ```rust
+  fn main() {
+      match true {
+          true => 'a: {
+              break 'a
+          }
+          _ => (),
+      }
+  }
+  ```
+- Calling methods on float literals ending in `.` will now be wrappen in parenthesis. e.g. `0. .to_string()` will be formatted as `(0.).to_string()` [#5791](https://github.com/rust-lang/rustfmt/issues/5791)
+- Prevent ICE when formatting empty `macro_rules!` branch [#5730](https://github.com/rust-lang/rustfmt/issues/5730)
+  ```rust
+  macro_rules! statement {
+      () => {;};
+  }
+  ```
+- Prevent ICE when formatting `vec!{}` [#5735](https://github.com/rust-lang/rustfmt/issues/5735)
+- Prevent internal trailing whitespace error when formatting an empty `macro_rules!` defintion e.g. `macro_rules! foo {}` [#5882](https://github.com/rust-lang/rustfmt/issues/5882)
+- When formatting doc comments lines that start with `.` or `)` won't be treated as ordered markdown lists if `.` or `)` aren't follwed by a number [#5835](https://github.com/rust-lang/rustfmt/pull/5835)
+- Add parenthesis around closures when they're used as method receives, don't have a block body, and end with `.` [#4808](https://github.com/rust-lang/rustfmt/issues/4808)
+  ```rust
+  fn main() {
+      || (10.).method();
+      (|| ..).method();
+      (|| 1..).method();
+  }
+  ```
+- Prevent removing `for<T>` when using the [`#![feature(non_lifetime_binders)]`](https://github.com/rust-lang/rust/issues/108185) [#5721](https://github.com/rust-lang/rustfmt/issues/5721)
+  ```rust
+  #![feature(non_lifetime_binders)]
+  #![allow(incomplete_features)]
+
+  trait Other<U: ?Sized> {}
+
+  trait Trait<U>
+  where
+      for<T> U: Other<T> {}
+  ```
+- Fix various issues with comments in imports [#5852](https://github.com/rust-lang/rustfmt/issues/5852) [#4708](https://github.com/rust-lang/rustfmt/issues/4708) [#3984](https://github.com/rust-lang/rustfmt/issues/3984)
+- When setting `version = Two` newlines between where clause bounds will be removed [#5655](https://github.com/rust-lang/rustfmt/issues/5655)
+  ```rust
+  fn foo<T>(_: T)
+  where
+      T: std::fmt::Debug,
+      T: std::fmt::Display,
+  {
+  }
+  ```
+- Improve formatting of `let-else` statements that have leading attributes When setting `version = Two` [#5901](https://github.com/rust-lang/rustfmt/issues/5901)
+- Prevent comment duplication in expressions wrapped in parenthesis. [#5871](https://github.com/rust-lang/rustfmt/issues/5871)
+
+
+### Changed
+
+- rustfmt no longer removes explicit `Rust` ABIs. e.g `extern "Rust" fn im_a_rust_fn() {}` [#5701](https://github.com/rust-lang/rustfmt/issues/5701)
+- Setting `trailing_semicolon = false` will only remove trailing `;` on the last expression in a block [#5797](https://github.com/rust-lang/rustfmt/issues/5797)
+- Update the format of `cargo help fmt` to be more consistent with other standard commands [#5908](https://github.com/rust-lang/rustfmt/pull/5908)
+
+### Added
+
+- Users can now set `skip_macro_invocations` in `rustfmt.toml` [#5816](https://github.com/rust-lang/rustfmt/issues/5816)
+
+### Misc
+
+- Support the experimental `dyn*` syntax, enabled by `#![feature(dyn_star)]` [#5542](https://github.com/rust-lang/rustfmt/issues/5542)
+- Replace `unicode_categories` dependency with `unicode-properties` [#5864](https://github.com/rust-lang/rustfmt/pull/5864)
 
 ## [1.6.0] 2023-07-02
 
