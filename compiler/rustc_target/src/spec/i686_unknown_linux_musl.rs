@@ -20,6 +20,7 @@ pub fn target() -> Target {
     // This may or may not be related to this bug:
     // https://llvm.org/bugs/show_bug.cgi?id=30879
     base.frame_pointer = FramePointer::Always;
+    base.x86_use_xmm0 = true;
 
     Target {
         llvm_target: "i686-unknown-linux-musl".into(),

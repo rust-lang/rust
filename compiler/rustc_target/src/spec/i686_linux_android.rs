@@ -12,6 +12,7 @@ pub fn target() -> Target {
     base.cpu = "pentiumpro".into();
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3".into();
     base.stack_probes = StackProbeType::X86;
+    base.x86_use_xmm0 = true;
 
     Target {
         llvm_target: "i686-linux-android".into(),

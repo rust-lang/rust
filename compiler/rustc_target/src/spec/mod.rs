@@ -1935,6 +1935,9 @@ pub struct TargetOptions {
     /// wasm32 where the whole program either has simd or not.
     pub simd_types_indirect: bool,
 
+    /// On x86, use XMM0 instead of FP0 as float return register for the Rust ABI
+    pub x86_use_xmm0: bool,
+
     /// Pass a list of symbol which should be exported in the dylib to the linker.
     pub limit_rdylib_exports: bool,
 
@@ -2213,6 +2216,7 @@ impl Default for TargetOptions {
             requires_uwtable: false,
             default_uwtable: false,
             simd_types_indirect: true,
+            x86_use_xmm0: false,
             limit_rdylib_exports: true,
             override_export_symbols: None,
             merge_functions: MergeFunctions::Aliases,
@@ -2878,6 +2882,7 @@ impl Target {
         key!(requires_uwtable, bool);
         key!(default_uwtable, bool);
         key!(simd_types_indirect, bool);
+        key!(x86_use_xmm0, bool);
         key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
         key!(merge_functions, MergeFunctions)?;
@@ -3135,6 +3140,7 @@ impl ToJson for Target {
         target_option_val!(requires_uwtable);
         target_option_val!(default_uwtable);
         target_option_val!(simd_types_indirect);
+        target_option_val!(x86_use_xmm0);
         target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);
         target_option_val!(merge_functions);

@@ -19,6 +19,7 @@ pub fn target() -> Target {
     );
     // Workaround for #95429
     base.has_thread_local = false;
+    base.x86_use_xmm0 = true;
 
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),

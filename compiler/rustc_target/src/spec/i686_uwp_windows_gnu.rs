@@ -13,6 +13,7 @@ pub fn target() -> Target {
         &["-m", "i386pe", "--large-address-aware"],
     );
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-Wl,--large-address-aware"]);
+    base.x86_use_xmm0 = true;
 
     Target {
         llvm_target: "i686-pc-windows-gnu".into(),

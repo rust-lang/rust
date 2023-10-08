@@ -9,6 +9,7 @@ pub fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
     base.stack_probes = StackProbeType::X86;
     base.frame_pointer = FramePointer::Always;
+    base.x86_use_xmm0 = true;
 
     Target {
         // Clang automatically chooses a more specific target based on

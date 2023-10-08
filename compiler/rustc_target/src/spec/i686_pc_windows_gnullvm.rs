@@ -13,6 +13,7 @@ pub fn target() -> Target {
         LinkerFlavor::Gnu(Cc::No, Lld::No),
         &["-m", "i386pe", "--large-address-aware"],
     );
+    base.x86_use_xmm0 = true;
 
     Target {
         llvm_target: "i686-pc-windows-gnu".into(),

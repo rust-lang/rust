@@ -373,6 +373,7 @@ fn fn_abi_new_uncached<'tcx>(
     let target_env_gnu_like = matches!(&target.env[..], "gnu" | "musl" | "uclibc");
     let win_x64_gnu = target.os == "windows" && target.arch == "x86_64" && target.env == "gnu";
     let x86_sse2 = target.arch == "x86"
+        && target.x86_use_xmm0
         && cx.tcx.sess.parse_sess.config.contains(&(sym::target_feature, Some(sym::sse2)));
     let linux_s390x_gnu_like =
         target.os == "linux" && target.arch == "s390x" && target_env_gnu_like;
