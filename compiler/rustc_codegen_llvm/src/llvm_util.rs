@@ -459,22 +459,24 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
+    // * Features disabled by --target; are overridden by
     // * Features from -Ctarget-cpu=*; are overridden by [^1]
-    // * Features implied by --target; are overridden by
     // * Features from -Ctarget-feature; are overridden by
+    // * Features implied by --target; are overridden by
     // * function specific features.
     //
     // [^1]: target-cpu=native is handled here, other target-cpu values are handled implicitly
     // through LLVM TargetMachine implementation.
-    //
-    // FIXME(nagisa): it isn't clear what's the best interaction between features implied by
-    // `-Ctarget-cpu` and `--target` are. On one hand, you'd expect CLI arguments to always
-    // override anything that's implicit, so e.g. when there's no `--target` flag, features implied
-    // the host target are overridden by `-Ctarget-cpu=*`. On the other hand, what about when both
-    // `--target` and `-Ctarget-cpu=*` are specified? Both then imply some target features and both
-    // flags are specified by the user on the CLI. It isn't as clear-cut which order of precedence
-    // should be taken in cases like these.
     let mut features = vec![];
+
+    // Features disabled by an implicit or explicit `--target`.
+    features.extend(
+        sess.target
+            .features
+            .split(',')
+            .filter(|v| !v.is_empty() && backend_feature_name(v).is_some() && v.starts_with("-"))
+            .map(String::from),
+    );
 
     // -Ctarget-cpu=native
     match sess.opts.cg.target_cpu {
@@ -500,15 +502,6 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         }
         Some(_) | None => {}
     };
-
-    // Features implied by an implicit or explicit `--target`.
-    features.extend(
-        sess.target
-            .features
-            .split(',')
-            .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
-            .map(String::from),
-    );
 
     // -Ctarget-features
     let supported_features = supported_target_features(sess);
@@ -582,6 +575,15 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         })
         .flatten();
     features.extend(feats);
+
+    // Features implied by an implicit or explicit `--target`.
+    features.extend(
+        sess.target
+            .features
+            .split(',')
+            .filter(|v| !v.is_empty() && backend_feature_name(v).is_some() && v.starts_with("+"))
+            .map(String::from),
+    );
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
         sess.emit_err(TargetFeatureDisableOrEnable {
