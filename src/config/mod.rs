@@ -10,9 +10,7 @@ use crate::config::config_type::ConfigType;
 #[allow(unreachable_pub)]
 pub use crate::config::file_lines::{FileLines, FileName, Range};
 #[allow(unreachable_pub)]
-pub use crate::config::lists::*;
-#[allow(unreachable_pub)]
-pub use crate::config::macro_names::{MacroSelector, MacroSelectors};
+pub use crate::config::macro_names::MacroSelector;
 #[allow(unreachable_pub)]
 pub use crate::config::options::*;
 
@@ -34,161 +32,168 @@ pub(crate) mod style_edition;
 // `name: value type, default value, is stable, description;`
 create_config! {
     // Fundamental stuff
-    max_width: usize, 100, true, "Maximum width of each line";
-    hard_tabs: bool, false, true, "Use tab characters for indentation, spaces for alignment";
-    tab_spaces: usize, 4, true, "Number of spaces per tab";
-    newline_style: NewlineStyle, NewlineStyle::Auto, true, "Unix or Windows line endings";
-    indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items";
+    max_width: MaxWidth, true, "Maximum width of each line";
+    hard_tabs: HardTabs, true, "Use tab characters for indentation, spaces for alignment";
+    tab_spaces: TabSpaces, true, "Number of spaces per tab";
+    newline_style: NewlineStyleConfig, true, "Unix or Windows line endings";
+    indent_style: IndentStyleConfig, false, "How do we indent expressions or items";
 
     // Width Heuristics
-    use_small_heuristics: Heuristics, Heuristics::Default, true, "Whether to use different \
+    use_small_heuristics: UseSmallHeuristics, true, "Whether to use different \
         formatting for items and expressions if they satisfy a heuristic notion of 'small'";
-    width_heuristics: WidthHeuristics, WidthHeuristics::scaled(100), false,
-        "'small' heuristic values";
-    fn_call_width: usize, 60, true, "Maximum width of the args of a function call before \
+    width_heuristics: WidthHeuristicsConfig, false, "'small' heuristic values";
+    fn_call_width: FnCallWidth, true, "Maximum width of the args of a function call before \
         falling back to vertical formatting.";
-    attr_fn_like_width: usize, 70, true, "Maximum width of the args of a function-like \
+    attr_fn_like_width: AttrFnLikeWidth, true, "Maximum width of the args of a function-like \
         attributes before falling back to vertical formatting.";
-    struct_lit_width: usize, 18, true, "Maximum width in the body of a struct lit before \
+    struct_lit_width: StructLitWidth, true, "Maximum width in the body of a struct lit before \
         falling back to vertical formatting.";
-    struct_variant_width: usize, 35, true, "Maximum width in the body of a struct variant before \
-        falling back to vertical formatting.";
-    array_width: usize, 60, true,  "Maximum width of an array literal before falling \
+    struct_variant_width: StructVariantWidth, true, "Maximum width in the body of a struct variant \
+        before falling back to vertical formatting.";
+    array_width: ArrayWidth, true,  "Maximum width of an array literal before falling \
         back to vertical formatting.";
-    chain_width: usize, 60, true, "Maximum length of a chain to fit on a single line.";
-    single_line_if_else_max_width: usize, 50, true, "Maximum line length for single line if-else \
-        expressions. A value of zero means always break if-else expressions.";
-    single_line_let_else_max_width: usize, 50, true, "Maximum line length for single line \
-        let-else statements. A value of zero means always format the divergent `else` block \
-        over multiple lines.";
+    chain_width: ChainWidth, true, "Maximum length of a chain to fit on a single line.";
+    single_line_if_else_max_width: SingleLineIfElseMaxWidth, true, "Maximum line length for single \
+        line if-else expressions. A value of zero means always break if-else expressions.";
+    single_line_let_else_max_width: SingleLineLetElseMaxWidth, true, "Maximum line length for \
+        single line let-else statements. A value of zero means always format the divergent `else` \
+        block over multiple lines.";
 
     // Comments. macros, and strings
-    wrap_comments: bool, false, false, "Break comments to fit on the line";
-    format_code_in_doc_comments: bool, false, false, "Format the code snippet in doc comments.";
-    doc_comment_code_block_width: usize, 100, false, "Maximum width for code snippets in doc \
-        comments. No effect unless format_code_in_doc_comments = true";
-    comment_width: usize, 80, false,
+    wrap_comments: WrapComments, false, "Break comments to fit on the line";
+    format_code_in_doc_comments: FormatCodeInDocComments, false, "Format the code snippet in \
+        doc comments.";
+    doc_comment_code_block_width: DocCommentCodeBlockWidth, false, "Maximum width for code \
+        snippets in doc comments. No effect unless format_code_in_doc_comments = true";
+    comment_width: CommentWidth, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
-    normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";
-    normalize_doc_attributes: bool, false, false, "Normalize doc attributes as doc comments";
-    format_strings: bool, false, false, "Format string literals where necessary";
-    format_macro_matchers: bool, false, false,
+    normalize_comments: NormalizeComments, false, "Convert /* */ comments to // comments where \
+        possible";
+    normalize_doc_attributes: NormalizeDocAttributes, false, "Normalize doc attributes as doc \
+        comments";
+    format_strings: FormatStrings, false, "Format string literals where necessary";
+    format_macro_matchers: FormatMacroMatchers, false,
         "Format the metavariable matching patterns in macros";
-    format_macro_bodies: bool, true, false, "Format the bodies of declarative macro definitions";
-    skip_macro_invocations: MacroSelectors, MacroSelectors::default(), false,
+    format_macro_bodies: FormatMacroBodies, false,
+        "Format the bodies of declarative macro definitions";
+    skip_macro_invocations: SkipMacroInvocations, false,
         "Skip formatting the bodies of macros invoked with the following names.";
-    hex_literal_case: HexLiteralCase, HexLiteralCase::Preserve, false,
-        "Format hexadecimal integer literals";
+    hex_literal_case: HexLiteralCaseConfig, false, "Format hexadecimal integer literals";
 
     // Single line expressions and items
-    empty_item_single_line: bool, true, false,
+    empty_item_single_line: EmptyItemSingleLine, false,
         "Put empty-body functions and impls on a single line";
-    struct_lit_single_line: bool, true, false,
+    struct_lit_single_line: StructLitSingleLine, false,
         "Put small struct literals on a single line";
-    fn_single_line: bool, false, false, "Put single-expression functions on a single line";
-    where_single_line: bool, false, false, "Force where-clauses to be on a single line";
+    fn_single_line: FnSingleLine, false, "Put single-expression functions on a single line";
+    where_single_line: WhereSingleLine, false, "Force where-clauses to be on a single line";
 
     // Imports
-    imports_indent: IndentStyle, IndentStyle::Block, false, "Indent of imports";
-    imports_layout: ListTactic, ListTactic::Mixed, false, "Item layout inside a import block";
-    imports_granularity: ImportGranularity, ImportGranularity::Preserve, false,
+    imports_indent: ImportsIndent, false, "Indent of imports";
+    imports_layout: ImportsLayout, false, "Item layout inside a import block";
+    imports_granularity: ImportsGranularityConfig, false,
         "Merge or split imports to the provided granularity";
-    group_imports: GroupImportsTactic, GroupImportsTactic::Preserve, false,
+    group_imports: GroupImportsTacticConfig, false,
         "Controls the strategy for how imports are grouped together";
-    merge_imports: bool, false, false, "(deprecated: use imports_granularity instead)";
+    merge_imports: MergeImports, false, "(deprecated: use imports_granularity instead)";
 
     // Ordering
-    reorder_imports: bool, true, true, "Reorder import and extern crate statements alphabetically";
-    reorder_modules: bool, true, true, "Reorder module statements alphabetically in group";
-    reorder_impl_items: bool, false, false, "Reorder impl items";
+    reorder_imports: ReorderImports, true, "Reorder import and extern crate statements \
+        alphabetically";
+    reorder_modules: ReorderModules, true, "Reorder module statements alphabetically in group";
+    reorder_impl_items: ReorderImplItems, false, "Reorder impl items";
 
     // Spaces around punctuation
-    type_punctuation_density: TypeDensity, TypeDensity::Wide, false,
+    type_punctuation_density: TypePunctuationDensity, false,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
-    space_before_colon: bool, false, false, "Leave a space before the colon";
-    space_after_colon: bool, true, false, "Leave a space after the colon";
-    spaces_around_ranges: bool, false, false, "Put spaces around the  .. and ..= range operators";
-    binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
+    space_before_colon: SpaceBeforeColon, false, "Leave a space before the colon";
+    space_after_colon: SpaceAfterColon, false, "Leave a space after the colon";
+    spaces_around_ranges: SpacesAroundRanges, false, "Put spaces around the  .. and ..= range \
+        operators";
+    binop_separator: BinopSeparator, false,
         "Where to put a binary operator when a binary expression goes multiline";
 
     // Misc.
-    remove_nested_parens: bool, true, true, "Remove nested parens";
-    combine_control_expr: bool, true, false, "Combine control expressions with function calls";
-    short_array_element_width_threshold: usize, 10, true,
+    remove_nested_parens: RemoveNestedParens, true, "Remove nested parens";
+    combine_control_expr: CombineControlExpr, false, "Combine control expressions with function \
+        calls";
+    short_array_element_width_threshold: ShortArrayElementWidthThreshold, true,
         "Width threshold for an array element to be considered short";
-    overflow_delimited_expr: bool, false, false,
+    overflow_delimited_expr: OverflowDelimitedExpr, false,
         "Allow trailing bracket/brace delimited expressions to overflow";
-    struct_field_align_threshold: usize, 0, false,
+    struct_field_align_threshold: StructFieldAlignThreshold, false,
         "Align struct fields if their diffs fits within threshold";
-    enum_discrim_align_threshold: usize, 0, false,
+    enum_discrim_align_threshold: EnumDiscrimAlignThreshold, false,
         "Align enum variants discrims, if their diffs fit within threshold";
-    match_arm_blocks: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
-        the same line with the pattern of arms";
-    match_arm_leading_pipes: MatchArmLeadingPipe, MatchArmLeadingPipe::Never, true,
+    match_arm_blocks: MatchArmBlocks, false, "Wrap the body of arms in blocks when it does not fit \
+        on the same line with the pattern of arms";
+    match_arm_leading_pipes: MatchArmLeadingPipeConfig, true,
         "Determines whether leading pipes are emitted on match arms";
-    force_multiline_blocks: bool, false, false,
+    force_multiline_blocks: ForceMultilineBlocks, false,
         "Force multiline closure bodies and match arms to be wrapped in a block";
-    fn_args_layout: Density, Density::Tall, true,
+    fn_args_layout: FnArgsLayout, true,
         "(deprecated: use fn_params_layout instead)";
-    fn_params_layout: Density, Density::Tall, true,
+    fn_params_layout: FnParamsLayout, true,
         "Control the layout of parameters in function signatures.";
-    brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for items";
-    control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine, false,
+    brace_style: BraceStyleConfig, false, "Brace style for items";
+    control_brace_style: ControlBraceStyleConfig, false,
         "Brace style for control flow constructs";
-    trailing_semicolon: bool, true, false,
+    trailing_semicolon: TrailingSemicolon, false,
         "Add trailing semicolon after break, continue and return";
-    trailing_comma: SeparatorTactic, SeparatorTactic::Vertical, false,
+    trailing_comma: TrailingComma, false,
         "How to handle trailing commas for lists";
-    match_block_trailing_comma: bool, false, true,
+    match_block_trailing_comma: MatchBlockTrailingComma, true,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
-    blank_lines_upper_bound: usize, 1, false,
+    blank_lines_upper_bound: BlankLinesUpperBound, false,
         "Maximum number of blank lines which can be put between items";
-    blank_lines_lower_bound: usize, 0, false,
+    blank_lines_lower_bound: BlankLinesLowerBound, false,
         "Minimum number of blank lines which must be put between items";
-    edition: Edition, Edition::Edition2015, true, "The edition of the parser (RFC 2052)";
-    version: Version, Version::One, false, "Version of formatting rules";
-    inline_attribute_width: usize, 0, false,
+    edition: EditionConfig, true, "The edition of the parser (RFC 2052)";
+    version: VersionConfig, false, "Version of formatting rules";
+    inline_attribute_width: InlineAttributeWidth, false,
         "Write an item and its attribute on the same line \
         if their combined width is below a threshold";
-    format_generated_files: bool, true, false, "Format generated files";
-    generated_marker_line_search_limit: usize, 5, false, "Number of lines to check for a \
-        `@generated` marker when `format_generated_files` is enabled";
+    format_generated_files: FormatGeneratedFiles, false, "Format generated files";
+    generated_marker_line_search_limit: GeneratedMarkerLineSearchLimit, false, "Number of lines to \
+        check for a `@generated` marker when `format_generated_files` is enabled";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
-    merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";
-    use_try_shorthand: bool, false, true, "Replace uses of the try! macro by the ? shorthand";
-    use_field_init_shorthand: bool, false, true, "Use field initialization shorthand if possible";
-    force_explicit_abi: bool, true, true, "Always print the abi for extern items";
-    condense_wildcard_suffixes: bool, false, false, "Replace strings of _ wildcards by a single .. \
-                                                     in tuple patterns";
+    merge_derives: MergeDerives, true, "Merge multiple `#[derive(...)]` into a single one";
+    use_try_shorthand: UseTryShorthand, true, "Replace uses of the try! macro by the ? shorthand";
+    use_field_init_shorthand: UseFieldInitShorthand, true, "Use field initialization shorthand if \
+        possible";
+    force_explicit_abi: ForceExplicitAbi, true, "Always print the abi for extern items";
+    condense_wildcard_suffixes: CondenseWildcardSuffixes, false, "Replace strings of _ wildcards \
+        by a single .. in tuple patterns";
 
     // Control options (changes the operation of rustfmt, rather than the formatting)
-    color: Color, Color::Auto, false,
+    color: ColorConfig, false,
         "What Color option to use when none is supplied: Always, Never, Auto";
-    required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
+    required_version: RequiredVersion, false,
         "Require a specific version of rustfmt";
-    unstable_features: bool, false, false,
+    unstable_features: UnstableFeatures, false,
             "Enables unstable features. Only available on nightly channel";
-    disable_all_formatting: bool, false, true, "Don't reformat anything";
-    skip_children: bool, false, false, "Don't reformat out of line modules";
-    hide_parse_errors: bool, false, false, "(deprecated: use show_parse_errors instead)";
-    show_parse_errors: bool, true, false, "Show errors from the parser (unstable)";
-    error_on_line_overflow: bool, false, false, "Error if unable to get all lines within max_width";
-    error_on_unformatted: bool, false, false,
+    disable_all_formatting: DisableAllFormatting, true, "Don't reformat anything";
+    skip_children: SkipChildren, false, "Don't reformat out of line modules";
+    hide_parse_errors: HideParseErrors, false, "Hide errors from the parser";
+    show_parse_errors: ShowParseErrors, false, "Show errors from the parser (unstable)";
+    error_on_line_overflow: ErrorOnLineOverflow, false, "Error if unable to get all lines within \
+        max_width";
+    error_on_unformatted: ErrorOnUnformatted, false,
         "Error if unable to get comments or string literals within max_width, \
          or they are left with trailing whitespaces";
-    ignore: IgnoreList, IgnoreList::default(), false,
+    ignore: Ignore, false,
         "Skip formatting the specified files and directories";
 
     // Not user-facing
-    verbose: Verbosity, Verbosity::Normal, false, "How much to information to emit to the user";
-    file_lines: FileLines, FileLines::all(), false,
+    verbose: Verbose, false, "How much to information to emit to the user";
+    file_lines: FileLinesConfig, false,
         "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
          via the --file-lines option";
-    emit_mode: EmitMode, EmitMode::Files, false,
+    emit_mode: EmitModeConfig, false,
         "What emit Mode to use when none is supplied";
-    make_backup: bool, false, false, "Backup changed files";
-    print_misformatted_file_names: bool, false, true,
+    make_backup: MakeBackup, false, "Backup changed files";
+    print_misformatted_file_names: PrintMisformattedFileNames, true,
         "Prints the names of mismatched files that were formatted. Prints the names of \
          files that would be formatted when used with `--check` mode. ";
 }
@@ -420,12 +425,13 @@ mod test {
     use super::*;
     use std::str;
 
-    use crate::config::macro_names::MacroName;
+    use crate::config::macro_names::{MacroName, MacroSelectors};
     use rustfmt_config_proc_macro::{nightly_only_test, stable_only_test};
 
     #[allow(dead_code)]
     mod mock {
         use super::super::*;
+        use crate::config_option_with_style_edition_default;
         use rustfmt_config_proc_macro::config_type;
 
         #[config_type]
@@ -436,66 +442,66 @@ mod test {
             V3,
         }
 
+        config_option_with_style_edition_default!(
+            StableOption, bool, _ => false;
+            UnstableOption, bool, _ => false;
+            PartiallyUnstable, PartiallyUnstableOption, _ => PartiallyUnstableOption::V1;
+        );
+
         create_config! {
             // Options that are used by the generated functions
-            max_width: usize, 100, true, "Maximum width of each line";
-            required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
-                "Require a specific version of rustfmt.";
-            ignore: IgnoreList, IgnoreList::default(), false,
-                "Skip formatting the specified files and directories.";
-            verbose: Verbosity, Verbosity::Normal, false,
-                "How much to information to emit to the user";
-            file_lines: FileLines, FileLines::all(), false,
+            max_width: MaxWidth, true, "Maximum width of each line";
+            required_version: RequiredVersion, false, "Require a specific version of rustfmt.";
+            ignore: Ignore, false, "Skip formatting the specified files and directories.";
+            verbose: Verbose, false, "How much to information to emit to the user";
+            file_lines: FileLinesConfig, false,
                 "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
                     via the --file-lines option";
 
             // merge_imports deprecation
-            imports_granularity: ImportGranularity, ImportGranularity::Preserve, false,
-                "Merge imports";
-            merge_imports: bool, false, false, "(deprecated: use imports_granularity instead)";
+            imports_granularity: ImportsGranularityConfig, false, "Merge imports";
+            merge_imports: MergeImports, false, "(deprecated: use imports_granularity instead)";
 
             // fn_args_layout renamed to fn_params_layout
-            fn_args_layout: Density, Density::Tall, true,
-                "(deprecated: use fn_params_layout instead)";
-            fn_params_layout: Density, Density::Tall, true,
+            fn_args_layout: FnArgsLayout, true, "(deprecated: use fn_params_layout instead)";
+            fn_params_layout: FnParamsLayout, true,
                 "Control the layout of parameters in a function signatures.";
 
             // hide_parse_errors renamed to show_parse_errors
-            hide_parse_errors: bool, false, false,
+            hide_parse_errors: HideParseErrors, false,
                 "(deprecated: use show_parse_errors instead)";
-            show_parse_errors: bool, true, false,
+            show_parse_errors: ShowParseErrors, false,
                 "Show errors from the parser (unstable)";
 
 
             // Width Heuristics
-            use_small_heuristics: Heuristics, Heuristics::Default, true,
+            use_small_heuristics: UseSmallHeuristics, true,
                 "Whether to use different formatting for items and \
                  expressions if they satisfy a heuristic notion of 'small'.";
-            width_heuristics: WidthHeuristics, WidthHeuristics::scaled(100), false,
-                "'small' heuristic values";
+            width_heuristics: WidthHeuristicsConfig, false, "'small' heuristic values";
 
-            fn_call_width: usize, 60, true, "Maximum width of the args of a function call before \
+            fn_call_width: FnCallWidth, true, "Maximum width of the args of a function call before \
                 falling back to vertical formatting.";
-            attr_fn_like_width: usize, 70, true, "Maximum width of the args of a function-like \
-                attributes before falling back to vertical formatting.";
-            struct_lit_width: usize, 18, true, "Maximum width in the body of a struct lit before \
-                falling back to vertical formatting.";
-            struct_variant_width: usize, 35, true, "Maximum width in the body of a struct \
+            attr_fn_like_width: AttrFnLikeWidth, true, "Maximum width of the args of a \
+                function-like attributes before falling back to vertical formatting.";
+            struct_lit_width: StructLitWidth, true, "Maximum width in the body of a struct lit \
+                before falling back to vertical formatting.";
+            struct_variant_width: StructVariantWidth, true, "Maximum width in the body of a struct \
                 variant before falling back to vertical formatting.";
-            array_width: usize, 60, true,  "Maximum width of an array literal before falling \
+            array_width: ArrayWidth, true,  "Maximum width of an array literal before falling \
                 back to vertical formatting.";
-            chain_width: usize, 60, true, "Maximum length of a chain to fit on a single line.";
-            single_line_if_else_max_width: usize, 50, true, "Maximum line length for single \
-                line if-else expressions. A value of zero means always break if-else expressions.";
-            single_line_let_else_max_width: usize, 50, false, "Maximum line length for single \
-                line let-else statements. A value of zero means always format the divergent \
-                `else` block over multiple lines.";
+            chain_width: ChainWidth, true, "Maximum length of a chain to fit on a single line.";
+            single_line_if_else_max_width: SingleLineIfElseMaxWidth, true, "Maximum line length \
+                for single line if-else expressions. A value of zero means always break if-else \
+                expressions.";
+            single_line_let_else_max_width: SingleLineLetElseMaxWidth, false, "Maximum line length \
+                for single line let-else statements. A value of zero means always format the \
+                divergent `else` block over multiple lines.";
 
             // Options that are used by the tests
-            stable_option: bool, false, true, "A stable option";
-            unstable_option: bool, false, false, "An unstable option";
-            partially_unstable_option: PartiallyUnstableOption, PartiallyUnstableOption::V1, true,
-                "A partially unstable option";
+            stable_option: StableOption, true, "A stable option";
+            unstable_option: UnstableOption, false, "An unstable option";
+            partially_unstable_option: PartiallyUnstable, true, "A partially unstable option";
         }
 
         #[cfg(test)]

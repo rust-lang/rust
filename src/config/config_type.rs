@@ -70,15 +70,15 @@ macro_rules! create_config {
     //
     // - $i: the ident name of the option
     // - $ty: the type of the option value
-    // - $def: the default value of the option
     // - $stb: true if the option is stable
     // - $dstring: description of the option
-    ($($i:ident: $ty:ty, $def:expr, $stb:expr, $( $dstring:expr ),+ );+ $(;)*) => (
+    ($($i:ident: $ty:ty, $stb:expr, $( $dstring:expr ),+ );+ $(;)*) => (
         #[cfg(test)]
         use std::collections::HashSet;
         use std::io::Write;
 
         use serde::{Deserialize, Serialize};
+        use $crate::config::style_edition::StyleEditionDefault;
 
         #[derive(Clone)]
         #[allow(unreachable_pub)]
@@ -89,7 +89,7 @@ macro_rules! create_config {
             // - 1: true if the option was manually initialized
             // - 2: the option value
             // - 3: true if the option is unstable
-            $($i: (Cell<bool>, bool, $ty, bool)),+
+            $($i: (Cell<bool>, bool, <$ty as StyleEditionDefault>::ConfigType, bool)),+
         }
 
         // Just like the Config struct but with each property wrapped
@@ -100,7 +100,7 @@ macro_rules! create_config {
         #[derive(Deserialize, Serialize, Clone)]
         #[allow(unreachable_pub)]
         pub struct PartialConfig {
-            $(pub $i: Option<$ty>),+
+            $(pub $i: Option<<$ty as StyleEditionDefault>::ConfigType>),+
         }
 
         // Macro hygiene won't allow us to make `set_$i()` methods on Config
@@ -114,7 +114,7 @@ macro_rules! create_config {
         impl<'a> ConfigSetter<'a> {
             $(
             #[allow(unreachable_pub)]
-            pub fn $i(&mut self, value: $ty) {
+            pub fn $i(&mut self, value: <$ty as StyleEditionDefault>::ConfigType) {
                 (self.0).$i.2 = value;
                 match stringify!($i) {
                     "max_width"
@@ -153,11 +153,27 @@ macro_rules! create_config {
         impl Config {
             $(
             #[allow(unreachable_pub)]
-            pub fn $i(&self) -> $ty {
+            pub fn $i(&self) -> <$ty as StyleEditionDefault>::ConfigType {
                 self.$i.0.set(true);
                 self.$i.2.clone()
             }
             )+
+
+            #[allow(unreachable_pub)]
+            pub fn default_with_style_edition(style_edition: StyleEdition) -> Config {
+                Config {
+                    $(
+                        $i: (
+                                Cell::new(false),
+                                false,
+                                <$ty as StyleEditionDefault>::style_edition_default(
+                                    style_edition
+                                ),
+                                $stb
+                            ),
+                    )+
+                }
+            }
 
             #[allow(unreachable_pub)]
             pub fn set(&mut self) -> ConfigSetter<'_> {
@@ -212,7 +228,9 @@ macro_rules! create_config {
             pub fn is_valid_key_val(key: &str, val: &str) -> bool {
                 match key {
                     $(
-                        stringify!($i) => val.parse::<$ty>().is_ok(),
+                        stringify!($i) => {
+                            val.parse::<<$ty as StyleEditionDefault>::ConfigType>().is_ok()
+                        }
                     )+
                         _ => false,
                 }
@@ -246,11 +264,15 @@ macro_rules! create_config {
                 match key {
                     $(
                         stringify!($i) => {
-                            let option_value = val.parse::<$ty>()
-                                .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
-                                                 stringify!($i),
-                                                 val,
-                                                 stringify!($ty)));
+                            let value = val.parse::<<$ty as StyleEditionDefault>::ConfigType>()
+                                .expect(
+                                    &format!(
+                                        "Failed to parse override for {} (\"{}\") as a {}",
+                                        stringify!($i),
+                                        val,
+                                        stringify!(<$ty as StyleEditionDefault>::ConfigType)
+                                    )
+                                );
 
                             // Users are currently allowed to set unstable
                             // options/variants via the `--config` options override.
@@ -261,7 +283,7 @@ macro_rules! create_config {
                             // For now, do not validate whether the option or value is stable,
                             // just always set it.
                             self.$i.1 = true;
-                            self.$i.2 = option_value;
+                            self.$i.2 = value;
                         }
                     )+
                     _ => panic!("Unknown config key in override: {}", key)
@@ -301,6 +323,7 @@ macro_rules! create_config {
 
             #[allow(unreachable_pub)]
             pub fn print_docs(out: &mut dyn Write, include_unstable: bool) {
+                let style_edition = StyleEdition::Edition2015;
                 use std::cmp;
                 let max = 0;
                 $( let max = cmp::max(max, stringify!($i).len()+1); )+
@@ -317,14 +340,17 @@ macro_rules! create_config {
                             }
                             name_out.push_str(name_raw);
                             name_out.push(' ');
-                            let mut default_str = format!("{}", $def);
+                            let default_value = <$ty as StyleEditionDefault>::style_edition_default(
+                                style_edition
+                            );
+                            let mut default_str = format!("{}", default_value);
                             if default_str.is_empty() {
                                 default_str = String::from("\"\"");
                             }
                             writeln!(out,
                                     "{}{} Default: {}{}",
                                     name_out,
-                                    <$ty>::doc_hint(),
+                                    <<$ty as StyleEditionDefault>::ConfigType>::doc_hint(),
                                     default_str,
                                     if !$stb { " (unstable)" } else { "" }).unwrap();
                             $(
@@ -480,9 +506,13 @@ macro_rules! create_config {
             #[allow(unreachable_pub)]
             /// Returns `true` if the config key was explicitly set and is the default value.
             pub fn is_default(&self, key: &str) -> bool {
+                let style_edition = StyleEdition::Edition2015;
                 $(
+                    let default_value = <$ty as StyleEditionDefault>::style_edition_default(
+                        style_edition
+                    );
                     if let stringify!($i) = key {
-                        return self.$i.1 && self.$i.2 == $def;
+                        return self.$i.1 && self.$i.2 == default_value;
                     }
                  )+
                 false
@@ -492,11 +522,7 @@ macro_rules! create_config {
         // Template for the default configuration
         impl Default for Config {
             fn default() -> Config {
-                Config {
-                    $(
-                        $i: (Cell::new(false), false, $def, $stb),
-                    )+
-                }
+                Config::default_with_style_edition(StyleEdition::Edition2015)
             }
         }
     )

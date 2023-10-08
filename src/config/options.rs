@@ -11,7 +11,9 @@ use serde::de::{SeqAccess, Visitor};
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::config::file_lines::FileLines;
 use crate::config::lists::*;
+use crate::config::macro_names::MacroSelectors;
 use crate::config::Config;
 
 #[config_type]
@@ -494,3 +496,146 @@ pub enum StyleEdition {
     /// [Edition 2024]().
     Edition2024,
 }
+
+/// Defines unit structs to implement `StyleEditionDefault` for.
+#[macro_export]
+macro_rules! config_option_with_style_edition_default {
+    ($name:ident, $config_ty:ty, _ => $default:expr) => {
+        #[allow(unreachable_pub)]
+        pub struct $name;
+        $crate::style_edition_default!($name, $config_ty, _ => $default);
+    };
+    ($name:ident, $config_ty:ty, Edition2024 => $default_2024:expr, _ => $default_2015:expr) => {
+        pub struct $name;
+        $crate::style_edition_default!(
+            $name,
+            $config_ty,
+            Edition2024 => $default_2024,
+            _ => $default_2015
+        );
+    };
+    (
+        $($name:ident, $config_ty:ty, $(Edition2024 => $default_2024:expr,)? _ => $default:expr);*
+        $(;)*
+    ) => {
+        $(
+            config_option_with_style_edition_default!(
+                $name, $config_ty, $(Edition2024 => $default_2024,)? _ => $default
+            );
+        )*
+    };
+}
+
+// TODO(ytmimi) Some of the configuration values have a `Config` suffix, while others don't.
+// I chose to add a `Config` suffix in cases where a type for the config option was already
+// defined. For example, `NewlineStyle` and `NewlineStyleConfig`. There was some discussion
+// about using the `Config` suffix more consistently.
+config_option_with_style_edition_default!(
+    // Fundamental stuff
+    MaxWidth, usize, _ => 100;
+    HardTabs, bool, _ => false;
+    TabSpaces, usize, _ => 4;
+    NewlineStyleConfig, NewlineStyle, _ => NewlineStyle::Auto;
+    IndentStyleConfig, IndentStyle, _ => IndentStyle::Block;
+
+    // Width Heuristics
+    UseSmallHeuristics, Heuristics, _ => Heuristics::Default;
+    WidthHeuristicsConfig, WidthHeuristics, _ => WidthHeuristics::scaled(100);
+    FnCallWidth, usize, _ => 60;
+    AttrFnLikeWidth, usize, _ => 70;
+    StructLitWidth, usize, _ => 18;
+    StructVariantWidth, usize, _ => 35;
+    ArrayWidth, usize, _ => 60;
+    ChainWidth, usize, _ => 60;
+    SingleLineIfElseMaxWidth, usize, _ => 50;
+    SingleLineLetElseMaxWidth, usize, _ => 50;
+
+    // Comments. macros, and strings
+    WrapComments, bool, _ => false;
+    FormatCodeInDocComments, bool, _ => false;
+    DocCommentCodeBlockWidth, usize, _ => 100;
+    CommentWidth, usize, _ => 80;
+    NormalizeComments, bool, _ => false;
+    NormalizeDocAttributes, bool, _ => false;
+    FormatStrings, bool, _ => false;
+    FormatMacroMatchers, bool, _ => false;
+    FormatMacroBodies, bool, _ => true;
+    SkipMacroInvocations, MacroSelectors, _ => MacroSelectors::default();
+    HexLiteralCaseConfig, HexLiteralCase, _ => HexLiteralCase::Preserve;
+
+    // Single line expressions and items
+    EmptyItemSingleLine, bool, _ => true;
+    StructLitSingleLine, bool, _ => true;
+    FnSingleLine, bool, _ => false;
+    WhereSingleLine, bool, _ => false;
+
+    // Imports
+    ImportsIndent, IndentStyle, _ => IndentStyle::Block;
+    ImportsLayout, ListTactic, _ => ListTactic::Mixed;
+    ImportsGranularityConfig, ImportGranularity, _ => ImportGranularity::Preserve;
+    GroupImportsTacticConfig, GroupImportsTactic, _ => GroupImportsTactic::Preserve;
+    MergeImports, bool, _ => false;
+
+    // Ordering
+    ReorderImports, bool, _ => true;
+    ReorderModules, bool, _ => true;
+    ReorderImplItems, bool, _ => false;
+
+    // Spaces around punctuation
+    TypePunctuationDensity, TypeDensity, _ => TypeDensity::Wide;
+    SpaceBeforeColon, bool, _ => false;
+    SpaceAfterColon, bool, _ => true;
+    SpacesAroundRanges, bool, _ => false;
+    BinopSeparator, SeparatorPlace, _ => SeparatorPlace::Front;
+
+    // Misc.
+    RemoveNestedParens, bool, _ => true;
+    CombineControlExpr, bool, _ => true;
+    ShortArrayElementWidthThreshold, usize, _ => 10;
+    OverflowDelimitedExpr, bool, _ => false;
+    StructFieldAlignThreshold, usize, _ => 0;
+    EnumDiscrimAlignThreshold, usize, _ => 0;
+    MatchArmBlocks, bool, _ => true;
+    MatchArmLeadingPipeConfig, MatchArmLeadingPipe, _ => MatchArmLeadingPipe::Never;
+    ForceMultilineBlocks, bool, _ => false;
+    FnArgsLayout, Density, _ => Density::Tall;
+    FnParamsLayout, Density, _ => Density::Tall;
+    BraceStyleConfig, BraceStyle, _ => BraceStyle::SameLineWhere;
+    ControlBraceStyleConfig, ControlBraceStyle, _ => ControlBraceStyle::AlwaysSameLine;
+    TrailingSemicolon, bool, _ => true;
+    TrailingComma, SeparatorTactic, _ => SeparatorTactic::Vertical;
+    MatchBlockTrailingComma, bool, _ => false;
+    BlankLinesUpperBound, usize, _ => 1;
+    BlankLinesLowerBound, usize, _ => 0;
+    EditionConfig, Edition, _ => Edition::Edition2015;
+    VersionConfig, Version, Edition2024 => Version::Two, _ => Version::One;
+    InlineAttributeWidth, usize, _ => 0;
+    FormatGeneratedFiles, bool, _ => true;
+    GeneratedMarkerLineSearchLimit, usize, _ => 5;
+
+    // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
+    MergeDerives, bool, _ => true;
+    UseTryShorthand, bool, _ => false;
+    UseFieldInitShorthand, bool, _ => false;
+    ForceExplicitAbi, bool, _ => true;
+    CondenseWildcardSuffixes, bool, _ => false;
+
+    // Control options (changes the operation of rustfmt, rather than the formatting)
+    ColorConfig, Color, _ => Color::Auto;
+    RequiredVersion, String, _ => env!("CARGO_PKG_VERSION").to_owned();
+    UnstableFeatures, bool, _ => false;
+    DisableAllFormatting, bool, _ => false;
+    SkipChildren, bool, _ => false;
+    HideParseErrors, bool, _ => false;
+    ShowParseErrors, bool, _ => true;
+    ErrorOnLineOverflow, bool, _ => false;
+    ErrorOnUnformatted, bool, _ => false;
+    Ignore, IgnoreList, _ => IgnoreList::default();
+
+    // Not user-facing
+    Verbose, Verbosity, _ => Verbosity::Normal;
+    FileLinesConfig, FileLines, _ => FileLines::all();
+    EmitModeConfig, EmitMode, _ => EmitMode::Files;
+    MakeBackup, bool, _ => false;
+    PrintMisformattedFileNames, bool, _ => false;
+);
