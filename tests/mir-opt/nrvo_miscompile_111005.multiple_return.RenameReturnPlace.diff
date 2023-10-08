@@ -1,0 +1,25 @@
+- // MIR for `multiple_return` before RenameReturnPlace
++ // MIR for `multiple_return` after RenameReturnPlace
+  
+  fn multiple_return(_1: char, _2: bool) -> char {
+      let mut _0: char;
+      let mut _3: char;
+      let mut _4: char;
+  
+      bb0: {
+          switchInt(_2) -> [0: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          _3 = _1;
+          _0 = _3;
+          return;
+      }
+  
+      bb2: {
+          _4 = const 'z';
+          _0 = _4;
+          return;
+      }
+  }
+  

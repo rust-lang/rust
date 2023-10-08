@@ -1,0 +1,17 @@
+- // MIR for `indirect` before RenameReturnPlace
++ // MIR for `indirect` after RenameReturnPlace
+  
+  fn indirect(_1: char) -> char {
+      let mut _0: char;
+      let mut _2: char;
+      let mut _3: &mut char;
+  
+      bb0: {
+          _2 = _1;
+          _3 = &mut _2;
+          _0 = _2;
+          (*_3) = const 'b';
+          return;
+      }
+  }
+  

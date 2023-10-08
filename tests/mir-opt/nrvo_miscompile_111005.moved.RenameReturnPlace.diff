@@ -1,0 +1,16 @@
+- // MIR for `moved` before RenameReturnPlace
++ // MIR for `moved` after RenameReturnPlace
+  
+  fn moved(_1: char) -> char {
+      let mut _0: char;
+      let mut _2: char;
+      let mut _3: char;
+  
+      bb0: {
+          _2 = _1;
+          _0 = _2;
+          _3 = move _2;
+          return;
+      }
+  }
+  

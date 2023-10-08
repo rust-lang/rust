@@ -1,0 +1,19 @@
+- // MIR for `multiple` before RenameReturnPlace
++ // MIR for `multiple` after RenameReturnPlace
+  
+  fn multiple(_1: char) -> char {
+      let mut _0: char;
+      let mut _2: char;
+      let mut _3: char;
+  
+      bb0: {
+          _2 = _1;
+-         _3 = _1;
+-         _0 = _3;
++         _0 = _1;
+          _0 = _2;
+          _2 = const 'b';
+          return;
+      }
+  }
+  
