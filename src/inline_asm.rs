@@ -745,6 +745,13 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 // x19 is reserved by LLVM for the "base pointer", so rustc doesn't allow using it
                 generated_asm.push_str("    mov x19, x0\n");
             }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    addi sp, sp, -16\n");
+                generated_asm.push_str("    sd ra, 8(sp)\n");
+                generated_asm.push_str("    sd s1, 0(sp)\n"); // s1 is callee saved
+                // s1/x9 is reserved by LLVM for the "base pointer", so rustc doesn't allow using it
+                generated_asm.push_str("    mv s1, a0\n");
+            }
             _ => unimplemented!("prologue for {:?}", arch),
         }
     }
@@ -761,6 +768,12 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 generated_asm.push_str("    ldp fp, lr, [sp], #32\n");
                 generated_asm.push_str("    ret\n");
             }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    ld s1, 0(sp)\n");
+                generated_asm.push_str("    ld ra, 8(sp)\n");
+                generated_asm.push_str("    addi sp, sp, 16\n");
+                generated_asm.push_str("    ret\n");
+            }
             _ => unimplemented!("epilogue for {:?}", arch),
         }
     }
@@ -772,6 +785,9 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             }
             InlineAsmArch::AArch64 => {
                 generated_asm.push_str("    brk     #0x1");
+            }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    ebreak\n");
             }
             _ => unimplemented!("epilogue_noreturn for {:?}", arch),
         }
@@ -794,6 +810,11 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 reg.emit(generated_asm, InlineAsmArch::AArch64, None).unwrap();
                 writeln!(generated_asm, ", [x19, 0x{:x}]", offset.bytes()).unwrap();
             }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    sd ");
+                reg.emit(generated_asm, InlineAsmArch::RiscV64, None).unwrap();
+                writeln!(generated_asm, ", 0x{:x}(s1)", offset.bytes()).unwrap();
+            }
             _ => unimplemented!("save_register for {:?}", arch),
         }
     }
@@ -814,6 +835,11 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 generated_asm.push_str("    ldr ");
                 reg.emit(generated_asm, InlineAsmArch::AArch64, None).unwrap();
                 writeln!(generated_asm, ", [x19, 0x{:x}]", offset.bytes()).unwrap();
+            }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    ld ");
+                reg.emit(generated_asm, InlineAsmArch::RiscV64, None).unwrap();
+                writeln!(generated_asm, ", 0x{:x}(s1)", offset.bytes()).unwrap();
             }
             _ => unimplemented!("restore_register for {:?}", arch),
         }
