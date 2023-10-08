@@ -7,15 +7,16 @@ fn f(_1: usize) -> usize {
     let mut _3: usize;
     let mut _4: usize;
     scope 1 {
-        debug b => _1;
+        debug b => _3;
     }
 
     bb0: {
         nop;
+        _3 = _1;
+        _1 = const 5_usize;
         nop;
         nop;
-        nop;
-        nop;
+        _1 = move _3;
         nop;
         nop;
         nop;

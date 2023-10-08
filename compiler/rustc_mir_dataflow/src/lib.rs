@@ -35,6 +35,7 @@ pub use self::framework::{
 
 use self::move_paths::MoveData;
 
+pub mod debuginfo;
 pub mod drop_flag_effects;
 pub mod elaborate_drops;
 mod errors;
