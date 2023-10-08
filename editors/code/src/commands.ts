@@ -950,7 +950,7 @@ export function openDocs(ctx: CtxInit): Cmd {
         const doclink = await client.sendRequest(ra.openDocs, { position, textDocument });
 
         if (doclink != null) {
-            await vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(doclink));
+            await vscode.env.openExternal(vscode.Uri.parse(doclink));
         }
     };
 }
