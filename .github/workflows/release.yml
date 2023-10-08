@@ -18,8 +18,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        libgccjit_version:
-          - { gcc: "libgccjit.so", artifacts_branch: "master" }
         commands: [
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
@@ -40,18 +38,17 @@ jobs:
       uses: dawidd6/action-download-artifact@v2
       with:
           workflow: main.yml
-          name: ${{ matrix.libgccjit_version.gcc }}
-          path: gcc-build
+          name: gcc-13
+          path: gcc-13
           repo: antoyo/gcc
-          branch: ${{ matrix.libgccjit_version.artifacts_branch }}
+          branch: "master"
           event: push
           search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
 
     - name: Setup path to libgccjit
       run: |
-          echo $(readlink -f gcc-build) > gcc_path
-          # NOTE: the filename is still libgccjit.so even when the artifact name is different.
-          ln gcc-build/libgccjit.so gcc-build/libgccjit.so.0
+          sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
+          echo /usr/lib/ > gcc_path
 
     - name: Set env
       run: |
@@ -88,8 +85,8 @@ jobs:
 
     - name: Build
       run: |
-        ./prepare_build.sh
-        ./build.sh --release --release-sysroot
+        ./y.sh prepare --only-libcore
+        EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot
         cargo test
         ./clean_all.sh
 
@@ -97,7 +94,9 @@ jobs:
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./prepare.sh
+        ./y.sh prepare
+        # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
+        echo -n 'lto = "fat"' >> build_sysroot/Cargo.toml
 
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
@@ -106,6 +105,9 @@ jobs:
         command: build
         args: --release
 
+    - name: Add more failing tests because of undefined symbol errors (FIXME)
+      run: cat failing-lto-tests.txt >> failing-ui-tests.txt
+
     - name: Run tests
       run: |
-        ./test.sh --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}
+        EMBED_LTO_BITCODE=1 ./test.sh --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}

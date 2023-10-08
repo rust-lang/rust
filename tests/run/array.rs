@@ -8,6 +8,7 @@
 //     10
 
 #![feature(arbitrary_self_types, auto_traits, lang_items, no_core, start, intrinsics)]
+#![allow(internal_features)]
 
 #![no_std]
 #![no_core]

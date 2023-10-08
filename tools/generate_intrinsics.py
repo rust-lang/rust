@@ -46,10 +46,10 @@ def convert_to_string(content):
 
 
 def extract_instrinsics_from_llvm(llvm_path, intrinsics):
-    p = subprocess.Popen(
-        ["llvm-tblgen", "llvm/IR/Intrinsics.td"],
-        cwd=os.path.join(llvm_path, "llvm/include"),
-        stdout=subprocess.PIPE)
+    command = ["llvm-tblgen", "llvm/IR/Intrinsics.td"]
+    cwd = os.path.join(llvm_path, "llvm/include")
+    print("=> Running command `{}` from `{}`".format(command, cwd))
+    p = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE)
     output, err = p.communicate()
     lines = convert_to_string(output).splitlines()
     pos = 0

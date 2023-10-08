@@ -4,7 +4,7 @@
     thread_local
 )]
 #![no_core]
-#![allow(dead_code)]
+#![allow(dead_code, internal_features)]
 
 #[no_mangle]
 unsafe extern "C" fn _Unwind_Resume() {
