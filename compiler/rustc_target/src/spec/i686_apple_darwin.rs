@@ -5,6 +5,7 @@ pub fn target() -> Target {
     // ld64 only understands i386 and not i686
     let arch = Arch::I386;
     let mut base = opts("macos", arch);
+    base.features = "+x87,+sse,+sse2".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
     base.stack_probes = StackProbeType::X86;

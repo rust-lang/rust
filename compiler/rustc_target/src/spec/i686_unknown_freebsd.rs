@@ -3,6 +3,7 @@ use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target};
 pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
     base.cpu = "pentium4".into();
+    base.features = "+x87,+sse,+sse2".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32", "-Wl,-znotext"]);
     base.stack_probes = StackProbeType::X86;

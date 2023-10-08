@@ -17,6 +17,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             max_atomic_width: Some(64),
             stack_probes: StackProbeType::X86,
+            features: "+x87".into(),
             ..opts("ios", arch)
         },
     }

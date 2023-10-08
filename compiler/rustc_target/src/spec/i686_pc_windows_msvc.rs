@@ -3,6 +3,7 @@ use crate::spec::{LinkerFlavor, Lld, Target};
 pub fn target() -> Target {
     let mut base = super::windows_msvc_base::opts();
     base.cpu = "pentium4".into();
+    base.features = "+x87,+sse,+sse2".into();
     base.max_atomic_width = Some(64);
 
     base.add_pre_link_args(
