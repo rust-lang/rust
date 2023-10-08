@@ -15,7 +15,7 @@ use rustc_middle::mir::*;
 
 pub struct SsaLocals {
     /// Assignments to each local. This defines whether the local is SSA.
-    assignments: IndexVec<Local, Set1<LocationExtended>>,
+    assignments: IndexVec<Local, Set1<DefLocation>>,
     /// We visit the body in reverse postorder, to ensure each local is assigned before it is used.
     /// We remember the order in which we saw the assignments to compute the SSA values in a single
     /// pass.
@@ -27,55 +27,18 @@ pub struct SsaLocals {
     direct_uses: IndexVec<Local, u32>,
 }
 
-/// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
-/// actually compute dominators, we can just compare block indices because bb0 is always the first
-/// block, and in any body all other blocks are always dominated by bb0.
-struct SmallDominators<'a> {
-    inner: Option<&'a Dominators<BasicBlock>>,
-}
-
-impl SmallDominators<'_> {
-    fn dominates(&self, first: Location, second: Location) -> bool {
-        if first.block == second.block {
-            first.statement_index <= second.statement_index
-        } else if let Some(inner) = &self.inner {
-            inner.dominates(first.block, second.block)
-        } else {
-            first.block < second.block
-        }
-    }
-
-    fn check_dominates(&mut self, set: &mut Set1<LocationExtended>, loc: Location) {
-        let assign_dominates = match *set {
-            Set1::Empty | Set1::Many => false,
-            Set1::One(LocationExtended::Arg) => true,
-            Set1::One(LocationExtended::Plain(assign)) => {
-                self.dominates(assign.successor_within_block(), loc)
-            }
-        };
-        // We are visiting a use that is not dominated by an assignment.
-        // Either there is a cycle involved, or we are reading for uninitialized local.
-        // Bail out.
-        if !assign_dominates {
-            *set = Set1::Many;
-        }
-    }
-}
-
 impl SsaLocals {
     pub fn new<'tcx>(body: &Body<'tcx>) -> SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
-        let dominators =
-            if body.basic_blocks.len() > 2 { Some(body.basic_blocks.dominators()) } else { None };
-        let dominators = SmallDominators { inner: dominators };
+        let dominators = body.basic_blocks.dominators();
 
         let direct_uses = IndexVec::from_elem(0, &body.local_decls);
         let mut visitor = SsaVisitor { assignments, assignment_order, dominators, direct_uses };
 
         for local in body.args_iter() {
-            visitor.assignments[local] = Set1::One(LocationExtended::Arg);
+            visitor.assignments[local] = Set1::One(DefLocation::Argument);
         }
 
         // For SSA assignments, a RPO visit will see the assignment before it sees any use.
@@ -131,14 +94,7 @@ impl SsaLocals {
         location: Location,
     ) -> bool {
         match self.assignments[local] {
-            Set1::One(LocationExtended::Arg) => true,
-            Set1::One(LocationExtended::Plain(ass)) => {
-                if ass.block == location.block {
-                    ass.statement_index < location.statement_index
-                } else {
-                    dominators.dominates(ass.block, location.block)
-                }
-            }
+            Set1::One(def) => def.dominates(location, dominators),
             _ => false,
         }
     }
@@ -148,7 +104,7 @@ impl SsaLocals {
         body: &'a Body<'tcx>,
     ) -> impl Iterator<Item = (Local, &'a Rvalue<'tcx>, Location)> + 'a {
         self.assignment_order.iter().filter_map(|&local| {
-            if let Set1::One(LocationExtended::Plain(loc)) = self.assignments[local] {
+            if let Set1::One(DefLocation::Body(loc)) = self.assignments[local] {
                 // `loc` must point to a direct assignment to `local`.
                 let Either::Left(stmt) = body.stmt_at(loc) else { bug!() };
                 let Some((target, rvalue)) = stmt.kind.as_assign() else { bug!() };
@@ -166,7 +122,7 @@ impl SsaLocals {
         mut f: impl FnMut(Local, &mut Rvalue<'tcx>, Location),
     ) {
         for &local in &self.assignment_order {
-            if let Set1::One(LocationExtended::Plain(loc)) = self.assignments[local] {
+            if let Set1::One(DefLocation::Body(loc)) = self.assignments[local] {
                 // `loc` must point to a direct assignment to `local`.
                 let bbs = basic_blocks.as_mut_preserves_cfg();
                 let bb = &mut bbs[loc.block];
@@ -224,17 +180,27 @@ impl SsaLocals {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum LocationExtended {
-    Plain(Location),
-    Arg,
-}
-
 struct SsaVisitor<'a> {
-    dominators: SmallDominators<'a>,
-    assignments: IndexVec<Local, Set1<LocationExtended>>,
+    dominators: &'a Dominators<BasicBlock>,
+    assignments: IndexVec<Local, Set1<DefLocation>>,
     assignment_order: Vec<Local>,
     direct_uses: IndexVec<Local, u32>,
+}
+
+impl SsaVisitor<'_> {
+    fn check_dominates(&mut self, local: Local, loc: Location) {
+        let set = &mut self.assignments[local];
+        let assign_dominates = match *set {
+            Set1::Empty | Set1::Many => false,
+            Set1::One(def) => def.dominates(loc, self.dominators),
+        };
+        // We are visiting a use that is not dominated by an assignment.
+        // Either there is a cycle involved, or we are reading for uninitialized local.
+        // Bail out.
+        if !assign_dominates {
+            *set = Set1::Many;
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
@@ -254,7 +220,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
                 self.assignments[local] = Set1::Many;
             }
             PlaceContext::NonMutatingUse(_) => {
-                self.dominators.check_dominates(&mut self.assignments[local], loc);
+                self.check_dominates(local, loc);
                 self.direct_uses[local] += 1;
             }
             PlaceContext::NonUse(_) => {}
@@ -269,7 +235,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
                 let new_ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
 
                 self.visit_projection(place.as_ref(), new_ctxt, loc);
-                self.dominators.check_dominates(&mut self.assignments[place.local], loc);
+                self.check_dominates(place.local, loc);
             }
             return;
         } else {
@@ -280,7 +246,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
 
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, loc: Location) {
         if let Some(local) = place.as_local() {
-            self.assignments[local].insert(LocationExtended::Plain(loc));
+            self.assignments[local].insert(DefLocation::Body(loc));
             if let Set1::One(_) = self.assignments[local] {
                 // Only record if SSA-like, to avoid growing the vector needlessly.
                 self.assignment_order.push(local);
@@ -356,7 +322,7 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
 #[derive(Debug)]
 pub(crate) struct StorageLiveLocals {
     /// Set of "StorageLive" statements for each local.
-    storage_live: IndexVec<Local, Set1<LocationExtended>>,
+    storage_live: IndexVec<Local, Set1<DefLocation>>,
 }
 
 impl StorageLiveLocals {
@@ -366,13 +332,13 @@ impl StorageLiveLocals {
     ) -> StorageLiveLocals {
         let mut storage_live = IndexVec::from_elem(Set1::Empty, &body.local_decls);
         for local in always_storage_live_locals.iter() {
-            storage_live[local] = Set1::One(LocationExtended::Arg);
+            storage_live[local] = Set1::One(DefLocation::Argument);
         }
         for (block, bbdata) in body.basic_blocks.iter_enumerated() {
             for (statement_index, statement) in bbdata.statements.iter().enumerate() {
                 if let StatementKind::StorageLive(local) = statement.kind {
                     storage_live[local]
-                        .insert(LocationExtended::Plain(Location { block, statement_index }));
+                        .insert(DefLocation::Body(Location { block, statement_index }));
                 }
             }
         }

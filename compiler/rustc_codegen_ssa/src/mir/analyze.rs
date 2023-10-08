@@ -8,7 +8,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, Location, TerminatorKind};
+use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -65,21 +65,6 @@ enum LocalKind {
     Unused,
     /// A scalar or a scalar pair local with a single definition that dominates all uses.
     SSA(DefLocation),
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum DefLocation {
-    Argument,
-    Body(Location),
-}
-
-impl DefLocation {
-    fn dominates(self, location: Location, dominators: &Dominators<mir::BasicBlock>) -> bool {
-        match self {
-            DefLocation::Argument => true,
-            DefLocation::Body(def) => def.successor_within_block().dominates(location, dominators),
-        }
-    }
 }
 
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {

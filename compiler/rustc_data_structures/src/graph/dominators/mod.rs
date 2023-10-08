@@ -26,7 +26,42 @@ rustc_index::newtype_index! {
     struct PreorderIndex {}
 }
 
-pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
+#[derive(Clone, Debug)]
+pub struct Dominators<Node: Idx> {
+    kind: Kind<Node>,
+}
+
+#[derive(Clone, Debug)]
+enum Kind<Node: Idx> {
+    /// A representation optimized for a small path graphs.
+    Path,
+    General(Inner<Node>),
+}
+
+pub fn dominators<G: ControlFlowGraph>(g: &G) -> Dominators<G::Node> {
+    // We often encounter MIR bodies with 1 or 2 basic blocks. Special case the dominators
+    // computation and representation for those cases.
+    if is_small_path_graph(g) {
+        Dominators { kind: Kind::Path }
+    } else {
+        Dominators { kind: Kind::General(dominators_impl(g)) }
+    }
+}
+
+fn is_small_path_graph<G: ControlFlowGraph>(g: &G) -> bool {
+    if g.start_node().index() != 0 {
+        return false;
+    }
+    if g.num_nodes() == 1 {
+        return true;
+    }
+    if g.num_nodes() == 2 {
+        return g.successors(g.start_node()).any(|n| n.index() == 1);
+    }
+    false
+}
+
+fn dominators_impl<G: ControlFlowGraph>(graph: &G) -> Inner<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
 
@@ -245,7 +280,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
 
     let time = compute_access_time(start_node, &immediate_dominators);
 
-    Dominators { start_node, post_order_rank, immediate_dominators, time }
+    Inner { post_order_rank, immediate_dominators, time }
 }
 
 /// Evaluate the link-eval virtual forest, providing the currently minimum semi
@@ -310,8 +345,7 @@ fn compress(
 
 /// Tracks the list of dominators for each node.
 #[derive(Clone, Debug)]
-pub struct Dominators<N: Idx> {
-    start_node: N,
+struct Inner<N: Idx> {
     post_order_rank: IndexVec<N, usize>,
     // Even though we track only the immediate dominator of each node, it's
     // possible to get its full list of dominators by looking up the dominator
@@ -323,12 +357,24 @@ pub struct Dominators<N: Idx> {
 impl<Node: Idx> Dominators<Node> {
     /// Returns true if node is reachable from the start node.
     pub fn is_reachable(&self, node: Node) -> bool {
-        node == self.start_node || self.immediate_dominators[node].is_some()
+        match &self.kind {
+            Kind::Path => true,
+            Kind::General(g) => g.time[node].start != 0,
+        }
     }
 
     /// Returns the immediate dominator of node, if any.
     pub fn immediate_dominator(&self, node: Node) -> Option<Node> {
-        self.immediate_dominators[node]
+        match &self.kind {
+            Kind::Path => {
+                if 0 < node.index() {
+                    Some(Node::new(node.index() - 1))
+                } else {
+                    None
+                }
+            }
+            Kind::General(g) => g.immediate_dominators[node],
+        }
     }
 
     /// Provides an iterator over each dominator up the CFG, for the given Node.
@@ -343,7 +389,10 @@ impl<Node: Idx> Dominators<Node> {
     /// of two unrelated nodes will also be consistent, but otherwise the order has no
     /// meaning.) This method cannot be used to determine if either Node dominates the other.
     pub fn cmp_in_dominator_order(&self, lhs: Node, rhs: Node) -> Ordering {
-        self.post_order_rank[rhs].cmp(&self.post_order_rank[lhs])
+        match &self.kind {
+            Kind::Path => lhs.index().cmp(&rhs.index()),
+            Kind::General(g) => g.post_order_rank[rhs].cmp(&g.post_order_rank[lhs]),
+        }
     }
 
     /// Returns true if `a` dominates `b`.
@@ -352,10 +401,15 @@ impl<Node: Idx> Dominators<Node> {
     ///
     /// Panics if `b` is unreachable.
     pub fn dominates(&self, a: Node, b: Node) -> bool {
-        let a = self.time[a];
-        let b = self.time[b];
-        assert!(b.start != 0, "node {b:?} is not reachable");
-        a.start <= b.start && b.finish <= a.finish
+        match &self.kind {
+            Kind::Path => a.index() <= b.index(),
+            Kind::General(g) => {
+                let a = g.time[a];
+                let b = g.time[b];
+                assert!(b.start != 0, "node {b:?} is not reachable");
+                a.start <= b.start && b.finish <= a.finish
+            }
+        }
     }
 }
 

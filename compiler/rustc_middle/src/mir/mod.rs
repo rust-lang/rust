@@ -1562,6 +1562,23 @@ impl Location {
     }
 }
 
+/// `DefLocation` represents the location of a definition - either an argument or an assignment
+/// within MIR body.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum DefLocation {
+    Argument,
+    Body(Location),
+}
+
+impl DefLocation {
+    pub fn dominates(self, location: Location, dominators: &Dominators<BasicBlock>) -> bool {
+        match self {
+            DefLocation::Argument => true,
+            DefLocation::Body(def) => def.successor_within_block().dominates(location, dominators),
+        }
+    }
+}
+
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
