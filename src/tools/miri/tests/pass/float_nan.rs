@@ -241,6 +241,14 @@ fn test_f32() {
         ]),
         || F32::from(just1 % all1_snan),
     );
+
+    // Unary `-` must preserve payloads exactly.
+    check_all_outcomes(HashSet::from_iter([F32::nan(Neg, Quiet, all1_payload)]), || {
+        F32::from(-all1)
+    });
+    check_all_outcomes(HashSet::from_iter([F32::nan(Neg, Signaling, all1_payload)]), || {
+        F32::from(-all1_snan)
+    });
 }
 
 fn test_f64() {

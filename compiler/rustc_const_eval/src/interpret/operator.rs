@@ -461,6 +461,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok((ImmTy::from_bool(res, *self.tcx), false))
             }
             ty::Float(fty) => {
+                // No NaN adjustment here, `-` is a bitwise operation!
                 let res = match (un_op, fty) {
                     (Neg, FloatTy::F32) => Scalar::from_f32(-val.to_f32()?),
                     (Neg, FloatTy::F64) => Scalar::from_f64(-val.to_f64()?),
