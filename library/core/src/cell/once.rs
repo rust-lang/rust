@@ -87,10 +87,40 @@ impl<T> OnceCell<T> {
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn set(&self, value: T) -> Result<(), T> {
-        // SAFETY: Safe because we cannot have overlapping mutable borrows
-        let slot = unsafe { &*self.inner.get() };
-        if slot.is_some() {
-            return Err(value);
+        match self.try_insert(value) {
+            Ok(_) => Ok(()),
+            Err((_, value)) => Err(value),
+        }
+    }
+
+    /// Sets the contents of the cell to `value` if the cell was empty, then
+    /// returns a reference to it.
+    ///
+    /// # Errors
+    ///
+    /// This method returns `Ok(&value)` if the cell was empty and
+    /// `Err(&current_value, value)` if it was full.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell_try_insert)]
+    ///
+    /// use std::cell::OnceCell;
+    ///
+    /// let cell = OnceCell::new();
+    /// assert!(cell.get().is_none());
+    ///
+    /// assert_eq!(cell.try_insert(92), Ok(&92));
+    /// assert_eq!(cell.try_insert(62), Err((&92, 62)));
+    ///
+    /// assert!(cell.get().is_some());
+    /// ```
+    #[inline]
+    #[unstable(feature = "once_cell_try_insert", issue = "116693")]
+    pub fn try_insert(&self, value: T) -> Result<&T, (&T, T)> {
+        if let Some(old) = self.get() {
+            return Err((old, value));
         }
 
         // SAFETY: This is the only place where we set the slot, no races
@@ -99,7 +129,7 @@ impl<T> OnceCell<T> {
         // maintains the `inner`'s invariant.
         let slot = unsafe { &mut *self.inner.get() };
         *slot = Some(value);
-        Ok(())
+        Ok(self.get().unwrap())
     }
 
     /// Gets the contents of the cell, initializing it with `f`
