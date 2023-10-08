@@ -762,6 +762,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             too_many_arguments_threshold,
             too_many_lines_threshold,
             large_error_threshold,
+            avoid_breaking_exported_api,
         ))
     });
     let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
