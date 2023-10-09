@@ -2027,36 +2027,31 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     did.map_or(false, |did| cx.tcx.has_attr(did, sym::must_use))
 }
 
-/// Checks if an expression represents the identity function
-/// Only examines closures and `std::convert::identity`
+/// Checks if a function's body represents the identity function. Looks for bodies of the form:
+/// * `|x| x`
+/// * `|x| return x`
+/// * `|x| { return x }`
+/// * `|x| { return x; }`
 ///
-/// Closure bindings with type annotations and `std::convert::identity` with generic args
-/// are not considered identity functions because they can guide type inference,
-/// and removing it may lead to compile errors.
-pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    /// Checks if a function's body represents the identity function. Looks for bodies of the form:
-    /// * `|x| x`
-    /// * `|x| return x`
-    /// * `|x| { return x }`
-    /// * `|x| { return x; }`
-    fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
-        let id = if_chain! {
-            if let [param] = func.params;
-            if let PatKind::Binding(_, id, _, _) = param.pat.kind;
-            then {
-                id
-            } else {
-                return false;
-            }
-        };
+/// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
+fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
+    let id = if_chain! {
+        if let [param] = func.params;
+        if let PatKind::Binding(_, id, _, _) = param.pat.kind;
+        then {
+            id
+        } else {
+            return false;
+        }
+    };
 
-        let mut expr = func.value;
-        loop {
-            match expr.kind {
-                #[rustfmt::skip]
+    let mut expr = func.value;
+    loop {
+        match expr.kind {
+            #[rustfmt::skip]
                 ExprKind::Block(&Block { stmts: [], expr: Some(e), .. }, _, )
                 | ExprKind::Ret(Some(e)) => expr = e,
-                #[rustfmt::skip]
+            #[rustfmt::skip]
                 ExprKind::Block(&Block { stmts: [stmt], expr: None, .. }, _) => {
                     if_chain! {
                         if let StmtKind::Semi(e) | StmtKind::Expr(e) = stmt.kind;
@@ -2068,11 +2063,16 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
                         }
                     }
                 },
-                _ => return path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty(),
-            }
+            _ => return path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty(),
         }
     }
+}
 
+/// This is the same as [`is_expr_identity_function`], but does not consider closures
+/// with type annotations for its bindings (or similar) as identity functions:
+/// * `|x: u8| x`
+/// * `std::convert::identity::<u8>`
+pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Closure(&Closure { body, fn_decl, .. })
             if fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer)) =>
@@ -2086,6 +2086,21 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
             match_def_path(cx, did, &paths::CONVERT_IDENTITY)
         },
         _ => false,
+    }
+}
+
+/// Checks if an expression represents the identity function
+/// Only examines closures and `std::convert::identity`
+///
+/// NOTE: If you want to use this function to find out if a closure is unnecessary, you likely want
+/// to call [`is_expr_untyped_identity_function`] instead, which makes sure that the closure doesn't
+/// have type annotations. This is important because removing a closure with bindings can
+/// remove type information that helped type inference before, which can then lead to compile
+/// errors.
+pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir().body(body)),
+        _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }
 
