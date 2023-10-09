@@ -441,10 +441,8 @@ pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
         }),
 
         HirTree => {
-            call_with_pp_support_hir(&PpHirMode::Normal, tcx, move |_annotation, hir_map| {
-                debug!("pretty printing HIR tree");
-                format!("{:#?}", hir_map.krate())
-            })
+            debug!("pretty printing HIR tree");
+            format!("{:#?}", tcx.hir().krate())
         }
 
         _ => unreachable!(),
