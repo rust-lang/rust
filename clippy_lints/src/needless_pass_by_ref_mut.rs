@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// Check if a `&mut` function argument is actually used mutably.
     ///
     /// Be careful if the function is publicly reexported as it would break compatibility with
-    /// users of this function.
+    /// users of this function, when the users pass this function as an argument.
     ///
     /// ### Why is this bad?
     /// Less `mut` means less fights with the borrow checker. It can also lead to more
@@ -262,8 +262,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             .iter()
             .filter(|(def_id, _)| !self.used_fn_def_ids.contains(def_id))
         {
-            let show_semver_warning =
-                self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(*fn_def_id);
+            let is_exported = cx.effective_visibilities.is_exported(*fn_def_id);
+            if self.avoid_breaking_exported_api && is_exported {
+                continue;
+            }
 
             let mut is_cfged = None;
             for input in unused {
@@ -284,7 +286,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                                 format!("&{}", snippet(cx, cx.tcx.hir().span(inner_ty.ty.hir_id), "_"),),
                                 Applicability::Unspecified,
                             );
-                            if show_semver_warning {
+                            if is_exported {
                                 diag.warn("changing this function will impact semver compatibility");
                             }
                             if *is_cfged {
