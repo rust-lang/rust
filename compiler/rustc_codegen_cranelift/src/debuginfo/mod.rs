@@ -5,11 +5,8 @@ mod line_info;
 mod object;
 mod unwind;
 
-use crate::prelude::*;
-
 use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::TargetIsa;
-
 use gimli::write::{
     Address, AttributeValue, DwarfUnit, FileId, LineProgram, LineString, Range, RangeList,
     UnitEntryId,
@@ -17,8 +14,9 @@ use gimli::write::{
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
 use indexmap::IndexSet;
 
-pub(crate) use emit::{DebugReloc, DebugRelocName};
-pub(crate) use unwind::UnwindContext;
+pub(crate) use self::emit::{DebugReloc, DebugRelocName};
+pub(crate) use self::unwind::UnwindContext;
+use crate::prelude::*;
 
 pub(crate) fn producer() -> String {
     format!(

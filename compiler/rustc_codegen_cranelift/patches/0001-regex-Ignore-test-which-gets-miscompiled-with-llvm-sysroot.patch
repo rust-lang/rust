@@ -1,0 +1,25 @@
+From 5d4afb8d807d181038b6a004d17ed055a8d191b2 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Mon, 2 Oct 2023 13:59:00 +0000
+Subject: [PATCH] Ignore test which gets miscompiled with llvm sysroot
+
+---
+ regex-automata/src/util/pool.rs | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/regex-automata/src/util/pool.rs b/regex-automata/src/util/pool.rs
+index c03d7b0..28b233b 100644
+--- a/regex-automata/src/util/pool.rs
++++ b/regex-automata/src/util/pool.rs
+@@ -1081,6 +1081,8 @@ mod tests {
+     // into the pool. This in turn resulted in this test producing a data race.
+     #[cfg(feature = "std")]
+     #[test]
++    // FIXME(rustc_codegen_cranelift#1395) miscompilation of thread::scope with LLVM sysroot
++    #[ignore]
+     fn thread_owner_sync() {
+         let pool = Pool::new(|| vec!['a']);
+         {
+-- 
+2.34.1
+
