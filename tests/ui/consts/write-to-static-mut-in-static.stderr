@@ -4,13 +4,18 @@ error[E0080]: could not evaluate static initializer
 LL | pub static mut B: () = unsafe { A = 1; };
    |                                 ^^^^^ modifying a static's initial value from another static's initializer
 
-error[E0391]: cycle detected when const-evaluating + checking `C`
+error[E0391]: cycle detected when evaluating initializer of static `C`
+  --> $DIR/write-to-static-mut-in-static.rs:5:1
+   |
+LL | pub static mut C: u32 = unsafe { C = 1; 0 };
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires const-evaluating + checking `C`...
   --> $DIR/write-to-static-mut-in-static.rs:5:34
    |
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    |                                  ^^^^^
-   |
-   = note: ...which immediately requires const-evaluating + checking `C` again
+   = note: ...which again requires evaluating initializer of static `C`, completing the cycle
 note: cycle used when linting top-level module
   --> $DIR/write-to-static-mut-in-static.rs:1:1
    |
