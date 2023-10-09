@@ -4,6 +4,7 @@
 //   status: 1
 
 #![feature(auto_traits, lang_items, no_core, start)]
+#![allow(internal_features)]
 
 #![no_std]
 #![no_core]

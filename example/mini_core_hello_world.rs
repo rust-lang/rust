@@ -5,7 +5,7 @@
     extern_types, thread_local
 )]
 #![no_core]
-#![allow(dead_code, non_camel_case_types)]
+#![allow(dead_code, internal_features, non_camel_case_types)]
 
 extern crate mini_core;
 

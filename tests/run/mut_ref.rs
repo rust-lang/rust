@@ -7,8 +7,8 @@
 //     6
 //     11
 
-#![allow(unused_attributes)]
-#![feature(auto_traits, lang_items, no_core, start, intrinsics, track_caller)]
+#![allow(internal_features, unused_attributes)]
+#![feature(auto_traits, lang_items, no_core, start, intrinsics, rustc_attrs, track_caller)]
 
 #![no_std]
 #![no_core]

@@ -5,8 +5,8 @@
 //     39
 //     10
 
-#![allow(unused_attributes)]
-#![feature(auto_traits, lang_items, no_core, start, intrinsics, arbitrary_self_types)]
+#![allow(internal_features, unused_attributes)]
+#![feature(auto_traits, lang_items, no_core, start, intrinsics, arbitrary_self_types, rustc_attrs)]
 
 #![no_std]
 #![no_core]
