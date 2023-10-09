@@ -429,6 +429,15 @@ fn panic_cannot_unwind() -> ! {
     }
 }
 
+#[lang = "panic_in_cleanup"]
+#[rustc_nounwind]
+fn panic_in_cleanup() -> ! {
+    unsafe {
+        libc::printf("panic in a destructor during cleanup\n\0" as *const str as *const i8);
+        intrinsics::abort();
+    }
+}
+
 #[lang = "panic_bounds_check"]
 #[track_caller]
 fn panic_bounds_check(index: usize, len: usize) -> ! {
