@@ -67,7 +67,6 @@ fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
                 thir::BodyTy::Const(ty) => construct_const(tcx, def, thir, expr, ty),
             };
 
-            tcx.ensure().check_match(def);
             // this must run before MIR dump, because
             // "not all control paths return a value" is reported here.
             //

@@ -3,7 +3,7 @@ use crate::errors::*;
 use rustc_middle::thir::visit::{self, Visitor};
 
 use rustc_hir as hir;
-use rustc_middle::mir::{BorrowKind, Const};
+use rustc_middle::mir::BorrowKind;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
@@ -124,7 +124,8 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     /// Handle closures/generators/inline-consts, which is unsafecked with their parent body.
     fn visit_inner_body(&mut self, def: LocalDefId) {
         if let Ok((inner_thir, expr)) = self.tcx.thir_body(def) {
-            let _ = self.tcx.ensure_with_value().mir_built(def);
+            // Runs all other queries that depend on THIR.
+            self.tcx.ensure_with_value().mir_built(def);
             let inner_thir = &inner_thir.steal();
             let hir_context = self.tcx.hir().local_def_id_to_hir_id(def);
             let mut inner_visitor = UnsafetyVisitor { thir: inner_thir, hir_context, ..*self };
@@ -279,23 +280,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;
             }
-            PatKind::Range(range) => {
-                if let Const::Unevaluated(c, _) = range.lo {
-                    if let hir::def::DefKind::InlineConst = self.tcx.def_kind(c.def) {
-                        let def_id = c.def.expect_local();
-                        self.visit_inner_body(def_id);
-                    }
-                }
-                if let Const::Unevaluated(c, _) = range.hi {
-                    if let hir::def::DefKind::InlineConst = self.tcx.def_kind(c.def) {
-                        let def_id = c.def.expect_local();
-                        self.visit_inner_body(def_id);
-                    }
-                }
-            }
-            PatKind::InlineConstant { value, .. } => {
-                let def_id = value.def.expect_local();
-                self.visit_inner_body(def_id);
+            PatKind::InlineConstant { def, .. } => {
+                self.visit_inner_body(*def);
             }
             _ => {
                 visit::walk_pat(self, pat);
@@ -808,7 +794,8 @@ pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     }
 
     let Ok((thir, expr)) = tcx.thir_body(def) else { return };
-    let _ = tcx.ensure_with_value().mir_built(def);
+    // Runs all other queries that depend on THIR.
+    tcx.ensure_with_value().mir_built(def);
     let thir = &thir.steal();
     // If `thir` is empty, a type error occurred, skip this body.
     if thir.exprs.is_empty() {

@@ -692,7 +692,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             }
             PatKind::Deref { subpattern } => {
                 print_indented!(self, "Deref { ", depth_lvl + 1);
-                print_indented!(self, "subpattern: ", depth_lvl + 2);
+                print_indented!(self, "subpattern:", depth_lvl + 2);
                 self.print_pat(subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
@@ -701,10 +701,10 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("value: {:?}", value), depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            PatKind::InlineConstant { value, subpattern } => {
+            PatKind::InlineConstant { def, subpattern } => {
                 print_indented!(self, "InlineConstant {", depth_lvl + 1);
-                print_indented!(self, format!("value: {:?}", value), depth_lvl + 2);
-                print_indented!(self, "subpattern: ", depth_lvl + 2);
+                print_indented!(self, format!("def: {:?}", def), depth_lvl + 2);
+                print_indented!(self, "subpattern:", depth_lvl + 2);
                 self.print_pat(subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }

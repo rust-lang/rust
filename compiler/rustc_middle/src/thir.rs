@@ -765,8 +765,19 @@ pub enum PatKind<'tcx> {
         value: mir::Const<'tcx>,
     },
 
+    /// Inline constant found while lowering a pattern.
     InlineConstant {
-        value: mir::UnevaluatedConst<'tcx>,
+        /// [LocalDefId] of the constant, we need this so that we have a
+        /// reference that can be used by unsafety checking to visit nested
+        /// unevaluated constants.
+        def: LocalDefId,
+        /// If the inline constant is used in a range pattern, this subpattern
+        /// represents the range (if both ends are inline constants, there will
+        /// be multiple InlineConstant wrappers).
+        ///
+        /// Otherwise, the actual pattern that the constant lowered to. As with
+        /// other constants, inline constants are matched structurally where
+        /// possible.
         subpattern: Box<Pat<'tcx>>,
     },
 
@@ -930,7 +941,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 write!(f, "{subpattern}")
             }
             PatKind::Constant { value } => write!(f, "{value}"),
-            PatKind::InlineConstant { value: _, ref subpattern } => {
+            PatKind::InlineConstant { def: _, ref subpattern } => {
                 write!(f, "{} (from inline const)", subpattern)
             }
             PatKind::Range(box PatRange { lo, hi, end }) => {

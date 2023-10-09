@@ -204,7 +204,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
-            PatKind::InlineConstant { subpattern: ref pattern, value: _ } => {
+            PatKind::InlineConstant { subpattern: ref pattern, def: _ } => {
                 candidate.match_pairs.push(MatchPair::new(match_pair.place, pattern, self));
 
                 Ok(())
@@ -236,20 +236,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // pattern/_match.rs for another pertinent example of this pattern).
                     //
                     // Also, for performance, it's important to only do the second
-                    // `try_eval_scalar_int` if necessary.
-                    let lo = lo
-                        .try_eval_scalar_int(self.tcx, self.param_env)
-                        .unwrap()
-                        .to_bits(sz)
-                        .unwrap()
-                        ^ bias;
+                    // `try_to_bits` if necessary.
+                    let lo = lo.try_to_bits(sz).unwrap() ^ bias;
                     if lo <= min {
-                        let hi = hi
-                            .try_eval_scalar_int(self.tcx, self.param_env)
-                            .unwrap()
-                            .to_bits(sz)
-                            .unwrap()
-                            ^ bias;
+                        let hi = hi.try_to_bits(sz).unwrap() ^ bias;
                         if hi > max || hi == max && end == RangeEnd::Included {
                             // Irrefutable pattern match.
                             return Ok(());
