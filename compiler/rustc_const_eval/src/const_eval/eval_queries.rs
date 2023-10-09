@@ -212,6 +212,10 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
+    assert!(
+        key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()),
+        "use `eval_static_initializer` instead"
+    );
     // see comment in eval_to_allocation_raw_provider for what we're doing here
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
