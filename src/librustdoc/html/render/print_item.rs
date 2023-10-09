@@ -5,10 +5,12 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
+use rustc_index::IndexVec;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_target::abi::VariantIdx;
 use std::cell::{RefCell, RefMut};
 use std::cmp::Ordering;
 use std::fmt;
@@ -1442,9 +1444,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
 
 /// It'll return true if all variants are C-like variants and if at least one of them has a value
 /// set.
-fn should_show_c_like_variants_value(
-    variants: &rustc_index::IndexVec<rustc_target::abi::VariantIdx, clean::Item>,
-) -> bool {
+fn should_show_enum_discriminant(variants: &IndexVec<VariantIdx, clean::Item>) -> bool {
     let mut has_variants_with_value = false;
     for variant in variants {
         if let clean::VariantItem(ref var) = *variant.kind &&
@@ -1463,14 +1463,14 @@ fn display_c_like_variant(
     cx: &mut Context<'_>,
     item: &clean::Item,
     variant: &clean::Variant,
-    index: rustc_target::abi::VariantIdx,
-    should_show_c_like_variants_value: bool,
+    index: VariantIdx,
+    should_show_enum_discriminant: bool,
     enum_def_id: DefId,
 ) {
     let name = item.name.unwrap();
     if let Some(ref value) = variant.discriminant {
         write!(w, "{} = {}", name.as_str(), value.value(cx.tcx(), true));
-    } else if should_show_c_like_variants_value {
+    } else if should_show_enum_discriminant {
         let adt_def = cx.tcx().adt_def(enum_def_id);
         let discr = adt_def.discriminant_for_variant(cx.tcx(), index);
         if discr.ty.is_signed() {
@@ -1487,13 +1487,13 @@ fn render_enum_fields(
     mut w: &mut Buffer,
     cx: &mut Context<'_>,
     g: Option<&clean::Generics>,
-    variants: &rustc_index::IndexVec<rustc_target::abi::VariantIdx, clean::Item>,
+    variants: &IndexVec<VariantIdx, clean::Item>,
     count_variants: usize,
     has_stripped_entries: bool,
     is_non_exhaustive: bool,
     enum_def_id: DefId,
 ) {
-    let should_show_c_like_variants_value = should_show_c_like_variants_value(variants);
+    let should_show_enum_discriminant = should_show_enum_discriminant(variants);
     if !g.is_some_and(|g| print_where_clause_and_check(w, g, cx)) {
         // If there wasn't a `where` clause, we add a whitespace.
         w.write_str(" ");
@@ -1522,7 +1522,7 @@ fn render_enum_fields(
                         v,
                         var,
                         index,
-                        should_show_c_like_variants_value,
+                        should_show_enum_discriminant,
                         enum_def_id,
                     ),
                     clean::VariantKind::Tuple(ref s) => {
@@ -1551,7 +1551,7 @@ fn item_variants(
     w: &mut Buffer,
     cx: &mut Context<'_>,
     it: &clean::Item,
-    variants: &rustc_index::IndexVec<rustc_target::abi::VariantIdx, clean::Item>,
+    variants: &IndexVec<VariantIdx, clean::Item>,
 ) {
     let tcx = cx.tcx();
     write!(
@@ -1564,7 +1564,7 @@ fn item_variants(
         document_non_exhaustive_header(it),
         document_non_exhaustive(it)
     );
-    let should_show_c_like_variants_value = should_show_c_like_variants_value(variants);
+    let should_show_enum_discriminant = should_show_enum_discriminant(variants);
     for (index, variant) in variants.iter_enumerated() {
         if variant.is_stripped() {
             continue;
@@ -1593,7 +1593,7 @@ fn item_variants(
                 variant,
                 var,
                 index,
-                should_show_c_like_variants_value,
+                should_show_enum_discriminant,
                 it.def_id().unwrap(),
             );
         } else {

@@ -328,42 +328,30 @@ fn print_const_with_custom_print_scalar<'tcx>(
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct, ct.ty().kind()) {
         (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Uint(ui)) => {
-            if with_underscores {
-                if with_type {
-                    format!(
-                        "{}{}",
-                        format_integer_with_underscore_sep(&int.to_string()),
-                        ui.name_str()
-                    )
-                } else {
-                    format_integer_with_underscore_sep(&int.to_string())
-                }
-            } else if with_type {
-                format!("{}{}", int.to_string(), ui.name_str())
+            let mut output = if with_underscores {
+                format_integer_with_underscore_sep(&int.to_string())
             } else {
                 int.to_string()
+            };
+            if with_type {
+                output += ui.name_str();
             }
+            output
         }
         (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Int(i)) => {
             let ty = ct.ty();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
-            if with_underscores {
-                if with_type {
-                    format!(
-                        "{}{}",
-                        format_integer_with_underscore_sep(&sign_extended_data.to_string()),
-                        i.name_str()
-                    )
-                } else {
-                    format_integer_with_underscore_sep(&sign_extended_data.to_string())
-                }
-            } else if with_type {
-                format!("{}{}", sign_extended_data.to_string(), i.name_str())
+            let mut output = if with_underscores {
+                format_integer_with_underscore_sep(&sign_extended_data.to_string())
             } else {
                 sign_extended_data.to_string()
+            };
+            if with_type {
+                output += i.name_str();
             }
+            output
         }
         _ => ct.to_string(),
     }
