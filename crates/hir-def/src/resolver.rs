@@ -588,6 +588,14 @@ impl Resolver {
             _ => None,
         })
     }
+
+    pub fn impl_def(&self) -> Option<ImplId> {
+        self.scopes().find_map(|scope| match scope {
+            Scope::ImplDefScope(def) => Some(*def),
+            _ => None,
+        })
+    }
+
     /// `expr_id` is required to be an expression id that comes after the top level expression scope in the given resolver
     #[must_use]
     pub fn update_to_inner_scope(

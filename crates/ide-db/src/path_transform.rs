@@ -183,6 +183,7 @@ impl<'a> PathTransform<'a> {
             lifetime_substs,
             target_module,
             source_scope: self.source_scope,
+            same_self_type: self.target_scope.has_same_self_type(self.source_scope),
         };
         ctx.transform_default_values(defaulted_params);
         ctx
@@ -195,6 +196,7 @@ struct Ctx<'a> {
     lifetime_substs: FxHashMap<LifetimeName, ast::Lifetime>,
     target_module: hir::Module,
     source_scope: &'a SemanticsScope<'a>,
+    same_self_type: bool,
 }
 
 fn postorder(item: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
@@ -333,6 +335,11 @@ impl Ctx<'_> {
                 }
             }
             hir::PathResolution::SelfType(imp) => {
+                // keep Self type if it does not need to be replaced
+                if self.same_self_type {
+                    return None;
+                }
+
                 let ty = imp.self_ty(self.source_scope.db);
                 let ty_str = &ty
                     .display_source_code(
@@ -349,6 +356,7 @@ impl Ctx<'_> {
                             self.source_scope.db.upcast(),
                             ModuleDef::from(adt),
                             false,
+                            true,
                         )?;
 
                         if let Some(qual) = mod_path_to_ast(&found_path).qualifier() {

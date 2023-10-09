@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use hir::{self, HasCrate, HasSource, HasVisibility};
+use hir::{self, HasCrate, HasVisibility};
 use ide_db::path_transform::PathTransform;
 use syntax::{
     ast::{
@@ -106,11 +106,8 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
             target,
             |edit| {
                 // Create the function
-                let method_source = match method.source(ctx.db()) {
-                    Some(source) => {
-                        ctx.sema.parse_or_expand(source.file_id);
-                        source.value
-                    }
+                let method_source = match ctx.sema.source(method) {
+                    Some(source) => source.value,
                     None => return,
                 };
                 let vis = method_source.visibility();
@@ -187,11 +184,11 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 let assoc_items = impl_def.get_or_create_assoc_item_list();
                 assoc_items.add_item(f.clone().into());
 
-                PathTransform::generic_transformation(
-                    &ctx.sema.scope(strukt.syntax()).unwrap(),
-                    &ctx.sema.scope(method_source.syntax()).unwrap(),
-                )
-                .apply(f.syntax());
+                if let Some((target, source)) =
+                    ctx.sema.scope(strukt.syntax()).zip(ctx.sema.scope(method_source.syntax()))
+                {
+                    PathTransform::generic_transformation(&target, &source).apply(f.syntax());
+                }
 
                 if let Some(cap) = ctx.config.snippet_cap {
                     edit.add_tabstop_before(cap, f)
