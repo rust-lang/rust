@@ -1,7 +1,7 @@
 //! The various pretty-printing routines.
 
 use rustc_ast as ast;
-use rustc_ast_pretty::pprust;
+use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
@@ -26,26 +26,25 @@ use crate::abort_on_err;
 // analysis results) on to the chosen pretty-printer, along with the
 // `&PpAnn` object.
 //
-// Note that since the `&PrinterSupport` is freshly constructed on each
+// Note that since the `&AstPrinterSupport` is freshly constructed on each
 // call, it would not make sense to try to attach the lifetime of `self`
 // to the lifetime of the `&PrinterObject`.
 
-/// Constructs a `PrinterSupport` object and passes it to `f`.
-fn call_with_pp_support<'tcx, A, F>(
+/// Constructs an `AstPrinterSupport` object and passes it to `f`.
+fn call_with_pp_support_ast<'tcx, A, F>(
     ppmode: &PpSourceMode,
     sess: &'tcx Session,
     tcx: Option<TyCtxt<'tcx>>,
     f: F,
 ) -> A
 where
-    F: FnOnce(&dyn PrinterSupport) -> A,
+    F: FnOnce(&dyn AstPrinterSupport) -> A,
 {
     match *ppmode {
         Normal | Expanded => {
             let annotation = NoAnn { sess, tcx };
             f(&annotation)
         }
-
         Identified | ExpandedIdentified => {
             let annotation = IdentifiedAnnotation { sess, tcx };
             f(&annotation)
@@ -65,7 +64,6 @@ where
             let annotation = NoAnn { sess: tcx.sess, tcx: Some(tcx) };
             f(&annotation, tcx.hir())
         }
-
         PpHirMode::Identified => {
             let annotation = IdentifiedAnnotation { sess: tcx.sess, tcx: Some(tcx) };
             f(&annotation, tcx.hir())
@@ -79,7 +77,7 @@ where
     }
 }
 
-trait PrinterSupport: pprust::PpAnn {
+trait AstPrinterSupport: pprust_ast::PpAnn {
     /// Provides a uniform interface for re-extracting a reference to a
     /// `Session` from a value that now owns it.
     fn sess(&self) -> &Session;
@@ -88,7 +86,7 @@ trait PrinterSupport: pprust::PpAnn {
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its supertraits.)
-    fn pp_ann(&self) -> &dyn pprust::PpAnn;
+    fn pp_ann(&self) -> &dyn pprust_ast::PpAnn;
 }
 
 trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
@@ -112,12 +110,12 @@ struct NoAnn<'hir> {
     tcx: Option<TyCtxt<'hir>>,
 }
 
-impl<'hir> PrinterSupport for NoAnn<'hir> {
+impl<'hir> AstPrinterSupport for NoAnn<'hir> {
     fn sess(&self) -> &Session {
         self.sess
     }
 
-    fn pp_ann(&self) -> &dyn pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_ast::PpAnn {
         self
     }
 }
@@ -136,7 +134,7 @@ impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
     }
 }
 
-impl<'hir> pprust::PpAnn for NoAnn<'hir> {}
+impl<'hir> pprust_ast::PpAnn for NoAnn<'hir> {}
 impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(tcx) = self.tcx {
@@ -150,44 +148,46 @@ struct IdentifiedAnnotation<'hir> {
     tcx: Option<TyCtxt<'hir>>,
 }
 
-impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
+impl<'hir> AstPrinterSupport for IdentifiedAnnotation<'hir> {
     fn sess(&self) -> &Session {
         self.sess
     }
 
-    fn pp_ann(&self) -> &dyn pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_ast::PpAnn {
         self
     }
 }
 
-impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
-    fn pre(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
-        if let pprust::AnnNode::Expr(_) = node {
+impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
+    fn pre(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
+        if let pprust_ast::AnnNode::Expr(_) = node {
             s.popen();
         }
     }
-    fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
+    fn post(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
         match node {
-            pprust::AnnNode::Crate(_) | pprust::AnnNode::Ident(_) | pprust::AnnNode::Name(_) => {}
+            pprust_ast::AnnNode::Crate(_)
+            | pprust_ast::AnnNode::Ident(_)
+            | pprust_ast::AnnNode::Name(_) => {}
 
-            pprust::AnnNode::Item(item) => {
+            pprust_ast::AnnNode::Item(item) => {
                 s.s.space();
                 s.synth_comment(item.id.to_string())
             }
-            pprust::AnnNode::SubItem(id) => {
+            pprust_ast::AnnNode::SubItem(id) => {
                 s.s.space();
                 s.synth_comment(id.to_string())
             }
-            pprust::AnnNode::Block(blk) => {
+            pprust_ast::AnnNode::Block(blk) => {
                 s.s.space();
                 s.synth_comment(format!("block {}", blk.id))
             }
-            pprust::AnnNode::Expr(expr) => {
+            pprust_ast::AnnNode::Expr(expr) => {
                 s.s.space();
                 s.synth_comment(expr.id.to_string());
                 s.pclose()
             }
-            pprust::AnnNode::Pat(pat) => {
+            pprust_ast::AnnNode::Pat(pat) => {
                 s.s.space();
                 s.synth_comment(format!("pat {}", pat.id));
             }
@@ -256,28 +256,28 @@ struct HygieneAnnotation<'a> {
     sess: &'a Session,
 }
 
-impl<'a> PrinterSupport for HygieneAnnotation<'a> {
+impl<'a> AstPrinterSupport for HygieneAnnotation<'a> {
     fn sess(&self) -> &Session {
         self.sess
     }
 
-    fn pp_ann(&self) -> &dyn pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_ast::PpAnn {
         self
     }
 }
 
-impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
-    fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
+impl<'a> pprust_ast::PpAnn for HygieneAnnotation<'a> {
+    fn post(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
         match node {
-            pprust::AnnNode::Ident(&Ident { name, span }) => {
+            pprust_ast::AnnNode::Ident(&Ident { name, span }) => {
                 s.s.space();
                 s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }
-            pprust::AnnNode::Name(&name) => {
+            pprust_ast::AnnNode::Name(&name) => {
                 s.s.space();
                 s.synth_comment(name.as_u32().to_string())
             }
-            pprust::AnnNode::Crate(_) => {
+            pprust_ast::AnnNode::Crate(_) => {
                 s.s.hardbreak();
                 let verbose = self.sess.verbose();
                 s.synth_comment(rustc_span::hygiene::debug_hygiene_data(verbose));
@@ -366,11 +366,11 @@ pub fn print_after_parsing(sess: &Session, krate: &ast::Crate, ppm: PpMode) {
     let out = match ppm {
         Source(s) => {
             // Silently ignores an identified node.
-            call_with_pp_support(&s, sess, None, move |annotation| {
+            call_with_pp_support_ast(&s, sess, None, move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 let parse = &sess.parse_sess;
-                pprust::print_crate(
+                pprust_ast::print_crate(
                     sess.source_map(),
                     krate,
                     src_name,
@@ -403,11 +403,11 @@ pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
     let out = match ppm {
         Source(s) => {
             // Silently ignores an identified node.
-            call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
+            call_with_pp_support_ast(&s, tcx.sess, Some(tcx), move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 let parse = &sess.parse_sess;
-                pprust::print_crate(
+                pprust_ast::print_crate(
                     sess.source_map(),
                     &tcx.resolver_for_lowering(()).borrow().1,
                     src_name,
