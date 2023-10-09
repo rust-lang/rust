@@ -7,6 +7,7 @@ use std::ops::{ControlFlow, Index};
 
 use crate::rustc_internal;
 use crate::rustc_smir::Tables;
+use rustc_data_structures::fx;
 use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::interpret::AllocId;
@@ -20,7 +21,7 @@ impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
 
     #[inline(always)]
     fn index(&self, index: stable_mir::DefId) -> &Self::Output {
-        &self.def_ids[index.0]
+        &self.def_ids.get_index(index.0).unwrap().0
     }
 }
 
@@ -95,15 +96,13 @@ impl<'tcx> Tables<'tcx> {
     }
 
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
-        // FIXME: this becomes inefficient when we have too many ids
-        for (i, &d) in self.def_ids.iter().enumerate() {
-            if d == did {
-                return stable_mir::DefId(i);
-            }
+        if let Some(i) = self.def_ids.get(&did) {
+            return *i;
+        } else {
+            let id = self.def_ids.len();
+            self.def_ids.insert(did, stable_mir::DefId(id));
+            stable_mir::DefId(id)
         }
-        let id = self.def_ids.len();
-        self.def_ids.push(did);
-        stable_mir::DefId(id)
     }
 
     fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
@@ -134,7 +133,13 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
     stable_mir::run(
-        Tables { tcx, def_ids: vec![], alloc_ids: vec![], spans: vec![], types: vec![] },
+        Tables {
+            tcx,
+            def_ids: fx::FxIndexMap::default(),
+            alloc_ids: vec![],
+            spans: vec![],
+            types: vec![],
+        },
         f,
     );
 }
