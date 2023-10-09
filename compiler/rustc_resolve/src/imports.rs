@@ -1102,39 +1102,45 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             });
 
             return if all_ns_failed {
-                let resolutions = match module {
-                    ModuleOrUniformRoot::Module(module) => Some(self.resolutions(module).borrow()),
-                    _ => None,
-                };
-                let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
-                let names = resolutions
-                    .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
-                        if i.name == ident.name {
-                            return None;
-                        } // Never suggest the same name
-                        match *resolution.borrow() {
-                            NameResolution { binding: Some(name_binding), .. } => {
-                                match name_binding.kind {
-                                    NameBindingKind::Import { binding, .. } => {
-                                        match binding.kind {
-                                            // Never suggest the name that has binding error
-                                            // i.e., the name that cannot be previously resolved
-                                            NameBindingKind::Res(Res::Err) => None,
-                                            _ => Some(i.name),
-                                        }
+                let names = if let ModuleOrUniformRoot::Module(module) = module {
+                    let mut adjusted_sp = ident.span;
+                    adjusted_sp.normalize_to_macros_2_0_and_adjust(module.expansion);
+
+                    self.resolutions(module)
+                        .borrow()
+                        .iter()
+                        .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
+                            // Never suggest the same name
+                            if i.name == ident.name {
+                                return None;
+                            }
+                            // Don't suggest hygienic names from different syntax contexts.
+                            if !i.span.normalize_to_macros_2_0().eq_ctxt(adjusted_sp) {
+                                return None;
+                            }
+                            match *resolution.borrow() {
+                                NameResolution { binding: Some(name_binding), .. } => {
+                                    // Never suggest the name that has binding error
+                                    // i.e., the name that cannot be previously resolved
+                                    if let NameBindingKind::Import { binding, .. } = name_binding.kind
+                                        && let NameBindingKind::Res(Res::Err) = binding.kind
+                                    {
+                                        return None;
                                     }
-                                    _ => Some(i.name),
                                 }
+                                NameResolution { ref single_imports, .. }
+                                    if single_imports.is_empty() =>
+                                {
+                                    return None;
+                                }
+                                _ => {}
                             }
-                            NameResolution { ref single_imports, .. }
-                                if single_imports.is_empty() =>
-                            {
-                                None
-                            }
-                            _ => Some(i.name),
-                        }
-                    })
-                    .collect::<Vec<Symbol>>();
+                            Some(i.name)
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                };
 
                 let lev_suggestion =
                     find_best_match_for_name(&names, ident.name, None).map(|suggestion| {
