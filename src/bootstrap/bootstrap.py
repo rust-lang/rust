@@ -954,6 +954,13 @@ class RustBuild(object):
         if deny_warnings:
             env["RUSTFLAGS"] += " -Dwarnings"
 
+        # Add RUSTFLAGS_BOOTSTRAP to RUSTFLAGS for bootstrap compilation.
+        # Note that RUSTFLAGS_BOOTSTRAP should always be added to the end of
+        # RUSTFLAGS to be actually effective (e.g., if we have `-Dwarnings` in
+        # RUSTFLAGS, passing `-Awarnings` from RUSTFLAGS_BOOTSTRAP should override it).
+        if "RUSTFLAGS_BOOTSTRAP" in env:
+            env["RUSTFLAGS"] += " " + env["RUSTFLAGS_BOOTSTRAP"]
+
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
