@@ -744,7 +744,7 @@ impl FromWithTcx<clean::Discriminant> for Discriminant {
             // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
             // the expr is always some.
             expr: disr.expr(tcx).unwrap(),
-            value: disr.value(tcx),
+            value: disr.value(tcx, false),
         }
     }
 }

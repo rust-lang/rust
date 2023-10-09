@@ -5,10 +5,12 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
+use rustc_index::IndexVec;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_target::abi::VariantIdx;
 use std::cell::{RefCell, RefMut};
 use std::cmp::Ordering;
 use std::fmt;
@@ -1257,13 +1259,14 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                         w,
                         cx,
                         Some(&t.generics),
-                        variants_iter(),
+                        &variants,
                         variants_count,
                         has_stripped_entries,
                         *is_non_exhaustive,
+                        it.def_id().unwrap(),
                     )
                 });
-                item_variants(w, cx, it, variants_iter());
+                item_variants(w, cx, it, &variants);
             }
             clean::TypeAliasInnerType::Union { fields } => {
                 wrap_item(w, |w| {
@@ -1416,36 +1419,81 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             it.name.unwrap(),
             e.generics.print(cx),
         );
+
         render_enum_fields(
             w,
             cx,
             Some(&e.generics),
-            e.variants(),
+            &e.variants,
             count_variants,
             e.has_stripped_entries(),
             it.is_non_exhaustive(),
+            it.def_id().unwrap(),
         );
     });
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     if count_variants != 0 {
-        item_variants(w, cx, it, e.variants());
+        item_variants(w, cx, it, &e.variants);
     }
     let def_id = it.item_id.expect_def_id();
     write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
-fn render_enum_fields<'a>(
+/// It'll return true if all variants are C-like variants and if at least one of them has a value
+/// set.
+fn should_show_enum_discriminant(variants: &IndexVec<VariantIdx, clean::Item>) -> bool {
+    let mut has_variants_with_value = false;
+    for variant in variants {
+        if let clean::VariantItem(ref var) = *variant.kind &&
+            matches!(var.kind, clean::VariantKind::CLike)
+        {
+            has_variants_with_value |= var.discriminant.is_some();
+        } else {
+            return false;
+        }
+    }
+    has_variants_with_value
+}
+
+fn display_c_like_variant(
+    w: &mut Buffer,
+    cx: &mut Context<'_>,
+    item: &clean::Item,
+    variant: &clean::Variant,
+    index: VariantIdx,
+    should_show_enum_discriminant: bool,
+    enum_def_id: DefId,
+) {
+    let name = item.name.unwrap();
+    if let Some(ref value) = variant.discriminant {
+        write!(w, "{} = {}", name.as_str(), value.value(cx.tcx(), true));
+    } else if should_show_enum_discriminant {
+        let adt_def = cx.tcx().adt_def(enum_def_id);
+        let discr = adt_def.discriminant_for_variant(cx.tcx(), index);
+        if discr.ty.is_signed() {
+            write!(w, "{} = {}", name.as_str(), discr.val as i128);
+        } else {
+            write!(w, "{} = {}", name.as_str(), discr.val);
+        }
+    } else {
+        w.write_str(name.as_str());
+    }
+}
+
+fn render_enum_fields(
     mut w: &mut Buffer,
     cx: &mut Context<'_>,
     g: Option<&clean::Generics>,
-    variants: impl Iterator<Item = &'a clean::Item>,
+    variants: &IndexVec<VariantIdx, clean::Item>,
     count_variants: usize,
     has_stripped_entries: bool,
     is_non_exhaustive: bool,
+    enum_def_id: DefId,
 ) {
+    let should_show_enum_discriminant = should_show_enum_discriminant(variants);
     if !g.is_some_and(|g| print_where_clause_and_check(w, g, cx)) {
         // If there wasn't a `where` clause, we add a whitespace.
         w.write_str(" ");
@@ -1461,15 +1509,24 @@ fn render_enum_fields<'a>(
             toggle_open(&mut w, format_args!("{count_variants} variants"));
         }
         const TAB: &str = "    ";
-        for v in variants {
+        for (index, v) in variants.iter_enumerated() {
+            if v.is_stripped() {
+                continue;
+            }
             w.write_str(TAB);
-            let name = v.name.unwrap();
             match *v.kind {
-                // FIXME(#101337): Show discriminant
                 clean::VariantItem(ref var) => match var.kind {
-                    clean::VariantKind::CLike => w.write_str(name.as_str()),
+                    clean::VariantKind::CLike => display_c_like_variant(
+                        w,
+                        cx,
+                        v,
+                        var,
+                        index,
+                        should_show_enum_discriminant,
+                        enum_def_id,
+                    ),
                     clean::VariantKind::Tuple(ref s) => {
-                        write!(w, "{name}({})", print_tuple_struct_fields(cx, s),);
+                        write!(w, "{}({})", v.name.unwrap(), print_tuple_struct_fields(cx, s));
                     }
                     clean::VariantKind::Struct(ref s) => {
                         render_struct(w, v, None, None, &s.fields, TAB, false, cx);
@@ -1490,11 +1547,11 @@ fn render_enum_fields<'a>(
     }
 }
 
-fn item_variants<'a>(
+fn item_variants(
     w: &mut Buffer,
     cx: &mut Context<'_>,
     it: &clean::Item,
-    variants: impl Iterator<Item = &'a clean::Item>,
+    variants: &IndexVec<VariantIdx, clean::Item>,
 ) {
     let tcx = cx.tcx();
     write!(
@@ -1507,7 +1564,11 @@ fn item_variants<'a>(
         document_non_exhaustive_header(it),
         document_non_exhaustive(it)
     );
-    for variant in variants {
+    let should_show_enum_discriminant = should_show_enum_discriminant(variants);
+    for (index, variant) in variants.iter_enumerated() {
+        if variant.is_stripped() {
+            continue;
+        }
         let id = cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.unwrap()));
         write!(
             w,
@@ -1522,7 +1583,22 @@ fn item_variants<'a>(
             it.const_stable_since(tcx),
             " rightside",
         );
-        write!(w, "<h3 class=\"code-header\">{name}", name = variant.name.unwrap());
+        w.write_str("<h3 class=\"code-header\">");
+        if let clean::VariantItem(ref var) = *variant.kind &&
+            let clean::VariantKind::CLike = var.kind
+        {
+            display_c_like_variant(
+                w,
+                cx,
+                variant,
+                var,
+                index,
+                should_show_enum_discriminant,
+                it.def_id().unwrap(),
+            );
+        } else {
+            w.write_str(variant.name.unwrap().as_str());
+        }
 
         let clean::VariantItem(variant_data) = &*variant.kind else { unreachable!() };
 
