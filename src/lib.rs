@@ -73,6 +73,7 @@ mod type_;
 mod type_of;
 
 use std::any::Any;
+use std::fmt::Debug;
 use std::sync::Arc;
 use std::sync::Mutex;
 #[cfg(not(feature="master"))]
@@ -93,6 +94,7 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, ModuleConfig, 
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods};
 use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
@@ -138,9 +140,15 @@ impl TargetInfo {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct LockedTargetInfo {
-    info: Arc<Mutex<TargetInfo>>,
+    info: Arc<Mutex<IntoDynSyncSend<TargetInfo>>>,
+}
+
+impl Debug for LockedTargetInfo {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.info.lock().expect("lock").fmt(formatter)
+    }
 }
 
 impl LockedTargetInfo {
@@ -174,7 +182,7 @@ impl CodegenBackend for GccCodegenBackend {
                 context.add_command_line_option(&format!("-march={}", target_cpu));
             }
 
-            *self.target_info.info.lock().expect("lock") = context.get_target_info();
+            **self.target_info.info.lock().expect("lock") = context.get_target_info();
         }
 
         #[cfg(feature="master")]
@@ -340,12 +348,12 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     let info = {
         // Check whether the target supports 128-bit integers.
         let context = Context::default();
-        Arc::new(Mutex::new(context.get_target_info()))
+        Arc::new(Mutex::new(IntoDynSyncSend(context.get_target_info())))
     };
     #[cfg(not(feature="master"))]
-    let info = Arc::new(Mutex::new(TargetInfo {
+    let info = Arc::new(Mutex::new(IntoDynSyncSend(TargetInfo {
         supports_128bit_integers: AtomicBool::new(false),
-    }));
+    })));
 
     Box::new(GccCodegenBackend {
         target_info: LockedTargetInfo { info },
