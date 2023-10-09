@@ -1,11 +1,17 @@
 error: conflicting implementations of trait `IntoWasmAbi` for type `&dyn Fn(&_) -> _`
   --> $DIR/coherence-wasm-bindgen.rs:28:1
    |
-LL | impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn Fn(A) -> R + 'b)
-   | ------------------------------------------------------------ first implementation here
+LL | / impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn Fn(A) -> R + 'b)
+LL | | where
+LL | |     A: FromWasmAbi,
+LL | |     R: ReturnWasmAbi,
+   | |_____________________- first implementation here
 ...
-LL | impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn for<'x> Fn(&'x A) -> R + 'b)
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&dyn Fn(&_) -> _`
+LL | / impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn for<'x> Fn(&'x A) -> R + 'b)
+LL | | where
+LL | |     A: RefFromWasmAbi,
+LL | |     R: ReturnWasmAbi,
+   | |_____________________^ conflicting implementation for `&dyn Fn(&_) -> _`
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>

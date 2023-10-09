@@ -41,8 +41,11 @@ LL | struct PrivTy;
 warning: type `PrivTy` is more private than the item `S`
   --> $DIR/where-priv-type.rs:39:1
    |
-LL | impl S
-   | ^^^^^^ implementation `S` is reachable at visibility `pub`
+LL | / impl S
+LL | |
+LL | | where
+LL | |     PrivTy:
+   | |___________^ implementation `S` is reachable at visibility `pub`
    |
 note: but type `PrivTy` is only usable at visibility `pub(crate)`
   --> $DIR/where-priv-type.rs:8:1

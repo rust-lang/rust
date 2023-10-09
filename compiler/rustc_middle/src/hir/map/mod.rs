@@ -970,12 +970,15 @@ impl<'hir> Map<'hir> {
                 // SyntaxContext of the visibility.
                 sig.span.find_ancestor_in_same_ctxt(*outer_span).unwrap_or(*outer_span)
             }
+            // Impls, including their where clauses.
+            Node::Item(Item {
+                kind: ItemKind::Impl(Impl { generics, .. }),
+                span: outer_span,
+                ..
+            }) => until_within(*outer_span, generics.where_clause_span),
             // Constants and Statics.
             Node::Item(Item {
-                kind:
-                    ItemKind::Const(ty, ..)
-                    | ItemKind::Static(ty, ..)
-                    | ItemKind::Impl(Impl { self_ty: ty, .. }),
+                kind: ItemKind::Const(ty, ..) | ItemKind::Static(ty, ..),
                 span: outer_span,
                 ..
             })

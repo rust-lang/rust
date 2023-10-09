@@ -1,11 +1,14 @@
 error[E0119]: conflicting implementations of trait `From<()>` for type `S`
   --> $DIR/inter-crate-ambiguity-causes-notes.rs:12:1
    |
-LL | impl From<()> for S {
-   | ------------------- first implementation here
+LL |   impl From<()> for S {
+   |   ------------------- first implementation here
 ...
-LL | impl<I> From<I> for S
-   | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `S`
+LL | / impl<I> From<I> for S
+LL | |
+LL | | where
+LL | |     I: Iterator<Item = ()>,
+   | |___________________________^ conflicting implementation for `S`
    |
    = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `()` in future versions
 

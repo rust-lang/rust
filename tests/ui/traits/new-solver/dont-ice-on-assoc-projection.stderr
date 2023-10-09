@@ -13,7 +13,7 @@ error[E0119]: conflicting implementations of trait `Foo` for type `()`
 LL | impl Foo for () {}
    | --------------- first implementation here
 LL | impl<T> Foo for T where T: Bar<ASSOC = 0> {}
-   | ^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
 
 error: aborting due to 2 previous errors
 
