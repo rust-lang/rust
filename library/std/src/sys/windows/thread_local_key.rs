@@ -43,6 +43,9 @@ unsafe fn run_keyless_dtors() {
     // guarantee that a TLS key cannot be set after it is flagged for
     // destruction.
     loop {
+        // Use a let-else binding to ensure the `RefCell` guard is dropped
+        // immediately. Otherwise, a panic would occur if a TLS destructor
+        // tries to access the list.
         let Some((ptr, dtor)) = DESTRUCTORS.borrow_mut().pop() else {
             break;
         };
