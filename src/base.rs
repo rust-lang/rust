@@ -120,7 +120,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
         // NOTE: Rust relies on LLVM doing wrapping on overflow.
         context.add_command_line_option("-fwrapv");
 
-        if tcx.sess.opts.cg.relocation_model == Some(rustc_target::spec::RelocModel::Static) {
+        if tcx.sess.relocation_model() == rustc_target::spec::RelocModel::Static {
             context.add_command_line_option("-mcmodel=kernel");
             context.add_command_line_option("-fno-pie");
         }
