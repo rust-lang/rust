@@ -107,12 +107,13 @@ impl<'tcx> Tables<'tcx> {
 
     fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
         // FIXME: this becomes inefficient when we have too many ids
-        if let Some(i) = self.alloc_ids.iter().position(|a| *a == aid) {
-            return stable_mir::AllocId(i);
-        };
-        let id = self.def_ids.len();
-        self.alloc_ids.push(aid);
-        stable_mir::AllocId(id)
+        if let Some(i) = self.alloc_ids.get(&aid) {
+            return *i;
+        } else {
+            let id = self.def_ids.len();
+            self.alloc_ids.insert(aid, stable_mir::AllocId(id));
+            stable_mir::AllocId(id)
+        }
     }
 
     pub(crate) fn create_span(&mut self, span: Span) -> stable_mir::ty::Span {
@@ -136,7 +137,7 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
         Tables {
             tcx,
             def_ids: fx::FxIndexMap::default(),
-            alloc_ids: vec![],
+            alloc_ids: fx::FxIndexMap::default(),
             spans: vec![],
             types: vec![],
         },

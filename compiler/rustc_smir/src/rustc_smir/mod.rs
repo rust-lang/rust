@@ -196,7 +196,7 @@ impl<S, R: PartialEq> PartialEq<R> for MaybeStable<S, R> {
 pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub def_ids: FxIndexMap<DefId, stable_mir::DefId>,
-    pub alloc_ids: Vec<AllocId>,
+    pub alloc_ids: FxIndexMap<AllocId, stable_mir::AllocId>,
     pub spans: Vec<rustc_span::Span>,
     pub types: Vec<MaybeStable<stable_mir::ty::TyKind, Ty<'tcx>>>,
 }
