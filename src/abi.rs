@@ -115,7 +115,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             match self.ret.mode {
                 PassMode::Ignore => cx.type_void(),
                 PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
-                PassMode::Cast(ref cast, _) => cast.gcc_type(cx),
+                PassMode::Cast { ref cast, .. } => cast.gcc_type(cx),
                 PassMode::Indirect { .. } => {
                     argument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
                     cx.type_void()
@@ -141,11 +141,11 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             let arg_ty = match arg.mode {
                 PassMode::Ignore => continue,
                 PassMode::Pair(a, b) => {
-                    argument_tys.push(apply_attrs(arg.layout.scalar_pair_element_gcc_type(cx, 0, true), &a));
-                    argument_tys.push(apply_attrs(arg.layout.scalar_pair_element_gcc_type(cx, 1, true), &b));
+                    argument_tys.push(apply_attrs(arg.layout.scalar_pair_element_gcc_type(cx, 0), &a));
+                    argument_tys.push(apply_attrs(arg.layout.scalar_pair_element_gcc_type(cx, 1), &b));
                     continue;
                 }
-                PassMode::Cast(ref cast, pad_i32) => {
+                PassMode::Cast { ref cast, pad_i32 } => {
                     // add padding
                     if pad_i32 {
                         argument_tys.push(Reg::i32().gcc_type(cx));
@@ -153,18 +153,18 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     let ty = cast.gcc_type(cx);
                     apply_attrs(ty, &cast.attrs)
                 }
-                PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: true } => {
                     // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
                     on_stack_param_indices.insert(argument_tys.len());
                     arg.memory_ty(cx)
                 },
                 PassMode::Direct(attrs) => apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs),
-                PassMode::Indirect { attrs, extra_attrs: None, on_stack: false } => {
+                PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
                     apply_attrs(cx.type_ptr_to(arg.memory_ty(cx)), &attrs)
                 }
-                PassMode::Indirect { attrs, extra_attrs: Some(extra_attrs), on_stack } => {
+                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                     assert!(!on_stack);
-                    apply_attrs(apply_attrs(cx.type_ptr_to(arg.memory_ty(cx)), &attrs), &extra_attrs)
+                    apply_attrs(apply_attrs(cx.type_ptr_to(arg.memory_ty(cx)), &attrs), &meta_attrs)
                 }
             };
             argument_tys.push(arg_ty);

@@ -215,7 +215,7 @@ function setup_rustc() {
     rm config.toml || true
 
     cat > config.toml <<EOF
-changelog-seen = 2
+change-id = 115898
 
 [rust]
 codegen-backends = []
@@ -359,6 +359,7 @@ function test_rustc() {
     git checkout tests/ui/macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs
     git checkout tests/ui/imports/ambiguous-1.rs
     git checkout tests/ui/imports/ambiguous-4-extern.rs
+    git checkout tests/ui/entry-point/auxiliary/bad_main_functions.rs
 
     RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot"
 

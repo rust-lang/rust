@@ -7,6 +7,7 @@ use rustc_codegen_ssa::traits::{
     BaseTypeMethods,
     MiscMethods,
 };
+use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::span_bug;
@@ -479,7 +480,7 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
             self.sess().emit_fatal(respan(span, err.into_diagnostic()))
         } else {
-            span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+            self.tcx.sess.emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
         }
     }
 }

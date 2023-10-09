@@ -656,7 +656,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn unchecked_sadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a + b
+        self.gcc_add(a, b)
     }
 
     fn unchecked_uadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -664,7 +664,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn unchecked_ssub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a - b
+        self.gcc_sub(a, b)
     }
 
     fn unchecked_usub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -673,11 +673,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn unchecked_smul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a * b
+        self.gcc_mul(a, b)
     }
 
     fn unchecked_umul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a * b
+        self.gcc_mul(a, b)
     }
 
     fn fadd_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
@@ -814,7 +814,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 let mut load = |i, scalar: &abi::Scalar, align| {
                     let llptr = self.struct_gep(pair_type, place.llval, i as u64);
-                    let llty = place.layout.scalar_pair_element_gcc_type(self, i, false);
+                    let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                     let load = self.load(llty, llptr, align);
                     scalar_load_metadata(self, load, scalar);
                     if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
@@ -1421,7 +1421,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.cx
     }
 
-    fn do_not_inline(&mut self, _llret: RValue<'gcc>) {
+    fn apply_attrs_to_cleanup_callsite(&mut self, _llret: RValue<'gcc>) {
         // FIXME(bjorn3): implement
     }
 
