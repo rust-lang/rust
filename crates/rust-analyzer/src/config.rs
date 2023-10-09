@@ -480,6 +480,14 @@ config_data! {
         /// tests or binaries. For example, it may be `--release`.
         runnables_extraArgs: Vec<String>   = "[]",
 
+        /// Optional path to a rust-analyzer specific target directory.
+        /// This prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`
+        /// at the expense of duplicating build artifacts.
+        ///
+        /// Set to `true` to use a subdirectory of the existing target directory or
+        /// set to a path relative to the workspace to use that path.
+        rust_analyzerTargetDir: Option<TargetDirectory> = "null",
+
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
         /// is installed.
@@ -1263,6 +1271,7 @@ impl Config {
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
             extra_args: self.data.cargo_extraArgs.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
+            target_dir: self.target_dir_from_config(),
         }
     }
 
@@ -1335,8 +1344,19 @@ impl Config {
                 extra_args: self.check_extra_args(),
                 extra_env: self.check_extra_env(),
                 ansi_color_output: self.color_diagnostic_output(),
+                target_dir: self.target_dir_from_config(),
             },
         }
+    }
+
+    fn target_dir_from_config(&self) -> Option<PathBuf> {
+        self.data.rust_analyzerTargetDir.as_ref().and_then(|target_dir| match target_dir {
+            TargetDirectory::UseSubdirectory(yes) if *yes => {
+                Some(PathBuf::from("target/rust-analyzer"))
+            }
+            TargetDirectory::UseSubdirectory(_) => None,
+            TargetDirectory::Directory(dir) => Some(dir.clone()),
+        })
     }
 
     pub fn check_on_save(&self) -> bool {
@@ -2037,6 +2057,14 @@ pub enum MemoryLayoutHoverRenderKindDef {
     Both,
 }
 
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[serde(untagged)]
+pub enum TargetDirectory {
+    UseSubdirectory(bool),
+    Directory(PathBuf),
+}
+
 macro_rules! _config_data {
     (struct $name:ident {
         $(
@@ -2465,6 +2493,19 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 },
             ],
         },
+        "Option<TargetDirectory>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                },
+            ],
+        },
         _ => panic!("missing entry for {ty}: {default}"),
     }
 
@@ -2623,6 +2664,69 @@ mod tests {
         assert_eq!(
             config.proc_macro_srv(),
             Some(AbsPathBuf::try_from(project_root().join("./server")).unwrap())
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_unset() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": null }
+            }))
+            .unwrap();
+        assert_eq!(config.data.rust_analyzerTargetDir, None);
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == None)
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_subdir() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": true }
+            }))
+            .unwrap();
+        assert_eq!(
+            config.data.rust_analyzerTargetDir,
+            Some(TargetDirectory::UseSubdirectory(true))
+        );
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(PathBuf::from("target/rust-analyzer")))
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_relative_dir() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": "other_folder" }
+            }))
+            .unwrap();
+        assert_eq!(
+            config.data.rust_analyzerTargetDir,
+            Some(TargetDirectory::Directory(PathBuf::from("other_folder")))
+        );
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(PathBuf::from("other_folder")))
         );
     }
 }
