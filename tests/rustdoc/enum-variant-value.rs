@@ -96,3 +96,22 @@ pub use bar::G;
 // @matches - '//*[@id="variant.A"]/h3' '^A$'
 // @has - '//*[@id="variant.C"]/h3' 'C(u32)'
 pub use bar::H;
+
+// Testing more complex cases.
+pub const X: isize = 2;
+// @has 'foo/enum.I.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A = 2,'
+// @has - '//*[@class="rust item-decl"]/code' 'B = 4,'
+// @has - '//*[@class="rust item-decl"]/code' 'C = 9,'
+// @has - '//*[@class="rust item-decl"]/code' 'D = -1,'
+// @matches - '//*[@id="variant.A"]/h3' '^A = 2$'
+// @matches - '//*[@id="variant.B"]/h3' '^B = 4$'
+// @matches - '//*[@id="variant.C"]/h3' '^C = 9$'
+// @matches - '//*[@id="variant.D"]/h3' '^D = -1$'
+#[repr(isize)]
+pub enum I {
+    A = X,
+    B = X * 2,
+    C = Self::B as isize + X + 3,
+    D = -1,
+}
