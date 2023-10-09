@@ -906,7 +906,7 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        if compiler.stage == 1 {
+        if builder.build.config.enable_bolt_settings && compiler.stage == 1 {
             // Relocations are required for BOLT to work.k
             cargo.env("RUSTC_BOLT_LINK_FLAGS", "1");
         }

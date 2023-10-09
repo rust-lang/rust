@@ -159,6 +159,11 @@ impl Bootstrap {
         self
     }
 
+    pub fn with_rustc_bolt_ldflags(mut self) -> Self {
+        self.cmd = self.cmd.arg("--enable-bolt-settings");
+        self
+    }
+
     pub fn with_bolt_profile(mut self, profile: BoltProfile) -> Self {
         self.cmd = self.cmd.arg("--reproducible-artifact").arg(profile.0.as_str());
         self

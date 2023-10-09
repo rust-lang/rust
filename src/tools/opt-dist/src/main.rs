@@ -259,6 +259,7 @@ fn execute_pipeline(
             stage.section("Build PGO optimized LLVM", |stage| {
                 Bootstrap::build(env)
                     .with_llvm_bolt_ldflags()
+                    .with_rustc_bolt_ldflags()
                     .llvm_pgo_optimize(&llvm_pgo_profile)
                     .avoid_rustc_rebuild()
                     .run(stage)
