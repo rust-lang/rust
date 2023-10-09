@@ -1,15 +1,13 @@
 //! Unwind info generation (`.eh_frame`)
 
-use crate::prelude::*;
-
 use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::{unwind::UnwindInfo, TargetIsa};
-
 use cranelift_object::ObjectProduct;
 use gimli::write::{Address, CieId, EhFrame, FrameTable, Section};
 use gimli::RunTimeEndian;
 
 use super::object::WriteDebugInfo;
+use crate::prelude::*;
 
 pub(crate) struct UnwindContext {
     endian: RunTimeEndian,

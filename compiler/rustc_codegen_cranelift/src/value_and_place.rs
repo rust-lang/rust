@@ -1,11 +1,10 @@
 //! Definition of [`CValue`] and [`CPlace`]
 
-use crate::prelude::*;
-
-use rustc_middle::ty::FnSig;
-
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
+use rustc_middle::ty::FnSig;
+
+use crate::prelude::*;
 
 fn codegen_field<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -310,7 +309,8 @@ impl<'tcx> CValue<'tcx> {
                 fx.bcx.ins().iconcat(lsb, msb)
             }
             ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Ref(..) | ty::RawPtr(..) => {
-                fx.bcx.ins().iconst(clif_ty, const_val.to_bits(layout.size).unwrap() as i64)
+                let raw_val = const_val.size().truncate(const_val.to_bits(layout.size).unwrap());
+                fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
             ty::Float(FloatTy::F32) => {
                 fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(const_val).unwrap()))
