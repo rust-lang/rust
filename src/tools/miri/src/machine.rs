@@ -1002,7 +1002,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn generate_nan<F: rustc_apfloat::Float>(ecx: &InterpCx<'mir, 'tcx, Self>, inputs: &[F]) -> F {
+    fn generate_nan<F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>, F2: rustc_apfloat::Float>(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        inputs: &[F1],
+    ) -> F2 {
         ecx.generate_nan(inputs)
     }
 

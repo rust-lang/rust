@@ -1,4 +1,4 @@
-use rustc_apfloat::Float;
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -104,7 +104,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         (ImmTy::from_bool(res, *self.tcx), false)
     }
 
-    fn binary_float_op<F: Float + Into<Scalar<M::Provenance>>>(
+    fn binary_float_op<F: Float + FloatConvert<F> + Into<Scalar<M::Provenance>>>(
         &self,
         bin_op: mir::BinOp,
         layout: TyAndLayout<'tcx>,

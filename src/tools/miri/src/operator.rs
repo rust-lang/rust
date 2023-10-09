@@ -3,7 +3,7 @@ use std::iter;
 use log::trace;
 
 use rand::{seq::IteratorRandom, Rng};
-use rustc_apfloat::Float;
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;
 use rustc_target::abi::Size;
 
@@ -78,17 +78,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         })
     }
 
-    fn generate_nan<F: Float>(&self, inputs: &[F]) -> F {
+    fn generate_nan<F1: Float + FloatConvert<F2>, F2: Float>(&self, inputs: &[F1]) -> F2 {
+        /// Make the given NaN a signaling NaN.
+        /// Returns `None` if this would not result in a NaN.
+        fn make_signaling<F: Float>(f: F) -> Option<F> {
+            // The quiet/signaling bit is the leftmost bit in the mantissa.
+            // That's position `PRECISION-1`, since `PRECISION` includes the fixed leading 1 bit,
+            // and then we subtract 1 more since this is 0-indexed.
+            let quiet_bit_mask = 1 << (F::PRECISION - 2);
+            // Unset the bit. Double-check that this wasn't the last bit set in the payload.
+            // (which would turn the NaN into an infinity).
+            let f = F::from_bits(f.to_bits() & !quiet_bit_mask);
+            if f.is_nan() { Some(f) } else { None }
+        }
+
         let this = self.eval_context_ref();
         let mut rand = this.machine.rng.borrow_mut();
-        // Assemble an iterator of possible NaNs: preferred, unchanged propagation, quieting propagation.
-        let preferred_nan = F::qnan(Some(0));
+        // Assemble an iterator of possible NaNs: preferred, quieting propagation, unchanged propagation.
+        // On some targets there are more possibilities; for now we just generate those options that
+        // are possible everywhere.
+        let preferred_nan = F2::qnan(Some(0));
         let nans = iter::once(preferred_nan)
-            .chain(inputs.iter().filter(|f| f.is_nan()).copied())
-            .chain(inputs.iter().filter(|f| f.is_signaling()).map(|f| {
-                // Make it quiet, by setting the bit. We assume that `preferred_nan`
-                // only has bits set that all quiet NaNs need to have set.
-                F::from_bits(f.to_bits() | preferred_nan.to_bits())
+            .chain(inputs.iter().filter(|f| f.is_nan()).map(|&f| {
+                // Regular apfloat cast is quieting.
+                f.convert(&mut false).value
+            }))
+            .chain(inputs.iter().filter(|f| f.is_signaling()).filter_map(|&f| {
+                let f: F2 = f.convert(&mut false).value;
+                // We have to de-quiet this again for unchanged propagation.
+                make_signaling(f)
             }));
         // Pick one of the NaNs.
         let nan = nans.choose(&mut *rand).unwrap();

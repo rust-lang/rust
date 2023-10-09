@@ -6,7 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use rustc_apfloat::Float;
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -243,9 +243,12 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Generate the NaN returned by a float operation, given the list of inputs.
     /// (This is all inputs, not just NaN inputs!)
-    fn generate_nan<F: Float>(_ecx: &InterpCx<'mir, 'tcx, Self>, _inputs: &[F]) -> F {
+    fn generate_nan<F1: Float + FloatConvert<F2>, F2: Float>(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _inputs: &[F1],
+    ) -> F2 {
         // By default we always return the preferred NaN.
-        F::NAN
+        F2::NAN
     }
 
     /// Called before writing the specified `local` of the `frame`.

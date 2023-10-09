@@ -311,6 +311,95 @@ fn test_f64() {
     );
 }
 
+fn test_casts() {
+    let all1_payload_32 = u32_ones(22);
+    let all1_payload_64 = u64_ones(51);
+    let left1_payload_64 = (all1_payload_32 as u64) << (51 - 22);
+
+    // 64-to-32
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(F64::nan(Pos, Quiet, 0).as_f64() as f32),
+    );
+    // The preferred payload is always a possibility.
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+            F32::nan(Pos, Quiet, all1_payload_32),
+            F32::nan(Neg, Quiet, all1_payload_32),
+        ]),
+        || F32::from(F64::nan(Pos, Quiet, all1_payload_64).as_f64() as f32),
+    );
+    // If the input is signaling, then the output *may* also be signaling.
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+            F32::nan(Pos, Quiet, all1_payload_32),
+            F32::nan(Neg, Quiet, all1_payload_32),
+            F32::nan(Pos, Signaling, all1_payload_32),
+            F32::nan(Neg, Signaling, all1_payload_32),
+        ]),
+        || F32::from(F64::nan(Pos, Signaling, all1_payload_64).as_f64() as f32),
+    );
+    // Check that the low bits are gone (not the high bits).
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+        ]),
+        || F32::from(F64::nan(Pos, Quiet, 1).as_f64() as f32),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+            F32::nan(Pos, Quiet, 1),
+            F32::nan(Neg, Quiet, 1),
+        ]),
+        || F32::from(F64::nan(Pos, Quiet, 1 << (51-22)).as_f64() as f32),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+            // The `1` payload becomes `0`, and the `0` payload cannot be signaling,
+            // so these are the only options.
+        ]),
+        || F32::from(F64::nan(Pos, Signaling, 1).as_f64() as f32),
+    );
+
+    // 32-to-64
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(F32::nan(Pos, Quiet, 0).as_f32() as f64),
+    );
+    // The preferred payload is always a possibility.
+    // Also checks that 0s are added on the right.
+    check_all_outcomes(
+        HashSet::from_iter([
+            F64::nan(Pos, Quiet, 0),
+            F64::nan(Neg, Quiet, 0),
+            F64::nan(Pos, Quiet, left1_payload_64),
+            F64::nan(Neg, Quiet, left1_payload_64),
+        ]),
+        || F64::from(F32::nan(Pos, Quiet, all1_payload_32).as_f32() as f64),
+    );
+    // If the input is signaling, then the output *may* also be signaling.
+    check_all_outcomes(
+        HashSet::from_iter([
+            F64::nan(Pos, Quiet, 0),
+            F64::nan(Neg, Quiet, 0),
+            F64::nan(Pos, Quiet, left1_payload_64),
+            F64::nan(Neg, Quiet, left1_payload_64),
+            F64::nan(Pos, Signaling, left1_payload_64),
+            F64::nan(Neg, Signaling, left1_payload_64),
+        ]),
+        || F64::from(F32::nan(Pos, Signaling, all1_payload_32).as_f32() as f64),
+    );
+}
+
 fn main() {
     // Check our constants against std, just to be sure.
     // We add 1 since our numbers are the number of bits stored
@@ -321,4 +410,5 @@ fn main() {
 
     test_f32();
     test_f64();
+    test_casts();
 }
