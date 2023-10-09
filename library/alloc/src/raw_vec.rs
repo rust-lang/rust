@@ -292,6 +292,11 @@ impl<T, A: Allocator> RawVec<T, A> {
         if self.needs_to_grow(len, additional) {
             do_reserve_and_handle(self, len, additional);
         }
+
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+        }
     }
 
     /// A specialized version of `reserve()` used only by the hot and
