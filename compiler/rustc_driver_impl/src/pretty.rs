@@ -451,10 +451,6 @@ pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
     write_or_print(&out, tcx.sess);
 }
 
-// In an ideal world, this would be a public function called by the driver after
-// analysis is performed. However, we want to call `phase_3_run_analysis_passes`
-// with a different callback than the standard driver, so that isn't easy.
-// Instead, we call that function ourselves.
 fn print_with_analysis(tcx: TyCtxt<'_>, ppm: PpMode) -> Result<(), ErrorGuaranteed> {
     tcx.analysis(())?;
     let out = match ppm {
