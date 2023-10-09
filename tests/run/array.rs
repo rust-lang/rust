@@ -7,7 +7,7 @@
 //     5
 //     10
 
-#![feature(arbitrary_self_types, auto_traits, lang_items, no_core, start, intrinsics)]
+#![feature(arbitrary_self_types, auto_traits, lang_items, no_core, start, intrinsics, rustc_attrs)]
 #![allow(internal_features)]
 
 #![no_std]
