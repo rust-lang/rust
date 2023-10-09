@@ -1,14 +1,14 @@
 //! Allocator shim
 // Adapted from rustc
 
-use crate::prelude::*;
-
 use rustc_ast::expand::allocator::{
     alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
     ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE,
 };
 use rustc_codegen_ssa::base::allocator_kind_for_codegen;
 use rustc_session::config::OomStrategy;
+
+use crate::prelude::*;
 
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
