@@ -39,6 +39,7 @@ use crate::core::config::flags;
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
 use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
     self, dir_is_empty, exe, libdir, mtime, output, run, run_suppressed, symlink_dir,
     try_run_suppressed,
@@ -959,17 +960,32 @@ impl Build {
 
     /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
     pub(crate) fn run_delaying_failure(&self, cmd: &mut Command) -> bool {
-        if !self.fail_fast {
-            #[allow(deprecated)] // can't use Build::try_run, that's us
-            if self.config.try_run(cmd).is_err() {
-                let mut failures = self.delayed_failures.borrow_mut();
-                failures.push(format!("{cmd:?}"));
-                return false;
+        let cmd: BootstrapCommand<'_> = cmd.into();
+        self.run_cmd(cmd.delay_failure())
+    }
+
+    /// A centralized function for running commands that do not return output.
+    pub(crate) fn run_cmd<'a, C: Into<BootstrapCommand<'a>>>(&self, cmd: C) -> bool {
+        let command = cmd.into();
+        self.verbose(&format!("running: {command:?}"));
+
+        #[allow(deprecated)] // can't use Build::try_run, that's us
+        let result = self.config.try_run(command.command);
+
+        match result {
+            Ok(_) => true,
+            Err(_) => {
+                if command.delay_failure {
+                    let mut failures = self.delayed_failures.borrow_mut();
+                    failures.push(format!("{command:?}"));
+                    return false;
+                }
+                if self.fail_fast {
+                    exit!(1);
+                }
+                false
             }
-        } else {
-            self.run(cmd);
         }
-        true
     }
 
     pub fn is_verbose_than(&self, level: usize) -> bool {
