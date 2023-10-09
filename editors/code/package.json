@@ -1489,7 +1489,7 @@
                     }
                 },
                 "rust-analyzer.rust.analyzerTargetDir": {
-                    "markdownDescription": "Optional path to a rust-analyzer specific target directory.\nThis is useful to prevent rust-analyzer's `cargo check` from blocking builds.\n\nSet to `true` to use a subdirectory of the existing target directory or\nset to a path relative to the workspace to use that path.",
+                    "markdownDescription": "Optional path to a rust-analyzer specific target directory.\nThis prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`\nat the expense of duplicating build artifacts.\n\nSet to `true` to use a subdirectory of the existing target directory or\nset to a path relative to the workspace to use that path.",
                     "default": null,
                     "anyOf": [
                         {

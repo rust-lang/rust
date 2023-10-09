@@ -761,7 +761,8 @@ tests or binaries. For example, it may be `--release`.
 +
 --
 Optional path to a rust-analyzer specific target directory.
-This is useful to prevent rust-analyzer's `cargo check` from blocking builds.
+This prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`
+at the expense of duplicating build artifacts.
 
 Set to `true` to use a subdirectory of the existing target directory or
 set to a path relative to the workspace to use that path.

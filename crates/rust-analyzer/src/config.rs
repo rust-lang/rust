@@ -481,7 +481,8 @@ config_data! {
         runnables_extraArgs: Vec<String>   = "[]",
 
         /// Optional path to a rust-analyzer specific target directory.
-        /// This is useful to prevent rust-analyzer's `cargo check` from blocking builds.
+        /// This prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`
+        /// at the expense of duplicating build artifacts.
         ///
         /// Set to `true` to use a subdirectory of the existing target directory or
         /// set to a path relative to the workspace to use that path.
@@ -1349,17 +1350,13 @@ impl Config {
     }
 
     fn target_dir_from_config(&self) -> Option<PathBuf> {
-        self.data
-            .rust_analyzerTargetDir
-            .as_ref()
-            .map(|target_dir| match target_dir {
-                TargetDirectory::UseSubdirectory(yes) if *yes => {
-                    Some(PathBuf::from("target/rust-analyzer"))
-                }
-                TargetDirectory::UseSubdirectory(_) => None,
-                TargetDirectory::Directory(dir) => Some(dir.clone()),
-            })
-            .flatten()
+        self.data.rust_analyzerTargetDir.as_ref().and_then(|target_dir| match target_dir {
+            TargetDirectory::UseSubdirectory(yes) if *yes => {
+                Some(PathBuf::from("target/rust-analyzer"))
+            }
+            TargetDirectory::UseSubdirectory(_) => None,
+            TargetDirectory::Directory(dir) => Some(dir.clone()),
+        })
     }
 
     pub fn check_on_save(&self) -> bool {
