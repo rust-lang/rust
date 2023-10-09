@@ -163,12 +163,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 predicate: error.obligation.predicate,
                 index: Some(index),
             });
-
-            self.reported_trait_errors
-                .borrow_mut()
-                .entry(span)
-                .or_default()
-                .push(error.obligation.predicate);
         }
 
         // We do this in 2 passes because we want to display errors in order, though
@@ -206,6 +200,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     self.report_fulfillment_error(error);
+                    // We want to ignore desugarings here: spans are equivalent even
+                    // if one is the result of a desugaring and the other is not.
+                    let mut span = error.obligation.cause.span;
+                    let expn_data = span.ctxt().outer_expn_data();
+                    if let ExpnKind::Desugaring(_) = expn_data.kind {
+                        span = expn_data.call_site;
+                    }
+                    self.reported_trait_errors
+                        .borrow_mut()
+                        .entry(span)
+                        .or_default()
+                        .push(error.obligation.predicate);
                 }
             }
         }
@@ -441,7 +447,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             && let Some(Node::Pat(pat)) = self.tcx.hir().find(*hir_id)
                             && let Some(preds) = self.reported_trait_errors.borrow().get(&pat.span)
                             && preds.contains(&obligation.predicate)
-                            && self.tcx.sess.has_errors().is_some()
                         {
                             // Silence redundant errors on binding acccess that are already
                             // reported on the binding definition (#56607).
