@@ -1,12 +1,9 @@
-use rustc_data_structures::fx::FxHashMap;
-
 use cranelift_module::FuncId;
 use cranelift_object::ObjectProduct;
-
+use gimli::SectionId;
 use object::write::{Relocation, StandardSegment};
 use object::{RelocationEncoding, SectionKind};
-
-use gimli::SectionId;
+use rustc_data_structures::fx::FxHashMap;
 
 use crate::debuginfo::{DebugReloc, DebugRelocName};
 

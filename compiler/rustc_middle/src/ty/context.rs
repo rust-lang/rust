@@ -1057,16 +1057,21 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the `DefId` and the `BoundRegionKind` corresponding to the given region.
-    pub fn is_suitable_region(self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
-        let (suitable_region_binding_scope, bound_region) = match *region {
-            ty::ReFree(ref free_region) => {
-                (free_region.scope.expect_local(), free_region.bound_region)
+    pub fn is_suitable_region(self, mut region: Region<'tcx>) -> Option<FreeRegionInfo> {
+        let (suitable_region_binding_scope, bound_region) = loop {
+            let def_id = match region.kind() {
+                ty::ReFree(fr) => fr.bound_region.get_id()?.as_local()?,
+                ty::ReEarlyBound(ebr) => ebr.def_id.expect_local(),
+                _ => return None, // not a free region
+            };
+            let scope = self.local_parent(def_id);
+            if self.def_kind(scope) == DefKind::OpaqueTy {
+                // Lifetime params of opaque types are synthetic and thus irrelevant to
+                // diagnostics. Map them back to their origin!
+                region = self.map_rpit_lifetime_to_fn_lifetime(def_id);
+                continue;
             }
-            ty::ReEarlyBound(ref ebr) => (
-                self.local_parent(ebr.def_id.expect_local()),
-                ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name),
-            ),
-            _ => return None, // not a free region
+            break (scope, ty::BrNamed(def_id.into(), self.item_name(def_id.into())));
         };
 
         let is_impl_item = match self.hir().find_by_def_id(suitable_region_binding_scope) {
@@ -1074,7 +1079,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(Node::ImplItem(..)) => {
                 self.is_bound_region_in_impl_item(suitable_region_binding_scope)
             }
-            _ => return None,
+            _ => false,
         };
 
         Some(FreeRegionInfo {

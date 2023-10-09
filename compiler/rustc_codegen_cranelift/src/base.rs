@@ -1,14 +1,13 @@
 //! Codegen of a single function
 
+use cranelift_codegen::ir::UserFuncName;
+use cranelift_codegen::CodegenError;
+use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
 use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-
-use cranelift_codegen::ir::UserFuncName;
-use cranelift_codegen::CodegenError;
-use cranelift_module::ModuleError;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;

@@ -1,11 +1,10 @@
 //! Handling of `static`s, `const`s and promoted allocations
 
+use cranelift_module::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{read_target_uint, AllocId, GlobalAlloc, Scalar};
 use rustc_middle::mir::ConstValue;
-
-use cranelift_module::*;
 
 use crate::prelude::*;
 
@@ -101,7 +100,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 if fx.clif_type(layout.ty).is_some() {
                     return CValue::const_val(fx, layout, int);
                 } else {
-                    let raw_val = int.to_bits(int.size()).unwrap();
+                    let raw_val = int.size().truncate(int.to_bits(int.size()).unwrap());
                     let val = match int.size().bytes() {
                         1 => fx.bcx.ins().iconst(types::I8, raw_val as i64),
                         2 => fx.bcx.ins().iconst(types::I16, raw_val as i64),
@@ -187,8 +186,7 @@ pub(crate) fn codegen_const_value<'tcx>(
         ConstValue::Slice { data, meta } => {
             let alloc_id = fx.tcx.reserve_and_set_memory_alloc(data);
             let ptr = pointer_for_allocation(fx, alloc_id).get_addr(fx);
-            // FIXME: the `try_from` here can actually fail, e.g. for very long ZST slices.
-            let len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(meta).unwrap());
+            let len = fx.bcx.ins().iconst(fx.pointer_type, meta as i64);
             CValue::by_val_pair(ptr, len, layout)
         }
     }
