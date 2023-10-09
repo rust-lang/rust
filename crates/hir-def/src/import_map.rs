@@ -283,6 +283,8 @@ enum SearchMode {
     /// Import map entry should contain all letters from the query string,
     /// in the same order, but not necessary adjacent.
     Fuzzy,
+    /// Import map entry should match the query string by prefix.
+    Prefix,
 }
 
 /// Three possible ways to search for the name in associated and/or other items.
@@ -324,6 +326,14 @@ impl Query {
         Self { search_mode: SearchMode::Fuzzy, ..self }
     }
 
+    pub fn prefix(self) -> Self {
+        Self { search_mode: SearchMode::Prefix, ..self }
+    }
+
+    pub fn exact(self) -> Self {
+        Self { search_mode: SearchMode::Exact, ..self }
+    }
+
     /// Specifies whether we want to include associated items in the result.
     pub fn assoc_search_mode(self, assoc_mode: AssocSearchMode) -> Self {
         Self { assoc_mode, ..self }
@@ -361,7 +371,8 @@ impl Query {
         let query_string = if case_insensitive { &self.lowercased } else { &self.query };
 
         match self.search_mode {
-            SearchMode::Exact => &input == query_string,
+            SearchMode::Exact => input == *query_string,
+            SearchMode::Prefix => input.starts_with(query_string),
             SearchMode::Fuzzy => {
                 let mut input_chars = input.chars();
                 for query_char in query_string.chars() {
