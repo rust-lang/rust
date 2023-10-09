@@ -125,9 +125,9 @@ pub fn local_crate() -> Crate {
     with(|cx| cx.local_crate())
 }
 
-/// Try to find a crate with the given name.
-pub fn find_crate(name: &str) -> Option<Crate> {
-    with(|cx| cx.find_crate(name))
+/// Try to find a crate or crates if multiple crates exist from given name.
+pub fn find_crates(name: &str) -> Vec<Crate> {
+    with(|cx| cx.find_crates(name))
 }
 
 /// Try to find a crate with the given name.
@@ -174,7 +174,7 @@ pub trait Context {
     fn external_crates(&self) -> Vec<Crate>;
 
     /// Find a crate with the given name.
-    fn find_crate(&self, name: &str) -> Option<Crate>;
+    fn find_crates(&self, name: &str) -> Vec<Crate>;
 
     /// Prints the name of given `DefId`
     fn name_of_def_id(&self, def_id: DefId) -> String;
