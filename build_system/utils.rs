@@ -1,8 +1,8 @@
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio};
+use std::process::{self, Command};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::path::{Dirs, RelPath};
@@ -47,7 +47,7 @@ impl Compiler {
                 self.runner = vec!["wine".to_owned()];
             }
             _ => {
-                println!("Unknown non-native platform");
+                eprintln!("Unknown non-native platform");
             }
         }
     }
@@ -197,7 +197,9 @@ pub(crate) fn try_hard_link(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
 
 #[track_caller]
 pub(crate) fn spawn_and_wait(mut cmd: Command) {
-    if !cmd.spawn().unwrap().wait().unwrap().success() {
+    let status = cmd.spawn().unwrap().wait().unwrap();
+    if !status.success() {
+        eprintln!("{cmd:?} exited with status {:?}", status);
         process::exit(1);
     }
 }
@@ -207,36 +209,15 @@ pub(crate) fn spawn_and_wait(mut cmd: Command) {
 pub(crate) fn retry_spawn_and_wait(tries: u64, mut cmd: Command) {
     for i in 1..tries + 1 {
         if i != 1 {
-            println!("Command failed. Attempt {i}/{tries}:");
+            eprintln!("Command failed. Attempt {i}/{tries}:");
         }
         if cmd.spawn().unwrap().wait().unwrap().success() {
             return;
         }
         std::thread::sleep(std::time::Duration::from_secs(i * 5));
     }
-    println!("The command has failed after {tries} attempts.");
+    eprintln!("The command has failed after {tries} attempts.");
     process::exit(1);
-}
-
-#[track_caller]
-pub(crate) fn spawn_and_wait_with_input(mut cmd: Command, input: String) -> String {
-    let mut child = cmd
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn child process");
-
-    let mut stdin = child.stdin.take().expect("Failed to open stdin");
-    std::thread::spawn(move || {
-        stdin.write_all(input.as_bytes()).expect("Failed to write to stdin");
-    });
-
-    let output = child.wait_with_output().expect("Failed to read stdout");
-    if !output.status.success() {
-        process::exit(1);
-    }
-
-    String::from_utf8(output.stdout).unwrap()
 }
 
 pub(crate) fn remove_dir_if_exists(path: &Path) {

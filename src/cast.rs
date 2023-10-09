@@ -129,8 +129,8 @@ pub(crate) fn clif_int_or_float_cast(
             let (min, max) = match (to_ty, to_signed) {
                 (types::I8, false) => (0, i64::from(u8::MAX)),
                 (types::I16, false) => (0, i64::from(u16::MAX)),
-                (types::I8, true) => (i64::from(i8::MIN), i64::from(i8::MAX)),
-                (types::I16, true) => (i64::from(i16::MIN), i64::from(i16::MAX)),
+                (types::I8, true) => (i64::from(i8::MIN as u32), i64::from(i8::MAX as u32)),
+                (types::I16, true) => (i64::from(i16::MIN as u32), i64::from(i16::MAX as u32)),
                 _ => unreachable!(),
             };
             let min_val = fx.bcx.ins().iconst(types::I32, min);

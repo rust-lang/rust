@@ -11,14 +11,8 @@ pushd rust
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
-for test in $(rg --files-with-matches "lto|// needs-asm-support" tests/{codegen-units,ui,incremental}); do
+for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
   rm $test
-done
-
-for test in tests/run-make/**/Makefile; do
-  if rg "# needs-asm-support" $test >/dev/null; then
-    rm -r $(dirname $test)
-  fi
 done
 
 for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
@@ -27,6 +21,7 @@ done
 
 git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 git checkout -- tests/ui/proc-macro/pretty-print-hack/
+git checkout -- tests/ui/entry-point/auxiliary/bad_main_functions.rs
 rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 
 # missing features
@@ -35,8 +30,9 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 rm -r tests/run-make/comment-section # cg_clif doesn't yet write the .comment section
 
 # requires stack unwinding
-# FIXME add needs-unwind to this test
+# FIXME add needs-unwind to these tests
 rm -r tests/run-make/libtest-junit
+rm tests/ui/asm/may_unwind.rs
 
 # extra warning about -Cpanic=abort for proc macros
 rm tests/ui/proc-macro/crt-static.rs
@@ -77,6 +73,8 @@ rm -r tests/run-make/symbols-include-type-name # --emit=asm not supported
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
 rm -r tests/run-make/use-extern-for-plugins # same
+rm tests/ui/asm/x86_64/issue-82869.rs # vector regs in inline asm not yet supported
+rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -130,6 +128,7 @@ rm tests/ui/consts/issue-73976-monomorphic.rs # same
 rm tests/ui/rfcs/rfc-3348-c-string-literals/non-ascii.rs # same
 rm tests/ui/consts/const-eval/nonnull_as_ref_ub.rs # same
 rm tests/ui/consts/issue-94675.rs # same
+rm tests/ui/associated-types/issue-85103-layout-debug.rs # same
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
@@ -154,8 +153,11 @@ rm -r tests/run-make/output-type-permutations # same
 rm -r tests/run-make/used # same
 rm -r tests/run-make/no-alloc-shim
 rm -r tests/run-make/emit-to-stdout
+rm -r tests/run-make/compressed-debuginfo
 
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
+
+rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Generator's
 
 # bugs in the test suite
 # ======================
