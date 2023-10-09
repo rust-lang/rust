@@ -4,8 +4,8 @@
 //   stdout: Success
 //   status: signal
 
-#![allow(unused_attributes)]
-#![feature(auto_traits, lang_items, no_core, start, intrinsics)]
+#![allow(internal_features, unused_attributes)]
+#![feature(auto_traits, lang_items, no_core, start, intrinsics, rustc_attrs)]
 
 #![no_std]
 #![no_core]
