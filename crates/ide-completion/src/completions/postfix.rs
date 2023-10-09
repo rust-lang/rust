@@ -95,7 +95,7 @@ pub(crate) fn complete_postfix(
                     &if in_loop {
                         format!("let Ok($1) = {receiver_text} else {{\n    ${{2|continue,break,return|}};\n}};\n$0")
                     } else {
-                        format!("let Ok($1) = {receiver_text} else {{\n    return;\n}};\n$0")
+                        format!("let Ok($1) = {receiver_text} else {{\n    ${{2:return}};\n}};\n$0")
                     },
                 )
                 .add_to(acc, ctx.db);
@@ -121,7 +121,7 @@ pub(crate) fn complete_postfix(
                     &if in_loop {
                         format!("let Some($1) = {receiver_text} else {{\n    ${{2|continue,break,return|}};\n}};\n$0")
                     } else {
-                        format!("let Some($1) = {receiver_text} else {{\n    return;\n}};\n$0")
+                        format!("let Some($1) = {receiver_text} else {{\n    ${{2:return}};\n}};\n$0")
                     },
                 )
                 .add_to(acc, ctx.db);
@@ -511,7 +511,7 @@ fn main() {
 fn main() {
     let bar = Some(true);
     let Some($1) = bar else {
-    return;
+    ${2:return};
 };
 $0
 }
