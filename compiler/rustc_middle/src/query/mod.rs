@@ -1079,6 +1079,7 @@ rustc_queries! {
             tcx.def_path_str(key)
         }
         cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
 
     /// Evaluates const items or anonymous constants

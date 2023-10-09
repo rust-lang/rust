@@ -41,8 +41,8 @@ pub fn provide(providers: &mut Providers) {
     providers.eval_to_const_value_raw = const_eval::eval_to_const_value_raw_provider;
     providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
     providers.eval_static_initializer_raw = |tcx, def_id| {
-        assert!(tcx.is_static(def_id));
-        let instance = ty::Instance::mono(tcx, def_id);
+        assert!(tcx.is_static(def_id.to_def_id()));
+        let instance = ty::Instance::mono(tcx, def_id.to_def_id());
         let gid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
         let param_env = ty::ParamEnv::reveal_all();
         Ok(tcx.eval_to_allocation_raw(param_env.and(gid))?.alloc_id)
