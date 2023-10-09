@@ -430,6 +430,8 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         loop {
             match r.read(&mut probe) {
                 Ok(n) => {
+                    // there is no way to recover from allocation failure here
+                    // because the data has already been read.
                     buf.extend_from_slice(&probe[..n]);
                     return Ok(n);
                 }
@@ -462,7 +464,8 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         }
 
         if buf.len() == buf.capacity() {
-            buf.reserve(PROBE_SIZE); // buf is full, need more space
+            // buf is full, need more space
+            buf.try_reserve(PROBE_SIZE).map_err(|_| ErrorKind::OutOfMemory)?;
         }
 
         let mut spare = buf.spare_capacity_mut();
@@ -815,6 +818,39 @@ pub trait Read {
     /// file.)
     ///
     /// [`std::fs::read`]: crate::fs::read
+    ///
+    /// ## Implementing `read_to_end`
+    ///
+    /// When implementing the `io::Read` trait, it is recommended to allocate
+    /// memory using [`Vec::try_reserve`]. However, this behavior is not guaranteed
+    /// by all implementations, and `read_to_end` may not handle out-of-memory
+    /// situations gracefully.
+    ///
+    /// ```no_run
+    /// # use std::io::{self, BufRead};
+    /// # struct Example { example_datasource: io::Empty } impl Example {
+    /// # fn get_some_data_for_the_example(&self) -> &'static [u8] { &[] }
+    /// fn read_to_end(&mut self, dest_vec: &mut Vec<u8>) -> io::Result<usize> {
+    ///     let initial_vec_len = dest_vec.len();
+    ///     loop {
+    ///         let src_buf = self.example_datasource.fill_buf()?;
+    ///         if src_buf.is_empty() {
+    ///             break;
+    ///         }
+    ///         dest_vec.try_reserve(src_buf.len()).map_err(|_| io::ErrorKind::OutOfMemory)?;
+    ///         dest_vec.extend_from_slice(src_buf);
+    ///
+    ///         // Any irreversible side effects should happen after `try_reserve` succeeds,
+    ///         // to avoid losing data on allocation error.
+    ///         let read = src_buf.len();
+    ///         self.example_datasource.consume(read);
+    ///     }
+    ///     Ok(dest_vec.len() - initial_vec_len)
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// [`Vec::try_reserve`]: crate::vec::Vec::try_reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
         default_read_to_end(self, buf, None)
