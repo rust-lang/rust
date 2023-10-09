@@ -419,7 +419,8 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
     let mut initialized = 0; // Extra initialized bytes from previous loop iteration
     loop {
         if buf.len() == buf.capacity() {
-            buf.reserve(32); // buf is full, need more space
+            // buf is full, need more space
+            buf.try_reserve(32).map_err(|_| ErrorKind::OutOfMemory)?;
         }
 
         let mut spare = buf.spare_capacity_mut();
@@ -465,6 +466,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
                 match r.read(&mut probe) {
                     Ok(0) => return Ok(buf.len() - start_len),
                     Ok(n) => {
+                        buf.try_reserve(n).map_err(|_| ErrorKind::OutOfMemory)?;
                         buf.extend_from_slice(&probe[..n]);
                         break;
                     }
