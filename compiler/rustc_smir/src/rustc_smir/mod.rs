@@ -31,11 +31,18 @@ impl<'tcx> Context for Tables<'tcx> {
         self.tcx.crates(()).iter().map(|crate_num| smir_crate(self.tcx, *crate_num)).collect()
     }
 
-    fn find_crate(&self, name: &str) -> Option<stable_mir::Crate> {
-        [LOCAL_CRATE].iter().chain(self.tcx.crates(()).iter()).find_map(|crate_num| {
-            let crate_name = self.tcx.crate_name(*crate_num).to_string();
-            (name == crate_name).then(|| smir_crate(self.tcx, *crate_num))
-        })
+    fn find_crates(&self, name: &str) -> Vec<stable_mir::Crate> {
+        let crates: Vec<stable_mir::Crate> = [LOCAL_CRATE]
+            .iter()
+            .chain(self.tcx.crates(()).iter())
+            .map(|crate_num| {
+                let crate_name = self.tcx.crate_name(*crate_num).to_string();
+                (name == crate_name).then(|| smir_crate(self.tcx, *crate_num))
+            })
+            .into_iter()
+            .filter_map(|c| c)
+            .collect();
+        crates
     }
 
     fn name_of_def_id(&self, def_id: stable_mir::DefId) -> String {
