@@ -10,7 +10,8 @@ fn foo(d: impl Sized, p: &mut ()) -> impl Sized + '_ { //~ NOTE the parameter ty
 }
 
 fn foo1<'b>(d: impl Sized, p: &'b mut ()) -> impl Sized + '_ {
-//~^ HELP consider adding an explicit lifetime bound...
+//~^ NOTE the parameter type `impl Sized` must be valid for the lifetime `'b` as defined here...
+//~| HELP consider adding an explicit lifetime bound
     (d, p) //~ NOTE ...so that the type `impl Sized` will meet its required lifetime bounds
     //~^ ERROR the parameter type `impl Sized` may not live long enough
 }
@@ -30,7 +31,8 @@ fn bar<T : Sized>(d: T, p: & mut ()) -> impl Sized + '_ { //~ NOTE the parameter
 }
 
 fn bar1<'b, T : Sized>(d: T, p: &'b mut ()) -> impl Sized + '_ {
-//~^ HELP consider adding an explicit lifetime bound...
+//~^ NOTE the parameter type `T` must be valid for the lifetime `'b` as defined here...
+//~| HELP consider adding an explicit lifetime bound
     (d, p) //~ NOTE ...so that the type `T` will meet its required lifetime bounds
     //~^ ERROR the parameter type `T` may not live long enough
 }

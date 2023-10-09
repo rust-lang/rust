@@ -1,29 +1,18 @@
 error[E0311]: the parameter type `T` may not live long enough
   --> $DIR/missing-lifetimes-in-signature-2.rs:23:5
    |
+LL |   fn func<T: Test>(_dummy: &Foo, foo: &Foo, t: T) {
+   |                                        --- the parameter type `T` must be valid for the anonymous lifetime defined here...
 LL | /     foo.bar(move |_| {
 LL | |
 LL | |         t.test();
 LL | |     });
-   | |______^
+   | |______^ ...so that the type `T` will meet its required lifetime bounds
    |
-note: the parameter type `T` must be valid for the anonymous lifetime defined here...
-  --> $DIR/missing-lifetimes-in-signature-2.rs:22:24
+help: consider adding an explicit lifetime bound
    |
-LL | fn func<T: Test>(foo: &Foo, t: T) {
-   |                        ^^^
-note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/missing-lifetimes-in-signature-2.rs:23:5
-   |
-LL | /     foo.bar(move |_| {
-LL | |
-LL | |         t.test();
-LL | |     });
-   | |______^
-help: consider adding an explicit lifetime bound...
-   |
-LL | fn func<'a, T: Test + 'a>(foo: &'a Foo<'a>, t: T) {
-   |         +++         ++++        ++    ++++
+LL | fn func<'a, T: Test + 'a>(_dummy: &Foo, foo: &Foo<'a>, t: T) {
+   |         +++         ++++                         ++++
 
 error: aborting due to previous error
 

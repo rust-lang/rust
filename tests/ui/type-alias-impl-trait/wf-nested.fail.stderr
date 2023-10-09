@@ -2,14 +2,17 @@ error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/wf-nested.rs:55:27
    |
 LL |     type InnerOpaque<T> = impl Sized;
-   |                           ^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |                           ^^^^^^^^^^
+   |                           |
+   |                           the parameter type `T` must be valid for the static lifetime...
+   |                           ...so that the type `T` will meet its required lifetime bounds...
    |
 note: ...that is required by this bound
   --> $DIR/wf-nested.rs:12:20
    |
 LL | struct IsStatic<T: 'static>(T);
    |                    ^^^^^^^
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     type InnerOpaque<T: 'static> = impl Sized;
    |                       +++++++++
