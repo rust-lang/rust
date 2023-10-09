@@ -326,7 +326,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "ahash",
     "anyhow",
     "arbitrary",
-    "autocfg",
     "bitflags",
     "bumpalo",
     "cfg-if",
