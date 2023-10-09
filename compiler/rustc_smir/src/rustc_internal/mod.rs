@@ -30,7 +30,7 @@ impl<'tcx> Index<stable_mir::ty::Span> for Tables<'tcx> {
 
     #[inline(always)]
     fn index(&self, index: stable_mir::ty::Span) -> &Self::Output {
-        &self.spans[index.0]
+        &self.spans.get_index(index.0).unwrap().0
     }
 }
 
@@ -106,7 +106,6 @@ impl<'tcx> Tables<'tcx> {
     }
 
     fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
-        // FIXME: this becomes inefficient when we have too many ids
         if let Some(i) = self.alloc_ids.get(&aid) {
             return *i;
         } else {
@@ -117,14 +116,13 @@ impl<'tcx> Tables<'tcx> {
     }
 
     pub(crate) fn create_span(&mut self, span: Span) -> stable_mir::ty::Span {
-        for (i, &sp) in self.spans.iter().enumerate() {
-            if sp == span {
-                return stable_mir::ty::Span(i);
-            }
+        if let Some(i) = self.spans.get(&span) {
+            return *i;
+        } else {
+            let id = self.spans.len();
+            self.spans.insert(span, stable_mir::ty::Span(id));
+            stable_mir::ty::Span(id)
         }
-        let id = self.spans.len();
-        self.spans.push(span);
-        stable_mir::ty::Span(id)
     }
 }
 
@@ -138,7 +136,7 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
             tcx,
             def_ids: fx::FxIndexMap::default(),
             alloc_ids: fx::FxIndexMap::default(),
-            spans: vec![],
+            spans: fx::FxIndexMap::default(),
             types: vec![],
         },
         f,

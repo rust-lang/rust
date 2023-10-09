@@ -197,7 +197,7 @@ pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub def_ids: FxIndexMap<DefId, stable_mir::DefId>,
     pub alloc_ids: FxIndexMap<AllocId, stable_mir::AllocId>,
-    pub spans: Vec<rustc_span::Span>,
+    pub spans: FxIndexMap<rustc_span::Span, Span>,
     pub types: Vec<MaybeStable<stable_mir::ty::TyKind, Ty<'tcx>>>,
 }
 
