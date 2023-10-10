@@ -27,7 +27,7 @@ use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, AdtDef, Region, Ty, TyCtxt, UserType};
 use rustc_middle::ty::{GenericArg, GenericArgsRef};
-use rustc_span::{Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_target::abi::FieldIdx;
 
 use std::cmp::Ordering;
@@ -85,69 +85,67 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         )
     }
 
-    fn lower_range_expr(
+    fn lower_pattern_range_endpoint(
         &mut self,
-        expr: &'tcx hir::Expr<'tcx>,
-    ) -> (PatKind<'tcx>, Option<Ascription<'tcx>>) {
-        match self.lower_lit(expr) {
-            PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
-                (kind, Some(ascription))
+        expr: Option<&'tcx hir::Expr<'tcx>>,
+    ) -> Result<(Option<mir::Const<'tcx>>, Option<Ascription<'tcx>>), ErrorGuaranteed> {
+        match expr {
+            None => Ok((None, None)),
+            Some(expr) => {
+                let (kind, ascr) = match self.lower_lit(expr) {
+                    PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
+                        (kind, Some(ascription))
+                    }
+                    kind => (kind, None),
+                };
+                let value = if let PatKind::Constant { value } = kind {
+                    value
+                } else {
+                    let msg = format!(
+                        "found bad range pattern endpoint `{expr:?}` outside of error recovery"
+                    );
+                    return Err(self.tcx.sess.delay_span_bug(expr.span, msg));
+                };
+                Ok((Some(value), ascr))
             }
-            kind => (kind, None),
         }
     }
 
     fn lower_pattern_range(
         &mut self,
-        ty: Ty<'tcx>,
-        lo: mir::Const<'tcx>,
-        hi: mir::Const<'tcx>,
+        lo_expr: Option<&'tcx hir::Expr<'tcx>>,
+        hi_expr: Option<&'tcx hir::Expr<'tcx>>,
         end: RangeEnd,
+        ty: Ty<'tcx>,
         span: Span,
-        lo_expr: Option<&hir::Expr<'tcx>>,
-        hi_expr: Option<&hir::Expr<'tcx>>,
-    ) -> PatKind<'tcx> {
+    ) -> Result<PatKind<'tcx>, ErrorGuaranteed> {
+        if lo_expr.is_none() && hi_expr.is_none() {
+            let msg = format!("found twice-open range pattern (`..`) outside of error recovery");
+            return Err(self.tcx.sess.delay_span_bug(span, msg));
+        }
+
+        let (lo, lo_ascr) = self.lower_pattern_range_endpoint(lo_expr)?;
+        let (hi, hi_ascr) = self.lower_pattern_range_endpoint(hi_expr)?;
+
+        let lo = lo.unwrap_or_else(|| {
+            // Unwrap is ok because the type is known to be numeric.
+            let lo = ty.numeric_min_val(self.tcx).unwrap();
+            mir::Const::from_ty_const(lo, self.tcx)
+        });
+        let hi = hi.unwrap_or_else(|| {
+            // Unwrap is ok because the type is known to be numeric.
+            let hi = ty.numeric_max_val(self.tcx).unwrap();
+            mir::Const::from_ty_const(hi, self.tcx)
+        });
         assert_eq!(lo.ty(), ty);
         assert_eq!(hi.ty(), ty);
+
         let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env);
-        let max = || {
-            self.tcx
-                .layout_of(self.param_env.with_reveal_all_normalized(self.tcx).and(ty))
-                .ok()
-                .unwrap()
-                .size
-                .unsigned_int_max()
-        };
-        match (end, cmp) {
+        let mut kind = match (end, cmp) {
             // `x..y` where `x < y`.
             // Non-empty because the range includes at least `x`.
             (RangeEnd::Excluded, Some(Ordering::Less)) => {
                 PatKind::Range(Box::new(PatRange { lo, hi, end }))
-            }
-            // `x..y` where `x >= y`. The range is empty => error.
-            (RangeEnd::Excluded, _) => {
-                let mut lower_overflow = false;
-                let mut higher_overflow = false;
-                if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
-                    && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
-                {
-                    if lo.eval_bits(self.tcx, self.param_env) != val {
-                        lower_overflow = true;
-                        self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
-                    }
-                }
-                if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
-                    && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
-                {
-                    if hi.eval_bits(self.tcx, self.param_env) != val {
-                        higher_overflow = true;
-                        self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
-                    }
-                }
-                if !lower_overflow && !higher_overflow {
-                    self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanUpper { span });
-                }
-                PatKind::Wild
             }
             // `x..=y` where `x == y`.
             (RangeEnd::Included, Some(Ordering::Equal)) => PatKind::Constant { value: lo },
@@ -155,57 +153,58 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Included, Some(Ordering::Less)) => {
                 PatKind::Range(Box::new(PatRange { lo, hi, end }))
             }
-            // `x..=y` where `x > y` hence the range is empty => error.
-            (RangeEnd::Included, _) => {
-                let mut lower_overflow = false;
-                let mut higher_overflow = false;
+            // `x..y` where `x >= y`, or `x..=y` where `x > y`. The range is empty => error.
+            _ => {
+                let max = || {
+                    self.tcx
+                        .layout_of(self.param_env.with_reveal_all_normalized(self.tcx).and(ty))
+                        .ok()
+                        .unwrap()
+                        .size
+                        .unsigned_int_max()
+                };
+                // Emit a different message if there was overflow.
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
                     if lo.eval_bits(self.tcx, self.param_env) != val {
-                        lower_overflow = true;
-                        self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
+                        return Err(self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() }));
                     }
                 }
                 if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
                     && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
                 {
                     if hi.eval_bits(self.tcx, self.param_env) != val {
-                        higher_overflow = true;
-                        self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
+                        return Err(self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() }));
                     }
                 }
-                if !lower_overflow && !higher_overflow {
-                    self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
-                        span,
-                        teach: self.tcx.sess.teach(&error_code!(E0030)).then_some(()),
-                    });
-                }
-                PatKind::Wild
+                let e = match end {
+                    RangeEnd::Included => {
+                        self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
+                            span,
+                            teach: self.tcx.sess.teach(&error_code!(E0030)).then_some(()),
+                        })
+                    }
+                    RangeEnd::Excluded => {
+                        self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanUpper { span })
+                    }
+                };
+                return Err(e);
             }
-        }
-    }
+        };
 
-    fn normalize_range_pattern_ends(
-        &self,
-        ty: Ty<'tcx>,
-        lo: Option<&PatKind<'tcx>>,
-        hi: Option<&PatKind<'tcx>>,
-    ) -> Option<(mir::Const<'tcx>, mir::Const<'tcx>)> {
-        match (lo, hi) {
-            (Some(PatKind::Constant { value: lo }), Some(PatKind::Constant { value: hi })) => {
-                Some((*lo, *hi))
+        // If we are handling a range with associated constants (e.g.
+        // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
+        // constants somewhere. Have them on the range pattern.
+        for ascr in [lo_ascr, hi_ascr] {
+            if let Some(ascription) = ascr {
+                kind = PatKind::AscribeUserType {
+                    ascription,
+                    subpattern: Box::new(Pat { span, ty, kind }),
+                };
             }
-            (Some(PatKind::Constant { value: lo }), None) => {
-                let hi = ty.numeric_max_val(self.tcx)?;
-                Some((*lo, mir::Const::from_ty_const(hi, self.tcx)))
-            }
-            (None, Some(PatKind::Constant { value: hi })) => {
-                let lo = ty.numeric_min_val(self.tcx)?;
-                Some((mir::Const::from_ty_const(lo, self.tcx), *hi))
-            }
-            _ => None,
         }
+        Ok(kind)
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -220,37 +219,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
-                let lo_span = lo_expr.map_or(pat.span, |e| e.span);
-                let lo = lo_expr.map(|e| self.lower_range_expr(e));
-                let hi = hi_expr.map(|e| self.lower_range_expr(e));
-
-                let (lp, hp) = (lo.as_ref().map(|(x, _)| x), hi.as_ref().map(|(x, _)| x));
-                let mut kind = match self.normalize_range_pattern_ends(ty, lp, hp) {
-                    Some((lc, hc)) => {
-                        self.lower_pattern_range(ty, lc, hc, end, lo_span, lo_expr, hi_expr)
-                    }
-                    None => {
-                        let msg = format!(
-                            "found bad range pattern `{:?}` outside of error recovery",
-                            (&lo, &hi),
-                        );
-                        self.tcx.sess.delay_span_bug(pat.span, msg);
-                        PatKind::Wild
-                    }
-                };
-
-                // If we are handling a range with associated constants (e.g.
-                // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
-                // constants somewhere. Have them on the range pattern.
-                for end in &[lo, hi] {
-                    if let Some((_, Some(ascription))) = end {
-                        let subpattern = Box::new(Pat { span: pat.span, ty, kind });
-                        kind =
-                            PatKind::AscribeUserType { ascription: ascription.clone(), subpattern };
-                    }
-                }
-
-                kind
+                let span = lo_expr.map_or(span, |e| e.span);
+                // FIXME?: returning `_` can cause inaccurate "unreachable" warnings. This can be
+                // fixed by returning `PatKind::Const(ConstKind::Error(...))` if #115937 gets
+                // merged.
+                self.lower_pattern_range(lo_expr, hi_expr, end, ty, span).unwrap_or(PatKind::Wild)
             }
 
             hir::PatKind::Path(ref qpath) => {
