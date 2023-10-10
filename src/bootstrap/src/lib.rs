@@ -39,11 +39,8 @@ use crate::core::config::flags;
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
 use crate::utils::cache::{Interned, INTERNER};
-use crate::utils::exec::BootstrapCommand;
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, mtime, output, run, run_suppressed, symlink_dir,
-    try_run_suppressed,
-};
+use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
 mod utils;
@@ -922,44 +919,30 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
-        if self.config.dry_run() {
-            return;
-        }
-        self.verbose(&format!("running: {cmd:?}"));
-        run(cmd, self.is_verbose())
+        // FIXME: output mode -> status + err if self.is_verbose()
+        let cmd: BootstrapCommand<'_> = cmd.into();
+        self.run_cmd(cmd.fail_fast());
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
-        if self.config.dry_run() {
-            return;
-        }
-        self.verbose(&format!("running: {cmd:?}"));
-        run_suppressed(cmd)
+        // FIXME: output mode -> output + err
+        let cmd: BootstrapCommand<'_> = cmd.into();
+        self.run_cmd(cmd.fail_fast());
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
-        if self.config.dry_run() {
-            return true;
-        }
-        if !self.fail_fast {
-            self.verbose(&format!("running: {cmd:?}"));
-            if !try_run_suppressed(cmd) {
-                let mut failures = self.delayed_failures.borrow_mut();
-                failures.push(format!("{cmd:?}"));
-                return false;
-            }
-        } else {
-            self.run_quiet(cmd);
-        }
-        true
+        // FIXME: output mode -> output + err
+        let cmd: BootstrapCommand<'_> = cmd.into();
+        self.run_cmd(cmd.delay_failure())
     }
 
     /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
     pub(crate) fn run_delaying_failure(&self, cmd: &mut Command) -> bool {
+        // FIXME: output mode -> status + err if self.is_verbose()
         let cmd: BootstrapCommand<'_> = cmd.into();
         self.run_cmd(cmd.delay_failure())
     }
@@ -975,10 +958,16 @@ impl Build {
         match result {
             Ok(_) => true,
             Err(_) => {
-                if command.delay_failure {
-                    let mut failures = self.delayed_failures.borrow_mut();
-                    failures.push(format!("{command:?}"));
-                    return false;
+                if let Some(failure_behavior) = command.failure_behavior {
+                    match failure_behavior {
+                        BehaviorOnFailure::DelayFail => {
+                            let mut failures = self.delayed_failures.borrow_mut();
+                            failures.push(format!("{command:?}"));
+                        }
+                        BehaviorOnFailure::Exit => {
+                            exit!(1);
+                        }
+                    }
                 }
                 if self.fail_fast {
                     exit!(1);
