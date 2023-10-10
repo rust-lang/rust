@@ -297,7 +297,6 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
                     f(&annotation)
                 }
                 PpHirMode::Typed => {
-                    abort_on_err(tcx.analysis(()), tcx.sess);
                     let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
                     tcx.dep_graph.with_ignore(|| f(&annotation))
                 }
