@@ -19,24 +19,27 @@ pub use self::PpMode::*;
 pub use self::PpSourceMode::*;
 use crate::abort_on_err;
 
-struct NoAnn<'tcx> {
-    tcx: Option<TyCtxt<'tcx>>,
+struct AstNoAnn;
+
+impl pprust_ast::PpAnn for AstNoAnn {}
+
+struct HirNoAnn<'tcx> {
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> pprust_ast::PpAnn for NoAnn<'tcx> {}
-impl<'tcx> pprust_hir::PpAnn for NoAnn<'tcx> {
+impl<'tcx> pprust_hir::PpAnn for HirNoAnn<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        if let Some(tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(&(&tcx.hir() as &dyn hir::intravisit::Map<'_>), state, nested)
-        }
+        pprust_hir::PpAnn::nested(
+            &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>),
+            state,
+            nested,
+        )
     }
 }
 
-struct IdentifiedAnnotation<'tcx> {
-    tcx: Option<TyCtxt<'tcx>>,
-}
+struct AstIdentifiedAnn;
 
-impl<'tcx> pprust_ast::PpAnn for IdentifiedAnnotation<'tcx> {
+impl pprust_ast::PpAnn for AstIdentifiedAnn {
     fn pre(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
         if let pprust_ast::AnnNode::Expr(_) = node {
             s.popen();
@@ -74,11 +77,17 @@ impl<'tcx> pprust_ast::PpAnn for IdentifiedAnnotation<'tcx> {
     }
 }
 
-impl<'tcx> pprust_hir::PpAnn for IdentifiedAnnotation<'tcx> {
+struct HirIdentifiedAnn<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> pprust_hir::PpAnn for HirIdentifiedAnn<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        if let Some(ref tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(&(&tcx.hir() as &dyn hir::intravisit::Map<'_>), state, nested)
-        }
+        pprust_hir::PpAnn::nested(
+            &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>),
+            state,
+            nested,
+        )
     }
 
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -119,11 +128,11 @@ impl<'tcx> pprust_hir::PpAnn for IdentifiedAnnotation<'tcx> {
     }
 }
 
-struct HygieneAnnotation<'a> {
+struct AstHygieneAnn<'a> {
     sess: &'a Session,
 }
 
-impl<'a> pprust_ast::PpAnn for HygieneAnnotation<'a> {
+impl<'a> pprust_ast::PpAnn for AstHygieneAnn<'a> {
     fn post(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
         match node {
             pprust_ast::AnnNode::Ident(&Ident { name, span }) => {
@@ -145,12 +154,12 @@ impl<'a> pprust_ast::PpAnn for HygieneAnnotation<'a> {
     }
 }
 
-struct TypedAnnotation<'tcx> {
+struct HirTypedAnn<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Cell<Option<&'tcx ty::TypeckResults<'tcx>>>,
 }
 
-impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
+impl<'tcx> pprust_hir::PpAnn for HirTypedAnn<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         let old_maybe_typeck_results = self.maybe_typeck_results.get();
         if let pprust_hir::Nested::Body(id) = nested {
@@ -242,11 +251,11 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         Source(s) => {
             debug!("pretty printing source code {:?}", s);
             let annotation: Box<dyn pprust_ast::PpAnn> = match s {
-                Normal => Box::new(NoAnn { tcx: None }),
-                Expanded => Box::new(NoAnn { tcx: Some(ex.tcx()) }),
-                Identified => Box::new(IdentifiedAnnotation { tcx: None }),
-                ExpandedIdentified => Box::new(IdentifiedAnnotation { tcx: Some(ex.tcx()) }),
-                ExpandedHygiene => Box::new(HygieneAnnotation { sess }),
+                Normal => Box::new(AstNoAnn),
+                Expanded => Box::new(AstNoAnn),
+                Identified => Box::new(AstIdentifiedAnn),
+                ExpandedIdentified => Box::new(AstIdentifiedAnn),
+                ExpandedHygiene => Box::new(AstHygieneAnn { sess }),
             };
             let parse = &sess.parse_sess;
             let is_expanded = ppm.needs_ast_map();
@@ -289,15 +298,15 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             };
             match s {
                 PpHirMode::Normal => {
-                    let annotation = NoAnn { tcx: Some(tcx) };
+                    let annotation = HirNoAnn { tcx };
                     f(&annotation)
                 }
                 PpHirMode::Identified => {
-                    let annotation = IdentifiedAnnotation { tcx: Some(tcx) };
+                    let annotation = HirIdentifiedAnn { tcx };
                     f(&annotation)
                 }
                 PpHirMode::Typed => {
-                    let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
+                    let annotation = HirTypedAnn { tcx, maybe_typeck_results: Cell::new(None) };
                     tcx.dep_graph.with_ignore(|| f(&annotation))
                 }
             }
