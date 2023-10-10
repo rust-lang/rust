@@ -52,8 +52,6 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
-/// Identical to the `PpAnn` implementation for `hir::Crate`,
-/// except it avoids creating a dependency on the whole crate.
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
@@ -446,7 +444,6 @@ impl<'a> State<'a> {
         self.end(); // end the outer ibox
     }
 
-    /// Pretty-print an item
     fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
@@ -2052,7 +2049,8 @@ impl<'a> State<'a> {
 
         match binder {
             hir::ClosureBinder::Default => {}
-            // we need to distinguish `|...| {}` from `for<> |...| {}` as `for<>` adds additional restrictions
+            // We need to distinguish `|...| {}` from `for<> |...| {}` as `for<>` adds additional
+            // restrictions.
             hir::ClosureBinder::For { .. } if generic_params.is_empty() => self.word("for<>"),
             hir::ClosureBinder::For { .. } => {
                 self.word("for");
