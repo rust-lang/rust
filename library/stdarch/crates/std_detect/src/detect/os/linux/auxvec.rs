@@ -19,6 +19,7 @@ pub(crate) const AT_HWCAP2: usize = 26;
 /// If an entry cannot be read all the bits in the bitfield are set to zero.
 /// This should be interpreted as all the features being disabled.
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct AuxVec {
     pub hwcap: usize,
     #[cfg(any(
@@ -174,9 +175,12 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 /// Tries to read the `key` from the auxiliary vector by calling the
 /// dynamically-linked `getauxval` function. If the function is not linked,
 /// this function return `Err`.
-#[cfg(all(
-    feature = "std_detect_dlsym_getauxval",
-    not(all(target_os = "linux", target_env = "gnu"))
+#[cfg(any(
+    test,
+    all(
+        feature = "std_detect_dlsym_getauxval",
+        not(all(target_os = "linux", target_env = "gnu"))
+    )
 ))]
 fn getauxval(key: usize) -> Result<usize, ()> {
     use libc;
@@ -262,34 +266,7 @@ fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
 
 #[cfg(test)]
 mod tests {
-    extern crate auxv as auxv_crate;
     use super::*;
-
-    // Reads the Auxiliary Vector key from /proc/self/auxv
-    // using the auxv crate.
-    #[cfg(feature = "std_detect_file_io")]
-    fn auxv_crate_getprocfs(key: usize) -> Option<usize> {
-        use self::auxv_crate::procfs::search_procfs_auxv;
-        use self::auxv_crate::AuxvType;
-        let k = key as AuxvType;
-        match search_procfs_auxv(&[k]) {
-            Ok(v) => Some(v[&k] as usize),
-            Err(_) => None,
-        }
-    }
-
-    // Reads the Auxiliary Vector key from getauxval()
-    // using the auxv crate.
-    #[cfg(not(any(target_arch = "mips", target_arch = "mips64")))]
-    fn auxv_crate_getauxval(key: usize) -> Option<usize> {
-        use self::auxv_crate::getauxval::Getauxval;
-        use self::auxv_crate::AuxvType;
-        let q = auxv_crate::getauxval::NativeGetauxval {};
-        match q.getauxval(key as AuxvType) {
-            Ok(v) => Some(v as usize),
-            Err(_) => None,
-        }
-    }
 
     // FIXME: on mips/mips64 getauxval returns 0, and /proc/self/auxv
     // does not always contain the AT_HWCAP key under qemu.
@@ -301,7 +278,7 @@ mod tests {
     #[test]
     fn auxv_crate() {
         let v = auxv();
-        if let Some(hwcap) = auxv_crate_getauxval(AT_HWCAP) {
+        if let Ok(hwcap) = getauxval(AT_HWCAP) {
             let rt_hwcap = v.expect("failed to find hwcap key").hwcap;
             assert_eq!(rt_hwcap, hwcap);
         }
@@ -314,7 +291,7 @@ mod tests {
             target_arch = "powerpc64"
         ))]
         {
-            if let Some(hwcap2) = auxv_crate_getauxval(AT_HWCAP2) {
+            if let Ok(hwcap2) = getauxval(AT_HWCAP2) {
                 let rt_hwcap2 = v.expect("failed to find hwcap2 key").hwcap2;
                 assert_eq!(rt_hwcap2, hwcap2);
             }
@@ -391,22 +368,8 @@ mod tests {
     #[test]
     #[cfg(feature = "std_detect_file_io")]
     fn auxv_crate_procfs() {
-        let v = auxv();
-        if let Some(hwcap) = auxv_crate_getprocfs(AT_HWCAP) {
-            assert_eq!(v.unwrap().hwcap, hwcap);
-        }
-
-        // Targets with AT_HWCAP and AT_HWCAP2:
-        #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "powerpc",
-            target_arch = "powerpc64"
-        ))]
-        {
-            if let Some(hwcap2) = auxv_crate_getprocfs(AT_HWCAP2) {
-                assert_eq!(v.unwrap().hwcap2, hwcap2);
-            }
+        if let Ok(procfs_auxv) = auxv_from_file("/proc/self/auxv") {
+            assert_eq!(auxv().unwrap(), procfs_auxv);
         }
     }
 }
