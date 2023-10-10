@@ -285,7 +285,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     let def = cid.instance.def.def_id();
     let is_static = tcx.is_static(def);
 
-    let mut ecx = InterpCx::new(
+    let ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),
         key.param_env,
@@ -293,7 +293,14 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(CanAccessStatics::from(is_static), CheckAlignment::Error),
     );
+    eval_in_interpreter(ecx, cid, is_static)
+}
 
+pub fn eval_in_interpreter<'mir, 'tcx>(
+    mut ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    cid: GlobalId<'tcx>,
+    is_static: bool,
+) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
@@ -306,7 +313,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 // If the current item has generics, we'd like to enrich the message with the
                 // instance and its args: to show the actual compile-time values, in addition to
                 // the expression, leading to the const eval error.
-                let instance = &key.value.instance;
+                let instance = &cid.instance;
                 if !instance.args.is_empty() {
                     let instance = with_no_trimmed_paths!(instance.to_string());
                     ("const_with_path", instance)
