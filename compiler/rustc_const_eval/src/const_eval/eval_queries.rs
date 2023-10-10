@@ -3,7 +3,7 @@ use std::mem;
 use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpErrorInfo};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::pretty::write_allocation_bytes;
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::traits::Reveal;
@@ -331,25 +331,9 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
             // This is a separate `try` block to provide more targeted error reporting.
-            let validation: Result<_, InterpErrorInfo<'_>> = try {
-                let mut ref_tracking = RefTracking::new(mplace.clone());
-                let mut inner = false;
-                while let Some((mplace, path)) = ref_tracking.todo.pop() {
-                    let mode = if is_static {
-                        if cid.promoted.is_some() {
-                            // Promoteds in statics are allowed to point to statics.
-                            CtfeValidationMode::Const { inner, allow_static_ptrs: true }
-                        } else {
-                            // a `static`
-                            CtfeValidationMode::Regular
-                        }
-                    } else {
-                        CtfeValidationMode::Const { inner, allow_static_ptrs: false }
-                    };
-                    ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
-                    inner = true;
-                }
-            };
+            let validation =
+                const_validate_mplace(&ecx, &mplace, is_static, cid.promoted.is_some());
+
             let alloc_id = mplace.ptr().provenance.unwrap();
 
             // Validation failed, report an error.
@@ -390,4 +374,32 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             }
         }
     }
+}
+
+#[inline(always)]
+pub fn const_validate_mplace<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    mplace: &MPlaceTy<'tcx>,
+    is_static: bool,
+    is_promoted: bool,
+) -> InterpResult<'tcx> {
+    let mut ref_tracking = RefTracking::new(mplace.clone());
+    let mut inner = false;
+    while let Some((mplace, path)) = ref_tracking.todo.pop() {
+        let mode = if is_static {
+            if is_promoted {
+                // Promoteds in statics are allowed to point to statics.
+                CtfeValidationMode::Const { inner, allow_static_ptrs: true }
+            } else {
+                // a `static`
+                CtfeValidationMode::Regular
+            }
+        } else {
+            CtfeValidationMode::Const { inner, allow_static_ptrs: false }
+        };
+        ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
+        inner = true;
+    }
+
+    Ok(())
 }
