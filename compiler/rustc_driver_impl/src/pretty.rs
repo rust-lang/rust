@@ -19,12 +19,12 @@ pub use self::PpMode::*;
 pub use self::PpSourceMode::*;
 use crate::abort_on_err;
 
-struct NoAnn<'hir> {
-    tcx: Option<TyCtxt<'hir>>,
+struct NoAnn<'tcx> {
+    tcx: Option<TyCtxt<'tcx>>,
 }
 
-impl<'hir> pprust_ast::PpAnn for NoAnn<'hir> {}
-impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
+impl<'tcx> pprust_ast::PpAnn for NoAnn<'tcx> {}
+impl<'tcx> pprust_hir::PpAnn for NoAnn<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(tcx) = self.tcx {
             pprust_hir::PpAnn::nested(&(&tcx.hir() as &dyn hir::intravisit::Map<'_>), state, nested)
@@ -32,11 +32,11 @@ impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
     }
 }
 
-struct IdentifiedAnnotation<'hir> {
-    tcx: Option<TyCtxt<'hir>>,
+struct IdentifiedAnnotation<'tcx> {
+    tcx: Option<TyCtxt<'tcx>>,
 }
 
-impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
+impl<'tcx> pprust_ast::PpAnn for IdentifiedAnnotation<'tcx> {
     fn pre(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
         if let pprust_ast::AnnNode::Expr(_) = node {
             s.popen();
@@ -74,7 +74,7 @@ impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
     }
 }
 
-impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
+impl<'tcx> pprust_hir::PpAnn for IdentifiedAnnotation<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(ref tcx) = self.tcx {
             pprust_hir::PpAnn::nested(&(&tcx.hir() as &dyn hir::intravisit::Map<'_>), state, nested)
