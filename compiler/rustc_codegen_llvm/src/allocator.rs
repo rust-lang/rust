@@ -1,8 +1,8 @@
 use crate::attributes;
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
-    alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
-    ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE,
+    default_fn_name, global_fn_name, AllocatorKind, AllocatorTy, ALLOCATOR_METHODS,
+    NO_ALLOC_SHIM_IS_UNSTABLE,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -17,7 +17,6 @@ pub(crate) unsafe fn codegen(
     module_llvm: &mut ModuleLlvm,
     module_name: &str,
     kind: AllocatorKind,
-    alloc_error_handler_kind: AllocatorKind,
 ) {
     let llcx = &*module_llvm.llcx;
     let llmod = module_llvm.llmod();
@@ -60,18 +59,6 @@ pub(crate) unsafe fn codegen(
             create_wrapper_function(tcx, llcx, llmod, &from_name, &to_name, &args, output, false);
         }
     }
-
-    // rust alloc error handler
-    create_wrapper_function(
-        tcx,
-        llcx,
-        llmod,
-        "__rust_alloc_error_handler",
-        &alloc_error_handler_name(alloc_error_handler_kind),
-        &[usize, usize], // size, align
-        None,
-        true,
-    );
 
     // __rust_alloc_error_handler_should_panic
     let name = OomStrategy::SYMBOL;

@@ -12,6 +12,11 @@ use core::ptr::{self, NonNull};
 #[doc(inline)]
 pub use core::alloc::*;
 
+#[cfg(not(no_global_oom_handling))]
+use core::any::Any;
+#[cfg(not(no_global_oom_handling))]
+use core::panic::PanicPayload;
+
 #[cfg(test)]
 mod tests;
 
@@ -333,14 +338,78 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     }
 }
 
+/// Payload passed to the panic handler when `handle_alloc_error` is called.
+#[unstable(feature = "panic_oom_payload", issue = "110730")]
+#[derive(Debug)]
+pub struct AllocErrorPanicPayload {
+    layout: Layout,
+}
+
+impl AllocErrorPanicPayload {
+    /// Internal function for the standard library to clone a payload.
+    #[unstable(feature = "std_internals", issue = "none")]
+    #[doc(hidden)]
+    pub fn internal_clone(&self) -> Self {
+        AllocErrorPanicPayload { layout: self.layout }
+    }
+
+    /// Returns the [`Layout`] of the allocation attempt that caused the error.
+    #[unstable(feature = "panic_oom_payload", issue = "110730")]
+    pub fn layout(&self) -> Layout {
+        self.layout
+    }
+}
+
+#[unstable(feature = "std_internals", issue = "none")]
+#[cfg(not(no_global_oom_handling))]
+unsafe impl PanicPayload for AllocErrorPanicPayload {
+    fn take_box(&mut self) -> *mut (dyn Any + Send) {
+        use crate::boxed::Box;
+        Box::into_raw(Box::new(self.internal_clone()))
+    }
+
+    fn get(&mut self) -> &(dyn Any + Send) {
+        self
+    }
+}
+
 // # Allocation error handler
 
-#[cfg(not(no_global_oom_handling))]
-extern "Rust" {
-    // This is the magic symbol to call the global alloc error handler. rustc generates
-    // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
-    // default implementations below (`__rdl_oom`) otherwise.
-    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+fn rust_oom(layout: Layout) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        core::intrinsics::abort()
+    }
+
+    extern "Rust" {
+        // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+        // that gets resolved to the `#[panic_handler]` function.
+        #[lang = "panic_impl"]
+        fn panic_impl(pi: &core::panic::PanicInfo<'_>) -> !;
+
+        // This symbol is emitted by rustc .
+        // Its value depends on the -Zoom={panic,abort} compiler option.
+        static __rust_alloc_error_handler_should_panic: u8;
+    }
+
+    // Hack to work around issues with the lifetime of Arguments.
+    match format_args!("memory allocation of {} bytes failed", layout.size()) {
+        fmt => {
+            // Create a PanicInfo with a custom payload for the panic handler.
+            let can_unwind = unsafe { __rust_alloc_error_handler_should_panic != 0 };
+            let mut pi = core::panic::PanicInfo::internal_constructor(
+                Some(&fmt),
+                core::panic::Location::caller(),
+                can_unwind,
+                /* force_no_backtrace */ false,
+            );
+            let payload = AllocErrorPanicPayload { layout };
+            pi.set_payload(&payload);
+
+            // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+            unsafe { panic_impl(&pi) }
+        }
+    }
 }
 
 /// Signal a memory allocation error.
@@ -349,24 +418,25 @@ extern "Rust" {
 /// in response to an allocation error are encouraged to call this function,
 /// rather than directly invoking [`panic!`] or similar.
 ///
-/// This function is guaranteed to diverge (not return normally with a value), but depending on
-/// global configuration, it may either panic (resulting in unwinding or aborting as per
-/// configuration for all panics), or abort the process (with no unwinding).
+/// This function triggers a panic with a special payload of [`AllocErrorPanicPayload`] that holds
+/// information about the allocation that failed.
 ///
-/// The default behavior is:
+/// There are 2 ways in which such panics can be handled:
 ///
 ///  * If the binary links against `std` (typically the case), then
-///   print a message to standard error and abort the process.
-///   This behavior can be replaced with [`set_alloc_error_hook`] and [`take_alloc_error_hook`].
-///   Future versions of Rust may panic by default instead.
+///   the payload is available through [`PanicInfo::payload`][std_payload].
+///   By default, panics caused by thisfunction will always abort the process instead of unwinding.
+///   This can be overridden by compiling the program with the `-Z oom=unwind` option, in which case
+///   the payload is captured and can be recovered through the [`catch_unwind`] function.
 ///
 /// * If the binary does not link against `std` (all of its crates are marked
-///   [`#![no_std]`][no_std]), then call [`panic!`] with a message.
-///   [The panic handler] applies as to any panic.
+///   [`#![no_std]`][no_std]), then [the panic handler] is called. The payload is available through
+///   [`PanicInfo::payload`][core_payload].
 ///
-/// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
-/// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
-/// [The panic handler]: https://doc.rust-lang.org/reference/runtime.html#the-panic_handler-attribute
+/// [core_payload]: ../../core/panic/struct.PanicInfo.html#method.payload
+/// [std_payload]: ../../std/panic/struct.PanicInfo.html#method.payload
+/// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
+/// [the panic handler]: https://doc.rust-lang.org/reference/runtime.html#the-panic_handler-attribute
 /// [no_std]: https://doc.rust-lang.org/reference/names/preludes.html#the-no_std-attribute
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
@@ -378,9 +448,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
     }
 
     fn rt_error(layout: Layout) -> ! {
-        unsafe {
-            __rust_alloc_error_handler(layout.size(), layout.align());
-        }
+        rust_oom(layout);
     }
 
     unsafe { core::intrinsics::const_eval_select((layout,), ct_error, rt_error) }
@@ -390,6 +458,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(all(not(no_global_oom_handling), test))]
 pub use std::alloc::handle_alloc_error;
 
+#[cfg(bootstrap)]
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
