@@ -31,7 +31,11 @@ error: file opened with `create`, but `truncate` behavior not defined
 LL |     OpenOptions::new().create(true).create(false).open("foo.txt");
    |                        ^^^^^^^^^^^^
    |
-   = help: if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`
+help: if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`
+  --> $DIR/open_options.rs:14:5
+   |
+LL |     OpenOptions::new().create(true).create(false).open("foo.txt");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::suspicious-open-options` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::suspicious_open_options)]`
 
@@ -59,7 +63,11 @@ error: file opened with `create`, but `truncate` behavior not defined
 LL |     OpenOptions::new().create(true).open("foo.txt");
    |                        ^^^^^^^^^^^^
    |
-   = help: if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`
+help: if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`
+  --> $DIR/open_options.rs:22:5
+   |
+LL |     OpenOptions::new().create(true).open("foo.txt");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors
 

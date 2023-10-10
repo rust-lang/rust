@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::paths;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
@@ -117,11 +118,10 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, S
         }
     }
 
-    if_chain! {
-        if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Read);
-        if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Truncate);
-        if let None | Some((Argument::Set(false), _)) = options.get(&OpenOption::Write);
-        then {
+    if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Read)
+        && let Some((Argument::Set(true), _)) = options.get(&OpenOption::Truncate)
+        && let None | Some((Argument::Set(false), _)) = options.get(&OpenOption::Write)
+        {
             span_lint(
                 cx,
                 NONSENSICAL_OPEN_OPTIONS,
@@ -129,37 +129,28 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, S
                 "file opened with `truncate` and `read`",
             );
         }
-    }
 
-    if_chain! {
-        if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Append);
-        if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Truncate);
-        if let None | Some((Argument::Set(false), _)) = options.get(&OpenOption::Write);
-        then {
+    if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Append)
+        && let Some((Argument::Set(true), _)) = options.get(&OpenOption::Truncate)
+        {
             span_lint(
                 cx,
                 NONSENSICAL_OPEN_OPTIONS,
                 span,
                 "file opened with `append` and `truncate`",
             );
-        }
     }
 
-    if_chain! {
-        if let Some((Argument::Set(true), create_span)) = options.get(&OpenOption::Create);
-        if let None = options.get(&OpenOption::Truncate);
-        then {
-            span_lint_and_then(
+    if let Some((Argument::Set(true), create_span)) = options.get(&OpenOption::Create)
+        && let None = options.get(&OpenOption::Truncate)
+        {
+            span_lint_and_help(
                 cx,
                 SUSPICIOUS_OPEN_OPTIONS,
                 *create_span,
                 "file opened with `create`, but `truncate` behavior not defined",
-                |diag| {
-                    diag
-                    //.span_suggestion(create_span.shrink_to_hi(), "add", ".truncate(true)".to_string(), rustc_errors::Applicability::MaybeIncorrect)
-                    .help("if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`");
-                },
+                Some(span),
+                "if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`"
             );
-        }
     }
 }
