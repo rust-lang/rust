@@ -1,8 +1,9 @@
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::mir::{self, BasicBlock, BasicBlockData, Terminator, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 
 use std::cmp::Ordering;
 use std::ops::{Index, IndexMut};
@@ -80,10 +81,9 @@ impl CoverageGraph {
         // intentionally omits unwind paths.
         // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
         // `catch_unwind()` handlers.
-        let mir_cfg_without_unwind = ShortCircuitPreorder::new(&mir_body, bcb_filtered_successors);
 
         let mut basic_blocks = Vec::new();
-        for (bb, data) in mir_cfg_without_unwind {
+        for bb in short_circuit_preorder(mir_body, bcb_filtered_successors) {
             if let Some(last) = basic_blocks.last() {
                 let predecessors = &mir_body.basic_blocks.predecessors()[bb];
                 if predecessors.len() > 1 || !predecessors.contains(last) {
@@ -109,7 +109,7 @@ impl CoverageGraph {
             }
             basic_blocks.push(bb);
 
-            let term = data.terminator();
+            let term = mir_body[bb].terminator();
 
             match term.kind {
                 TerminatorKind::Return { .. }
@@ -553,66 +553,28 @@ pub(super) fn find_loop_backedges(
     backedges
 }
 
-pub struct ShortCircuitPreorder<
-    'a,
-    'tcx,
-    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
-> {
+fn short_circuit_preorder<'a, 'tcx, F, Iter>(
     body: &'a mir::Body<'tcx>,
-    visited: BitSet<BasicBlock>,
-    worklist: Vec<BasicBlock>,
     filtered_successors: F,
-}
-
-impl<
-    'a,
-    'tcx,
-    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
-> ShortCircuitPreorder<'a, 'tcx, F>
+) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx>
+where
+    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Iter,
+    Iter: Iterator<Item = BasicBlock>,
 {
-    pub fn new(
-        body: &'a mir::Body<'tcx>,
-        filtered_successors: F,
-    ) -> ShortCircuitPreorder<'a, 'tcx, F> {
-        let worklist = vec![mir::START_BLOCK];
+    let mut visited = BitSet::new_empty(body.basic_blocks.len());
+    let mut worklist = vec![mir::START_BLOCK];
 
-        ShortCircuitPreorder {
-            body,
-            visited: BitSet::new_empty(body.basic_blocks.len()),
-            worklist,
-            filtered_successors,
-        }
-    }
-}
-
-impl<
-    'a,
-    'tcx,
-    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
-> Iterator for ShortCircuitPreorder<'a, 'tcx, F>
-{
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
-
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        while let Some(idx) = self.worklist.pop() {
-            if !self.visited.insert(idx) {
+    std::iter::from_fn(move || {
+        while let Some(bb) = worklist.pop() {
+            if !visited.insert(bb) {
                 continue;
             }
 
-            let data = &self.body[idx];
+            worklist.extend(filtered_successors(body, &body[bb].terminator().kind));
 
-            if let Some(ref term) = data.terminator {
-                self.worklist.extend((self.filtered_successors)(&self.body, &term.kind));
-            }
-
-            return Some((idx, data));
+            return Some(bb);
         }
 
         None
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.body.basic_blocks.len() - self.visited.count();
-        (size, Some(size))
-    }
+    })
 }
