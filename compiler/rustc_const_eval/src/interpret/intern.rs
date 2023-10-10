@@ -450,7 +450,7 @@ pub fn intern_const_alloc_recursive<
     Ok(())
 }
 
-/// Intern `ret`, checking it references no other allocation.
+/// Intern `ret`. This function assumes that `ret` references no other allocation.
 #[instrument(level = "debug", skip(ecx))]
 pub fn intern_const_alloc_for_constprop<
     'mir,
@@ -461,17 +461,7 @@ pub fn intern_const_alloc_for_constprop<
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     ret: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let Some((size, _align)) = ecx.size_and_align_of_mplace(ret)? else {
-        throw_inval!(ConstPropNonsense)
-    };
-
-    let alloc_ref = ecx.get_ptr_alloc(ret.ptr(), size)?.unwrap();
-    // Do not try interning a value that contains provenance.
-    if alloc_ref.has_provenance() {
-        throw_inval!(ConstPropNonsense)
-    }
-
-    // remove allocation
+    // Move allocation to `tcx`.
     let alloc_id = ret.ptr().provenance.unwrap();
     let Some((_, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) else {
         // Pointer not found in local memory map. It is either a pointer to the global

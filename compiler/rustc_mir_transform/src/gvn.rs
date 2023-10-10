@@ -832,6 +832,7 @@ fn op_to_prop_const<'tcx>(
     // If this constant has scalar ABI, return it as a `ConstValue::Scalar`.
     if let Abi::Scalar(abi::Scalar::Initialized { .. }) = op.layout.abi
         && let Ok(scalar) = ecx.read_scalar(op)
+        && scalar.try_to_int().is_ok()
     {
         return Some(ConstValue::Scalar(scalar));
     }
@@ -840,6 +841,14 @@ fn op_to_prop_const<'tcx>(
     if let Either::Left(mplace) = op.as_mplace_or_imm()
         && let MemPlaceMeta::None = mplace.meta()
     {
+        let (size, _align) = ecx.size_and_align_of_mplace(&mplace).ok()??;
+
+        // Do not try interning a value that contains provenance.
+        let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).ok()??;
+        if alloc_ref.has_provenance() {
+            return None;
+        }
+
         intern_const_alloc_for_constprop(ecx, &mplace).ok()?;
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
         let (alloc_id, offset) = pointer.into_parts();
@@ -853,7 +862,13 @@ fn op_to_prop_const<'tcx>(
     // Everything failed: create a new allocation to hold the data.
     let alloc_id =
         ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest, false)).ok()?;
-    Some(ConstValue::Indirect { alloc_id, offset: Size::ZERO })
+    let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
+
+    if !value.has_provenance(*ecx.tcx, op.layout.size) {
+        return Some(value);
+    }
+
+    None
 }
 
 impl<'tcx> VnState<'_, 'tcx> {
@@ -905,9 +920,7 @@ impl<'tcx> VnState<'_, 'tcx> {
 
         // Check that we do not leak a pointer.
         // Those pointers may lose part of their identity in codegen.
-        if value.has_provenance(self.tcx, op.layout.size) {
-            return None;
-        }
+        assert!(!value.has_provenance(self.tcx, op.layout.size));
 
         let const_ = Const::Val(value, op.layout.ty);
         Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ })
