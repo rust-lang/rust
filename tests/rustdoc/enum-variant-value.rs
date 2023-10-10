@@ -115,3 +115,77 @@ pub enum I {
     C = Self::B as isize + X + 3,
     D = -1,
 }
+
+// Testing `repr`.
+
+// @has 'foo/enum.J.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A = 0,'
+// @has - '//*[@class="rust item-decl"]/code' 'B = 1,'
+// @matches - '//*[@id="variant.A"]/h3' '^A = 0$'
+// @matches - '//*[@id="variant.B"]/h3' '^B = 1$'
+#[repr(C)]
+pub enum J {
+    A,
+    B,
+}
+
+// @has 'foo/enum.K.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A(u32),'
+// @has - '//*[@class="rust item-decl"]/code' 'B,'
+// @has - '//*[@id="variant.A"]/h3' 'A(u32)'
+// @matches - '//*[@id="variant.B"]/h3' '^B$'
+#[repr(C)]
+pub enum K {
+    A(u32),
+    B,
+}
+
+// @has 'foo/enum.L.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A = 0,'
+// @has - '//*[@class="rust item-decl"]/code' 'B = 1,'
+// @matches - '//*[@id="variant.A"]/h3' '^A = 0$'
+// @matches - '//*[@id="variant.B"]/h3' '^B = 1$'
+#[repr(u32)]
+pub enum L {
+    A,
+    B,
+}
+
+// @has 'foo/enum.M.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A(u32),'
+// @has - '//*[@class="rust item-decl"]/code' 'B,'
+// @has - '//*[@id="variant.A"]/h3' 'A(u32)'
+// @matches - '//*[@id="variant.B"]/h3' '^B$'
+#[repr(u32)]
+pub enum M {
+    A(u32),
+    B,
+}
+
+// @has 'foo/enum.N.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A = 0,'
+// @has - '//*[@class="rust item-decl"]/code' 'B = 1,'
+// @matches - '//*[@id="variant.A"]/h3' '^A = 0$'
+// @matches - '//*[@id="variant.B"]/h3' '^B = 1$'
+pub use bar::N;
+
+// @has 'foo/enum.O.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A(u32),'
+// @has - '//*[@class="rust item-decl"]/code' 'B,'
+// @has - '//*[@id="variant.A"]/h3' 'A(u32)'
+// @matches - '//*[@id="variant.B"]/h3' '^B$'
+pub use bar::O;
+
+// @has 'foo/enum.P.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A = 0,'
+// @has - '//*[@class="rust item-decl"]/code' 'B = 1,'
+// @matches - '//*[@id="variant.A"]/h3' '^A = 0$'
+// @matches - '//*[@id="variant.B"]/h3' '^B = 1$'
+pub use bar::P;
+
+// @has 'foo/enum.Q.html'
+// @has - '//*[@class="rust item-decl"]/code' 'A(u32),'
+// @has - '//*[@class="rust item-decl"]/code' 'B,'
+// @has - '//*[@id="variant.A"]/h3' 'A(u32)'
+// @matches - '//*[@id="variant.B"]/h3' '^B$'
+pub use bar::Q;
