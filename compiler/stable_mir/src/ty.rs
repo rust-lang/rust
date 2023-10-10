@@ -75,7 +75,7 @@ pub struct Placeholder<T> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Span(pub usize);
+pub struct Span(usize);
 
 impl Debug for Span {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -83,6 +83,15 @@ impl Debug for Span {
             .field("id", &self.0)
             .field("repr", &with(|cx| cx.print_span(*self)))
             .finish()
+    }
+}
+
+impl IndexedVal for Span {
+    fn to_val(index: usize) -> Self {
+        Span(index)
+    }
+    fn to_index(&self) -> usize {
+        self.0
     }
 }
 
@@ -564,4 +573,10 @@ pub enum ImplPolarity {
     Positive,
     Negative,
     Reservation,
+}
+
+pub trait IndexedVal {
+    fn to_val(index: usize) -> Self;
+
+    fn to_index(&self) -> usize;
 }
