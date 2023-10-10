@@ -2,9 +2,9 @@
 
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust as pprust_ast;
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
+use rustc_middle::bug;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
@@ -310,7 +310,37 @@ fn write_or_print(out: &str, sess: &Session) {
     sess.io.output_file.as_ref().unwrap_or(&OutFileName::Stdout).overwrite(out, sess);
 }
 
-pub fn print_after_parsing(sess: &Session, krate: &ast::Crate, ppm: PpMode) {
+// Extra data for pretty-printing, the form of which depends on what kind of
+// pretty-printing we are doing.
+pub enum PrintExtra<'tcx> {
+    AfterParsing { krate: ast::Crate },
+    NeedsAstMap { tcx: TyCtxt<'tcx> },
+}
+
+impl<'tcx> PrintExtra<'tcx> {
+    fn with_krate<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&ast::Crate) -> R
+    {
+        match self {
+            PrintExtra::AfterParsing { krate, .. } => f(krate),
+            PrintExtra::NeedsAstMap { tcx } => f(&tcx.resolver_for_lowering(()).borrow().1),
+        }
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        match self {
+            PrintExtra::AfterParsing { .. } => bug!("PrintExtra::tcx"),
+            PrintExtra::NeedsAstMap { tcx } => *tcx,
+        }
+    }
+}
+
+pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
+    if ppm.needs_analysis() {
+        abort_on_err(ex.tcx().analysis(()), sess);
+    }
+
     let (src, src_name) = get_source(sess);
 
     let out = match ppm {
@@ -320,96 +350,52 @@ pub fn print_after_parsing(sess: &Session, krate: &ast::Crate, ppm: PpMode) {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 let parse = &sess.parse_sess;
-                pprust_ast::print_crate(
-                    sess.source_map(),
-                    krate,
-                    src_name,
-                    src,
-                    annotation,
-                    false,
-                    parse.edition,
-                    &sess.parse_sess.attr_id_generator,
+                let is_expanded = ppm.needs_ast_map();
+                ex.with_krate(|krate|
+                    pprust_ast::print_crate(
+                        sess.source_map(),
+                        krate,
+                        src_name,
+                        src,
+                        annotation,
+                        is_expanded,
+                        parse.edition,
+                        &sess.parse_sess.attr_id_generator,
+                    )
                 )
             })
         }
         AstTree => {
             debug!("pretty printing AST tree");
-            format!("{krate:#?}")
+            ex.with_krate(|krate| format!("{krate:#?}"))
         }
-        _ => unreachable!(),
-    };
-
-    write_or_print(&out, sess);
-}
-
-pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
-    if ppm.needs_analysis() {
-        abort_on_err(print_with_analysis(tcx, ppm), tcx.sess);
-        return;
-    }
-
-    let (src, src_name) = get_source(tcx.sess);
-
-    let out = match ppm {
-        Source(s) => {
-            // Silently ignores an identified node.
-            call_with_pp_support_ast(&s, tcx.sess, Some(tcx), move |annotation| {
-                debug!("pretty printing source code {:?}", s);
-                let sess = annotation.sess();
-                let parse = &sess.parse_sess;
-                pprust_ast::print_crate(
-                    sess.source_map(),
-                    &tcx.resolver_for_lowering(()).borrow().1,
-                    src_name,
-                    src,
-                    annotation,
-                    true,
-                    parse.edition,
-                    &sess.parse_sess.attr_id_generator,
-                )
-            })
-        }
-
         AstTreeExpanded => {
             debug!("pretty-printing expanded AST");
-            format!("{:#?}", tcx.resolver_for_lowering(()).borrow().1)
+            format!("{:#?}", ex.tcx().resolver_for_lowering(()).borrow().1)
         }
-
-        Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, hir_map| {
+        Hir(s) => call_with_pp_support_hir(&s, ex.tcx(), move |annotation, hir_map| {
             debug!("pretty printing HIR {:?}", s);
             let sess = annotation.sess();
             let sm = sess.source_map();
             let attrs = |id| hir_map.attrs(id);
             pprust_hir::print_crate(sm, hir_map.root_module(), src_name, src, &attrs, annotation)
         }),
-
         HirTree => {
             debug!("pretty printing HIR tree");
-            format!("{:#?}", tcx.hir().krate())
+            format!("{:#?}", ex.tcx().hir().krate())
         }
-
-        _ => unreachable!(),
-    };
-
-    write_or_print(&out, tcx.sess);
-}
-
-fn print_with_analysis(tcx: TyCtxt<'_>, ppm: PpMode) -> Result<(), ErrorGuaranteed> {
-    tcx.analysis(())?;
-    let out = match ppm {
         Mir => {
             let mut out = Vec::new();
-            write_mir_pretty(tcx, None, &mut out).unwrap();
+            write_mir_pretty(ex.tcx(), None, &mut out).unwrap();
             String::from_utf8(out).unwrap()
         }
-
         MirCFG => {
             let mut out = Vec::new();
-            write_mir_graphviz(tcx, None, &mut out).unwrap();
+            write_mir_graphviz(ex.tcx(), None, &mut out).unwrap();
             String::from_utf8(out).unwrap()
         }
-
         ThirTree => {
+            let tcx = ex.tcx();
             let mut out = String::new();
             abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
             debug!("pretty printing THIR tree");
@@ -418,8 +404,8 @@ fn print_with_analysis(tcx: TyCtxt<'_>, ppm: PpMode) -> Result<(), ErrorGuarante
             }
             out
         }
-
         ThirFlat => {
+            let tcx = ex.tcx();
             let mut out = String::new();
             abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
             debug!("pretty printing THIR flat");
@@ -428,11 +414,7 @@ fn print_with_analysis(tcx: TyCtxt<'_>, ppm: PpMode) -> Result<(), ErrorGuarante
             }
             out
         }
-
-        _ => unreachable!(),
     };
 
-    write_or_print(&out, tcx.sess);
-
-    Ok(())
+    write_or_print(&out, sess);
 }

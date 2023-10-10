@@ -396,7 +396,7 @@ fn run_compiler(
                 if ppm.needs_ast_map() {
                     queries.global_ctxt()?.enter(|tcx| {
                         tcx.ensure().early_lint_checks(());
-                        pretty::print_after_hir_lowering(tcx, *ppm);
+                        pretty::print(sess, *ppm, pretty::PrintExtra::NeedsAstMap { tcx });
                         Ok(())
                     })?;
 
@@ -405,7 +405,7 @@ fn run_compiler(
                     queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
                 } else {
                     let krate = queries.parse()?.steal();
-                    pretty::print_after_parsing(sess, &krate, *ppm);
+                    pretty::print(sess, *ppm, pretty::PrintExtra::AfterParsing { krate });
                 }
                 trace!("finished pretty-printing");
                 return early_exit();
