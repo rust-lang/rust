@@ -73,6 +73,10 @@ pub struct State<'a> {
 }
 
 impl<'a> State<'a> {
+    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
+        (self.attrs)(id)
+    }
+
     fn print_node(&mut self, node: Node<'_>) {
         match node {
             Node::Param(a) => self.print_param(a),
@@ -154,7 +158,12 @@ pub fn print_crate<'a>(
     attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(sm, filename, input, attrs, ann);
+    let mut s = State {
+        s: pp::Printer::new(),
+        comments: Some(Comments::new(sm, filename, input)),
+        attrs,
+        ann,
+    };
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -162,27 +171,6 @@ pub fn print_crate<'a>(
     s.print_mod(krate, (*attrs)(hir::CRATE_HIR_ID));
     s.print_remaining_comments();
     s.s.eof()
-}
-
-impl<'a> State<'a> {
-    fn new_from_input(
-        sm: &'a SourceMap,
-        filename: FileName,
-        input: String,
-        attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
-        ann: &'a dyn PpAnn,
-    ) -> State<'a> {
-        State {
-            s: pp::Printer::new(),
-            comments: Some(Comments::new(sm, filename, input)),
-            attrs,
-            ann,
-        }
-    }
-
-    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
-        (self.attrs)(id)
-    }
 }
 
 fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
