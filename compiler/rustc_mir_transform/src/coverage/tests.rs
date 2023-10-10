@@ -241,7 +241,7 @@ fn print_coverage_graphviz(
                         "    {:?} [label=\"{:?}: {}\"];\n{}",
                         bcb,
                         bcb,
-                        bcb_data.terminator(mir_body).kind.name(),
+                        mir_body[bcb_data.last_bb()].terminator().kind.name(),
                         basic_coverage_blocks
                             .successors(bcb)
                             .map(|successor| { format!("    {:?} -> {:?};", bcb, successor) })
