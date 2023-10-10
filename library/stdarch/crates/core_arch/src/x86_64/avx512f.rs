@@ -33,7 +33,7 @@ pub unsafe fn _mm_cvtss_i64(a: __m128) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vcvtss2usi))]
 pub unsafe fn _mm_cvtss_u64(a: __m128) -> u64 {
-    transmute(vcvtss2usi64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION))
+    vcvtss2usi64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to an unsigned 64-bit integer, and store the result in dst.
@@ -43,7 +43,7 @@ pub unsafe fn _mm_cvtss_u64(a: __m128) -> u64 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vcvtsd2usi))]
 pub unsafe fn _mm_cvtsd_u64(a: __m128d) -> u64 {
-    transmute(vcvtsd2usi64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION))
+    vcvtsd2usi64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the signed 64-bit integer b to a single-precision (32-bit) floating-point element, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
@@ -54,8 +54,7 @@ pub unsafe fn _mm_cvtsd_u64(a: __m128d) -> u64 {
 #[cfg_attr(test, assert_instr(vcvtsi2ss))]
 pub unsafe fn _mm_cvti64_ss(a: __m128, b: i64) -> __m128 {
     let b = b as f32;
-    let r = simd_insert(a, 0, b);
-    transmute(r)
+    simd_insert(a, 0, b)
 }
 
 /// Convert the signed 64-bit integer b to a double-precision (64-bit) floating-point element, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
@@ -66,8 +65,7 @@ pub unsafe fn _mm_cvti64_ss(a: __m128, b: i64) -> __m128 {
 #[cfg_attr(test, assert_instr(vcvtsi2sd))]
 pub unsafe fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
     let b = b as f64;
-    let r = simd_insert(a, 0, b);
-    transmute(r)
+    simd_insert(a, 0, b)
 }
 
 /// Convert the unsigned 64-bit integer b to a single-precision (32-bit) floating-point element, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
@@ -78,8 +76,7 @@ pub unsafe fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
 #[cfg_attr(test, assert_instr(vcvtusi2ss))]
 pub unsafe fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
     let b = b as f32;
-    let r = simd_insert(a, 0, b);
-    transmute(r)
+    simd_insert(a, 0, b)
 }
 
 /// Convert the unsigned 64-bit integer b to a double-precision (64-bit) floating-point element, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
@@ -90,8 +87,7 @@ pub unsafe fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
 #[cfg_attr(test, assert_instr(vcvtusi2sd))]
 pub unsafe fn _mm_cvtu64_sd(a: __m128d, b: u64) -> __m128d {
     let b = b as f64;
-    let r = simd_insert(a, 0, b);
-    transmute(r)
+    simd_insert(a, 0, b)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to a 64-bit integer with truncation, and store the result in dst.
@@ -101,7 +97,7 @@ pub unsafe fn _mm_cvtu64_sd(a: __m128d, b: u64) -> __m128d {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vcvtsd2si))]
 pub unsafe fn _mm_cvttsd_i64(a: __m128d) -> i64 {
-    transmute(vcvtsd2si64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION))
+    vcvtsd2si64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to an unsigned 64-bit integer with truncation, and store the result in dst.
@@ -111,7 +107,7 @@ pub unsafe fn _mm_cvttsd_i64(a: __m128d) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vcvtsd2usi))]
 pub unsafe fn _mm_cvttsd_u64(a: __m128d) -> u64 {
-    transmute(vcvtsd2usi64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION))
+    vcvtsd2usi64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to a 64-bit integer with truncation, and store the result in dst.
@@ -121,7 +117,7 @@ pub unsafe fn _mm_cvttsd_u64(a: __m128d) -> u64 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vcvtss2si))]
 pub unsafe fn _mm_cvttss_i64(a: __m128) -> i64 {
-    transmute(vcvtss2si64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION))
+    vcvtss2si64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to an unsigned 64-bit integer with truncation, and store the result in dst.
@@ -131,7 +127,7 @@ pub unsafe fn _mm_cvttss_i64(a: __m128) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vcvtss2usi))]
 pub unsafe fn _mm_cvttss_u64(a: __m128) -> u64 {
-    transmute(vcvtss2usi64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION))
+    vcvtss2usi64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the signed 64-bit integer b to a double-precision (64-bit) floating-point element, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
@@ -270,8 +266,7 @@ pub unsafe fn _mm_cvt_roundu64_ss<const ROUNDING: i32>(a: __m128, b: u64) -> __m
 pub unsafe fn _mm_cvt_roundsd_si64<const ROUNDING: i32>(a: __m128d) -> i64 {
     static_assert_rounding!(ROUNDING);
     let a = a.as_f64x2();
-    let r = vcvtsd2si64(a, ROUNDING);
-    transmute(r)
+    vcvtsd2si64(a, ROUNDING)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to a 64-bit integer, and store the result in dst.\
@@ -290,8 +285,7 @@ pub unsafe fn _mm_cvt_roundsd_si64<const ROUNDING: i32>(a: __m128d) -> i64 {
 pub unsafe fn _mm_cvt_roundsd_i64<const ROUNDING: i32>(a: __m128d) -> i64 {
     static_assert_rounding!(ROUNDING);
     let a = a.as_f64x2();
-    let r = vcvtsd2si64(a, ROUNDING);
-    transmute(r)
+    vcvtsd2si64(a, ROUNDING)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to an unsigned 64-bit integer, and store the result in dst.\
@@ -310,8 +304,7 @@ pub unsafe fn _mm_cvt_roundsd_i64<const ROUNDING: i32>(a: __m128d) -> i64 {
 pub unsafe fn _mm_cvt_roundsd_u64<const ROUNDING: i32>(a: __m128d) -> u64 {
     static_assert_rounding!(ROUNDING);
     let a = a.as_f64x2();
-    let r = vcvtsd2usi64(a, ROUNDING);
-    transmute(r)
+    vcvtsd2usi64(a, ROUNDING)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to a 64-bit integer, and store the result in dst.\
@@ -330,8 +323,7 @@ pub unsafe fn _mm_cvt_roundsd_u64<const ROUNDING: i32>(a: __m128d) -> u64 {
 pub unsafe fn _mm_cvt_roundss_si64<const ROUNDING: i32>(a: __m128) -> i64 {
     static_assert_rounding!(ROUNDING);
     let a = a.as_f32x4();
-    let r = vcvtss2si64(a, ROUNDING);
-    transmute(r)
+    vcvtss2si64(a, ROUNDING)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to a 64-bit integer, and store the result in dst.\
@@ -350,8 +342,7 @@ pub unsafe fn _mm_cvt_roundss_si64<const ROUNDING: i32>(a: __m128) -> i64 {
 pub unsafe fn _mm_cvt_roundss_i64<const ROUNDING: i32>(a: __m128) -> i64 {
     static_assert_rounding!(ROUNDING);
     let a = a.as_f32x4();
-    let r = vcvtss2si64(a, ROUNDING);
-    transmute(r)
+    vcvtss2si64(a, ROUNDING)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to an unsigned 64-bit integer, and store the result in dst.\
@@ -370,8 +361,7 @@ pub unsafe fn _mm_cvt_roundss_i64<const ROUNDING: i32>(a: __m128) -> i64 {
 pub unsafe fn _mm_cvt_roundss_u64<const ROUNDING: i32>(a: __m128) -> u64 {
     static_assert_rounding!(ROUNDING);
     let a = a.as_f32x4();
-    let r = vcvtss2usi64(a, ROUNDING);
-    transmute(r)
+    vcvtss2usi64(a, ROUNDING)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to a 64-bit integer with truncation, and store the result in dst.\
@@ -385,8 +375,7 @@ pub unsafe fn _mm_cvt_roundss_u64<const ROUNDING: i32>(a: __m128) -> u64 {
 pub unsafe fn _mm_cvtt_roundsd_si64<const SAE: i32>(a: __m128d) -> i64 {
     static_assert_sae!(SAE);
     let a = a.as_f64x2();
-    let r = vcvtsd2si64(a, SAE);
-    transmute(r)
+    vcvtsd2si64(a, SAE)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to a 64-bit integer with truncation, and store the result in dst.\
@@ -400,8 +389,7 @@ pub unsafe fn _mm_cvtt_roundsd_si64<const SAE: i32>(a: __m128d) -> i64 {
 pub unsafe fn _mm_cvtt_roundsd_i64<const SAE: i32>(a: __m128d) -> i64 {
     static_assert_sae!(SAE);
     let a = a.as_f64x2();
-    let r = vcvtsd2si64(a, SAE);
-    transmute(r)
+    vcvtsd2si64(a, SAE)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to an unsigned 64-bit integer with truncation, and store the result in dst.\
@@ -415,8 +403,7 @@ pub unsafe fn _mm_cvtt_roundsd_i64<const SAE: i32>(a: __m128d) -> i64 {
 pub unsafe fn _mm_cvtt_roundsd_u64<const SAE: i32>(a: __m128d) -> u64 {
     static_assert_sae!(SAE);
     let a = a.as_f64x2();
-    let r = vcvtsd2usi64(a, SAE);
-    transmute(r)
+    vcvtsd2usi64(a, SAE)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to a 64-bit integer with truncation, and store the result in dst.\
@@ -430,8 +417,7 @@ pub unsafe fn _mm_cvtt_roundsd_u64<const SAE: i32>(a: __m128d) -> u64 {
 pub unsafe fn _mm_cvtt_roundss_i64<const SAE: i32>(a: __m128) -> i64 {
     static_assert_sae!(SAE);
     let a = a.as_f32x4();
-    let r = vcvtss2si64(a, SAE);
-    transmute(r)
+    vcvtss2si64(a, SAE)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to a 64-bit integer with truncation, and store the result in dst.\
@@ -445,8 +431,7 @@ pub unsafe fn _mm_cvtt_roundss_i64<const SAE: i32>(a: __m128) -> i64 {
 pub unsafe fn _mm_cvtt_roundss_si64<const SAE: i32>(a: __m128) -> i64 {
     static_assert_sae!(SAE);
     let a = a.as_f32x4();
-    let r = vcvtss2si64(a, SAE);
-    transmute(r)
+    vcvtss2si64(a, SAE)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to an unsigned 64-bit integer with truncation, and store the result in dst.\
@@ -460,8 +445,7 @@ pub unsafe fn _mm_cvtt_roundss_si64<const SAE: i32>(a: __m128) -> i64 {
 pub unsafe fn _mm_cvtt_roundss_u64<const SAE: i32>(a: __m128) -> u64 {
     static_assert_sae!(SAE);
     let a = a.as_f32x4();
-    let r = vcvtss2usi64(a, SAE);
-    transmute(r)
+    vcvtss2usi64(a, SAE)
 }
 
 #[allow(improper_ctypes)]

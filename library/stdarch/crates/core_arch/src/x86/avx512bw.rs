@@ -3703,8 +3703,7 @@ pub unsafe fn _mm512_cmp_epu16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> 
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x32();
     let b = b.as_u16x32();
-    let r = vpcmpuw(a, b, IMM8, 0b11111111_11111111_11111111_11111111);
-    transmute(r)
+    vpcmpuw(a, b, IMM8, 0b11111111_11111111_11111111_11111111)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3722,8 +3721,7 @@ pub unsafe fn _mm512_mask_cmp_epu16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x32();
     let b = b.as_u16x32();
-    let r = vpcmpuw(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpuw(a, b, IMM8, k1)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3737,8 +3735,7 @@ pub unsafe fn _mm256_cmp_epu16_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> 
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x16();
     let b = b.as_u16x16();
-    let r = vpcmpuw256(a, b, IMM8, 0b11111111_11111111);
-    transmute(r)
+    vpcmpuw256(a, b, IMM8, 0b11111111_11111111)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3756,8 +3753,7 @@ pub unsafe fn _mm256_mask_cmp_epu16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x16();
     let b = b.as_u16x16();
-    let r = vpcmpuw256(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpuw256(a, b, IMM8, k1)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3771,8 +3767,7 @@ pub unsafe fn _mm_cmp_epu16_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __m
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x8();
     let b = b.as_u16x8();
-    let r = vpcmpuw128(a, b, IMM8, 0b11111111);
-    transmute(r)
+    vpcmpuw128(a, b, IMM8, 0b11111111)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3790,8 +3785,7 @@ pub unsafe fn _mm_mask_cmp_epu16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x8();
     let b = b.as_u16x8();
-    let r = vpcmpuw128(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpuw128(a, b, IMM8, k1)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3805,13 +3799,12 @@ pub unsafe fn _mm512_cmp_epu8_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> _
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x64();
     let b = b.as_u8x64();
-    let r = vpcmpub(
+    vpcmpub(
         a,
         b,
         IMM8,
         0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111,
-    );
-    transmute(r)
+    )
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3829,8 +3822,7 @@ pub unsafe fn _mm512_mask_cmp_epu8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x64();
     let b = b.as_u8x64();
-    let r = vpcmpub(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpub(a, b, IMM8, k1)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3844,8 +3836,7 @@ pub unsafe fn _mm256_cmp_epu8_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> _
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x32();
     let b = b.as_u8x32();
-    let r = vpcmpub256(a, b, IMM8, 0b11111111_11111111_11111111_11111111);
-    transmute(r)
+    vpcmpub256(a, b, IMM8, 0b11111111_11111111_11111111_11111111)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3863,8 +3854,7 @@ pub unsafe fn _mm256_mask_cmp_epu8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x32();
     let b = b.as_u8x32();
-    let r = vpcmpub256(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpub256(a, b, IMM8, k1)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3878,8 +3868,7 @@ pub unsafe fn _mm_cmp_epu8_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mm
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x16();
     let b = b.as_u8x16();
-    let r = vpcmpub128(a, b, IMM8, 0b11111111_11111111);
-    transmute(r)
+    vpcmpub128(a, b, IMM8, 0b11111111_11111111)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3897,8 +3886,7 @@ pub unsafe fn _mm_mask_cmp_epu8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x16();
     let b = b.as_u8x16();
-    let r = vpcmpub128(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpub128(a, b, IMM8, k1)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3912,8 +3900,7 @@ pub unsafe fn _mm512_cmp_epi16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> 
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x32();
     let b = b.as_i16x32();
-    let r = vpcmpw(a, b, IMM8, 0b11111111_11111111_11111111_11111111);
-    transmute(r)
+    vpcmpw(a, b, IMM8, 0b11111111_11111111_11111111_11111111)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3931,8 +3918,7 @@ pub unsafe fn _mm512_mask_cmp_epi16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x32();
     let b = b.as_i16x32();
-    let r = vpcmpw(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpw(a, b, IMM8, k1)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3946,8 +3932,7 @@ pub unsafe fn _mm256_cmp_epi16_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> 
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x16();
     let b = b.as_i16x16();
-    let r = vpcmpw256(a, b, IMM8, 0b11111111_11111111);
-    transmute(r)
+    vpcmpw256(a, b, IMM8, 0b11111111_11111111)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3965,8 +3950,7 @@ pub unsafe fn _mm256_mask_cmp_epi16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x16();
     let b = b.as_i16x16();
-    let r = vpcmpw256(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpw256(a, b, IMM8, k1)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3980,8 +3964,7 @@ pub unsafe fn _mm_cmp_epi16_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __m
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x8();
     let b = b.as_i16x8();
-    let r = vpcmpw128(a, b, IMM8, 0b11111111);
-    transmute(r)
+    vpcmpw128(a, b, IMM8, 0b11111111)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3999,8 +3982,7 @@ pub unsafe fn _mm_mask_cmp_epi16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x8();
     let b = b.as_i16x8();
-    let r = vpcmpw128(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpw128(a, b, IMM8, k1)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4014,13 +3996,12 @@ pub unsafe fn _mm512_cmp_epi8_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> _
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x64();
     let b = b.as_i8x64();
-    let r = vpcmpb(
+    vpcmpb(
         a,
         b,
         IMM8,
         0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111,
-    );
-    transmute(r)
+    )
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4038,8 +4019,7 @@ pub unsafe fn _mm512_mask_cmp_epi8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x64();
     let b = b.as_i8x64();
-    let r = vpcmpb(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpb(a, b, IMM8, k1)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4053,8 +4033,7 @@ pub unsafe fn _mm256_cmp_epi8_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> _
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x32();
     let b = b.as_i8x32();
-    let r = vpcmpb256(a, b, IMM8, 0b11111111_11111111_11111111_11111111);
-    transmute(r)
+    vpcmpb256(a, b, IMM8, 0b11111111_11111111_11111111_11111111)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4072,8 +4051,7 @@ pub unsafe fn _mm256_mask_cmp_epi8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x32();
     let b = b.as_i8x32();
-    let r = vpcmpb256(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpb256(a, b, IMM8, k1)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4087,8 +4065,7 @@ pub unsafe fn _mm_cmp_epi8_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mm
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x16();
     let b = b.as_i8x16();
-    let r = vpcmpb128(a, b, IMM8, 0b11111111_11111111);
-    transmute(r)
+    vpcmpb128(a, b, IMM8, 0b11111111_11111111)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4106,8 +4083,7 @@ pub unsafe fn _mm_mask_cmp_epi8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x16();
     let b = b.as_i8x16();
-    let r = vpcmpb128(a, b, IMM8, k1);
-    transmute(r)
+    vpcmpb128(a, b, IMM8, k1)
 }
 
 /// Load 512-bits (composed of 32 packed 16-bit integers) from memory into dst. mem_addr does not need to be aligned on any particular boundary.
@@ -8566,7 +8542,7 @@ pub unsafe fn _mm_movm_epi8(k: __mmask16) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
-    transmute(a + b)
+    a + b
 }
 
 /// Add 64-bit masks in a and b, and store the result in k.
@@ -8575,7 +8551,7 @@ pub unsafe fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kadd_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
-    transmute(a + b)
+    a + b
 }
 
 /// Compute the bitwise AND of 32-bit masks a and b, and store the result in k.
@@ -8584,7 +8560,7 @@ pub unsafe fn _kadd_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kand_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
-    transmute(a & b)
+    a & b
 }
 
 /// Compute the bitwise AND of 64-bit masks a and b, and store the result in k.
@@ -8593,7 +8569,7 @@ pub unsafe fn _kand_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kand_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
-    transmute(a & b)
+    a & b
 }
 
 /// Compute the bitwise NOT of 32-bit mask a, and store the result in k.
@@ -8602,7 +8578,7 @@ pub unsafe fn _kand_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _knot_mask32(a: __mmask32) -> __mmask32 {
-    transmute(a ^ 0b11111111_11111111_11111111_11111111)
+    a ^ 0b11111111_11111111_11111111_11111111
 }
 
 /// Compute the bitwise NOT of 64-bit mask a, and store the result in k.
@@ -8611,7 +8587,7 @@ pub unsafe fn _knot_mask32(a: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _knot_mask64(a: __mmask64) -> __mmask64 {
-    transmute(a ^ 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111)
+    a ^ 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111
 }
 
 /// Compute the bitwise NOT of 32-bit masks a and then AND with b, and store the result in k.
@@ -8620,7 +8596,7 @@ pub unsafe fn _knot_mask64(a: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kandn_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
-    transmute(_knot_mask32(a) & b)
+    _knot_mask32(a) & b
 }
 
 /// Compute the bitwise NOT of 64-bit masks a and then AND with b, and store the result in k.
@@ -8629,7 +8605,7 @@ pub unsafe fn _kandn_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kandn_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
-    transmute(_knot_mask64(a) & b)
+    _knot_mask64(a) & b
 }
 
 /// Compute the bitwise OR of 32-bit masks a and b, and store the result in k.
@@ -8638,7 +8614,7 @@ pub unsafe fn _kandn_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
-    transmute(a | b)
+    a | b
 }
 
 /// Compute the bitwise OR of 64-bit masks a and b, and store the result in k.
@@ -8647,7 +8623,7 @@ pub unsafe fn _kor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
-    transmute(a | b)
+    a | b
 }
 
 /// Compute the bitwise XOR of 32-bit masks a and b, and store the result in k.
@@ -8656,7 +8632,7 @@ pub unsafe fn _kor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kxor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
-    transmute(a ^ b)
+    a ^ b
 }
 
 /// Compute the bitwise XOR of 64-bit masks a and b, and store the result in k.
@@ -8665,7 +8641,7 @@ pub unsafe fn _kxor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kxor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
-    transmute(a ^ b)
+    a ^ b
 }
 
 /// Compute the bitwise XNOR of 32-bit masks a and b, and store the result in k.
@@ -8674,7 +8650,7 @@ pub unsafe fn _kxor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kxnor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
-    transmute(_knot_mask32(a ^ b))
+    _knot_mask32(a ^ b)
 }
 
 /// Compute the bitwise XNOR of 64-bit masks a and b, and store the result in k.
@@ -8683,7 +8659,7 @@ pub unsafe fn _kxnor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[inline]
 #[target_feature(enable = "avx512bw")]
 pub unsafe fn _kxnor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
-    transmute(_knot_mask64(a ^ b))
+    _knot_mask64(a ^ b)
 }
 
 /// Convert packed 16-bit integers in a to packed 8-bit integers with truncation, and store the results in dst.

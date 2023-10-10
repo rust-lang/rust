@@ -311,7 +311,7 @@ pub unsafe fn _mm_mask_popcnt_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __
 #[target_feature(enable = "avx512bitalg")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub unsafe fn _mm512_bitshuffle_epi64_mask(b: __m512i, c: __m512i) -> __mmask64 {
-    transmute(bitshuffle_512(b.as_i8x64(), c.as_i8x64(), !0))
+    bitshuffle_512(b.as_i8x64(), c.as_i8x64(), !0)
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -326,7 +326,7 @@ pub unsafe fn _mm512_bitshuffle_epi64_mask(b: __m512i, c: __m512i) -> __mmask64 
 #[target_feature(enable = "avx512bitalg")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub unsafe fn _mm512_mask_bitshuffle_epi64_mask(k: __mmask64, b: __m512i, c: __m512i) -> __mmask64 {
-    transmute(bitshuffle_512(b.as_i8x64(), c.as_i8x64(), k))
+    bitshuffle_512(b.as_i8x64(), c.as_i8x64(), k)
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -338,7 +338,7 @@ pub unsafe fn _mm512_mask_bitshuffle_epi64_mask(k: __mmask64, b: __m512i, c: __m
 #[target_feature(enable = "avx512bitalg,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub unsafe fn _mm256_bitshuffle_epi64_mask(b: __m256i, c: __m256i) -> __mmask32 {
-    transmute(bitshuffle_256(b.as_i8x32(), c.as_i8x32(), !0))
+    bitshuffle_256(b.as_i8x32(), c.as_i8x32(), !0)
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -353,7 +353,7 @@ pub unsafe fn _mm256_bitshuffle_epi64_mask(b: __m256i, c: __m256i) -> __mmask32 
 #[target_feature(enable = "avx512bitalg,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub unsafe fn _mm256_mask_bitshuffle_epi64_mask(k: __mmask32, b: __m256i, c: __m256i) -> __mmask32 {
-    transmute(bitshuffle_256(b.as_i8x32(), c.as_i8x32(), k))
+    bitshuffle_256(b.as_i8x32(), c.as_i8x32(), k)
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -365,7 +365,7 @@ pub unsafe fn _mm256_mask_bitshuffle_epi64_mask(k: __mmask32, b: __m256i, c: __m
 #[target_feature(enable = "avx512bitalg,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub unsafe fn _mm_bitshuffle_epi64_mask(b: __m128i, c: __m128i) -> __mmask16 {
-    transmute(bitshuffle_128(b.as_i8x16(), c.as_i8x16(), !0))
+    bitshuffle_128(b.as_i8x16(), c.as_i8x16(), !0)
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -380,7 +380,7 @@ pub unsafe fn _mm_bitshuffle_epi64_mask(b: __m128i, c: __m128i) -> __mmask16 {
 #[target_feature(enable = "avx512bitalg,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub unsafe fn _mm_mask_bitshuffle_epi64_mask(k: __mmask16, b: __m128i, c: __m128i) -> __mmask16 {
-    transmute(bitshuffle_128(b.as_i8x16(), c.as_i8x16(), k))
+    bitshuffle_128(b.as_i8x16(), c.as_i8x16(), k)
 }
 
 #[cfg(test)]

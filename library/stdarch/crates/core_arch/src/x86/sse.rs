@@ -2176,12 +2176,12 @@ mod tests {
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
         let b = _mm_setr_ps(-1.0, 5.0, 6.0, 7.0);
         let r: u32x4 = transmute(_mm_cmpeq_ss(a, b));
-        let e: u32x4 = transmute(_mm_setr_ps(transmute(0u32), 2.0, 3.0, 4.0));
+        let e: u32x4 = transmute(_mm_setr_ps(f32::from_bits(0), 2.0, 3.0, 4.0));
         assert_eq!(r, e);
 
         let b2 = _mm_setr_ps(1.0, 5.0, 6.0, 7.0);
         let r2: u32x4 = transmute(_mm_cmpeq_ss(a, b2));
-        let e2: u32x4 = transmute(_mm_setr_ps(transmute(0xffffffffu32), 2.0, 3.0, 4.0));
+        let e2: u32x4 = transmute(_mm_setr_ps(f32::from_bits(0xffffffff), 2.0, 3.0, 4.0));
         assert_eq!(r2, e2);
     }
 
@@ -2197,15 +2197,15 @@ mod tests {
         let d1 = !0u32; // a.extract(0) < d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmplt_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmplt_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmplt_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2221,15 +2221,15 @@ mod tests {
         let d1 = !0u32; // a.extract(0) <= d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmple_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmple_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmple_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2245,15 +2245,15 @@ mod tests {
         let d1 = 0u32; // a.extract(0) > d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpgt_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpgt_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpgt_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2269,15 +2269,15 @@ mod tests {
         let d1 = 0u32; // a.extract(0) >= d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpge_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpge_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpge_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2293,15 +2293,15 @@ mod tests {
         let d1 = !0u32; // a.extract(0) != d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpneq_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpneq_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpneq_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2322,15 +2322,15 @@ mod tests {
         let d1 = 0u32; // a.extract(0) >= d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpnlt_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpnlt_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpnlt_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2351,15 +2351,15 @@ mod tests {
         let d1 = 0u32; // a.extract(0) > d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpnle_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpnle_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpnle_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2380,15 +2380,15 @@ mod tests {
         let d1 = !0u32; // a.extract(0) <= d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpngt_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpngt_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpngt_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2409,15 +2409,15 @@ mod tests {
         let d1 = !0u32; // a.extract(0) < d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpnge_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpnge_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpnge_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2433,15 +2433,15 @@ mod tests {
         let d1 = !0u32; // a.extract(0) ord d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpord_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpord_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpord_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 
@@ -2457,15 +2457,15 @@ mod tests {
         let d1 = 0u32; // a.extract(0) unord d.extract(0)
 
         let rb: u32x4 = transmute(_mm_cmpunord_ss(a, b));
-        let eb: u32x4 = transmute(_mm_setr_ps(transmute(b1), 2.0, 3.0, 4.0));
+        let eb: u32x4 = transmute(_mm_setr_ps(f32::from_bits(b1), 2.0, 3.0, 4.0));
         assert_eq!(rb, eb);
 
         let rc: u32x4 = transmute(_mm_cmpunord_ss(a, c));
-        let ec: u32x4 = transmute(_mm_setr_ps(transmute(c1), 2.0, 3.0, 4.0));
+        let ec: u32x4 = transmute(_mm_setr_ps(f32::from_bits(c1), 2.0, 3.0, 4.0));
         assert_eq!(rc, ec);
 
         let rd: u32x4 = transmute(_mm_cmpunord_ss(a, d));
-        let ed: u32x4 = transmute(_mm_setr_ps(transmute(d1), 2.0, 3.0, 4.0));
+        let ed: u32x4 = transmute(_mm_setr_ps(f32::from_bits(d1), 2.0, 3.0, 4.0));
         assert_eq!(rd, ed);
     }
 

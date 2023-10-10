@@ -201,7 +201,7 @@ pub unsafe fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_ps<const IMM8: i32>(a: __m128) -> i32 {
     static_assert_uimm_bits!(IMM8, 2);
-    transmute(simd_extract::<_, f32>(a, IMM8 as u32))
+    simd_extract::<_, f32>(a, IMM8 as u32).to_bits() as i32
 }
 
 /// Extracts an 8-bit integer from `a`, selected with `IMM8`. Returns a 32-bit
@@ -1259,9 +1259,9 @@ mod tests {
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_extract_ps() {
         let a = _mm_setr_ps(0.0, 1.0, 2.0, 3.0);
-        let r: f32 = transmute(_mm_extract_ps::<1>(a));
+        let r: f32 = f32::from_bits(_mm_extract_ps::<1>(a) as u32);
         assert_eq!(r, 1.0);
-        let r: f32 = transmute(_mm_extract_ps::<3>(a));
+        let r: f32 = f32::from_bits(_mm_extract_ps::<3>(a) as u32);
         assert_eq!(r, 3.0);
     }
 

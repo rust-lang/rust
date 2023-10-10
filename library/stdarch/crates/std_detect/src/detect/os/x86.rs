@@ -49,11 +49,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
             ecx,
             edx,
         } = __cpuid(0);
-        let vendor_id: [[u8; 4]; 3] = [
-            mem::transmute(ebx),
-            mem::transmute(edx),
-            mem::transmute(ecx),
-        ];
+        let vendor_id: [[u8; 4]; 3] = [ebx.to_ne_bytes(), edx.to_ne_bytes(), ecx.to_ne_bytes()];
         let vendor_id: [u8; 12] = mem::transmute(vendor_id);
         (max_basic_leaf, vendor_id)
     };
