@@ -2829,8 +2829,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the suspicious use of OpenOptions::create()
-    /// without an explicit OpenOptions::truncate().
+    /// Checks for the suspicious use of `OpenOptions::create()`
+    /// without an explicit `OpenOptions::truncate()`.
     ///
     /// ### Why is this bad?
     /// create() alone will either create a new file or open an
@@ -2850,9 +2850,11 @@ declare_clippy_lint! {
     /// ```rust
     /// use std::fs::OpenOptions;
     ///
+    /// OpenOptions::new().create(true);
+    ///
     /// OpenOptions::new().create(true).truncate(true);
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.75.0"]
     pub SUSPICIOUS_OPEN_OPTIONS,
     suspicious,
     "suspicious combination of options for opening a file"

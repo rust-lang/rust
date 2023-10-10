@@ -50,6 +50,8 @@ pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MSRV: [&str; 3] = ["clippy_config", "msrvs", "Msrv"];
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
+pub const TOKIO_IO_OPEN_OPTIONS: [&str; 3] = ["tokio", "fs", "OpenOptions"];
 pub const OS_STRING_AS_OS_STR: [&str; 5] = ["std", "ffi", "os_str", "OsString", "as_os_str"];
 pub const OS_STR_TO_OS_STRING: [&str; 5] = ["std", "ffi", "os_str", "OsStr", "to_os_string"];
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 3] = ["lock_api", "mutex", "MutexGuard"];

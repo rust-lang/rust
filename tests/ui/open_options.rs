@@ -1,5 +1,4 @@
 use std::fs::OpenOptions;
-
 #[allow(unused_must_use)]
 #[warn(clippy::nonsensical_open_options)]
 #[warn(clippy::suspicious_open_options)]

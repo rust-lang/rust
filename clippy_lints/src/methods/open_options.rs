@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
@@ -13,7 +13,11 @@ use super::{NONSENSICAL_OPEN_OPTIONS, SUSPICIOUS_OPEN_OPTIONS};
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
-        && is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::FsOpenOptions)
+        && (
+            is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::FsOpenOptions) ||
+            match_type(cx, cx.tcx.type_of(impl_id).instantiate_identity(), &paths::TOKIO_IO_OPEN_OPTIONS)
+        )
+
     {
         let mut options = Vec::new();
         get_open_options(cx, recv, &mut options);
@@ -49,12 +53,12 @@ impl std::fmt::Display for OpenOption {
     }
 }
 
-fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec<(OpenOption, Argument)>) {
-    if let ExprKind::MethodCall(path, receiver, arguments, _) = argument.kind {
+fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec<(OpenOption, Argument, Span)>) {
+    if let ExprKind::MethodCall(path, receiver, arguments, span) = argument.kind {
         let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
-        if is_type_diagnostic_item(cx, obj_ty, sym::FsOpenOptions) && !arguments.is_empty() {
+        if !arguments.is_empty() && (is_type_diagnostic_item(cx, obj_ty, sym::FsOpenOptions)) {
             let argument_option = match arguments[0].kind {
                 ExprKind::Lit(span) => {
                     if let Spanned {
@@ -74,22 +78,22 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
 
             match path.ident.as_str() {
                 "create" => {
-                    options.push((OpenOption::Create, argument_option));
+                    options.push((OpenOption::Create, argument_option, span));
                 },
                 "create_new" => {
-                    options.push((OpenOption::CreateNew, argument_option));
+                    options.push((OpenOption::CreateNew, argument_option, span));
                 },
                 "append" => {
-                    options.push((OpenOption::Append, argument_option));
+                    options.push((OpenOption::Append, argument_option, span));
                 },
                 "truncate" => {
-                    options.push((OpenOption::Truncate, argument_option));
+                    options.push((OpenOption::Truncate, argument_option, span));
                 },
                 "read" => {
-                    options.push((OpenOption::Read, argument_option));
+                    options.push((OpenOption::Read, argument_option, span));
                 },
                 "write" => {
-                    options.push((OpenOption::Write, argument_option));
+                    options.push((OpenOption::Write, argument_option, span));
                 },
                 _ => (),
             }
@@ -99,24 +103,25 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
     }
 }
 
-fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument)], span: Span) {
+fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, Span)], span: Span) {
     // The args passed to these methods, if they have been called
     let mut options = FxHashMap::default();
-    for (option, arg) in settings {
-        if options.insert(option.clone(), arg.clone()).is_some() {
+    for (option, arg, sp) in settings {
+        if let Some((_, prev_span)) = options.insert(option.clone(), (arg.clone(), *sp)) {
             span_lint(
                 cx,
                 NONSENSICAL_OPEN_OPTIONS,
-                span,
+                prev_span,
                 &format!("the method `{}` is called more than once", &option),
             );
         }
     }
 
-    if let (Some(Argument::Set(true)), Some(Argument::Set(true))) =
-        (options.get(&OpenOption::Read), options.get(&OpenOption::Truncate))
-    {
-        if options.get(&OpenOption::Write).unwrap_or(&Argument::Set(false)) == &Argument::Set(false) {
+    if_chain! {
+        if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Read);
+        if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Truncate);
+        if let None | Some((Argument::Set(false), _)) = options.get(&OpenOption::Write);
+        then {
             span_lint(
                 cx,
                 NONSENSICAL_OPEN_OPTIONS,
@@ -126,10 +131,11 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument)],
         }
     }
 
-    if let (Some(Argument::Set(true)), Some(Argument::Set(true))) =
-        (options.get(&OpenOption::Append), options.get(&OpenOption::Truncate))
-    {
-        if options.get(&OpenOption::Write).unwrap_or(&Argument::Set(false)) == &Argument::Set(false) {
+    if_chain! {
+        if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Append);
+        if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Truncate);
+        if let None | Some((Argument::Set(false), _)) = options.get(&OpenOption::Write);
+        then {
             span_lint(
                 cx,
                 NONSENSICAL_OPEN_OPTIONS,
@@ -139,12 +145,21 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument)],
         }
     }
 
-    if let (Some(Argument::Set(true)), None) = (options.get(&OpenOption::Create), options.get(&OpenOption::Truncate)) {
-        span_lint(
-            cx,
-            SUSPICIOUS_OPEN_OPTIONS,
-            span,
-            "file opened with `create`, but `truncate` behavior not defined",
-        );
+    if_chain! {
+        if let Some((Argument::Set(true), create_span)) = options.get(&OpenOption::Create);
+        if let None = options.get(&OpenOption::Truncate);
+        then {
+            span_lint_and_then(
+                cx,
+                SUSPICIOUS_OPEN_OPTIONS,
+                *create_span,
+                "file opened with `create`, but `truncate` behavior not defined",
+                |diag| {
+                    diag
+                    //.span_suggestion(create_span.shrink_to_hi(), "add", ".truncate(true)".to_string(), rustc_errors::Applicability::MaybeIncorrect)
+                    .help("if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`");
+                },
+            );
+        }
     }
 }
