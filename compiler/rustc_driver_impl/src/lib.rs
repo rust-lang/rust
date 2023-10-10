@@ -12,7 +12,6 @@
 #![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(panic_update_hook)]
-#![feature(trait_upcasting)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]

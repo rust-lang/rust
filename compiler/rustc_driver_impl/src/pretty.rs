@@ -5,7 +5,6 @@ use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::bug;
-use rustc_middle::hir::map as hir_map;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{OutFileName, PpHirMode, PpMode, PpSourceMode};
@@ -20,86 +19,9 @@ pub use self::PpMode::*;
 pub use self::PpSourceMode::*;
 use crate::abort_on_err;
 
-// This slightly awkward construction is to allow for each PpMode to
-// choose whether it needs to do analyses (which can consume the
-// Session) and then pass through the session (now attached to the
-// analysis results) on to the chosen pretty-printer, along with the
-// `&PpAnn` object.
-//
-// Note that since the `&AstPrinterSupport` is freshly constructed on each
-// call, it would not make sense to try to attach the lifetime of `self`
-// to the lifetime of the `&PrinterObject`.
-
-/// Constructs an `AstPrinterSupport` object and passes it to `f`.
-fn call_with_pp_support_ast<'tcx, A, F>(
-    ppmode: &PpSourceMode,
-    sess: &'tcx Session,
-    tcx: Option<TyCtxt<'tcx>>,
-    f: F,
-) -> A
-where
-    F: FnOnce(&dyn AstPrinterSupport) -> A,
-{
-    match *ppmode {
-        Normal | Expanded => {
-            let annotation = NoAnn { sess, tcx };
-            f(&annotation)
-        }
-        Identified | ExpandedIdentified => {
-            let annotation = IdentifiedAnnotation { sess, tcx };
-            f(&annotation)
-        }
-        ExpandedHygiene => {
-            let annotation = HygieneAnnotation { sess };
-            f(&annotation)
-        }
-    }
-}
-
-fn call_with_pp_support_hir<A, F>(ppmode: &PpHirMode, tcx: TyCtxt<'_>, f: F) -> A
-where
-    F: FnOnce(&dyn HirPrinterSupport, hir_map::Map<'_>) -> A,
-{
-    match *ppmode {
-        PpHirMode::Normal => {
-            let annotation = NoAnn { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir())
-        }
-        PpHirMode::Identified => {
-            let annotation = IdentifiedAnnotation { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir())
-        }
-        PpHirMode::Typed => {
-            abort_on_err(tcx.analysis(()), tcx.sess);
-
-            let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
-            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir()))
-        }
-    }
-}
-
-trait Sess {
-    /// Provides a uniform interface for re-extracting a reference to a
-    /// `Session`.
-    fn sess(&self) -> &Session;
-}
-
-trait AstPrinterSupport: pprust_ast::PpAnn + Sess {}
-trait HirPrinterSupport: pprust_hir::PpAnn + Sess {}
-
 struct NoAnn<'hir> {
-    sess: &'hir Session,
     tcx: Option<TyCtxt<'hir>>,
 }
-
-impl<'hir> Sess for NoAnn<'hir> {
-    fn sess(&self) -> &Session {
-        self.sess
-    }
-}
-
-impl<'tcx> AstPrinterSupport for NoAnn<'tcx> {}
-impl<'hir> HirPrinterSupport for NoAnn<'hir> {}
 
 impl<'hir> pprust_ast::PpAnn for NoAnn<'hir> {}
 impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
@@ -111,17 +33,8 @@ impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
 }
 
 struct IdentifiedAnnotation<'hir> {
-    sess: &'hir Session,
     tcx: Option<TyCtxt<'hir>>,
 }
-
-impl<'hir> Sess for IdentifiedAnnotation<'hir> {
-    fn sess(&self) -> &Session {
-        self.sess
-    }
-}
-
-impl<'hir> AstPrinterSupport for IdentifiedAnnotation<'hir> {}
 
 impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
     fn pre(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
@@ -160,8 +73,6 @@ impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
         }
     }
 }
-
-impl<'hir> HirPrinterSupport for IdentifiedAnnotation<'hir> {}
 
 impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
@@ -212,14 +123,6 @@ struct HygieneAnnotation<'a> {
     sess: &'a Session,
 }
 
-impl<'a> Sess for HygieneAnnotation<'a> {
-    fn sess(&self) -> &Session {
-        self.sess
-    }
-}
-
-impl<'a> AstPrinterSupport for HygieneAnnotation<'a> {}
-
 impl<'a> pprust_ast::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
         match node {
@@ -246,14 +149,6 @@ struct TypedAnnotation<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Cell<Option<&'tcx ty::TypeckResults<'tcx>>>,
 }
-
-impl<'tcx> Sess for TypedAnnotation<'tcx> {
-    fn sess(&self) -> &Session {
-        self.tcx.sess
-    }
-}
-
-impl<'tcx> HirPrinterSupport for TypedAnnotation<'tcx> {}
 
 impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
@@ -320,7 +215,7 @@ pub enum PrintExtra<'tcx> {
 impl<'tcx> PrintExtra<'tcx> {
     fn with_krate<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&ast::Crate) -> R
+        F: FnOnce(&ast::Crate) -> R,
     {
         match self {
             PrintExtra::AfterParsing { krate, .. } => f(krate),
@@ -345,23 +240,26 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
 
     let out = match ppm {
         Source(s) => {
-            // Silently ignores an identified node.
-            call_with_pp_support_ast(&s, sess, None, move |annotation| {
-                debug!("pretty printing source code {:?}", s);
-                let sess = annotation.sess();
-                let parse = &sess.parse_sess;
-                let is_expanded = ppm.needs_ast_map();
-                ex.with_krate(|krate|
-                    pprust_ast::print_crate(
-                        sess.source_map(),
-                        krate,
-                        src_name,
-                        src,
-                        annotation,
-                        is_expanded,
-                        parse.edition,
-                        &sess.parse_sess.attr_id_generator,
-                    )
+            debug!("pretty printing source code {:?}", s);
+            let annotation: Box<dyn pprust_ast::PpAnn> = match s {
+                Normal => Box::new(NoAnn { tcx: None }),
+                Expanded => Box::new(NoAnn { tcx: Some(ex.tcx()) }),
+                Identified => Box::new(IdentifiedAnnotation { tcx: None }),
+                ExpandedIdentified => Box::new(IdentifiedAnnotation { tcx: Some(ex.tcx()) }),
+                ExpandedHygiene => Box::new(HygieneAnnotation { sess }),
+            };
+            let parse = &sess.parse_sess;
+            let is_expanded = ppm.needs_ast_map();
+            ex.with_krate(|krate| {
+                pprust_ast::print_crate(
+                    sess.source_map(),
+                    krate,
+                    src_name,
+                    src,
+                    &*annotation,
+                    is_expanded,
+                    parse.edition,
+                    &sess.parse_sess.attr_id_generator,
                 )
             })
         }
@@ -373,13 +271,38 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             debug!("pretty-printing expanded AST");
             format!("{:#?}", ex.tcx().resolver_for_lowering(()).borrow().1)
         }
-        Hir(s) => call_with_pp_support_hir(&s, ex.tcx(), move |annotation, hir_map| {
+        Hir(s) => {
             debug!("pretty printing HIR {:?}", s);
-            let sess = annotation.sess();
-            let sm = sess.source_map();
-            let attrs = |id| hir_map.attrs(id);
-            pprust_hir::print_crate(sm, hir_map.root_module(), src_name, src, &attrs, annotation)
-        }),
+            let tcx = ex.tcx();
+            let f = |annotation: &dyn pprust_hir::PpAnn| {
+                let sm = sess.source_map();
+                let hir_map = tcx.hir();
+                let attrs = |id| hir_map.attrs(id);
+                pprust_hir::print_crate(
+                    sm,
+                    hir_map.root_module(),
+                    src_name,
+                    src,
+                    &attrs,
+                    annotation,
+                )
+            };
+            match s {
+                PpHirMode::Normal => {
+                    let annotation = NoAnn { tcx: Some(tcx) };
+                    f(&annotation)
+                }
+                PpHirMode::Identified => {
+                    let annotation = IdentifiedAnnotation { tcx: Some(tcx) };
+                    f(&annotation)
+                }
+                PpHirMode::Typed => {
+                    abort_on_err(tcx.analysis(()), tcx.sess);
+                    let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
+                    tcx.dep_graph.with_ignore(|| f(&annotation))
+                }
+            }
+        }
         HirTree => {
             debug!("pretty printing HIR tree");
             format!("{:#?}", ex.tcx().hir().krate())
