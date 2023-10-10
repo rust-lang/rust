@@ -55,9 +55,10 @@ where
         }
     }
 }
+
 fn call_with_pp_support_hir<A, F>(ppmode: &PpHirMode, tcx: TyCtxt<'_>, f: F) -> A
 where
-    F: FnOnce(&dyn HirPrinterSupport<'_>, hir_map::Map<'_>) -> A,
+    F: FnOnce(&dyn HirPrinterSupport, hir_map::Map<'_>) -> A,
 {
     match *ppmode {
         PpHirMode::Normal => {
@@ -77,54 +78,28 @@ where
     }
 }
 
-trait AstPrinterSupport: pprust_ast::PpAnn {
+trait Sess {
     /// Provides a uniform interface for re-extracting a reference to a
-    /// `Session` from a value that now owns it.
+    /// `Session`.
     fn sess(&self) -> &Session;
-
-    /// Produces the pretty-print annotation object.
-    ///
-    /// (Rust does not yet support upcasting from a trait object to
-    /// an object for one of its supertraits.)
-    fn pp_ann(&self) -> &dyn pprust_ast::PpAnn;
 }
 
-trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
-    /// Provides a uniform interface for re-extracting a reference to a
-    /// `Session` from a value that now owns it.
-    fn sess(&self) -> &Session;
-
-    /// Produces the pretty-print annotation object.
-    ///
-    /// (Rust does not yet support upcasting from a trait object to
-    /// an object for one of its supertraits.)
-    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn;
-}
+trait AstPrinterSupport: pprust_ast::PpAnn + Sess {}
+trait HirPrinterSupport: pprust_hir::PpAnn + Sess {}
 
 struct NoAnn<'hir> {
     sess: &'hir Session,
     tcx: Option<TyCtxt<'hir>>,
 }
 
-impl<'hir> AstPrinterSupport for NoAnn<'hir> {
+impl<'hir> Sess for NoAnn<'hir> {
     fn sess(&self) -> &Session {
         self.sess
     }
-
-    fn pp_ann(&self) -> &dyn pprust_ast::PpAnn {
-        self
-    }
 }
 
-impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
-    fn sess(&self) -> &Session {
-        self.sess
-    }
-
-    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
-        self
-    }
-}
+impl<'tcx> AstPrinterSupport for NoAnn<'tcx> {}
+impl<'hir> HirPrinterSupport for NoAnn<'hir> {}
 
 impl<'hir> pprust_ast::PpAnn for NoAnn<'hir> {}
 impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
@@ -140,15 +115,13 @@ struct IdentifiedAnnotation<'hir> {
     tcx: Option<TyCtxt<'hir>>,
 }
 
-impl<'hir> AstPrinterSupport for IdentifiedAnnotation<'hir> {
+impl<'hir> Sess for IdentifiedAnnotation<'hir> {
     fn sess(&self) -> &Session {
         self.sess
     }
-
-    fn pp_ann(&self) -> &dyn pprust_ast::PpAnn {
-        self
-    }
 }
+
+impl<'hir> AstPrinterSupport for IdentifiedAnnotation<'hir> {}
 
 impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
     fn pre(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
@@ -156,6 +129,7 @@ impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
             s.popen();
         }
     }
+
     fn post(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
         match node {
             pprust_ast::AnnNode::Crate(_)
@@ -187,15 +161,7 @@ impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
     }
 }
 
-impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
-    fn sess(&self) -> &Session {
-        self.sess
-    }
-
-    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
-        self
-    }
-}
+impl<'hir> HirPrinterSupport for IdentifiedAnnotation<'hir> {}
 
 impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
@@ -203,11 +169,13 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             pprust_hir::PpAnn::nested(&(&tcx.hir() as &dyn hir::intravisit::Map<'_>), state, nested)
         }
     }
+
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
         if let pprust_hir::AnnNode::Expr(_) = node {
             s.popen();
         }
     }
+
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
         match node {
             pprust_hir::AnnNode::Name(_) => {}
@@ -244,15 +212,13 @@ struct HygieneAnnotation<'a> {
     sess: &'a Session,
 }
 
-impl<'a> AstPrinterSupport for HygieneAnnotation<'a> {
+impl<'a> Sess for HygieneAnnotation<'a> {
     fn sess(&self) -> &Session {
         self.sess
     }
-
-    fn pp_ann(&self) -> &dyn pprust_ast::PpAnn {
-        self
-    }
 }
+
+impl<'a> AstPrinterSupport for HygieneAnnotation<'a> {}
 
 impl<'a> pprust_ast::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust_ast::State<'_>, node: pprust_ast::AnnNode<'_>) {
@@ -281,15 +247,13 @@ struct TypedAnnotation<'tcx> {
     maybe_typeck_results: Cell<Option<&'tcx ty::TypeckResults<'tcx>>>,
 }
 
-impl<'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'tcx> {
+impl<'tcx> Sess for TypedAnnotation<'tcx> {
     fn sess(&self) -> &Session {
         self.tcx.sess
     }
-
-    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
-        self
-    }
 }
+
+impl<'tcx> HirPrinterSupport for TypedAnnotation<'tcx> {}
 
 impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
@@ -301,11 +265,13 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
         pprust_hir::PpAnn::nested(pp_ann, state, nested);
         self.maybe_typeck_results.set(old_maybe_typeck_results);
     }
+
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
         if let pprust_hir::AnnNode::Expr(_) = node {
             s.popen();
         }
     }
+
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
         if let pprust_hir::AnnNode::Expr(expr) = node {
             let typeck_results = self.maybe_typeck_results.get().or_else(|| {
@@ -359,7 +325,7 @@ pub fn print_after_parsing(sess: &Session, krate: &ast::Crate, ppm: PpMode) {
                     krate,
                     src_name,
                     src,
-                    annotation.pp_ann(),
+                    annotation,
                     false,
                     parse.edition,
                     &sess.parse_sess.attr_id_generator,
@@ -396,7 +362,7 @@ pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
                     &tcx.resolver_for_lowering(()).borrow().1,
                     src_name,
                     src,
-                    annotation.pp_ann(),
+                    annotation,
                     true,
                     parse.edition,
                     &sess.parse_sess.attr_id_generator,
@@ -414,14 +380,7 @@ pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
             let sess = annotation.sess();
             let sm = sess.source_map();
             let attrs = |id| hir_map.attrs(id);
-            pprust_hir::print_crate(
-                sm,
-                hir_map.root_module(),
-                src_name,
-                src,
-                &attrs,
-                annotation.pp_ann(),
-            )
+            pprust_hir::print_crate(sm, hir_map.root_module(), src_name, src, &attrs, annotation)
         }),
 
         HirTree => {
