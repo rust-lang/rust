@@ -3,7 +3,7 @@
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
 
-use build_helper::util::{fail, try_run};
+use build_helper::util::fail;
 use std::env;
 use std::fs;
 use std::io;
@@ -216,12 +216,6 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     }
 }
 
-pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
-    if try_run(cmd, print_cmd_on_fail).is_err() {
-        crate::exit!(1);
-    }
-}
-
 pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
@@ -237,32 +231,6 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
         );
     }
     status.success()
-}
-
-pub fn run_suppressed(cmd: &mut Command) {
-    if !try_run_suppressed(cmd) {
-        crate::exit!(1);
-    }
-}
-
-pub fn try_run_suppressed(cmd: &mut Command) -> bool {
-    let output = match cmd.output() {
-        Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
-    };
-    if !output.status.success() {
-        println!(
-            "\n\ncommand did not execute successfully: {:?}\n\
-             expected success, got: {}\n\n\
-             stdout ----\n{}\n\
-             stderr ----\n{}\n\n",
-            cmd,
-            output.status,
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    output.status.success()
 }
 
 pub fn make(host: &str) -> PathBuf {
