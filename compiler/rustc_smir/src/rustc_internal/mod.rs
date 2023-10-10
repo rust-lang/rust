@@ -3,8 +3,6 @@
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
 //! until stable MIR is complete.
 
-use std::ops::{ControlFlow, Index};
-
 use crate::rustc_internal;
 use crate::rustc_smir::Tables;
 use rustc_data_structures::fx;
@@ -14,14 +12,18 @@ use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
+use stable_mir::ty::IndexedVal;
 use stable_mir::CompilerError;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::ops::{ControlFlow, Index};
 
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     type Output = DefId;
 
     #[inline(always)]
     fn index(&self, index: stable_mir::DefId) -> &Self::Output {
-        &self.def_ids.get_index(index.0).unwrap().0
+        &self.def_ids[index]
     }
 }
 
@@ -30,7 +32,7 @@ impl<'tcx> Index<stable_mir::ty::Span> for Tables<'tcx> {
 
     #[inline(always)]
     fn index(&self, index: stable_mir::ty::Span) -> &Self::Output {
-        &self.spans.get_index(index.0).unwrap().0
+        &self.spans[index]
     }
 }
 
@@ -96,33 +98,15 @@ impl<'tcx> Tables<'tcx> {
     }
 
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
-        if let Some(i) = self.def_ids.get(&did) {
-            return *i;
-        } else {
-            let id = self.def_ids.len();
-            self.def_ids.insert(did, stable_mir::DefId(id));
-            stable_mir::DefId(id)
-        }
+        self.def_ids.create_or_fetch(did)
     }
 
     fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
-        if let Some(i) = self.alloc_ids.get(&aid) {
-            return *i;
-        } else {
-            let id = self.def_ids.len();
-            self.alloc_ids.insert(aid, stable_mir::AllocId(id));
-            stable_mir::AllocId(id)
-        }
+        self.alloc_ids.create_or_fetch(aid)
     }
 
     pub(crate) fn create_span(&mut self, span: Span) -> stable_mir::ty::Span {
-        if let Some(i) = self.spans.get(&span) {
-            return *i;
-        } else {
-            let id = self.spans.len();
-            self.spans.insert(span, stable_mir::ty::Span(id));
-            stable_mir::ty::Span(id)
-        }
+        self.spans.create_or_fetch(span)
     }
 }
 
@@ -134,9 +118,9 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
     stable_mir::run(
         Tables {
             tcx,
-            def_ids: fx::FxIndexMap::default(),
-            alloc_ids: fx::FxIndexMap::default(),
-            spans: fx::FxIndexMap::default(),
+            def_ids: rustc_internal::IndexMap { index_map: fx::FxIndexMap::default() },
+            alloc_ids: rustc_internal::IndexMap { index_map: fx::FxIndexMap::default() },
+            spans: rustc_internal::IndexMap { index_map: fx::FxIndexMap::default() },
             types: vec![],
         },
         f,
@@ -199,5 +183,31 @@ where
                 Compilation::Stop
             }
         })
+    }
+}
+
+/// Simmilar to rustc's `FxIndexMap`, `IndexMap` with extra
+/// safety features added.
+pub struct IndexMap<K, V> {
+    index_map: fx::FxIndexMap<K, V>,
+}
+
+impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> IndexMap<K, V> {
+    pub fn create_or_fetch(&mut self, key: K) -> V {
+        let len = self.index_map.len();
+        let v = self.index_map.entry(key).or_insert(V::to_val(len));
+        *v
+    }
+}
+
+impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V>
+    for IndexMap<K, V>
+{
+    type Output = K;
+
+    fn index(&self, index: V) -> &Self::Output {
+        let (k, v) = self.index_map.get_index(index.to_index()).unwrap();
+        assert_eq!(*v, index, "Provided value doesn't match with indexed value");
+        k
     }
 }

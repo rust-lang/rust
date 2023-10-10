@@ -7,9 +7,9 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
+use crate::rustc_internal::IndexMap;
 use crate::rustc_smir::hir::def::DefKind;
 use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, Region};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -195,9 +195,9 @@ impl<S, R: PartialEq> PartialEq<R> for MaybeStable<S, R> {
 
 pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
-    pub def_ids: FxIndexMap<DefId, stable_mir::DefId>,
-    pub alloc_ids: FxIndexMap<AllocId, stable_mir::AllocId>,
-    pub spans: FxIndexMap<rustc_span::Span, Span>,
+    pub def_ids: IndexMap<DefId, stable_mir::DefId>,
+    pub alloc_ids: IndexMap<AllocId, stable_mir::AllocId>,
+    pub spans: IndexMap<rustc_span::Span, Span>,
     pub types: Vec<MaybeStable<stable_mir::ty::TyKind, Ty<'tcx>>>,
 }
 
