@@ -3,7 +3,7 @@ use std::mem;
 use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::pretty::write_allocation_bytes;
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::traits::Reveal;
@@ -338,36 +338,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
 
             // Validation failed, report an error.
             if let Err(error) = validation {
-                let (error, backtrace) = error.into_parts();
-                backtrace.print_backtrace();
-
-                let ub_note = matches!(error, InterpError::UndefinedBehavior(_)).then(|| {});
-
-                let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner();
-                let mut bytes = String::new();
-                if alloc.size() != abi::Size::ZERO {
-                    bytes = "\n".into();
-                    // FIXME(translation) there might be pieces that are translatable.
-                    write_allocation_bytes(*ecx.tcx, alloc, &mut bytes, "    ").unwrap();
-                }
-                let raw_bytes = errors::RawBytesNote {
-                    size: alloc.size().bytes(),
-                    align: alloc.align.bytes(),
-                    bytes,
-                };
-
-                Err(super::report(
-                    *ecx.tcx,
-                    error,
-                    None,
-                    || super::get_span_and_frames(&ecx),
-                    move |span, frames| errors::UndefinedBehavior {
-                        span,
-                        ub_note,
-                        frames,
-                        raw_bytes,
-                    },
-                ))
+                Err(const_report_error(&ecx, error, alloc_id))
             } else {
                 // Convert to raw constant
                 Ok(ConstAlloc { alloc_id, ty: mplace.layout.ty })
@@ -402,4 +373,34 @@ pub fn const_validate_mplace<'mir, 'tcx>(
     }
 
     Ok(())
+}
+
+#[inline(always)]
+pub fn const_report_error<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    error: InterpErrorInfo<'tcx>,
+    alloc_id: AllocId,
+) -> ErrorHandled {
+    let (error, backtrace) = error.into_parts();
+    backtrace.print_backtrace();
+
+    let ub_note = matches!(error, InterpError::UndefinedBehavior(_)).then(|| {});
+
+    let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner();
+    let mut bytes = String::new();
+    if alloc.size() != abi::Size::ZERO {
+        bytes = "\n".into();
+        // FIXME(translation) there might be pieces that are translatable.
+        write_allocation_bytes(*ecx.tcx, alloc, &mut bytes, "    ").unwrap();
+    }
+    let raw_bytes =
+        errors::RawBytesNote { size: alloc.size().bytes(), align: alloc.align.bytes(), bytes };
+
+    crate::const_eval::report(
+        *ecx.tcx,
+        error,
+        None,
+        || crate::const_eval::get_span_and_frames(ecx),
+        move |span, frames| errors::UndefinedBehavior { span, ub_note, frames, raw_bytes },
+    )
 }
