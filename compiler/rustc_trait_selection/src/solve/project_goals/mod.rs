@@ -18,6 +18,10 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
+mod inherent_projection;
+mod opaques;
+mod weak_types;
+
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn compute_projection_goal(

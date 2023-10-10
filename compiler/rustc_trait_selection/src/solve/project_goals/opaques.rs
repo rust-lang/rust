@@ -7,7 +7,7 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty;
 use rustc_middle::ty::util::NotUniqueParam;
 
-use super::{EvalCtxt, SolverMode};
+use crate::solve::{EvalCtxt, SolverMode};
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn normalize_opaque_type(
