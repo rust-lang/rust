@@ -2,4 +2,4 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/index.html' '//li[@class="version"]' 'Version <script>alert("hi")</script>'
+// @has 'foo/index.html' '//*[@class="version"]' '<script>alert("hi")</script>'

@@ -19,7 +19,7 @@ pub(super) struct Sidebar<'a> {
     pub(super) title_prefix: &'static str,
     pub(super) title: &'a str,
     pub(super) is_crate: bool,
-    pub(super) version: &'a str,
+    pub(super) is_mod: bool,
     pub(super) blocks: Vec<LinkBlock<'a>>,
     pub(super) path: String,
 }
@@ -99,12 +99,12 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
         || it.is_primitive()
         || it.is_union()
         || it.is_enum()
-        || it.is_mod()
+        // crate title is displayed as part of logo lockup
+        || (it.is_mod() && !it.is_crate())
         || it.is_type_alias()
     {
         (
             match *it.kind {
-                clean::ModuleItem(..) if it.is_crate() => "Crate ",
                 clean::ModuleItem(..) => "Module ",
                 _ => "",
             },
@@ -113,14 +113,22 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
     } else {
         ("", "")
     };
-    let version =
-        if it.is_crate() { cx.cache().crate_version.as_deref().unwrap_or_default() } else { "" };
-    let path: String = if !it.is_mod() {
-        cx.current.iter().map(|s| s.as_str()).intersperse("::").collect()
+    // need to show parent path header if:
+    //   - it's a child module, instead of the crate root
+    //   - there's a sidebar section for the item itself
+    //
+    // otherwise, the parent path header is redundant with the big crate
+    // branding area at the top of the sidebar
+    let sidebar_path =
+        if it.is_mod() { &cx.current[..cx.current.len() - 1] } else { &cx.current[..] };
+    let path: String = if sidebar_path.len() > 1 || !title.is_empty() {
+        let path = sidebar_path.iter().map(|s| s.as_str()).intersperse("::").collect();
+        if sidebar_path.len() == 1 { format!("crate {path}") } else { path }
     } else {
         "".into()
     };
-    let sidebar = Sidebar { title_prefix, title, is_crate: it.is_crate(), version, blocks, path };
+    let sidebar =
+        Sidebar { title_prefix, title, is_mod: it.is_mod(), is_crate: it.is_crate(), blocks, path };
     sidebar.render_into(buffer).unwrap();
 }
 

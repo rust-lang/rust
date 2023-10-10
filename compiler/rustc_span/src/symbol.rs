@@ -1327,6 +1327,7 @@ symbols! {
         rust_cold_cc,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
+        rust_logo,
         rustc,
         rustc_abi,
         rustc_allocator,

@@ -6,9 +6,6 @@
 <div class="sidebar-elems">
     {% if is_crate %}
         <ul class="block">
-            {% if !version.is_empty() %}
-                <li class="version">Version {{+ version}}</li>
-            {% endif %}
             <li><a id="all-types" href="all.html">All Items</a></li> {# #}
         </ul>
     {% endif %}
@@ -32,6 +29,6 @@
         </section>
     {% endif %}
     {% if !path.is_empty() %}
-        <h2><a href="index.html">In {{+ path}}</a></h2>
+        <h2><a href="{% if is_mod %}../{% endif %}index.html">In {{+ path}}</a></h2>
     {% endif %}
 </div>

@@ -1,18 +1,18 @@
 // This test ensures that the correct style is applied to the rust logo in the sidebar.
-go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/staged_api/index.html"
 
 define-function: (
     "check-logo",
     (theme, filter),
     block {
         // Going to the doc page.
-        go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+        go-to: "file://" + |DOC_PATH| + "/staged_api/index.html"
         // Changing theme.
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (".rust-logo", {"filter": |filter|})
         // Going to the source code page.
-        go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+        go-to: "file://" + |DOC_PATH| + "/src/staged_api/lib.rs.html"
         // Changing theme (since it's local files, the local storage works by folder).
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
@@ -26,6 +26,15 @@ define-function: (
         assert-false: ".rust-logo"
         // Check there is no filter.
         assert-css: (".sidebar .logo-container img", {"filter": "none"})
+        // Now we check that this page has no logo at all
+        go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+        assert-false: ".rust-logo"
+        assert-false: ".logo-container"
+        assert-false: ".sub-logo-container"
+        go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+        assert-false: ".rust-logo"
+        assert-false: ".logo-container"
+        assert-false: ".sub-logo-container"
     },
 )
 

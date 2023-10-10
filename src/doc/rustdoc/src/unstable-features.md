@@ -207,6 +207,21 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 mod empty_mod {}
 ```
 
+### Use the Rust logo as the crate logo
+
+This is for official Rust project use only.
+
+Internal Rustdoc pages like settings.html and scrape-examples-help.html show the Rust logo.
+This logo is tracked as a static resource. The attribute `#![doc(rust_logo)]` makes this same
+built-in resource act as the main logo.
+
+```rust
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.
+```
+
 ## Effects of other nightly features
 
 These nightly-only features are not primarily related to Rustdoc,

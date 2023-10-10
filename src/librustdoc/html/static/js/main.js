@@ -51,9 +51,14 @@ function setMobileTopbar() {
     // but with the current code it's hard to get the right information in the right place.
     const mobileTopbar = document.querySelector(".mobile-topbar");
     const locationTitle = document.querySelector(".sidebar h2.location");
-    if (mobileTopbar && locationTitle) {
+    if (mobileTopbar) {
         const mobileTitle = document.createElement("h2");
-        mobileTitle.innerHTML = locationTitle.innerHTML;
+        mobileTitle.className = "location";
+        if (hasClass(document.body, "crate")) {
+            mobileTitle.innerText = `Crate ${window.currentCrate}`;
+        } else if (locationTitle) {
+            mobileTitle.innerHTML = locationTitle.innerHTML;
+        }
         mobileTopbar.appendChild(mobileTitle);
     }
 }
@@ -480,22 +485,27 @@ function preLoadCss(cssUrl) {
                 return;
             }
 
+            const modpath = hasClass(document.body, "mod") ? "../" : "";
+
             const h3 = document.createElement("h3");
-            h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
+            h3.innerHTML = `<a href="${modpath}index.html#${id}">${longty}</a>`;
             const ul = document.createElement("ul");
             ul.className = "block " + shortty;
 
             for (const name of filtered) {
                 let path;
                 if (shortty === "mod") {
-                    path = name + "/index.html";
+                    path = `${modpath}${name}/index.html`;
                 } else {
-                    path = shortty + "." + name + ".html";
+                    path = `${modpath}${shortty}.${name}.html`;
                 }
-                const current_page = document.location.href.split("/").pop();
+                let current_page = document.location.href.toString();
+                if (current_page.endsWith("/")) {
+                    current_page += "index.html";
+                }
                 const link = document.createElement("a");
                 link.href = path;
-                if (path === current_page) {
+                if (link.href === current_page) {
                     link.className = "current";
                 }
                 link.textContent = name;
@@ -508,19 +518,33 @@ function preLoadCss(cssUrl) {
         }
 
         if (sidebar) {
+            // keep this synchronized with ItemSection::ALL in html/render/mod.rs
+            // Re-exports aren't shown here, because they don't have child pages
+            //block("reexport", "reexports", "Re-exports");
             block("primitive", "primitives", "Primitive Types");
             block("mod", "modules", "Modules");
             block("macro", "macros", "Macros");
             block("struct", "structs", "Structs");
             block("enum", "enums", "Enums");
-            block("union", "unions", "Unions");
             block("constant", "constants", "Constants");
             block("static", "static", "Statics");
             block("trait", "traits", "Traits");
             block("fn", "functions", "Functions");
             block("type", "types", "Type Aliases");
+            block("union", "unions", "Unions");
+            // No point, because these items don't appear in modules
+            //block("impl", "impls", "Implementations");
+            //block("tymethod", "tymethods", "Type Methods");
+            //block("method", "methods", "Methods");
+            //block("structfield", "fields", "Fields");
+            //block("variant", "variants", "Variants");
+            //block("associatedtype", "associated-types", "Associated Types");
+            //block("associatedconstant", "associated-consts", "Associated Constants");
             block("foreigntype", "foreign-types", "Foreign Types");
             block("keyword", "keywords", "Keywords");
+            block("opaque", "opaque-types", "Opaque Types");
+            block("attr", "attributes", "Attribute Macros");
+            block("derive", "derives", "Derive Macros");
             block("traitalias", "trait-aliases", "Trait Aliases");
         }
     }
