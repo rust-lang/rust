@@ -135,7 +135,11 @@ export const onEnter = new lc.RequestType<lc.TextDocumentPositionParams, lc.Text
 export const openCargoToml = new lc.RequestType<OpenCargoTomlParams, lc.Location, void>(
     "experimental/openCargoToml",
 );
-export const openDocs = new lc.RequestType<lc.TextDocumentPositionParams, string | void, void>(
+export interface DocsUrls {
+    local: string | void;
+    web: string | void;
+}
+export const openDocs = new lc.RequestType<lc.TextDocumentPositionParams, DocsUrls, void>(
     "experimental/externalDocs",
 );
 export const parentModule = new lc.RequestType<
