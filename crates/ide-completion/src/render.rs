@@ -18,6 +18,7 @@ use ide_db::{
     RootDatabase, SnippetCap, SymbolKind,
 };
 use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
+use text_edit::TextEdit;
 
 use crate::{
     context::{DotAccess, PathCompletionCtx, PathKind, PatternContext},
@@ -147,7 +148,23 @@ pub(crate) fn render_field(
         .set_documentation(field.docs(db))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
-    item.insert_text(field_with_receiver(db, receiver.as_ref(), &escaped_name));
+    if ty.is_fn() || ty.is_closure() {
+        let mut builder = TextEdit::builder();
+        // Use TextEdit to insert / replace the ranges:
+        // 1. Insert one character ('(') before start of struct name
+        // 2. Insert one character (')') before call parens
+        // 3. Variable character of the actual field name
+        // 4. Optionally, two character ('()') for fn call
+        //
+        // TODO: Find a way to get the above ranges, especially the first two
+        builder.replace(
+            ctx.source_range(),
+            field_with_receiver(db, receiver.as_ref(), &escaped_name).into(),
+        );
+        item.text_edit(builder.finish());
+    } else {
+        item.insert_text(field_with_receiver(db, receiver.as_ref(), &escaped_name));
+    }
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
             if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {

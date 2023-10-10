@@ -28,6 +28,13 @@ pub(crate) fn complete_dot(
 
     if let DotAccessKind::Method { .. } = dot_access.kind {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
+        complete_fn_fields(
+            acc,
+            ctx,
+            receiver_ty,
+            |acc, field, ty| acc.add_field(ctx, dot_access, None, field, &ty),
+            |acc, field, ty| acc.add_tuple_field(ctx, None, field, &ty),
+        );
     } else {
         complete_fields(
             acc,
@@ -142,6 +149,33 @@ fn complete_methods(
             None::<()>
         },
     );
+}
+
+fn complete_fn_fields(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    receiver: &hir::Type,
+    mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type),
+    mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type),
+) {
+    let mut seen_names = FxHashSet::default();
+    for receiver in receiver.autoderef(ctx.db) {
+        for (field, ty) in receiver.fields(ctx.db) {
+            if seen_names.insert(field.name(ctx.db)) && (ty.is_fn() || ty.is_closure()) {
+                named_field(acc, field, ty);
+            }
+        }
+        for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
+            // Tuples are always the last type in a deref chain, so just check if the name is
+            // already seen without inserting into the hashset.
+            if !seen_names.contains(&hir::Name::new_tuple_field(i))
+                && (ty.is_fn() || ty.is_closure())
+            {
+                // Tuple fields are always public (tuple struct fields are handled above).
+                tuple_index(acc, i, ty);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
