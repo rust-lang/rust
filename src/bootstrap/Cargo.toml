@@ -5,6 +5,9 @@ edition = "2021"
 build = "build.rs"
 default-run = "bootstrap"
 
+[features]
+build-metrics = ["sysinfo"]
+
 [lib]
 path = "lib.rs"
 doctest = false
@@ -79,9 +82,6 @@ features = [
 
 [dev-dependencies]
 pretty_assertions = "1.4"
-
-[features]
-build-metrics = ["sysinfo"]
 
 # We care a lot about bootstrap's compile times, so don't include debuginfo for
 # dependencies, only bootstrap itself.
