@@ -54,9 +54,9 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)
     ),
     // tidy-alphabetical-start
     //("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None), // FIXME uncomment once all deps are vendored
-    //("library/backtrace", &[], None), // FIXME uncomment once rust-lang/backtrace#562 lands
+    //("library/backtrace", &[], None), // FIXME uncomment once rust-lang/backtrace#562 has been synced back to the rust repo
     //("library/portable-simd", &[], None), // FIXME uncomment once rust-lang/portable-simd#363 has been synced back to the rust repo
-    //("library/stdarch", EXCEPTIONS_STDARCH, None), // FIXME uncomment once rust-lang/stdarch#1462 lands
+    //("library/stdarch", EXCEPTIONS_STDARCH, None), // FIXME uncomment once rust-lang/stdarch#1462 has been synced back to the rust repo
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None),
     ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None),
     ("src/etc/test-float-parse", &[], None),
