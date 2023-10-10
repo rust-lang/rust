@@ -187,7 +187,7 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
+fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
@@ -196,48 +196,16 @@ where
     printer.s.eof()
 }
 
-pub fn generic_params_to_string(generic_params: &[GenericParam<'_>]) -> String {
-    to_string(NO_ANN, |s| s.print_generic_params(generic_params))
-}
-
-pub fn bounds_to_string<'b>(bounds: impl IntoIterator<Item = &'b hir::GenericBound<'b>>) -> String {
-    to_string(NO_ANN, |s| s.print_bounds("", bounds))
-}
-
 pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
     to_string(NO_ANN, |s| s.print_type(ty))
-}
-
-pub fn path_segment_to_string(segment: &hir::PathSegment<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_path_segment(segment))
-}
-
-pub fn path_to_string(segment: &hir::Path<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_path(segment, false))
 }
 
 pub fn qpath_to_string(segment: &hir::QPath<'_>) -> String {
     to_string(NO_ANN, |s| s.print_qpath(segment, false))
 }
 
-pub fn fn_to_string(
-    decl: &hir::FnDecl<'_>,
-    header: hir::FnHeader,
-    name: Option<Symbol>,
-    generics: &hir::Generics<'_>,
-    arg_names: &[Ident],
-    body_id: Option<hir::BodyId>,
-) -> String {
-    to_string(NO_ANN, |s| s.print_fn(decl, header, name, generics, arg_names, body_id))
-}
-
-pub fn enum_def_to_string(
-    enum_definition: &hir::EnumDef<'_>,
-    generics: &hir::Generics<'_>,
-    name: Symbol,
-    span: rustc_span::Span,
-) -> String {
-    to_string(NO_ANN, |s| s.print_enum_def(enum_definition, generics, name, span))
+pub fn pat_to_string(pat: &hir::Pat<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_pat(pat))
 }
 
 impl<'a> State<'a> {
