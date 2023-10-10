@@ -94,10 +94,6 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     /// `Session` from a value that now owns it.
     fn sess(&self) -> &Session;
 
-    /// Provides a uniform interface for re-extracting a reference to an
-    /// `hir_map::Map` from a value that now owns it.
-    fn hir_map(&self) -> Option<hir_map::Map<'hir>>;
-
     /// Produces the pretty-print annotation object.
     ///
     /// (Rust does not yet support upcasting from a trait object to
@@ -123,10 +119,6 @@ impl<'hir> AstPrinterSupport for NoAnn<'hir> {
 impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
     fn sess(&self) -> &Session {
         self.sess
-    }
-
-    fn hir_map(&self) -> Option<hir_map::Map<'hir>> {
-        self.tcx.map(|tcx| tcx.hir())
     }
 
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
@@ -198,10 +190,6 @@ impl<'hir> pprust_ast::PpAnn for IdentifiedAnnotation<'hir> {
 impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
     fn sess(&self) -> &Session {
         self.sess
-    }
-
-    fn hir_map(&self) -> Option<hir_map::Map<'hir>> {
-        self.tcx.map(|tcx| tcx.hir())
     }
 
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
@@ -296,10 +284,6 @@ struct TypedAnnotation<'tcx> {
 impl<'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'tcx> {
     fn sess(&self) -> &Session {
         self.tcx.sess
-    }
-
-    fn hir_map(&self) -> Option<hir_map::Map<'tcx>> {
-        Some(self.tcx.hir())
     }
 
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
