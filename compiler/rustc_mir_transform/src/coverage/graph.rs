@@ -3,7 +3,7 @@ use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
 
 use std::cmp::Ordering;
 use std::ops::{Index, IndexMut};
@@ -37,9 +37,8 @@ impl CoverageGraph {
                 }
                 let bcb_data = &bcbs[bcb];
                 let mut bcb_successors = Vec::new();
-                for successor in
-                    bcb_filtered_successors(&mir_body, &bcb_data.terminator(mir_body).kind)
-                        .filter_map(|successor_bb| bb_to_bcb[successor_bb])
+                for successor in bcb_filtered_successors(&mir_body, bcb_data.last_bb())
+                    .filter_map(|successor_bb| bb_to_bcb[successor_bb])
                 {
                     if !seen[successor] {
                         seen[successor] = true;
@@ -316,11 +315,6 @@ impl BasicCoverageBlockData {
     pub fn last_bb(&self) -> BasicBlock {
         *self.basic_blocks.last().unwrap()
     }
-
-    #[inline(always)]
-    pub fn terminator<'a, 'tcx>(&self, mir_body: &'a mir::Body<'tcx>) -> &'a Terminator<'tcx> {
-        &mir_body[self.last_bb()].terminator()
-    }
 }
 
 /// Represents a successor from a branching BasicCoverageBlock (such as the arms of a `SwitchInt`)
@@ -362,26 +356,28 @@ impl std::fmt::Debug for BcbBranch {
     }
 }
 
-// Returns the `Terminator`s non-unwind successors.
+// Returns the subset of a block's successors that are relevant to the coverage
+// graph, i.e. those that do not represent unwinds or unreachable branches.
 // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
 // `catch_unwind()` handlers.
 fn bcb_filtered_successors<'a, 'tcx>(
     body: &'a mir::Body<'tcx>,
-    term_kind: &'a TerminatorKind<'tcx>,
-) -> Box<dyn Iterator<Item = BasicBlock> + 'a> {
-    Box::new(
-        match &term_kind {
-            // SwitchInt successors are never unwind, and all of them should be traversed.
-            TerminatorKind::SwitchInt { ref targets, .. } => {
-                None.into_iter().chain(targets.all_targets().into_iter().copied())
-            }
-            // For all other kinds, return only the first successor, if any, and ignore unwinds.
-            // NOTE: `chain(&[])` is required to coerce the `option::iter` (from
-            // `next().into_iter()`) into the `mir::Successors` aliased type.
-            _ => term_kind.successors().next().into_iter().chain((&[]).into_iter().copied()),
-        }
-        .filter(move |&successor| body[successor].terminator().kind != TerminatorKind::Unreachable),
-    )
+    bb: BasicBlock,
+) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx> {
+    let terminator = body[bb].terminator();
+
+    let take_n_successors = match terminator.kind {
+        // SwitchInt successors are never unwinds, so all of them should be traversed.
+        TerminatorKind::SwitchInt { .. } => usize::MAX,
+        // For all other kinds, return only the first successor (if any), ignoring any
+        // unwind successors.
+        _ => 1,
+    };
+
+    terminator
+        .successors()
+        .take(take_n_successors)
+        .filter(move |&successor| body[successor].terminator().kind != TerminatorKind::Unreachable)
 }
 
 /// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
@@ -558,7 +554,7 @@ fn short_circuit_preorder<'a, 'tcx, F, Iter>(
     filtered_successors: F,
 ) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx>
 where
-    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Iter,
+    F: Fn(&'a mir::Body<'tcx>, BasicBlock) -> Iter,
     Iter: Iterator<Item = BasicBlock>,
 {
     let mut visited = BitSet::new_empty(body.basic_blocks.len());
@@ -570,7 +566,7 @@ where
                 continue;
             }
 
-            worklist.extend(filtered_successors(body, &body[bb].terminator().kind));
+            worklist.extend(filtered_successors(body, bb));
 
             return Some(bb);
         }
