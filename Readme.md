@@ -286,6 +286,16 @@ git checkout sync_branch_name
 git merge master
 ```
 
+To send the changes to the rust repo:
+
+```bash
+cd ../rust
+git pull origin master
+git checkbout -b subtree-update_cg_gcc_YYYY-MM-DD
+PATH="$HOME/bin:$PATH" ~/bin/git-subtree pull --prefix=compiler/rustc_codegen_gcc/ https://github.com/rust-lang/rustc_codegen_gcc.git master
+git push
+```
+
 TODO: write a script that does the above.
 
 https://rust-lang.zulipchat.com/#narrow/stream/301329-t-devtools/topic/subtree.20madness/near/258877725
