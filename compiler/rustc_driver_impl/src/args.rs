@@ -14,7 +14,11 @@ fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
             }
             Err(err) => return Err(Error::IOError(path.to_string(), err)),
         };
-        Ok(file.lines().map(ToString::to_string).collect())
+        Ok(file
+            .lines()
+            .map(str::trim)
+            .filter_map(|s| (!s.is_empty()).then(|| s.to_string()))
+            .collect())
     } else {
         Ok(vec![arg])
     }
