@@ -147,15 +147,20 @@ fn find_local_assigned_to_return_place(start: BasicBlock, body: &mut Body<'_>) -
         if vis.seen_indirect {
             discard_borrowed_locals(&mut assigned_locals);
         }
+        if assigned_locals.contains(RETURN_PLACE) {
+            return None;
+        }
 
         for (statement_index, stmt) in bbdata.statements.iter().enumerate().rev() {
             if let StatementKind::Assign(box (lhs, ref rhs)) = stmt.kind
                 && lhs.as_local() == Some(RETURN_PLACE)
-                && let Rvalue::Use(rhs) = rhs
-                && let Some(rhs) = rhs.place()
-                && let Some(rhs) = rhs.as_local()
-                && !assigned_locals.contains(rhs)
             {
+                let Rvalue::Use(rhs) = rhs else { return None };
+                let rhs = rhs.place()?;
+                let rhs = rhs.as_local()?;
+                if assigned_locals.contains(rhs) {
+                    return None;
+                }
                 return Some(rhs);
             }
 
@@ -164,6 +169,9 @@ fn find_local_assigned_to_return_place(start: BasicBlock, body: &mut Body<'_>) -
             vis.visit_statement(stmt, Location { block, statement_index });
             if vis.seen_indirect {
                 discard_borrowed_locals(&mut assigned_locals);
+            }
+            if assigned_locals.contains(RETURN_PLACE) {
+                return None;
             }
         }
 

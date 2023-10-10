@@ -54,6 +54,17 @@ pub fn multiple(arg: char) -> char {
     })
 }
 
+// EMIT_MIR nrvo_miscompile_111005.constant.RenameReturnPlace.diff
+#[custom_mir(dialect = "runtime", phase = "initial")]
+pub fn constant(arg: char) -> char {
+    mir!({
+        let temp = arg;
+        RET = 'b';
+        RET = temp;
+        Return()
+    })
+}
+
 // EMIT_MIR nrvo_miscompile_111005.projection.RenameReturnPlace.diff
 #[custom_mir(dialect = "runtime", phase = "initial")]
 pub fn projection(arg: char) -> (char, u8) {
@@ -143,6 +154,7 @@ fn main() {
     assert_eq!(indirect('a'), 'a');
     assert_eq!(moved('a'), 'a');
     assert_eq!(multiple('a'), 'a');
+    assert_eq!(constant('a'), 'a');
     assert_eq!(call('a'), 'a');
     assert_eq!(call_ok('a'), 'a');
     assert_eq!(multiple_return('a', true), 'z');
