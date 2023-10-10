@@ -1610,9 +1610,10 @@ options! {
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
     mir_enable_passes: Vec<(String, bool)> = (Vec::new(), parse_list_with_polarity, [TRACKED],
-        "use like `-Zmir-enable-passes=+DestinationPropagation,-InstSimplify`. Forces the specified passes to be \
-        enabled, overriding all other checks. Passes that are not specified are enabled or \
-        disabled by other flags as usual."),
+        "use like `-Zmir-enable-passes=+DestinationPropagation,-InstSimplify`. Forces the \
+        specified passes to be enabled, overriding all other checks. In particular, this will \
+        enable unsound (known-buggy and hence usually disabled) passes without further warning! \
+        Passes that are not specified are enabled or disabled by other flags as usual."),
     mir_include_spans: bool = (false, parse_bool, [UNTRACKED],
         "use line numbers relative to the function in mir pretty printing"),
     mir_keep_place_mention: bool = (false, parse_bool, [TRACKED],
