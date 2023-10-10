@@ -95,6 +95,7 @@ pub struct EarlyOtherwiseBranch;
 
 impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        // unsound: https://github.com/rust-lang/rust/issues/95162
         sess.mir_opt_level() >= 3 && sess.opts.unstable_opts.unsound_mir_opts
     }
 
