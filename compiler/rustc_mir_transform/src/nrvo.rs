@@ -34,7 +34,7 @@ pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // #111005
+        // unsound: #111005
         sess.mir_opt_level() > 0 && sess.opts.unstable_opts.unsound_mir_opts
     }
 
