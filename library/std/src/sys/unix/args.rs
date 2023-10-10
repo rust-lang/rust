@@ -70,6 +70,7 @@ impl DoubleEndedIterator for Args {
     target_os = "redox",
     target_os = "vxworks",
     target_os = "horizon",
+    target_os = "aix",
     target_os = "nto",
     target_os = "hurd",
 ))]

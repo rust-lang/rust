@@ -261,3 +261,14 @@ pub mod os {
     pub const EXE_SUFFIX: &str = "";
     pub const EXE_EXTENSION: &str = "";
 }
+
+#[cfg(target_os = "aix")]
+pub mod os {
+    pub const FAMILY: &str = "unix";
+    pub const OS: &str = "aix";
+    pub const DLL_PREFIX: &str = "lib";
+    pub const DLL_SUFFIX: &str = ".a";
+    pub const DLL_EXTENSION: &str = "a";
+    pub const EXE_SUFFIX: &str = "";
+    pub const EXE_EXTENSION: &str = "";
+}
