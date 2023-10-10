@@ -580,6 +580,8 @@ passes_outside_loop =
         *[false] {""}
     }
 
+passes_outside_loop_suggestion = consider labeling this block to be able to break within it
+
 passes_params_not_allowed =
     referencing function parameters is not allowed in naked functions
     .help = follow the calling convention in asm block to use parameters
