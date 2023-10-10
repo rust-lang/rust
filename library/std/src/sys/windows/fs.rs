@@ -1066,6 +1066,14 @@ impl DirBuilder {
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+    // We push a `*` to the end of the path which cause the empty path to be
+    // treated as the current directory. So, for consistency with other platforms,
+    // we explicitly error on the empty path.
+    if p.as_os_str().is_empty() {
+        // Return an error code consistent with other ways of opening files.
+        // E.g. fs::metadata or File::open.
+        return Err(io::Error::from_raw_os_error(c::ERROR_PATH_NOT_FOUND as i32));
+    }
     let root = p.to_path_buf();
     let star = p.join("*");
     let path = maybe_verbatim(&star)?;
