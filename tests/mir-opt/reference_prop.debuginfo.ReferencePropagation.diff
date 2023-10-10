@@ -92,8 +92,8 @@
           StorageDead(_7);
 -         StorageDead(_6);
 -         StorageLive(_10);
-          StorageLive(_11);
-          StorageLive(_12);
+-         StorageLive(_11);
+-         StorageLive(_12);
           StorageLive(_13);
           _26 = const _;
           _13 = &(*_26);
@@ -105,8 +105,9 @@
       bb5: {
           StorageDead(_15);
           StorageDead(_13);
-          _11 = &(*_12);
-          _16 = Len((*_11));
+-         _11 = &(*_12);
+-         _16 = Len((*_11));
++         _16 = Len((*_12));
           _17 = const 3_usize;
           _18 = Ge(move _16, move _17);
           switchInt(move _18) -> [0: bb7, otherwise: bb6];
@@ -114,12 +115,15 @@
   
       bb6: {
           StorageLive(_19);
-          _19 = &(*_11)[1 of 3];
+-         _19 = &(*_11)[1 of 3];
++         _19 = &(*_12)[1 of 3];
           StorageLive(_20);
-          _20 = &(*_11)[2:-1];
+-         _20 = &(*_11)[2:-1];
++         _20 = &(*_12)[2:-1];
           StorageLive(_21);
-          _21 = &(*_11)[-1 of 3];
+-         _21 = &(*_11)[-1 of 3];
 -         _10 = const ();
++         _21 = &(*_12)[-1 of 3];
           StorageDead(_21);
           StorageDead(_20);
           StorageDead(_19);
@@ -132,8 +136,8 @@
       }
   
       bb8: {
-          StorageDead(_12);
-          StorageDead(_11);
+-         StorageDead(_12);
+-         StorageDead(_11);
 -         StorageDead(_10);
           StorageLive(_22);
           StorageLive(_23);

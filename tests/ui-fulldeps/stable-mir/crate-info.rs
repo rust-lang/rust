@@ -58,7 +58,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
 
     let foo_bar = get_item(&items, (DefKind::Fn, "foo_bar")).unwrap();
     let body = foo_bar.body();
-    assert_eq!(body.locals.len(), 7);
+    assert_eq!(body.locals.len(), 5);
     assert_eq!(body.blocks.len(), 4);
     let block = &body.blocks[0];
     match &block.terminator.kind {

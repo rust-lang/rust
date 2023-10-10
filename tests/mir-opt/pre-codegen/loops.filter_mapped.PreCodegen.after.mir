@@ -6,21 +6,20 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     let mut _0: ();
     let mut _3: std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
     let mut _4: std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
-    let mut _5: std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
-    let mut _6: &mut std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
-    let mut _9: std::option::Option<U>;
-    let mut _10: isize;
-    let _12: ();
+    let mut _5: &mut std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
+    let mut _8: std::option::Option<U>;
+    let mut _9: isize;
+    let _11: ();
     scope 1 {
-        debug iter => _5;
-        let _11: U;
+        debug iter => _4;
+        let _10: U;
         scope 2 {
-            debug x => _11;
+            debug x => _10;
         }
         scope 4 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as Iterator>::next) {
-            debug self => _6;
-            let mut _7: &mut impl Iterator<Item = T>;
-            let mut _8: &mut impl Fn(T) -> Option<U>;
+            debug self => _5;
+            let mut _6: &mut impl Iterator<Item = T>;
+            let mut _7: &mut impl Fn(T) -> Option<U>;
         }
     }
     scope 3 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as IntoIterator>::into_iter) {
@@ -28,54 +27,49 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     }
 
     bb0: {
-        StorageLive(_4);
-        StorageLive(_3);
         _3 = <impl Iterator<Item = T> as Iterator>::filter_map::<U, impl Fn(T) -> Option<U>>(move _1, move _2) -> [return: bb1, unwind continue];
     }
 
     bb1: {
+        StorageLive(_4);
         _4 = move _3;
-        StorageDead(_3);
-        StorageLive(_5);
-        _5 = move _4;
         goto -> bb2;
     }
 
     bb2: {
-        StorageLive(_9);
-        _6 = &mut _5;
-        StorageLive(_7);
-        _7 = &mut (_5.0: impl Iterator<Item = T>);
         StorageLive(_8);
-        _8 = &mut (_5.1: impl Fn(T) -> Option<U>);
-        _9 = <impl Iterator<Item = T> as Iterator>::find_map::<U, &mut impl Fn(T) -> Option<U>>(move _7, move _8) -> [return: bb3, unwind: bb9];
+        _5 = &mut _4;
+        StorageLive(_6);
+        _6 = &mut (_4.0: impl Iterator<Item = T>);
+        StorageLive(_7);
+        _7 = &mut (_4.1: impl Fn(T) -> Option<U>);
+        _8 = <impl Iterator<Item = T> as Iterator>::find_map::<U, &mut impl Fn(T) -> Option<U>>(move _6, move _7) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
-        StorageDead(_8);
         StorageDead(_7);
-        _10 = discriminant(_9);
-        switchInt(move _10) -> [0: bb4, 1: bb6, otherwise: bb8];
+        StorageDead(_6);
+        _9 = discriminant(_8);
+        switchInt(move _9) -> [0: bb4, 1: bb6, otherwise: bb8];
     }
 
     bb4: {
-        StorageDead(_9);
-        drop(_5) -> [return: bb5, unwind continue];
+        StorageDead(_8);
+        drop(_4) -> [return: bb5, unwind continue];
     }
 
     bb5: {
-        StorageDead(_5);
         StorageDead(_4);
         return;
     }
 
     bb6: {
-        _11 = move ((_9 as Some).0: U);
-        _12 = opaque::<U>(move _11) -> [return: bb7, unwind: bb9];
+        _10 = move ((_8 as Some).0: U);
+        _11 = opaque::<U>(move _10) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {
-        StorageDead(_9);
+        StorageDead(_8);
         goto -> bb2;
     }
 
@@ -84,7 +78,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     }
 
     bb9 (cleanup): {
-        drop(_5) -> [return: bb10, unwind terminate(cleanup)];
+        drop(_4) -> [return: bb10, unwind terminate(cleanup)];
     }
 
     bb10 (cleanup): {
