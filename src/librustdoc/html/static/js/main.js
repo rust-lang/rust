@@ -354,6 +354,34 @@ function preLoadCss(cssUrl) {
                 expandSection(pageId);
             }
         }
+        if (savedHash.startsWith("impl-")) {
+            // impl-disambiguated links, used by the search engine
+            // format: impl-X[-for-Y]/method.WHATEVER
+            // turn this into method.WHATEVER[-NUMBER]
+            const splitAt = savedHash.indexOf("/");
+            if (splitAt !== -1) {
+                const implId = savedHash.slice(0, splitAt);
+                const assocId = savedHash.slice(splitAt + 1);
+                const implElem = document.getElementById(implId);
+                if (implElem && implElem.parentElement.tagName === "SUMMARY" &&
+                    implElem.parentElement.parentElement.tagName === "DETAILS") {
+                    onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
+                        `[id^="${assocId}"]`),
+                        item => {
+                            const numbered = /([^-]+)-([0-9]+)/.exec(item.id);
+                            if (item.id === assocId || (numbered && numbered[1] === assocId)) {
+                                openParentDetails(item);
+                                item.scrollIntoView();
+                                // Let the section expand itself before trying to highlight
+                                setTimeout(() => {
+                                    window.location.replace("#" + item.id);
+                                }, 0);
+                            }
+                        }
+                    );
+                }
+            }
+        }
     }
 
     function onHashChange(ev) {
