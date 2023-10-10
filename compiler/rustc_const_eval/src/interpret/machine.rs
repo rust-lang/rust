@@ -6,6 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -239,6 +240,16 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         left: &ImmTy<'tcx, Self::Provenance>,
         right: &ImmTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, (ImmTy<'tcx, Self::Provenance>, bool)>;
+
+    /// Generate the NaN returned by a float operation, given the list of inputs.
+    /// (This is all inputs, not just NaN inputs!)
+    fn generate_nan<F1: Float + FloatConvert<F2>, F2: Float>(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _inputs: &[F1],
+    ) -> F2 {
+        // By default we always return the preferred NaN.
+        F2::NAN
+    }
 
     /// Called before writing the specified `local` of the `frame`.
     /// Since writing a ZST is not actually accessing memory or locals, this is never invoked

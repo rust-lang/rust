@@ -1,4 +1,4 @@
-use rustc_apfloat::Float;
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -104,7 +104,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         (ImmTy::from_bool(res, *self.tcx), false)
     }
 
-    fn binary_float_op<F: Float + Into<Scalar<M::Provenance>>>(
+    fn binary_float_op<F: Float + FloatConvert<F> + Into<Scalar<M::Provenance>>>(
         &self,
         bin_op: mir::BinOp,
         layout: TyAndLayout<'tcx>,
@@ -113,6 +113,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> (ImmTy<'tcx, M::Provenance>, bool) {
         use rustc_middle::mir::BinOp::*;
 
+        // Performs appropriate non-deterministic adjustments of NaN results.
+        let adjust_nan = |f: F| -> F {
+            if f.is_nan() { M::generate_nan(self, &[l, r]) } else { f }
+        };
+
         let val = match bin_op {
             Eq => ImmTy::from_bool(l == r, *self.tcx),
             Ne => ImmTy::from_bool(l != r, *self.tcx),
@@ -120,11 +125,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Le => ImmTy::from_bool(l <= r, *self.tcx),
             Gt => ImmTy::from_bool(l > r, *self.tcx),
             Ge => ImmTy::from_bool(l >= r, *self.tcx),
-            Add => ImmTy::from_scalar((l + r).value.into(), layout),
-            Sub => ImmTy::from_scalar((l - r).value.into(), layout),
-            Mul => ImmTy::from_scalar((l * r).value.into(), layout),
-            Div => ImmTy::from_scalar((l / r).value.into(), layout),
-            Rem => ImmTy::from_scalar((l % r).value.into(), layout),
+            Add => ImmTy::from_scalar(adjust_nan((l + r).value).into(), layout),
+            Sub => ImmTy::from_scalar(adjust_nan((l - r).value).into(), layout),
+            Mul => ImmTy::from_scalar(adjust_nan((l * r).value).into(), layout),
+            Div => ImmTy::from_scalar(adjust_nan((l / r).value).into(), layout),
+            Rem => ImmTy::from_scalar(adjust_nan((l % r).value).into(), layout),
             _ => span_bug!(self.cur_span(), "invalid float op: `{:?}`", bin_op),
         };
         (val, false)
@@ -456,6 +461,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok((ImmTy::from_bool(res, *self.tcx), false))
             }
             ty::Float(fty) => {
+                // No NaN adjustment here, `-` is a bitwise operation!
                 let res = match (un_op, fty) {
                     (Neg, FloatTy::F32) => Scalar::from_f32(-val.to_f32()?),
                     (Neg, FloatTy::F64) => Scalar::from_f64(-val.to_f64()?),
