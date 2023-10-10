@@ -223,17 +223,16 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
-        if let clean::ImplItem(ref i) = *item.kind {
-            if self.cache.masked_crates.contains(&item.item_id.krate())
+        if let clean::ImplItem(ref i) = *item.kind &&
+            (self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
                     .map_or(false, |t| self.cache.masked_crates.contains(&t.def_id().krate))
                 || i.for_
                     .def_id(self.cache)
-                    .map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
-            {
-                return None;
-            }
+                    .map_or(false, |d| self.cache.masked_crates.contains(&d.krate)))
+        {
+            return None;
         }
 
         // Propagate a trait method's documentation to all implementors of the
@@ -334,33 +333,37 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
-                    if item.item_id.as_def_id().map_or(false, |idx| !idx.is_crate_root()) {
+                    if item.item_id.as_def_id().map_or(false, |idx| !idx.is_crate_root())
+                        && let ty = item.type_()
+                        && (ty != ItemType::StructField
+                            || u16::from_str_radix(s.as_str(), 10).is_err())
+                    {
                         let desc =
                             short_markdown_summary(&item.doc_value(), &item.link_names(self.cache));
-                        let ty = item.type_();
-                        if ty != ItemType::StructField
-                            || u16::from_str_radix(s.as_str(), 10).is_err()
-                        {
-                            // In case this is a field from a tuple struct, we don't add it into
-                            // the search index because its name is something like "0", which is
-                            // not useful for rustdoc search.
-                            self.cache.search_index.push(IndexItem {
-                                ty,
-                                name: s,
-                                path: join_with_double_colon(path),
-                                desc,
-                                parent,
-                                parent_idx: None,
-                                search_type: get_function_type_for_search(
-                                    &item,
-                                    self.tcx,
-                                    clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
-                                    self.cache,
-                                ),
-                                aliases: item.attrs.get_doc_aliases(),
-                                deprecation: item.deprecation(self.tcx),
-                            });
-                        }
+                        // In case this is a field from a tuple struct, we don't add it into
+                        // the search index because its name is something like "0", which is
+                        // not useful for rustdoc search.
+                        self.cache.search_index.push(IndexItem {
+                            ty,
+                            name: s,
+                            path: join_with_double_colon(path),
+                            desc,
+                            parent,
+                            parent_idx: None,
+                            impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) = self.cache.parent_stack.last() {
+                                item_id.as_def_id()
+                            } else {
+                                None
+                            },
+                            search_type: get_function_type_for_search(
+                                &item,
+                                self.tcx,
+                                clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
+                                self.cache,
+                            ),
+                            aliases: item.attrs.get_doc_aliases(),
+                            deprecation: item.deprecation(self.tcx),
+                        });
                     }
                 }
                 (Some(parent), None) if is_inherent_impl_item => {
@@ -371,6 +374,13 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         parent,
                         item: item.clone(),
                         impl_generics,
+                        impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) =
+                            self.cache.parent_stack.last()
+                        {
+                            item_id.as_def_id()
+                        } else {
+                            None
+                        },
                     });
                 }
                 _ => {}
@@ -541,6 +551,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
 pub(crate) struct OrphanImplItem {
     pub(crate) parent: DefId,
+    pub(crate) impl_id: Option<DefId>,
     pub(crate) item: clean::Item,
     pub(crate) impl_generics: Option<(clean::Type, clean::Generics)>,
 }

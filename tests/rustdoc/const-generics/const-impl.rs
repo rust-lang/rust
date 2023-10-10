@@ -31,7 +31,7 @@ impl<T> VSet<T, { Order::Unsorted }> {
 
 pub struct Escape<const S: &'static str>;
 
-// @has foo/struct.Escape.html '//*[@id="impl-Escape%3Cr%23%22%3Cscript%3Ealert(%22Escape%22);%3C/script%3E%22%23%3E"]/h3[@class="code-header"]' 'impl Escape<r#"<script>alert("Escape");</script>"#>'
+// @has foo/struct.Escape.html '//*[@id="impl-Escape%3C%22%3Cscript%3Ealert(%5C%22Escape%5C%22);%3C/script%3E%22%3E"]/h3[@class="code-header"]' 'impl Escape<r#"<script>alert("Escape");</script>"#>'
 impl Escape<r#"<script>alert("Escape");</script>"#> {
     pub fn f() {}
 }
