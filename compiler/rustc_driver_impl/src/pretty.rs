@@ -8,7 +8,7 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{OutFileName, PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
+use rustc_session::config::{OutFileName, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
@@ -382,7 +382,7 @@ pub fn print_after_parsing(sess: &Session, krate: &ast::Crate, ppm: PpMode) {
                 )
             })
         }
-        AstTree(PpAstTreeMode::Normal) => {
+        AstTree => {
             debug!("pretty printing AST tree");
             format!("{krate:#?}")
         }
@@ -420,7 +420,7 @@ pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
             })
         }
 
-        AstTree(PpAstTreeMode::Expanded) => {
+        AstTreeExpanded => {
             debug!("pretty-printing expanded AST");
             format!("{:#?}", tcx.resolver_for_lowering(()).borrow().1)
         }
