@@ -22,7 +22,8 @@ use std::fmt;
 use std::fmt::Debug;
 
 use self::ty::{
-    GenericPredicates, Generics, ImplDef, ImplTrait, Span, TraitDecl, TraitDef, Ty, TyKind,
+    GenericPredicates, Generics, ImplDef, ImplTrait, IndexedVal, Span, TraitDecl, TraitDef, Ty,
+    TyKind,
 };
 
 #[macro_use]
@@ -41,7 +42,7 @@ pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct DefId(pub usize);
+pub struct DefId(usize);
 
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -52,9 +53,28 @@ impl Debug for DefId {
     }
 }
 
+impl IndexedVal for DefId {
+    fn to_val(index: usize) -> Self {
+        DefId(index)
+    }
+
+    fn to_index(&self) -> usize {
+        self.0
+    }
+}
+
 /// A unique identification number for each provenance
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AllocId(pub usize);
+pub struct AllocId(usize);
+
+impl IndexedVal for AllocId {
+    fn to_val(index: usize) -> Self {
+        AllocId(index)
+    }
+    fn to_index(&self) -> usize {
+        self.0
+    }
+}
 
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;

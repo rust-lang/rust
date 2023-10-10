@@ -529,3 +529,21 @@ pub mod cfgs {
     /// Some docs.
     pub mod cfgs {}
 }
+
+pub struct ZyxwvutMethodDisambiguation;
+
+impl ZyxwvutMethodDisambiguation {
+    pub fn method_impl_disambiguation(&self) -> bool {
+        true
+    }
+}
+
+pub trait ZyxwvutTrait {
+    fn method_impl_disambiguation(&self, x: usize) -> usize;
+}
+
+impl ZyxwvutTrait for ZyxwvutMethodDisambiguation {
+    fn method_impl_disambiguation(&self, x: usize) -> usize {
+        x
+    }
+}
