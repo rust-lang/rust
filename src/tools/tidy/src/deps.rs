@@ -131,7 +131,7 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     ("anymap", "BlueOak-1.0.0 OR MIT OR Apache-2.0"), // BlueOak is not acceptable, but we use it under MIT OR Apache-2 .0
     ("dissimilar", "Apache-2.0"),
     ("instant", "BSD-3-Clause"),
-    ("notify", "CC0-1.0 OR Artistic-2.0"),
+    ("notify", "CC0-1.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("scip", "Apache-2.0"),
