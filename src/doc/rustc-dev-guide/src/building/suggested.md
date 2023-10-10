@@ -277,7 +277,7 @@ let
   # `config.toml.example`) from `1bd30ce2aac40c7698aa4a1b9520aa649ff2d1c5`
   config = pkgs.writeText "rustc-config" ''
     profile = "compiler" # you may want to choose a different profile, like `library` or `tools`
-    changelog-seen = 2
+    change-id = 115898
 
     [build]
     patch-binaries-for-nix = true
