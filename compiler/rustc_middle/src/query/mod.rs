@@ -1073,7 +1073,7 @@ rustc_queries! {
     }
 
     /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
-    query eval_static_initializer_raw(key: DefId) -> EvalStaticInitializerRawResult {
+    query eval_static_initializer(key: DefId) -> EvalStaticInitializerRawResult<'tcx> {
         desc { |tcx|
             "evaluating initializer of static `{}`",
             tcx.def_path_str(key)

@@ -1,7 +1,7 @@
 use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId};
 
 use crate::mir;
-use crate::query::{TyCtxtAt, TyCtxtEnsure};
+use crate::query::TyCtxtEnsure;
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::GenericArgs;
 use crate::ty::{self, TyCtxt};
@@ -173,30 +173,6 @@ impl<'tcx> TyCtxt<'tcx> {
             self.eval_to_valtree(inputs)
         }
     }
-
-    /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
-    #[inline(always)]
-    pub fn eval_static_initializer(
-        self,
-        def_id: DefId,
-    ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
-        self.at(DUMMY_SP).eval_static_initializer(def_id)
-    }
-}
-
-impl<'tcx> TyCtxtAt<'tcx> {
-    /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
-    ///
-    /// The span is entirely ignored here, but still helpful for better query cycle errors.
-    pub fn eval_static_initializer(
-        self,
-        def_id: DefId,
-    ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
-        trace!("eval_static_initializer: Need to compute {:?}", def_id);
-        assert!(self.is_static(def_id));
-        let alloc_id = self.eval_static_initializer_raw(def_id)?;
-        Ok(self.global_alloc(alloc_id).unwrap_memory())
-    }
 }
 
 impl<'tcx> TyCtxtEnsure<'tcx> {
@@ -217,12 +193,5 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         // improve caching of queries.
         let inputs = self.tcx.erase_regions(param_env.and(cid));
         self.eval_to_const_value_raw(inputs)
-    }
-
-    /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
-    pub fn eval_static_initializer(self, def_id: DefId) {
-        trace!("eval_static_initializer: Need to compute {:?}", def_id);
-        assert!(self.tcx.is_static(def_id));
-        self.eval_static_initializer_raw(def_id);
     }
 }

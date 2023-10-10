@@ -8,6 +8,7 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_target::abi::{self, Abi};
 
@@ -250,10 +251,35 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
 }
 
 #[instrument(skip(tcx), level = "debug")]
+pub fn eval_static_initializer_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ::rustc_middle::mir::interpret::EvalStaticInitializerRawResult<'tcx> {
+    assert!(tcx.is_static(def_id.to_def_id()));
+
+    let instance = ty::Instance::mono(tcx, def_id.to_def_id());
+    let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
+    let ecx = InterpCx::new(
+        tcx,
+        tcx.def_span(def_id),
+        ty::ParamEnv::reveal_all(),
+        // Statics (and promoteds inside statics) may access other statics, because unlike consts
+        // they do not have to behave "as if" they were evaluated at runtime.
+        CompileTimeInterpreter::new(CanAccessMutGlobal::Yes, CheckAlignment::Error),
+    );
+    let alloc_id = eval_in_interpreter(ecx, cid, true)?.alloc_id;
+    let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
+    Ok(alloc)
+}
+
+#[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
+    // This shouldn't be used for statics, since statics are conceptually places,
+    // not values -- so what we do here could break pointer identity.
+    assert!(key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()));
     // Const eval always happens in Reveal::All mode in order to be able to use the hidden types of
     // opaque types. This is needed for trivial things like `size_of`, but also for using associated
     // types that are not specified in the opaque type.
