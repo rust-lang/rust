@@ -2094,6 +2094,7 @@ impl ItemSection {
     const ALL: &'static [Self] = {
         use ItemSection::*;
         // NOTE: The order here affects the order in the UI.
+        // Keep this synchronized with addSidebarItems in main.js
         &[
             Reexports,
             PrimitiveTypes,

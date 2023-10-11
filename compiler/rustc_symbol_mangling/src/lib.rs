@@ -88,6 +88,9 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
