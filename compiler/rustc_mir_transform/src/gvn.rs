@@ -512,6 +512,21 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     return Some(fields[f.as_usize()]);
                 } else if let Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant)) = self.get(value)
                     && let Value::Aggregate(_, written_variant, fields) = self.get(*outer_value)
+                    // This pass is not aware of control-flow, so we do not know whether the
+                    // replacement we are doing is actually reachable. We could be in any arm of
+                    // ```
+                    // match Some(x) {
+                    //     Some(y) => /* stuff */,
+                    //     None => /* other */,
+                    // }
+                    // ```
+                    //
+                    // In surface rust, the current statement would be unreachable.
+                    //
+                    // However, from the reference chapter on enums and RFC 2195,
+                    // accessing the wrong variant is not UB if the enum has repr.
+                    // So it's not impossible for a series of MIR opts to generate
+                    // a downcast to an inactive variant.
                     && written_variant == read_variant
                 {
                     return Some(fields[f.as_usize()]);
