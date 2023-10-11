@@ -393,14 +393,16 @@ pub(super) struct TraversalContext {
     worklist: VecDeque<BasicCoverageBlock>,
 }
 
-pub(super) struct TraverseCoverageGraphWithLoops {
+pub(super) struct TraverseCoverageGraphWithLoops<'a> {
+    basic_coverage_blocks: &'a CoverageGraph,
+
     backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     context_stack: Vec<TraversalContext>,
     visited: BitSet<BasicCoverageBlock>,
 }
 
-impl TraverseCoverageGraphWithLoops {
-    pub fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
+impl<'a> TraverseCoverageGraphWithLoops<'a> {
+    pub(super) fn new(basic_coverage_blocks: &'a CoverageGraph) -> Self {
         let backedges = find_loop_backedges(basic_coverage_blocks);
 
         let worklist = VecDeque::from([basic_coverage_blocks.start_node()]);
@@ -411,7 +413,7 @@ impl TraverseCoverageGraphWithLoops {
         // of the stack as loops are entered, and popped off of the stack when a loop's worklist is
         // exhausted.
         let visited = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-        Self { backedges, context_stack, visited }
+        Self { basic_coverage_blocks, backedges, context_stack, visited }
     }
 
     /// For each loop on the loop context stack (top-down), yields a list of BCBs
@@ -424,7 +426,7 @@ impl TraverseCoverageGraphWithLoops {
             .map(|(from_bcbs, _to_bcb)| from_bcbs.as_slice())
     }
 
-    pub fn next(&mut self, basic_coverage_blocks: &CoverageGraph) -> Option<BasicCoverageBlock> {
+    pub(super) fn next(&mut self) -> Option<BasicCoverageBlock> {
         debug!(
             "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
             self.context_stack.iter().rev().collect::<Vec<_>>()
@@ -445,7 +447,7 @@ impl TraverseCoverageGraphWithLoops {
                         worklist: VecDeque::new(),
                     });
                 }
-                self.extend_worklist(basic_coverage_blocks, bcb);
+                self.extend_worklist(bcb);
                 return Some(bcb);
             } else {
                 // Strip contexts with empty worklists from the top of the stack
@@ -456,11 +458,8 @@ impl TraverseCoverageGraphWithLoops {
         None
     }
 
-    pub fn extend_worklist(
-        &mut self,
-        basic_coverage_blocks: &CoverageGraph,
-        bcb: BasicCoverageBlock,
-    ) {
+    pub fn extend_worklist(&mut self, bcb: BasicCoverageBlock) {
+        let Self { basic_coverage_blocks, .. } = *self;
         let successors = &basic_coverage_blocks.successors[bcb];
         debug!("{:?} has {} successors:", bcb, successors.len());
         for &successor in successors {

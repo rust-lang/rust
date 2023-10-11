@@ -245,13 +245,13 @@ impl<'a> MakeBcbCounters<'a> {
         // the loop. The `traversal` state includes a `context_stack`, providing a way to know if
         // the current BCB is in one or more nested loops or not.
         let mut traversal = TraverseCoverageGraphWithLoops::new(&self.basic_coverage_blocks);
-        while let Some(bcb) = traversal.next(self.basic_coverage_blocks) {
+        while let Some(bcb) = traversal.next() {
             if bcb_has_coverage_spans(bcb) {
                 debug!("{:?} has at least one coverage span. Get or make its counter", bcb);
                 let branching_counter_operand = self.get_or_make_counter_operand(bcb)?;
 
                 if self.bcb_needs_branch_counters(bcb) {
-                    self.make_branch_counters(&mut traversal, bcb, branching_counter_operand)?;
+                    self.make_branch_counters(&traversal, bcb, branching_counter_operand)?;
                 }
             } else {
                 debug!(
@@ -274,7 +274,7 @@ impl<'a> MakeBcbCounters<'a> {
 
     fn make_branch_counters(
         &mut self,
-        traversal: &mut TraverseCoverageGraphWithLoops,
+        traversal: &TraverseCoverageGraphWithLoops<'_>,
         branching_bcb: BasicCoverageBlock,
         branching_counter_operand: Operand,
     ) -> Result<(), Error> {
@@ -507,7 +507,7 @@ impl<'a> MakeBcbCounters<'a> {
     /// found, select any branch.
     fn choose_preferred_expression_branch(
         &self,
-        traversal: &TraverseCoverageGraphWithLoops,
+        traversal: &TraverseCoverageGraphWithLoops<'_>,
         branches: &[BcbBranch],
     ) -> BcbBranch {
         let good_reloop_branch = self.find_good_reloop_branch(traversal, &branches);
@@ -537,7 +537,7 @@ impl<'a> MakeBcbCounters<'a> {
     /// will tend to be executed more times than a loop-exit branch.
     fn find_good_reloop_branch(
         &self,
-        traversal: &TraverseCoverageGraphWithLoops,
+        traversal: &TraverseCoverageGraphWithLoops<'_>,
         branches: &[BcbBranch],
     ) -> Option<BcbBranch> {
         // Consider each loop on the current traversal context stack, top-down.
