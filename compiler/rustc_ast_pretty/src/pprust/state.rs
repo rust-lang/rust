@@ -148,7 +148,7 @@ pub fn print_crate<'a>(
 
 /// This makes printed token streams look slightly nicer,
 /// and also addresses some specific regressions described in #63896 and #73345.
-fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
+fn space_between(prev: &TokenTree, curr: &TokenTree) -> bool {
     if let TokenTree::Token(token, _) = prev {
         // No space after these tokens, e.g. `x.y`, `$e`
         // (The carets point to `prev`.)       ^     ^
@@ -159,9 +159,9 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
             return comment_kind != CommentKind::Line;
         }
     }
-    match tt {
+    match curr {
         // No space before these tokens, e.g. `foo,`, `println!`, `x.y`
-        // (The carets point to `token`.)         ^           ^     ^
+        // (The carets point to `curr`.)          ^           ^     ^
         //
         // FIXME: having `Not` here works well for macro invocations like
         // `println!()`, but is bad when `!` means "logical not" or "the never
@@ -575,7 +575,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         while let Some(tt) = iter.next() {
             self.print_tt(tt, convert_dollar_crate);
             if let Some(next) = iter.peek() {
-                if tt_prepend_space(next, tt) {
+                if space_between(tt, next) {
                     self.space();
                 }
             }
