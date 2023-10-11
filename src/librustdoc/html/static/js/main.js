@@ -1305,6 +1305,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
     // at most 400px. Otherwise, it would start out at the default size, then
     // grabbing the resize handle would suddenly cause it to jank to
     // its contraint-generated maximum.
+    const RUSTDOC_MOBILE_BREAKPOINT = 700;
     const BODY_MIN = 400;
     // At half-way past the minimum size, vanish the sidebar entirely
     const SIDEBAR_VANISH_THRESHOLD = SIDEBAR_MIN / 2;
@@ -1474,6 +1475,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
     }
     // Respond to the window resize event.
     window.addEventListener("resize", () => {
+        if (window.innerWidth < RUSTDOC_MOBILE_BREAKPOINT) {
+            return;
+        }
         stopResize();
         if (desiredSidebarSize >= (window.innerWidth - BODY_MIN)) {
             changeSidebarSize(window.innerWidth - BODY_MIN);

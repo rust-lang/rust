@@ -18,6 +18,10 @@ wait-for-property: (".sidebar", {"clientWidth": 500}, [NEAR])
 // make the window small enough that the sidebar has to shrink
 set-window-size: (750, 600)
 wait-for-property: (".sidebar", {"clientWidth": 350}, [NEAR])
+assert-local-storage: {"rustdoc-desktop-sidebar-width": "350"}
+set-window-size: (400, 600)
+wait-for-css: (".sidebar", {"display": "block", "left": "-1000px"})
+assert-local-storage: {"rustdoc-desktop-sidebar-width": "350"}
 
 // grow the window again to make the sidebar bigger
 set-window-size: (1280, 600)
