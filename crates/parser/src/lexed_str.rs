@@ -8,7 +8,10 @@
 //! Note that these tokens, unlike the tokens we feed into the parser, do
 //! include info about comments and whitespace.
 
-use rustc_dependencies::lexer as rustc_lexer;
+use rustc_dependencies::lexer::{
+    self as rustc_lexer,
+    unescape::{unescape_c_string, unescape_literal},
+};
 
 use std::ops;
 
@@ -284,18 +287,45 @@ impl<'a> Converter<'a> {
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 1..][..len - 1];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    rustc_lexer::unescape::unescape_literal(text, Mode::Str, &mut |_, res| {
+                        if let Err(e) = res {
+                            err = error_to_diagnostic_message(e, Mode::Str);
+                        }
+                    });
                 }
                 STRING
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the byte string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 2..][..len - 2];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    rustc_lexer::unescape::unescape_literal(text, Mode::ByteStr, &mut |_, res| {
+                        if let Err(e) = res {
+                            err = error_to_diagnostic_message(e, Mode::ByteStr);
+                        }
+                    })
                 }
                 BYTE_STRING
             }
             rustc_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 2..][..len - 2];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    rustc_lexer::unescape::unescape_c_string(text, Mode::CStr, &mut |_, res| {
+                        if let Err(e) = res {
+                            err = error_to_diagnostic_message(e, Mode::CStr);
+                        }
+                    })
                 }
                 C_STRING
             }
@@ -360,3 +390,13 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
         EscapeError::MultipleSkippedLinesWarning => "",
     }
 }
+
+fn fill_unescape_string_error(text: &str, mode: Mode, mut error_message: &str) {
+
+    rustc_lexer::unescape::unescape_c_string(text, mode, &mut |_, res| {
+        if let Err(e) = res {
+            error_message = error_to_diagnostic_message(e, mode);
+        }
+    });
+}
+
