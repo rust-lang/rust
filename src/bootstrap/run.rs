@@ -273,11 +273,14 @@ impl Step for GenerateCompletions {
 
     /// Uses `clap_complete` to generate shell completions.
     fn run(self, builder: &Builder<'_>) {
-        // FIXME(clubby789): enable zsh when clap#4898 is fixed
-        let [bash, fish, powershell] = ["x.py.sh", "x.py.fish", "x.py.ps1"]
+        let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
             .map(|filename| builder.src.join("src/etc/completions").join(filename));
+
         if let Some(comp) = get_completion(shells::Bash, &bash) {
             std::fs::write(&bash, comp).expect("writing bash completion");
+        }
+        if let Some(comp) = get_completion(shells::Zsh, &zsh) {
+            std::fs::write(&zsh, comp).expect("writing bash completion");
         }
         if let Some(comp) = get_completion(shells::Fish, &fish) {
             std::fs::write(&fish, comp).expect("writing fish completion");
