@@ -221,16 +221,23 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             _ => self.cache.stripped_mod,
         };
 
+        #[inline]
+        fn is_from_private_dep(tcx: TyCtxt<'_>, cache: &Cache, def_id: DefId) -> bool {
+            let krate = def_id.krate;
+
+            cache.masked_crates.contains(&krate) || tcx.is_private_dep(krate)
+        }
+
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
         if let clean::ImplItem(ref i) = *item.kind &&
             (self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
-                    .map_or(false, |t| self.cache.masked_crates.contains(&t.def_id().krate))
+                    .map_or(false, |t| is_from_private_dep(self.tcx, self.cache, t.def_id()))
                 || i.for_
                     .def_id(self.cache)
-                    .map_or(false, |d| self.cache.masked_crates.contains(&d.krate)))
+                    .map_or(false, |d| is_from_private_dep(self.tcx, self.cache, d)))
         {
             return None;
         }
@@ -310,19 +317,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                                 for_: clean::Type::BorrowedRef { type_, .. },
                                 ..
                             } => type_.def_id(&self.cache),
-                            ParentStackItem::Impl { for_, trait_, .. } => {
-                                if let Some(trait_) = trait_ {
-                                    let trait_did = trait_.def_id();
-                                    // If this is a foreign trait impl but the trait documentation
-                                    // is not available, we should not allow the methods to show up
-                                    // in the search results.
-                                    if !trait_did.is_local() && self.tcx.is_private_dep(trait_did.krate)
-                                    {
-                                        return None;
-                                    }
-                                }
-                                for_.def_id(&self.cache)
-                            }
+                            ParentStackItem::Impl { for_, .. } => for_.def_id(&self.cache),
                             ParentStackItem::Type(item_id) => item_id.as_def_id(),
                         };
                         let path = did
