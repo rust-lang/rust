@@ -128,9 +128,13 @@ fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
             {
                 literal = Some(s);
             } else if let token::LitKind::Integer = lit.kind
-                && let Ok(LitKind::Int(n, _)) = LitKind::from_token_lit(lit)
+                && let Ok(LitKind::Int(n, ty)) = LitKind::from_token_lit(lit)
             {
-                literal = Some(Symbol::intern(&n.to_string()));
+                // Check if n fits in the type of the argument. If it doesn't,
+                // simply don't inline the literal here, the error will be emitted at a later stage.
+                if n <= ty.max_literal_value() {
+                    literal = Some(Symbol::intern(&n.to_string()));
+                }
             }
         }
 

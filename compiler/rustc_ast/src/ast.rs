@@ -1795,6 +1795,26 @@ pub enum LitIntType {
     Unsuffixed,
 }
 
+impl LitIntType {
+    pub const fn max_literal_value(&self) -> u128 {
+        match self {
+            LitIntType::Signed(IntTy::I8) => i8::MAX as u128,
+            LitIntType::Signed(IntTy::I16) => i16::MAX as u128,
+            LitIntType::Signed(IntTy::I32) => i32::MAX as u128,
+            LitIntType::Signed(IntTy::I64) => i64::MAX as u128,
+            LitIntType::Signed(IntTy::I128) => i128::MAX as u128,
+            LitIntType::Signed(IntTy::Isize) => isize::MAX as u128,
+            LitIntType::Unsigned(UintTy::U8) => u8::MAX as u128,
+            LitIntType::Unsigned(UintTy::U16) => u16::MAX as u128,
+            LitIntType::Unsigned(UintTy::U32) => u32::MAX as u128,
+            LitIntType::Unsigned(UintTy::U64) => u64::MAX as u128,
+            LitIntType::Unsigned(UintTy::U128) => u128::MAX,
+            LitIntType::Unsigned(UintTy::Usize) => usize::MAX as u128,
+            LitIntType::Unsuffixed => u128::MAX,
+        }
+    }
+}
+
 /// Type of the float literal based on provided suffix.
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq)]
 #[derive(HashStable_Generic)]
