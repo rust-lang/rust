@@ -1623,12 +1623,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .lower_generic_params(bound_generic_params, hir::GenericParamSource::Binder),
                 bounded_ty: self
                     .lower_ty(bounded_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
-                bounds: self.arena.alloc_from_iter(bounds.iter().map(|bound| {
-                    self.lower_param_bound(
-                        bound,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
-                    )
-                })),
+                bounds: self.lower_param_bounds(
+                    bounds,
+                    &ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                ),
                 span: self.lower_span(*span),
                 origin: PredicateOrigin::WhereClause,
             }),

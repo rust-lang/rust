@@ -56,7 +56,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => self.deduce_closure_signature(ty),
+            Some(ty) => {
+                self.deduce_closure_signature(self.try_structurally_resolve_type(expr_span, ty))
+            }
             None => (None, None),
         };
         let body = self.tcx.hir().body(closure.body);
@@ -688,8 +690,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span_bug!(self.tcx.def_span(expr_def_id), "async fn generator outside of a fn")
         });
 
+        let closure_span = self.tcx.def_span(expr_def_id);
         let ret_ty = ret_coercion.borrow().expected_ty();
-        let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
+        let ret_ty = self.try_structurally_resolve_type(closure_span, ret_ty);
 
         let get_future_output = |predicate: ty::Predicate<'tcx>, span| {
             // Search for a pending obligation like
@@ -711,8 +714,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let span = self.tcx.def_span(expr_def_id);
-
         let output_ty = match *ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => {
                 self.obligations_for_self_ty(ret_vid).find_map(|obligation| {
@@ -726,17 +727,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return None,
             _ => span_bug!(
-                span,
+                closure_span,
                 "async fn generator return type not an inference variable: {ret_ty}"
             ),
         };
 
-        let output_ty = self.normalize(span, output_ty);
+        let output_ty = self.normalize(closure_span, output_ty);
 
         // async fn that have opaque types in their return type need to redo the conversion to inference variables
         // as they fetch the still opaque version from the signature.
         let InferOk { value: output_ty, obligations } = self
-            .replace_opaque_types_with_inference_vars(output_ty, body_def_id, span, self.param_env);
+            .replace_opaque_types_with_inference_vars(
+                output_ty,
+                body_def_id,
+                closure_span,
+                self.param_env,
+            );
         self.register_predicates(obligations);
 
         Some(output_ty)
