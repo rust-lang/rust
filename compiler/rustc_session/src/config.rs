@@ -12,6 +12,7 @@ use crate::{EarlyErrorHandler, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
+use rustc_target::spec::LinkSelfContainedComponents;
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
@@ -232,63 +233,35 @@ pub struct LinkSelfContained {
     /// Used for compatibility with the existing opt-in and target inference.
     pub explicitly_set: Option<bool>,
 
-    /// The components that are enabled.
-    components: LinkSelfContainedComponents,
-}
+    /// The components that are enabled on the CLI, using the `+component` syntax or one of the
+    /// `true` shorcuts.
+    enabled_components: LinkSelfContainedComponents,
 
-bitflags::bitflags! {
-    #[derive(Default)]
-    /// The `-C link-self-contained` components that can individually be enabled or disabled.
-    pub struct LinkSelfContainedComponents: u8 {
-        /// CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
-        const CRT_OBJECTS = 1 << 0;
-        /// libc static library (e.g. on `musl`, `wasi` targets)
-        const LIBC        = 1 << 1;
-        /// libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
-        const UNWIND      = 1 << 2;
-        /// Linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for `rust-lld`)
-        const LINKER      = 1 << 3;
-        /// Sanitizer runtime libraries
-        const SANITIZERS  = 1 << 4;
-        /// Other MinGW libs and Windows import libs
-        const MINGW       = 1 << 5;
-    }
-}
-
-impl FromStr for LinkSelfContainedComponents {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
-            "libc" => LinkSelfContainedComponents::LIBC,
-            "unwind" => LinkSelfContainedComponents::UNWIND,
-            "linker" => LinkSelfContainedComponents::LINKER,
-            "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
-            "mingw" => LinkSelfContainedComponents::MINGW,
-            _ => return Err(()),
-        })
-    }
+    /// The components that are disabled on the CLI, using the `-component` syntax or one of the
+    /// `false` shortcuts.
+    disabled_components: LinkSelfContainedComponents,
 }
 
 impl LinkSelfContained {
     /// Incorporates an enabled or disabled component as specified on the CLI, if possible.
     /// For example: `+linker`, and `-crto`.
-    pub(crate) fn handle_cli_component(&mut self, component: &str) -> Result<(), ()> {
+    pub(crate) fn handle_cli_component(&mut self, component: &str) -> Option<()> {
         // Note that for example `-Cself-contained=y -Cself-contained=-linker` is not an explicit
         // set of all values like `y` or `n` used to be. Therefore, if this flag had previously been
         // set in bulk with its historical values, then manually setting a component clears that
         // `explicitly_set` state.
         if let Some(component_to_enable) = component.strip_prefix('+') {
             self.explicitly_set = None;
-            self.components.insert(component_to_enable.parse()?);
-            Ok(())
+            self.enabled_components
+                .insert(LinkSelfContainedComponents::from_str(component_to_enable)?);
+            Some(())
         } else if let Some(component_to_disable) = component.strip_prefix('-') {
             self.explicitly_set = None;
-            self.components.remove(component_to_disable.parse()?);
-            Ok(())
+            self.disabled_components
+                .insert(LinkSelfContainedComponents::from_str(component_to_disable)?);
+            Some(())
         } else {
-            Err(())
+            None
         }
     }
 
@@ -296,11 +269,14 @@ impl LinkSelfContained {
     /// purposes.
     pub(crate) fn set_all_explicitly(&mut self, enabled: bool) {
         self.explicitly_set = Some(enabled);
-        self.components = if enabled {
-            LinkSelfContainedComponents::all()
+
+        if enabled {
+            self.enabled_components = LinkSelfContainedComponents::all();
+            self.disabled_components = LinkSelfContainedComponents::empty();
         } else {
-            LinkSelfContainedComponents::empty()
-        };
+            self.enabled_components = LinkSelfContainedComponents::empty();
+            self.disabled_components = LinkSelfContainedComponents::all();
+        }
     }
 
     /// Helper creating a fully enabled `LinkSelfContained` instance. Used in tests.
@@ -314,13 +290,32 @@ impl LinkSelfContained {
     /// components was set individually. This would also require the `-Zunstable-options` flag, to
     /// be allowed.
     fn are_unstable_variants_set(&self) -> bool {
-        let any_component_set = !self.components.is_empty();
+        let any_component_set =
+            !self.enabled_components.is_empty() || !self.disabled_components.is_empty();
         self.explicitly_set.is_none() && any_component_set
     }
 
-    /// Returns whether the self-contained linker component is enabled.
-    pub fn linker(&self) -> bool {
-        self.components.contains(LinkSelfContainedComponents::LINKER)
+    /// Returns whether the self-contained linker component was enabled on the CLI, using the
+    /// `-C link-self-contained=+linker` syntax, or one of the `true` shorcuts.
+    pub fn is_linker_enabled(&self) -> bool {
+        self.enabled_components.contains(LinkSelfContainedComponents::LINKER)
+    }
+
+    /// Returns whether the self-contained linker component was disabled on the CLI, using the
+    /// `-C link-self-contained=-linker` syntax, or one of the `false` shorcuts.
+    pub fn is_linker_disabled(&self) -> bool {
+        self.disabled_components.contains(LinkSelfContainedComponents::LINKER)
+    }
+
+    /// Returns CLI inconsistencies to emit errors: individual components were both enabled and
+    /// disabled.
+    fn check_consistency(&self) -> Option<LinkSelfContainedComponents> {
+        if self.explicitly_set.is_some() {
+            None
+        } else {
+            let common = self.enabled_components.intersection(self.disabled_components);
+            if common.is_empty() { None } else { Some(common) }
+        }
     }
 }
 
@@ -2758,9 +2753,8 @@ pub fn build_session_options(
     }
 
     // For testing purposes, until we have more feedback about these options: ensure `-Z
-    // unstable-options` is required when using the unstable `-C link-self-contained` options, like
-    // `-C link-self-contained=+linker`, and when using the unstable `-C linker-flavor` options, like
-    // `-C linker-flavor=gnu-lld-cc`.
+    // unstable-options` is required when using the unstable `-C link-self-contained` and `-C
+    // linker-flavor` options.
     if !nightly_options::is_unstable_enabled(matches) {
         let uses_unstable_self_contained_option =
             cg.link_self_contained.are_unstable_variants_set();
@@ -2780,6 +2774,19 @@ pub fn build_session_options(
                 ));
             }
         }
+    }
+
+    // Check `-C link-self-contained` for consistency: individual components cannot be both enabled
+    // and disabled at the same time.
+    if let Some(erroneous_components) = cg.link_self_contained.check_consistency() {
+        let names: String = erroneous_components
+            .into_iter()
+            .map(|c| c.as_str().unwrap())
+            .intersperse(", ")
+            .collect();
+        handler.early_error(format!(
+            "some `-C link-self-contained` components were both enabled and disabled: {names}"
+        ));
     }
 
     let prints = collect_print_requests(handler, &mut cg, &mut unstable_opts, matches);
