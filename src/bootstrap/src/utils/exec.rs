@@ -18,7 +18,7 @@ pub enum OutputMode {
     /// Print the output (by inheriting stdout/stderr).
     PrintOutput,
     /// Suppress the output if the command succeeds, otherwise print the output.
-    Suppress,
+    SuppressOnSuccess,
 }
 
 /// Wrapper around `std::process::Command`.
@@ -43,6 +43,6 @@ impl<'a> BootstrapCommand<'a> {
 
 impl<'a> From<&'a mut Command> for BootstrapCommand<'a> {
     fn from(command: &'a mut Command) -> Self {
-        Self { command, failure_behavior: None, output_mode: OutputMode::Suppress }
+        Self { command, failure_behavior: None, output_mode: OutputMode::SuppressOnSuccess }
     }
 }

@@ -937,14 +937,18 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
-        self.run_cmd(BootstrapCommand::from(cmd).fail_fast().output_mode(OutputMode::Suppress));
+        self.run_cmd(
+            BootstrapCommand::from(cmd).fail_fast().output_mode(OutputMode::SuppressOnSuccess),
+        );
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
-        self.run_cmd(BootstrapCommand::from(cmd).delay_failure().output_mode(OutputMode::Suppress))
+        self.run_cmd(
+            BootstrapCommand::from(cmd).delay_failure().output_mode(OutputMode::SuppressOnSuccess),
+        )
     }
 
     /// A centralized function for running commands that do not return output.
@@ -965,7 +969,7 @@ impl Build {
                 }),
                 matches!(mode, OutputMode::PrintAll),
             ),
-            OutputMode::Suppress => (command.command.output(), true),
+            OutputMode::SuppressOnSuccess => (command.command.output(), true),
         };
 
         let output = match output {
