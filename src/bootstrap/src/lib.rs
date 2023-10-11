@@ -997,19 +997,18 @@ impl Build {
         match result {
             Ok(_) => true,
             Err(_) => {
-                if let Some(failure_behavior) = command.failure_behavior {
-                    match failure_behavior {
-                        BehaviorOnFailure::DelayFail => {
-                            let mut failures = self.delayed_failures.borrow_mut();
-                            failures.push(format!("{command:?}"));
-                        }
-                        BehaviorOnFailure::Exit => {
+                match command.failure_behavior {
+                    BehaviorOnFailure::DelayFail => {
+                        if self.fail_fast {
                             exit!(1);
                         }
+
+                        let mut failures = self.delayed_failures.borrow_mut();
+                        failures.push(format!("{command:?}"));
                     }
-                }
-                if self.fail_fast {
-                    exit!(1);
+                    BehaviorOnFailure::Exit => {
+                        exit!(1);
+                    }
                 }
                 false
             }

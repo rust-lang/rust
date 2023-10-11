@@ -25,16 +25,16 @@ pub enum OutputMode {
 #[derive(Debug)]
 pub struct BootstrapCommand<'a> {
     pub command: &'a mut Command,
-    pub failure_behavior: Option<BehaviorOnFailure>,
+    pub failure_behavior: BehaviorOnFailure,
     pub output_mode: OutputMode,
 }
 
 impl<'a> BootstrapCommand<'a> {
     pub fn delay_failure(self) -> Self {
-        Self { failure_behavior: Some(BehaviorOnFailure::DelayFail), ..self }
+        Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
     pub fn fail_fast(self) -> Self {
-        Self { failure_behavior: Some(BehaviorOnFailure::Exit), ..self }
+        Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
     pub fn output_mode(self, output_mode: OutputMode) -> Self {
         Self { output_mode, ..self }
@@ -43,6 +43,10 @@ impl<'a> BootstrapCommand<'a> {
 
 impl<'a> From<&'a mut Command> for BootstrapCommand<'a> {
     fn from(command: &'a mut Command) -> Self {
-        Self { command, failure_behavior: None, output_mode: OutputMode::SuppressOnSuccess }
+        Self {
+            command,
+            failure_behavior: BehaviorOnFailure::Exit,
+            output_mode: OutputMode::SuppressOnSuccess,
+        }
     }
 }
