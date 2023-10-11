@@ -2940,10 +2940,6 @@ impl Step for TestHelpers {
         let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
-        // FIXME: Workaround for https://github.com/emscripten-core/emscripten/issues/9013
-        if target.contains("emscripten") {
-            cfg.pic(false);
-        }
 
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform cc of these compilers. Note, though, that
