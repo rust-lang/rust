@@ -274,7 +274,7 @@ impl<'a> Converter<'a> {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
                     let i = text.rfind('\'').unwrap();
                     let text = &text[..i];
-                    if let Err(e) = rustc_lexer::unescape::unescape_char(text) {
+                    if let Err(e) = rustc_lexer::unescape::unescape_byte(text) {
                         err = error_to_diagnostic_message(e, Mode::Byte);
                     }
                 }
