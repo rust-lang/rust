@@ -2450,7 +2450,10 @@ pub unsafe fn _mm_setzero_pd() -> __m128d {
 #[cfg_attr(test, assert_instr(movmskpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movemask_pd(a: __m128d) -> i32 {
-    simd_bitmask::<u64x2, u8>(transmute(a)).into()
+    // Propagate the highest bit to the rest, because simd_bitmask
+    // requires all-1 or all-0.
+    let mask: i64x2 = simd_lt(transmute(a), i64x2::splat(0));
+    simd_bitmask::<i64x2, u8>(mask).into()
 }
 
 /// Loads 128-bits (composed of 2 packed double-precision (64-bit)

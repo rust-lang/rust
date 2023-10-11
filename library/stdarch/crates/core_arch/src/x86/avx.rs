@@ -2066,7 +2066,10 @@ pub unsafe fn _mm_testnzc_ps(a: __m128, b: __m128) -> i32 {
 #[cfg_attr(test, assert_instr(vmovmskpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
-    simd_bitmask::<u64x4, u8>(transmute(a)).into()
+    // Propagate the highest bit to the rest, because simd_bitmask
+    // requires all-1 or all-0.
+    let mask: i64x4 = simd_lt(transmute(a), i64x4::splat(0));
+    simd_bitmask::<i64x4, u8>(mask).into()
 }
 
 /// Sets each bit of the returned mask based on the most significant bit of the
@@ -2079,7 +2082,10 @@ pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
 #[cfg_attr(test, assert_instr(vmovmskps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_movemask_ps(a: __m256) -> i32 {
-    simd_bitmask::<u32x8, u8>(transmute(a)).into()
+    // Propagate the highest bit to the rest, because simd_bitmask
+    // requires all-1 or all-0.
+    let mask: i32x8 = simd_lt(transmute(a), i32x8::splat(0));
+    simd_bitmask::<i32x8, u8>(mask).into()
 }
 
 /// Returns vector of type __m256d with all elements set to zero.

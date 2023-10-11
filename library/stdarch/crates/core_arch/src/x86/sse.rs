@@ -1081,7 +1081,10 @@ pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(movmskps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
-    simd_bitmask::<u32x4, u8>(transmute(a)).into()
+    // Propagate the highest bit to the rest, because simd_bitmask
+    // requires all-1 or all-0.
+    let mask: i32x4 = simd_lt(transmute(a), i32x4::splat(0));
+    simd_bitmask::<i32x4, u8>(mask).into()
 }
 
 /// Construct a `__m128` with the lowest element read from `p` and the other
