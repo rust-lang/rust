@@ -157,10 +157,18 @@ where
         }
 
         let mut region_constraints = QueryRegionConstraints::default();
-        let (output, error_info, mut obligations, _) =
-            Q::fully_perform_into(self, infcx, &mut region_constraints).map_err(|_| {
-                infcx.tcx.sess.delay_span_bug(span, format!("error performing {self:?}"))
-            })?;
+        let (output, error_info, mut obligations) =
+            Q::fully_perform_into(self, infcx, &mut region_constraints)
+                .map_err(|_| {
+                    infcx.tcx.sess.delay_span_bug(span, format!("error performing {self:?}"))
+                })
+                .and_then(|(output, error_info, obligations, certainty)| match certainty {
+                    Certainty::Proven => Ok((output, error_info, obligations)),
+                    Certainty::Ambiguous => Err(infcx
+                        .tcx
+                        .sess
+                        .delay_span_bug(span, format!("ambiguity performing {self:?}"))),
+                })?;
 
         // Typically, instantiating NLL query results does not
         // create obligations. However, in some cases there
