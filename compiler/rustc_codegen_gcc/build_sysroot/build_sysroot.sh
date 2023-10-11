@@ -5,9 +5,9 @@
 set -e
 cd $(dirname "$0")
 
-pushd ../ >/dev/null
+pushd ../
 source ./config.sh
-popd >/dev/null
+popd
 
 # Cleanup for previous run
 #     v Clean target dir except for build scripts and incremental cache

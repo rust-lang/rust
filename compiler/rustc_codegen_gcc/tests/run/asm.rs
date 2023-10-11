@@ -124,7 +124,7 @@ fn main() {
     // check const (ATT syntax)
     let mut x: u64 = 42;
     unsafe {
-        asm!("add {}, {}",
+        asm!("add ${}, {}",
             const 1,
             inout(reg) x,
             options(att_syntax)

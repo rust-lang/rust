@@ -452,10 +452,6 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         }
 
                         InlineAsmOperandRef::Const { ref string } => {
-                            // Const operands get injected directly into the template
-                            if att_dialect {
-                                template_str.push('$');
-                            }
                             template_str.push_str(string);
                         }
                     }

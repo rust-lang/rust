@@ -236,10 +236,16 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 let arg2 = builder.context.new_cast(None, arg2, arg2_type);
                 args = vec![new_args[0], arg2].into();
             },
+            // These builtins are sent one more argument than needed.
             "__builtin_prefetch" => {
                 let mut new_args = args.to_vec();
                 new_args.pop();
                 args = new_args.into();
+            },
+            // The GCC version returns one value of the tuple through a pointer.
+            "__builtin_ia32_rdrand64_step" => {
+                let arg = builder.current_func().new_local(None, builder.ulonglong_type, "return_rdrand_arg");
+                args = vec![arg.get_address(None)].into();
             },
             _ => (),
         }
@@ -360,6 +366,19 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc,
             // The return value was assigned to the result pointer above. In order to not call the
             // builtin twice, we overwrite the return value with a dummy value.
             return_value = builder.context.new_rvalue_zero(builder.int_type);
+        },
+        "__builtin_ia32_rdrand64_step" => {
+            let random_number = args[0].dereference(None).to_rvalue();
+            let success_variable = builder.current_func().new_local(None, return_value.get_type(), "success");
+            builder.llbb().add_assignment(None, success_variable, return_value);
+
+            let field1 = builder.context.new_field(None, random_number.get_type(), "random_number");
+            let field2 = builder.context.new_field(None, return_value.get_type(), "success");
+            let struct_type = builder.context.new_struct_type(None, "rdrand_result", &[field1, field2]);
+            return_value = builder.context.new_struct_constructor(None, struct_type.as_type(), None, &[
+                random_number,
+                success_variable.to_rvalue(),
+            ]);
         },
         _ => (),
     }
@@ -613,6 +632,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.fshr.v8i16" => "__builtin_ia32_vpshrdv_v8hi",
         "llvm.x86.fma.vfmadd.sd" => "__builtin_ia32_vfmaddsd3",
         "llvm.x86.fma.vfmadd.ss" => "__builtin_ia32_vfmaddss3",
+        "llvm.x86.rdrand.64" => "__builtin_ia32_rdrand64_step",
 
         // The above doc points to unknown builtins for the following, so override them:
         "llvm.x86.avx2.gather.d.d" => "__builtin_ia32_gathersiv4si",
