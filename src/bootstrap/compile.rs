@@ -907,7 +907,7 @@ impl Step for Rustc {
         }
 
         if builder.build.config.enable_bolt_settings && compiler.stage == 1 {
-            // Relocations are required for BOLT to work.k
+            // Relocations are required for BOLT to work.
             cargo.env("RUSTC_BOLT_LINK_FLAGS", "1");
         }
 

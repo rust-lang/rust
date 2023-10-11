@@ -215,7 +215,12 @@ fn execute_pipeline(
         print_free_disk_space()?;
 
         stage.section("Build PGO optimized rustc", |section| {
-            Bootstrap::build(env).rustc_pgo_optimize(&profile).run(section)
+            let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&profile);
+            if env.use_bolt() {
+                cmd = cmd.with_rustc_bolt_ldflags();
+            }
+
+            cmd.run(section)
         })?;
 
         Ok(profile)
@@ -259,7 +264,6 @@ fn execute_pipeline(
             stage.section("Build PGO optimized LLVM", |stage| {
                 Bootstrap::build(env)
                     .with_llvm_bolt_ldflags()
-                    .with_rustc_bolt_ldflags()
                     .llvm_pgo_optimize(&llvm_pgo_profile)
                     .avoid_rustc_rebuild()
                     .run(stage)
@@ -270,7 +274,7 @@ fn execute_pipeline(
 
             log::info!("Optimizing {llvm_lib} with BOLT");
 
-            // FIXME(kobzol: try gather profiles together, at once for LLVM and rustc
+            // FIXME(kobzol): try gather profiles together, at once for LLVM and rustc
             // Instrument the libraries and gather profiles
             let llvm_profile = with_bolt_instrumented(&llvm_lib, |llvm_profile_dir| {
                 stage.section("Gather profiles", |_| {
