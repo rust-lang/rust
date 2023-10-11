@@ -93,7 +93,6 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc_span::def_id::DefId;
@@ -778,18 +777,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             // Operations.
             Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
-            Rvalue::Cast(kind, ref mut value, to) => {
-                let from = value.ty(self.local_decls, self.tcx);
-                let value = self.simplify_operand(value, location)?;
-                if let CastKind::PointerCoercion(
-                    PointerCoercion::ReifyFnPointer | PointerCoercion::ClosureFnPointer(_),
-                ) = kind
-                {
-                    // Each reification of a generic fn may get a different pointer.
-                    // Do not try to merge them.
-                    return self.new_opaque();
-                }
-                Value::Cast { kind, value, from, to }
+            Rvalue::Cast(ref mut kind, ref mut value, to) => {
+                return self.simplify_cast(kind, value, to, location);
             }
             Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
                 let ty = lhs.ty(self.local_decls, self.tcx);
@@ -1033,6 +1022,47 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         } else {
             Some(result)
         }
+    }
+
+    fn simplify_cast(
+        &mut self,
+        kind: &mut CastKind,
+        operand: &mut Operand<'tcx>,
+        to: Ty<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
+        use rustc_middle::ty::adjustment::PointerCoercion::*;
+        use CastKind::*;
+
+        let mut from = operand.ty(self.local_decls, self.tcx);
+        let mut value = self.simplify_operand(operand, location)?;
+
+        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_)) = kind {
+            // Each reification of a generic fn may get a different pointer.
+            // Do not try to merge them.
+            return self.new_opaque();
+        }
+
+        if let PtrToPtr | PointerCoercion(MutToConstPointer) = kind
+            && let Value::Cast { kind: inner_kind, value: inner_value, from: inner_from, to: _ } =
+                *self.get(value)
+            && let PtrToPtr | PointerCoercion(MutToConstPointer) = inner_kind
+        {
+            from = inner_from;
+            value = inner_value;
+            *kind = PtrToPtr;
+            if inner_from == to {
+                return Some(inner_value);
+            }
+            if let Some(const_) = self.try_as_constant(value) {
+                *operand = Operand::Constant(Box::new(const_));
+            } else if let Some(local) = self.try_as_local(value, location) {
+                *operand = Operand::Copy(local.into());
+                self.reused_locals.insert(local);
+            }
+        }
+
+        Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
     }
 
     fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
