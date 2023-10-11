@@ -3,7 +3,7 @@ use super::{
     mir::{Body, Mutability},
     with, AllocId, DefId, Symbol,
 };
-use crate::Opaque;
+use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Copy, Clone)]
@@ -84,6 +84,27 @@ impl Debug for Span {
             .field("repr", &with(|cx| cx.print_span(*self)))
             .finish()
     }
+}
+
+impl Span {
+    /// Return filename for diagnostic purposes
+    pub fn get_filename(&self) -> Filename {
+        with(|c| c.get_filename(self))
+    }
+
+    /// Return lines that corespond to this `Span`
+    pub fn get_lines(&self) -> Vec<LineInfo> {
+        with(|c| c.get_lines(&self))
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+/// Information you get from `Span` in a struct form.
+/// Line and col start from 1.
+pub struct LineInfo {
+    pub line_index: usize,
+    pub start_col: usize,
+    pub end_col: usize,
 }
 
 impl IndexedVal for Span {

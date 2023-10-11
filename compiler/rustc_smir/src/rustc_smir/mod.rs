@@ -18,7 +18,7 @@ use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
 use stable_mir::mir::{CopyNonOverlapping, Statement, UserTypeProjection, VariantIdx};
 use stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy};
-use stable_mir::{self, opaque, Context};
+use stable_mir::{self, opaque, Context, Filename};
 use tracing::debug;
 
 mod alloc;
@@ -52,6 +52,36 @@ impl<'tcx> Context for Tables<'tcx> {
 
     fn print_span(&self, span: stable_mir::ty::Span) -> String {
         self.tcx.sess.source_map().span_to_diagnostic_string(self[span])
+    }
+
+    fn get_filename(&self, span: &Span) -> Filename {
+        opaque(
+            &self
+                .tcx
+                .sess
+                .source_map()
+                .span_to_filename(self[*span])
+                .display(rustc_span::FileNameDisplayPreference::Short)
+                .to_string(),
+        )
+    }
+
+    fn get_lines(&self, span: &Span) -> Vec<stable_mir::ty::LineInfo> {
+        let lines = &self
+            .tcx
+            .sess
+            .source_map()
+            .span_to_lines(self[*span])
+            .unwrap()
+            .lines
+            .iter()
+            .map(|line| stable_mir::ty::LineInfo {
+                line_index: line.line_index + 1,
+                start_col: line.start_col.0 + 1,
+                end_col: line.end_col.0 + 1,
+            })
+            .collect::<Vec<stable_mir::ty::LineInfo>>();
+        lines.to_vec()
     }
 
     fn def_kind(&mut self, def_id: stable_mir::DefId) -> stable_mir::DefKind {
