@@ -22,7 +22,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
-use rustc_trait_selection::traits;
 
 use crate::const_prop::CanConstProp;
 use crate::const_prop::ConstPropMachine;
@@ -35,9 +34,9 @@ use crate::MirLint;
 /// Severely regress performance.
 const MAX_ALLOC_LIMIT: u64 = 1024;
 
-pub struct ConstProp;
+pub struct ConstPropLint;
 
-impl<'tcx> MirLint<'tcx> for ConstProp {
+impl<'tcx> MirLint<'tcx> for ConstPropLint {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         if body.tainted_by_errors.is_some() {
             return;
@@ -49,61 +48,25 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
         }
 
         let def_id = body.source.def_id().expect_local();
-        let is_fn_like = tcx.def_kind(def_id).is_fn_like();
-        let is_assoc_const = tcx.def_kind(def_id) == DefKind::AssocConst;
+        let def_kind = tcx.def_kind(def_id);
+        let is_fn_like = def_kind.is_fn_like();
+        let is_assoc_const = def_kind == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
             // skip anon_const/statics/consts because they'll be evaluated by miri anyway
-            trace!("ConstProp skipped for {:?}", def_id);
+            trace!("ConstPropLint skipped for {:?}", def_id);
             return;
         }
 
-        let is_generator = tcx.type_of(def_id.to_def_id()).instantiate_identity().is_generator();
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
-        if is_generator {
-            trace!("ConstProp skipped for generator {:?}", def_id);
+        if let DefKind::Generator = def_kind {
+            trace!("ConstPropLint skipped for generator {:?}", def_id);
             return;
         }
 
-        // Check if it's even possible to satisfy the 'where' clauses
-        // for this item.
-        // This branch will never be taken for any normal function.
-        // However, it's possible to `#!feature(trivial_bounds)]` to write
-        // a function with impossible to satisfy clauses, e.g.:
-        // `fn foo() where String: Copy {}`
-        //
-        // We don't usually need to worry about this kind of case,
-        // since we would get a compilation error if the user tried
-        // to call it. However, since we can do const propagation
-        // even without any calls to the function, we need to make
-        // sure that it even makes sense to try to evaluate the body.
-        // If there are unsatisfiable where clauses, then all bets are
-        // off, and we just give up.
-        //
-        // We manually filter the predicates, skipping anything that's not
-        // "global". We are in a potentially generic context
-        // (e.g. we are evaluating a function without substituting generic
-        // parameters, so this filtering serves two purposes:
-        //
-        // 1. We skip evaluating any predicates that we would
-        // never be able prove are unsatisfiable (e.g. `<T as Foo>`
-        // 2. We avoid trying to normalize predicates involving generic
-        // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
-        // the normalization code (leading to cycle errors), since
-        // it's usually never invoked in this way.
-        let predicates = tcx
-            .predicates_of(def_id.to_def_id())
-            .predicates
-            .iter()
-            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-        if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
-            trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
-            return;
-        }
-
-        trace!("ConstProp starting for {:?}", def_id);
+        trace!("ConstPropLint starting for {:?}", def_id);
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
         // constants, instead of just checking for const-folding succeeding.
@@ -112,7 +75,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
         let mut linter = ConstPropagator::new(body, tcx);
         linter.visit_body(body);
 
-        trace!("ConstProp done for {:?}", def_id);
+        trace!("ConstPropLint done for {:?}", def_id);
     }
 }
 
