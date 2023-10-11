@@ -1174,9 +1174,6 @@ impl<'a> Builder<'a> {
         if let Some(linker) = self.linker(compiler.host) {
             cmd.env("RUSTDOC_LINKER", linker);
         }
-        if self.is_fuse_ld_lld(compiler.host) {
-            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
-        }
         cmd
     }
 
@@ -1267,6 +1264,8 @@ impl<'a> Builder<'a> {
     ) -> Cargo {
         let mut cargo = self.bare_cargo(compiler, mode, target, cmd);
         let out_dir = self.stage_out(compiler, mode);
+
+        let mut hostflags = HostFlags::default();
 
         // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
         // so we need to explicitly clear out if they've been updated.
@@ -1438,6 +1437,20 @@ impl<'a> Builder<'a> {
                 rustflags.arg(&format!("--check-cfg=values({name}{values})"));
             }
         }
+
+        // FIXME(rust-lang/cargo#5754) we shouldn't be using special command arguments
+        // to the host invocation here, but rather Cargo should know what flags to pass rustc
+        // itself.
+        if stage == 0 {
+            hostflags.arg("--cfg=bootstrap");
+        }
+        // Cargo doesn't pass RUSTFLAGS to proc_macros:
+        // https://github.com/rust-lang/cargo/issues/4423
+        // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
+        // We also declare that the flag is expected, which we need to do to not
+        // get warnings about it being unexpected.
+        hostflags.arg("-Zunstable-options");
+        hostflags.arg("--check-cfg=values(bootstrap)");
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
@@ -1655,11 +1668,10 @@ impl<'a> Builder<'a> {
         }
 
         if let Some(host_linker) = self.linker(compiler.host) {
-            cargo.env("RUSTC_HOST_LINKER", host_linker);
+            hostflags.arg(format!("-Clinker={}", host_linker.display()));
         }
         if self.is_fuse_ld_lld(compiler.host) {
-            cargo.env("RUSTC_HOST_FUSE_LD_LLD", "1");
-            cargo.env("RUSTDOC_FUSE_LD_LLD", "1");
+            hostflags.arg("-Clink-args=-fuse-ld=lld");
         }
 
         if let Some(target_linker) = self.linker(target) {
@@ -1743,7 +1755,8 @@ impl<'a> Builder<'a> {
         }
 
         if let Some(x) = self.crt_static(compiler.host) {
-            cargo.env("RUSTC_HOST_CRT_STATIC", x.to_string());
+            let sign = if x { "+" } else { "-" };
+            hostflags.arg(format!("-Ctarget-feature={sign}crt-static"));
         }
 
         if let Some(map_to) = self.build.debuginfo_map_to(GitRepo::Rustc) {
@@ -2055,7 +2068,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTFLAGS", &rustc_args.join(" "));
         }
 
-        Cargo { command: cargo, rustflags, rustdocflags, allow_features }
+        Cargo { command: cargo, rustflags, rustdocflags, hostflags, allow_features }
     }
 
     /// Ensure that a given step is built, returning its output. This will
@@ -2233,11 +2246,36 @@ impl Rustflags {
     }
 }
 
+/// Flags that are passed to the `rustc` shim binary.
+/// These flags will only be applied when compiling host code, i.e. when
+/// `--target` is unset.
+#[derive(Debug, Default)]
+pub struct HostFlags {
+    rustc: Vec<String>,
+}
+
+impl HostFlags {
+    const SEPARATOR: &'static str = " ";
+
+    /// Adds a host rustc flag.
+    fn arg<S: Into<String>>(&mut self, flag: S) {
+        let value = flag.into().trim().to_string();
+        assert!(!value.contains(Self::SEPARATOR));
+        self.rustc.push(value);
+    }
+
+    /// Encodes all the flags into a single string.
+    fn encode(self) -> String {
+        self.rustc.join(Self::SEPARATOR)
+    }
+}
+
 #[derive(Debug)]
 pub struct Cargo {
     command: Command,
     rustflags: Rustflags,
     rustdocflags: Rustflags,
+    hostflags: HostFlags,
     allow_features: String,
 }
 
@@ -2307,6 +2345,11 @@ impl From<Cargo> for Command {
         let rustdocflags = &cargo.rustdocflags.0;
         if !rustdocflags.is_empty() {
             cargo.command.env("RUSTDOCFLAGS", rustdocflags);
+        }
+
+        let encoded_hostflags = cargo.hostflags.encode();
+        if !encoded_hostflags.is_empty() {
+            cargo.command.env("RUSTC_HOST_FLAGS", encoded_hostflags);
         }
 
         if !cargo.allow_features.is_empty() {
