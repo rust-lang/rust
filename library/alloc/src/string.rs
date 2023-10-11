@@ -714,6 +714,156 @@ impl String {
             .collect()
     }
 
+    /// Decode a UTF-16LE–encoded vector `v` into a `String`, returning [`Err`]
+    /// if `v` contains any invalid data.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(str_from_utf16_endian)]
+    /// // 𝄞music
+    /// let v = &[0x34, 0xD8, 0x1E, 0xDD, 0x6d, 0x00, 0x75, 0x00,
+    ///           0x73, 0x00, 0x69, 0x00, 0x63, 0x00];
+    /// assert_eq!(String::from("𝄞music"),
+    ///            String::from_utf16le(v).unwrap());
+    ///
+    /// // 𝄞mu<invalid>ic
+    /// let v = &[0x34, 0xD8, 0x1E, 0xDD, 0x6d, 0x00, 0x75, 0x00,
+    ///           0x00, 0xD8, 0x69, 0x00, 0x63, 0x00];
+    /// assert!(String::from_utf16le(v).is_err());
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
+    pub fn from_utf16le(v: &[u8]) -> Result<String, FromUtf16Error> {
+        if v.len() % 2 != 0 {
+            return Err(FromUtf16Error(()));
+        }
+        match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
+            (true, ([], v, [])) => Self::from_utf16(v),
+            _ => char::decode_utf16(v.array_chunks::<2>().copied().map(u16::from_le_bytes))
+                .collect::<Result<_, _>>()
+                .map_err(|_| FromUtf16Error(())),
+        }
+    }
+
+    /// Decode a UTF-16LE–encoded slice `v` into a `String`, replacing
+    /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
+    ///
+    /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
+    /// `from_utf16le_lossy` returns a `String` since the UTF-16 to UTF-8
+    /// conversion requires a memory allocation.
+    ///
+    /// [`from_utf8_lossy`]: String::from_utf8_lossy
+    /// [`Cow<'a, str>`]: crate::borrow::Cow "borrow::Cow"
+    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(str_from_utf16_endian)]
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let v = &[0x34, 0xD8, 0x1E, 0xDD, 0x6d, 0x00, 0x75, 0x00,
+    ///           0x73, 0x00, 0x1E, 0xDD, 0x69, 0x00, 0x63, 0x00,
+    ///           0x34, 0xD8];
+    ///
+    /// assert_eq!(String::from("𝄞mus\u{FFFD}ic\u{FFFD}"),
+    ///            String::from_utf16le_lossy(v));
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
+    pub fn from_utf16le_lossy(v: &[u8]) -> String {
+        match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
+            (true, ([], v, [])) => Self::from_utf16_lossy(v),
+            (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
+            _ => {
+                let mut iter = v.array_chunks::<2>();
+                let string = char::decode_utf16(iter.by_ref().copied().map(u16::from_le_bytes))
+                    .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
+                    .collect();
+                if iter.remainder().is_empty() { string } else { string + "\u{FFFD}" }
+            }
+        }
+    }
+
+    /// Decode a UTF-16BE–encoded vector `v` into a `String`, returning [`Err`]
+    /// if `v` contains any invalid data.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(str_from_utf16_endian)]
+    /// // 𝄞music
+    /// let v = &[0xD8, 0x34, 0xDD, 0x1E, 0x00, 0x6d, 0x00, 0x75,
+    ///           0x00, 0x73, 0x00, 0x69, 0x00, 0x63];
+    /// assert_eq!(String::from("𝄞music"),
+    ///            String::from_utf16be(v).unwrap());
+    ///
+    /// // 𝄞mu<invalid>ic
+    /// let v = &[0xD8, 0x34, 0xDD, 0x1E, 0x00, 0x6d, 0x00, 0x75,
+    ///           0xD8, 0x00, 0x00, 0x69, 0x00, 0x63];
+    /// assert!(String::from_utf16be(v).is_err());
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
+    pub fn from_utf16be(v: &[u8]) -> Result<String, FromUtf16Error> {
+        if v.len() % 2 != 0 {
+            return Err(FromUtf16Error(()));
+        }
+        match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
+            (true, ([], v, [])) => Self::from_utf16(v),
+            _ => char::decode_utf16(v.array_chunks::<2>().copied().map(u16::from_be_bytes))
+                .collect::<Result<_, _>>()
+                .map_err(|_| FromUtf16Error(())),
+        }
+    }
+
+    /// Decode a UTF-16BE–encoded slice `v` into a `String`, replacing
+    /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
+    ///
+    /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
+    /// `from_utf16le_lossy` returns a `String` since the UTF-16 to UTF-8
+    /// conversion requires a memory allocation.
+    ///
+    /// [`from_utf8_lossy`]: String::from_utf8_lossy
+    /// [`Cow<'a, str>`]: crate::borrow::Cow "borrow::Cow"
+    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(str_from_utf16_endian)]
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let v = &[0xD8, 0x34, 0xDD, 0x1E, 0x00, 0x6d, 0x00, 0x75,
+    ///           0x00, 0x73, 0xDD, 0x1E, 0x00, 0x69, 0x00, 0x63,
+    ///           0xD8, 0x34];
+    ///
+    /// assert_eq!(String::from("𝄞mus\u{FFFD}ic\u{FFFD}"),
+    ///            String::from_utf16be_lossy(v));
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
+    pub fn from_utf16be_lossy(v: &[u8]) -> String {
+        match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
+            (true, ([], v, [])) => Self::from_utf16_lossy(v),
+            (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
+            _ => {
+                let mut iter = v.array_chunks::<2>();
+                let string = char::decode_utf16(iter.by_ref().copied().map(u16::from_be_bytes))
+                    .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
+                    .collect();
+                if iter.remainder().is_empty() { string } else { string + "\u{FFFD}" }
+            }
+        }
+    }
+
     /// Decomposes a `String` into its raw components.
     ///
     /// Returns the raw pointer to the underlying data, the length of
