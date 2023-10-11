@@ -349,7 +349,7 @@ struct Inner<N: Idx> {
     post_order_rank: IndexVec<N, usize>,
     // Even though we track only the immediate dominator of each node, it's
     // possible to get its full list of dominators by looking up the dominator
-    // of each dominator. (See the `impl Iterator for Iter` definition).
+    // of each dominator.
     immediate_dominators: IndexVec<N, Option<N>>,
     time: IndexVec<N, Time>,
 }
@@ -377,13 +377,6 @@ impl<Node: Idx> Dominators<Node> {
         }
     }
 
-    /// Provides an iterator over each dominator up the CFG, for the given Node.
-    /// See the `impl Iterator for Iter` definition to understand how this works.
-    pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
-        assert!(self.is_reachable(node), "node {node:?} is not reachable");
-        Iter { dom_tree: self, node: Some(node) }
-    }
-
     /// Provide deterministic ordering of nodes such that, if any two nodes have a dominator
     /// relationship, the dominator will always precede the dominated. (The relative ordering
     /// of two unrelated nodes will also be consistent, but otherwise the order has no
@@ -409,24 +402,6 @@ impl<Node: Idx> Dominators<Node> {
                 assert!(b.start != 0, "node {b:?} is not reachable");
                 a.start <= b.start && b.finish <= a.finish
             }
-        }
-    }
-}
-
-pub struct Iter<'dom, Node: Idx> {
-    dom_tree: &'dom Dominators<Node>,
-    node: Option<Node>,
-}
-
-impl<'dom, Node: Idx> Iterator for Iter<'dom, Node> {
-    type Item = Node;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(node) = self.node {
-            self.node = self.dom_tree.immediate_dominator(node);
-            Some(node)
-        } else {
-            None
         }
     }
 }
