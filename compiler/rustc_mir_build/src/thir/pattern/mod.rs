@@ -20,15 +20,15 @@ use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
     ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
 };
-use rustc_middle::mir::{self, Const, UserTypeProjection};
-use rustc_middle::mir::{BorrowKind, Mutability};
+use rustc_middle::mir::{self, BorrowKind, Const, Mutability, UserTypeProjection};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
-use rustc_middle::ty::CanonicalUserTypeAnnotation;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, AdtDef, Region, Ty, TyCtxt, UserType};
-use rustc_middle::ty::{GenericArg, GenericArgsRef};
+use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::{
+    self, AdtDef, CanonicalUserTypeAnnotation, GenericArg, GenericArgsRef, Region, Ty, TyCtxt,
+    TypeVisitableExt, UserType,
+};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{FieldIdx, Integer};
 
 use std::cmp::Ordering;
 
@@ -111,6 +111,59 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
     }
 
+    /// Overflowing literals are linted against in a late pass. This is mostly fine, except when we
+    /// encounter a range pattern like `-130i8..2`: if we believe `eval_bits`, this looks like a
+    /// range where the endpoints are in the wrong order. To avoid a confusing error message, we
+    /// check for overflow then.
+    /// This is only called when the range is already known to be malformed.
+    fn error_on_literal_overflow(
+        &self,
+        expr: Option<&'tcx hir::Expr<'tcx>>,
+        ty: Ty<'tcx>,
+    ) -> Result<(), ErrorGuaranteed> {
+        use hir::{ExprKind, UnOp};
+        use rustc_ast::ast::LitKind;
+
+        let Some(mut expr) = expr else {
+            return Ok(());
+        };
+        let span = expr.span;
+
+        // We need to inspect the original expression, because if we only inspect the output of
+        // `eval_bits`, an overflowed value has already been wrapped around.
+        // We mostly copy the logic from the `rustc_lint::OVERFLOWING_LITERALS` lint.
+        let mut negated = false;
+        if let ExprKind::Unary(UnOp::Neg, sub_expr) = expr.kind {
+            negated = true;
+            expr = sub_expr;
+        }
+        let ExprKind::Lit(lit) = expr.kind else {
+            return Ok(());
+        };
+        let LitKind::Int(lit_val, _) = lit.node else {
+            return Ok(());
+        };
+        let (min, max): (i128, u128) = match ty.kind() {
+            ty::Int(ity) => {
+                let size = Integer::from_int_ty(&self.tcx, *ity).size();
+                (size.signed_int_min(), size.signed_int_max() as u128)
+            }
+            ty::Uint(uty) => {
+                let size = Integer::from_uint_ty(&self.tcx, *uty).size();
+                (0, size.unsigned_int_max())
+            }
+            _ => {
+                return Ok(());
+            }
+        };
+        // Detect literal value out of range `[min, max]` inclusive, avoiding use of `-min` to
+        // prevent overflow/panic.
+        if (negated && lit_val > max + 1) || (!negated && lit_val > max) {
+            return Err(self.tcx.sess.emit_err(LiteralOutOfRange { span, ty, min, max }));
+        }
+        Ok(())
+    }
+
     fn lower_pattern_range(
         &mut self,
         lo_expr: Option<&'tcx hir::Expr<'tcx>>,
@@ -155,29 +208,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             // `x..y` where `x >= y`, or `x..=y` where `x > y`. The range is empty => error.
             _ => {
-                let max = || {
-                    self.tcx
-                        .layout_of(self.param_env.with_reveal_all_normalized(self.tcx).and(ty))
-                        .ok()
-                        .unwrap()
-                        .size
-                        .unsigned_int_max()
-                };
-                // Emit a different message if there was overflow.
-                if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
-                    && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
-                {
-                    if lo.eval_bits(self.tcx, self.param_env) != val {
-                        return Err(self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() }));
-                    }
-                }
-                if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
-                    && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
-                {
-                    if hi.eval_bits(self.tcx, self.param_env) != val {
-                        return Err(self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() }));
-                    }
-                }
+                // Emit a more appropriate message if there was overflow.
+                self.error_on_literal_overflow(lo_expr, ty)?;
+                self.error_on_literal_overflow(hi_expr, ty)?;
                 let e = match end {
                     RangeEnd::Included => {
                         self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
@@ -219,7 +252,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
-                let span = lo_expr.map_or(span, |e| e.span);
                 // FIXME?: returning `_` can cause inaccurate "unreachable" warnings. This can be
                 // fixed by returning `PatKind::Const(ConstKind::Error(...))` if #115937 gets
                 // merged.

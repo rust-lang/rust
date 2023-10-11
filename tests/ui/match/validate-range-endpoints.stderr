@@ -2,58 +2,58 @@ error: literal out of range for `u8`
   --> $DIR/validate-range-endpoints.rs:9:12
    |
 LL |         1..257 => {}
-   |            ^^^ this value doesn't fit in `u8` whose maximum value is `255`
+   |            ^^^ this value does not fit into the type `u8` whose range is `0..=255`
 
 error: literal out of range for `u8`
   --> $DIR/validate-range-endpoints.rs:11:13
    |
 LL |         1..=256 => {}
-   |             ^^^ this value doesn't fit in `u8` whose maximum value is `255`
+   |             ^^^ this value does not fit into the type `u8` whose range is `0..=255`
 
 error[E0030]: lower range bound must be less than or equal to upper
   --> $DIR/validate-range-endpoints.rs:20:9
    |
 LL |         1..=TOO_BIG => {}
-   |         ^ lower bound larger than upper bound
+   |         ^^^^^^^^^^^ lower bound larger than upper bound
 
 error[E0030]: lower range bound must be less than or equal to upper
   --> $DIR/validate-range-endpoints.rs:22:9
    |
 LL |         1..=const { 256 } => {}
-   |         ^ lower bound larger than upper bound
+   |         ^^^^^^^^^^^^^^^^^ lower bound larger than upper bound
 
 error: literal out of range for `u64`
   --> $DIR/validate-range-endpoints.rs:28:32
    |
 LL |         10000000000000000000..=99999999999999999999 => {}
-   |                                ^^^^^^^^^^^^^^^^^^^^ this value doesn't fit in `u64` whose maximum value is `18446744073709551615`
+   |                                ^^^^^^^^^^^^^^^^^^^^ this value does not fit into the type `u64` whose range is `0..=18446744073709551615`
 
-error[E0579]: lower range bound must be less than upper
-  --> $DIR/validate-range-endpoints.rs:35:9
+error: literal out of range for `i8`
+  --> $DIR/validate-range-endpoints.rs:34:12
    |
 LL |         0..129 => {}
-   |         ^
+   |            ^^^ this value does not fit into the type `i8` whose range is `-128..=127`
 
-error[E0030]: lower range bound must be less than or equal to upper
-  --> $DIR/validate-range-endpoints.rs:37:9
+error: literal out of range for `i8`
+  --> $DIR/validate-range-endpoints.rs:36:13
    |
 LL |         0..=128 => {}
-   |         ^ lower bound larger than upper bound
+   |             ^^^ this value does not fit into the type `i8` whose range is `-128..=127`
 
-error[E0579]: lower range bound must be less than upper
-  --> $DIR/validate-range-endpoints.rs:39:9
+error: literal out of range for `i8`
+  --> $DIR/validate-range-endpoints.rs:38:9
    |
 LL |         -129..0 => {}
-   |         ^^^^
+   |         ^^^^ this value does not fit into the type `i8` whose range is `-128..=127`
 
-error[E0030]: lower range bound must be less than or equal to upper
-  --> $DIR/validate-range-endpoints.rs:41:9
+error: literal out of range for `i8`
+  --> $DIR/validate-range-endpoints.rs:40:9
    |
 LL |         -10000..=-20 => {}
-   |         ^^^^^^ lower bound larger than upper bound
+   |         ^^^^^^ this value does not fit into the type `i8` whose range is `-128..=127`
 
 error[E0004]: non-exhaustive patterns: `i8::MIN..=-17_i8` and `1_i8..=i8::MAX` not covered
-  --> $DIR/validate-range-endpoints.rs:52:11
+  --> $DIR/validate-range-endpoints.rs:51:11
    |
 LL |     match 0i8 {
    |           ^^^ patterns `i8::MIN..=-17_i8` and `1_i8..=i8::MAX` not covered
@@ -66,7 +66,7 @@ LL +         i8::MIN..=-17_i8 | 1_i8..=i8::MAX => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `i8::MIN..=-17_i8` not covered
-  --> $DIR/validate-range-endpoints.rs:56:11
+  --> $DIR/validate-range-endpoints.rs:55:11
    |
 LL |     match 0i8 {
    |           ^^^ pattern `i8::MIN..=-17_i8` not covered
@@ -80,5 +80,5 @@ LL +         i8::MIN..=-17_i8 => todo!()
 
 error: aborting due to 11 previous errors
 
-Some errors have detailed explanations: E0004, E0030, E0579.
+Some errors have detailed explanations: E0004, E0030.
 For more information about an error, try `rustc --explain E0004`.

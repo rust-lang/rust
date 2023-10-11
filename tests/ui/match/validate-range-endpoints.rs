@@ -30,16 +30,15 @@ fn main() {
         _ => {}
     }
 
-    // FIXME: error message is confusing
     match 0i8 {
         0..129 => {}
-        //~^ ERROR lower range bound must be less than upper
+        //~^ ERROR literal out of range
         0..=128 => {}
-        //~^ ERROR lower range bound must be less than or equal to upper
+        //~^ ERROR literal out of range
         -129..0 => {}
-        //~^ ERROR lower range bound must be less than upper
+        //~^ ERROR literal out of range
         -10000..=-20 => {}
-        //~^ ERROR lower range bound must be less than or equal to upper
+        //~^ ERROR literal out of range
 
         // overflow is detected in a later pass for these
         128..=0 => {}
