@@ -7,11 +7,9 @@
 //!
 //! Note that these tokens, unlike the tokens we feed into the parser, do
 //! include info about comments and whitespace.
+//
 
-use rustc_dependencies::lexer::{
-    self as rustc_lexer,
-    unescape::{unescape_c_string, unescape_literal},
-};
+use rustc_dependencies::lexer as rustc_lexer;
 
 use std::ops;
 
