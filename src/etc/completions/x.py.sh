@@ -1761,4 +1761,4 @@ _x.py() {
     esac
 }
 
-complete -F _x.py -o bashdefault -o default x.py
+complete -F _x.py -o nosort -o bashdefault -o default x.py

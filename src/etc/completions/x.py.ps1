@@ -150,10 +150,10 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             break
         }
         'x.py;clippy' {
-            [CompletionResult]::new('-A', 'A', [CompletionResultType]::ParameterName, 'clippy lints to allow')
-            [CompletionResult]::new('-D', 'D', [CompletionResultType]::ParameterName, 'clippy lints to deny')
-            [CompletionResult]::new('-W', 'W', [CompletionResultType]::ParameterName, 'clippy lints to warn on')
-            [CompletionResult]::new('-F', 'F', [CompletionResultType]::ParameterName, 'clippy lints to forbid')
+            [CompletionResult]::new('-A', 'A ', [CompletionResultType]::ParameterName, 'clippy lints to allow')
+            [CompletionResult]::new('-D', 'D ', [CompletionResultType]::ParameterName, 'clippy lints to deny')
+            [CompletionResult]::new('-W', 'W ', [CompletionResultType]::ParameterName, 'clippy lints to warn on')
+            [CompletionResult]::new('-F', 'F ', [CompletionResultType]::ParameterName, 'clippy lints to forbid')
             [CompletionResult]::new('--config', 'config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', 'build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `config.toml`')
             [CompletionResult]::new('--build', 'build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
