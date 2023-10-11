@@ -555,6 +555,11 @@ There is a package named `ra_ap_rust_analyzer` available on https://crates.io/cr
 
 For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml[the publish workflow].
 
+=== Zed
+
+https://zed.dev[Zed] has native `rust-analyzer` support.
+If the LSP binary is not available, Zed can install it when opening a Rust file.
+
 == Troubleshooting
 
 Start with looking at the rust-analyzer version.
