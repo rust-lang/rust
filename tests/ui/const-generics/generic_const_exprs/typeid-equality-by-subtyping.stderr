@@ -7,5 +7,17 @@ LL |         WHAT_A_TYPE => 0,
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
-error: aborting due to previous error
+error[E0015]: cannot match on `TypeId` in constant functions
+  --> $DIR/typeid-equality-by-subtyping.rs:18:9
+   |
+LL |         WHAT_A_TYPE => 0,
+   |         ^^^^^^^^^^^
+   |
+   = note: `TypeId` cannot be compared in compile-time, and therefore cannot be used in `match`es
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

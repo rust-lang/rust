@@ -12,6 +12,5 @@ fn main() {
         FOO => {},
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         _ => {}
-        //~^ ERROR unreachable pattern
     }
 }
