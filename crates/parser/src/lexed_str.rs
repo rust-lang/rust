@@ -291,11 +291,7 @@ impl<'a> Converter<'a> {
                     let text = &self.res.text[self.offset + 1..][..len - 1];
                     let i = text.rfind('"').unwrap();
                     let text = &text[..i];
-                    rustc_lexer::unescape::unescape_literal(text, Mode::Str, &mut |_, res| {
-                        if let Err(e) = res {
-                            err = error_to_diagnostic_message(e, Mode::Str);
-                        }
-                    });
+                    err = unescape_string_error_message(text, Mode::Str);
                 }
                 STRING
             }
@@ -306,11 +302,7 @@ impl<'a> Converter<'a> {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
                     let i = text.rfind('"').unwrap();
                     let text = &text[..i];
-                    rustc_lexer::unescape::unescape_literal(text, Mode::ByteStr, &mut |_, res| {
-                        if let Err(e) = res {
-                            err = error_to_diagnostic_message(e, Mode::ByteStr);
-                        }
-                    })
+                    err = unescape_string_error_message(text, Mode::ByteStr);
                 }
                 BYTE_STRING
             }
@@ -321,11 +313,7 @@ impl<'a> Converter<'a> {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
                     let i = text.rfind('"').unwrap();
                     let text = &text[..i];
-                    rustc_lexer::unescape::unescape_c_string(text, Mode::CStr, &mut |_, res| {
-                        if let Err(e) = res {
-                            err = error_to_diagnostic_message(e, Mode::CStr);
-                        }
-                    })
+                    err = unescape_string_error_message(text, Mode::CStr);
                 }
                 C_STRING
             }
@@ -391,12 +379,26 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
     }
 }
 
-fn fill_unescape_string_error(text: &str, mode: Mode, mut error_message: &str) {
-
-    rustc_lexer::unescape::unescape_c_string(text, mode, &mut |_, res| {
-        if let Err(e) = res {
-            error_message = error_to_diagnostic_message(e, mode);
+fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
+    let mut error_message = "";
+    match mode {
+        Mode::CStr => {
+            rustc_lexer::unescape::unescape_c_string(text, mode, &mut |_, res| {
+                if let Err(e) = res {
+                    error_message = error_to_diagnostic_message(e, mode);
+                }
+            });
         }
-    });
+        Mode::ByteStr | Mode::Str => {
+            rustc_lexer::unescape::unescape_literal(text, mode, &mut |_, res| {
+                if let Err(e) = res {
+                    error_message = error_to_diagnostic_message(e, mode);
+                }
+            });
+        }
+        _ => {
+            // Other Modes are not supported yet or do not apply
+        }
+    }
+    error_message
 }
-
