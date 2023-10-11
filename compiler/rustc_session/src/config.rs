@@ -3172,6 +3172,7 @@ impl PpMode {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
+    use super::Polonius;
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
         ErrorOutputType, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
@@ -3281,6 +3282,7 @@ pub(crate) mod dep_tracking {
         OomStrategy,
         LanguageIdentifier,
         TraitSolver,
+        Polonius,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3417,5 +3419,37 @@ impl DumpMonoStatsFormat {
             Self::Markdown => "md",
             Self::Json => "json",
         }
+    }
+}
+
+/// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
+/// or future prototype.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum Polonius {
+    /// The default value: disabled.
+    Off,
+
+    /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
+    Legacy,
+
+    /// In-tree prototype, extending the NLL infrastructure.
+    Next,
+}
+
+impl Default for Polonius {
+    fn default() -> Self {
+        Polonius::Off
+    }
+}
+
+impl Polonius {
+    /// Returns whether the legacy version of polonius is enabled
+    pub fn is_legacy_enabled(&self) -> bool {
+        matches!(self, Polonius::Legacy)
+    }
+
+    /// Returns whether the "next" version of polonius is enabled
+    pub fn is_next_enabled(&self) -> bool {
+        matches!(self, Polonius::Next)
     }
 }

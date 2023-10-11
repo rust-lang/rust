@@ -414,6 +414,7 @@ mod desc {
         "one of supported split dwarf modes (`split` or `single`)";
     pub const parse_link_self_contained: &str = "one of: `y`, `yes`, `on`, `n`, `no`, `off`, or a list of enabled (`+` prefix) and disabled (`-` prefix) \
         components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw`";
+    pub const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
     pub const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
     pub const parse_branch_protection: &str =
@@ -465,6 +466,21 @@ mod parse {
             }
             Some("n") | Some("no") | Some("off") | Some("false") => {
                 *slot = Some(false);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Parses whether polonius is enabled, and if so, which version.
+    pub(crate) fn parse_polonius(slot: &mut Polonius, v: Option<&str>) -> bool {
+        match v {
+            Some("legacy") | None => {
+                *slot = Polonius::Legacy;
+                true
+            }
+            Some("next") => {
+                *slot = Polonius::Next;
                 true
             }
             _ => false,
@@ -1659,7 +1675,7 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
-    polonius: bool = (false, parse_bool, [TRACKED],
+    polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     polymorphize: bool = (false, parse_bool, [TRACKED],
           "perform polymorphization analysis"),
