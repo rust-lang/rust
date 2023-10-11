@@ -197,6 +197,13 @@ impl<'tcx> ConstToPat<'tcx> {
                     // All branches above emitted an error. Don't print any more lints.
                     // The pattern we return is irrelevant since we errored.
                     return Box::new(Pat { span: self.span, ty: cv.ty(), kind: PatKind::Wild });
+                } else if let ty::Adt(..) = cv.ty().kind() && matches!(cv, mir::Const::Val(..)) {
+                    // This branch is only entered when the current `cv` is `mir::Const::Val`.
+                    // This is because `mir::Const::ty` has already been handled by `Self::recur`
+                    // and the invalid types may be ignored.
+                    let err = TypeNotStructural { span: self.span, non_sm_ty };
+                    self.tcx().sess.emit_err(err);
+                    return Box::new(Pat { span: self.span, ty: cv.ty(), kind: PatKind::Wild });
                 } else if !self.saw_const_match_lint.get() {
                     if let Some(mir_structural_match_violation) = mir_structural_match_violation {
                         match non_sm_ty.kind() {
