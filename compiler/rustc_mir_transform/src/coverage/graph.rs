@@ -386,8 +386,11 @@ fn bcb_filtered_successors<'a, 'tcx>(
 /// ensures a loop is completely traversed before processing Blocks after the end of the loop.
 #[derive(Debug)]
 pub(super) struct TraversalContext {
-    /// From one or more backedges returning to a loop header.
-    loop_backedges: Option<(Vec<BasicCoverageBlock>, BasicCoverageBlock)>,
+    /// BCB with one or more incoming loop backedges, indicating which loop
+    /// this context is for.
+    ///
+    /// If `None`, this is the non-loop context for the function as a whole.
+    loop_header: Option<BasicCoverageBlock>,
 
     /// Worklist of BCBs to be processed in this context.
     worklist: VecDeque<BasicCoverageBlock>,
@@ -406,7 +409,7 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
         let backedges = find_loop_backedges(basic_coverage_blocks);
 
         let worklist = VecDeque::from([basic_coverage_blocks.start_node()]);
-        let context_stack = vec![TraversalContext { loop_backedges: None, worklist }];
+        let context_stack = vec![TraversalContext { loop_header: None, worklist }];
 
         // `context_stack` starts with a `TraversalContext` for the main function context (beginning
         // with the `start` BasicCoverageBlock of the function). New worklists are pushed to the top
@@ -422,8 +425,8 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
         self.context_stack
             .iter()
             .rev()
-            .filter_map(|context| context.loop_backedges.as_ref())
-            .map(|(from_bcbs, _to_bcb)| from_bcbs.as_slice())
+            .filter_map(|context| context.loop_header)
+            .map(|header_bcb| self.backedges[header_bcb].as_slice())
     }
 
     pub(super) fn next(&mut self) -> Option<BasicCoverageBlock> {
@@ -443,7 +446,7 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
                 if self.backedges[bcb].len() > 0 {
                     debug!("{bcb:?} is a loop header! Start a new TraversalContext...");
                     self.context_stack.push(TraversalContext {
-                        loop_backedges: Some((self.backedges[bcb].clone(), bcb)),
+                        loop_header: Some(bcb),
                         worklist: VecDeque::new(),
                     });
                 }
@@ -484,7 +487,7 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
                 // `Expression`s by creating a Counter in a `BasicCoverageBlock` that the
                 // branching block would have given an `Expression` (or vice versa).
                 let (some_successor_to_add, _) =
-                    if let Some((_, loop_header)) = context.loop_backedges {
+                    if let Some(loop_header) = context.loop_header {
                         if basic_coverage_blocks.dominates(loop_header, successor) {
                             (Some(successor), Some(loop_header))
                         } else {
