@@ -1510,7 +1510,7 @@ pub mod tracked_env {
 }
 
 /// Tracked access to additional files.
-#[unstable(feature = "track_path", issue = "99515")]
+#[unstable(feature = "proc_macro_tracked_path", issue = "99515")]
 pub mod tracked_path {
     use std::path::{Path, PathBuf};
 
