@@ -1447,7 +1447,8 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
 }
 
 /// It'll return false if any variant is not a C-like variant. Otherwise it'll return true if at
-/// least one of them has a value set or if the enum has `#[repr(C)]` or has an integer `repr`.
+/// least one of them has an explicit discriminant or if the enum has `#[repr(C)]` or an integer
+/// `repr`.
 fn should_show_enum_discriminant(
     cx: &Context<'_>,
     enum_def_id: DefId,
@@ -1467,7 +1468,6 @@ fn should_show_enum_discriminant(
         return true;
     }
     let repr = cx.tcx().adt_def(enum_def_id).repr();
-    // let repr = cx.tcx().repr_options_of_def(enum_def_id);
     repr.c() || repr.int.is_some()
 }
 
