@@ -12,7 +12,7 @@ use rustc_dependencies::lexer as rustc_lexer;
 
 use std::ops;
 
-use rustc_lexer::unescape::{Mode, EscapeError};
+use rustc_lexer::unescape::{EscapeError, Mode};
 
 use crate::{
     SyntaxKind::{self, *},
