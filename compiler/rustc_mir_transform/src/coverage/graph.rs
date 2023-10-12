@@ -1,8 +1,9 @@
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::mir::{self, BasicBlock, BasicBlockData, Terminator, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
 
 use std::cmp::Ordering;
 use std::ops::{Index, IndexMut};
@@ -36,9 +37,8 @@ impl CoverageGraph {
                 }
                 let bcb_data = &bcbs[bcb];
                 let mut bcb_successors = Vec::new();
-                for successor in
-                    bcb_filtered_successors(&mir_body, &bcb_data.terminator(mir_body).kind)
-                        .filter_map(|successor_bb| bb_to_bcb[successor_bb])
+                for successor in bcb_filtered_successors(&mir_body, bcb_data.last_bb())
+                    .filter_map(|successor_bb| bb_to_bcb[successor_bb])
                 {
                     if !seen[successor] {
                         seen[successor] = true;
@@ -80,10 +80,9 @@ impl CoverageGraph {
         // intentionally omits unwind paths.
         // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
         // `catch_unwind()` handlers.
-        let mir_cfg_without_unwind = ShortCircuitPreorder::new(&mir_body, bcb_filtered_successors);
 
         let mut basic_blocks = Vec::new();
-        for (bb, data) in mir_cfg_without_unwind {
+        for bb in short_circuit_preorder(mir_body, bcb_filtered_successors) {
             if let Some(last) = basic_blocks.last() {
                 let predecessors = &mir_body.basic_blocks.predecessors()[bb];
                 if predecessors.len() > 1 || !predecessors.contains(last) {
@@ -109,7 +108,7 @@ impl CoverageGraph {
             }
             basic_blocks.push(bb);
 
-            let term = data.terminator();
+            let term = mir_body[bb].terminator();
 
             match term.kind {
                 TerminatorKind::Return { .. }
@@ -316,11 +315,6 @@ impl BasicCoverageBlockData {
     pub fn last_bb(&self) -> BasicBlock {
         *self.basic_blocks.last().unwrap()
     }
-
-    #[inline(always)]
-    pub fn terminator<'a, 'tcx>(&self, mir_body: &'a mir::Body<'tcx>) -> &'a Terminator<'tcx> {
-        &mir_body[self.last_bb()].terminator()
-    }
 }
 
 /// Represents a successor from a branching BasicCoverageBlock (such as the arms of a `SwitchInt`)
@@ -362,26 +356,28 @@ impl std::fmt::Debug for BcbBranch {
     }
 }
 
-// Returns the `Terminator`s non-unwind successors.
+// Returns the subset of a block's successors that are relevant to the coverage
+// graph, i.e. those that do not represent unwinds or unreachable branches.
 // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
 // `catch_unwind()` handlers.
 fn bcb_filtered_successors<'a, 'tcx>(
     body: &'a mir::Body<'tcx>,
-    term_kind: &'a TerminatorKind<'tcx>,
-) -> Box<dyn Iterator<Item = BasicBlock> + 'a> {
-    Box::new(
-        match &term_kind {
-            // SwitchInt successors are never unwind, and all of them should be traversed.
-            TerminatorKind::SwitchInt { ref targets, .. } => {
-                None.into_iter().chain(targets.all_targets().into_iter().copied())
-            }
-            // For all other kinds, return only the first successor, if any, and ignore unwinds.
-            // NOTE: `chain(&[])` is required to coerce the `option::iter` (from
-            // `next().into_iter()`) into the `mir::Successors` aliased type.
-            _ => term_kind.successors().next().into_iter().chain((&[]).into_iter().copied()),
-        }
-        .filter(move |&successor| body[successor].terminator().kind != TerminatorKind::Unreachable),
-    )
+    bb: BasicBlock,
+) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx> {
+    let terminator = body[bb].terminator();
+
+    let take_n_successors = match terminator.kind {
+        // SwitchInt successors are never unwinds, so all of them should be traversed.
+        TerminatorKind::SwitchInt { .. } => usize::MAX,
+        // For all other kinds, return only the first successor (if any), ignoring any
+        // unwind successors.
+        _ => 1,
+    };
+
+    terminator
+        .successors()
+        .take(take_n_successors)
+        .filter(move |&successor| body[successor].terminator().kind != TerminatorKind::Unreachable)
 }
 
 /// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
@@ -553,66 +549,28 @@ pub(super) fn find_loop_backedges(
     backedges
 }
 
-pub struct ShortCircuitPreorder<
-    'a,
-    'tcx,
-    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
-> {
+fn short_circuit_preorder<'a, 'tcx, F, Iter>(
     body: &'a mir::Body<'tcx>,
-    visited: BitSet<BasicBlock>,
-    worklist: Vec<BasicBlock>,
     filtered_successors: F,
-}
-
-impl<
-    'a,
-    'tcx,
-    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
-> ShortCircuitPreorder<'a, 'tcx, F>
+) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx>
+where
+    F: Fn(&'a mir::Body<'tcx>, BasicBlock) -> Iter,
+    Iter: Iterator<Item = BasicBlock>,
 {
-    pub fn new(
-        body: &'a mir::Body<'tcx>,
-        filtered_successors: F,
-    ) -> ShortCircuitPreorder<'a, 'tcx, F> {
-        let worklist = vec![mir::START_BLOCK];
+    let mut visited = BitSet::new_empty(body.basic_blocks.len());
+    let mut worklist = vec![mir::START_BLOCK];
 
-        ShortCircuitPreorder {
-            body,
-            visited: BitSet::new_empty(body.basic_blocks.len()),
-            worklist,
-            filtered_successors,
-        }
-    }
-}
-
-impl<
-    'a,
-    'tcx,
-    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
-> Iterator for ShortCircuitPreorder<'a, 'tcx, F>
-{
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
-
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        while let Some(idx) = self.worklist.pop() {
-            if !self.visited.insert(idx) {
+    std::iter::from_fn(move || {
+        while let Some(bb) = worklist.pop() {
+            if !visited.insert(bb) {
                 continue;
             }
 
-            let data = &self.body[idx];
+            worklist.extend(filtered_successors(body, bb));
 
-            if let Some(ref term) = data.terminator {
-                self.worklist.extend((self.filtered_successors)(&self.body, &term.kind));
-            }
-
-            return Some((idx, data));
+            return Some(bb);
         }
 
         None
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.body.basic_blocks.len() - self.visited.count();
-        (size, Some(size))
-    }
+    })
 }

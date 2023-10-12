@@ -174,9 +174,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.146"
+version = "0.2.148"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f92be4933c13fd498862a9e02a3055f8a8d9c039ce33db97306fd5a6caa7f29b"
+checksum = "9cdc71e17332e86d2e1d38c1f99edcb6288ee11b815fb1a4b049eaa2114d369b"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -253,6 +253,27 @@ dependencies = [
  "cc",
  "compiler_builtins",
  "core",
+]
+
+[[package]]
+name = "r-efi"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "575fc2d9b3da54adbdfaddf6eca48fec256d977c8630a1750b8991347d1ac911"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
+name = "r-efi-alloc"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31d6f09fe2b6ad044bc3d2c34ce4979796581afd2f1ebc185837e02421e02fd7"
+dependencies = [
+ "compiler_builtins",
+ "r-efi",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -340,6 +361,7 @@ version = "0.0.0"
 dependencies = [
  "addr2line",
  "alloc",
+ "cc",
  "cfg-if",
  "compiler_builtins",
  "core",
@@ -353,6 +375,8 @@ dependencies = [
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
+ "r-efi",
+ "r-efi-alloc",
  "rand",
  "rand_xorshift",
  "rustc-demangle",

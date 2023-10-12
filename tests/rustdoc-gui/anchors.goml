@@ -56,7 +56,7 @@ define-function: (
 
         assert-css: ("#top-doc-prose-title", {"color": |title_color|})
 
-        assert-css: (".sidebar a", {"color": |sidebar_link_color|})
+        assert-css: (".sidebar .block a", {"color": |sidebar_link_color|})
         assert-css: (".main-heading h1 a", {"color": |title_color|})
 
         // We move the cursor over the "Implementations" title so the anchor is displayed.

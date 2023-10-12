@@ -74,6 +74,7 @@ extern "C" {
         link_name = "__error"
     )]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
+    #[cfg_attr(target_os = "aix", link_name = "_Errno")]
     fn errno_location() -> *mut c_int;
 }
 
@@ -252,6 +253,41 @@ impl StdError for JoinPathsError {
     fn description(&self) -> &str {
         "failed to join paths"
     }
+}
+
+#[cfg(target_os = "aix")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    use crate::io::ErrorKind;
+
+    #[cfg(test)]
+    use realstd::env;
+
+    #[cfg(not(test))]
+    use crate::env;
+
+    let exe_path = env::args().next().ok_or(io::const_io_error!(
+        ErrorKind::NotFound,
+        "an executable path was not found because no arguments were provided through argv"
+    ))?;
+    let path = PathBuf::from(exe_path);
+    if path.is_absolute() {
+        return path.canonicalize();
+    }
+    // Search PWD to infer current_exe.
+    if let Some(pstr) = path.to_str() && pstr.contains("/") {
+        return getcwd().map(|cwd| cwd.join(path))?.canonicalize();
+    }
+    // Search PATH to infer current_exe.
+    if let Some(p) = getenv(OsStr::from_bytes("PATH".as_bytes())) {
+        for search_path in split_paths(&p) {
+            let pb = search_path.join(&path);
+            if pb.is_file() && let Ok(metadata) = crate::fs::metadata(&pb) &&
+               metadata.permissions().mode() & 0o111 != 0 {
+                return pb.canonicalize();
+            }
+        }
+    }
+    Err(io::const_io_error!(ErrorKind::NotFound, "an executable path was not found"))
 }
 
 #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]

@@ -52,13 +52,13 @@ pub(crate) struct IceVersion<'a> {
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_path)]
 pub(crate) struct IcePath {
-    pub path: String,
+    pub path: std::path::PathBuf,
 }
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_path_error)]
 pub(crate) struct IcePathError {
-    pub path: String,
+    pub path: std::path::PathBuf,
     pub error: String,
     #[subdiagnostic]
     pub env_var: Option<IcePathErrorEnv>,
@@ -67,7 +67,7 @@ pub(crate) struct IcePathError {
 #[derive(Subdiagnostic)]
 #[note(driver_impl_ice_path_error_env)]
 pub(crate) struct IcePathErrorEnv {
-    pub env_var: String,
+    pub env_var: std::path::PathBuf,
 }
 
 #[derive(Diagnostic)]

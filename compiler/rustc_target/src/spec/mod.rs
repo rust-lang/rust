@@ -164,11 +164,11 @@ pub enum LinkerFlavor {
 
 /// Linker flavors available externally through command line (`-Clinker-flavor`)
 /// or json target specifications.
-/// FIXME: This set has accumulated historically, bring it more in line with the internal
-/// linker flavors (`LinkerFlavor`).
+/// This set has accumulated historically, and contains both (stable and unstable) legacy values, as
+/// well as modern ones matching the internal linker flavors (`LinkerFlavor`).
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavorCli {
-    // New (unstable) flavors, with direct counterparts in `LinkerFlavor`.
+    // Modern (unstable) flavors, with direct counterparts in `LinkerFlavor`.
     Gnu(Cc, Lld),
     Darwin(Cc, Lld),
     WasmLld(Cc),
@@ -179,13 +179,11 @@ pub enum LinkerFlavorCli {
     Bpf,
     Ptx,
 
-    // Below: the legacy stable values.
+    // Legacy stable values
     Gcc,
     Ld,
     Lld(LldFlavor),
     Em,
-    BpfLinker,
-    PtxLinker,
 }
 
 impl LinkerFlavorCli {
@@ -199,9 +197,7 @@ impl LinkerFlavorCli {
             | LinkerFlavorCli::Msvc(Lld::Yes)
             | LinkerFlavorCli::EmCc
             | LinkerFlavorCli::Bpf
-            | LinkerFlavorCli::Ptx
-            | LinkerFlavorCli::BpfLinker
-            | LinkerFlavorCli::PtxLinker => true,
+            | LinkerFlavorCli::Ptx => true,
             LinkerFlavorCli::Gcc
             | LinkerFlavorCli::Ld
             | LinkerFlavorCli::Lld(..)
@@ -279,8 +275,6 @@ impl LinkerFlavor {
             LinkerFlavorCli::Lld(LldFlavor::Wasm) => LinkerFlavor::WasmLld(Cc::No),
             LinkerFlavorCli::Lld(LldFlavor::Link) => LinkerFlavor::Msvc(Lld::Yes),
             LinkerFlavorCli::Em => LinkerFlavor::EmCc,
-            LinkerFlavorCli::BpfLinker => LinkerFlavor::Bpf,
-            LinkerFlavorCli::PtxLinker => LinkerFlavor::Ptx,
         }
     }
 
@@ -299,8 +293,8 @@ impl LinkerFlavor {
             LinkerFlavor::Msvc(Lld::Yes) => LinkerFlavorCli::Lld(LldFlavor::Link),
             LinkerFlavor::Msvc(..) => LinkerFlavorCli::Msvc(Lld::No),
             LinkerFlavor::EmCc => LinkerFlavorCli::Em,
-            LinkerFlavor::Bpf => LinkerFlavorCli::BpfLinker,
-            LinkerFlavor::Ptx => LinkerFlavorCli::PtxLinker,
+            LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
+            LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
         }
     }
 
@@ -320,7 +314,6 @@ impl LinkerFlavor {
             LinkerFlavorCli::Ld => (Some(Cc::No), Some(Lld::No)),
             LinkerFlavorCli::Lld(_) => (Some(Cc::No), Some(Lld::Yes)),
             LinkerFlavorCli::Em => (Some(Cc::Yes), Some(Lld::Yes)),
-            LinkerFlavorCli::BpfLinker | LinkerFlavorCli::PtxLinker => (None, None),
         }
     }
 
@@ -511,7 +504,7 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::Bpf) "bpf"
     (LinkerFlavorCli::Ptx) "ptx"
 
-    // Below: legacy stable values
+    // Legacy stable flavors
     (LinkerFlavorCli::Gcc) "gcc"
     (LinkerFlavorCli::Ld) "ld"
     (LinkerFlavorCli::Lld(LldFlavor::Ld)) "ld.lld"
@@ -519,13 +512,85 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::Lld(LldFlavor::Link)) "lld-link"
     (LinkerFlavorCli::Lld(LldFlavor::Wasm)) "wasm-ld"
     (LinkerFlavorCli::Em) "em"
-    (LinkerFlavorCli::BpfLinker) "bpf-linker"
-    (LinkerFlavorCli::PtxLinker) "ptx-linker"
 }
 
 impl ToJson for LinkerFlavorCli {
     fn to_json(&self) -> Json {
         self.desc().to_json()
+    }
+}
+
+bitflags::bitflags! {
+    #[derive(Default)]
+    /// The `-C link-self-contained` components that can individually be enabled or disabled.
+    pub struct LinkSelfContainedComponents: u8 {
+        /// CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
+        const CRT_OBJECTS = 1 << 0;
+        /// libc static library (e.g. on `musl`, `wasi` targets)
+        const LIBC        = 1 << 1;
+        /// libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
+        const UNWIND      = 1 << 2;
+        /// Linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for `rust-lld`)
+        const LINKER      = 1 << 3;
+        /// Sanitizer runtime libraries
+        const SANITIZERS  = 1 << 4;
+        /// Other MinGW libs and Windows import libs
+        const MINGW       = 1 << 5;
+    }
+}
+
+impl LinkSelfContainedComponents {
+    /// Parses a single `-Clink-self-contained` well-known component, not a set of flags.
+    pub fn from_str(s: &str) -> Option<LinkSelfContainedComponents> {
+        Some(match s {
+            "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
+            "libc" => LinkSelfContainedComponents::LIBC,
+            "unwind" => LinkSelfContainedComponents::UNWIND,
+            "linker" => LinkSelfContainedComponents::LINKER,
+            "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
+            "mingw" => LinkSelfContainedComponents::MINGW,
+            _ => return None,
+        })
+    }
+
+    /// Return the component's name.
+    ///
+    /// Returns `None` if the bitflags aren't a singular component (but a mix of multiple flags).
+    pub fn as_str(self) -> Option<&'static str> {
+        Some(match self {
+            LinkSelfContainedComponents::CRT_OBJECTS => "crto",
+            LinkSelfContainedComponents::LIBC => "libc",
+            LinkSelfContainedComponents::UNWIND => "unwind",
+            LinkSelfContainedComponents::LINKER => "linker",
+            LinkSelfContainedComponents::SANITIZERS => "sanitizers",
+            LinkSelfContainedComponents::MINGW => "mingw",
+            _ => return None,
+        })
+    }
+
+    /// Returns an array of all the components.
+    fn all_components() -> [LinkSelfContainedComponents; 6] {
+        [
+            LinkSelfContainedComponents::CRT_OBJECTS,
+            LinkSelfContainedComponents::LIBC,
+            LinkSelfContainedComponents::UNWIND,
+            LinkSelfContainedComponents::LINKER,
+            LinkSelfContainedComponents::SANITIZERS,
+            LinkSelfContainedComponents::MINGW,
+        ]
+    }
+}
+
+impl IntoIterator for LinkSelfContainedComponents {
+    type Item = LinkSelfContainedComponents;
+    type IntoIter = std::vec::IntoIter<LinkSelfContainedComponents>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        LinkSelfContainedComponents::all_components()
+            .into_iter()
+            .filter(|&s| self.contains(s))
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 

@@ -85,7 +85,7 @@ pub fn expand_assert<'cx>(
                 DUMMY_SP,
                 Symbol::intern(&format!(
                     "assertion failed: {}",
-                    pprust::expr_to_string(&cond_expr).escape_debug()
+                    pprust::expr_to_string(&cond_expr)
                 )),
             )],
         );

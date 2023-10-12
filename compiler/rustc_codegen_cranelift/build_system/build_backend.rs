@@ -20,6 +20,8 @@ pub(crate) fn build_backend(
 
     let mut rustflags = rustflags_from_env("RUSTFLAGS");
 
+    rustflags.push("-Zallow-features=rustc_private".to_owned());
+
     if is_ci() {
         // Deny warnings on CI
         rustflags.push("-Dwarnings".to_owned());

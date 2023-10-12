@@ -1,10 +1,13 @@
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/min-choice-reject-ambiguous.rs:17:5
    |
+LL | fn test_b<'a, 'b, 'c, T>() -> impl Cap<'a> + Cap<'b> + Cap<'c>
+   |           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
 LL |     type_test::<'_, T>() // This should pass if we pick 'b.
    |     ^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     T: 'b + 'a,
    |           ++++
@@ -12,10 +15,13 @@ LL |     T: 'b + 'a,
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/min-choice-reject-ambiguous.rs:28:5
    |
+LL | fn test_c<'a, 'b, 'c, T>() -> impl Cap<'a> + Cap<'b> + Cap<'c>
+   |           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
 LL |     type_test::<'_, T>() // This should pass if we pick 'c.
    |     ^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     T: 'c + 'a,
    |           ++++

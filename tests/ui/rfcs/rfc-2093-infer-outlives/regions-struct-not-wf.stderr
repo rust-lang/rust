@@ -1,10 +1,12 @@
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/regions-struct-not-wf.rs:13:16
    |
+LL | impl<'a, T> Trait<'a, T> for usize {
+   |      -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
 LL |     type Out = &'a T;
    |                ^^^^^ ...so that the reference type `&'a T` does not outlive the data it points at
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl<'a, T: 'a> Trait<'a, T> for usize {
    |           ++++
@@ -12,6 +14,8 @@ LL | impl<'a, T: 'a> Trait<'a, T> for usize {
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/regions-struct-not-wf.rs:21:16
    |
+LL | impl<'a, T> Trait<'a, T> for u32 {
+   |      -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
 LL |     type Out = RefOk<'a, T>;
    |                ^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
    |
@@ -20,7 +24,7 @@ note: ...that is required by this bound
    |
 LL | struct RefOk<'a, T:'a> {
    |                    ^^
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl<'a, T: 'a> Trait<'a, T> for u32 {
    |           ++++

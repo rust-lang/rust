@@ -46,6 +46,5 @@ aot.issue-59326
 testsuite.extended_sysroot
 test.rust-random/rand
 test.libcore
-test.regex-shootout-regex-dna
 test.regex
 test.portable-simd

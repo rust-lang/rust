@@ -7,37 +7,37 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     let mut _0: ();
     let mut _4: std::ops::Range<u32>;
     let mut _5: std::ops::Range<u32>;
-    let mut _9: std::option::Option<u32>;
-    let mut _12: isize;
-    let mut _14: &impl Fn(u32);
-    let mut _15: (u32,);
-    let _16: ();
-    let mut _17: &mut std::ops::Range<u32>;
+    let mut _6: &mut std::ops::Range<u32>;
+    let mut _12: std::option::Option<u32>;
+    let mut _15: isize;
+    let mut _17: &impl Fn(u32);
+    let mut _18: (u32,);
+    let _19: ();
     scope 1 {
         debug iter => _5;
-        let _13: u32;
+        let _16: u32;
         scope 2 {
-            debug x => _13;
+            debug x => _16;
         }
         scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<u32>>::next) {
-            debug self => _17;
+            debug self => _6;
             scope 5 (inlined <std::ops::Range<u32> as iter::range::RangeIteratorImpl>::spec_next) {
-                debug self => _17;
-                let mut _8: bool;
-                let _10: u32;
-                let mut _11: u32;
-                let mut _18: &u32;
-                let mut _19: &u32;
+                debug self => _6;
+                let mut _7: &u32;
+                let mut _8: &u32;
+                let mut _11: bool;
+                let _13: u32;
+                let mut _14: u32;
                 scope 6 {
-                    debug old => _10;
+                    debug old => _13;
                     scope 7 {
                     }
                 }
                 scope 8 (inlined cmp::impls::<impl PartialOrd for u32>::lt) {
-                    debug self => _18;
-                    debug other => _19;
-                    let mut _6: u32;
-                    let mut _7: u32;
+                    debug self => _7;
+                    debug other => _8;
+                    let mut _9: u32;
+                    let mut _10: u32;
                 }
             }
         }
@@ -54,52 +54,55 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb1: {
-        StorageLive(_9);
-        StorageLive(_10);
-        StorageLive(_8);
-        StorageLive(_18);
-        StorageLive(_19);
-        StorageLive(_6);
-        _6 = (_5.0: u32);
+        StorageLive(_12);
+        _6 = &mut _5;
+        StorageLive(_13);
+        StorageLive(_11);
         StorageLive(_7);
-        _7 = (_5.1: u32);
-        _8 = Lt(move _6, move _7);
-        StorageDead(_7);
-        StorageDead(_6);
-        switchInt(move _8) -> [0: bb2, otherwise: bb3];
+        _7 = &(_5.0: u32);
+        StorageLive(_8);
+        _8 = &(_5.1: u32);
+        StorageLive(_9);
+        _9 = (_5.0: u32);
+        StorageLive(_10);
+        _10 = (_5.1: u32);
+        _11 = Lt(move _9, move _10);
+        StorageDead(_10);
+        StorageDead(_9);
+        switchInt(move _11) -> [0: bb2, otherwise: bb3];
     }
 
     bb2: {
-        StorageDead(_19);
-        StorageDead(_18);
-        _9 = Option::<u32>::None;
+        StorageDead(_8);
+        StorageDead(_7);
+        _12 = Option::<u32>::None;
         goto -> bb5;
     }
 
     bb3: {
-        StorageDead(_19);
-        StorageDead(_18);
-        _10 = (_5.0: u32);
-        StorageLive(_11);
-        _11 = <u32 as Step>::forward_unchecked(_10, const 1_usize) -> [return: bb4, unwind unreachable];
+        StorageDead(_8);
+        StorageDead(_7);
+        _13 = (_5.0: u32);
+        StorageLive(_14);
+        _14 = <u32 as Step>::forward_unchecked(_13, const 1_usize) -> [return: bb4, unwind unreachable];
     }
 
     bb4: {
-        (_5.0: u32) = move _11;
-        StorageDead(_11);
-        _9 = Option::<u32>::Some(_10);
+        (_5.0: u32) = move _14;
+        StorageDead(_14);
+        _12 = Option::<u32>::Some(_13);
         goto -> bb5;
     }
 
     bb5: {
-        StorageDead(_8);
-        StorageDead(_10);
-        _12 = discriminant(_9);
-        switchInt(move _12) -> [0: bb6, 1: bb8, otherwise: bb10];
+        StorageDead(_11);
+        StorageDead(_13);
+        _15 = discriminant(_12);
+        switchInt(move _15) -> [0: bb6, 1: bb8, otherwise: bb10];
     }
 
     bb6: {
-        StorageDead(_9);
+        StorageDead(_12);
         StorageDead(_5);
         drop(_3) -> [return: bb7, unwind unreachable];
     }
@@ -109,18 +112,18 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb8: {
-        _13 = ((_9 as Some).0: u32);
-        StorageLive(_14);
-        _14 = &_3;
-        StorageLive(_15);
-        _15 = (_13,);
-        _16 = <impl Fn(u32) as Fn<(u32,)>>::call(move _14, move _15) -> [return: bb9, unwind unreachable];
+        _16 = ((_12 as Some).0: u32);
+        StorageLive(_17);
+        _17 = &_3;
+        StorageLive(_18);
+        _18 = (_16,);
+        _19 = <impl Fn(u32) as Fn<(u32,)>>::call(move _17, move _18) -> [return: bb9, unwind unreachable];
     }
 
     bb9: {
-        StorageDead(_15);
-        StorageDead(_14);
-        StorageDead(_9);
+        StorageDead(_18);
+        StorageDead(_17);
+        StorageDead(_12);
         goto -> bb1;
     }
 

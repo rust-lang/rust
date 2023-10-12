@@ -8,7 +8,7 @@ LL |         FOO => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:38:9
+  --> $DIR/consts-opaque.rs:37:9
    |
 LL |         FOO_REF => {}
    |         ^^^^^^^
@@ -17,7 +17,7 @@ LL |         FOO_REF => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 warning: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:46:9
+  --> $DIR/consts-opaque.rs:44:9
    |
 LL |         FOO_REF_REF => {}
    |         ^^^^^^^^^^^
@@ -29,16 +29,7 @@ LL |         FOO_REF_REF => {}
    = note: `#[warn(indirect_structural_match)]` on by default
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:54:9
-   |
-LL |         BAR => {} // should not be emitting unreachable warning
-   |         ^^^
-   |
-   = note: the traits must be derived, manual `impl`s are not sufficient
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
-
-error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:62:9
+  --> $DIR/consts-opaque.rs:52:9
    |
 LL |         BAR => {}
    |         ^^^
@@ -47,7 +38,7 @@ LL |         BAR => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:71:9
+  --> $DIR/consts-opaque.rs:59:9
    |
 LL |         BAR => {}
    |         ^^^
@@ -56,16 +47,25 @@ LL |         BAR => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:73:9
+  --> $DIR/consts-opaque.rs:67:9
    |
-LL |         BAR => {} // should not be emitting unreachable warning
+LL |         BAR => {}
+   |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
+
+error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/consts-opaque.rs:69:9
+   |
+LL |         BAR => {}
    |         ^^^
    |
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:81:9
+  --> $DIR/consts-opaque.rs:75:9
    |
 LL |         BAZ => {}
    |         ^^^
@@ -74,7 +74,7 @@ LL |         BAZ => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:91:9
+  --> $DIR/consts-opaque.rs:83:9
    |
 LL |         BAZ => {}
    |         ^^^
@@ -83,7 +83,7 @@ LL |         BAZ => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:98:9
+  --> $DIR/consts-opaque.rs:89:9
    |
 LL |         BAZ => {}
    |         ^^^
@@ -92,12 +92,12 @@ LL |         BAZ => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:33:9
+  --> $DIR/consts-opaque.rs:54:9
    |
-LL |         FOO => {}
+LL |         Bar => {}
    |         --- matches any value
-LL |
-LL |         _ => {} // should not be emitting unreachable warning
+...
+LL |         _ => {}
    |         ^ unreachable pattern
    |
 note: the lint level is defined here
@@ -107,120 +107,21 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:40:9
-   |
-LL |         FOO_REF => {}
-   |         ------- matches any value
-LL |
-LL |         Foo(_) => {} // should not be emitting unreachable warning
-   |         ^^^^^^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:54:9
+  --> $DIR/consts-opaque.rs:62:9
    |
 LL |         Bar => {}
    |         --- matches any value
-LL |         BAR => {} // should not be emitting unreachable warning
-   |         ^^^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:57:9
-   |
-LL |         Bar => {}
-   |         --- matches any value
-...
 LL |         _ => {}
-   |         ^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:64:9
-   |
-LL |         BAR => {}
-   |         --- matches any value
-LL |
-LL |         Bar => {} // should not be emitting unreachable warning
-   |         ^^^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:66:9
-   |
-LL |         BAR => {}
-   |         --- matches any value
-...
-LL |         _ => {}
-   |         ^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:73:9
-   |
-LL |         BAR => {}
-   |         --- matches any value
-LL |
-LL |         BAR => {} // should not be emitting unreachable warning
-   |         ^^^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:76:9
-   |
-LL |         BAR => {}
-   |         --- matches any value
-...
-LL |         _ => {} // should not be emitting unreachable warning
-   |         ^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:83:9
-   |
-LL |         BAZ => {}
-   |         --- matches any value
-LL |
-LL |         Baz::Baz1 => {} // should not be emitting unreachable warning
-   |         ^^^^^^^^^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:85:9
-   |
-LL |         BAZ => {}
-   |         --- matches any value
-...
-LL |         _ => {}
-   |         ^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:93:9
-   |
-LL |         BAZ => {}
-   |         --- matches any value
-LL |
-LL |         _ => {}
-   |         ^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:100:9
-   |
-LL |         BAZ => {}
-   |         --- matches any value
-LL |
-LL |         Baz::Baz2 => {} // should not be emitting unreachable warning
-   |         ^^^^^^^^^ unreachable pattern
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:102:9
-   |
-LL |         BAZ => {}
-   |         --- matches any value
-...
-LL |         _ => {} // should not be emitting unreachable warning
    |         ^ unreachable pattern
 
 error[E0004]: non-exhaustive patterns: `Wrap(_)` not covered
-  --> $DIR/consts-opaque.rs:135:11
+  --> $DIR/consts-opaque.rs:124:11
    |
 LL |     match WRAPQUUX {
    |           ^^^^^^^^ pattern `Wrap(_)` not covered
    |
 note: `Wrap<fn(usize, usize) -> usize>` defined here
-  --> $DIR/consts-opaque.rs:117:12
+  --> $DIR/consts-opaque.rs:106:12
    |
 LL |     struct Wrap<T>(T);
    |            ^^^^
@@ -231,6 +132,6 @@ LL ~         WRAPQUUX => {},
 LL +         Wrap(_) => todo!()
    |
 
-error: aborting due to 23 previous errors; 1 warning emitted
+error: aborting due to 12 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0004`.

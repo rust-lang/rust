@@ -1,0 +1,43 @@
+// ignore-tidy-linelength
+
+// Checks that, if a type has two methods with the same name, they both get
+// linked correctly.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+// This should link to the inherent impl
+write: (".search-input", "ZyxwvutMethodDisambiguation -> bool")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+// Check the disambiguated link.
+assert-count: ("a.result-method", 1)
+assert-attribute: ("a.result-method", {
+    "href": "../test_docs/struct.ZyxwvutMethodDisambiguation.html#impl-ZyxwvutMethodDisambiguation/method.method_impl_disambiguation"
+})
+click: "a.result-method"
+wait-for: "#impl-ZyxwvutMethodDisambiguation"
+assert-document-property: ({
+    "URL": "struct.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation"
+}, ENDS_WITH)
+assert: "section:target"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+// This should link to the trait impl
+write: (".search-input", "ZyxwvutMethodDisambiguation, usize -> usize")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+// Check the disambiguated link.
+assert-count: ("a.result-method", 1)
+assert-attribute: ("a.result-method", {
+    "href": "../test_docs/struct.ZyxwvutMethodDisambiguation.html#impl-ZyxwvutTrait-for-ZyxwvutMethodDisambiguation/method.method_impl_disambiguation"
+})
+click: "a.result-method"
+wait-for: "#impl-ZyxwvutMethodDisambiguation"
+assert-document-property: ({
+    "URL": "struct.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation-1"
+}, ENDS_WITH)
+assert: "section:target"

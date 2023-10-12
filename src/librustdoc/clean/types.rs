@@ -1306,7 +1306,7 @@ impl WherePredicate {
 pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: Vec<Lifetime> },
     Type { did: DefId, bounds: Vec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
-    Const { ty: Box<Type>, default: Option<Box<String>> },
+    Const { ty: Box<Type>, default: Option<Box<String>>, is_host_effect: bool },
 }
 
 impl GenericParamDefKind {
@@ -1326,9 +1326,10 @@ impl GenericParamDef {
         Self { name, kind: GenericParamDefKind::Lifetime { outlives: Vec::new() } }
     }
 
-    pub(crate) fn is_synthetic_type_param(&self) -> bool {
+    pub(crate) fn is_synthetic_param(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime { .. } | GenericParamDefKind::Const { .. } => false,
+            GenericParamDefKind::Lifetime { .. } => false,
+            GenericParamDefKind::Const { is_host_effect, .. } => is_host_effect,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
         }
     }
@@ -2084,9 +2085,8 @@ impl Discriminant {
     pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
         self.expr.map(|body| rendered_const(tcx, body))
     }
-    /// Will always be a machine readable number, without underscores or suffixes.
-    pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> String {
-        print_evaluated_const(tcx, self.value, false).unwrap()
+    pub(crate) fn value(&self, tcx: TyCtxt<'_>, with_underscores: bool) -> String {
+        print_evaluated_const(tcx, self.value, with_underscores, false).unwrap()
     }
 }
 
@@ -2331,7 +2331,7 @@ impl ConstantKind {
         match *self {
             ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
-                print_evaluated_const(tcx, def_id, true)
+                print_evaluated_const(tcx, def_id, true, true)
             }
         }
     }

@@ -8,6 +8,9 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(deny(warnings)))
 )]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(const_trait_impl)]

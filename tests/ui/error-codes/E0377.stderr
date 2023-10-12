@@ -2,7 +2,7 @@ error[E0377]: the trait `CoerceUnsized` may only be implemented for a coercion b
   --> $DIR/E0377.rs:12:1
    |
 LL | impl<T, U> CoerceUnsized<Bar<U>> for Foo<T> where T: CoerceUnsized<U> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected coercion between the same definition; expected `Foo`, found `Bar`
 

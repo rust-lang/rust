@@ -365,7 +365,7 @@ impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct ChunkedBitSet<T> {
     domain_size: usize,
 
@@ -1069,6 +1069,12 @@ impl<T> Clone for BitSet<T> {
 }
 
 impl<T: Idx> fmt::Debug for BitSet<T> {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
+        w.debug_list().entries(self.iter()).finish()
+    }
+}
+
+impl<T: Idx> fmt::Debug for ChunkedBitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
     }

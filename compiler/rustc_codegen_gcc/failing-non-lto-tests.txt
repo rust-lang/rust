@@ -1,0 +1,11 @@
+tests/ui/issues/issue-44056.rs
+tests/ui/lto/fat-lto.rs
+tests/ui/lto/debuginfo-lto.rs
+tests/ui/lto/lto-many-codegen-units.rs
+tests/ui/lto/issue-100772.rs
+tests/ui/lto/lto-rustc-loads-linker-plugin.rs
+tests/ui/panic-runtime/lto-unwind.rs
+tests/ui/sanitize/issue-111184-generator-witness.rs
+tests/ui/sepcomp/sepcomp-lib-lto.rs
+tests/ui/lto/lto-opt-level-s.rs
+tests/ui/lto/lto-opt-level-z.rs

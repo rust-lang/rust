@@ -63,7 +63,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 
-use crate::ssa::SsaLocals;
+use crate::ssa::{AssignedValue, SsaLocals};
 use crate::MirPass;
 
 pub struct GVN;
@@ -87,21 +87,28 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let dominators = body.basic_blocks.dominators().clone();
 
     let mut state = VnState::new(tcx, param_env, &ssa, &dominators, &body.local_decls);
-    for arg in body.args_iter() {
-        if ssa.is_ssa(arg) {
-            let value = state.new_opaque().unwrap();
-            state.assign(arg, value);
-        }
-    }
-
-    ssa.for_each_assignment_mut(&mut body.basic_blocks, |local, rvalue, location| {
-        let value = state.simplify_rvalue(rvalue, location).or_else(|| state.new_opaque()).unwrap();
-        // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
-        // reusable if we have an exact type match.
-        if state.local_decls[local].ty == rvalue.ty(state.local_decls, tcx) {
+    ssa.for_each_assignment_mut(
+        body.basic_blocks.as_mut_preserves_cfg(),
+        |local, value, location| {
+            let value = match value {
+                // We do not know anything of this assigned value.
+                AssignedValue::Arg | AssignedValue::Terminator(_) => None,
+                // Try to get some insight.
+                AssignedValue::Rvalue(rvalue) => {
+                    let value = state.simplify_rvalue(rvalue, location);
+                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
+                    // reusable if we have an exact type match.
+                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
+                        return;
+                    }
+                    value
+                }
+            };
+            // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
+            let value = value.or_else(|| state.new_opaque()).unwrap();
             state.assign(local, value);
-        }
-    });
+        },
+    );
 
     // Stop creating opaques during replacement as it is useless.
     state.next_opaque = None;

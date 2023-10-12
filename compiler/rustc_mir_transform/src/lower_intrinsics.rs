@@ -2,9 +2,8 @@
 
 use crate::MirPass;
 use rustc_middle::mir::*;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::symbol::sym;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 pub struct LowerIntrinsics;
@@ -16,12 +15,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
             let terminator = block.terminator.as_mut().unwrap();
             if let TerminatorKind::Call { func, args, destination, target, .. } =
                 &mut terminator.kind
+                && let ty::FnDef(def_id, generic_args) = *func.ty(local_decls, tcx).kind()
+                && tcx.is_intrinsic(def_id)
             {
-                let func_ty = func.ty(local_decls, tcx);
-                let Some((intrinsic_name, generic_args)) = resolve_rust_intrinsic(tcx, func_ty)
-                else {
-                    continue;
-                };
+                let intrinsic_name = tcx.item_name(def_id);
                 match intrinsic_name {
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
@@ -308,16 +305,4 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
             }
         }
     }
-}
-
-fn resolve_rust_intrinsic<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    func_ty: Ty<'tcx>,
-) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
-    if let ty::FnDef(def_id, args) = *func_ty.kind() {
-        if tcx.is_intrinsic(def_id) {
-            return Some((tcx.item_name(def_id), args));
-        }
-    }
-    None
 }

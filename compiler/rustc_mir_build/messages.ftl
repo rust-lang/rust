@@ -173,7 +173,7 @@ mir_build_leading_irrefutable_let_patterns = leading irrefutable {$count ->
 
 mir_build_literal_in_range_out_of_bounds =
     literal out of range for `{$ty}`
-    .label = this value doesn't fit in `{$ty}` whose maximum value is `{$max}`
+    .label = this value does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
 
 mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
     lower range bound must be less than or equal to upper

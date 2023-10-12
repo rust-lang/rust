@@ -23,16 +23,15 @@ mod removed;
 #[cfg(test)]
 mod tests;
 
-use rustc_span::{edition::Edition, symbol::Symbol, Span};
+use rustc_span::{edition::Edition, symbol::Symbol};
 use std::fmt;
 use std::num::NonZeroU32;
 
 #[derive(Clone, Copy)]
 pub enum State {
     Accepted,
-    Active { set: fn(&mut Features, Span) },
+    Active { set: fn(&mut Features) },
     Removed { reason: Option<&'static str> },
-    Stabilized { reason: Option<&'static str> },
 }
 
 impl fmt::Debug for State {
@@ -41,7 +40,6 @@ impl fmt::Debug for State {
             State::Accepted { .. } => write!(f, "accepted"),
             State::Active { .. } => write!(f, "active"),
             State::Removed { .. } => write!(f, "removed"),
-            State::Stabilized { .. } => write!(f, "stabilized"),
         }
     }
 }
@@ -79,8 +77,8 @@ pub enum UnstableFeatures {
 impl UnstableFeatures {
     /// This takes into account `RUSTC_BOOTSTRAP`.
     ///
-    /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly features.
-    /// Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
+    /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly
+    /// features. Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
     pub fn from_environment(krate: Option<&str>) -> Self {
         // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
         let disable_unstable_features =
@@ -107,19 +105,17 @@ impl UnstableFeatures {
 }
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
-    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
-        info.issue
-    } else {
-        // search in Accepted, Removed, or Stable Removed features
-        let found = ACCEPTED_FEATURES
-            .iter()
-            .chain(REMOVED_FEATURES)
-            .chain(STABLE_REMOVED_FEATURES)
-            .find(|t| t.name == feature);
-        match found {
-            Some(found) => found.issue,
-            None => panic!("feature `{feature}` is not declared anywhere"),
-        }
+    // Search in all the feature lists.
+    let found = []
+        .iter()
+        .chain(ACTIVE_FEATURES)
+        .chain(ACCEPTED_FEATURES)
+        .chain(REMOVED_FEATURES)
+        .find(|t| t.name == feature);
+
+    match found {
+        Some(found) => found.issue,
+        None => panic!("feature `{feature}` is not declared anywhere"),
     }
 }
 
@@ -152,4 +148,4 @@ pub use builtin_attrs::{
     is_valid_for_get_attr, AttributeGate, AttributeTemplate, AttributeType, BuiltinAttribute,
     GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
-pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
+pub use removed::REMOVED_FEATURES;

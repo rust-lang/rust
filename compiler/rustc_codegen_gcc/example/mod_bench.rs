@@ -1,5 +1,6 @@
 #![feature(start, core_intrinsics, lang_items)]
 #![no_std]
+#![allow(internal_features)]
 
 #[link(name = "c")]
 extern {}

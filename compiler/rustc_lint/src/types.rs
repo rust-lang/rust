@@ -140,13 +140,15 @@ declare_lint! {
 pub struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: Option<hir::HirId>,
+    /// Span of the last visited negated expression
+    negated_expr_span: Option<Span>,
 }
 
 impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS, INVALID_NAN_COMPARISONS]);
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: None }
+        TypeLimits { negated_expr_id: None, negated_expr_span: None }
     }
 }
 
@@ -426,17 +428,15 @@ fn lint_int_literal<'tcx>(
             return;
         }
 
-        let lit = cx
-            .sess()
-            .source_map()
-            .span_to_snippet(lit.span)
-            .expect("must get snippet from literal");
+        let span = if negative { type_limits.negated_expr_span.unwrap() } else { e.span };
+        let lit =
+            cx.sess().source_map().span_to_snippet(span).expect("must get snippet from literal");
         let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
         cx.emit_spanned_lint(
             OVERFLOWING_LITERALS,
-            e.span,
+            span,
             OverflowingInt { ty: t.name_str(), lit, min, max, help },
         );
     }
@@ -622,9 +622,10 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
-                // propagate negation, if the negation itself isn't negated
+                // Propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != Some(e.hir_id) {
                     self.negated_expr_id = Some(expr.hir_id);
+                    self.negated_expr_span = Some(e.span);
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {

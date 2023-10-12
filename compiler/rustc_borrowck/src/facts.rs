@@ -41,7 +41,8 @@ pub(crate) trait AllFactsExt {
 impl AllFactsExt for AllFacts {
     /// Return
     fn enabled(tcx: TyCtxt<'_>) -> bool {
-        tcx.sess.opts.unstable_opts.nll_facts || tcx.sess.opts.unstable_opts.polonius
+        tcx.sess.opts.unstable_opts.nll_facts
+            || tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled()
     }
 
     fn write_to_dir(

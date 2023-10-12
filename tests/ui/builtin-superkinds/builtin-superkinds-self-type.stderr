@@ -2,14 +2,17 @@ error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/builtin-superkinds-self-type.rs:10:16
    |
 LL | impl <T: Sync> Foo for T { }
-   |                ^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |                ^^^
+   |                |
+   |                the parameter type `T` must be valid for the static lifetime...
+   |                ...so that the type `T` will meet its required lifetime bounds...
    |
 note: ...that is required by this bound
   --> $DIR/builtin-superkinds-self-type.rs:6:24
    |
 LL | trait Foo : Sized+Sync+'static {
    |                        ^^^^^^^
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | impl <T: Sync + 'static> Foo for T { }
    |               +++++++++

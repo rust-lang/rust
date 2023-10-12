@@ -10,9 +10,9 @@ use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
-use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
+use rustc_codegen_ssa::traits::{ArgAbiMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
 #[cfg(feature="master")]
-use rustc_codegen_ssa::traits::MiscMethods;
+use rustc_codegen_ssa::traits::{BaseTypeMethods, MiscMethods};
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty};

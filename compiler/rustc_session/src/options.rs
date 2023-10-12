@@ -412,9 +412,9 @@ mod desc {
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
     pub const parse_split_dwarf_kind: &str =
         "one of supported split dwarf modes (`split` or `single`)";
-    pub const parse_gcc_ld: &str = "one of: no value, `lld`";
     pub const parse_link_self_contained: &str = "one of: `y`, `yes`, `on`, `n`, `no`, `off`, or a list of enabled (`+` prefix) and disabled (`-` prefix) \
         components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw`";
+    pub const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
     pub const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
     pub const parse_branch_protection: &str =
@@ -466,6 +466,21 @@ mod parse {
             }
             Some("n") | Some("no") | Some("off") | Some("false") => {
                 *slot = Some(false);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Parses whether polonius is enabled, and if so, which version.
+    pub(crate) fn parse_polonius(slot: &mut Polonius, v: Option<&str>) -> bool {
+        match v {
+            Some("legacy") | None => {
+                *slot = Polonius::Legacy;
+                true
+            }
+            Some("next") => {
+                *slot = Polonius::Next;
                 true
             }
             _ => false,
@@ -1166,7 +1181,7 @@ mod parse {
 
         // 2. Parse a list of enabled and disabled components.
         for comp in s.split(',') {
-            if slot.handle_cli_component(comp).is_err() {
+            if slot.handle_cli_component(comp).is_none() {
                 return false;
             }
         }
@@ -1197,15 +1212,6 @@ mod parse {
     pub(crate) fn parse_split_dwarf_kind(slot: &mut SplitDwarfKind, v: Option<&str>) -> bool {
         match v.and_then(|s| SplitDwarfKind::from_str(s).ok()) {
             Some(e) => *slot = e,
-            _ => return false,
-        }
-        true
-    }
-
-    pub(crate) fn parse_gcc_ld(slot: &mut Option<LdImpl>, v: Option<&str>) -> bool {
-        match v {
-            None => *slot = None,
-            Some("lld") => *slot = Some(LdImpl::Lld),
             _ => return false,
         }
         true
@@ -1521,7 +1527,6 @@ options! {
         "whether each function should go in its own section"),
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
         "forces all lints to be future incompatible, used for internal testing (default: no)"),
-    gcc_ld: Option<LdImpl> = (None, parse_gcc_ld, [TRACKED], "implementation of ld used by cc"),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
@@ -1610,9 +1615,10 @@ options! {
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
     mir_enable_passes: Vec<(String, bool)> = (Vec::new(), parse_list_with_polarity, [TRACKED],
-        "use like `-Zmir-enable-passes=+DestinationPropagation,-InstSimplify`. Forces the specified passes to be \
-        enabled, overriding all other checks. Passes that are not specified are enabled or \
-        disabled by other flags as usual."),
+        "use like `-Zmir-enable-passes=+DestinationPropagation,-InstSimplify`. Forces the \
+        specified passes to be enabled, overriding all other checks. In particular, this will \
+        enable unsound (known-buggy and hence usually disabled) passes without further warning! \
+        Passes that are not specified are enabled or disabled by other flags as usual."),
     mir_include_spans: bool = (false, parse_bool, [UNTRACKED],
         "use line numbers relative to the function in mir pretty printing"),
     mir_keep_place_mention: bool = (false, parse_bool, [TRACKED],
@@ -1669,7 +1675,7 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
-    polonius: bool = (false, parse_bool, [TRACKED],
+    polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     polymorphize: bool = (false, parse_bool, [TRACKED],
           "perform polymorphization analysis"),
@@ -1905,9 +1911,4 @@ written to standard error output)"),
 pub enum WasiExecModel {
     Command,
     Reactor,
-}
-
-#[derive(Clone, Copy, Hash)]
-pub enum LdImpl {
-    Lld,
 }

@@ -1,10 +1,9 @@
 //! Write the debuginfo into an object file.
 
 use cranelift_object::ObjectProduct;
-use rustc_data_structures::fx::FxHashMap;
-
 use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer};
 use gimli::{RunTimeEndian, SectionId};
+use rustc_data_structures::fx::FxHashMap;
 
 use super::object::WriteDebugInfo;
 use super::DebugContext;

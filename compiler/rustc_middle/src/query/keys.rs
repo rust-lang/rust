@@ -12,7 +12,6 @@ use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::query::{DefaultCacheSelector, SingleCacheSelector, VecCacheSelector};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::FieldIdx;
 
 /// Placeholder for `CrateNum`'s "local" counterpart
 #[derive(Copy, Clone, Debug)]
@@ -360,30 +359,6 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (ty::Const<'tcx>, FieldIdx) {
-    type CacheSelector = DefaultCacheSelector<Self>;
-
-    fn default_span(&self, _: TyCtxt<'_>) -> Span {
-        DUMMY_SP
-    }
-}
-
-impl<'tcx> Key for (mir::ConstValue<'tcx>, Ty<'tcx>) {
-    type CacheSelector = DefaultCacheSelector<Self>;
-
-    fn default_span(&self, _: TyCtxt<'_>) -> Span {
-        DUMMY_SP
-    }
-}
-
-impl<'tcx> Key for mir::ConstAlloc<'tcx> {
-    type CacheSelector = DefaultCacheSelector<Self>;
-
-    fn default_span(&self, _: TyCtxt<'_>) -> Span {
-        DUMMY_SP
-    }
-}
-
 impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
 
@@ -409,14 +384,6 @@ impl<'tcx> Key for (ty::PolyTraitRef<'tcx>, ty::PolyTraitRef<'tcx>) {
 }
 
 impl<'tcx> Key for GenericArg<'tcx> {
-    type CacheSelector = DefaultCacheSelector<Self>;
-
-    fn default_span(&self, _: TyCtxt<'_>) -> Span {
-        DUMMY_SP
-    }
-}
-
-impl<'tcx> Key for mir::Const<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

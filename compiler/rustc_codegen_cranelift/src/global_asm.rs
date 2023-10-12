@@ -9,16 +9,22 @@ use std::sync::Arc;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::{InlineAsmOperand, ItemId};
 use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_target::asm::InlineAsmArch;
 
 use crate::prelude::*;
 
 pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, item_id: ItemId) {
     let item = tcx.hir().item(item_id);
     if let rustc_hir::ItemKind::GlobalAsm(asm) = item.kind {
-        if !asm.options.contains(InlineAsmOptions::ATT_SYNTAX) {
-            global_asm.push_str("\n.intel_syntax noprefix\n");
-        } else {
-            global_asm.push_str("\n.att_syntax\n");
+        let is_x86 =
+            matches!(tcx.sess.asm_arch.unwrap(), InlineAsmArch::X86 | InlineAsmArch::X86_64);
+
+        if is_x86 {
+            if !asm.options.contains(InlineAsmOptions::ATT_SYNTAX) {
+                global_asm.push_str("\n.intel_syntax noprefix\n");
+            } else {
+                global_asm.push_str("\n.att_syntax\n");
+            }
         }
         for piece in asm.template {
             match *piece {
@@ -65,7 +71,11 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                 }
             }
         }
-        global_asm.push_str("\n.att_syntax\n\n");
+
+        global_asm.push('\n');
+        if is_x86 {
+            global_asm.push_str(".att_syntax\n\n");
+        }
     } else {
         bug!("Expected GlobalAsm found {:?}", item);
     }
@@ -115,11 +125,12 @@ pub(crate) fn compile_global_asm(
     }
 
     // Remove all LLVM style comments
-    let global_asm = global_asm
+    let mut global_asm = global_asm
         .lines()
         .map(|line| if let Some(index) = line.find("//") { &line[0..index] } else { line })
         .collect::<Vec<_>>()
         .join("\n");
+    global_asm.push('\n');
 
     let output_object_file = config.output_filenames.temp_path(OutputType::Object, Some(cgu_name));
 

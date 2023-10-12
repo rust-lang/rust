@@ -2,9 +2,14 @@ error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/regionck-1.rs:9:30
    |
 LL |     type NoTyOutliv<'a, T> = &'a T;
-   |                              ^^^^^- help: consider adding a where clause: `where T: 'a`
-   |                              |
-   |                              ...so that the reference type `&'a T` does not outlive the data it points at
+   |                     --       ^^^^^ ...so that the reference type `&'a T` does not outlive the data it points at
+   |                     |
+   |                     the parameter type `T` must be valid for the lifetime `'a` as defined here...
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     type NoTyOutliv<'a, T: 'a> = &'a T;
+   |                          ++++
 
 error[E0491]: in type `&'a &'b ()`, reference has a longer lifetime than the data it references
   --> $DIR/regionck-1.rs:10:31

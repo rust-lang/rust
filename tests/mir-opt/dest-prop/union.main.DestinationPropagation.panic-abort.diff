@@ -22,8 +22,10 @@
       }
   
       bb1: {
+          _1 = Un { us: move _2 };
           StorageDead(_2);
           StorageLive(_3);
+          _3 = (_1.0: u32);
           StorageDead(_3);
           StorageDead(_1);
           return;

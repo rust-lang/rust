@@ -197,10 +197,10 @@ impl Attribute {
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
                 .to_attr_token_stream()
                 .to_tokenstream(),
-            &AttrKind::DocComment(comment_kind, data) => TokenStream::new(vec![TokenTree::Token(
-                Token::new(token::DocComment(comment_kind, self.style, data), self.span),
-                Spacing::Alone,
-            )]),
+            &AttrKind::DocComment(comment_kind, data) => TokenStream::token_alone(
+                token::DocComment(comment_kind, self.style, data),
+                self.span,
+            ),
         }
     }
 }

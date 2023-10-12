@@ -29,8 +29,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++-arm-linux-gnueabi \
   g++-arm-linux-gnueabihf \
   g++-aarch64-linux-gnu \
-  g++-mips64-linux-gnuabi64 \
-  g++-mips64el-linux-gnuabi64 \
   gcc-arm-none-eabi \
   gcc-sparc64-linux-gnu \
   libc6-dev-sparc64-cross \
@@ -47,12 +45,6 @@ WORKDIR /build
 
 COPY host-x86_64/dist-various-1/install-x86_64-redox.sh /build
 RUN ./install-x86_64-redox.sh
-
-COPY host-x86_64/dist-various-1/install-mips-musl.sh /build
-RUN ./install-mips-musl.sh
-
-COPY host-x86_64/dist-various-1/install-mipsel-musl.sh /build
-RUN ./install-mipsel-musl.sh
 
 COPY host-x86_64/dist-various-1/install-aarch64-none-elf.sh /build
 RUN ./install-aarch64-none-elf.sh
@@ -76,32 +68,7 @@ RUN env \
     env \
     CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a+fp" \
     CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a+fp" \
-    bash musl.sh armv7hf && \
-    env \
-    CC=mips-openwrt-linux-gcc \
-    CXX=mips-openwrt-linux-g++ \
-    bash musl.sh mips && \
-    env \
-    CC=mipsel-openwrt-linux-gcc \
-    CXX=mipsel-openwrt-linux-g++ \
-    bash musl.sh mipsel && \
-    env \
-    CC=mips64-linux-gnuabi64-gcc \
-    CXX=mips64-linux-gnuabi64-g++ \
-    bash musl.sh mips64 && \
-    env \
-    CC=mips64el-linux-gnuabi64-gcc \
-    CXX=mips64el-linux-gnuabi64-g++ \
-    bash musl.sh mips64el && \
-    rm -rf /build/*
-
-# FIXME(mozilla/sccache#235) this shouldn't be necessary but is currently
-# necessary to disambiguate the mips compiler with the mipsel compiler. We want
-# to give these two wrapper scripts (currently identical ones) different hashes
-# to ensure that sccache understands that they're different compilers.
-RUN \
-  echo "# a" >> /usr/local/mips-linux-musl/bin/mips-openwrt-linux-musl-wrapper.sh && \
-  echo "# b" >> /usr/local/mipsel-linux-musl/bin/mipsel-openwrt-linux-musl-wrapper.sh
+    bash musl.sh armv7hf
 
 ENV RUN_MAKE_TARGETS=thumbv6m-none-eabi
 ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7m-none-eabi
@@ -110,10 +77,6 @@ ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabihf
 
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
-ENV TARGETS=$TARGETS,mips-unknown-linux-musl
-ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
-ENV TARGETS=$TARGETS,mips64-unknown-linux-muslabi64
-ENV TARGETS=$TARGETS,mips64el-unknown-linux-muslabi64
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
@@ -149,10 +112,6 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CFLAGS_arm_unknown_linux_musleabi="-march=armv6 -marm" \
     CFLAGS_arm_unknown_linux_musleabihf="-march=armv6 -marm -mfpu=vfp" \
     CFLAGS_armv7_unknown_linux_musleabihf="-march=armv7-a+fp" \
-    CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
-    CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
-    CC_mips64el_unknown_linux_muslabi64=mips64el-linux-gnuabi64-gcc \
-    CC_mips64_unknown_linux_muslabi64=mips64-linux-gnuabi64-gcc \
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
@@ -177,10 +136,6 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
       --musl-root-armv7hf=/musl-armv7hf \
-      --musl-root-mips=/musl-mips \
-      --musl-root-mipsel=/musl-mipsel \
-      --musl-root-mips64=/musl-mips64 \
-      --musl-root-mips64el=/musl-mips64el \
       --disable-docs
 
 ENV SCRIPT \

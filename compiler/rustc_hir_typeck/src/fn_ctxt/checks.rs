@@ -16,6 +16,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
@@ -28,7 +29,7 @@ use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, IsSuggestable, Ty};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, sym, BytePos, Span};
@@ -722,6 +723,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &mut err,
                         fn_def_id,
                         callee_ty,
+                        call_expr,
+                        None,
                         Some(mismatch_idx),
                         is_method,
                     );
@@ -826,6 +829,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut err,
                 fn_def_id,
                 callee_ty,
+                call_expr,
+                Some(expected_ty),
                 Some(expected_idx.as_usize()),
                 is_method,
             );
@@ -1208,7 +1213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Call out where the function is defined
-        self.label_fn_like(&mut err, fn_def_id, callee_ty, None, is_method);
+        self.label_fn_like(&mut err, fn_def_id, callee_ty, call_expr, None, None, is_method);
 
         // And add a suggestion block for all of the parameters
         let suggestion_text = match suggestion_text {
@@ -1899,6 +1904,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         callable_def_id: Option<DefId>,
         callee_ty: Option<Ty<'tcx>>,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        expected_ty: Option<Ty<'tcx>>,
         // A specific argument should be labeled, instead of all of them
         expected_idx: Option<usize>,
         is_method: bool,
@@ -2015,6 +2022,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let param = expected_idx
                 .and_then(|expected_idx| self.tcx.hir().body(*body).params.get(expected_idx));
             let (kind, span) = if let Some(param) = param {
+                // Try to find earlier invocations of this closure to find if the type mismatch
+                // is because of inference. If we find one, point at them.
+                let mut call_finder = FindClosureArg { tcx: self.tcx, calls: vec![] };
+                let node = self.tcx
+                    .opt_local_def_id_to_hir_id(self.tcx.hir().get_parent_item(call_expr.hir_id))
+                    .and_then(|hir_id| self.tcx.hir().find(hir_id));
+                match node {
+                    Some(hir::Node::Item(item)) => call_finder.visit_item(item),
+                    Some(hir::Node::TraitItem(item)) => call_finder.visit_trait_item(item),
+                    Some(hir::Node::ImplItem(item)) => call_finder.visit_impl_item(item),
+                    _ => {}
+                }
+                let typeck = self.typeck_results.borrow();
+                for (rcvr, args) in call_finder.calls {
+                    if let Some(rcvr_ty) = typeck.node_type_opt(rcvr.hir_id)
+                        && let ty::Closure(call_def_id, _) = rcvr_ty.kind()
+                        && def_id == *call_def_id
+                        && let Some(idx) = expected_idx
+                        && let Some(arg) = args.get(idx)
+                        && let Some(arg_ty) = typeck.node_type_opt(arg.hir_id)
+                        && let Some(expected_ty) = expected_ty
+                        && self.can_eq(self.param_env, arg_ty, expected_ty)
+                    {
+                        let mut sp: MultiSpan = vec![arg.span].into();
+                        sp.push_span_label(
+                            arg.span,
+                            format!("expected because this argument is of type `{arg_ty}`"),
+                        );
+                        sp.push_span_label(rcvr.span, "in this closure call");
+                        err.span_note(
+                            sp,
+                            format!(
+                                "expected because the closure was earlier called with an \
+                                argument of type `{arg_ty}`",
+                            ),
+                        );
+                        break;
+                    }
+                }
+
                 ("closure parameter", param.span)
             } else {
                 ("closure", self.tcx.def_span(def_id))
@@ -2026,5 +2073,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("{} defined here", self.tcx.def_descr(def_id)),
             );
         }
+    }
+}
+
+struct FindClosureArg<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    calls: Vec<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
+}
+
+impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
+    type NestedFilter = rustc_middle::hir::nested_filter::All;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
+    }
+
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+        if let hir::ExprKind::Call(rcvr, args) = ex.kind {
+            self.calls.push((rcvr, args));
+        }
+        hir::intravisit::walk_expr(self, ex);
     }
 }

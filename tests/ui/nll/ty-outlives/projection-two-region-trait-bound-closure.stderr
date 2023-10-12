@@ -26,11 +26,13 @@ LL | |     T: Anything<'b, 'c>,
 error[E0309]: the associated type `<T as Anything<'?5, '?6>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:38:39
    |
+LL | fn no_relationships_late<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
+   |                          -- the associated type `<T as Anything<'?5, '?6>>::AssocType` must be valid for the lifetime `'a` as defined here...
+...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^^^^^^^^^^
+   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `<T as Anything<'?5, '?6>>::AssocType` will meet its required lifetime bounds
    |
    = help: consider adding an explicit lifetime bound `<T as Anything<'?5, '?6>>::AssocType: 'a`...
-   = note: ...so that the type `<T as Anything<'?5, '?6>>::AssocType` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
@@ -60,11 +62,13 @@ LL | |     'a: 'a,
 error[E0309]: the associated type `<T as Anything<'?6, '?7>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:39
    |
+LL | fn no_relationships_early<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
+   |                           -- the associated type `<T as Anything<'?6, '?7>>::AssocType` must be valid for the lifetime `'a` as defined here...
+...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^^^^^^^^^^
+   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `<T as Anything<'?6, '?7>>::AssocType` will meet its required lifetime bounds
    |
    = help: consider adding an explicit lifetime bound `<T as Anything<'?6, '?7>>::AssocType: 'a`...
-   = note: ...so that the type `<T as Anything<'?6, '?7>>::AssocType` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:61:29

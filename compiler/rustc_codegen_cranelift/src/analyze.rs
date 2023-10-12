@@ -1,10 +1,10 @@
 //! SSA analysis
 
-use crate::prelude::*;
-
 use rustc_index::IndexVec;
 use rustc_middle::mir::StatementKind::*;
 use rustc_middle::ty::Ty;
+
+use crate::prelude::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum SsaKind {

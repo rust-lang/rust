@@ -7,6 +7,8 @@
 //! Type-relative name resolution (methods, fields, associated items) happens in `rustc_hir_analysis`.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(extract_if)]
@@ -1074,8 +1076,8 @@ pub struct Resolver<'a, 'tcx> {
     /// Also includes of list of each fields visibility
     struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
 
-    /// Features enabled for this crate.
-    active_features: FxHashSet<Symbol>,
+    /// Features declared for this crate.
+    declared_features: FxHashSet<Symbol>,
 
     lint_buffer: LintBuffer,
 
@@ -1417,12 +1419,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
             containers_deriving_copy: Default::default(),
-            active_features: features
-                .declared_lib_features
-                .iter()
-                .map(|(feat, ..)| *feat)
-                .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
-                .collect(),
+            declared_features: features.declared_features.clone(),
             lint_buffer: LintBuffer::default(),
             next_node_id: CRATE_NODE_ID,
             node_id_to_def_id,

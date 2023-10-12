@@ -55,7 +55,7 @@ enum CodegenBackend {
 }
 
 fn main() {
-    if env::var("RUST_BACKTRACE").is_err() {
+    if env::var_os("RUST_BACKTRACE").is_none() {
         env::set_var("RUST_BACKTRACE", "1");
     }
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");

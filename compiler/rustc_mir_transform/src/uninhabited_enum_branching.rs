@@ -30,22 +30,17 @@ fn get_switched_on_type<'tcx>(
     let terminator = block_data.terminator();
 
     // Only bother checking blocks which terminate by switching on a local.
-    if let Some(local) = get_discriminant_local(&terminator.kind) {
-        let stmt_before_term = (!block_data.statements.is_empty())
-            .then(|| &block_data.statements[block_data.statements.len() - 1].kind);
-
-        if let Some(StatementKind::Assign(box (l, Rvalue::Discriminant(place)))) = stmt_before_term
-        {
-            if l.as_local() == Some(local) {
-                let ty = place.ty(body, tcx).ty;
-                if ty.is_enum() {
-                    return Some(ty);
-                }
-            }
-        }
+    if let Some(local) = get_discriminant_local(&terminator.kind)
+        && let [.., stmt_before_term] = &block_data.statements[..]
+        && let StatementKind::Assign(box (l, Rvalue::Discriminant(place))) = stmt_before_term.kind
+        && l.as_local() == Some(local)
+        && let ty = place.ty(body, tcx).ty
+        && ty.is_enum()
+    {
+        Some(ty)
+    } else {
+        None
     }
-
-    None
 }
 
 fn variant_discriminants<'tcx>(

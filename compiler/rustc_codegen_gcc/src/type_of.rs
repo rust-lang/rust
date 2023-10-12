@@ -182,6 +182,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
+        use crate::rustc_middle::ty::layout::FnAbiOf;
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
@@ -191,7 +192,14 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             if let Some(&ty) = cx.scalar_types.borrow().get(&self.ty) {
                 return ty;
             }
-            let ty = self.scalar_gcc_type_at(cx, scalar, Size::ZERO);
+            let ty =
+                match *self.ty.kind() {
+                    // NOTE: we cannot remove this match like in the LLVM codegen because the call
+                    // to fn_ptr_backend_type handle the on-stack attribute.
+                    // TODO(antoyo): find a less hackish way to hande the on-stack attribute.
+                    ty::FnPtr(sig) => cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty())),
+                    _ => self.scalar_gcc_type_at(cx, scalar, Size::ZERO),
+                };
             cx.scalar_types.borrow_mut().insert(self.ty, ty);
             return ty;
         }

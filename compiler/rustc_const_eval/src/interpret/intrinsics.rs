@@ -500,6 +500,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         b: &ImmTy<'tcx, M::Provenance>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
+        assert_eq!(a.layout.ty, b.layout.ty);
+        assert!(matches!(a.layout.ty.kind(), ty::Int(..) | ty::Uint(..)));
+
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
@@ -522,7 +525,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: &ImmTy<'tcx, M::Provenance>,
         r: &ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        assert_eq!(l.layout.ty, r.layout.ty);
+        assert!(matches!(l.layout.ty.kind(), ty::Int(..) | ty::Uint(..)));
         assert!(matches!(mir_op, BinOp::Add | BinOp::Sub));
+
         let (val, overflowed) = self.overflowing_binary_op(mir_op, l, r)?;
         Ok(if overflowed {
             let size = l.layout.size;

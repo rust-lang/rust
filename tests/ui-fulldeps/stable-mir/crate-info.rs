@@ -38,8 +38,8 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
     assert!(get_item(&items, (DefKind::Fn, "foo::bar")).is_some());
 
-    // Find the `std` crate.
-    assert!(stable_mir::find_crate("std").is_some());
+    // Find the `std` crate and assert that there is only one of it.
+    assert!(stable_mir::find_crates("std").len() == 1);
 
     let bar = get_item(&items, (DefKind::Fn, "bar")).unwrap();
     let body = bar.body();
@@ -58,7 +58,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
 
     let foo_bar = get_item(&items, (DefKind::Fn, "foo_bar")).unwrap();
     let body = foo_bar.body();
-    assert_eq!(body.locals.len(), 7);
+    assert_eq!(body.locals.len(), 5);
     assert_eq!(body.blocks.len(), 4);
     let block = &body.blocks[0];
     match &block.terminator.kind {

@@ -27,7 +27,6 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
-    let stage = parse_rustc_stage();
     let verbose = parse_rustc_verbose();
 
     // Detect whether or not we're a build script depending on whether --target
@@ -108,36 +107,13 @@ fn main() {
             cmd.arg("-Ztls-model=initial-exec");
         }
     } else {
-        // FIXME(rust-lang/cargo#5754) we shouldn't be using special env vars
-        // here, but rather Cargo should know what flags to pass rustc itself.
-
-        // Override linker if necessary.
-        if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
-            cmd.arg(format!("-Clinker={host_linker}"));
-        }
-        if env::var_os("RUSTC_HOST_FUSE_LD_LLD").is_some() {
-            cmd.arg("-Clink-args=-fuse-ld=lld");
-        }
-
-        if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
-            if s == "true" {
-                cmd.arg("-C").arg("target-feature=+crt-static");
-            }
-            if s == "false" {
-                cmd.arg("-C").arg("target-feature=-crt-static");
+        // Find any host flags that were passed by bootstrap.
+        // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
+        if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
+            for flag in flags.split(' ') {
+                cmd.arg(flag);
             }
         }
-
-        // Cargo doesn't pass RUSTFLAGS to proc_macros:
-        // https://github.com/rust-lang/cargo/issues/4423
-        // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
-        // We also declare that the flag is expected, which we need to do to not
-        // get warnings about it being unexpected.
-        if stage == "0" {
-            cmd.arg("--cfg=bootstrap");
-        }
-        cmd.arg("-Zunstable-options");
-        cmd.arg("--check-cfg=values(bootstrap)");
     }
 
     if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {

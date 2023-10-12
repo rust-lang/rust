@@ -176,6 +176,11 @@ impl<N: Idx> LivenessValues<N> {
     pub(crate) fn region_value_str(&self, r: N) -> String {
         region_value_str(self.get_elements(r).map(RegionElement::Location))
     }
+
+    #[inline]
+    pub(crate) fn point_from_location(&self, location: Location) -> PointIndex {
+        self.elements.point_from_location(location)
+    }
 }
 
 /// Maps from `ty::PlaceholderRegion` values that are used in the rest of

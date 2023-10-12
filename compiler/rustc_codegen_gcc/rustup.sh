@@ -16,7 +16,7 @@ case $1 in
         done
 
         ./clean_all.sh
-        ./prepare.sh
+        ./y.sh prepare
         ;;
     "commit")
         git add rust-toolchain

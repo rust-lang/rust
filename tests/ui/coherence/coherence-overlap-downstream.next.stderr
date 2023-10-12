@@ -10,7 +10,7 @@ error[E0119]: conflicting implementations of trait `Foo<_>` for type `i32`
   --> $DIR/coherence-overlap-downstream.rs:17:1
    |
 LL | impl<X, T> Foo<X> for T where T: Bar<X> {}
-   | ----------------------- first implementation here
+   | --------------------------------------- first implementation here
 LL | impl<X> Foo<X> for i32 {}
    | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `i32`
    |

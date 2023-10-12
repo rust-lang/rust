@@ -7,6 +7,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
@@ -21,6 +22,7 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
 
+use crate::dataflow::BorrowIndex;
 use crate::{
     constraints::{
         graph::NormalConstraintGraph, ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
@@ -30,8 +32,8 @@ use crate::{
     nll::PoloniusOutput,
     region_infer::reverse_sccs::ReverseSccGraph,
     region_infer::values::{
-        LivenessValues, PlaceholderIndices, RegionElement, RegionValueElements, RegionValues,
-        ToElementIndex,
+        LivenessValues, PlaceholderIndices, PointIndex, RegionElement, RegionValueElements,
+        RegionValues, ToElementIndex,
     },
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
     universal_regions::UniversalRegions,
@@ -119,6 +121,9 @@ pub struct RegionInferenceContext<'tcx> {
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+
+    /// The set of loans that are live at a given point in the CFG, when using `-Zpolonius=next`.
+    live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
 }
 
 /// Each time that `apply_member_constraint` is successful, it appends
@@ -330,6 +335,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
+        live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
     ) -> Self {
         debug!("universal_regions: {:#?}", universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
@@ -383,6 +389,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             type_tests,
             universal_regions,
             universal_region_relations,
+            live_loans,
         };
 
         result.init_free_and_bound_regions();
@@ -683,7 +690,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // In Polonius mode, the errors about missing universal region relations are in the output
         // and need to be emitted or propagated. Otherwise, we need to check whether the
         // constraints were too strong, and if so, emit or propagate those errors.
-        if infcx.tcx.sess.opts.unstable_opts.polonius {
+        if infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
             self.check_polonius_subset_errors(
                 outlives_requirements.as_mut(),
                 &mut errors_buffer,
@@ -2278,6 +2285,41 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
         None
+    }
+
+    /// Access to the SCC constraint graph.
+    pub(crate) fn constraint_sccs(&self) -> &Sccs<RegionVid, ConstraintSccIndex> {
+        self.constraint_sccs.as_ref()
+    }
+
+    /// Returns whether the given SCC has any member constraints.
+    pub(crate) fn scc_has_member_constraints(&self, scc: ConstraintSccIndex) -> bool {
+        self.member_constraints.indices(scc).next().is_some()
+    }
+
+    /// Returns whether the given SCC is live at all points: whether the representative is a
+    /// placeholder or a free region.
+    pub(crate) fn scc_is_live_at_all_points(&self, scc: ConstraintSccIndex) -> bool {
+        // FIXME: there must be a cleaner way to find this information. At least, when
+        // higher-ranked subtyping is abstracted away from the borrowck main path, we'll only
+        // need to check whether this is a universal region.
+        let representative = self.scc_representatives[scc];
+        let origin = self.var_infos[representative].origin;
+        let live_at_all_points = matches!(
+            origin,
+            RegionVariableOrigin::Nll(
+                NllRegionVariableOrigin::Placeholder(_) | NllRegionVariableOrigin::FreeRegion
+            )
+        );
+        live_at_all_points
+    }
+
+    /// Returns whether the `loan_idx` is live at the given `location`: whether its issuing
+    /// region is contained within the type of a variable that is live at this point.
+    /// Note: for now, the sets of live loans is only available when using `-Zpolonius=next`.
+    pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, location: Location) -> bool {
+        let point = self.liveness_constraints.point_from_location(location);
+        self.live_loans.contains(point, loan_idx)
     }
 }
 

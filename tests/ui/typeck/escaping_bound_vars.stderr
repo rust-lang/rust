@@ -1,0 +1,10 @@
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/escaping_bound_vars.rs:11:35
+   |
+LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
+   |                                  -^
+   |                                  |
+   |                                  lifetime defined here
+
+error: aborting due to previous error
+

@@ -2,6 +2,7 @@
 authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
 name = "sysroot"
 version = "0.0.0"
+resolver = "2"
 
 [dependencies]
 core = { path = "./sysroot_src/library/core" }
@@ -18,3 +19,4 @@ rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-st
 
 [profile.release]
 debug = true
+#lto = "fat" # TODO(antoyo): re-enable when the failing LTO tests regarding proc-macros are fixed.

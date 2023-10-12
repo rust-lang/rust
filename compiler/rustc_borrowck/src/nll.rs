@@ -169,10 +169,11 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     upvars: &[Upvar<'tcx>],
     consumer_options: Option<ConsumerOptions>,
 ) -> NllOutput<'tcx> {
+    let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
     let polonius_input = consumer_options.map(|c| c.polonius_input()).unwrap_or_default()
-        || infcx.tcx.sess.opts.unstable_opts.polonius;
+        || is_polonius_legacy_enabled;
     let polonius_output = consumer_options.map(|c| c.polonius_output()).unwrap_or_default()
-        || infcx.tcx.sess.opts.unstable_opts.polonius;
+        || is_polonius_legacy_enabled;
     let mut all_facts =
         (polonius_input || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
 
@@ -181,22 +182,26 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     let elements = &Rc::new(RegionValueElements::new(&body));
 
     // Run the MIR type-checker.
-    let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
-        type_check::type_check(
-            infcx,
-            param_env,
-            body,
-            promoted,
-            &universal_regions,
-            location_table,
-            borrow_set,
-            &mut all_facts,
-            flow_inits,
-            move_data,
-            elements,
-            upvars,
-            polonius_input,
-        );
+    let MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        opaque_type_values,
+        live_loans,
+    } = type_check::type_check(
+        infcx,
+        param_env,
+        body,
+        promoted,
+        &universal_regions,
+        location_table,
+        borrow_set,
+        &mut all_facts,
+        flow_inits,
+        move_data,
+        elements,
+        upvars,
+        polonius_input,
+    );
 
     if let Some(all_facts) = &mut all_facts {
         let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
@@ -274,6 +279,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         type_tests,
         liveness_constraints,
         elements,
+        live_loans,
     );
 
     // Generate various additional constraints.

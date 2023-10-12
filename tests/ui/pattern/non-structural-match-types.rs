@@ -6,9 +6,9 @@
 
 fn main() {
     match loop {} {
-        const { || {} } => {}, //~ ERROR cannot be used in patterns
+        const { || {} } => {} //~ ERROR cannot be used in patterns
     }
     match loop {} {
-        const { async {} } => {}, //~ ERROR cannot be used in patterns
+        const { async {} } => {} //~ ERROR cannot be used in patterns
     }
 }

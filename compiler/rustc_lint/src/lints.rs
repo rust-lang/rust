@@ -412,8 +412,6 @@ pub struct BuiltinIncompleteFeatures {
 #[note]
 pub struct BuiltinInternalFeatures {
     pub name: Symbol,
-    #[subdiagnostic]
-    pub note: Option<BuiltinFeatureIssueNote>,
 }
 
 #[derive(Subdiagnostic)]

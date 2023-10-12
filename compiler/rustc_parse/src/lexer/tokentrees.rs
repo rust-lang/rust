@@ -55,16 +55,14 @@ impl<'a> TokenTreesReader<'a> {
                     let (this_spacing, next_tok) = loop {
                         let (next_tok, is_next_tok_preceded_by_whitespace) =
                             self.string_reader.next_token();
-                        if !is_next_tok_preceded_by_whitespace {
-                            if let Some(glued) = self.token.glue(&next_tok) {
-                                self.token = glued;
-                            } else {
-                                let this_spacing =
-                                    if next_tok.is_op() { Spacing::Joint } else { Spacing::Alone };
-                                break (this_spacing, next_tok);
-                            }
-                        } else {
+                        if is_next_tok_preceded_by_whitespace {
                             break (Spacing::Alone, next_tok);
+                        } else if let Some(glued) = self.token.glue(&next_tok) {
+                            self.token = glued;
+                        } else {
+                            let this_spacing =
+                                if next_tok.is_punct() { Spacing::Joint } else { Spacing::Alone };
+                            break (this_spacing, next_tok);
                         }
                     };
                     let this_tok = std::mem::replace(&mut self.token, next_tok);
