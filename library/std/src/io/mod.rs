@@ -513,8 +513,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
         match this.read(buf) {
             Ok(0) => break,
             Ok(n) => {
-                let tmp = buf;
-                buf = &mut tmp[n..];
+                buf = &mut buf[n..];
             }
             Err(ref e) if e.is_interrupted() => {}
             Err(e) => return Err(e),
