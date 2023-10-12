@@ -345,10 +345,7 @@ fn test_casts() {
     );
     // Check that the low bits are gone (not the high bits).
     check_all_outcomes(
-        HashSet::from_iter([
-            F32::nan(Pos, Quiet, 0),
-            F32::nan(Neg, Quiet, 0),
-        ]),
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
         || F32::from(F64::nan(Pos, Quiet, 1).as_f64() as f32),
     );
     check_all_outcomes(
@@ -358,7 +355,7 @@ fn test_casts() {
             F32::nan(Pos, Quiet, 1),
             F32::nan(Neg, Quiet, 1),
         ]),
-        || F32::from(F64::nan(Pos, Quiet, 1 << (51-22)).as_f64() as f32),
+        || F32::from(F64::nan(Pos, Quiet, 1 << (51 - 22)).as_f64() as f32),
     );
     check_all_outcomes(
         HashSet::from_iter([
