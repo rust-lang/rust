@@ -1306,7 +1306,7 @@ impl WherePredicate {
 pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: Vec<Lifetime> },
     Type { did: DefId, bounds: Vec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
-    Const { ty: Box<Type>, default: Option<Box<String>> },
+    Const { ty: Box<Type>, default: Option<Box<String>>, is_host_effect: bool },
 }
 
 impl GenericParamDefKind {
@@ -1326,9 +1326,10 @@ impl GenericParamDef {
         Self { name, kind: GenericParamDefKind::Lifetime { outlives: Vec::new() } }
     }
 
-    pub(crate) fn is_synthetic_type_param(&self) -> bool {
+    pub(crate) fn is_synthetic_param(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime { .. } | GenericParamDefKind::Const { .. } => false,
+            GenericParamDefKind::Lifetime { .. } => false,
+            GenericParamDefKind::Const { is_host_effect, .. } => is_host_effect,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
         }
     }

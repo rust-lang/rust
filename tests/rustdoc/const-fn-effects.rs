@@ -2,14 +2,14 @@
 #![feature(effects)]
 
 // @has foo/fn.bar.html
-// @has - '//pre[@class="rust item-decl"]' 'pub const fn bar<const host: bool = true>() -> '
+// @has - '//pre[@class="rust item-decl"]' 'pub const fn bar() -> '
 /// foo
 pub const fn bar() -> usize {
     2
 }
 
 // @has foo/struct.Foo.html
-// @has - '//*[@class="method"]' 'const fn new<const host: bool = true>()'
+// @has - '//*[@class="method"]' 'const fn new()'
 pub struct Foo(usize);
 
 impl Foo {
