@@ -32,3 +32,25 @@ pub fn array_copy(a: &[u8; 4], p: &mut [u8; 4]) {
     // CHECK: store <4 x i8> %[[TEMP2]], ptr %p, align 1
     *p = *a;
 }
+
+// CHECK-LABEL: @array_copy_1_element
+#[no_mangle]
+pub fn array_copy_1_element(a: &[u8; 1], p: &mut [u8; 1]) {
+    // CHECK: %[[LOCAL:.+]] = alloca [1 x i8], align 1
+    // CHECK: %[[TEMP1:.+]] = load i8, ptr %a, align 1
+    // CHECK: store i8 %[[TEMP1]], ptr %[[LOCAL]], align 1
+    // CHECK: %[[TEMP2:.+]] = load i8, ptr %[[LOCAL]], align 1
+    // CHECK: store i8 %[[TEMP2]], ptr %p, align 1
+    *p = *a;
+}
+
+// CHECK-LABEL: @array_copy_2_elements
+#[no_mangle]
+pub fn array_copy_2_elements(a: &[u8; 2], p: &mut [u8; 2]) {
+    // CHECK: %[[LOCAL:.+]] = alloca [2 x i8], align 1
+    // CHECK: %[[TEMP1:.+]] = load <2 x i8>, ptr %a, align 1
+    // CHECK: store <2 x i8> %[[TEMP1]], ptr %[[LOCAL]], align 1
+    // CHECK: %[[TEMP2:.+]] = load <2 x i8>, ptr %[[LOCAL]], align 1
+    // CHECK: store <2 x i8> %[[TEMP2]], ptr %p, align 1
+    *p = *a;
+}
