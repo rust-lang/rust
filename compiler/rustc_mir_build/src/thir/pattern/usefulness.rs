@@ -308,7 +308,8 @@
 use self::ArmType::*;
 use self::Usefulness::*;
 use super::deconstruct_pat::{
-    Constructor, ConstructorSet, DeconstructedPat, IntRange, SplitConstructorSet, WitnessPat,
+    Constructor, ConstructorSet, DeconstructedPat, IntRange, MaybeInfiniteInt, SplitConstructorSet,
+    WitnessPat,
 };
 use crate::errors::{NonExhaustiveOmittedPattern, Overlap, OverlappingRangeEndpoints, Uncovered};
 
@@ -1013,7 +1014,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
 
     if IntRange::is_integral(ty) {
         let emit_lint = |overlap: &IntRange, this_span: Span, overlapped_spans: &[Span]| {
-            let overlap_as_pat = overlap.to_pat(cx.tcx, ty);
+            let overlap_as_pat = overlap.to_pat(ty, cx.tcx);
             let overlaps: Vec<_> = overlapped_spans
                 .iter()
                 .copied()
@@ -1031,7 +1032,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
         let split_int_ranges = set.present.iter().filter_map(|c| c.as_int_range());
         for overlap_range in split_int_ranges.clone() {
             if overlap_range.is_singleton() {
-                let overlap: u128 = overlap_range.lo;
+                let overlap: MaybeInfiniteInt = overlap_range.lo;
                 // Ranges that look like `lo..=overlap`.
                 let mut prefixes: SmallVec<[_; 1]> = Default::default();
                 // Ranges that look like `overlap..=hi`.
