@@ -1,5 +1,5 @@
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> $DIR/unused_enumerate_index.rs:7:19
+  --> $DIR/unused_enumerate_index.rs:8:19
    |
 LL |     for (_, x) in v.iter().enumerate() {
    |                   ^^^^^^^^^^^^^^^^^^^^
@@ -11,5 +11,16 @@ help: remove the `.enumerate()` call
 LL |     for x in v.iter() {
    |         ~    ~~~~~~~~
 
-error: aborting due to previous error
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> $DIR/unused_enumerate_index.rs:55:19
+   |
+LL |     for (_, x) in dummy.enumerate() {
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL |     for x in dummy {
+   |         ~    ~~~~~
+
+error: aborting due to 2 previous errors
 

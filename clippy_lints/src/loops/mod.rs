@@ -580,7 +580,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `for (_, v) in a.iter().enumerate()`
+    /// Checks for uses of the `enumerate` method where the index is unused (`_`)
     ///
     /// ### Why is this bad?
     /// The index from `.enumerate()` is immediately dropped.
@@ -589,20 +589,20 @@ declare_clippy_lint! {
     /// ```rust
     /// let v = vec![1, 2, 3, 4];
     /// for (_, x) in v.iter().enumerate() {
-    ///     print!("{x}")
+    ///     println!("{x}");
     /// }
     /// ```
     /// Use instead:
     /// ```rust
     /// let v = vec![1, 2, 3, 4];
     /// for x in v.iter() {
-    ///     print!("{x}")
+    ///     println!("{x}");
     /// }
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.75.0"]
     pub UNUSED_ENUMERATE_INDEX,
     style,
-    "using .enumerate() and immediately dropping the index"
+    "using `.enumerate()` and immediately dropping the index"
 }
 
 declare_clippy_lint! {

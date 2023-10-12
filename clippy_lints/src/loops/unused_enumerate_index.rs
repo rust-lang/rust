@@ -3,39 +3,26 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::sugg;
 use clippy_utils::visitors::is_local_used;
+use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 
 /// Checks for the `UNUSED_ENUMERATE_INDEX` lint.
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx Expr<'_>, body: &'tcx Expr<'_>) {
-    let pat_span = pat.span;
-
-    let PatKind::Tuple(pat, _) = pat.kind else {
+    let PatKind::Tuple(tuple, _) = pat.kind else {
         return;
     };
 
-    if pat.len() != 2 {
-        return;
-    }
-
-    let arg_span = arg.span;
-
-    let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind else {
+    let ExprKind::MethodCall(_method, self_arg, [], _) = arg.kind else {
         return;
     };
-
-    if method.ident.as_str() != "enumerate" {
-        return;
-    }
 
     let ty = cx.typeck_results().expr_ty(arg);
 
-    if !pat_is_wild(cx, &pat[0].kind, body) {
+    if !pat_is_wild(cx, &tuple[0].kind, body) {
         return;
     }
-
-    let new_pat_span = pat[1].span;
 
     let name = match *ty.kind() {
         ty::Adt(base, _substs) => cx.tcx.def_path_str(base.did()),
@@ -46,10 +33,20 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
         return;
     }
 
+    let Some((DefKind::AssocFn, call_id)) = cx.typeck_results().type_dependent_def(arg.hir_id) else {
+        return;
+    };
+
+    let call_name = cx.tcx.def_path_str(call_id);
+
+    if call_name != "std::iter::Iterator::enumerate" && call_name != "core::iter::Iterator::enumerate" {
+        return;
+    }
+
     span_lint_and_then(
         cx,
         UNUSED_ENUMERATE_INDEX,
-        arg_span,
+        arg.span,
         "you seem to use `.enumerate()` and immediately discard the index",
         |diag| {
             let base_iter = sugg::Sugg::hir(cx, self_arg, "base iter");
@@ -57,8 +54,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
                 diag,
                 "remove the `.enumerate()` call",
                 vec![
-                    (pat_span, snippet(cx, new_pat_span, "value").into_owned()),
-                    (arg_span, base_iter.to_string()),
+                    (pat.span, snippet(cx, tuple[1].span, "..").into_owned()),
+                    (arg.span, base_iter.to_string()),
                 ],
             );
         },
