@@ -56,6 +56,7 @@ use rustc_hir::RangeEnd;
 use rustc_index::Idx;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
@@ -139,20 +140,32 @@ impl MaybeInfiniteInt {
             PatRangeBoundary::PosInfinity => PosInfinity,
         }
     }
+    // This could change from finite to infinite if we got `usize::MAX+1` after range splitting.
     fn to_pat_range_bdy<'tcx>(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> PatRangeBoundary<'tcx> {
         match self {
             NegInfinity => PatRangeBoundary::NegInfinity,
             Finite(x) => {
                 let bias = Self::signed_bias(tcx, ty);
                 let bits = x ^ bias;
-                let env = ty::ParamEnv::empty().and(ty);
-                let value = mir::Const::from_bits(tcx, bits, env);
-                PatRangeBoundary::Finite(value)
+                let size = ty.primitive_size(tcx);
+                match Scalar::try_from_uint(bits, size) {
+                    Some(scalar) => {
+                        let value = mir::Const::from_scalar(tcx, scalar, ty);
+                        PatRangeBoundary::Finite(value)
+                    }
+                    // The value doesn't fit. Since `x >= 0` and 0 always encodes the minimum value
+                    // for a type, the problem isn't that the value is too small. So it must be too
+                    // large.
+                    None => PatRangeBoundary::PosInfinity,
+                }
             }
             JustAfterMax | PosInfinity => PatRangeBoundary::PosInfinity,
         }
     }
 
+    fn is_finite(self) -> bool {
+        matches!(self, Finite(_))
+    }
     fn minus_one(self) -> Self {
         match self {
             Finite(n) => match n.checked_sub(1) {
@@ -169,22 +182,24 @@ impl MaybeInfiniteInt {
                 Some(m) => Finite(m),
                 None => JustAfterMax,
             },
+            JustAfterMax => bug!(),
             x => x,
         }
     }
 }
 
-/// An inclusive interval, used for precise integer exhaustiveness checking.
-/// `IntRange`s always store a contiguous range.
+/// An inclusive interval, used for precise integer exhaustiveness checking. `IntRange`s always
+/// store a contiguous range.
 ///
-/// `IntRange` is never used to encode an empty range or a "range" that wraps
-/// around the (offset) space: i.e., `range.lo <= range.hi`.
+/// `IntRange` is never used to encode an empty range or a "range" that wraps around the (offset)
+/// space: i.e., `range.lo <= range.hi`.
 ///
-/// The range can have open ends.
+/// Note: the range can be `NegInfinity..=NegInfinity` or `PosInfinity..=PosInfinity` to represent
+/// the values before `isize::MIN` and after `isize::MAX`/`usize::MAX`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct IntRange {
-    pub(crate) lo: MaybeInfiniteInt, // Must not be `PosInfinity`.
-    pub(crate) hi: MaybeInfiniteInt, // Must not be `NegInfinity`.
+    pub(crate) lo: MaybeInfiniteInt,
+    pub(crate) hi: MaybeInfiniteInt,
 }
 
 impl IntRange {
@@ -195,9 +210,7 @@ impl IntRange {
 
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
     pub(super) fn is_singleton(&self) -> bool {
-        // Since `lo` and `hi` can't be the same `Infinity`, this correctly only detects a
-        // `Finite(x)` singleton.
-        self.lo == self.hi
+        self.lo == self.hi && self.lo.is_finite()
     }
 
     #[inline]
@@ -310,18 +323,49 @@ impl IntRange {
             })
     }
 
+    /// Whether the range denotes the values before `isize::MIN` or the values after
+    /// `usize::MAX`/`isize::MAX`.
+    pub(crate) fn is_beyond_boundaries<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+        // First check if we are usize/isize to avoid unnecessary `to_pat_range_bdy`.
+        ty.is_ptr_sized_integral() && !tcx.features().precise_pointer_size_matching && {
+            let lo = self.lo.to_pat_range_bdy(ty, tcx);
+            let hi = self.hi.to_pat_range_bdy(ty, tcx);
+            matches!(lo, PatRangeBoundary::PosInfinity)
+                || matches!(hi, PatRangeBoundary::NegInfinity)
+        }
+    }
     /// Only used for displaying the range.
     pub(super) fn to_pat<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {
-        let lo = self.lo.to_pat_range_bdy(ty, tcx);
-        let hi = self.hi.to_pat_range_bdy(ty, tcx);
-
-        let kind = if self.is_singleton() {
+        let kind = if matches!((self.lo, self.hi), (NegInfinity, PosInfinity)) {
+            PatKind::Wild
+        } else if self.is_singleton() {
+            let lo = self.lo.to_pat_range_bdy(ty, tcx);
             let value = lo.as_finite().unwrap();
             PatKind::Constant { value }
-        } else if matches!((self.lo, self.hi), (NegInfinity, PosInfinity)) {
-            PatKind::Wild
         } else {
-            PatKind::Range(Box::new(PatRange { lo, hi, end: RangeEnd::Included, ty }))
+            let mut lo = self.lo.to_pat_range_bdy(ty, tcx);
+            let mut hi = self.hi.to_pat_range_bdy(ty, tcx);
+            let end = if hi.is_finite() {
+                RangeEnd::Included
+            } else {
+                // `0..=` isn't a valid pattern.
+                RangeEnd::Excluded
+            };
+            if matches!(hi, PatRangeBoundary::NegInfinity) {
+                // The range denotes the values before `isize::MIN`.
+                let c = ty.numeric_min_val(tcx).unwrap();
+                let value = mir::Const::from_ty_const(c, tcx);
+                hi = PatRangeBoundary::Finite(value);
+            }
+            if matches!(lo, PatRangeBoundary::PosInfinity) {
+                // The range denotes the values after `usize::MAX`/`isize::MAX`.
+                // We represent this as `usize::MAX..` which is slightly incorrect but probably
+                // clear enough.
+                let c = ty.numeric_max_val(tcx).unwrap();
+                let value = mir::Const::from_ty_const(c, tcx);
+                lo = PatRangeBoundary::Finite(value);
+            }
+            PatKind::Range(Box::new(PatRange { lo, hi, end, ty }))
         };
 
         Pat { ty, span: DUMMY_SP, kind }
@@ -843,9 +887,7 @@ pub(super) enum ConstructorSet {
     Bool,
     /// The type is spanned by integer values. The range or ranges give the set of allowed values.
     /// The second range is only useful for `char`.
-    /// `non_exhaustive` is used when the range is not allowed to be matched exhaustively (that's
-    /// for usize/isize).
-    Integers { range_1: IntRange, range_2: Option<IntRange>, non_exhaustive: bool },
+    Integers { range_1: IntRange, range_2: Option<IntRange> },
     /// The type is matched by slices. The usize is the compile-time length of the array, if known.
     Slice(Option<usize>),
     /// The type is matched by slices whose elements are uninhabited.
@@ -903,27 +945,37 @@ impl ConstructorSet {
                 Self::Integers {
                     range_1: make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
                     range_2: Some(make_range('\u{E000}' as u128, '\u{10FFFF}' as u128)),
-                    non_exhaustive: false,
                 }
             }
             &ty::Int(ity) => {
-                // `usize`/`isize` are not allowed to be matched exhaustively unless the
-                // `precise_pointer_size_matching` feature is enabled.
-                let non_exhaustive =
-                    ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching;
-                let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
-                let min = 1u128 << (bits - 1);
-                let max = min - 1;
-                Self::Integers { range_1: make_range(min, max), non_exhaustive, range_2: None }
+                let range = if ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching
+                {
+                    // The min/max values of `isize` are not allowed to be observed unless the
+                    // `precise_pointer_size_matching` feature is enabled.
+                    IntRange { lo: NegInfinity, hi: PosInfinity }
+                } else {
+                    let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
+                    let min = 1u128 << (bits - 1);
+                    let max = min - 1;
+                    make_range(min, max)
+                };
+                Self::Integers { range_1: range, range_2: None }
             }
             &ty::Uint(uty) => {
-                // `usize`/`isize` are not allowed to be matched exhaustively unless the
-                // `precise_pointer_size_matching` feature is enabled.
-                let non_exhaustive =
-                    ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching;
-                let size = Integer::from_uint_ty(&cx.tcx, uty).size();
-                let max = size.truncate(u128::MAX);
-                Self::Integers { range_1: make_range(0, max), non_exhaustive, range_2: None }
+                let range = if ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching
+                {
+                    // The max value of `usize` is not allowed to be observed unless the
+                    // `precise_pointer_size_matching` feature is enabled.
+                    let lo = MaybeInfiniteInt::new_finite(cx.tcx, ty, 0);
+                    IntRange { lo, hi: PosInfinity }
+                } else {
+                    let size = Integer::from_uint_ty(&cx.tcx, uty).size();
+                    let max = size.truncate(u128::MAX);
+                    make_range(0, max)
+                };
+                Self::Integers { range_1: range, range_2: None }
             }
             ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
                 let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
@@ -1078,7 +1130,7 @@ impl ConstructorSet {
                     missing.push(Bool(true));
                 }
             }
-            ConstructorSet::Integers { range_1, range_2, non_exhaustive } => {
+            ConstructorSet::Integers { range_1, range_2 } => {
                 let seen_ranges: Vec<_> =
                     seen.map(|ctor| ctor.as_int_range().unwrap().clone()).collect();
                 for (seen, splitted_range) in range_1.split(seen_ranges.iter().cloned()) {
@@ -1094,10 +1146,6 @@ impl ConstructorSet {
                             Presence::Seen => present.push(IntRange(splitted_range)),
                         }
                     }
-                }
-
-                if *non_exhaustive {
-                    missing.push(NonExhaustive);
                 }
             }
             &ConstructorSet::Slice(array_len) => {

@@ -22,7 +22,6 @@ fn main() {
     }
 
     m!(0usize, 0..);
-    //[deny]~^ ERROR non-exhaustive patterns
     m!(0usize, 0..=usize::MAX);
     //[deny]~^ ERROR non-exhaustive patterns
     m!(0usize, 0..5 | 5..=usize::MAX);
@@ -32,10 +31,8 @@ fn main() {
     m!((0usize, true), (0..5, true) | (5..=usize::MAX, true) | (0..=usize::MAX, false));
     //[deny]~^ ERROR non-exhaustive patterns
     m!(0usize, 0..=usize::MAX | usize::MAX..);
-    //[deny]~^ ERROR non-exhaustive patterns
 
     m!(0isize, ..0 | 0..);
-    //[deny]~^ ERROR non-exhaustive patterns
     m!(0isize, isize::MIN..=isize::MAX);
     //[deny]~^ ERROR non-exhaustive patterns
     m!(0isize, isize::MIN..5 | 5..=isize::MAX);
@@ -46,7 +43,6 @@ fn main() {
         | (5..=isize::MAX, true) | (isize::MIN..=isize::MAX, false));
     //[deny]~^^ ERROR non-exhaustive patterns
     m!(0isize, ..=isize::MIN | isize::MIN..=isize::MAX | isize::MAX..);
-    //[deny]~^ ERROR non-exhaustive patterns
 
     match 0isize {
         //[deny]~^ ERROR non-exhaustive patterns
