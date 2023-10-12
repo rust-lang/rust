@@ -1389,6 +1389,18 @@ mod prim_usize {}
 /// work on references as well as they do on owned values! The implementations described here are
 /// meant for generic contexts, where the final type `T` is a type parameter or otherwise not
 /// locally known.
+///
+/// # Safety
+///
+/// For all types, `T: ?Sized`, and for all `t: &T` or `t: &mut T`, unsafe code may assume that
+/// the following properties hold. It is undefined behavior to produce a `t: &T` or `t: &mut T`
+/// which violates any of these properties.
+///
+/// * `t` is aligned to `align_of_val(t)`
+/// * `t` refers to a valid instance of `T`
+/// * `t` refers to a single [allocated object]
+///
+/// [allocated object]: ptr#allocated-object
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_ref {}
 
