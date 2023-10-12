@@ -404,7 +404,7 @@ impl Token {
         [DotDot, DotDotDot, DotDotEq].contains(&self.kind)
     }
 
-    pub fn is_op(&self) -> bool {
+    pub fn is_punct(&self) -> bool {
         match self.kind {
             Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Not | Tilde | BinOp(_)
             | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
