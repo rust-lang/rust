@@ -165,7 +165,7 @@
 //! regardless of whether it is actually needed or not.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
+use rustc_data_structures::sync::{par_for_each_in, MtLock, MtLockRef};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
@@ -263,13 +263,13 @@ pub fn collect_crate_mono_items(
 
     debug!("building mono item graph, beginning at roots");
 
-    let mut visited = MTLock::new(FxHashSet::default());
-    let mut usage_map = MTLock::new(UsageMap::new());
+    let mut visited = MtLock::new(FxHashSet::default());
+    let mut usage_map = MtLock::new(UsageMap::new());
     let recursion_limit = tcx.recursion_limit();
 
     {
-        let visited: MTLockRef<'_, _> = &mut visited;
-        let usage_map: MTLockRef<'_, _> = &mut usage_map;
+        let visited: MtLockRef<'_, _> = &mut visited;
+        let usage_map: MtLockRef<'_, _> = &mut usage_map;
 
         tcx.sess.time("monomorphization_collector_graph_walk", || {
             par_for_each_in(roots, |root| {
@@ -333,10 +333,10 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_item: Spanned<MonoItem<'tcx>>,
-    visited: MTLockRef<'_, FxHashSet<MonoItem<'tcx>>>,
+    visited: MtLockRef<'_, FxHashSet<MonoItem<'tcx>>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
-    usage_map: MTLockRef<'_, UsageMap<'tcx>>,
+    usage_map: MtLockRef<'_, UsageMap<'tcx>>,
 ) {
     if !visited.lock_mut().insert(starting_item.node) {
         // We've been here already, no need to search again.

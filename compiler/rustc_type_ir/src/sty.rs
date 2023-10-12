@@ -744,32 +744,32 @@ where
 
 // This is not a derived impl because a derive would require `I: HashStable`
 #[allow(rustc::usage_of_ty_tykind)]
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
+impl<Ctx: HashStableContext, I: Interner> HashStable<Ctx> for TyKind<I>
 where
-    I::AdtDef: HashStable<CTX>,
-    I::DefId: HashStable<CTX>,
-    I::GenericArgsRef: HashStable<CTX>,
-    I::Ty: HashStable<CTX>,
-    I::Const: HashStable<CTX>,
-    I::TypeAndMut: HashStable<CTX>,
-    I::PolyFnSig: HashStable<CTX>,
-    I::ListBinderExistentialPredicate: HashStable<CTX>,
-    I::Region: HashStable<CTX>,
-    I::Movability: HashStable<CTX>,
-    I::Mutability: HashStable<CTX>,
-    I::BinderListTy: HashStable<CTX>,
-    I::ListTy: HashStable<CTX>,
-    I::AliasTy: HashStable<CTX>,
-    I::BoundTy: HashStable<CTX>,
-    I::ParamTy: HashStable<CTX>,
-    I::PlaceholderType: HashStable<CTX>,
-    I::InferTy: HashStable<CTX>,
-    I::ErrorGuaranteed: HashStable<CTX>,
+    I::AdtDef: HashStable<Ctx>,
+    I::DefId: HashStable<Ctx>,
+    I::GenericArgsRef: HashStable<Ctx>,
+    I::Ty: HashStable<Ctx>,
+    I::Const: HashStable<Ctx>,
+    I::TypeAndMut: HashStable<Ctx>,
+    I::PolyFnSig: HashStable<Ctx>,
+    I::ListBinderExistentialPredicate: HashStable<Ctx>,
+    I::Region: HashStable<Ctx>,
+    I::Movability: HashStable<Ctx>,
+    I::Mutability: HashStable<Ctx>,
+    I::BinderListTy: HashStable<Ctx>,
+    I::ListTy: HashStable<Ctx>,
+    I::AliasTy: HashStable<Ctx>,
+    I::BoundTy: HashStable<Ctx>,
+    I::ParamTy: HashStable<Ctx>,
+    I::PlaceholderType: HashStable<Ctx>,
+    I::InferTy: HashStable<Ctx>,
+    I::ErrorGuaranteed: HashStable<Ctx>,
 {
     #[inline]
     fn hash_stable(
         &self,
-        __hcx: &mut CTX,
+        __hcx: &mut Ctx,
         __hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
     ) {
         std::mem::discriminant(self).hash_stable(__hcx, __hasher);
@@ -925,20 +925,20 @@ impl<I: Interner> hash::Hash for ConstKind<I> {
     }
 }
 
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for ConstKind<I>
+impl<Ctx: HashStableContext, I: Interner> HashStable<Ctx> for ConstKind<I>
 where
-    I::ParamConst: HashStable<CTX>,
-    I::InferConst: HashStable<CTX>,
-    I::BoundConst: HashStable<CTX>,
-    I::PlaceholderConst: HashStable<CTX>,
-    I::AliasConst: HashStable<CTX>,
-    I::ValueConst: HashStable<CTX>,
-    I::ErrorGuaranteed: HashStable<CTX>,
-    I::ExprConst: HashStable<CTX>,
+    I::ParamConst: HashStable<Ctx>,
+    I::InferConst: HashStable<Ctx>,
+    I::BoundConst: HashStable<Ctx>,
+    I::PlaceholderConst: HashStable<Ctx>,
+    I::AliasConst: HashStable<Ctx>,
+    I::ValueConst: HashStable<Ctx>,
+    I::ErrorGuaranteed: HashStable<Ctx>,
+    I::ExprConst: HashStable<Ctx>,
 {
     fn hash_stable(
         &self,
-        hcx: &mut CTX,
+        hcx: &mut Ctx,
         hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
     ) {
         const_kind_discriminant(self).hash_stable(hcx, hasher);
@@ -1440,18 +1440,18 @@ where
 }
 
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
+impl<Ctx: HashStableContext, I: Interner> HashStable<Ctx> for RegionKind<I>
 where
-    I::EarlyBoundRegion: HashStable<CTX>,
-    I::BoundRegion: HashStable<CTX>,
-    I::FreeRegion: HashStable<CTX>,
-    I::RegionVid: HashStable<CTX>,
-    I::PlaceholderRegion: HashStable<CTX>,
+    I::EarlyBoundRegion: HashStable<Ctx>,
+    I::BoundRegion: HashStable<Ctx>,
+    I::FreeRegion: HashStable<Ctx>,
+    I::RegionVid: HashStable<Ctx>,
+    I::PlaceholderRegion: HashStable<Ctx>,
 {
     #[inline]
     fn hash_stable(
         &self,
-        hcx: &mut CTX,
+        hcx: &mut Ctx,
         hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
     ) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);

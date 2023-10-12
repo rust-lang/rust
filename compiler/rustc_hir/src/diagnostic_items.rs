@@ -9,9 +9,9 @@ pub struct DiagnosticItems {
     pub name_to_id: FxHashMap<Symbol, DefId>,
 }
 
-impl<CTX: crate::HashStableContext> HashStable<CTX> for DiagnosticItems {
+impl<Ctx: crate::HashStableContext> HashStable<Ctx> for DiagnosticItems {
     #[inline]
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         self.name_to_id.hash_stable(ctx, hasher);
     }
 }

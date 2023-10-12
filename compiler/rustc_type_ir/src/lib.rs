@@ -747,8 +747,8 @@ impl Variance {
     }
 }
 
-impl<CTX> HashStable<CTX> for InferTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+impl<Ctx> HashStable<Ctx> for InferTy {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         use InferTy::*;
         discriminant(self).hash_stable(ctx, hasher);
         match self {

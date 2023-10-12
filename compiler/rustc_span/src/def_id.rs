@@ -444,50 +444,50 @@ rustc_data_structures::define_id_collections!(
     LocalDefId
 );
 
-impl<CTX: HashStableContext> HashStable<CTX> for DefId {
+impl<Ctx: HashStableContext> HashStable<Ctx> for DefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for LocalDefId {
+impl<Ctx: HashStableContext> HashStable<Ctx> for LocalDefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
+impl<Ctx: HashStableContext> HashStable<Ctx> for CrateNum {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for DefId {
+impl<Ctx: HashStableContext> ToStableHashKey<Ctx> for DefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &Ctx) -> DefPathHash {
         hcx.def_path_hash(*self)
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for LocalDefId {
+impl<Ctx: HashStableContext> ToStableHashKey<Ctx> for LocalDefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &Ctx) -> DefPathHash {
         hcx.def_path_hash(self.to_def_id())
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for CrateNum {
+impl<Ctx: HashStableContext> ToStableHashKey<Ctx> for CrateNum {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &Ctx) -> DefPathHash {
         self.as_def_id().to_stable_hash_key(hcx)
     }
 }

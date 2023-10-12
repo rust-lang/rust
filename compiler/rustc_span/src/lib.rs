@@ -2167,9 +2167,9 @@ pub trait HashStableContext {
     fn hashing_controls(&self) -> HashingControls;
 }
 
-impl<CTX> HashStable<CTX> for Span
+impl<Ctx> HashStable<Ctx> for Span
 where
-    CTX: HashStableContext,
+    Ctx: HashStableContext,
 {
     /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
     /// fields (that would be similar to hashing pointers, since those are just
@@ -2181,7 +2181,7 @@ where
     /// codepoint offsets. For the purpose of the hash that's sufficient.
     /// Also, hashing filenames is expensive so we avoid doing it twice when the
     /// span starts and ends in the same file, which is almost always the case.
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;

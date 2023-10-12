@@ -33,8 +33,8 @@ enum OngoingModuleCodegen {
     Async(JoinHandle<Result<ModuleCodegenResult, String>>),
 }
 
-impl<HCX> HashStable<HCX> for OngoingModuleCodegen {
-    fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
+impl<Hcx> HashStable<Hcx> for OngoingModuleCodegen {
+    fn hash_stable(&self, _: &mut Hcx, _: &mut StableHasher) {
         // do nothing
     }
 }

@@ -136,9 +136,9 @@ impl LintExpectationId {
     }
 }
 
-impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
+impl<Hcx: rustc_hir::HashStableContext> HashStable<Hcx> for LintExpectationId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             LintExpectationId::Stable {
                 hir_id,
@@ -159,11 +159,11 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     }
 }
 
-impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
+impl<Hcx: rustc_hir::HashStableContext> ToStableHashKey<Hcx> for LintExpectationId {
     type KeyType = (HirId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &Hcx) -> Self::KeyType {
         match self {
             LintExpectationId::Stable {
                 hir_id,
@@ -458,18 +458,18 @@ impl LintId {
     }
 }
 
-impl<HCX> HashStable<HCX> for LintId {
+impl<Hcx> HashStable<Hcx> for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }
 
-impl<HCX> ToStableHashKey<HCX> for LintId {
+impl<Hcx> ToStableHashKey<Hcx> for LintId {
     type KeyType = &'static str;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
+    fn to_stable_hash_key(&self, _: &Hcx) -> &'static str {
         self.lint_name_raw()
     }
 }

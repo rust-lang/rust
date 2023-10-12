@@ -299,16 +299,16 @@ impl WorkProductId {
     }
 }
 
-impl<HCX> HashStable<HCX> for WorkProductId {
+impl<Hcx> HashStable<Hcx> for WorkProductId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.hash.hash_stable(hcx, hasher)
     }
 }
-impl<HCX> ToStableHashKey<HCX> for WorkProductId {
+impl<Hcx> ToStableHashKey<Hcx> for WorkProductId {
     type KeyType = Fingerprint;
     #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &Hcx) -> Self::KeyType {
         self.hash
     }
 }

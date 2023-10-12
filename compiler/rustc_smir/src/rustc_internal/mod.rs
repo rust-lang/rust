@@ -156,7 +156,7 @@ where
             (Ok(Ok(())), Some(ControlFlow::Break(value))) => Err(CompilerError::Interrupted(value)),
             (Ok(Ok(_)), None) => Err(CompilerError::Skipped),
             (Ok(Err(_)), _) => Err(CompilerError::CompilationFailed),
-            (Err(_), _) => Err(CompilerError::ICE),
+            (Err(_), _) => Err(CompilerError::Ice),
         }
     }
 }

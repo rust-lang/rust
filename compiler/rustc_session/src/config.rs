@@ -443,10 +443,10 @@ unsafe impl StableOrd for OutputType {
     const CAN_USE_UNSTABLE_SORT: bool = true;
 }
 
-impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OutputType {
     type KeyType = Self;
 
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &Hcx) -> Self::KeyType {
         *self
     }
 }

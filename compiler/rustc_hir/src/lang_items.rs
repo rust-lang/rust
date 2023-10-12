@@ -119,8 +119,8 @@ macro_rules! language_item_table {
     }
 }
 
-impl<CTX> HashStable<CTX> for LangItem {
-    fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
+impl<Ctx> HashStable<Ctx> for LangItem {
+    fn hash_stable(&self, _: &mut Ctx, hasher: &mut StableHasher) {
         ::std::hash::Hash::hash(self, hasher);
     }
 }

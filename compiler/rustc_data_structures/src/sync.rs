@@ -29,16 +29,16 @@
 //! | `Lock<T>`               | `RefCell<T>`        | `RefCell<T>` or                 |
 //! |                         |                     | `parking_lot::Mutex<T>`         |
 //! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
-//! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
-//! | `MTLockRef<'a, T>` [^2] | `&'a mut MTLock<T>` | `&'a MTLock<T>`                 |
+//! | `MtLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
+//! | `MtLockRef<'a, T>` [^2] | `&'a mut MtLock<T>` | `&'a MtLock<T>`                 |
 //! |                         |                     |                                 |
 //! | `ParallelIterator`      | `Iterator`          | `rayon::iter::ParallelIterator` |
 //!
-//! [^1] `MTLock` is similar to `Lock`, but the serial version avoids the cost
+//! [^1] `MtLock` is similar to `Lock`, but the serial version avoids the cost
 //! of a `RefCell`. This is appropriate when interior mutability is not
 //! required.
 //!
-//! [^2] `MTLockRef` is a typedef.
+//! [^2] `MtLockRef` is a typedef.
 
 pub use crate::marker::*;
 use std::collections::HashMap;
@@ -212,15 +212,15 @@ cfg_if! {
 
         use std::cell::RefCell as InnerRwLock;
 
-        pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
+        pub type MtLockRef<'a, T> = &'a mut MtLock<T>;
 
         #[derive(Debug, Default)]
-        pub struct MTLock<T>(T);
+        pub struct MtLock<T>(T);
 
-        impl<T> MTLock<T> {
+        impl<T> MtLock<T> {
             #[inline(always)]
             pub fn new(inner: T) -> Self {
-                MTLock(inner)
+                MtLock(inner)
             }
 
             #[inline(always)]
@@ -245,10 +245,10 @@ cfg_if! {
         }
 
         // FIXME: Probably a bad idea (in the threaded case)
-        impl<T: Clone> Clone for MTLock<T> {
+        impl<T: Clone> Clone for MtLock<T> {
             #[inline]
             fn clone(&self) -> Self {
-                MTLock(self.0.clone())
+                MtLock(self.0.clone())
             }
         }
     } else {
@@ -269,15 +269,15 @@ cfg_if! {
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
 
-        pub type MTLockRef<'a, T> = &'a MTLock<T>;
+        pub type MtLockRef<'a, T> = &'a MtLock<T>;
 
         #[derive(Debug, Default)]
-        pub struct MTLock<T>(Lock<T>);
+        pub struct MtLock<T>(Lock<T>);
 
-        impl<T> MTLock<T> {
+        impl<T> MtLock<T> {
             #[inline(always)]
             pub fn new(inner: T) -> Self {
-                MTLock(Lock::new(inner))
+                MtLock(Lock::new(inner))
             }
 
             #[inline(always)]

@@ -1199,8 +1199,8 @@ impl IntoIterator for SanitizerSet {
     }
 }
 
-impl<CTX> HashStable<CTX> for SanitizerSet {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+impl<Ctx> HashStable<Ctx> for SanitizerSet {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         self.bits().hash_stable(ctx, hasher);
     }
 }

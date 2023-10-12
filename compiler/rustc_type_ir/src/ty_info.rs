@@ -94,8 +94,8 @@ impl<T: Hash> Hash for WithCachedTypeInfo<T> {
     }
 }
 
-impl<T: HashStable<CTX>, CTX> HashStable<CTX> for WithCachedTypeInfo<T> {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<T: HashStable<Ctx>, Ctx> HashStable<Ctx> for WithCachedTypeInfo<T> {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         if self.stable_hash == Fingerprint::ZERO || cfg!(debug_assertions) {
             // No cached hash available. This can only mean that incremental is disabled.
             // We don't cache stable hashes in non-incremental mode, because they are used

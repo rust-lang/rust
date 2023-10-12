@@ -99,11 +99,11 @@ impl<'a, T> Hash for Interned<'a, T> {
     }
 }
 
-impl<T, CTX> HashStable<CTX> for Interned<'_, T>
+impl<T, Ctx> HashStable<Ctx> for Interned<'_, T>
 where
-    T: HashStable<CTX>,
+    T: HashStable<Ctx>,
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         self.0.hash_stable(hcx, hasher);
     }
 }

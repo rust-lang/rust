@@ -95,7 +95,7 @@ pub trait ForestObligation: Clone + Debug {
 pub trait ObligationProcessor {
     type Obligation: ForestObligation;
     type Error: Debug;
-    type OUT: OutcomeTrait<Obligation = Self::Obligation, Error = Error<Self::Obligation, Self::Error>>;
+    type Out: OutcomeTrait<Obligation = Self::Obligation, Error = Error<Self::Obligation, Self::Error>>;
 
     /// Implementations can provide a fast-path to obligation-processing
     /// by counting the prefix of the passed iterator for which
@@ -416,11 +416,11 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Performs a fixpoint computation over the obligation list.
     #[inline(never)]
-    pub fn process_obligations<P>(&mut self, processor: &mut P) -> P::OUT
+    pub fn process_obligations<P>(&mut self, processor: &mut P) -> P::Out
     where
         P: ObligationProcessor<Obligation = O>,
     {
-        let mut outcome = P::OUT::new();
+        let mut outcome = P::Out::new();
 
         // Fixpoint computation: we repeat until the inner loop stalls.
         loop {
@@ -576,7 +576,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Report cycles between all `Success` nodes, and convert all `Success`
     /// nodes to `Done`. This must be called after `mark_successes`.
-    fn process_cycles<P>(&mut self, processor: &mut P, outcome: &mut P::OUT)
+    fn process_cycles<P>(&mut self, processor: &mut P, outcome: &mut P::Out)
     where
         P: ObligationProcessor<Obligation = O>,
     {
@@ -599,7 +599,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         stack: &mut Vec<usize>,
         processor: &mut P,
         index: usize,
-        outcome: &mut P::OUT,
+        outcome: &mut P::Out,
     ) where
         P: ObligationProcessor<Obligation = O>,
     {

@@ -109,8 +109,8 @@ mod temp_stable_hash_impls {
     use crate::ModuleCodegen;
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
-    impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
-        fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
+    impl<Hcx, M> HashStable<Hcx> for ModuleCodegen<M> {
+        fn hash_stable(&self, _: &mut Hcx, _: &mut StableHasher) {
             // do nothing
         }
     }

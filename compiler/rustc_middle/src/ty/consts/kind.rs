@@ -92,8 +92,8 @@ pub enum InferConst<'tcx> {
     Fresh(u32),
 }
 
-impl<CTX> HashStable<CTX> for InferConst<'_> {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Ctx> HashStable<Ctx> for InferConst<'_> {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         match self {
             InferConst::Var(_) | InferConst::EffectVar(_) => {
                 panic!("const variables should not be hashed: {self:?}")

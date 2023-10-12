@@ -195,7 +195,7 @@ impl<D: Decoder> Decodable<D> for Cache {
     }
 }
 
-impl<CTX> HashStable<CTX> for Cache {
+impl<Ctx> HashStable<Ctx> for Cache {
     #[inline]
-    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {}
+    fn hash_stable(&self, _: &mut Ctx, _: &mut StableHasher) {}
 }

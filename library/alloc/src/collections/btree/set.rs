@@ -10,7 +10,7 @@ use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
 
 use super::map::{BTreeMap, Keys};
 use super::merge_iter::MergeIterInner;
-use super::set_val::SetValZST;
+use super::set_val::SetValZst;
 use super::Recover;
 
 use crate::alloc::{Allocator, Global};
@@ -76,7 +76,7 @@ pub struct BTreeSet<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
-    map: BTreeMap<T, SetValZST, A>,
+    map: BTreeMap<T, SetValZst, A>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -130,7 +130,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for BTreeSet<T, A> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
-    iter: Keys<'a, T, SetValZST>,
+    iter: Keys<'a, T, SetValZst>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -152,7 +152,7 @@ pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
-    iter: super::map::IntoIter<T, SetValZST, A>,
+    iter: super::map::IntoIter<T, SetValZst, A>,
 }
 
 /// An iterator over a sub-range of items in a `BTreeSet`.
@@ -165,7 +165,7 @@ pub struct IntoIter<
 #[derive(Debug)]
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
-    iter: super::map::Range<'a, T, SetValZST>,
+    iter: super::map::Range<'a, T, SetValZst>,
 }
 
 /// A lazy iterator producing elements in the difference of `BTreeSet`s.
@@ -900,7 +900,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     where
         T: Ord,
     {
-        self.map.insert(value, SetValZST::default()).is_none()
+        self.map.insert(value, SetValZst::default()).is_none()
     }
 
     /// Adds a value to the set, replacing the existing element, if any, that is
@@ -1197,7 +1197,7 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
 
 impl<T: Ord, A: Allocator + Clone> BTreeSet<T, A> {
     fn from_sorted_iter<I: Iterator<Item = T>>(iter: I, alloc: A) -> BTreeSet<T, A> {
-        let iter = iter.map(|k| (k, SetValZST::default()));
+        let iter = iter.map(|k| (k, SetValZst::default()));
         let map = BTreeMap::bulk_build_from_sorted_iter(iter, alloc);
         BTreeSet { map }
     }
@@ -1221,7 +1221,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
 
         // use stable sort to preserve the insertion order.
         arr.sort();
-        let iter = IntoIterator::into_iter(arr).map(|k| (k, SetValZST::default()));
+        let iter = IntoIterator::into_iter(arr).map(|k| (k, SetValZst::default()));
         let map = BTreeMap::bulk_build_from_sorted_iter(iter, Global);
         BTreeSet { map }
     }
@@ -1272,7 +1272,7 @@ pub struct ExtractIf<
     F: 'a + FnMut(&T) -> bool,
 {
     pred: F,
-    inner: super::map::ExtractIfInner<'a, T, SetValZST>,
+    inner: super::map::ExtractIfInner<'a, T, SetValZst>,
     /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
@@ -1297,7 +1297,7 @@ where
 
     fn next(&mut self) -> Option<T> {
         let pred = &mut self.pred;
-        let mut mapped_pred = |k: &T, _v: &mut SetValZST| pred(k);
+        let mut mapped_pred = |k: &T, _v: &mut SetValZst| pred(k);
         self.inner.next(&mut mapped_pred, self.alloc.clone()).map(|(k, _)| k)
     }
 

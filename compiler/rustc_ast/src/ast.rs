@@ -101,8 +101,8 @@ impl PartialEq<Symbol> for Path {
     }
 }
 
-impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Ctx: rustc_span::HashStableContext> HashStable<Ctx> for Path {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.hash_stable(hcx, hasher);
@@ -1680,11 +1680,11 @@ impl AttrArgs {
     }
 }
 
-impl<CTX> HashStable<CTX> for AttrArgs
+impl<Ctx> HashStable<Ctx> for AttrArgs
 where
-    CTX: crate::HashStableContext,
+    Ctx: crate::HashStableContext,
 {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(ctx, hasher);
         match self {
             AttrArgs::Empty => {}
@@ -1716,11 +1716,11 @@ impl DelimArgs {
     }
 }
 
-impl<CTX> HashStable<CTX> for DelimArgs
+impl<Ctx> HashStable<Ctx> for DelimArgs
 where
-    CTX: crate::HashStableContext,
+    Ctx: crate::HashStableContext,
 {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         let DelimArgs { dspan, delim, tokens } = self;
         dspan.hash_stable(ctx, hasher);
         delim.hash_stable(ctx, hasher);

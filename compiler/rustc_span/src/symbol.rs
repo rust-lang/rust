@@ -2050,17 +2050,17 @@ impl<D: Decoder> Decodable<D> for Symbol {
     }
 }
 
-impl<CTX> HashStable<CTX> for Symbol {
+impl<Ctx> HashStable<Ctx> for Symbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         self.as_str().hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX> ToStableHashKey<CTX> for Symbol {
+impl<Ctx> ToStableHashKey<Ctx> for Symbol {
     type KeyType = String;
     #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> String {
+    fn to_stable_hash_key(&self, _: &Ctx) -> String {
         self.as_str().to_string()
     }
 }

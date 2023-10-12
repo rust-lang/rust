@@ -266,12 +266,12 @@ where
     }
 }
 
-impl<P, T, HCX, const CP: bool> HashStable<HCX> for CopyTaggedPtr<P, T, CP>
+impl<P, T, Hcx, const CP: bool> HashStable<Hcx> for CopyTaggedPtr<P, T, CP>
 where
-    P: Pointer + HashStable<HCX>,
-    T: Tag + HashStable<HCX>,
+    P: Pointer + HashStable<Hcx>,
+    T: Tag + HashStable<Hcx>,
 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.with_pointer_ref(|ptr| ptr.hash_stable(hcx, hasher));
         self.tag().hash_stable(hcx, hasher);
     }

@@ -36,7 +36,7 @@
 //! Once stack has been unwound down to the handler frame level, unwinding stops
 //! and the last personality routine transfers control to the catch block.
 
-use super::dwarf::eh::{self, EHAction, EHContext};
+use super::dwarf::eh::{self, EhAction, EhContext};
 use crate::ffi::c_int;
 use libc::uintptr_t;
 use unwind as uw;
@@ -140,23 +140,23 @@ cfg_if::cfg_if! {
             };
             if search_phase {
                 match eh_action {
-                    EHAction::None | EHAction::Cleanup(_) => {
+                    EhAction::None | EhAction::Cleanup(_) => {
                         return continue_unwind(exception_object, context);
                     }
-                    EHAction::Catch(_) | EHAction::Filter(_) => {
+                    EhAction::Catch(_) | EhAction::Filter(_) => {
                         // EHABI requires the personality routine to update the
                         // SP value in the barrier cache of the exception object.
                         (*exception_object).private[5] =
                             uw::_Unwind_GetGR(context, uw::UNWIND_SP_REG);
                         return uw::_URC_HANDLER_FOUND;
                     }
-                    EHAction::Terminate => return uw::_URC_FAILURE,
+                    EhAction::Terminate => return uw::_URC_FAILURE,
                 }
             } else {
                 match eh_action {
-                    EHAction::None => return continue_unwind(exception_object, context),
-                    EHAction::Filter(_) if state & uw::_US_FORCE_UNWIND as c_int != 0 => return continue_unwind(exception_object, context),
-                    EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
+                    EhAction::None => return continue_unwind(exception_object, context),
+                    EhAction::Filter(_) if state & uw::_US_FORCE_UNWIND as c_int != 0 => return continue_unwind(exception_object, context),
+                    EhAction::Cleanup(lpad) | EhAction::Catch(lpad) | EhAction::Filter(lpad) => {
                         uw::_Unwind_SetGR(
                             context,
                             UNWIND_DATA_REG.0,
@@ -166,7 +166,7 @@ cfg_if::cfg_if! {
                         uw::_Unwind_SetIP(context, lpad);
                         return uw::_URC_INSTALL_CONTEXT;
                     }
-                    EHAction::Terminate => return uw::_URC_FAILURE,
+                    EhAction::Terminate => return uw::_URC_FAILURE,
                 }
             }
 
@@ -209,16 +209,16 @@ cfg_if::cfg_if! {
             };
             if actions as i32 & uw::_UA_SEARCH_PHASE as i32 != 0 {
                 match eh_action {
-                    EHAction::None | EHAction::Cleanup(_) => uw::_URC_CONTINUE_UNWIND,
-                    EHAction::Catch(_) | EHAction::Filter(_) => uw::_URC_HANDLER_FOUND,
-                    EHAction::Terminate => uw::_URC_FATAL_PHASE1_ERROR,
+                    EhAction::None | EhAction::Cleanup(_) => uw::_URC_CONTINUE_UNWIND,
+                    EhAction::Catch(_) | EhAction::Filter(_) => uw::_URC_HANDLER_FOUND,
+                    EhAction::Terminate => uw::_URC_FATAL_PHASE1_ERROR,
                 }
             } else {
                 match eh_action {
-                    EHAction::None => uw::_URC_CONTINUE_UNWIND,
+                    EhAction::None => uw::_URC_CONTINUE_UNWIND,
                     // Forced unwinding hits a terminate action.
-                    EHAction::Filter(_) if actions as i32 & uw::_UA_FORCE_UNWIND as i32 != 0 => uw::_URC_CONTINUE_UNWIND,
-                    EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
+                    EhAction::Filter(_) if actions as i32 & uw::_UA_FORCE_UNWIND as i32 != 0 => uw::_URC_CONTINUE_UNWIND,
+                    EhAction::Cleanup(lpad) | EhAction::Catch(lpad) | EhAction::Filter(lpad) => {
                         uw::_Unwind_SetGR(
                             context,
                             UNWIND_DATA_REG.0,
@@ -228,7 +228,7 @@ cfg_if::cfg_if! {
                         uw::_Unwind_SetIP(context, lpad);
                         uw::_URC_INSTALL_CONTEXT
                     }
-                    EHAction::Terminate => uw::_URC_FATAL_PHASE2_ERROR,
+                    EhAction::Terminate => uw::_URC_FATAL_PHASE2_ERROR,
                 }
             }
         }
@@ -276,11 +276,11 @@ cfg_if::cfg_if! {
     }
 }
 
-unsafe fn find_eh_action(context: *mut uw::_Unwind_Context) -> Result<EHAction, ()> {
+unsafe fn find_eh_action(context: *mut uw::_Unwind_Context) -> Result<EhAction, ()> {
     let lsda = uw::_Unwind_GetLanguageSpecificData(context) as *const u8;
     let mut ip_before_instr: c_int = 0;
     let ip = uw::_Unwind_GetIPInfo(context, &mut ip_before_instr);
-    let eh_context = EHContext {
+    let eh_context = EhContext {
         // The return address points 1 byte past the call instruction,
         // which could be in the next IP range in LSDA range table.
         //

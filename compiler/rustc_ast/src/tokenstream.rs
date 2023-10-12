@@ -110,11 +110,11 @@ impl TokenTree {
     }
 }
 
-impl<CTX> HashStable<CTX> for TokenStream
+impl<Ctx> HashStable<Ctx> for TokenStream
 where
-    CTX: crate::HashStableContext,
+    Ctx: crate::HashStableContext,
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         for sub_tt in self.trees() {
             sub_tt.hash_stable(hcx, hasher);
         }
@@ -166,8 +166,8 @@ impl<D: Decoder> Decodable<D> for LazyAttrTokenStream {
     }
 }
 
-impl<CTX> HashStable<CTX> for LazyAttrTokenStream {
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+impl<Ctx> HashStable<Ctx> for LazyAttrTokenStream {
+    fn hash_stable(&self, _hcx: &mut Ctx, _hasher: &mut StableHasher) {
         panic!("Attempted to compute stable hash for LazyAttrTokenStream");
     }
 }

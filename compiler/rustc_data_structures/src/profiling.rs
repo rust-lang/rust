@@ -622,7 +622,7 @@ impl SelfProfiler {
 
     /// Allocates a new string in the profiling data. Does not do any caching
     /// or deduplication.
-    pub fn alloc_string<STR: SerializableString + ?Sized>(&self, s: &STR) -> StringId {
+    pub fn alloc_string<Str: SerializableString + ?Sized>(&self, s: &Str) -> StringId {
         self.profiler.alloc_string(s)
     }
 

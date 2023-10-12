@@ -306,9 +306,9 @@ impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
     }
 }
 
-impl<K: HashStable<CTX> + StableOrd, V: HashStable<CTX>, CTX> HashStable<CTX> for SortedMap<K, V> {
+impl<K: HashStable<Ctx> + StableOrd, V: HashStable<Ctx>, Ctx> HashStable<Ctx> for SortedMap<K, V> {
     #[inline]
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         self.data.hash_stable(ctx, hasher);
     }
 }

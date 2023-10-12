@@ -47,18 +47,18 @@ impl rustc_index::Idx for OwnerId {
     }
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for OwnerId {
+impl<Ctx: HashStableContext> HashStable<Ctx> for OwnerId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for OwnerId {
+impl<Ctx: HashStableContext> ToStableHashKey<Ctx> for OwnerId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &Ctx) -> DefPathHash {
         hcx.def_path_hash(self.to_def_id())
     }
 }

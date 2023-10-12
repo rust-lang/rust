@@ -948,11 +948,11 @@ impl fmt::Debug for Nonterminal {
     }
 }
 
-impl<CTX> HashStable<CTX> for Nonterminal
+impl<Ctx> HashStable<Ctx> for Nonterminal
 where
-    CTX: crate::HashStableContext,
+    Ctx: crate::HashStableContext,
 {
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+    fn hash_stable(&self, _hcx: &mut Ctx, _hasher: &mut StableHasher) {
         panic!("interpolated tokens should not be present in the HIR")
     }
 }

@@ -37,7 +37,7 @@ pub const DW_EH_PE_indirect: u8 = 0x80;
 
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
-pub struct EHContext<'a> {
+pub struct EhContext<'a> {
     pub ip: usize,                             // Current instruction pointer
     pub func_start: usize,                     // Address of the current function
     pub get_text_start: &'a dyn Fn() -> usize, // Get address of the code section
@@ -45,7 +45,7 @@ pub struct EHContext<'a> {
 }
 
 #[allow(non_camel_case_types)]
-pub enum EHAction {
+pub enum EhAction {
     None,
     Cleanup(usize),
     Catch(usize),
@@ -55,9 +55,9 @@ pub enum EHAction {
 
 pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
 
-pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result<EHAction, ()> {
+pub unsafe fn find_eh_action(lsda: *const u8, context: &EhContext<'_>) -> Result<EhAction, ()> {
     if lsda.is_null() {
-        return Ok(EHAction::None);
+        return Ok(EhAction::None);
     }
 
     let func_start = context.func_start;
@@ -95,7 +95,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
             }
             if ip < func_start + cs_start + cs_len {
                 if cs_lpad == 0 {
-                    return Ok(EHAction::None);
+                    return Ok(EhAction::None);
                 } else {
                     let lpad = lpad_base + cs_lpad;
                     return Ok(interpret_cs_action(action_table as *mut u8, cs_action_entry, lpad));
@@ -103,14 +103,14 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
             }
         }
         // Ip is not present in the table. This indicates a nounwind call.
-        Ok(EHAction::Terminate)
+        Ok(EhAction::Terminate)
     } else {
         // SjLj version:
         // The "IP" is an index into the call-site table, with two exceptions:
         // -1 means 'no-action', and 0 means 'terminate'.
         match ip as isize {
-            -1 => return Ok(EHAction::None),
-            0 => return Ok(EHAction::Terminate),
+            -1 => return Ok(EhAction::None),
+            0 => return Ok(EhAction::Terminate),
             _ => (),
         }
         let mut idx = ip;
@@ -132,11 +132,11 @@ unsafe fn interpret_cs_action(
     action_table: *mut u8,
     cs_action_entry: u64,
     lpad: usize,
-) -> EHAction {
+) -> EhAction {
     if cs_action_entry == 0 {
         // If cs_action_entry is 0 then this is a cleanup (Drop::drop). We run these
         // for both Rust panics and foreign exceptions.
-        EHAction::Cleanup(lpad)
+        EhAction::Cleanup(lpad)
     } else {
         // If lpad != 0 and cs_action_entry != 0, we have to check ttype_index.
         // If ttype_index == 0 under the condition, we take cleanup action.
@@ -144,12 +144,12 @@ unsafe fn interpret_cs_action(
         let mut action_reader = DwarfReader::new(action_record);
         let ttype_index = action_reader.read_sleb128();
         if ttype_index == 0 {
-            EHAction::Cleanup(lpad)
+            EhAction::Cleanup(lpad)
         } else if ttype_index > 0 {
             // Stop unwinding Rust panics at catch_unwind.
-            EHAction::Catch(lpad)
+            EhAction::Catch(lpad)
         } else {
-            EHAction::Filter(lpad)
+            EhAction::Filter(lpad)
         }
     }
 }
@@ -161,7 +161,7 @@ fn round_up(unrounded: usize, align: usize) -> Result<usize, ()> {
 
 unsafe fn read_encoded_pointer(
     reader: &mut DwarfReader,
-    context: &EHContext<'_>,
+    context: &EhContext<'_>,
     encoding: u8,
 ) -> Result<usize, ()> {
     if encoding == DW_EH_PE_omit {

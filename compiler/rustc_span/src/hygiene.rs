@@ -100,7 +100,7 @@ impl !PartialOrd for LocalExpnId {}
 /// with a non-default mode. With this check in place, we can avoid the need
 /// to maintain separate versions of `ExpnData` hashes for each permutation
 /// of `HashingControls` settings.
-fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str) {
+fn assert_default_hashing_controls<Ctx: HashStableContext>(ctx: &Ctx, msg: &str) {
     match ctx.hashing_controls() {
         // Note that we require that `hash_spans` be set according to the global
         // `-Z incremental-ignore-spans` option. Normally, this option is disabled,
@@ -1550,8 +1550,8 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContex
     ExpnHash::new(ctx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(), expn_hash)
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+impl<Ctx: HashStableContext> HashStable<Ctx> for SyntaxContext {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
@@ -1566,8 +1566,8 @@ impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
     }
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+impl<Ctx: HashStableContext> HashStable<Ctx> for ExpnId {
+    fn hash_stable(&self, ctx: &mut Ctx, hasher: &mut StableHasher) {
         assert_default_hashing_controls(ctx, "ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.

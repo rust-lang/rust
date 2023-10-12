@@ -202,11 +202,11 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<[T]> {
     }
 }
 
-impl<CTX, T> HashStable<CTX> for P<T>
+impl<Ctx, T> HashStable<Ctx> for P<T>
 where
-    T: ?Sized + HashStable<CTX>,
+    T: ?Sized + HashStable<Ctx>,
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Ctx, hasher: &mut StableHasher) {
         (**self).hash_stable(hcx, hasher);
     }
 }

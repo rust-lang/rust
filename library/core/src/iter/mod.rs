@@ -368,6 +368,8 @@ macro_rules! impl_fold_via_try_fold {
         impl_fold_via_try_fold! { @internal spec_rfold -> spec_try_rfold }
     };
     (@internal $fold:ident -> $try_fold:ident) => {
+        // `A` and `F` are already used as generic parameters in impls where this macro appears,
+        // hence the strange names
         #[allow(non_camel_case_types)]
         #[inline]
         fn $fold<AAA, FFF>(mut self, init: AAA, fold: FFF) -> AAA

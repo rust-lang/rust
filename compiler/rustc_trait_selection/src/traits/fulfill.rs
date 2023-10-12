@@ -161,7 +161,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         impl<'tcx> ObligationProcessor for DrainProcessor<'_, 'tcx> {
             type Obligation = PendingPredicateObligation<'tcx>;
             type Error = !;
-            type OUT = Outcome<Self::Obligation, Self::Error>;
+            type Out = Outcome<Self::Obligation, Self::Error>;
 
             fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
                 pending_obligation
@@ -211,7 +211,7 @@ fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligatio
 impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
-    type OUT = Outcome<Self::Obligation, Self::Error>;
+    type Out = Outcome<Self::Obligation, Self::Error>;
 
     /// Compared to `needs_process_obligation` this and its callees
     /// contain some optimizations that come at the price of false negatives.

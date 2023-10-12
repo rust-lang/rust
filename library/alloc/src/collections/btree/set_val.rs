@@ -2,9 +2,8 @@
 /// Used instead of `()` to differentiate between:
 /// * `BTreeMap<T, ()>` (possible user-defined map)
 /// * `BTreeMap<T, SetValZST>` (internal set representation)
-#[allow(non_camel_case_types)]
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Default)]
-pub struct SetValZST;
+pub struct SetValZst;
 
 /// A trait to differentiate between `BTreeMap` and `BTreeSet` values.
 /// Returns `true` only for type `SetValZST`, `false` for all other types (blanket implementation).
@@ -23,7 +22,7 @@ impl<V> IsSetVal for V {
 }
 
 // Specialization
-impl IsSetVal for SetValZST {
+impl IsSetVal for SetValZst {
     fn is_set_val() -> bool {
         true
     }

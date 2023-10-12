@@ -138,12 +138,12 @@ where
     }
 }
 
-impl<P, T, HCX, const CP: bool> HashStable<HCX> for TaggedPtr<P, T, CP>
+impl<P, T, Hcx, const CP: bool> HashStable<Hcx> for TaggedPtr<P, T, CP>
 where
-    P: Pointer + HashStable<HCX>,
-    T: Tag + HashStable<HCX>,
+    P: Pointer + HashStable<Hcx>,
+    T: Tag + HashStable<Hcx>,
 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.raw.hash_stable(hcx, hasher);
     }
 }
