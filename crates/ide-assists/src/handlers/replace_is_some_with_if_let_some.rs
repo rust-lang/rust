@@ -2,7 +2,7 @@ use syntax::ast::{self, AstNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: replace_is_some_with_if_let
+// Assist: replace_is_some_with_if_let_some
 //
 // Replace `if x.is_some()` with `if let Some(_tmp) = x`.
 //
@@ -57,7 +57,7 @@ mod tests {
     use super::replace_is_some_with_if_let_some;
 
     #[test]
-    fn replace_is_some_with_if_let_works() {
+    fn replace_is_some_with_if_let_some_works() {
         check_assist(
             replace_is_some_with_if_let_some,
             r#"
@@ -76,7 +76,7 @@ fn main() {
     }
 
     #[test]
-    fn replace_is_some_with_if_let_not_applicable() {
+    fn replace_is_some_with_if_let_some_not_applicable() {
         check_assist_not_applicable(
             replace_is_some_with_if_let_some,
             r#"
