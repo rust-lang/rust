@@ -13,7 +13,6 @@ warning: unexpected `cfg` condition name
 LL | #[cfg(featur = "foo")]
    |       ^^^^^^^^^^^^^^
    |
-   = help: expected values for `feature` are: `foo`
 help: there is a config with a similar name and value
    |
 LL | #[cfg(feature = "foo")]
