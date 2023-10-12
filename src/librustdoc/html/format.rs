@@ -250,8 +250,7 @@ impl clean::Generics {
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            let mut real_params =
-                self.params.iter().filter(|p| !p.is_synthetic_type_param()).peekable();
+            let mut real_params = self.params.iter().filter(|p| !p.is_synthetic_param()).peekable();
             if real_params.peek().is_none() {
                 return Ok(());
             }

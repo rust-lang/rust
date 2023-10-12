@@ -542,7 +542,7 @@ fn clean_generic_param_def<'tcx>(
                 },
             )
         }
-        ty::GenericParamDefKind::Const { has_default, .. } => (
+        ty::GenericParamDefKind::Const { has_default, is_host_effect } => (
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
@@ -562,6 +562,7 @@ fn clean_generic_param_def<'tcx>(
                     )),
                     false => None,
                 },
+                is_host_effect,
             },
         ),
     };
@@ -618,6 +619,7 @@ fn clean_generic_param<'tcx>(
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default
                     .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
+                is_host_effect: cx.tcx.has_attr(param.def_id, sym::rustc_host),
             },
         ),
     };
