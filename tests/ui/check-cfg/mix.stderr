@@ -73,24 +73,18 @@ warning: unexpected `cfg` condition name: `xxx`
    |
 LL |     cfg!(xxx = "foo");
    |          ^^^^^^^^^^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:48:10
    |
 LL |     cfg!(xxx);
    |          ^^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:50:14
    |
 LL |     cfg!(any(xxx, windows));
    |              ^^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition value: `bad`
   --> $DIR/mix.rs:52:14
@@ -105,48 +99,36 @@ warning: unexpected `cfg` condition name: `xxx`
    |
 LL |     cfg!(any(windows, xxx));
    |                       ^^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:56:20
    |
 LL |     cfg!(all(unix, xxx));
    |                    ^^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition name: `aa`
   --> $DIR/mix.rs:58:14
    |
 LL |     cfg!(all(aa, bb));
    |              ^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition name: `bb`
   --> $DIR/mix.rs:58:18
    |
 LL |     cfg!(all(aa, bb));
    |                  ^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition name: `aa`
   --> $DIR/mix.rs:61:14
    |
 LL |     cfg!(any(aa, bb));
    |              ^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition name: `bb`
   --> $DIR/mix.rs:61:18
    |
 LL |     cfg!(any(aa, bb));
    |                  ^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:64:20
@@ -161,8 +143,6 @@ warning: unexpected `cfg` condition name: `xxx`
    |
 LL |     cfg!(any(xxx, feature = "zebra"));
    |              ^^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:66:19
@@ -177,16 +157,12 @@ warning: unexpected `cfg` condition name: `xxx`
    |
 LL |     cfg!(any(xxx, unix, xxx));
    |              ^^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:69:25
    |
 LL |     cfg!(any(xxx, unix, xxx));
    |                         ^^^
-   |
-   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:72:14

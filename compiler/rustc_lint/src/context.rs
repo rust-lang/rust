@@ -758,7 +758,11 @@ pub trait LintContext: Sized {
                         possibilities.sort();
                         let possibilities = possibilities.join("`, `");
 
-                        db.help(format!("expected names are: `{possibilities}`"));
+                        // The list of expected names can be long (even by default) and
+                        // so the diagnostic produced can take a lot of space. To avoid
+                        // cloging the user output we only want to print that diagnostic
+                        // once.
+                        db.help_once(format!("expected names are: `{possibilities}`"));
                     }
                 },
                 BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {
