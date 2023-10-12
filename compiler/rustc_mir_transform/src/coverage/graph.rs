@@ -450,7 +450,7 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
                         worklist: VecDeque::new(),
                     });
                 }
-                self.extend_worklist(bcb);
+                self.add_successors_to_worklists(bcb);
                 return Some(bcb);
             } else {
                 // Strip contexts with empty worklists from the top of the stack
@@ -461,10 +461,10 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
         None
     }
 
-    pub fn extend_worklist(&mut self, bcb: BasicCoverageBlock) {
-        let Self { basic_coverage_blocks, .. } = *self;
-        let successors = &basic_coverage_blocks.successors[bcb];
+    pub fn add_successors_to_worklists(&mut self, bcb: BasicCoverageBlock) {
+        let successors = &self.basic_coverage_blocks.successors[bcb];
         debug!("{:?} has {} successors:", bcb, successors.len());
+
         for &successor in successors {
             if successor == bcb {
                 debug!(
@@ -473,43 +473,44 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
                     bcb
                 );
                 // Don't re-add this successor to the worklist. We are already processing it.
+                // FIXME: This claims to skip just the self-successor, but it actually skips
+                // all other successors as well. Does that matter?
                 break;
             }
-            for context in self.context_stack.iter_mut().rev() {
-                // Add successors of the current BCB to the appropriate context. Successors that
-                // stay within a loop are added to the BCBs context worklist. Successors that
-                // exit the loop (they are not dominated by the loop header) must be reachable
-                // from other BCBs outside the loop, and they will be added to a different
-                // worklist.
-                //
-                // Branching blocks (with more than one successor) must be processed before
-                // blocks with only one successor, to prevent unnecessarily complicating
-                // `Expression`s by creating a Counter in a `BasicCoverageBlock` that the
-                // branching block would have given an `Expression` (or vice versa).
-                let (some_successor_to_add, _) =
-                    if let Some(loop_header) = context.loop_header {
-                        if basic_coverage_blocks.dominates(loop_header, successor) {
-                            (Some(successor), Some(loop_header))
-                        } else {
-                            (None, None)
-                        }
-                    } else {
-                        (Some(successor), None)
-                    };
 
-                // FIXME: The code below had debug messages claiming to add items to a
-                // particular end of the worklist, but was confused about which end was
-                // which. The existing behaviour has been preserved for now, but it's
-                // unclear what the intended behaviour was.
+            // Add successors of the current BCB to the appropriate context. Successors that
+            // stay within a loop are added to the BCBs context worklist. Successors that
+            // exit the loop (they are not dominated by the loop header) must be reachable
+            // from other BCBs outside the loop, and they will be added to a different
+            // worklist.
+            //
+            // Branching blocks (with more than one successor) must be processed before
+            // blocks with only one successor, to prevent unnecessarily complicating
+            // `Expression`s by creating a Counter in a `BasicCoverageBlock` that the
+            // branching block would have given an `Expression` (or vice versa).
 
-                if let Some(successor_to_add) = some_successor_to_add {
-                    if basic_coverage_blocks.successors[successor_to_add].len() > 1 {
-                        context.worklist.push_back(successor_to_add);
-                    } else {
-                        context.worklist.push_front(successor_to_add);
+            let context = self
+                .context_stack
+                .iter_mut()
+                .rev()
+                .find(|context| match context.loop_header {
+                    Some(loop_header) => {
+                        self.basic_coverage_blocks.dominates(loop_header, successor)
                     }
-                    break;
-                }
+                    None => true,
+                })
+                .unwrap_or_else(|| bug!("should always fall back to the root non-loop context"));
+            debug!("adding to worklist for {:?}", context.loop_header);
+
+            // FIXME: The code below had debug messages claiming to add items to a
+            // particular end of the worklist, but was confused about which end was
+            // which. The existing behaviour has been preserved for now, but it's
+            // unclear what the intended behaviour was.
+
+            if self.basic_coverage_blocks.successors[successor].len() > 1 {
+                context.worklist.push_back(successor);
+            } else {
+                context.worklist.push_front(successor);
             }
         }
     }
