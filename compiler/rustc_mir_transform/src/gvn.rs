@@ -61,7 +61,6 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_macros::newtype_index;
-use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::LayoutOf;
@@ -861,14 +860,10 @@ fn op_to_prop_const<'tcx>(
             return None;
         }
 
-        intern_const_alloc_for_constprop(ecx, &mplace).ok()?;
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
         let (alloc_id, offset) = pointer.into_parts();
-        match ecx.tcx.global_alloc(alloc_id) {
-            GlobalAlloc::Memory(_) => return Some(ConstValue::Indirect { alloc_id, offset }),
-            // Fallthrough to copying the data.
-            _ => {}
-        }
+        intern_const_alloc_for_constprop(ecx, alloc_id).ok()?;
+        return Some(ConstValue::Indirect { alloc_id, offset });
     }
 
     // Everything failed: create a new allocation to hold the data.

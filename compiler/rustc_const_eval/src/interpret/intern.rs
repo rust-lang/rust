@@ -459,10 +459,9 @@ pub fn intern_const_alloc_for_constprop<
     M: CompileTimeMachine<'mir, 'tcx, T>,
 >(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
-    ret: &MPlaceTy<'tcx>,
+    alloc_id: AllocId,
 ) -> InterpResult<'tcx, ()> {
     // Move allocation to `tcx`.
-    let alloc_id = ret.ptr().provenance.unwrap();
     let Some((_, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) else {
         // Pointer not found in local memory map. It is either a pointer to the global
         // map, or dangling.
