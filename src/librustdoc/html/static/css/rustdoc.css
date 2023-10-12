@@ -461,19 +461,9 @@ img {
 	display: none !important;
 }
 
-.sidebar .logo-container {
-	margin-top: 10px;
-	margin-bottom: 10px;
-	text-align: center;
-}
-
-.version {
-	overflow-wrap: break-word;
-}
-
 .logo-container > img {
-	height: 100px;
-	width: 100px;
+	height: 48px;
+	width: 48px;
 }
 
 ul.block, .block li {
@@ -502,6 +492,7 @@ ul.block, .block li {
 }
 
 .sidebar-elems,
+.sidebar > .version,
 .sidebar > h2 {
 	padding-left: 24px;
 }
@@ -510,6 +501,8 @@ ul.block, .block li {
 	color: var(--sidebar-link-color);
 }
 .sidebar .current,
+.sidebar .current a,
+.sidebar-crate a.logo-container:hover + h2 a,
 .sidebar a:hover:not(.logo-container) {
 	background-color: var(--sidebar-current-link-background-color);
 }
@@ -522,6 +515,75 @@ ul.block, .block li {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+}
+
+.sidebar-crate {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* there's a 10px padding at the top of <main>, and a 4px margin at the
+		top of the search form. To line them up, add them. */
+	margin: 14px 32px 1rem;
+	row-gap: 10px;
+	column-gap: 32px;
+	flex-wrap: wrap;
+}
+
+.sidebar-crate h2 {
+	flex-grow: 1;
+	/* This setup with the margins and row-gap is designed to make flex-wrap
+		work the way we want. If they're in the side-by-side lockup, there
+		should be a 16px margin to the left of the logo (visually the same as
+		the 24px one on everything else, which are not giant circles) and 8px
+		between it and the crate's name and version. When they're line wrapped,
+		the logo needs to have the same margin on both sides of itself (to
+		center properly) and the crate name and version need 24px on their
+		left margin. */
+	margin: 0 -8px;
+	/* To align this with the search bar, it should not be centered, even when
+		the logo is. */
+	align-self: start;
+}
+
+.sidebar-crate .logo-container {
+	/* The logo is expected to have 8px "slop" along its edges, so we can optically
+		center it. */
+	margin: 0 -16px 0 -16px;
+	text-align: center;
+}
+
+.sidebar-crate h2 a {
+	display: block;
+	margin: 0 calc(-24px + 0.25rem) 0 -0.5rem;
+	/* Align the sidebar crate link with the search bar, which have different
+		font sizes.
+
+		|        | font-size | line-height | total line-height | padding-y |     total    |
+		|:-------|----------:|------------:|------------------:|----------:|-------------:|
+		| crate  |  1.375rem |        1.25 |           1.72rem |         x |   2x+1.72rem |
+		| search |      1rem |        1.15 |           1.15rem |       8px | 1.15rem+16px |
+
+		2x + 1.72rem = 1.15rem + 16px
+		2x = 1.15rem + 16px - 1.72rem
+		2x = 16px - 0.57rem
+		x = ( 16px - 0.57rem ) / 2
+	*/
+	padding: calc( ( 16px - 0.57rem ) / 2 ) 0.25rem;
+	padding-left: 0.5rem;
+}
+
+.sidebar-crate h2 .version {
+	display: block;
+	font-weight: normal;
+	font-size: 1rem;
+	overflow-wrap: break-word;
+	/* opposite of the link padding, cut in half again */
+	margin-top: calc( ( -16px + 0.57rem ) / 2 );
+}
+
+.sidebar-crate + .version {
+	margin-top: -1rem;
+	margin-bottom: 1rem;
 }
 
 .mobile-topbar {

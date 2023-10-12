@@ -229,6 +229,7 @@ Compatibility Notes
   this should only impact users of other registries, or people who don't publish
   to a registry.
   [#12291](https://github.com/rust-lang/cargo/pull/12291)
+- [Demoted `mips*-unknown-linux-gnu*` targets from host tier 2 to target tier 3 support.](https://github.com/rust-lang/rust/pull/113274)
 
 Version 1.71.1 (2023-08-03)
 ===========================

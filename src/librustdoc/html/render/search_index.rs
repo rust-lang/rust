@@ -12,7 +12,7 @@ use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::{IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
+use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
 
 /// Builds the search index from the collected metadata
 pub(crate) fn build_index<'tcx>(
@@ -26,7 +26,8 @@ pub(crate) fn build_index<'tcx>(
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
-    for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
+    for &OrphanImplItem { impl_id, parent, ref item, ref impl_generics } in &cache.orphan_impl_items
+    {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
             let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
             cache.search_index.push(IndexItem {
@@ -36,6 +37,7 @@ pub(crate) fn build_index<'tcx>(
                 desc,
                 parent: Some(parent),
                 parent_idx: None,
+                impl_id,
                 search_type: get_function_type_for_search(item, tcx, impl_generics.as_ref(), cache),
                 aliases: item.attrs.get_doc_aliases(),
                 deprecation: item.deprecation(tcx),
@@ -222,6 +224,29 @@ pub(crate) fn build_index<'tcx>(
         })
         .collect();
 
+    // Find associated items that need disambiguators
+    let mut associated_item_duplicates = FxHashMap::<(isize, ItemType, Symbol), usize>::default();
+
+    for &item in &crate_items {
+        if item.impl_id.is_some() && let Some(parent_idx) = item.parent_idx {
+            let count = associated_item_duplicates
+                .entry((parent_idx, item.ty, item.name))
+                .or_insert(0);
+            *count += 1;
+        }
+    }
+
+    let associated_item_disambiguators = crate_items
+        .iter()
+        .enumerate()
+        .filter_map(|(index, item)| {
+            let impl_id = ItemId::DefId(item.impl_id?);
+            let parent_idx = item.parent_idx?;
+            let count = *associated_item_duplicates.get(&(parent_idx, item.ty, item.name))?;
+            if count > 1 { Some((index, render::get_id_for_impl(tcx, impl_id))) } else { None }
+        })
+        .collect::<Vec<_>>();
+
     struct CrateData<'a> {
         doc: String,
         items: Vec<&'a IndexItem>,
@@ -230,6 +255,8 @@ pub(crate) fn build_index<'tcx>(
         //
         // To be noted: the `usize` elements are indexes to `items`.
         aliases: &'a BTreeMap<String, Vec<usize>>,
+        // Used when a type has more than one impl with an associated item with the same name.
+        associated_item_disambiguators: &'a Vec<(usize, String)>,
     }
 
     struct Paths {
@@ -382,6 +409,7 @@ pub(crate) fn build_index<'tcx>(
             crate_data.serialize_field("f", &functions)?;
             crate_data.serialize_field("c", &deprecated)?;
             crate_data.serialize_field("p", &paths)?;
+            crate_data.serialize_field("b", &self.associated_item_disambiguators)?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
             }
@@ -398,6 +426,7 @@ pub(crate) fn build_index<'tcx>(
             items: crate_items,
             paths: crate_paths,
             aliases: &aliases,
+            associated_item_disambiguators: &associated_item_disambiguators,
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.

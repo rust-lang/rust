@@ -19,11 +19,9 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                 debug slice => _5;
                 let mut _7: *mut u32;
                 let mut _8: *mut u32;
-                let _15: usize;
-                let _16: usize;
                 scope 4 {
-                    debug ((this: std::ops::Range<usize>).0: usize) => _15;
-                    debug ((this: std::ops::Range<usize>).1: usize) => _16;
+                    debug ((this: std::ops::Range<usize>).0: usize) => _3;
+                    debug ((this: std::ops::Range<usize>).1: usize) => _4;
                     scope 5 {
                         let _6: usize;
                         scope 6 {
@@ -56,8 +54,8 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                             }
                         }
                         scope 7 (inlined <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked_mut::runtime::<u32>) {
-                            debug ((this: std::ops::Range<usize>).0: usize) => _15;
-                            debug ((this: std::ops::Range<usize>).1: usize) => _16;
+                            debug ((this: std::ops::Range<usize>).0: usize) => _3;
+                            debug ((this: std::ops::Range<usize>).1: usize) => _4;
                             debug slice => _5;
                             scope 8 (inlined ptr::mut_ptr::<impl *mut [u32]>::len) {
                                 debug self => _5;
@@ -82,8 +80,6 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         _5 = &raw mut (*_1);
         StorageLive(_6);
         StorageLive(_14);
-        StorageLive(_15);
-        StorageLive(_16);
         _6 = SubUnchecked(_4, _3);
         StorageLive(_8);
         StorageLive(_7);
@@ -104,8 +100,6 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageDead(_12);
         StorageDead(_9);
         StorageDead(_8);
-        StorageDead(_16);
-        StorageDead(_15);
         StorageDead(_14);
         StorageDead(_6);
         StorageDead(_5);

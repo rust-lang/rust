@@ -5,6 +5,9 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 #![feature(lazy_cell)]
 #![feature(decl_macro)]
 #![feature(panic_update_hook)]
@@ -1287,17 +1290,21 @@ pub fn ice_path() -> &'static Option<PathBuf> {
         if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
             return None;
         }
-        if let Ok("0") = std::env::var("RUST_BACKTRACE").as_deref() {
+        if let Some(s) = std::env::var_os("RUST_BACKTRACE") && s == "0" {
             return None;
         }
-        let mut path = match std::env::var("RUSTC_ICE").as_deref() {
-            // Explicitly opting out of writing ICEs to disk.
-            Ok("0") => return None,
-            Ok(s) => PathBuf::from(s),
-            Err(_) => std::env::current_dir().unwrap_or_default(),
+        let mut path = match std::env::var_os("RUSTC_ICE") {
+            Some(s) => {
+                if s == "0" {
+                    // Explicitly opting out of writing ICEs to disk.
+                    return None;
+                }
+                PathBuf::from(s)
+            }
+            None => std::env::current_dir().unwrap_or_default(),
         };
         let now: OffsetDateTime = SystemTime::now().into();
-        let file_now = now.format(&Rfc3339).unwrap_or(String::new());
+        let file_now = now.format(&Rfc3339).unwrap_or_default();
         let pid = std::process::id();
         path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
         Some(path)
@@ -1322,7 +1329,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
     // by the user. Compiler developers and other rustc users can
     // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
     // (e.g. `RUST_BACKTRACE=1`)
-    if std::env::var("RUST_BACKTRACE").is_err() {
+    if std::env::var_os("RUST_BACKTRACE").is_none() {
         std::env::set_var("RUST_BACKTRACE", "full");
     }
 
@@ -1411,12 +1418,11 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
 
     static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
-    let file = if let Some(path) = ice_path().as_ref() {
+    let file = if let Some(path) = ice_path() {
         // Create the ICE dump target file.
         match crate::fs::File::options().create(true).append(true).open(&path) {
             Ok(mut file) => {
-                handler
-                    .emit_note(session_diagnostics::IcePath { path: path.display().to_string() });
+                handler.emit_note(session_diagnostics::IcePath { path: path.clone() });
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
                     let _ = write!(file, "\n\nrustc version: {version}\nplatform: {triple}");
                 }
@@ -1425,10 +1431,10 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
             Err(err) => {
                 // The path ICE couldn't be written to disk, provide feedback to the user as to why.
                 handler.emit_warning(session_diagnostics::IcePathError {
-                    path: path.display().to_string(),
+                    path: path.clone(),
                     error: err.to_string(),
-                    env_var: std::env::var("RUSTC_ICE")
-                        .ok()
+                    env_var: std::env::var_os("RUSTC_ICE")
+                        .map(PathBuf::from)
                         .map(|env_var| session_diagnostics::IcePathErrorEnv { env_var }),
                 });
                 handler.emit_note(session_diagnostics::IceVersion { version, triple });

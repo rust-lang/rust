@@ -3,12 +3,6 @@
 
 include ../tools.mk
 
-ifdef RUSTC_BLESS_TEST
-    RUSTC_TEST_OP = cp
-else
-    RUSTC_TEST_OP = $(DIFF)
-endif
-
 all:
 	echo '"comes from a file with a name that begins with <"' > "$(TMPDIR)/<leading-lt"
 	echo '"comes from a file with a name that ends with >"' > "$(TMPDIR)/trailing-gt>"

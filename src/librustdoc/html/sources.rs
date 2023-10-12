@@ -1,4 +1,5 @@
 use crate::clean;
+use crate::clean::utils::has_doc_flag;
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::html::format;
@@ -13,6 +14,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::source_map::FileName;
+use rustc_span::sym;
 
 use std::cell::RefCell;
 use std::ffi::OsStr;
@@ -231,6 +233,7 @@ impl SourceCollector<'_, '_> {
             static_root_path: shared.static_root_path.as_deref(),
             description: &desc,
             resource_suffix: &shared.resource_suffix,
+            rust_logo: has_doc_flag(self.cx.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
         };
         let v = layout::render(
             &shared.layout,

@@ -471,14 +471,15 @@ impl Step for Rustc {
                 let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
                 let rust_lld = exe("rust-lld", compiler.host);
                 builder.copy(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
-                // for `-Z gcc-ld=lld`
-                let gcc_lld_src_dir = src_dir.join("gcc-ld");
-                let gcc_lld_dst_dir = dst_dir.join("gcc-ld");
-                t!(fs::create_dir(&gcc_lld_dst_dir));
+                let self_contained_lld_src_dir = src_dir.join("gcc-ld");
+                let self_contained_lld_dst_dir = dst_dir.join("gcc-ld");
+                t!(fs::create_dir(&self_contained_lld_dst_dir));
                 for name in crate::LLD_FILE_NAMES {
                     let exe_name = exe(name, compiler.host);
-                    builder
-                        .copy(&gcc_lld_src_dir.join(&exe_name), &gcc_lld_dst_dir.join(&exe_name));
+                    builder.copy(
+                        &self_contained_lld_src_dir.join(&exe_name),
+                        &self_contained_lld_dst_dir.join(&exe_name),
+                    );
                 }
             }
 

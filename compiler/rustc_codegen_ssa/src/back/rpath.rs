@@ -1,8 +1,7 @@
 use pathdiff::diff_paths;
 use rustc_data_structures::fx::FxHashSet;
-use std::env;
+use rustc_fs_util::try_canonicalize;
 use std::ffi::OsString;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 pub struct RPathConfig<'a> {
@@ -82,12 +81,11 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig<'_>, lib: &Path) -> OsS
     // Mac doesn't appear to support $ORIGIN
     let prefix = if config.is_like_osx { "@loader_path" } else { "$ORIGIN" };
 
-    let cwd = env::current_dir().unwrap();
-    let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or_else(|_| cwd.join(lib));
-    lib.pop(); // strip filename
-    let mut output = cwd.join(&config.out_filename);
-    output.pop(); // strip filename
-    let output = fs::canonicalize(&output).unwrap_or(output);
+    // Strip filenames
+    let lib = lib.parent().unwrap();
+    let output = config.out_filename.parent().unwrap();
+    let lib = try_canonicalize(lib).unwrap();
+    let output = try_canonicalize(output).unwrap();
     let relative = path_relative_from(&lib, &output)
         .unwrap_or_else(|| panic!("couldn't create relative path from {output:?} to {lib:?}"));
 

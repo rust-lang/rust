@@ -42,6 +42,7 @@ fn main() {
         || target.contains("solid")
         || target.contains("nintendo-3ds")
         || target.contains("vita")
+        || target.contains("aix")
         || target.contains("nto")
         || target.contains("xous")
         || target.contains("hurd")

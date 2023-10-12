@@ -1,8 +1,7 @@
 use std::sync::{Arc, Condvar, Mutex};
 
-use rustc_session::Session;
-
 use jobserver::HelperThread;
+use rustc_session::Session;
 
 // FIXME don't panic when a worker thread panics
 

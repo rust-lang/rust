@@ -1,6 +1,5 @@
 use cranelift_codegen::isa::TargetFrontendConfig;
 use gimli::write::FileId;
-
 use rustc_data_structures::sync::Lrc;
 use rustc_index::IndexVec;
 use rustc_middle::ty::layout::{
@@ -204,9 +203,9 @@ pub(crate) fn type_min_max_value(
         (types::I8, false) | (types::I16, false) | (types::I32, false) | (types::I64, false) => {
             0i64
         }
-        (types::I8, true) => i64::from(i8::MIN),
-        (types::I16, true) => i64::from(i16::MIN),
-        (types::I32, true) => i64::from(i32::MIN),
+        (types::I8, true) => i64::from(i8::MIN as u8),
+        (types::I16, true) => i64::from(i16::MIN as u16),
+        (types::I32, true) => i64::from(i32::MIN as u32),
         (types::I64, true) => i64::MIN,
         _ => unreachable!(),
     };
@@ -216,9 +215,9 @@ pub(crate) fn type_min_max_value(
         (types::I16, false) => i64::from(u16::MAX),
         (types::I32, false) => i64::from(u32::MAX),
         (types::I64, false) => u64::MAX as i64,
-        (types::I8, true) => i64::from(i8::MAX),
-        (types::I16, true) => i64::from(i16::MAX),
-        (types::I32, true) => i64::from(i32::MAX),
+        (types::I8, true) => i64::from(i8::MAX as u8),
+        (types::I16, true) => i64::from(i16::MAX as u16),
+        (types::I32, true) => i64::from(i32::MAX as u32),
         (types::I64, true) => i64::MAX,
         _ => unreachable!(),
     };

@@ -4,7 +4,7 @@
     thread_local
 )]
 #![no_core]
-#![allow(dead_code)]
+#![allow(dead_code, internal_features)]
 
 #[no_mangle]
 unsafe extern "C" fn _Unwind_Resume() {
@@ -425,6 +425,15 @@ pub fn panic(_msg: &'static str) -> ! {
 fn panic_cannot_unwind() -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const u8);
+        intrinsics::abort();
+    }
+}
+
+#[lang = "panic_in_cleanup"]
+#[rustc_nounwind]
+fn panic_in_cleanup() -> ! {
+    unsafe {
+        libc::printf("panic in a destructor during cleanup\n\0" as *const str as *const i8);
         intrinsics::abort();
     }
 }

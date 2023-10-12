@@ -3,7 +3,9 @@ use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
-use rustc_target::abi::call::{CastTarget, FnAbi, PassMode, Reg, RegKind};
+#[cfg(feature = "master")]
+use rustc_session::config;
+use rustc_target::abi::call::{ArgAttributes, CastTarget, FnAbi, PassMode, Reg, RegKind};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -120,30 +122,50 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
             };
 
+        #[cfg(feature = "master")]
+        let apply_attrs = |ty: Type<'gcc>, attrs: &ArgAttributes| {
+            if cx.sess().opts.optimize != config::OptLevel::No
+                && attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NoAlias)
+            {
+                ty.make_restrict()
+            } else {
+                ty
+            }
+        };
+        #[cfg(not(feature = "master"))]
+        let apply_attrs = |ty: Type<'gcc>, _attrs: &ArgAttributes| {
+            ty
+        };
+
         for arg in self.args.iter() {
             let arg_ty = match arg.mode {
                 PassMode::Ignore => continue,
-                PassMode::Direct(_) => arg.layout.immediate_gcc_type(cx),
-                PassMode::Pair(..) => {
-                    argument_tys.push(arg.layout.scalar_pair_element_gcc_type(cx, 0));
-                    argument_tys.push(arg.layout.scalar_pair_element_gcc_type(cx, 1));
+                PassMode::Pair(a, b) => {
+                    argument_tys.push(apply_attrs(arg.layout.scalar_pair_element_gcc_type(cx, 0), &a));
+                    argument_tys.push(apply_attrs(arg.layout.scalar_pair_element_gcc_type(cx, 1), &b));
                     continue;
-                }
-                PassMode::Indirect { meta_attrs: Some(_), .. } => {
-                    unimplemented!();
                 }
                 PassMode::Cast { ref cast, pad_i32 } => {
                     // add padding
                     if pad_i32 {
                         argument_tys.push(Reg::i32().gcc_type(cx));
                     }
-                    cast.gcc_type(cx)
+                    let ty = cast.gcc_type(cx);
+                    apply_attrs(ty, &cast.attrs)
                 }
-                PassMode::Indirect { meta_attrs: None, on_stack: true, .. } => {
+                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: true } => {
+                    // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
                     on_stack_param_indices.insert(argument_tys.len());
                     arg.memory_ty(cx)
                 },
-                PassMode::Indirect { meta_attrs: None, on_stack: false, .. } => cx.type_ptr_to(arg.memory_ty(cx)),
+                PassMode::Direct(attrs) => apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs),
+                PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                    apply_attrs(cx.type_ptr_to(arg.memory_ty(cx)), &attrs)
+                }
+                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
+                    assert!(!on_stack);
+                    apply_attrs(apply_attrs(cx.type_ptr_to(arg.memory_ty(cx)), &attrs), &meta_attrs)
+                }
             };
             argument_tys.push(arg_ty);
         }

@@ -685,6 +685,12 @@ pub macro cfg() {
 
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
+pub macro asm() {
+    /* compiler built-in */
+}
+
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
 pub macro global_asm() {
     /* compiler built-in */
 }

@@ -264,6 +264,9 @@ else
   BASE_COMMIT=""
 fi
 
+SUMMARY_FILE=github-summary.md
+touch $objdir/${SUMMARY_FILE}
+
 docker \
   run \
   --workdir /checkout/obj \
@@ -275,6 +278,7 @@ docker \
   --env CI \
   --env GITHUB_ACTIONS \
   --env GITHUB_REF \
+  --env GITHUB_STEP_SUMMARY="/checkout/obj/${SUMMARY_FILE}" \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env TOOLSTATE_REPO \
   --env TOOLSTATE_PUBLISH \
@@ -288,6 +292,8 @@ docker \
   --rm \
   rust-ci \
   $command
+
+cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
 
 if [ -f /.dockerenv ]; then
   rm -rf $objdir

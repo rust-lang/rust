@@ -1,10 +1,11 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_index::bit_set::HybridBitSet;
+use rustc_data_structures::graph::WithSuccessors;
+use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
-use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{RegionVid, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -14,6 +15,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::ResultsCursor;
 
+use crate::dataflow::BorrowIndex;
 use crate::{
     region_infer::values::{self, PointIndex, RegionValueElements},
     type_check::liveness::local_use_map::LocalUseMap,
@@ -50,6 +52,33 @@ pub(super) fn trace<'mir, 'tcx>(
 
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, elements, body);
 
+    // When using `-Zpolonius=next`, compute the set of loans that can reach a given region.
+    let num_loans = typeck.borrowck_context.borrow_set.len();
+    let mut inflowing_loans = SparseBitMatrix::new(num_loans);
+    if typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled() {
+        let borrowck_context = &typeck.borrowck_context;
+        let borrow_set = &borrowck_context.borrow_set;
+        let constraint_set = &borrowck_context.constraints.outlives_constraints;
+
+        let num_region_vars = typeck.infcx.num_region_vars();
+        let graph = constraint_set.graph(num_region_vars);
+        let region_graph =
+            graph.region_graph(&constraint_set, borrowck_context.universal_regions.fr_static);
+
+        // Traverse each issuing region's constraints, and record the loan as flowing into the
+        // outlived region.
+        for (loan, issuing_region_data) in borrow_set.iter_enumerated() {
+            for succ in region_graph.depth_first_search(issuing_region_data.region) {
+                // We don't need to mention that a loan flows into its issuing region.
+                if succ == issuing_region_data.region {
+                    continue;
+                }
+
+                inflowing_loans.insert(succ, loan);
+            }
+        }
+    };
+
     let cx = LivenessContext {
         typeck,
         body,
@@ -58,6 +87,7 @@ pub(super) fn trace<'mir, 'tcx>(
         local_use_map,
         move_data,
         drop_data: FxIndexMap::default(),
+        inflowing_loans,
     };
 
     let mut results = LivenessResults::new(cx);
@@ -95,6 +125,9 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
     local_use_map: &'me LocalUseMap,
+
+    /// Set of loans that flow into a given region, when using `-Zpolonius=next`.
+    inflowing_loans: SparseBitMatrix<RegionVid, BorrowIndex>,
 }
 
 struct DropData<'tcx> {
@@ -486,7 +519,13 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     ) {
         debug!("add_use_live_facts_for(value={:?})", value);
 
-        Self::make_all_regions_live(self.elements, &mut self.typeck, value, live_at)
+        Self::make_all_regions_live(
+            self.elements,
+            &mut self.typeck,
+            value,
+            live_at,
+            &self.inflowing_loans,
+        );
     }
 
     /// Some variable with type `live_ty` is "drop live" at `location`
@@ -537,7 +576,13 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
         for &kind in &drop_data.dropck_result.kinds {
-            Self::make_all_regions_live(self.elements, &mut self.typeck, kind, live_at);
+            Self::make_all_regions_live(
+                self.elements,
+                &mut self.typeck,
+                kind,
+                live_at,
+                &self.inflowing_loans,
+            );
 
             polonius::add_drop_of_var_derefs_origin(&mut self.typeck, dropped_local, &kind);
         }
@@ -548,6 +593,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         typeck: &mut TypeChecker<'_, 'tcx>,
         value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
+        inflowing_loans: &SparseBitMatrix<RegionVid, BorrowIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
         debug!(
@@ -556,15 +602,35 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         );
 
         let tcx = typeck.tcx();
+        let borrowck_context = &mut typeck.borrowck_context;
+
+        // When using `-Zpolonius=next`, we want to record the loans that flow into this value's
+        // regions as being live at the given `live_at` points: this will be used to compute the
+        // location where a loan goes out of scope.
+        let num_loans = borrowck_context.borrow_set.len();
+        let mut value_loans = HybridBitSet::new_empty(num_loans);
+
         tcx.for_each_free_region(&value, |live_region| {
-            let live_region_vid =
-                typeck.borrowck_context.universal_regions.to_region_vid(live_region);
-            typeck
-                .borrowck_context
+            let live_region_vid = borrowck_context.universal_regions.to_region_vid(live_region);
+
+            borrowck_context
                 .constraints
                 .liveness_constraints
                 .add_elements(live_region_vid, live_at);
+
+            // There can only be inflowing loans for this region when we are using
+            // `-Zpolonius=next`.
+            if let Some(inflowing) = inflowing_loans.row(live_region_vid) {
+                value_loans.union(inflowing);
+            }
         });
+
+        // Record the loans reaching the value.
+        if !value_loans.is_empty() {
+            for point in live_at.iter() {
+                borrowck_context.live_loans.union_row(point, &value_loans);
+            }
+        }
     }
 
     fn compute_drop_data(

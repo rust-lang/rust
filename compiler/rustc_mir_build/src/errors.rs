@@ -551,6 +551,7 @@ pub struct LiteralOutOfRange<'tcx> {
     #[label]
     pub span: Span,
     pub ty: Ty<'tcx>,
+    pub min: i128,
     pub max: u128,
 }
 

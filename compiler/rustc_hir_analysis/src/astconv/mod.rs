@@ -36,7 +36,7 @@ use rustc_middle::ty::{
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{sym, BytePos, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCtxt};
@@ -1275,8 +1275,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 return;
                             };
                             // Get the span of the generics args *including* the leading `::`.
-                            let args_span =
-                                assoc_segment.ident.span.shrink_to_hi().to(args.span_ext);
+                            // We do so by stretching args.span_ext to the left by 2. Earlier
+                            // it was done based on the end of assoc segment but that sometimes
+                            // led to impossible spans and caused issues like #116473
+                            let args_span = args.span_ext.with_lo(args.span_ext.lo() - BytePos(2));
                             if tcx.generics_of(adt_def.did()).count() == 0 {
                                 // FIXME(estebank): we could also verify that the arguments being
                                 // work for the `enum`, instead of just looking if it takes *any*.

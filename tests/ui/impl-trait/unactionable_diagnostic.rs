@@ -14,7 +14,7 @@ fn foo<'x, P>(
 }
 
 pub fn bar<'t, T>(
-    //~^ HELP: consider adding an explicit lifetime bound...
+    //~^ HELP: consider adding an explicit lifetime bound
     post: T,
     x: &'t Foo,
 ) -> &'t impl Trait {

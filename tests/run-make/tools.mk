@@ -21,6 +21,28 @@ CGREP := "$(S)/src/etc/cat-and-grep.sh"
 # diff with common flags for multi-platform diffs against text output
 DIFF := diff -u --strip-trailing-cr
 
+# With RUSTC_TEST_OP you can elegantly support blessing of run-make tests. Do
+# like this in a Makefile recipe:
+#
+#   "$(TMPDIR)"/your-test > "$(TMPDIR)"/your-test.run.stdout
+#   $(RUSTC_TEST_OP) "$(TMPDIR)"/your-test.run.stdout your-test.run.stdout
+#
+# When running the test normally with
+#
+#   ./x test tests/run-make/your-test
+#
+# the actual output will be diffed against the expected output. When running in
+# bless-mode with
+#
+#   ./x test --bless tests/run-make/your-test
+#
+# the actual output will be blessed as the expected output.
+ifdef RUSTC_BLESS_TEST
+    RUSTC_TEST_OP = cp
+else
+    RUSTC_TEST_OP = $(DIFF)
+endif
+
 # Some of the Rust CI platforms use `/bin/dash` to run `shell` script in
 # Makefiles. Other platforms, including many developer platforms, default to
 # `/bin/bash`. (In many cases, `make` is actually using `/bin/sh`, but `sh`

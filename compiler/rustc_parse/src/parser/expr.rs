@@ -1592,7 +1592,7 @@ impl<'a> Parser<'a> {
         } else if !ate_colon
             && self.may_recover()
             && (matches!(self.token.kind, token::CloseDelim(_) | token::Comma)
-                || self.token.is_op())
+                || self.token.is_punct())
         {
             let (lit, _) =
                 self.recover_unclosed_char(label_.ident, Parser::mk_token_lit_char, |self_| {

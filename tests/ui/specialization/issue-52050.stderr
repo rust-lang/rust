@@ -11,11 +11,13 @@ LL | #![feature(specialization)]
 error[E0119]: conflicting implementations of trait `IntoPyDictPointer` for type `()`
   --> $DIR/issue-52050.rs:28:1
    |
-LL | impl<I> IntoPyDictPointer for I
-   | ------------------------------- first implementation here
+LL | / impl<I> IntoPyDictPointer for I
+LL | | where
+LL | |     I: Iterator,
+   | |________________- first implementation here
 ...
-LL | impl IntoPyDictPointer for ()
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
+LL |   impl IntoPyDictPointer for ()
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
    |
    = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `()` in future versions
 

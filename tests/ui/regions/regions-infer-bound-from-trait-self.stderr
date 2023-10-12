@@ -1,11 +1,16 @@
 error[E0309]: the parameter type `Self` may not live long enough
   --> $DIR/regions-infer-bound-from-trait-self.rs:46:9
    |
+LL | trait InheritsFromNothing<'a> : Sized {
+   |                           -- the parameter type `Self` must be valid for the lifetime `'a` as defined here...
+LL |     fn foo(self, x: Inv<'a>) {
 LL |         check_bound(x, self)
-   |         ^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^ ...so that the type `Self` will meet its required lifetime bounds
    |
-   = help: consider adding an explicit lifetime bound `Self: 'a`...
-   = note: ...so that the type `Self` will meet its required lifetime bounds
+help: consider adding an explicit lifetime bound
+   |
+LL | trait InheritsFromNothing<'a> : Sized where Self: 'a {
+   |                                       ++++++++++++++
 
 error: aborting due to previous error
 

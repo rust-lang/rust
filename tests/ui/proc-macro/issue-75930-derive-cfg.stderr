@@ -1,5 +1,5 @@
 warning: derive helper attribute is used before it is introduced
-  --> $DIR/issue-75930-derive-cfg.rs:19:3
+  --> $DIR/issue-75930-derive-cfg.rs:49:3
    |
 LL | #[print_helper(a)]
    |   ^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #[derive(Print)]
    = note: `#[warn(legacy_derive_helpers)]` on by default
 
 warning: derive helper attribute is used before it is introduced
-  --> $DIR/issue-75930-derive-cfg.rs:19:3
+  --> $DIR/issue-75930-derive-cfg.rs:49:3
    |
 LL | #[print_helper(a)]
    |   ^^^^^^^^^^^^

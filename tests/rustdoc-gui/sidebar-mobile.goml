@@ -26,7 +26,7 @@ assert-css: (".sidebar", {"left": "0px"})
 // Make sure the "struct Foo" header is hidden, since the mobile topbar already does it.
 assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='Foo']/parent::h2", {"display": "none"})
 // Make sure the global navigation is still here.
-assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='In test_docs']/parent::h2", {"display": "block"})
+assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='In crate test_docs']/parent::h2", {"display": "block"})
 
 // Click elsewhere.
 click: "body"
@@ -50,7 +50,7 @@ assert-position: ("#method\.must_use", {"y": 46})
 // Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
 click: ".sidebar-menu-toggle"
 scroll-to: ".block.keyword li:nth-child(1)"
-compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 543.19})
+compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 544})
 
 // Now checking the background color of the sidebar.
 show-text: true

@@ -22,7 +22,8 @@ use std::fmt;
 use std::fmt::Debug;
 
 use self::ty::{
-    GenericPredicates, Generics, ImplDef, ImplTrait, Span, TraitDecl, TraitDef, Ty, TyKind,
+    GenericPredicates, Generics, ImplDef, ImplTrait, IndexedVal, Span, TraitDecl, TraitDef, Ty,
+    TyKind,
 };
 
 #[macro_use]
@@ -41,7 +42,7 @@ pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct DefId(pub usize);
+pub struct DefId(usize);
 
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -52,9 +53,28 @@ impl Debug for DefId {
     }
 }
 
+impl IndexedVal for DefId {
+    fn to_val(index: usize) -> Self {
+        DefId(index)
+    }
+
+    fn to_index(&self) -> usize {
+        self.0
+    }
+}
+
 /// A unique identification number for each provenance
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct AllocId(pub usize);
+pub struct AllocId(usize);
+
+impl IndexedVal for AllocId {
+    fn to_val(index: usize) -> Self {
+        AllocId(index)
+    }
+    fn to_index(&self) -> usize {
+        self.0
+    }
+}
 
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;
@@ -125,9 +145,9 @@ pub fn local_crate() -> Crate {
     with(|cx| cx.local_crate())
 }
 
-/// Try to find a crate with the given name.
-pub fn find_crate(name: &str) -> Option<Crate> {
-    with(|cx| cx.find_crate(name))
+/// Try to find a crate or crates if multiple crates exist from given name.
+pub fn find_crates(name: &str) -> Vec<Crate> {
+    with(|cx| cx.find_crates(name))
 }
 
 /// Try to find a crate with the given name.
@@ -174,7 +194,7 @@ pub trait Context {
     fn external_crates(&self) -> Vec<Crate>;
 
     /// Find a crate with the given name.
-    fn find_crate(&self, name: &str) -> Option<Crate>;
+    fn find_crates(&self, name: &str) -> Vec<Crate>;
 
     /// Prints the name of given `DefId`
     fn name_of_def_id(&self, def_id: DefId) -> String;

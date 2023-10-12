@@ -1,13 +1,13 @@
 //! Argument passing
 
-use crate::prelude::*;
-use crate::value_and_place::assert_assignable;
-
 use cranelift_codegen::ir::{ArgumentExtension, ArgumentPurpose};
 use rustc_target::abi::call::{
     ArgAbi, ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode, Reg, RegKind,
 };
 use smallvec::{smallvec, SmallVec};
+
+use crate::prelude::*;
+use crate::value_and_place::assert_assignable;
 
 pub(super) trait ArgAbiExt<'tcx> {
     fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> SmallVec<[AbiParam; 2]>;

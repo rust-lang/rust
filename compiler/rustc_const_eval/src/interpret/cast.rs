@@ -311,6 +311,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         F: Float + Into<Scalar<M::Provenance>> + FloatConvert<Single> + FloatConvert<Double>,
     {
         use rustc_type_ir::sty::TyKind::*;
+
+        fn adjust_nan<
+            'mir,
+            'tcx: 'mir,
+            M: Machine<'mir, 'tcx>,
+            F1: rustc_apfloat::Float + FloatConvert<F2>,
+            F2: rustc_apfloat::Float,
+        >(
+            ecx: &InterpCx<'mir, 'tcx, M>,
+            f1: F1,
+            f2: F2,
+        ) -> F2 {
+            if f2.is_nan() { M::generate_nan(ecx, &[f1]) } else { f2 }
+        }
+
         match *dest_ty.kind() {
             // float -> uint
             Uint(t) => {
@@ -330,9 +345,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Scalar::from_int(v, size)
             }
             // float -> f32
-            Float(FloatTy::F32) => Scalar::from_f32(f.convert(&mut false).value),
+            Float(FloatTy::F32) => {
+                Scalar::from_f32(adjust_nan(self, f, f.convert(&mut false).value))
+            }
             // float -> f64
-            Float(FloatTy::F64) => Scalar::from_f64(f.convert(&mut false).value),
+            Float(FloatTy::F64) => {
+                Scalar::from_f64(adjust_nan(self, f, f.convert(&mut false).value))
+            }
             // That's it.
             _ => span_bug!(self.cur_span(), "invalid float to {} cast", dest_ty),
         }

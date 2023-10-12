@@ -23,3 +23,4 @@ glob = "0.3"
 tempfile = "3.5"
 derive_builder = "0.12"
 clap = { version = "4", features = ["derive"] }
+tabled = "0.13"

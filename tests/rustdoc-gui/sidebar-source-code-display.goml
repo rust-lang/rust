@@ -174,14 +174,14 @@ click: "#src-sidebar-toggle"
 wait-for-css: (".sidebar", {"left": "-1000px"})
 // We scroll to line 117 to change the scroll position.
 scroll-to: '//*[@id="117"]'
-assert-window-property: {"pageYOffset": "2542"}
+assert-window-property: {"pageYOffset": "2516"}
 // Expanding the sidebar...
 click: "#src-sidebar-toggle"
 wait-for-css: (".sidebar", {"left": "0px"})
 click: "#src-sidebar-toggle"
 wait-for-css: (".sidebar", {"left": "-1000px"})
 // The "scrollTop" property should be the same.
-assert-window-property: {"pageYOffset": "2542"}
+assert-window-property: {"pageYOffset": "2516"}
 
 // We now check that opening the sidebar and clicking a link will close it.
 // The behavior here on mobile is different than the behavior on desktop,

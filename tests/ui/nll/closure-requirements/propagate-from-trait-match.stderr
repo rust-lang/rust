@@ -25,10 +25,13 @@ LL | |     T: Trait<'a>,
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/propagate-from-trait-match.rs:43:9
    |
+LL | fn supply<'a, T>(value: T)
+   |           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
 LL |         require(value);
    |         ^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     T: Trait<'a> + 'a,
    |                  ++++

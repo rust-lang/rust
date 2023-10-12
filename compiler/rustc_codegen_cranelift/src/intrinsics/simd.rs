@@ -148,7 +148,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let total_len = lane_count * 2;
 
             let indexes =
-                idx.iter().map(|idx| idx.unwrap_leaf().try_to_u16().unwrap()).collect::<Vec<u16>>();
+                idx.iter().map(|idx| idx.unwrap_leaf().try_to_u32().unwrap()).collect::<Vec<u32>>();
 
             for &idx in &indexes {
                 assert!(u64::from(idx) < total_len, "idx {} out of range 0..{}", idx, total_len);
@@ -216,8 +216,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let indexes = {
                 use rustc_middle::mir::interpret::*;
-                let idx_const = crate::constant::mir_operand_get_const_val(fx, idx)
-                    .expect("simd_shuffle idx not const");
+                let idx_const = match idx {
+                    Operand::Constant(const_) => crate::constant::eval_mir_constant(fx, const_).0,
+                    Operand::Copy(_) | Operand::Move(_) => unreachable!("{idx:?}"),
+                };
 
                 let idx_bytes = match idx_const {
                     ConstValue::Indirect { alloc_id, offset } => {
@@ -343,7 +345,11 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, ret_lane);
         }
 
-        sym::simd_neg => {
+        sym::simd_neg
+        | sym::simd_bswap
+        | sym::simd_bitreverse
+        | sym::simd_ctlz
+        | sym::simd_cttz => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
             if !a.layout().ty.is_simd() {
@@ -351,16 +357,21 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             }
 
-            simd_for_each_lane(
-                fx,
-                a,
-                ret,
-                &|fx, lane_ty, _ret_lane_ty, lane| match lane_ty.kind() {
-                    ty::Int(_) => fx.bcx.ins().ineg(lane),
-                    ty::Float(_) => fx.bcx.ins().fneg(lane),
-                    _ => unreachable!(),
-                },
-            );
+            simd_for_each_lane(fx, a, ret, &|fx, lane_ty, _ret_lane_ty, lane| match (
+                lane_ty.kind(),
+                intrinsic,
+            ) {
+                (ty::Int(_), sym::simd_neg) => fx.bcx.ins().ineg(lane),
+                (ty::Float(_), sym::simd_neg) => fx.bcx.ins().fneg(lane),
+
+                (ty::Uint(ty::UintTy::U8) | ty::Int(ty::IntTy::I8), sym::simd_bswap) => lane,
+                (ty::Uint(_) | ty::Int(_), sym::simd_bswap) => fx.bcx.ins().bswap(lane),
+                (ty::Uint(_) | ty::Int(_), sym::simd_bitreverse) => fx.bcx.ins().bitrev(lane),
+                (ty::Uint(_) | ty::Int(_), sym::simd_ctlz) => fx.bcx.ins().clz(lane),
+                (ty::Uint(_) | ty::Int(_), sym::simd_cttz) => fx.bcx.ins().ctz(lane),
+
+                _ => unreachable!(),
+            });
         }
 
         sym::simd_add

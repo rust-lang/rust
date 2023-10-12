@@ -57,8 +57,8 @@ jobs:
       uses: dawidd6/action-download-artifact@v2
       with:
           workflow: main.yml
-          name: ${{ matrix.libgccjit_version.gcc }}
-          path: gcc-build
+          name: gcc-13
+          path: gcc-13
           repo: antoyo/gcc
           branch: ${{ matrix.libgccjit_version.artifacts_branch }}
           event: push
@@ -71,9 +71,8 @@ jobs:
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
-          echo $(readlink -f gcc-build) > gcc_path
-          # NOTE: the filename is still libgccjit.so even when the artifact name is different.
-          ln gcc-build/libgccjit.so gcc-build/libgccjit.so.0
+          sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
+          echo /usr/lib/ > gcc_path
 
     - name: Set env
       run: |
@@ -119,8 +118,8 @@ jobs:
 
     - name: Build
       run: |
-        ./prepare_build.sh
-        ${{ matrix.libgccjit_version.env_extra }} ./build.sh ${{ matrix.libgccjit_version.extra }}
+        ./y.sh prepare --only-libcore
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh build ${{ matrix.libgccjit_version.extra }}
         ${{ matrix.libgccjit_version.env_extra }} cargo test ${{ matrix.libgccjit_version.extra }}
         ./clean_all.sh
 
@@ -128,7 +127,7 @@ jobs:
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./prepare.sh
+        ./y.sh prepare
 
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
@@ -140,6 +139,9 @@ jobs:
     - name: Add more failing tests for GCC 12
       if: ${{ matrix.libgccjit_version.gcc == 'libgccjit12.so' }}
       run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
+
+    - name: Add more failing tests because the sysroot is not compiled with LTO
+      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
 
     - name: Run tests
       run: |

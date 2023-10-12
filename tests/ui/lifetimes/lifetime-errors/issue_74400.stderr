@@ -2,9 +2,12 @@ error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/issue_74400.rs:12:5
    |
 LL |     f(data, identity)
-   |     ^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |     ^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL | fn g<T: 'static>(data: &[T]) {
    |       +++++++++

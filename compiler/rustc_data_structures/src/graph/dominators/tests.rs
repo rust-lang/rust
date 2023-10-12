@@ -6,12 +6,11 @@ use super::super::tests::TestGraph;
 fn diamond() {
     let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (2, 3)]);
 
-    let dominators = dominators(&graph);
-    let immediate_dominators = &dominators.immediate_dominators;
-    assert_eq!(immediate_dominators[0], None);
-    assert_eq!(immediate_dominators[1], Some(0));
-    assert_eq!(immediate_dominators[2], Some(0));
-    assert_eq!(immediate_dominators[3], Some(0));
+    let d = dominators(&graph);
+    assert_eq!(d.immediate_dominator(0), None);
+    assert_eq!(d.immediate_dominator(1), Some(0));
+    assert_eq!(d.immediate_dominator(2), Some(0));
+    assert_eq!(d.immediate_dominator(3), Some(0));
 }
 
 #[test]
@@ -22,15 +21,14 @@ fn paper() {
         &[(6, 5), (6, 4), (5, 1), (4, 2), (4, 3), (1, 2), (2, 3), (3, 2), (2, 1)],
     );
 
-    let dominators = dominators(&graph);
-    let immediate_dominators = &dominators.immediate_dominators;
-    assert_eq!(immediate_dominators[0], None); // <-- note that 0 is not in graph
-    assert_eq!(immediate_dominators[1], Some(6));
-    assert_eq!(immediate_dominators[2], Some(6));
-    assert_eq!(immediate_dominators[3], Some(6));
-    assert_eq!(immediate_dominators[4], Some(6));
-    assert_eq!(immediate_dominators[5], Some(6));
-    assert_eq!(immediate_dominators[6], None);
+    let d = dominators(&graph);
+    assert_eq!(d.immediate_dominator(0), None); // <-- note that 0 is not in graph
+    assert_eq!(d.immediate_dominator(1), Some(6));
+    assert_eq!(d.immediate_dominator(2), Some(6));
+    assert_eq!(d.immediate_dominator(3), Some(6));
+    assert_eq!(d.immediate_dominator(4), Some(6));
+    assert_eq!(d.immediate_dominator(5), Some(6));
+    assert_eq!(d.immediate_dominator(6), None);
 }
 
 #[test]
@@ -47,11 +45,11 @@ fn paper_slt() {
 #[test]
 fn immediate_dominator() {
     let graph = TestGraph::new(1, &[(1, 2), (2, 3)]);
-    let dominators = dominators(&graph);
-    assert_eq!(dominators.immediate_dominator(0), None);
-    assert_eq!(dominators.immediate_dominator(1), None);
-    assert_eq!(dominators.immediate_dominator(2), Some(1));
-    assert_eq!(dominators.immediate_dominator(3), Some(2));
+    let d = dominators(&graph);
+    assert_eq!(d.immediate_dominator(0), None);
+    assert_eq!(d.immediate_dominator(1), None);
+    assert_eq!(d.immediate_dominator(2), Some(1));
+    assert_eq!(d.immediate_dominator(3), Some(2));
 }
 
 #[test]
@@ -75,8 +73,7 @@ fn transitive_dominator() {
         ],
     );
 
-    let dom_tree = dominators(&graph);
-    let immediate_dominators = &dom_tree.immediate_dominators;
-    assert_eq!(immediate_dominators[2], Some(0));
-    assert_eq!(immediate_dominators[3], Some(0)); // This used to return Some(1).
+    let d = dominators(&graph);
+    assert_eq!(d.immediate_dominator(2), Some(0));
+    assert_eq!(d.immediate_dominator(3), Some(0)); // This used to return Some(1).
 }

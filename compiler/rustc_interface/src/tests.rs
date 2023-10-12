@@ -9,6 +9,7 @@ use rustc_session::config::DebugInfo;
 use rustc_session::config::Input;
 use rustc_session::config::InstrumentXRay;
 use rustc_session::config::LinkSelfContained;
+use rustc_session::config::Polonius;
 use rustc_session::config::TraitSolver;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{
@@ -814,7 +815,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);
     tracked!(plt, Some(true));
-    tracked!(polonius, true);
+    tracked!(polonius, Polonius::Legacy);
     tracked!(precise_enum_drop_elaboration, false);
     tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile, true);

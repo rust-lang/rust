@@ -3,20 +3,18 @@
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
-use crate::debuginfo::FunctionDebugContext;
-use crate::prelude::*;
-
+use cranelift_codegen::binemit::CodeOffset;
+use cranelift_codegen::MachSrcLoc;
+use gimli::write::{
+    Address, AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable,
+};
 use rustc_data_structures::sync::Lrc;
 use rustc_span::{
     FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm,
 };
 
-use cranelift_codegen::binemit::CodeOffset;
-use cranelift_codegen::MachSrcLoc;
-
-use gimli::write::{
-    Address, AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable,
-};
+use crate::debuginfo::FunctionDebugContext;
+use crate::prelude::*;
 
 // OPTIMIZATION: It is cheaper to do this in one pass than using `.parent()` and `.file_name()`.
 fn split_path_dir_and_file(path: &Path) -> (&Path, &OsStr) {

@@ -278,6 +278,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ENETUNREACH => NetworkUnreachable,
         libc::ENOTCONN => NotConnected,
         libc::ENOTDIR => NotADirectory,
+        #[cfg(not(target_os = "aix"))]
         libc::ENOTEMPTY => DirectoryNotEmpty,
         libc::EPIPE => BrokenPipe,
         libc::EROFS => ReadOnlyFilesystem,

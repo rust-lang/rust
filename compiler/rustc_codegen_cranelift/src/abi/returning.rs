@@ -1,9 +1,9 @@
 //! Return value handling
 
-use crate::prelude::*;
-
 use rustc_target::abi::call::{ArgAbi, PassMode};
 use smallvec::{smallvec, SmallVec};
+
+use crate::prelude::*;
 
 /// Return a place where the return value of the current function can be written to. If necessary
 /// this adds an extra parameter pointing to where the return value needs to be stored.

@@ -6,16 +6,15 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     let mut _0: ();
     let mut _3: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
     let mut _4: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
-    let mut _5: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
-    let mut _6: &mut std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
-    let mut _7: std::option::Option<U>;
-    let mut _8: isize;
-    let _10: ();
+    let mut _5: &mut std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
+    let mut _6: std::option::Option<U>;
+    let mut _7: isize;
+    let _9: ();
     scope 1 {
-        debug iter => _5;
-        let _9: U;
+        debug iter => _4;
+        let _8: U;
         scope 2 {
-            debug x => _9;
+            debug x => _8;
         }
     }
     scope 3 (inlined <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as IntoIterator>::into_iter) {
@@ -23,50 +22,45 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     }
 
     bb0: {
-        StorageLive(_4);
-        StorageLive(_3);
         _3 = <impl Iterator<Item = T> as Iterator>::map::<U, impl Fn(T) -> U>(move _1, move _2) -> [return: bb1, unwind continue];
     }
 
     bb1: {
+        StorageLive(_4);
         _4 = move _3;
-        StorageDead(_3);
-        StorageLive(_5);
-        _5 = move _4;
         goto -> bb2;
     }
 
     bb2: {
-        StorageLive(_7);
         StorageLive(_6);
-        _6 = &mut _5;
-        _7 = <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::next(move _6) -> [return: bb3, unwind: bb9];
+        StorageLive(_5);
+        _5 = &mut _4;
+        _6 = <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::next(move _5) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
-        StorageDead(_6);
-        _8 = discriminant(_7);
-        switchInt(move _8) -> [0: bb4, 1: bb6, otherwise: bb8];
+        StorageDead(_5);
+        _7 = discriminant(_6);
+        switchInt(move _7) -> [0: bb4, 1: bb6, otherwise: bb8];
     }
 
     bb4: {
-        StorageDead(_7);
-        drop(_5) -> [return: bb5, unwind continue];
+        StorageDead(_6);
+        drop(_4) -> [return: bb5, unwind continue];
     }
 
     bb5: {
-        StorageDead(_5);
         StorageDead(_4);
         return;
     }
 
     bb6: {
-        _9 = move ((_7 as Some).0: U);
-        _10 = opaque::<U>(move _9) -> [return: bb7, unwind: bb9];
+        _8 = move ((_6 as Some).0: U);
+        _9 = opaque::<U>(move _8) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {
-        StorageDead(_7);
+        StorageDead(_6);
         goto -> bb2;
     }
 
@@ -75,7 +69,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     }
 
     bb9 (cleanup): {
-        drop(_5) -> [return: bb10, unwind terminate(cleanup)];
+        drop(_4) -> [return: bb10, unwind terminate(cleanup)];
     }
 
     bb10 (cleanup): {

@@ -60,7 +60,7 @@ error[E0119]: conflicting implementations of trait `Trait5` for type `(dyn Send 
 LL | impl Trait5 for dyn Send {}
    | ------------------------ first implementation here
 LL | impl Trait5 for dyn Send where u32: Copy {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + 'static)`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + 'static)`
 
 error: aborting due to 8 previous errors
 

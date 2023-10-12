@@ -218,6 +218,7 @@ impl Thread {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "hurd",
+        target_os = "aix",
     ))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.
@@ -317,6 +318,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             target_os = "macos",
             target_os = "solaris",
             target_os = "illumos",
+            target_os = "aix",
         ))] {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]

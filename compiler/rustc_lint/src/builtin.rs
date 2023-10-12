@@ -2258,23 +2258,19 @@ impl EarlyLintPass for IncompleteInternalFeatures {
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
             .filter(|(&name, _)| features.incomplete(name) || features.internal(name))
             .for_each(|(&name, &span)| {
-                let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
-                    .map(|n| BuiltinFeatureIssueNote { n });
-
                 if features.incomplete(name) {
+                    let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
+                        .map(|n| BuiltinFeatureIssueNote { n });
                     let help =
                         HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
+
                     cx.emit_spanned_lint(
                         INCOMPLETE_FEATURES,
                         span,
                         BuiltinIncompleteFeatures { name, note, help },
                     );
                 } else {
-                    cx.emit_spanned_lint(
-                        INTERNAL_FEATURES,
-                        span,
-                        BuiltinInternalFeatures { name, note },
-                    );
+                    cx.emit_spanned_lint(INTERNAL_FEATURES, span, BuiltinInternalFeatures { name });
                 }
             });
     }

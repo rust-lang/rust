@@ -1752,6 +1752,7 @@ function initSearch(rawSearchIndex) {
                 type: item.type,
                 is_alias: true,
                 deprecated: item.deprecated,
+                implDisambiguator: item.implDisambiguator,
             };
         }
 
@@ -2218,7 +2219,7 @@ function initSearch(rawSearchIndex) {
             href = ROOT_PATH + name + "/index.html";
         } else if (item.parent !== undefined) {
             const myparent = item.parent;
-            let anchor = "#" + type + "." + name;
+            let anchor = type + "." + name;
             const parentType = itemTypes[myparent.ty];
             let pageType = parentType;
             let pageName = myparent.name;
@@ -2232,16 +2233,19 @@ function initSearch(rawSearchIndex) {
                 const enumName = item.path.substr(enumNameIdx + 2);
                 path = item.path.substr(0, enumNameIdx);
                 displayPath = path + "::" + enumName + "::" + myparent.name + "::";
-                anchor = "#variant." + myparent.name + ".field." + name;
+                anchor = "variant." + myparent.name + ".field." + name;
                 pageType = "enum";
                 pageName = enumName;
             } else {
                 displayPath = path + "::" + myparent.name + "::";
             }
+            if (item.implDisambiguator !== null) {
+                anchor = item.implDisambiguator + "/" + anchor;
+            }
             href = ROOT_PATH + path.replace(/::/g, "/") +
                 "/" + pageType +
                 "." + pageName +
-                ".html" + anchor;
+                ".html#" + anchor;
         } else {
             displayPath = item.path + "::";
             href = ROOT_PATH + item.path.replace(/::/g, "/") +
@@ -2727,6 +2731,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
              * Types are also represented as arrays; the first item is an index into the `p`
              * array, while the second is a list of types representing any generic parameters.
              *
+             * b[i] contains an item's impl disambiguator. This is only present if an item
+             * is defined in an impl block and, the impl block's type has more than one associated
+             * item with the same name.
+             *
              * `a` defines aliases with an Array of pairs: [name, offset], where `offset`
              * points into the n/t/d/q/i/f arrays.
              *
@@ -2746,6 +2754,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
              *   i: Array<Number>,
              *   f: Array<RawFunctionSearchType>,
              *   p: Array<Object>,
+             *   b: Array<[Number, String]>,
              *   c: Array<Number>
              * }}
              */
@@ -2766,6 +2775,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id: id,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
                 deprecated: null,
+                implDisambiguator: null,
             };
             id += 1;
             searchIndex.push(crateRow);
@@ -2789,6 +2799,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const itemFunctionSearchTypes = crateCorpus.f;
             // an array of (Number) indices for the deprecated items
             const deprecatedItems = new Set(crateCorpus.c);
+            // an array of (Number) indices for the deprecated items
+            const implDisambiguator = new Map(crateCorpus.b);
             // an array of [(Number) item type,
             //              (String) name]
             const paths = crateCorpus.p;
@@ -2849,6 +2861,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     id: id,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
                     deprecated: deprecatedItems.has(i),
+                    implDisambiguator: implDisambiguator.has(i) ? implDisambiguator.get(i) : null,
                 };
                 id += 1;
                 searchIndex.push(row);

@@ -38,10 +38,17 @@ if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
    fi
 fi
 
-export RUSTFLAGS="$CG_RUSTFLAGS $linker -Csymbol-mangling-version=v0 -Cdebuginfo=2 -Clto=off -Zcodegen-backend=$(pwd)/target/${CHANNEL:-debug}/librustc_codegen_gcc.$dylib_ext --sysroot $(pwd)/build_sysroot/sysroot $TEST_FLAGS"
+# Since we don't support ThinLTO, disable LTO completely when not trying to do LTO.
+# TODO(antoyo): remove when we can handle ThinLTO.
+disable_lto_flags=''
+if [[ ! -v FAT_LTO ]]; then
+    disable_lto_flags='-Clto=off'
+fi
+
+export RUSTFLAGS="$CG_RUSTFLAGS $linker -Csymbol-mangling-version=v0 -Cdebuginfo=2 $disable_lto_flags -Zcodegen-backend=$(pwd)/target/${CHANNEL:-debug}/librustc_codegen_gcc.$dylib_ext --sysroot $(pwd)/build_sysroot/sysroot $TEST_FLAGS"
 
 # FIXME(antoyo): remove once the atomic shim is gone
-if [[ `uname` == 'Darwin' ]]; then
+if [[ unamestr == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 
@@ -50,3 +57,7 @@ export RUSTC_LOG=warn # display metadata load errors
 
 export LD_LIBRARY_PATH="$(pwd)/target/out:$(pwd)/build_sysroot/sysroot/lib/rustlib/$TARGET_TRIPLE/lib:$GCC_PATH"
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
+# NOTE: To avoid the -fno-inline errors, use /opt/gcc/bin/gcc instead of cc.
+# To do so, add a symlink for cc to /opt/gcc/bin/gcc in our PATH.
+# Another option would be to add the following Rust flag: -Clinker=/opt/gcc/bin/gcc
+export PATH="/opt/gcc/bin:$PATH"

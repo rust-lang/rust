@@ -36,7 +36,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.cx.context.new_unary_op(None, operation, typ, a)
         }
         else {
-            // TODO(antoyo): use __negdi2 and __negti2 instead?
             let element_type = typ.dyncast_array().expect("element type");
             let values = [
                 self.cx.context.new_unary_op(None, UnaryOp::BitwiseNegate, element_type, self.low(a)),
@@ -52,9 +51,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.cx.context.new_unary_op(None, UnaryOp::Minus, a.get_type(), a)
         }
         else {
-            let param_a = self.context.new_parameter(None, a_type, "a");
-            let func = self.context.new_function(None, FunctionType::Extern, a_type, &[param_a], "__negti2", false);
-            self.context.new_call(None, func, &[a])
+            self.gcc_add(self.gcc_not(a), self.gcc_int(a_type, 1))
         }
     }
 
@@ -353,23 +350,63 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         (res.dereference(None).to_rvalue(), overflow)
     }
 
-    pub fn gcc_icmp(&self, op: IntPredicate, mut lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn gcc_icmp(&mut self, op: IntPredicate, mut lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
         let a_type = lhs.get_type();
         let b_type = rhs.get_type();
         if self.is_non_native_int_type(a_type) || self.is_non_native_int_type(b_type) {
-            let signed = a_type.is_compatible_with(self.i128_type);
-            let sign =
-                if signed {
-                    ""
-                }
-                else {
-                    "u"
-                };
-            let func_name = format!("__{}cmpti2", sign);
-            let param_a = self.context.new_parameter(None, a_type, "a");
-            let param_b = self.context.new_parameter(None, b_type, "b");
-            let func = self.context.new_function(None, FunctionType::Extern, self.int_type, &[param_a, param_b], func_name, false);
-            let cmp = self.context.new_call(None, func, &[lhs, rhs]);
+            // This algorithm is based on compiler-rt's __cmpti2:
+            // https://github.com/llvm-mirror/compiler-rt/blob/f0745e8476f069296a7c71accedd061dce4cdf79/lib/builtins/cmpti2.c#L21
+            let result = self.current_func().new_local(None, self.int_type, "icmp_result");
+            let block1 = self.current_func().new_block("block1");
+            let block2 = self.current_func().new_block("block2");
+            let block3 = self.current_func().new_block("block3");
+            let block4 = self.current_func().new_block("block4");
+            let block5 = self.current_func().new_block("block5");
+            let block6 = self.current_func().new_block("block6");
+            let block7 = self.current_func().new_block("block7");
+            let block8 = self.current_func().new_block("block8");
+            let after = self.current_func().new_block("after");
+
+            let native_int_type = a_type.dyncast_array().expect("get element type");
+            // NOTE: cast low to its unsigned type in order to perform a comparison correctly (e.g.
+            // the sign is only on high).
+            let unsigned_type = native_int_type.to_unsigned(&self.cx);
+
+            let lhs_low = self.context.new_cast(None, self.low(lhs), unsigned_type);
+            let rhs_low = self.context.new_cast(None, self.low(rhs), unsigned_type);
+
+            let condition = self.context.new_comparison(None, ComparisonOp::LessThan, self.high(lhs), self.high(rhs));
+            self.llbb().end_with_conditional(None, condition, block1, block2);
+
+            block1.add_assignment(None, result, self.context.new_rvalue_zero(self.int_type));
+            block1.end_with_jump(None, after);
+
+            let condition = self.context.new_comparison(None, ComparisonOp::GreaterThan, self.high(lhs), self.high(rhs));
+            block2.end_with_conditional(None, condition, block3, block4);
+
+            block3.add_assignment(None, result, self.context.new_rvalue_from_int(self.int_type, 2));
+            block3.end_with_jump(None, after);
+
+            let condition = self.context.new_comparison(None, ComparisonOp::LessThan, lhs_low, rhs_low);
+            block4.end_with_conditional(None, condition, block5, block6);
+
+            block5.add_assignment(None, result, self.context.new_rvalue_zero(self.int_type));
+            block5.end_with_jump(None, after);
+
+            let condition = self.context.new_comparison(None, ComparisonOp::GreaterThan, lhs_low, rhs_low);
+            block6.end_with_conditional(None, condition, block7, block8);
+
+            block7.add_assignment(None, result, self.context.new_rvalue_from_int(self.int_type, 2));
+            block7.end_with_jump(None, after);
+
+            block8.add_assignment(None, result, self.context.new_rvalue_one(self.int_type));
+            block8.end_with_jump(None, after);
+
+            // NOTE: since jumps were added in a place rustc does not expect, the current block in the
+            // state need to be updated.
+            self.switch_to_block(after);
+
+            let cmp = result.to_rvalue();
             let (op, limit) =
                 match op {
                     IntPredicate::IntEQ => {
@@ -546,7 +583,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn gcc_uint(&self, typ: Type<'gcc>, int: u64) -> RValue<'gcc> {
-        if self.is_native_int_type_or_bool(typ) {
+        if typ.is_u128(self) {
+            // FIXME(antoyo): libgccjit cannot create 128-bit values yet.
+            let num = self.context.new_rvalue_from_long(self.u64_type, int as i64);
+            self.gcc_int_cast(num, typ)
+        }
+        else if self.is_native_int_type_or_bool(typ) {
             self.context.new_rvalue_from_long(typ, u64::try_from(int).expect("u64::try_from") as i64)
         }
         else {
@@ -572,6 +614,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
         }
         else if typ.is_i128(self) {
+            // FIXME(antoyo): libgccjit cannot create 128-bit values yet.
             let num = self.context.new_rvalue_from_long(self.u64_type, num as u64 as i64);
             self.gcc_int_cast(num, typ)
         }

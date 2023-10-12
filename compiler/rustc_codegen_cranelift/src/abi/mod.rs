@@ -6,6 +6,7 @@ mod returning;
 
 use std::borrow::Cow;
 
+use cranelift_codegen::ir::{AbiParam, SigRef};
 use cranelift_module::ModuleError;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
@@ -13,12 +14,9 @@ use rustc_session::Session;
 use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
-use cranelift_codegen::ir::{AbiParam, SigRef};
-
 use self::pass_mode::*;
-use crate::prelude::*;
-
 pub(crate) use self::returning::codegen_return;
+use crate::prelude::*;
 
 fn clif_sig_from_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,

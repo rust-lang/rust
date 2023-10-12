@@ -2,9 +2,12 @@ error[E0310]: the parameter type `A` may not live long enough
   --> $DIR/implied_lifetime_wf_check4_static.rs:4:18
    |
 LL |     type Ty<A> = impl Sized + 'static;
-   |                  ^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |                  ^^^^^^^^^^^^^^^^^^^^
+   |                  |
+   |                  the parameter type `A` must be valid for the static lifetime...
+   |                  ...so that the type `A` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound...
+help: consider adding an explicit lifetime bound
    |
 LL |     type Ty<A: 'static> = impl Sized + 'static;
    |              +++++++++

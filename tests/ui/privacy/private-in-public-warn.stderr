@@ -246,7 +246,7 @@ error: trait `traits_where::PrivTr` is more private than the item `traits_where:
   --> $DIR/private-in-public-warn.rs:68:5
    |
 LL |     impl<T> Pub<T> where T: PrivTr {}
-   |     ^^^^^^^^^^^^^^ implementation `traits_where::Pub<T>` is reachable at visibility `pub(crate)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation `traits_where::Pub<T>` is reachable at visibility `pub(crate)`
    |
 note: but trait `traits_where::PrivTr` is only usable at visibility `pub(self)`
   --> $DIR/private-in-public-warn.rs:55:5

@@ -97,6 +97,8 @@ pub mod wasi;
 pub mod windows;
 
 // Others.
+#[cfg(target_os = "aix")]
+pub mod aix;
 #[cfg(target_os = "android")]
 pub mod android;
 #[cfg(target_os = "dragonfly")]
