@@ -54,7 +54,7 @@
 //! ```
 
 use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemoryKind};
-use rustc_const_eval::interpret::{ImmTy, InterpCx, MemPlaceMeta, OpTy, Projectable, Scalar};
+use rustc_const_eval::interpret::{ImmTy, InterpCx, OpTy, Projectable, Scalar};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
@@ -852,9 +852,7 @@ fn op_to_prop_const<'tcx>(
     }
 
     // If this constant is a projection of another, we can return it directly.
-    if let Either::Left(mplace) = op.as_mplace_or_imm()
-        && let MemPlaceMeta::None = mplace.meta()
-    {
+    if let Either::Left(mplace) = op.as_mplace_or_imm() {
         let (size, _align) = ecx.size_and_align_of_mplace(&mplace).ok()??;
 
         // Do not try interning a value that contains provenance.
