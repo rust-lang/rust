@@ -851,17 +851,21 @@ impl<'tcx> PatRange<'tcx> {
         //
         // Also, for performance, it's important to only do the second `try_to_bits` if necessary.
         let lo_is_min = match self.lo {
+            PatRangeBoundary::NegInfinity => true,
             PatRangeBoundary::Finite(value) => {
                 let lo = value.try_to_bits(size).unwrap() ^ bias;
                 lo <= min
             }
+            PatRangeBoundary::PosInfinity => false,
         };
         if lo_is_min {
             let hi_is_max = match self.hi {
+                PatRangeBoundary::NegInfinity => false,
                 PatRangeBoundary::Finite(value) => {
                     let hi = value.try_to_bits(size).unwrap() ^ bias;
                     hi > max || hi == max && self.end == RangeEnd::Included
                 }
+                PatRangeBoundary::PosInfinity => true,
             };
             if hi_is_max {
                 return Some(true);
@@ -920,11 +924,16 @@ impl<'tcx> PatRange<'tcx> {
 
 impl<'tcx> fmt::Display for PatRange<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let PatRangeBoundary::Finite(value) = &self.lo;
-        write!(f, "{value}")?;
-        write!(f, "{}", self.end)?;
-        let PatRangeBoundary::Finite(value) = &self.hi;
-        write!(f, "{value}")?;
+        if let PatRangeBoundary::Finite(value) = &self.lo {
+            write!(f, "{value}")?;
+        }
+        if let PatRangeBoundary::Finite(value) = &self.hi {
+            write!(f, "{}", self.end)?;
+            write!(f, "{value}")?;
+        } else {
+            // `0..` is parsed as an inclusive range, we must display it correctly.
+            write!(f, "..")?;
+        }
         Ok(())
     }
 }
@@ -934,38 +943,49 @@ impl<'tcx> fmt::Display for PatRange<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, HashStable, TypeVisitable)]
 pub enum PatRangeBoundary<'tcx> {
     Finite(mir::Const<'tcx>),
+    NegInfinity,
+    PosInfinity,
 }
 
 impl<'tcx> PatRangeBoundary<'tcx> {
     #[inline]
-    pub fn lower_bound(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        // Unwrap is ok because the type is known to be numeric.
-        let c = ty.numeric_min_val(tcx).unwrap();
-        let value = mir::Const::from_ty_const(c, tcx);
-        Self::Finite(value)
+    pub fn is_finite(self) -> bool {
+        matches!(self, Self::Finite(..))
     }
     #[inline]
-    pub fn upper_bound(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        // Unwrap is ok because the type is known to be numeric.
-        let c = ty.numeric_max_val(tcx).unwrap();
-        let value = mir::Const::from_ty_const(c, tcx);
-        Self::Finite(value)
-    }
-
-    #[inline]
-    pub fn to_const(self, _ty: Ty<'tcx>, _tcx: TyCtxt<'tcx>) -> mir::Const<'tcx> {
+    pub fn as_finite(self) -> Option<mir::Const<'tcx>> {
         match self {
-            Self::Finite(value) => value,
+            Self::Finite(value) => Some(value),
+            Self::NegInfinity | Self::PosInfinity => None,
         }
     }
-    pub fn eval_bits(
-        self,
-        _ty: Ty<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> u128 {
+    #[inline]
+    pub fn to_const(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> mir::Const<'tcx> {
+        match self {
+            Self::Finite(value) => value,
+            Self::NegInfinity => {
+                // Unwrap is ok because the type is known to be numeric.
+                let c = ty.numeric_min_val(tcx).unwrap();
+                mir::Const::from_ty_const(c, tcx)
+            }
+            Self::PosInfinity => {
+                // Unwrap is ok because the type is known to be numeric.
+                let c = ty.numeric_max_val(tcx).unwrap();
+                mir::Const::from_ty_const(c, tcx)
+            }
+        }
+    }
+    pub fn eval_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {
         match self {
             Self::Finite(value) => value.eval_bits(tcx, param_env),
+            Self::NegInfinity => {
+                // Unwrap is ok because the type is known to be numeric.
+                ty.numeric_min_and_max_as_bits(tcx).unwrap().0
+            }
+            Self::PosInfinity => {
+                // Unwrap is ok because the type is known to be numeric.
+                ty.numeric_min_and_max_as_bits(tcx).unwrap().1
+            }
         }
     }
 
@@ -979,6 +999,12 @@ impl<'tcx> PatRangeBoundary<'tcx> {
     ) -> Option<Ordering> {
         use PatRangeBoundary::*;
         match (self, other) {
+            // When comparing with infinities, we must remember that `0u8..` and `0u8..=255`
+            // describe the same range. These two shortcuts are ok, but for the rest we must check
+            // bit values.
+            (PosInfinity, PosInfinity) => return Some(Ordering::Equal),
+            (NegInfinity, NegInfinity) => return Some(Ordering::Equal),
+
             // This code is hot when compiling matches with many ranges. So we
             // special-case extraction of evaluated scalars for speed, for types where
             // raw data comparisons are appropriate. E.g. `unicode-normalization` has

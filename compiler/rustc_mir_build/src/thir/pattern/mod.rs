@@ -187,24 +187,25 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;
         let (hi, hi_ascr, hi_inline) = self.lower_pattern_range_endpoint(hi_expr)?;
 
-        let lo = lo.unwrap_or_else(|| PatRangeBoundary::lower_bound(ty, self.tcx));
-        let hi = hi.unwrap_or_else(|| PatRangeBoundary::upper_bound(ty, self.tcx));
+        let lo = lo.unwrap_or(PatRangeBoundary::NegInfinity);
+        let hi = hi.unwrap_or(PatRangeBoundary::PosInfinity);
 
         let cmp = lo.compare_with(hi, ty, self.tcx, self.param_env);
-        let mut kind = match (end, cmp) {
+        let mut kind = PatKind::Range(Box::new(PatRange { lo, hi, end, ty }));
+        match (end, cmp) {
             // `x..y` where `x < y`.
-            // Non-empty because the range includes at least `x`.
-            (RangeEnd::Excluded, Some(Ordering::Less)) => {
-                PatKind::Range(Box::new(PatRange { lo, hi, end, ty }))
-            }
-            // `x..=y` where `x == y`.
-            (RangeEnd::Included, Some(Ordering::Equal)) => {
-                PatKind::Constant { value: lo.to_const(ty, self.tcx) }
-            }
+            (RangeEnd::Excluded, Some(Ordering::Less)) => {}
             // `x..=y` where `x < y`.
-            (RangeEnd::Included, Some(Ordering::Less)) => {
-                PatKind::Range(Box::new(PatRange { lo, hi, end, ty }))
+            (RangeEnd::Included, Some(Ordering::Less)) => {}
+            // `x..=y` where `x == y` and `x` and `y` are finite.
+            (RangeEnd::Included, Some(Ordering::Equal)) if lo.is_finite() && hi.is_finite() => {
+                kind = PatKind::Constant { value: lo.as_finite().unwrap() };
             }
+            // `..=x` where `x == ty::MIN`.
+            (RangeEnd::Included, Some(Ordering::Equal)) if !lo.is_finite() => {}
+            // `x..` where `x == ty::MAX` (yes, `x..` gives `RangeEnd::Included` since it is meant
+            // to include `ty::MAX`).
+            (RangeEnd::Included, Some(Ordering::Equal)) if !hi.is_finite() => {}
             // `x..y` where `x >= y`, or `x..=y` where `x > y`. The range is empty => error.
             _ => {
                 // Emit a more appropriate message if there was overflow.
@@ -223,7 +224,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 };
                 return Err(e);
             }
-        };
+        }
 
         // If we are handling a range with associated constants (e.g.
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
