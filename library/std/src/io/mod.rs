@@ -2781,13 +2781,10 @@ impl<R: Read> Iterator for Bytes<R> {
 
     #[inline]
     fn next(&mut self) -> Option<Result<u8>> {
-        loop {
-            return match self.inner.read(slice::from_mut(&mut self.byte)) {
-                Ok(0) => None,
-                Ok(..) => Some(Ok(self.byte)),
-                Err(ref e) if e.is_interrupted() => continue,
-                Err(e) => Some(Err(e)),
-            };
+        match self.inner.read_exact(slice::from_mut(&mut self.byte)) {
+            Ok(()) => Some(Ok(self.byte)),
+            Err(e) if e.kind() == ErrorKind::UnexpectedEof => None,
+            Err(e) => Some(Err(e)),
         }
     }
 
