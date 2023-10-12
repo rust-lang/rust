@@ -23,4 +23,6 @@ fn camel_case() {
     assert_eq!(to_camel_case("ONE"), "One");
 
     assert!(is_camel_case("AStr"));
+
+    assert!(is_camel_case("Foo"));
 }

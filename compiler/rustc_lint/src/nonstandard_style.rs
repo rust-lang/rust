@@ -89,15 +89,19 @@ fn is_camel_case(name: &str) -> bool {
     // ones (some scripts don't have a concept of upper/lowercase)
     !name.chars().next().unwrap().is_lowercase()
         && !name.contains("__")
-        && !name.chars().collect::<Vec<_>>().array_windows().any(|&[fst, snd]| {
+        && !name.chars().map_windows(|&[fst, snd]| (fst, snd)).any(|(fst, snd)| {
             // contains a capitalisable character followed by, or preceded by, an underscore
             char_has_case(fst) && snd == '_' || char_has_case(snd) && fst == '_'
         })
-        && !name
-            .chars()
-            .collect::<Vec<_>>()
-            .array_windows()
-            .any(|&[fst, snd, thr]| fst.is_uppercase() && snd.is_uppercase() && thr.is_uppercase())
+        && !name.chars().map_windows(|&[fst, snd, thd]| (fst, snd, thd)).any(|(fst, snd, thd)| {
+            // three capitalized characters in a row
+            char_has_case(fst)
+                && char_has_case(snd)
+                && char_has_case(thd)
+                && fst.is_uppercase()
+                && snd.is_uppercase()
+                && thd.is_uppercase()
+        })
 }
 
 fn to_camel_case(s: &str) -> String {
