@@ -65,6 +65,8 @@
 //! separate allocated object), heap allocations (each allocation created by the global allocator is
 //! a separate allocated object), and `static` variables.
 //!
+//! It is guaranteed that an allocated object never spans more than `isize::MAX` bytes.
+//!
 //! # Strict Provenance
 //!
 //! **The following text is non-normative, insufficiently formal, and is an extremely strict
