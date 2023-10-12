@@ -471,10 +471,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // `offset` for immediates only supports scalar/scalar-pair ABIs,
                     // so bail out if the target is not one.
                     if value.as_mplace_or_imm().is_right() {
-                        match to.abi {
-                            Abi::Scalar(..) | Abi::ScalarPair(..) => {}
-                            _ if to.is_zst() => {}
-                            Abi::Aggregate { .. } if to.fields.count() == 0 => {}
+                        match (value.layout.abi, to.abi) {
+                            (Abi::Scalar(..), Abi::Scalar(..)) => {}
+                            (Abi::ScalarPair(..), Abi::ScalarPair(..)) => {}
                             _ => return None,
                         }
                     }
