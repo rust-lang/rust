@@ -213,6 +213,7 @@ mod handlers {
     mod unwrap_block;
     mod unwrap_result_return_type;
     mod unqualify_method_call;
+    mod replace_is_some_with_if_let_some;
     mod wrap_return_type_in_result;
     mod into_to_qualified_from;
 
@@ -332,6 +333,7 @@ mod handlers {
             unwrap_result_return_type::unwrap_result_return_type,
             unwrap_tuple::unwrap_tuple,
             unqualify_method_call::unqualify_method_call,
+            replace_is_some_with_if_let_some::replace_is_some_with_if_let_some,
             wrap_return_type_in_result::wrap_return_type_in_result,
             // These are manually sorted for better priorities. By default,
             // priority is determined by the size of the target range (smaller

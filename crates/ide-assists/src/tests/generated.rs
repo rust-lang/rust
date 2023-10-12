@@ -2559,6 +2559,25 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_replace_is_some_with_if_let_some() {
+    check_doc_test(
+        "replace_is_some_with_if_let_some",
+        r#####"
+fn main() {
+    let x = Some(1);
+    if x.is_som$0e() {}
+}
+"#####,
+        r#####"
+fn main() {
+    let x = Some(1);
+    if let Some(_tmp) = x {}
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_let_with_if_let() {
     check_doc_test(
         "replace_let_with_if_let",
