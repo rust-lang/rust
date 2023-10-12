@@ -1000,7 +1000,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        Bytes { inner: self }
+        Bytes { inner: self, byte: 0 }
     }
 
     /// Creates an adapter which will chain this stream with another.
@@ -2772,6 +2772,7 @@ impl<T> SizeHint for Take<T> {
 #[derive(Debug)]
 pub struct Bytes<R> {
     inner: R,
+    byte: u8,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2780,11 +2781,10 @@ impl<R: Read> Iterator for Bytes<R> {
 
     #[inline]
     fn next(&mut self) -> Option<Result<u8>> {
-        let mut byte = 0;
         loop {
-            return match self.inner.read(slice::from_mut(&mut byte)) {
+            return match self.inner.read(slice::from_mut(&mut self.byte)) {
                 Ok(0) => None,
-                Ok(..) => Some(Ok(byte)),
+                Ok(..) => Some(Ok(self.byte)),
                 Err(ref e) if e.is_interrupted() => continue,
                 Err(e) => Some(Err(e)),
             };
