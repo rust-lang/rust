@@ -104,6 +104,7 @@ pub(crate) fn ty_args_to_args<'tcx>(
                     arg: index,
                 }),
             ))),
+            GenericArgKind::Const(ct) if let ty::ConstKind::Param(p) = ct.kind() && p.name == sym::host => None,
             GenericArgKind::Const(ct) => {
                 Some(GenericArg::Const(Box::new(clean_middle_const(kind.rebind(ct), cx))))
             }

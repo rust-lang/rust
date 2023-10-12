@@ -2542,14 +2542,21 @@ fn clean_generic_args<'tcx>(
         let args = generic_args
             .args
             .iter()
-            .map(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
-                    GenericArg::Lifetime(clean_lifetime(*lt, cx))
-                }
-                hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
-                hir::GenericArg::Infer(_inf) => GenericArg::Infer,
+            .filter_map(|arg| {
+                Some(match arg {
+                    hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
+                        GenericArg::Lifetime(clean_lifetime(*lt, cx))
+                    }
+                    hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                    hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
+                    hir::GenericArg::Const(ct)
+                        if cx.tcx.has_attr(ct.value.def_id, sym::rustc_host) =>
+                    {
+                        return None;
+                    }
+                    hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
+                    hir::GenericArg::Infer(_inf) => GenericArg::Infer,
+                })
             })
             .collect::<Vec<_>>()
             .into();
