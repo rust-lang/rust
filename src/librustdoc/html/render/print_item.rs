@@ -7,6 +7,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::middle::stability;
+use rustc_middle::query::Key;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -1249,6 +1250,9 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
         match inner_type {
             clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
                 let variants_iter = || variants.iter().filter(|i| !i.is_stripped());
+                let ty = cx.tcx().type_of(it.def_id().unwrap()).instantiate_identity();
+                let enum_def_id = ty.ty_adt_id().unwrap();
+
                 wrap_item(w, |w| {
                     let variants_len = variants.len();
                     let variants_count = variants_iter().count();
@@ -1263,10 +1267,10 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                         variants_count,
                         has_stripped_entries,
                         *is_non_exhaustive,
-                        it.def_id().unwrap(),
+                        enum_def_id,
                     )
                 });
-                item_variants(w, cx, it, &variants);
+                item_variants(w, cx, it, &variants, enum_def_id);
             }
             clean::TypeAliasInnerType::Union { fields } => {
                 wrap_item(w, |w| {
@@ -1435,16 +1439,21 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     if count_variants != 0 {
-        item_variants(w, cx, it, &e.variants);
+        item_variants(w, cx, it, &e.variants, it.def_id().unwrap());
     }
     let def_id = it.item_id.expect_def_id();
     write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
-/// It'll return true if all variants are C-like variants and if at least one of them has a value
-/// set.
-fn should_show_enum_discriminant(variants: &IndexVec<VariantIdx, clean::Item>) -> bool {
+/// It'll return false if any variant is not a C-like variant. Otherwise it'll return true if at
+/// least one of them has an explicit discriminant or if the enum has `#[repr(C)]` or an integer
+/// `repr`.
+fn should_show_enum_discriminant(
+    cx: &Context<'_>,
+    enum_def_id: DefId,
+    variants: &IndexVec<VariantIdx, clean::Item>,
+) -> bool {
     let mut has_variants_with_value = false;
     for variant in variants {
         if let clean::VariantItem(ref var) = *variant.kind &&
@@ -1455,7 +1464,11 @@ fn should_show_enum_discriminant(variants: &IndexVec<VariantIdx, clean::Item>) -
             return false;
         }
     }
-    has_variants_with_value
+    if has_variants_with_value {
+        return true;
+    }
+    let repr = cx.tcx().adt_def(enum_def_id).repr();
+    repr.c() || repr.int.is_some()
 }
 
 fn display_c_like_variant(
@@ -1493,7 +1506,7 @@ fn render_enum_fields(
     is_non_exhaustive: bool,
     enum_def_id: DefId,
 ) {
-    let should_show_enum_discriminant = should_show_enum_discriminant(variants);
+    let should_show_enum_discriminant = should_show_enum_discriminant(cx, enum_def_id, variants);
     if !g.is_some_and(|g| print_where_clause_and_check(w, g, cx)) {
         // If there wasn't a `where` clause, we add a whitespace.
         w.write_str(" ");
@@ -1552,6 +1565,7 @@ fn item_variants(
     cx: &mut Context<'_>,
     it: &clean::Item,
     variants: &IndexVec<VariantIdx, clean::Item>,
+    enum_def_id: DefId,
 ) {
     let tcx = cx.tcx();
     write!(
@@ -1564,7 +1578,7 @@ fn item_variants(
         document_non_exhaustive_header(it),
         document_non_exhaustive(it)
     );
-    let should_show_enum_discriminant = should_show_enum_discriminant(variants);
+    let should_show_enum_discriminant = should_show_enum_discriminant(cx, enum_def_id, variants);
     for (index, variant) in variants.iter_enumerated() {
         if variant.is_stripped() {
             continue;
@@ -1594,7 +1608,7 @@ fn item_variants(
                 var,
                 index,
                 should_show_enum_discriminant,
-                it.def_id().unwrap(),
+                enum_def_id,
             );
         } else {
             w.write_str(variant.name.unwrap().as_str());
