@@ -27,9 +27,9 @@ use rustc_target::abi::{
 use std::hash::Hash;
 
 use super::{
-    format_interp_error, AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable, Scalar,
-    ValueVisitor,
+    format_interp_error, machine::AllocMap, AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy,
+    Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable,
+    Scalar, ValueVisitor,
 };
 
 // for the validation errors
@@ -712,11 +712,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn in_mutable_memory(&self, op: &OpTy<'tcx, M::Provenance>) -> bool {
         if let Some(mplace) = op.as_mplace_or_imm().left() {
             if let Some(alloc_id) = mplace.ptr().provenance.and_then(|p| p.get_alloc_id()) {
-                if self.ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner().mutability
-                    == Mutability::Mut
-                {
-                    return true;
-                }
+                let mutability = match self.ecx.tcx.global_alloc(alloc_id) {
+                    GlobalAlloc::Static(_) => {
+                        self.ecx.memory.alloc_map.get(alloc_id).unwrap().1.mutability
+                    }
+                    GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
+                    _ => span_bug!(self.ecx.tcx.span, "not a memory allocation"),
+                };
+                return mutability == Mutability::Mut;
             }
         }
         false

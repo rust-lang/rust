@@ -58,6 +58,9 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
 
     /// Whether to check alignment during evaluation.
     pub(super) check_alignment: CheckAlignment,
+
+    /// Used to prevent reads from a static's base allocation, as that may allow for self-initialization.
+    pub(crate) static_root_alloc_id: Option<AllocId>,
 }
 
 #[derive(Copy, Clone)]
@@ -91,6 +94,7 @@ impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
             stack: Vec::new(),
             can_access_mut_global,
             check_alignment,
+            static_root_alloc_id: None,
         }
     }
 }
@@ -745,6 +749,17 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
         // Everything else is fine.
         Ok(())
+    }
+
+    fn before_alloc_read(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        alloc_id: AllocId,
+    ) -> InterpResult<'tcx> {
+        if Some(alloc_id) == ecx.machine.static_root_alloc_id {
+            Err(ConstEvalErrKind::RecursiveStatic.into())
+        } else {
+            Ok(())
+        }
     }
 }
 

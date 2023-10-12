@@ -19,6 +19,7 @@ use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, MachineStopTy
 pub enum ConstEvalErrKind {
     ConstAccessesMutGlobal,
     ModifiedGlobal,
+    RecursiveStatic,
     AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
 }
@@ -31,13 +32,14 @@ impl MachineStopType for ConstEvalErrKind {
             ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
             ModifiedGlobal => const_eval_modified_global,
             Panic { .. } => const_eval_panic,
+            RecursiveStatic => const_eval_recursive_static,
             AssertFailure(x) => x.diagnostic_message(),
         }
     }
     fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagnosticArgName, DiagnosticArgValue)) {
         use ConstEvalErrKind::*;
         match *self {
-            ConstAccessesMutGlobal | ModifiedGlobal => {}
+            RecursiveStatic | ConstAccessesMutGlobal | ModifiedGlobal => {}
             AssertFailure(kind) => kind.add_args(adder),
             Panic { msg, line, col, file } => {
                 adder("msg".into(), msg.into_diagnostic_arg());
