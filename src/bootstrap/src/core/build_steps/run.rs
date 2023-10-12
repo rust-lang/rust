@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use clap_complete::shells;
-
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
