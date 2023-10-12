@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `target_architecture`
   --> $DIR/compact-names.rs:11:28
    |
 LL | #[cfg(target(os = "linux", architecture = "arm"))]

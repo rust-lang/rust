@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `linuz`
   --> $DIR/values-target-json.rs:13:7
    |
 LL | #[cfg(target_os = "linuz")]

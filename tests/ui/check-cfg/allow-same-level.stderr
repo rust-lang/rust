@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `FALSE`
   --> $DIR/allow-same-level.rs:7:7
    |
 LL | #[cfg(FALSE)]

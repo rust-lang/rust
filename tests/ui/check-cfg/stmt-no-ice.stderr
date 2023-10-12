@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `crossbeam_loom`
   --> $DIR/stmt-no-ice.rs:7:11
    |
 LL |     #[cfg(crossbeam_loom)]
