@@ -386,17 +386,17 @@ fn bcb_filtered_successors<'a, 'tcx>(
 #[derive(Debug)]
 pub(super) struct TraversalContext {
     /// From one or more backedges returning to a loop header.
-    pub loop_backedges: Option<(Vec<BasicCoverageBlock>, BasicCoverageBlock)>,
+    loop_backedges: Option<(Vec<BasicCoverageBlock>, BasicCoverageBlock)>,
 
     /// worklist, to be traversed, of CoverageGraph in the loop with the given loop
     /// backedges, such that the loop is the inner inner-most loop containing these
     /// CoverageGraph
-    pub worklist: Vec<BasicCoverageBlock>,
+    worklist: Vec<BasicCoverageBlock>,
 }
 
 pub(super) struct TraverseCoverageGraphWithLoops {
-    pub backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
-    pub context_stack: Vec<TraversalContext>,
+    backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
+    context_stack: Vec<TraversalContext>,
     visited: BitSet<BasicCoverageBlock>,
 }
 
@@ -412,6 +412,16 @@ impl TraverseCoverageGraphWithLoops {
         // exhausted.
         let visited = BitSet::new_empty(basic_coverage_blocks.num_nodes());
         Self { backedges, context_stack, visited }
+    }
+
+    /// For each loop on the loop context stack (top-down), yields a list of BCBs
+    /// within that loop that have an outgoing edge back to the loop header.
+    pub(super) fn reloop_bcbs_per_loop(&self) -> impl Iterator<Item = &[BasicCoverageBlock]> {
+        self.context_stack
+            .iter()
+            .rev()
+            .filter_map(|context| context.loop_backedges.as_ref())
+            .map(|(from_bcbs, _to_bcb)| from_bcbs.as_slice())
     }
 
     pub fn next(&mut self, basic_coverage_blocks: &CoverageGraph) -> Option<BasicCoverageBlock> {
