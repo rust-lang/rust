@@ -57,7 +57,7 @@ use rustc_hir::RangeEnd;
 use rustc_index::Idx;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir;
-use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
+use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_span::{Span, DUMMY_SP};
@@ -278,19 +278,20 @@ impl IntRange {
         let (lo, hi) = self.boundaries();
 
         let bias = IntRange::signed_bias(tcx, ty);
-        let (lo, hi) = (lo ^ bias, hi ^ bias);
+        let (lo_bits, hi_bits) = (lo ^ bias, hi ^ bias);
 
         let env = ty::ParamEnv::empty().and(ty);
-        let lo_const = mir::Const::from_bits(tcx, lo, env);
-        let hi_const = mir::Const::from_bits(tcx, hi, env);
+        let lo_const = mir::Const::from_bits(tcx, lo_bits, env);
+        let hi_const = mir::Const::from_bits(tcx, hi_bits, env);
 
-        let kind = if lo == hi {
+        let kind = if lo_bits == hi_bits {
             PatKind::Constant { value: lo_const }
         } else {
             PatKind::Range(Box::new(PatRange {
-                lo: lo_const,
-                hi: hi_const,
+                lo: PatRangeBoundary::Finite(lo_const),
+                hi: PatRangeBoundary::Finite(hi_const),
                 end: RangeEnd::Included,
+                ty,
             }))
         };
 
@@ -1387,11 +1388,12 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     }
                 }
             }
-            PatKind::Range(box PatRange { lo, hi, end }) => {
+            PatKind::Range(box PatRange { lo, hi, end, .. }) => {
                 use rustc_apfloat::Float;
-                let ty = lo.ty();
-                let lo = lo.try_eval_bits(cx.tcx, cx.param_env).unwrap();
-                let hi = hi.try_eval_bits(cx.tcx, cx.param_env).unwrap();
+                let ty = pat.ty;
+                // FIXME: handle half-open ranges
+                let lo = lo.eval_bits(ty, cx.tcx, cx.param_env);
+                let hi = hi.eval_bits(ty, cx.tcx, cx.param_env);
                 ctor = match ty.kind() {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         IntRange(IntRange::from_range(cx.tcx, lo, hi, ty, *end))

@@ -15,11 +15,7 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
-use rustc_hir::RangeEnd;
 use rustc_middle::thir::{self, *};
-use rustc_middle::ty;
-use rustc_middle::ty::layout::IntegerExt;
-use rustc_target::abi::{Integer, Size};
 
 use std::mem;
 
@@ -148,7 +144,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pair: MatchPair<'pat, 'tcx>,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
-        let tcx = self.tcx;
         match match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
@@ -210,41 +205,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatKind::Range(box PatRange { lo, hi, end }) => {
-                let (range, bias) = match *lo.ty().kind() {
-                    ty::Char => {
-                        (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
-                    }
-                    ty::Int(ity) => {
-                        let size = Integer::from_int_ty(&tcx, ity).size();
-                        let max = size.truncate(u128::MAX);
-                        let bias = 1u128 << (size.bits() - 1);
-                        (Some((0, max, size)), bias)
-                    }
-                    ty::Uint(uty) => {
-                        let size = Integer::from_uint_ty(&tcx, uty).size();
-                        let max = size.truncate(u128::MAX);
-                        (Some((0, max, size)), 0)
-                    }
-                    _ => (None, 0),
-                };
-                if let Some((min, max, sz)) = range {
-                    // We want to compare ranges numerically, but the order of the bitwise
-                    // representation of signed integers does not match their numeric order. Thus,
-                    // to correct the ordering, we need to shift the range of signed integers to
-                    // correct the comparison. This is achieved by XORing with a bias (see
-                    // pattern/_match.rs for another pertinent example of this pattern).
-                    //
-                    // Also, for performance, it's important to only do the second
-                    // `try_to_bits` if necessary.
-                    let lo = lo.try_to_bits(sz).unwrap() ^ bias;
-                    if lo <= min {
-                        let hi = hi.try_to_bits(sz).unwrap() ^ bias;
-                        if hi > max || hi == max && end == RangeEnd::Included {
-                            // Irrefutable pattern match.
-                            return Ok(());
-                        }
-                    }
+            PatKind::Range(ref range) => {
+                if let Some(true) = range.is_full_range(self.tcx) {
+                    // Irrefutable pattern match.
+                    return Ok(());
                 }
                 Err(match_pair)
             }
