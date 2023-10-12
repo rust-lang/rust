@@ -415,6 +415,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     IntPredicate::IntNE => {
                         return self.context.new_comparison(None, ComparisonOp::NotEquals, cmp, self.context.new_rvalue_one(self.int_type));
                     },
+                    // TODO(antoyo): cast to u128 for unsigned comparison. See below.
                     IntPredicate::IntUGT => (ComparisonOp::Equals, 2),
                     IntPredicate::IntUGE => (ComparisonOp::GreaterThanEquals, 1),
                     IntPredicate::IntULT => (ComparisonOp::Equals, 0),
@@ -443,6 +444,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 else if format!("{:?}", a_type) != format!("{:?}", b_type) {
                     rhs = self.context.new_cast(None, rhs, a_type);
                 }
+            }
+            match op {
+                IntPredicate::IntUGT | IntPredicate::IntUGE | IntPredicate::IntULT | IntPredicate::IntULE => {
+                    if !a_type.is_vector() {
+                        let unsigned_type = a_type.to_unsigned(&self.cx);
+                        lhs = self.context.new_cast(None, lhs, unsigned_type);
+                        rhs = self.context.new_cast(None, rhs, unsigned_type);
+                    }
+                },
+                // TODO(antoyo): we probably need to handle signed comparison for unsigned
+                // integers.
+                _ => (),
             }
             self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
         }
