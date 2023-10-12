@@ -1,0 +1,10 @@
+# Includes one of the default files in src/bootstrap/defaults
+profile = "dist"
+change-id = 115898
+
+[build]
+host = ["x86_64-apple-darwin", "aarch64-apple-darwin"]
+target = ["wasm32-unknown-unknown", "wasm64-unknown-unknown"]
+
+[rust]
+lld = true
