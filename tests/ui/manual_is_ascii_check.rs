@@ -33,6 +33,7 @@ fn msrv_1_23() {
     assert!(matches!(b'1', b'0'..=b'9'));
     assert!(matches!('X', 'A'..='Z'));
     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+    assert!(matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F'));
 }
 
 #[clippy::msrv = "1.24"]
@@ -40,14 +41,17 @@ fn msrv_1_24() {
     assert!(matches!(b'1', b'0'..=b'9'));
     assert!(matches!('X', 'A'..='Z'));
     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+    assert!(matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F'));
 }
 
 #[clippy::msrv = "1.46"]
 fn msrv_1_46() {
     const FOO: bool = matches!('x', '0'..='9');
+    const BAR: bool = matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F');
 }
 
 #[clippy::msrv = "1.47"]
 fn msrv_1_47() {
     const FOO: bool = matches!('x', '0'..='9');
+    const BAR: bool = matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F');
 }
