@@ -626,6 +626,15 @@ impl<'a> Linker for GccLinker<'a> {
                 self.linker_arg("--strip-all");
             }
         }
+        match self.sess.opts.unstable_opts.debuginfo_compression {
+            config::DebugInfoCompression::None => {}
+            config::DebugInfoCompression::Zlib => {
+                self.linker_arg("--compress-debug-sections=zlib");
+            }
+            config::DebugInfoCompression::Zstd => {
+                self.linker_arg("--compress-debug-sections=zstd");
+            }
+        }
     }
 
     fn no_crt_objects(&mut self) {
