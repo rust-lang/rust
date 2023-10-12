@@ -72,7 +72,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/attr-stmt-expr.rs:49:33: 49:34 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[expect_my_macro_stmt] my_macro!("{}", string) ;
+PRINT-ATTR INPUT (DISPLAY): #[expect_my_macro_stmt] my_macro!("{}", string);
 PRINT-ATTR RE-COLLECTED (DISPLAY): #[expect_my_macro_stmt] my_macro! ("{}", string) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
@@ -126,7 +126,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/attr-stmt-expr.rs:53:28: 53:29 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): second_make_stmt!(#[allow(dead_code)] struct Bar {}) ;
+PRINT-ATTR INPUT (DISPLAY): second_make_stmt!(#[allow(dead_code)] struct Bar {});
 PRINT-ATTR RE-COLLECTED (DISPLAY): second_make_stmt! (#[allow(dead_code)] struct Bar {}) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {

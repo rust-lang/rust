@@ -53,9 +53,9 @@ macro_rules! outer
     */ {
     ($item:item) =>
     {
-        macro inner() { print_bang! { $item } } inner!() ;
+        macro inner() { print_bang! { $item } } inner!();
 
-    } ;
+    };
 }
 
 struct S /* 0#0 */;

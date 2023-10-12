@@ -4,7 +4,7 @@ use crate::tests::{
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::visit;
 use rustc_ast::{self as ast, PatKind};
 use rustc_ast_pretty::pprust::item_to_string;
@@ -77,14 +77,14 @@ fn string_to_tts_macro() {
                 TokenTree::Token(Token { kind: token::Ident(name_macro_rules, false), .. }, _),
                 TokenTree::Token(Token { kind: token::Not, .. }, _),
                 TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. }, _),
-                TokenTree::Delimited(_, macro_delim, macro_tts),
+                TokenTree::Delimited(.., macro_delim, macro_tts),
             ] if name_macro_rules == &kw::MacroRules && name_zip.as_str() == "zip" => {
                 let tts = &macro_tts.trees().collect::<Vec<_>>();
                 match &tts[..] {
                     [
-                        TokenTree::Delimited(_, first_delim, first_tts),
+                        TokenTree::Delimited(.., first_delim, first_tts),
                         TokenTree::Token(Token { kind: token::FatArrow, .. }, _),
-                        TokenTree::Delimited(_, second_delim, second_tts),
+                        TokenTree::Delimited(.., second_delim, second_tts),
                     ] if macro_delim == &Delimiter::Parenthesis => {
                         let tts = &first_tts.trees().collect::<Vec<_>>();
                         match &tts[..] {
@@ -123,6 +123,9 @@ fn string_to_tts_1() {
             TokenTree::token_joint_hidden(token::Ident(Symbol::intern("a"), false), sp(3, 4)),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(4, 5), sp(11, 12)),
+                // `JointHidden` because the `(` is followed immediately by
+                // `b`, `Alone` because the `)` is followed by whitespace.
+                DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                 Delimiter::Parenthesis,
                 TokenStream::new(vec![
                     TokenTree::token_joint(token::Ident(Symbol::intern("b"), false), sp(5, 6)),
@@ -134,6 +137,10 @@ fn string_to_tts_1() {
             ),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(13, 14), sp(18, 19)),
+                // First `Alone` because the `{` is followed by whitespace,
+                // second `Alone` because the `}` is followed immediately by
+                // EOF.
+                DelimSpacing::new(Spacing::Alone, Spacing::Alone),
                 Delimiter::Brace,
                 TokenStream::new(vec![
                     TokenTree::token_joint(token::Ident(Symbol::intern("b"), false), sp(15, 16)),

@@ -183,10 +183,10 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         //
         // FIXME: Incorrect cases:
         // - Let: `let(a, b) = (1, 2)`
-        (Tok(Token { kind: Ident(..), .. }, _), Del(_, Parenthesis, _)) => false,
+        (Tok(Token { kind: Ident(..), .. }, _), Del(_, _, Parenthesis, _)) => false,
 
         // `#` + `[`: `#[attr]`
-        (Tok(Token { kind: Pound, .. }, _), Del(_, Bracket, _)) => false,
+        (Tok(Token { kind: Pound, .. }, _), Del(_, _, Bracket, _)) => false,
 
         _ => true,
     }
@@ -519,7 +519,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 }
                 *spacing
             }
-            TokenTree::Delimited(dspan, delim, tts) => {
+            TokenTree::Delimited(dspan, spacing, delim, tts) => {
                 self.print_mac_common(
                     None,
                     false,
@@ -529,9 +529,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     convert_dollar_crate,
                     dspan.entire(),
                 );
-                // FIXME: add two `Spacing` fields to `TokenTree::Delimited`
-                // and use the close delim one here.
-                Spacing::Alone
+                spacing.close
             }
         }
     }

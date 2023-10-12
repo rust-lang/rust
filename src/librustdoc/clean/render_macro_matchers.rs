@@ -40,7 +40,7 @@ pub(super) fn render_macro_matcher(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Stri
     printer.zerobreak();
     printer.ibox(0);
     match matcher {
-        TokenTree::Delimited(_span, _delim, tts) => print_tts(&mut printer, tts),
+        TokenTree::Delimited(_span, _spacing, _delim, tts) => print_tts(&mut printer, tts),
         // Matcher which is not a Delimited is unexpected and should've failed
         // to compile, but we render whatever it is wrapped in parens.
         TokenTree::Token(..) => print_tt(&mut printer, matcher),
@@ -97,7 +97,7 @@ fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
                 printer.hardbreak()
             }
         }
-        TokenTree::Delimited(_span, delim, tts) => {
+        TokenTree::Delimited(_span, _spacing, delim, tts) => {
             let open_delim = printer.token_kind_to_string(&token::OpenDelim(*delim));
             printer.word(open_delim);
             if !tts.is_empty() {
@@ -158,7 +158,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                 (_, token::Pound) => (true, Pound),
                 (_, _) => (true, Other),
             },
-            TokenTree::Delimited(_, delim, _) => match (state, delim) {
+            TokenTree::Delimited(.., delim, _) => match (state, delim) {
                 (Dollar, Delimiter::Parenthesis) => (false, DollarParen),
                 (Pound | PoundBang, Delimiter::Bracket) => (false, Other),
                 (Ident, Delimiter::Parenthesis | Delimiter::Bracket) => (false, Other),

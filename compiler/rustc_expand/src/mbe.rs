@@ -13,7 +13,7 @@ pub(crate) mod transcribe;
 
 use metavar_expr::MetaVarExpr;
 use rustc_ast::token::{Delimiter, NonterminalKind, Token, TokenKind};
-use rustc_ast::tokenstream::DelimSpan;
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -68,7 +68,7 @@ pub(crate) enum KleeneOp {
 enum TokenTree {
     Token(Token),
     /// A delimited sequence, e.g. `($e:expr)` (RHS) or `{ $e }` (LHS).
-    Delimited(DelimSpan, Delimited),
+    Delimited(DelimSpan, DelimSpacing, Delimited),
     /// A kleene-style repetition sequence, e.g. `$($e:expr)*` (RHS) or `$($e),*` (LHS).
     Sequence(DelimSpan, SequenceRepetition),
     /// e.g., `$var`.
@@ -99,7 +99,7 @@ impl TokenTree {
             TokenTree::Token(Token { span, .. })
             | TokenTree::MetaVar(span, _)
             | TokenTree::MetaVarDecl(span, _, _) => span,
-            TokenTree::Delimited(span, _)
+            TokenTree::Delimited(span, ..)
             | TokenTree::MetaVarExpr(span, _)
             | TokenTree::Sequence(span, _) => span.entire(),
         }

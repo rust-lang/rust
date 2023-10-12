@@ -46,7 +46,7 @@ pub enum TokenTree {
     /// delimiters are implicitly represented by `Delimited`.
     Token(Token, Spacing),
     /// A delimited sequence of token trees.
-    Delimited(DelimSpan, Delimiter, TokenStream),
+    Delimited(DelimSpan, DelimSpacing, Delimiter, TokenStream),
 }
 
 // Ensure all fields of `TokenTree` are `DynSend` and `DynSync`.
@@ -62,11 +62,11 @@ where
 }
 
 impl TokenTree {
-    /// Checks if this `TokenTree` is equal to the other, regardless of span information.
+    /// Checks if this `TokenTree` is equal to the other, regardless of span/spacing information.
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {
             (TokenTree::Token(token, _), TokenTree::Token(token2, _)) => token.kind == token2.kind,
-            (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
+            (TokenTree::Delimited(.., delim, tts), TokenTree::Delimited(.., delim2, tts2)) => {
                 delim == delim2 && tts.eq_unspanned(tts2)
             }
             _ => false,
@@ -188,7 +188,7 @@ pub struct AttrTokenStream(pub Lrc<Vec<AttrTokenTree>>);
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub enum AttrTokenTree {
     Token(Token, Spacing),
-    Delimited(DelimSpan, Delimiter, AttrTokenStream),
+    Delimited(DelimSpan, DelimSpacing, Delimiter, AttrTokenStream),
     /// Stores the attributes for an attribute target,
     /// along with the tokens for that attribute target.
     /// See `AttributesData` for more information
@@ -213,9 +213,14 @@ impl AttrTokenStream {
                 AttrTokenTree::Token(inner, spacing) => {
                     smallvec![TokenTree::Token(inner.clone(), *spacing)].into_iter()
                 }
-                AttrTokenTree::Delimited(span, delim, stream) => {
-                    smallvec![TokenTree::Delimited(*span, *delim, stream.to_tokenstream()),]
-                        .into_iter()
+                AttrTokenTree::Delimited(span, spacing, delim, stream) => {
+                    smallvec![TokenTree::Delimited(
+                        *span,
+                        *spacing,
+                        *delim,
+                        stream.to_tokenstream()
+                    ),]
+                    .into_iter()
                 }
                 AttrTokenTree::Attributes(data) => {
                     let idx = data
@@ -235,7 +240,7 @@ impl AttrTokenStream {
                         let mut found = false;
                         // Check the last two trees (to account for a trailing semi)
                         for tree in target_tokens.iter_mut().rev().take(2) {
-                            if let TokenTree::Delimited(span, delim, delim_tokens) = tree {
+                            if let TokenTree::Delimited(span, spacing, delim, delim_tokens) = tree {
                                 // Inner attributes are only supported on extern blocks, functions,
                                 // impls, and modules. All of these have their inner attributes
                                 // placed at the beginning of the rightmost outermost braced group:
@@ -255,7 +260,7 @@ impl AttrTokenStream {
                                     stream.push_stream(inner_attr.tokens());
                                 }
                                 stream.push_stream(delim_tokens.clone());
-                                *tree = TokenTree::Delimited(*span, *delim, stream);
+                                *tree = TokenTree::Delimited(*span, *spacing, *delim, stream);
                                 found = true;
                                 break;
                             }
@@ -477,11 +482,6 @@ impl TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
     }
 
-    /// Create a token stream containing a single `Delimited`.
-    pub fn delimited(span: DelimSpan, delim: Delimiter, tts: TokenStream) -> TokenStream {
-        TokenStream::new(vec![TokenTree::Delimited(span, delim, tts)])
-    }
-
     pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
         let Some(tokens) = node.tokens() else {
             panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
@@ -528,6 +528,7 @@ impl TokenStream {
             }
             token::Interpolated(nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
+                DelimSpacing::new(Spacing::JointHidden, spacing),
                 Delimiter::Invisible,
                 TokenStream::from_nonterminal_ast(&nt.0).flattened(),
             ),
@@ -538,8 +539,8 @@ impl TokenStream {
     fn flatten_token_tree(tree: &TokenTree) -> TokenTree {
         match tree {
             TokenTree::Token(token, spacing) => TokenStream::flatten_token(token, *spacing),
-            TokenTree::Delimited(span, delim, tts) => {
-                TokenTree::Delimited(*span, *delim, tts.flattened())
+            TokenTree::Delimited(span, spacing, delim, tts) => {
+                TokenTree::Delimited(*span, *spacing, *delim, tts.flattened())
             }
         }
     }
@@ -549,7 +550,7 @@ impl TokenStream {
         fn can_skip(stream: &TokenStream) -> bool {
             stream.trees().all(|tree| match tree {
                 TokenTree::Token(token, _) => !matches!(token.kind, token::Interpolated(_)),
-                TokenTree::Delimited(_, _, inner) => can_skip(inner),
+                TokenTree::Delimited(.., inner) => can_skip(inner),
             })
         }
 
@@ -638,9 +639,10 @@ impl TokenStream {
 
                     &TokenTree::Token(..) => i += 1,
 
-                    &TokenTree::Delimited(sp, delim, ref delim_stream) => {
+                    &TokenTree::Delimited(sp, spacing, delim, ref delim_stream) => {
                         if let Some(desugared_delim_stream) = desugar_inner(delim_stream.clone()) {
-                            let new_tt = TokenTree::Delimited(sp, delim, desugared_delim_stream);
+                            let new_tt =
+                                TokenTree::Delimited(sp, spacing, delim, desugared_delim_stream);
                             Lrc::make_mut(&mut stream.0)[i] = new_tt;
                             modified = true;
                         }
@@ -668,10 +670,11 @@ impl TokenStream {
                 num_of_hashes = cmp::max(num_of_hashes, count);
             }
 
-            // `/// foo` becomes `doc = r"foo"`.
+            // `/// foo` becomes `[doc = r"foo"]`.
             let delim_span = DelimSpan::from_single(span);
             let body = TokenTree::Delimited(
                 delim_span,
+                DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                 Delimiter::Bracket,
                 [
                     TokenTree::token_alone(token::Ident(sym::doc, false), span),
@@ -781,6 +784,18 @@ impl DelimSpan {
 
     pub fn entire(self) -> Span {
         self.open.with_hi(self.close.hi())
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+pub struct DelimSpacing {
+    pub open: Spacing,
+    pub close: Spacing,
+}
+
+impl DelimSpacing {
+    pub fn new(open: Spacing, close: Spacing) -> DelimSpacing {
+        DelimSpacing { open, close }
     }
 }
 

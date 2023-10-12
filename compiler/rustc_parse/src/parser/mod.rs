@@ -20,7 +20,7 @@ pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{AttributesData, DelimSpan, Spacing};
+use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::AttrId;
@@ -240,7 +240,7 @@ struct TokenCursor {
     // Token streams surrounding the current one. The delimiters for stack[n]'s
     // tokens are in `stack[n-1]`. `stack[0]` (when present) has no delimiters
     // because it's the outermost token stream which never has delimiters.
-    stack: Vec<(TokenTreeCursor, Delimiter, DelimSpan)>,
+    stack: Vec<(TokenTreeCursor, DelimSpan, DelimSpacing, Delimiter)>,
 }
 
 impl TokenCursor {
@@ -264,24 +264,25 @@ impl TokenCursor {
                         ));
                         return (token.clone(), spacing);
                     }
-                    &TokenTree::Delimited(sp, delim, ref tts) => {
+                    &TokenTree::Delimited(sp, spacing, delim, ref tts) => {
                         let trees = tts.clone().into_trees();
-                        self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
+                        self.stack.push((
+                            mem::replace(&mut self.tree_cursor, trees),
+                            sp,
+                            spacing,
+                            delim,
+                        ));
                         if delim != Delimiter::Invisible {
-                            // FIXME: add two `Spacing` fields to `TokenTree::Delimited`
-                            // and use the open delim one here.
-                            return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
+                            return (Token::new(token::OpenDelim(delim), sp.open), spacing.open);
                         }
                         // No open delimiter to return; continue on to the next iteration.
                     }
                 };
-            } else if let Some((tree_cursor, delim, span)) = self.stack.pop() {
+            } else if let Some((tree_cursor, span, spacing, delim)) = self.stack.pop() {
                 // We have exhausted this token stream. Move back to its parent token stream.
                 self.tree_cursor = tree_cursor;
                 if delim != Delimiter::Invisible {
-                    // FIXME: add two `Spacing` fields to `TokenTree::Delimited` and
-                    // use the close delim one here.
-                    return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
+                    return (Token::new(token::CloseDelim(delim), span.close), spacing.close);
                 }
                 // No close delimiter to return; continue on to the next iteration.
             } else {
@@ -1074,7 +1075,7 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
-        if let Some(&(_, delim, span)) = self.token_cursor.stack.last()
+        if let Some(&(_, span, _, delim)) = self.token_cursor.stack.last()
             && delim != Delimiter::Invisible
         {
             // We are not in the outermost token stream, and the token stream
@@ -1083,7 +1084,7 @@ impl<'a> Parser<'a> {
             let tree_cursor = &self.token_cursor.tree_cursor;
             let all_normal = (0..dist).all(|i| {
                 let token = tree_cursor.look_ahead(i);
-                !matches!(token, Some(TokenTree::Delimited(_, Delimiter::Invisible, _)))
+                !matches!(token, Some(TokenTree::Delimited(.., Delimiter::Invisible, _)))
             });
             if all_normal {
                 // There were no skipped delimiters. Do lookahead by plain indexing.
@@ -1092,7 +1093,7 @@ impl<'a> Parser<'a> {
                         // Indexing stayed within the current token stream.
                         match tree {
                             TokenTree::Token(token, _) => looker(token),
-                            TokenTree::Delimited(dspan, delim, _) => {
+                            TokenTree::Delimited(dspan, _, delim, _) => {
                                 looker(&Token::new(token::OpenDelim(*delim), dspan.open))
                             }
                         }
@@ -1270,7 +1271,7 @@ impl<'a> Parser<'a> {
             || self.check(&token::OpenDelim(Delimiter::Brace));
 
         delimited.then(|| {
-            let TokenTree::Delimited(dspan, delim, tokens) = self.parse_token_tree() else {
+            let TokenTree::Delimited(dspan, _, delim, tokens) = self.parse_token_tree() else {
                 unreachable!()
             };
             DelimArgs { dspan, delim, tokens }
@@ -1294,7 +1295,7 @@ impl<'a> Parser<'a> {
             token::OpenDelim(..) => {
                 // Grab the tokens within the delimiters.
                 let stream = self.token_cursor.tree_cursor.stream.clone();
-                let (_, delim, span) = *self.token_cursor.stack.last().unwrap();
+                let (_, span, spacing, delim) = *self.token_cursor.stack.last().unwrap();
 
                 // Advance the token cursor through the entire delimited
                 // sequence. After getting the `OpenDelim` we are *within* the
@@ -1314,7 +1315,7 @@ impl<'a> Parser<'a> {
 
                 // Consume close delimiter
                 self.bump();
-                TokenTree::Delimited(span, delim, stream)
+                TokenTree::Delimited(span, spacing, delim, stream)
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {

@@ -207,7 +207,7 @@ fn expand_macro<'cx>(
     match try_success_result {
         Ok((i, named_matches)) => {
             let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[i] {
-                mbe::TokenTree::Delimited(span, delimited) => (&delimited, *span),
+                mbe::TokenTree::Delimited(span, _, delimited) => (&delimited, *span),
                 _ => cx.span_bug(sp, "malformed macro rhs"),
             };
             let arm_span = rhses[i].span();
@@ -589,7 +589,7 @@ pub fn compile_declarative_macro(
             .map(|lhs| {
                 // Ignore the delimiters around the matcher.
                 match lhs {
-                    mbe::TokenTree::Delimited(_, delimited) => {
+                    mbe::TokenTree::Delimited(.., delimited) => {
                         mbe::macro_parser::compute_locs(&delimited.tts)
                     }
                     _ => sess.diagnostic().span_bug(def.span, "malformed macro lhs"),
@@ -615,7 +615,7 @@ pub fn compile_declarative_macro(
 fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
-    if let mbe::TokenTree::Delimited(_, delimited) = lhs {
+    if let mbe::TokenTree::Delimited(.., delimited) = lhs {
         check_matcher(sess, def, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
@@ -668,7 +668,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             | TokenTree::MetaVar(..)
             | TokenTree::MetaVarDecl(..)
             | TokenTree::MetaVarExpr(..) => (),
-            TokenTree::Delimited(_, del) => {
+            TokenTree::Delimited(.., del) => {
                 if !check_lhs_no_empty_seq(sess, &del.tts) {
                     return false;
                 }
@@ -709,14 +709,14 @@ fn check_matcher(sess: &ParseSess, def: &ast::Item, matcher: &[mbe::TokenTree]) 
 
 fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
     match rhs {
-        mbe::TokenTree::Delimited(_sp, d) => {
+        mbe::TokenTree::Delimited(.., d) => {
             let has_compile_error = d.tts.array_windows::<3>().any(|[ident, bang, args]| {
                 if let mbe::TokenTree::Token(ident) = ident
                     && let TokenKind::Ident(ident, _) = ident.kind
                     && ident == sym::compile_error
                     && let mbe::TokenTree::Token(bang) = bang
                     && let TokenKind::Not = bang.kind
-                    && let mbe::TokenTree::Delimited(_, del) = args
+                    && let mbe::TokenTree::Delimited(.., del) = args
                     && del.delim != Delimiter::Invisible
                 {
                     true
@@ -773,7 +773,7 @@ impl<'tt> FirstSets<'tt> {
                     | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(TtHandle::TtRef(tt));
                     }
-                    TokenTree::Delimited(span, delimited) => {
+                    TokenTree::Delimited(span, _, delimited) => {
                         build_recur(sets, &delimited.tts);
                         first.replace_with(TtHandle::from_token_kind(
                             token::OpenDelim(delimited.delim),
@@ -842,7 +842,7 @@ impl<'tt> FirstSets<'tt> {
                     first.add_one(TtHandle::TtRef(tt));
                     return first;
                 }
-                TokenTree::Delimited(span, delimited) => {
+                TokenTree::Delimited(span, _, delimited) => {
                     first.add_one(TtHandle::from_token_kind(
                         token::OpenDelim(delimited.delim),
                         span.open,
@@ -1087,7 +1087,7 @@ fn check_matcher_core<'tt>(
                     suffix_first = build_suffix_first();
                 }
             }
-            TokenTree::Delimited(span, d) => {
+            TokenTree::Delimited(span, _, d) => {
                 let my_suffix = TokenSet::singleton(TtHandle::from_token_kind(
                     token::CloseDelim(d.delim),
                     span.close,

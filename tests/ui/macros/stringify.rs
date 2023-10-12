@@ -87,7 +87,7 @@ fn test_expr() {
     c1!(expr, [ f::<'a, u8, 1>() ], "f::<'a, u8, 1>()");
     c1!(expr, [ f(true) ], "f(true)");
     c2!(expr, [ f(true,) ], "f(true)", "f(true,)");
-    c2!(expr, [ ()() ], "()()", "() ()");
+    c1!(expr, [ ()() ], "()()");
 
     // ExprKind::MethodCall
     c1!(expr, [ x.f() ], "x.f()");
@@ -303,7 +303,7 @@ fn test_expr() {
     c1!(expr, [ Struct { x: true, ..base } ], "Struct { x: true, ..base }");
 
     // ExprKind::Repeat
-    c2!(expr, [ [(); 0] ], "[(); 0]", "[() ; 0]");
+    c1!(expr, [ [(); 0] ], "[(); 0]");
 
     // ExprKind::Paren
     c1!(expr, [ (expr) ], "(expr)");
@@ -340,19 +340,19 @@ fn test_item() {
     c2!(item,
         [ pub use crate::{a, b::c}; ],
         "pub use crate::{a, b::c};",
-        "pub use crate::{ a, b::c } ;"
+        "pub use crate::{ a, b::c };" // FIXME
     );
     c1!(item, [ pub use A::*; ], "pub use A::*;");
 
     // ItemKind::Static
-    c2!(item, [ pub static S: () = {}; ], "pub static S: () = {};", "pub static S: () = {} ;");
-    c2!(item, [ static mut S: () = {}; ], "static mut S: () = {};", "static mut S: () = {} ;");
-    c2!(item, [ static S: (); ], "static S: ();", "static S: () ;");
-    c2!(item, [ static mut S: (); ], "static mut S: ();", "static mut S: () ;");
+    c1!(item, [ pub static S: () = {}; ], "pub static S: () = {};");
+    c1!(item, [ static mut S: () = {}; ], "static mut S: () = {};");
+    c1!(item, [ static S: (); ], "static S: ();");
+    c1!(item, [ static mut S: (); ], "static mut S: ();");
 
     // ItemKind::Const
-    c2!(item, [ pub const S: () = {}; ], "pub const S: () = {};", "pub const S: () = {} ;");
-    c2!(item, [ const S: (); ], "const S: ();", "const S: () ;");
+    c1!(item, [ pub const S: () = {}; ], "pub const S: () = {};");
+    c1!(item, [ const S: (); ], "const S: ();");
 
     // ItemKind::Fn
     c1!(item,
@@ -429,8 +429,8 @@ fn test_item() {
 
     // ItemKind::Struct
     c1!(item, [ pub struct Unit; ], "pub struct Unit;");
-    c2!(item, [ struct Tuple(); ], "struct Tuple();", "struct Tuple() ;");
-    c2!(item, [ struct Tuple(T); ], "struct Tuple(T);", "struct Tuple(T) ;");
+    c1!(item, [ struct Tuple(); ], "struct Tuple();");
+    c1!(item, [ struct Tuple(T); ], "struct Tuple(T);");
     c1!(item, [ struct Struct {} ], "struct Struct {}");
     c2!(item,
         [
@@ -489,8 +489,8 @@ fn test_item() {
     c1!(item, [ impl ~const Struct {} ], "impl ~const Struct {}");
 
     // ItemKind::MacCall
-    c2!(item, [ mac!(...); ], "mac!(...);", "mac!(...) ;");
-    c2!(item, [ mac![...]; ], "mac![...];", "mac![...] ;");
+    c1!(item, [ mac!(...); ], "mac!(...);");
+    c1!(item, [ mac![...]; ], "mac![...];");
     c1!(item, [ mac! { ... } ], "mac! { ... }");
 
     // ItemKind::MacroDef
@@ -500,7 +500,7 @@ fn test_item() {
                 () => {};
             }
         ],
-        "macro_rules! stringify { () => {} ; }"
+        "macro_rules! stringify { () => {}; }"
     );
     c2!(item,
         [ pub macro stringify() {} ],
@@ -627,7 +627,7 @@ fn test_stmt() {
     c2!(stmt,
         [ let (a, b): (u32, u32) = (1, 2) ],
         "let (a, b): (u32, u32) = (1, 2);",
-        "let(a, b) : (u32, u32) = (1, 2)"
+        "let(a, b): (u32, u32) = (1, 2)" // FIXME
     );
 
     // StmtKind::Item

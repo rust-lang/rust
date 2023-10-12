@@ -290,7 +290,7 @@ fn check_binders(
         }
         // `MetaVarExpr` can not appear in the LHS of a macro arm
         TokenTree::MetaVarExpr(..) => {}
-        TokenTree::Delimited(_, ref del) => {
+        TokenTree::Delimited(.., ref del) => {
             for tt in &del.tts {
                 check_binders(sess, node_id, tt, macros, binders, ops, valid);
             }
@@ -353,7 +353,7 @@ fn check_occurrences(
             };
             check_ops_is_prefix(sess, node_id, macros, binders, ops, dl.entire(), name);
         }
-        TokenTree::Delimited(_, ref del) => {
+        TokenTree::Delimited(.., ref del) => {
             check_nested_occurrences(sess, node_id, &del.tts, macros, binders, ops, valid);
         }
         TokenTree::Sequence(_, ref seq) => {
@@ -435,8 +435,8 @@ fn check_nested_occurrences(
                 // We check that the meta-variable is correctly used.
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
-            (NestedMacroState::MacroRulesNotName, TokenTree::Delimited(_, del))
-            | (NestedMacroState::MacroName, TokenTree::Delimited(_, del))
+            (NestedMacroState::MacroRulesNotName, TokenTree::Delimited(.., del))
+            | (NestedMacroState::MacroName, TokenTree::Delimited(.., del))
                 if del.delim == Delimiter::Brace =>
             {
                 let macro_rules = state == NestedMacroState::MacroRulesNotName;
@@ -466,7 +466,7 @@ fn check_nested_occurrences(
                 // We check that the meta-variable is correctly used.
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
-            (NestedMacroState::MacroName, TokenTree::Delimited(_, del))
+            (NestedMacroState::MacroName, TokenTree::Delimited(.., del))
                 if del.delim == Delimiter::Parenthesis =>
             {
                 state = NestedMacroState::MacroNameParen;
@@ -481,7 +481,7 @@ fn check_nested_occurrences(
                     valid,
                 );
             }
-            (NestedMacroState::MacroNameParen, TokenTree::Delimited(_, del))
+            (NestedMacroState::MacroNameParen, TokenTree::Delimited(.., del))
                 if del.delim == Delimiter::Brace =>
             {
                 state = NestedMacroState::Empty;

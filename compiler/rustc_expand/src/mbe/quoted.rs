@@ -151,7 +151,7 @@ fn parse_tree<'a>(
             // during parsing.
             let mut next = outer_trees.next();
             let mut trees: Box<dyn Iterator<Item = &tokenstream::TokenTree>>;
-            if let Some(tokenstream::TokenTree::Delimited(_, Delimiter::Invisible, tts)) = next {
+            if let Some(tokenstream::TokenTree::Delimited(.., Delimiter::Invisible, tts)) = next {
                 trees = Box::new(tts.trees());
                 next = trees.next();
             } else {
@@ -160,7 +160,7 @@ fn parse_tree<'a>(
 
             match next {
                 // `tree` is followed by a delimited set of token trees.
-                Some(&tokenstream::TokenTree::Delimited(delim_span, delim, ref tts)) => {
+                Some(&tokenstream::TokenTree::Delimited(delim_span, _, delim, ref tts)) => {
                     if parsing_patterns {
                         if delim != Delimiter::Parenthesis {
                             span_dollar_dollar_or_metavar_in_the_lhs_err(
@@ -258,8 +258,9 @@ fn parse_tree<'a>(
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
-        &tokenstream::TokenTree::Delimited(span, delim, ref tts) => TokenTree::Delimited(
+        &tokenstream::TokenTree::Delimited(span, spacing, delim, ref tts) => TokenTree::Delimited(
             span,
+            spacing,
             Delimited {
                 delim,
                 tts: parse(tts, parsing_patterns, sess, node_id, features, edition),

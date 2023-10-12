@@ -5,7 +5,7 @@ use pm::bridge::{
 use pm::{Delimiter, Level};
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, Spacing, TokenStream};
+use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -98,7 +98,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
         while let Some(tree) = cursor.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
-                tokenstream::TokenTree::Delimited(span, delim, tts) => {
+                tokenstream::TokenTree::Delimited(span, _, delim, tts) => {
                     let delimiter = pm::Delimiter::from_internal(delim);
                     trees.push(TokenTree::Group(Group {
                         delimiter,
@@ -284,10 +284,11 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
     fn to_internal(self) -> SmallVec<[tokenstream::TokenTree; 2]> {
         use rustc_ast::token::*;
 
-        // The code below is conservative and uses `token_alone` in most
-        // places. When the resulting code is pretty-printed by `print_tts` it
-        // ends up with spaces between most tokens, which is safe but ugly.
-        // It's hard in general to do better when working at the token level.
+        // The code below is conservative, using `token_alone`/`Spacing::Alone`
+        // in most places. When the resulting code is pretty-printed by
+        // `print_tts` it ends up with spaces between most tokens, which is
+        // safe but ugly. It's hard in general to do better when working at the
+        // token level.
         let (tree, rustc) = self;
         match tree {
             TokenTree::Punct(Punct { ch, joint, span }) => {
@@ -330,6 +331,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
             TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
                 smallvec![tokenstream::TokenTree::Delimited(
                     tokenstream::DelimSpan { open, close },
+                    DelimSpacing::new(Spacing::Alone, Spacing::Alone),
                     delimiter.to_internal(),
                     stream.unwrap_or_default(),
                 )]

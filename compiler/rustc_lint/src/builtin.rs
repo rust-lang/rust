@@ -1835,7 +1835,7 @@ impl KeywordIdents {
                         self.check_ident_token(cx, UnderMacro(true), ident);
                     }
                 }
-                TokenTree::Delimited(_, _, tts) => self.check_tokens(cx, tts),
+                TokenTree::Delimited(.., tts) => self.check_tokens(cx, tts),
             }
         }
     }

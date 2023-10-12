@@ -3,7 +3,7 @@ use super::diagnostics::same_indentation_level;
 use super::diagnostics::TokenTreeDiagInfo;
 use super::{StringReader, UnmatchedDelim};
 use rustc_ast::token::{self, Delimiter, Token};
-use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::{Applicability, PErr};
 use rustc_span::symbol::kw;
@@ -25,59 +25,46 @@ impl<'a> TokenTreesReader<'a> {
             token: Token::dummy(),
             diag_info: TokenTreeDiagInfo::default(),
         };
-        let (stream, res) = tt_reader.parse_token_trees(/* is_delimited */ false);
+        let (_open_spacing, stream, res) =
+            tt_reader.parse_token_trees(/* is_delimited */ false);
         (stream, res, tt_reader.diag_info.unmatched_delims)
     }
 
-    // Parse a stream of tokens into a list of `TokenTree`s.
+    // Parse a stream of tokens into a list of `TokenTree`s. The `Spacing` in
+    // the result is that of the opening delimiter.
     fn parse_token_trees(
         &mut self,
         is_delimited: bool,
-    ) -> (TokenStream, Result<(), Vec<PErr<'a>>>) {
-        self.token = self.string_reader.next_token().0;
+    ) -> (Spacing, TokenStream, Result<(), Vec<PErr<'a>>>) {
+        // Move past the opening delimiter.
+        let (_, open_spacing) = self.bump(false);
+
         let mut buf = Vec::new();
         loop {
             match self.token.kind {
                 token::OpenDelim(delim) => {
                     buf.push(match self.parse_token_tree_open_delim(delim) {
                         Ok(val) => val,
-                        Err(errs) => return (TokenStream::new(buf), Err(errs)),
+                        Err(errs) => return (open_spacing, TokenStream::new(buf), Err(errs)),
                     })
                 }
                 token::CloseDelim(delim) => {
                     return (
+                        open_spacing,
                         TokenStream::new(buf),
                         if is_delimited { Ok(()) } else { Err(vec![self.close_delim_err(delim)]) },
                     );
                 }
                 token::Eof => {
                     return (
+                        open_spacing,
                         TokenStream::new(buf),
                         if is_delimited { Err(vec![self.eof_err()]) } else { Ok(()) },
                     );
                 }
                 _ => {
-                    // Get the next normal token. This might require getting multiple adjacent
-                    // single-char tokens and joining them together.
-                    let (this_spacing, next_tok) = loop {
-                        let (next_tok, is_next_tok_preceded_by_whitespace) =
-                            self.string_reader.next_token();
-                        if is_next_tok_preceded_by_whitespace {
-                            break (Spacing::Alone, next_tok);
-                        } else if let Some(glued) = self.token.glue(&next_tok) {
-                            self.token = glued;
-                        } else {
-                            let this_spacing = if next_tok.is_punct() {
-                                Spacing::Joint
-                            } else if next_tok.kind == token::Eof {
-                                Spacing::Alone
-                            } else {
-                                Spacing::JointHidden
-                            };
-                            break (this_spacing, next_tok);
-                        }
-                    };
-                    let this_tok = std::mem::replace(&mut self.token, next_tok);
+                    // Get the next normal token.
+                    let (this_tok, this_spacing) = self.bump(true);
                     buf.push(TokenTree::Token(this_tok, this_spacing));
                 }
             }
@@ -121,7 +108,7 @@ impl<'a> TokenTreesReader<'a> {
         // Parse the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
-        let (tts, res) = self.parse_token_trees(/* is_delimited */ true);
+        let (open_spacing, tts, res) = self.parse_token_trees(/* is_delimited */ true);
         if let Err(errs) = res {
             return Err(self.unclosed_delim_err(tts, errs));
         }
@@ -130,7 +117,7 @@ impl<'a> TokenTreesReader<'a> {
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
         let sm = self.string_reader.sess.source_map();
 
-        match self.token.kind {
+        let close_spacing = match self.token.kind {
             // Correct delimiter.
             token::CloseDelim(close_delim) if close_delim == open_delim => {
                 let (open_brace, open_brace_span) = self.diag_info.open_braces.pop().unwrap();
@@ -152,7 +139,7 @@ impl<'a> TokenTreesReader<'a> {
                 }
 
                 // Move past the closing delimiter.
-                self.token = self.string_reader.next_token().0;
+                self.bump(false).1
             }
             // Incorrect delimiter.
             token::CloseDelim(close_delim) => {
@@ -196,18 +183,50 @@ impl<'a> TokenTreesReader<'a> {
                 //     bar(baz(
                 // }  // Incorrect delimiter but matches the earlier `{`
                 if !self.diag_info.open_braces.iter().any(|&(b, _)| b == close_delim) {
-                    self.token = self.string_reader.next_token().0;
+                    self.bump(false).1
+                } else {
+                    // The choice of value here doesn't matter.
+                    Spacing::Alone
                 }
             }
             token::Eof => {
                 // Silently recover, the EOF token will be seen again
                 // and an error emitted then. Thus we don't pop from
-                // self.open_braces here.
+                // self.open_braces here. The choice of spacing value here
+                // doesn't matter.
+                Spacing::Alone
             }
             _ => unreachable!(),
-        }
+        };
 
-        Ok(TokenTree::Delimited(delim_span, open_delim, tts))
+        let spacing = DelimSpacing::new(open_spacing, close_spacing);
+
+        Ok(TokenTree::Delimited(delim_span, spacing, open_delim, tts))
+    }
+
+    // Move on to the next token, returning the current token and its spacing.
+    // Will glue adjacent single-char tokens together if `glue` is set.
+    fn bump(&mut self, glue: bool) -> (Token, Spacing) {
+        let (this_spacing, next_tok) = loop {
+            let (next_tok, is_next_tok_preceded_by_whitespace) = self.string_reader.next_token();
+
+            if is_next_tok_preceded_by_whitespace {
+                break (Spacing::Alone, next_tok);
+            } else if glue && let Some(glued) = self.token.glue(&next_tok) {
+                self.token = glued;
+            } else {
+                let this_spacing = if next_tok.is_punct() {
+                    Spacing::Joint
+                } else if next_tok.kind == token::Eof {
+                    Spacing::Alone
+                } else {
+                    Spacing::JointHidden
+                };
+                break (this_spacing, next_tok);
+            }
+        };
+        let this_tok = std::mem::replace(&mut self.token, next_tok);
+        (this_tok, this_spacing)
     }
 
     fn unclosed_delim_err(&mut self, tts: TokenStream, mut errs: Vec<PErr<'a>>) -> Vec<PErr<'a>> {
