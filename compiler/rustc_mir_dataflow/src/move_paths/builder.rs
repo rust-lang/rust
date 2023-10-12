@@ -39,15 +39,15 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                         .iter_enumerated()
                         .map(|(i, l)| {
                             if l.is_deref_temp() {
-                                MovePathIndex::MAX
+                                None
                             } else {
-                                Self::new_move_path(
+                                Some(Self::new_move_path(
                                     &mut move_paths,
                                     &mut path_map,
                                     &mut init_path_map,
                                     None,
                                     Place::from(i),
-                                )
+                                ))
                             }
                         })
                         .collect(),
@@ -100,7 +100,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         let data = &mut self.builder.data;
 
         debug!("lookup({:?})", place);
-        let mut base = data.rev_lookup.find_local(place.local);
+        let Some(mut base) = data.rev_lookup.find_local(place.local) else {
+            return Err(MoveError::UntrackedLocal);
+        };
 
         // The move path index of the first union that we find. Once this is
         // some we stop creating child move paths, since moves from unions
@@ -328,17 +330,17 @@ pub(super) fn gather_moves<'tcx>(
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn gather_args(&mut self) {
         for arg in self.body.args_iter() {
-            let path = self.data.rev_lookup.find_local(arg);
+            if let Some(path) = self.data.rev_lookup.find_local(arg) {
+                let init = self.data.inits.push(Init {
+                    path,
+                    kind: InitKind::Deep,
+                    location: InitLocation::Argument(arg),
+                });
 
-            let init = self.data.inits.push(Init {
-                path,
-                kind: InitKind::Deep,
-                location: InitLocation::Argument(arg),
-            });
+                debug!("gather_args: adding init {:?} of {:?} for argument {:?}", init, path, arg);
 
-            debug!("gather_args: adding init {:?} of {:?} for argument {:?}", init, path, arg);
-
-            self.data.init_path_map[path].push(init);
+                self.data.init_path_map[path].push(init);
+            }
         }
     }
 
@@ -546,9 +548,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.record_move(place, path);
                     return;
                 }
-                Err(MoveError::IllegalMove { .. }) => {
-                    return;
-                }
+                Err(MoveError::IllegalMove { .. } | MoveError::UntrackedLocal) => return,
             };
             let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
             let len: u64 = match base_ty.kind() {
@@ -567,7 +567,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         } else {
             match self.move_path_for(place) {
                 Ok(path) | Err(MoveError::UnionMove { path }) => self.record_move(place, path),
-                Err(MoveError::IllegalMove { .. }) => {}
+                Err(MoveError::IllegalMove { .. } | MoveError::UntrackedLocal) => {}
             };
         }
     }

@@ -690,9 +690,13 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         if let mir::StatementKind::StorageDead(local) = stmt.kind {
             // End inits for StorageDead, so that an immutable variable can
             // be reinitialized on the next iteration of the loop.
-            let move_path_index = rev_lookup.find_local(local);
-            debug!("clears the ever initialized status of {:?}", init_path_map[move_path_index]);
-            trans.kill_all(init_path_map[move_path_index].iter().copied());
+            if let Some(move_path_index) = rev_lookup.find_local(local) {
+                debug!(
+                    "clears the ever initialized status of {:?}",
+                    init_path_map[move_path_index]
+                );
+                trans.kill_all(init_path_map[move_path_index].iter().copied());
+            }
         }
     }
 

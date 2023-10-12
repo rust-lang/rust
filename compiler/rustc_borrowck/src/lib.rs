@@ -1416,7 +1416,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // As such we have to search for the local that this
                         // capture comes from and mark it as being used as mut.
 
-                        let temp_mpi = self.move_data.rev_lookup.find_local(local);
+                        let Some(temp_mpi) = self.move_data.rev_lookup.find_local(local) else {
+                            bug!("temporary should be tracked");
+                        };
                         let init = if let [init_index] = *self.move_data.init_path_map[temp_mpi] {
                             &self.move_data.inits[init_index]
                         } else {
@@ -2223,7 +2225,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         local: Local,
         flow_state: &Flows<'cx, 'tcx>,
     ) -> Option<InitIndex> {
-        let mpi = self.move_data.rev_lookup.find_local(local);
+        let mpi = self.move_data.rev_lookup.find_local(local)?;
         let ii = &self.move_data.init_path_map[mpi];
         ii.into_iter().find(|&&index| flow_state.ever_inits.contains(index)).copied()
     }

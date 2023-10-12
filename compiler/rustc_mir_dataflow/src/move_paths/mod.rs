@@ -290,7 +290,7 @@ impl Init {
 /// Tables mapping from a place to its MovePathIndex.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
-    locals: IndexVec<Local, MovePathIndex>,
+    locals: IndexVec<Local, Option<MovePathIndex>>,
 
     /// projections are made from a base-place and a projection
     /// elem. The base-place will have a unique MovePathIndex; we use
@@ -317,7 +317,9 @@ impl<'tcx> MovePathLookup<'tcx> {
     // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult {
-        let mut result = self.find_local(place.local);
+        let Some(mut result) = self.find_local(place.local) else {
+            return LookupResult::Parent(None);
+        };
 
         for (_, elem) in self.un_derefer.iter_projections(place) {
             if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
@@ -331,7 +333,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     }
 
     #[inline]
-    pub fn find_local(&self, local: Local) -> MovePathIndex {
+    pub fn find_local(&self, local: Local) -> Option<MovePathIndex> {
         self.locals[local]
     }
 
@@ -339,8 +341,8 @@ impl<'tcx> MovePathLookup<'tcx> {
     /// `MovePathIndex`es.
     pub fn iter_locals_enumerated(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + ExactSizeIterator + '_ {
-        self.locals.iter_enumerated().map(|(l, &idx)| (l, idx))
+    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + '_ {
+        self.locals.iter_enumerated().filter_map(|(l, &idx)| Some((l, idx?)))
     }
 }
 
@@ -373,6 +375,7 @@ pub enum IllegalMoveOriginKind<'tcx> {
 pub enum MoveError<'tcx> {
     IllegalMove { cannot_move_out_of: IllegalMoveOrigin<'tcx> },
     UnionMove { path: MovePathIndex },
+    UntrackedLocal,
 }
 
 impl<'tcx> MoveError<'tcx> {
