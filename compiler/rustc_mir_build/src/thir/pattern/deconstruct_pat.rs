@@ -46,7 +46,6 @@ use std::cell::Cell;
 use std::cmp::{self, max, min, Ordering};
 use std::fmt;
 use std::iter::once;
-use std::ops::RangeInclusive;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -102,9 +101,10 @@ enum Presence {
 ///
 /// `IntRange` is never used to encode an empty range or a "range" that wraps
 /// around the (offset) space: i.e., `range.lo <= range.hi`.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct IntRange {
-    range: RangeInclusive<u128>,
+    pub(crate) lo: u128,
+    pub(crate) hi: u128,
 }
 
 impl IntRange {
@@ -114,20 +114,16 @@ impl IntRange {
     }
 
     pub(super) fn is_singleton(&self) -> bool {
-        self.range.start() == self.range.end()
-    }
-
-    pub(super) fn boundaries(&self) -> (u128, u128) {
-        (*self.range.start(), *self.range.end())
+        self.lo == self.hi
     }
 
     #[inline]
     fn from_bits<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, bits: u128) -> IntRange {
         let bias = IntRange::signed_bias(tcx, ty);
-        // Perform a shift if the underlying types are signed,
-        // which makes the interval arithmetic simpler.
+        // Perform a shift if the underlying types are signed, which makes the interval arithmetic
+        // type-independent.
         let val = bits ^ bias;
-        IntRange { range: val..=val }
+        IntRange { lo: val, hi: val }
     }
 
     #[inline]
@@ -138,16 +134,17 @@ impl IntRange {
         ty: Ty<'tcx>,
         end: RangeEnd,
     ) -> IntRange {
-        // Perform a shift if the underlying types are signed,
-        // which makes the interval arithmetic simpler.
+        // Perform a shift if the underlying types are signed, which makes the interval arithmetic
+        // type-independent.
         let bias = IntRange::signed_bias(tcx, ty);
         let (lo, hi) = (lo ^ bias, hi ^ bias);
         let offset = (end == RangeEnd::Excluded) as u128;
-        if lo > hi || (lo == hi && end == RangeEnd::Excluded) {
+        let hi = hi - offset;
+        if lo > hi {
             // This should have been caught earlier by E0030.
-            bug!("malformed range pattern: {}..={}", lo, (hi - offset));
+            bug!("malformed range pattern: {lo}..={hi}");
         }
-        IntRange { range: lo..=(hi - offset) }
+        IntRange { lo, hi }
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
@@ -162,14 +159,12 @@ impl IntRange {
     }
 
     fn is_subrange(&self, other: &Self) -> bool {
-        other.range.start() <= self.range.start() && self.range.end() <= other.range.end()
+        other.lo <= self.lo && self.hi <= other.hi
     }
 
     fn intersection(&self, other: &Self) -> Option<Self> {
-        let (lo, hi) = self.boundaries();
-        let (other_lo, other_hi) = other.boundaries();
-        if lo <= other_hi && other_lo <= hi {
-            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi) })
+        if self.lo <= other.hi && other.lo <= self.hi {
+            Some(IntRange { lo: max(self.lo, other.lo), hi: min(self.hi, other.hi) })
         } else {
             None
         }
@@ -216,9 +211,8 @@ impl IntRange {
 
         fn unpack_intrange(range: IntRange) -> [IntBoundary; 2] {
             use IntBoundary::*;
-            let (lo, hi) = range.boundaries();
-            let lo = JustBefore(lo);
-            let hi = match hi.checked_add(1) {
+            let lo = JustBefore(range.lo);
+            let hi = match range.hi.checked_add(1) {
                 Some(m) => JustBefore(m),
                 None => AfterMax,
             };
@@ -264,21 +258,19 @@ impl IntRange {
                 use IntBoundary::*;
                 use Presence::*;
                 let presence = if paren_count > 0 { Seen } else { Unseen };
-                let range = match (prev_bdy, bdy) {
-                    (JustBefore(n), JustBefore(m)) if n < m => n..=(m - 1),
-                    (JustBefore(n), AfterMax) => n..=u128::MAX,
+                let (lo, hi) = match (prev_bdy, bdy) {
+                    (JustBefore(n), JustBefore(m)) if n < m => (n, m - 1),
+                    (JustBefore(n), AfterMax) => (n, u128::MAX),
                     _ => unreachable!(), // Ruled out by the sorting and filtering we did
                 };
-                (presence, IntRange { range })
+                (presence, IntRange { lo, hi })
             })
     }
 
     /// Only used for displaying the range.
     pub(super) fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
-        let (lo, hi) = self.boundaries();
-
         let bias = IntRange::signed_bias(tcx, ty);
-        let (lo_bits, hi_bits) = (lo ^ bias, hi ^ bias);
+        let (lo_bits, hi_bits) = (self.lo ^ bias, self.hi ^ bias);
 
         let env = ty::ParamEnv::empty().and(ty);
         let lo_const = mir::Const::from_bits(tcx, lo_bits, env);
@@ -303,7 +295,7 @@ impl IntRange {
 /// first.
 impl fmt::Debug for IntRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (lo, hi) = self.boundaries();
+        let (lo, hi) = (self.lo, self.hi);
         write!(f, "{lo}")?;
         write!(f, "{}", RangeEnd::Included)?;
         write!(f, "{hi}")
