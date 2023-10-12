@@ -1,0 +1,52 @@
+warning: malformed `on_unimplemented` attribute
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:3:1
+   |
+LL | / #[diagnostic::on_unimplemented(
+LL | |
+LL | |
+LL | |     if(Self = ()),
+...  |
+LL | |     note = "not used yet"
+LL | | )]
+   | |__^
+   |
+   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+
+warning: malformed `on_unimplemented` attribute
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:3:1
+   |
+LL | / #[diagnostic::on_unimplemented(
+LL | |
+LL | |
+LL | |     if(Self = ()),
+...  |
+LL | |     note = "not used yet"
+LL | | )]
+   | |__^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: fallback!!
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:20:15
+   |
+LL |     takes_foo(());
+   |     --------- ^^ fallback label
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Foo` is not implemented for `()`
+   = note: fallback note
+help: this trait has no implementations, consider adding one
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:15:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+note: required by a bound in `takes_foo`
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:17:22
+   |
+LL | fn takes_foo(_: impl Foo) {}
+   |                      ^^^ required by this bound in `takes_foo`
+
+error: aborting due to previous error; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0277`.

@@ -6,6 +6,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
 
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 use std::ops::{Index, IndexMut};
 
 /// A coverage-specific simplification of the MIR control flow graph (CFG). The `CoverageGraph`s
@@ -385,57 +386,72 @@ fn bcb_filtered_successors<'a, 'tcx>(
 /// ensures a loop is completely traversed before processing Blocks after the end of the loop.
 #[derive(Debug)]
 pub(super) struct TraversalContext {
-    /// From one or more backedges returning to a loop header.
-    pub loop_backedges: Option<(Vec<BasicCoverageBlock>, BasicCoverageBlock)>,
+    /// BCB with one or more incoming loop backedges, indicating which loop
+    /// this context is for.
+    ///
+    /// If `None`, this is the non-loop context for the function as a whole.
+    loop_header: Option<BasicCoverageBlock>,
 
-    /// worklist, to be traversed, of CoverageGraph in the loop with the given loop
-    /// backedges, such that the loop is the inner inner-most loop containing these
-    /// CoverageGraph
-    pub worklist: Vec<BasicCoverageBlock>,
+    /// Worklist of BCBs to be processed in this context.
+    worklist: VecDeque<BasicCoverageBlock>,
 }
 
-pub(super) struct TraverseCoverageGraphWithLoops {
-    pub backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
-    pub context_stack: Vec<TraversalContext>,
+pub(super) struct TraverseCoverageGraphWithLoops<'a> {
+    basic_coverage_blocks: &'a CoverageGraph,
+
+    backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
+    context_stack: Vec<TraversalContext>,
     visited: BitSet<BasicCoverageBlock>,
 }
 
-impl TraverseCoverageGraphWithLoops {
-    pub fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
-        let start_bcb = basic_coverage_blocks.start_node();
+impl<'a> TraverseCoverageGraphWithLoops<'a> {
+    pub(super) fn new(basic_coverage_blocks: &'a CoverageGraph) -> Self {
         let backedges = find_loop_backedges(basic_coverage_blocks);
-        let context_stack =
-            vec![TraversalContext { loop_backedges: None, worklist: vec![start_bcb] }];
+
+        let worklist = VecDeque::from([basic_coverage_blocks.start_node()]);
+        let context_stack = vec![TraversalContext { loop_header: None, worklist }];
+
         // `context_stack` starts with a `TraversalContext` for the main function context (beginning
         // with the `start` BasicCoverageBlock of the function). New worklists are pushed to the top
         // of the stack as loops are entered, and popped off of the stack when a loop's worklist is
         // exhausted.
         let visited = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-        Self { backedges, context_stack, visited }
+        Self { basic_coverage_blocks, backedges, context_stack, visited }
     }
 
-    pub fn next(&mut self, basic_coverage_blocks: &CoverageGraph) -> Option<BasicCoverageBlock> {
+    /// For each loop on the loop context stack (top-down), yields a list of BCBs
+    /// within that loop that have an outgoing edge back to the loop header.
+    pub(super) fn reloop_bcbs_per_loop(&self) -> impl Iterator<Item = &[BasicCoverageBlock]> {
+        self.context_stack
+            .iter()
+            .rev()
+            .filter_map(|context| context.loop_header)
+            .map(|header_bcb| self.backedges[header_bcb].as_slice())
+    }
+
+    pub(super) fn next(&mut self) -> Option<BasicCoverageBlock> {
         debug!(
             "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
             self.context_stack.iter().rev().collect::<Vec<_>>()
         );
 
         while let Some(context) = self.context_stack.last_mut() {
-            if let Some(next_bcb) = context.worklist.pop() {
-                if !self.visited.insert(next_bcb) {
-                    debug!("Already visited: {:?}", next_bcb);
+            if let Some(bcb) = context.worklist.pop_front() {
+                if !self.visited.insert(bcb) {
+                    debug!("Already visited: {bcb:?}");
                     continue;
                 }
-                debug!("Visiting {:?}", next_bcb);
-                if self.backedges[next_bcb].len() > 0 {
-                    debug!("{:?} is a loop header! Start a new TraversalContext...", next_bcb);
+                debug!("Visiting {bcb:?}");
+
+                if self.backedges[bcb].len() > 0 {
+                    debug!("{bcb:?} is a loop header! Start a new TraversalContext...");
                     self.context_stack.push(TraversalContext {
-                        loop_backedges: Some((self.backedges[next_bcb].clone(), next_bcb)),
-                        worklist: Vec::new(),
+                        loop_header: Some(bcb),
+                        worklist: VecDeque::new(),
                     });
                 }
-                self.extend_worklist(basic_coverage_blocks, next_bcb);
-                return Some(next_bcb);
+                self.add_successors_to_worklists(bcb);
+                return Some(bcb);
             } else {
                 // Strip contexts with empty worklists from the top of the stack
                 self.context_stack.pop();
@@ -445,13 +461,10 @@ impl TraverseCoverageGraphWithLoops {
         None
     }
 
-    pub fn extend_worklist(
-        &mut self,
-        basic_coverage_blocks: &CoverageGraph,
-        bcb: BasicCoverageBlock,
-    ) {
-        let successors = &basic_coverage_blocks.successors[bcb];
+    pub fn add_successors_to_worklists(&mut self, bcb: BasicCoverageBlock) {
+        let successors = &self.basic_coverage_blocks.successors[bcb];
         debug!("{:?} has {} successors:", bcb, successors.len());
+
         for &successor in successors {
             if successor == bcb {
                 debug!(
@@ -460,56 +473,44 @@ impl TraverseCoverageGraphWithLoops {
                     bcb
                 );
                 // Don't re-add this successor to the worklist. We are already processing it.
+                // FIXME: This claims to skip just the self-successor, but it actually skips
+                // all other successors as well. Does that matter?
                 break;
             }
-            for context in self.context_stack.iter_mut().rev() {
-                // Add successors of the current BCB to the appropriate context. Successors that
-                // stay within a loop are added to the BCBs context worklist. Successors that
-                // exit the loop (they are not dominated by the loop header) must be reachable
-                // from other BCBs outside the loop, and they will be added to a different
-                // worklist.
-                //
-                // Branching blocks (with more than one successor) must be processed before
-                // blocks with only one successor, to prevent unnecessarily complicating
-                // `Expression`s by creating a Counter in a `BasicCoverageBlock` that the
-                // branching block would have given an `Expression` (or vice versa).
-                let (some_successor_to_add, some_loop_header) =
-                    if let Some((_, loop_header)) = context.loop_backedges {
-                        if basic_coverage_blocks.dominates(loop_header, successor) {
-                            (Some(successor), Some(loop_header))
-                        } else {
-                            (None, None)
-                        }
-                    } else {
-                        (Some(successor), None)
-                    };
-                if let Some(successor_to_add) = some_successor_to_add {
-                    if basic_coverage_blocks.successors[successor_to_add].len() > 1 {
-                        debug!(
-                            "{:?} successor is branching. Prioritize it at the beginning of \
-                            the {}",
-                            successor_to_add,
-                            if let Some(loop_header) = some_loop_header {
-                                format!("worklist for the loop headed by {loop_header:?}")
-                            } else {
-                                String::from("non-loop worklist")
-                            },
-                        );
-                        context.worklist.insert(0, successor_to_add);
-                    } else {
-                        debug!(
-                            "{:?} successor is non-branching. Defer it to the end of the {}",
-                            successor_to_add,
-                            if let Some(loop_header) = some_loop_header {
-                                format!("worklist for the loop headed by {loop_header:?}")
-                            } else {
-                                String::from("non-loop worklist")
-                            },
-                        );
-                        context.worklist.push(successor_to_add);
+
+            // Add successors of the current BCB to the appropriate context. Successors that
+            // stay within a loop are added to the BCBs context worklist. Successors that
+            // exit the loop (they are not dominated by the loop header) must be reachable
+            // from other BCBs outside the loop, and they will be added to a different
+            // worklist.
+            //
+            // Branching blocks (with more than one successor) must be processed before
+            // blocks with only one successor, to prevent unnecessarily complicating
+            // `Expression`s by creating a Counter in a `BasicCoverageBlock` that the
+            // branching block would have given an `Expression` (or vice versa).
+
+            let context = self
+                .context_stack
+                .iter_mut()
+                .rev()
+                .find(|context| match context.loop_header {
+                    Some(loop_header) => {
+                        self.basic_coverage_blocks.dominates(loop_header, successor)
                     }
-                    break;
-                }
+                    None => true,
+                })
+                .unwrap_or_else(|| bug!("should always fall back to the root non-loop context"));
+            debug!("adding to worklist for {:?}", context.loop_header);
+
+            // FIXME: The code below had debug messages claiming to add items to a
+            // particular end of the worklist, but was confused about which end was
+            // which. The existing behaviour has been preserved for now, but it's
+            // unclear what the intended behaviour was.
+
+            if self.basic_coverage_blocks.successors[successor].len() > 1 {
+                context.worklist.push_back(successor);
+            } else {
+                context.worklist.push_front(successor);
             }
         }
     }
