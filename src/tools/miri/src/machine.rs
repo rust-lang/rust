@@ -1136,19 +1136,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 _ => {}
             }
         }
-        let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr)?;
         let tag = if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
             borrow_tracker.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
             BorTag::default()
         };
-        Ok(Pointer::new(
-            Provenance::Concrete { alloc_id: ptr.provenance, tag },
-            Size::from_bytes(absolute_addr),
-        ))
+        intptrcast::GlobalStateInner::ptr_from_rel_ptr(ecx, ptr, tag)
     }
 
+    /// Called on `usize as ptr` casts.
     #[inline(always)]
     fn ptr_from_addr_cast(
         ecx: &MiriInterpCx<'mir, 'tcx>,
@@ -1157,6 +1154,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr)
     }
 
+    /// Called on `ptr as usize` casts.
+    /// (Actually computing the resulting `usize` doesn't need machine help,
+    /// that's just `Scalar::try_to_int`.)
     fn expose_ptr(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         ptr: Pointer<Self::Provenance>,
@@ -1174,11 +1174,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     /// Convert a pointer with provenance into an allocation-offset pair,
     /// or a `None` with an absolute address if that conversion is not possible.
+    ///
+    /// This is called when a pointer is about to be used for memory access,
+    /// an in-bounds check, or anything else that requires knowing which allocation it points to.
+    /// The resulting `AllocId` will just be used for that one step and the forgotten again
+    /// (i.e., we'll never turn the data returned here back into a `Pointer` that might be
+    /// stored in machine state).
     fn ptr_get_alloc(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<Self::Provenance>,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
-        let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);
+        let rel = intptrcast::GlobalStateInner::ptr_get_alloc(ecx, ptr);
 
         rel.map(|(alloc_id, size)| {
             let tag = match ptr.provenance {

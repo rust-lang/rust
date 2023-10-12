@@ -119,24 +119,14 @@ impl<'mir, 'tcx> GlobalStateInner {
         Ok(())
     }
 
-    pub fn ptr_from_addr_transmute(
-        _ecx: &MiriInterpCx<'mir, 'tcx>,
-        addr: u64,
-    ) -> Pointer<Option<Provenance>> {
-        trace!("Transmuting {:#x} to a pointer", addr);
-
-        // We consider transmuted pointers to be "invalid" (`None` provenance).
-        Pointer::new(None, Size::from_bytes(addr))
-    }
-
     pub fn ptr_from_addr_cast(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         addr: u64,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         trace!("Casting {:#x} to a pointer", addr);
 
+        // Potentially emit a warning.
         let global_state = ecx.machine.intptrcast.borrow();
-
         match global_state.provenance_mode {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
@@ -158,7 +148,12 @@ impl<'mir, 'tcx> GlobalStateInner {
             ProvenanceMode::Permissive => {}
         }
 
-        // This is how wildcard pointers are born.
+        // We do *not* look up the `AllocId` here! This is a `ptr as usize` cast, and it is
+        // completely legal to do a cast and then `wrapping_offset` to another allocation and only
+        // *then* do a memory access. So the allocation that the pointer happens to point to on a
+        // cast is fairly irrelevant. Instead we generate this as a "wildcard" pointer, such that
+        // *every time the pointer is used*, we do an `AllocId` lookup to find the (exposed)
+        // allocation it might be referencing.
         Ok(Pointer::new(Some(Provenance::Wildcard), Size::from_bytes(addr)))
     }
 
@@ -219,22 +214,27 @@ impl<'mir, 'tcx> GlobalStateInner {
         })
     }
 
-    /// Convert a relative (tcx) pointer to an absolute address.
-    pub fn rel_ptr_to_addr(
+    /// Convert a relative (tcx) pointer to a Miri pointer.
+    pub fn ptr_from_rel_ptr(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<AllocId>,
-    ) -> InterpResult<'tcx, u64> {
+        tag: BorTag,
+    ) -> InterpResult<'tcx, Pointer<Provenance>> {
         let (alloc_id, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
         let base_addr = GlobalStateInner::alloc_base_addr(ecx, alloc_id)?;
 
         // Add offset with the right kind of pointer-overflowing arithmetic.
         let dl = ecx.data_layout();
-        Ok(dl.overflowing_offset(base_addr, offset.bytes()).0)
+        let absolute_addr = dl.overflowing_offset(base_addr, offset.bytes()).0;
+        Ok(Pointer::new(
+            Provenance::Concrete { alloc_id, tag },
+            Size::from_bytes(absolute_addr),
+        ))
     }
 
     /// When a pointer is used for a memory access, this computes where in which allocation the
     /// access is going.
-    pub fn abs_ptr_to_rel(
+    pub fn ptr_get_alloc(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<Provenance>,
     ) -> Option<(AllocId, Size)> {
@@ -252,12 +252,11 @@ impl<'mir, 'tcx> GlobalStateInner {
         let base_addr = GlobalStateInner::alloc_base_addr(ecx, alloc_id).unwrap();
 
         // Wrapping "addr - base_addr"
-        let dl = ecx.data_layout();
         #[allow(clippy::cast_possible_wrap)] // we want to wrap here
         let neg_base_addr = (base_addr as i64).wrapping_neg();
         Some((
             alloc_id,
-            Size::from_bytes(dl.overflowing_signed_offset(addr.bytes(), neg_base_addr).0),
+            Size::from_bytes(ecx.overflowing_signed_offset(addr.bytes(), neg_base_addr).0),
         ))
     }
 
