@@ -110,7 +110,7 @@ pub(crate) struct IntRange {
 impl IntRange {
     #[inline]
     pub(super) fn is_integral(ty: Ty<'_>) -> bool {
-        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
+        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_))
     }
 
     pub(super) fn is_singleton(&self) -> bool {
@@ -299,8 +299,8 @@ impl IntRange {
     }
 }
 
-/// Note: this is often not what we want: e.g. `false` is converted into the range `0..=0` and
-/// would be displayed as such. To render properly, convert to a pattern first.
+/// Note: this will render signed ranges incorrectly. To render properly, convert to a pattern
+/// first.
 impl fmt::Debug for IntRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (lo, hi) = self.boundaries();
@@ -541,6 +541,8 @@ pub(super) enum Constructor<'tcx> {
     Single,
     /// Enum variants.
     Variant(VariantIdx),
+    /// Booleans
+    Bool(bool),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
@@ -578,6 +580,12 @@ impl<'tcx> Constructor<'tcx> {
     pub(super) fn as_variant(&self) -> Option<VariantIdx> {
         match self {
             Variant(i) => Some(*i),
+            _ => None,
+        }
+    }
+    fn as_bool(&self) -> Option<bool> {
+        match self {
+            Bool(b) => Some(*b),
             _ => None,
         }
     }
@@ -625,10 +633,11 @@ impl<'tcx> Constructor<'tcx> {
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx.ty),
             },
             Slice(slice) => slice.arity(),
-            Str(..)
+            Bool(..)
+            | IntRange(..)
             | F32Range(..)
             | F64Range(..)
-            | IntRange(..)
+            | Str(..)
             | Opaque
             | NonExhaustive
             | Hidden
@@ -744,6 +753,7 @@ impl<'tcx> Constructor<'tcx> {
 
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
+            (Bool(self_b), Bool(other_b)) => self_b == other_b,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_subrange(other_range),
             (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
@@ -796,9 +806,10 @@ pub(super) enum ConstructorSet {
         hidden_variants: Vec<VariantIdx>,
         non_exhaustive: bool,
     },
+    /// Booleans.
+    Bool,
     /// The type is spanned by integer values. The range or ranges give the set of allowed values.
     /// The second range is only useful for `char`.
-    /// This is reused for bool. FIXME: don't.
     /// `non_exhaustive` is used when the range is not allowed to be matched exhaustively (that's
     /// for usize/isize).
     Integers { range_1: IntRange, range_2: Option<IntRange>, non_exhaustive: bool },
@@ -848,9 +859,7 @@ impl ConstructorSet {
         // Invariant: this is `Uninhabited` if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
         match ty.kind() {
-            ty::Bool => {
-                Self::Integers { range_1: make_range(0, 1), range_2: None, non_exhaustive: false }
-            }
+            ty::Bool => Self::Bool,
             ty::Char => {
                 // The valid Unicode Scalar Value ranges.
                 Self::Integers {
@@ -1008,6 +1017,27 @@ impl ConstructorSet {
 
                 if *non_exhaustive {
                     missing.push(NonExhaustive);
+                }
+            }
+            ConstructorSet::Bool => {
+                let mut seen_false = false;
+                let mut seen_true = false;
+                for b in seen.map(|ctor| ctor.as_bool().unwrap()) {
+                    if b {
+                        seen_true = true;
+                    } else {
+                        seen_false = true;
+                    }
+                }
+                if seen_false {
+                    present.push(Bool(false));
+                } else {
+                    missing.push(Bool(false));
+                }
+                if seen_true {
+                    present.push(Bool(true));
+                } else {
+                    missing.push(Bool(true));
                 }
             }
             ConstructorSet::Integers { range_1, range_2, non_exhaustive } => {
@@ -1205,10 +1235,11 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, pcx),
             },
-            Str(..)
+            Bool(..)
+            | IntRange(..)
             | F32Range(..)
             | F64Range(..)
-            | IntRange(..)
+            | Str(..)
             | Opaque
             | NonExhaustive
             | Hidden
@@ -1337,7 +1368,14 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             }
             PatKind::Constant { value } => {
                 match pat.ty.kind() {
-                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => {
+                    ty::Bool => {
+                        ctor = match value.try_eval_bool(cx.tcx, cx.param_env) {
+                            Some(b) => Bool(b),
+                            None => Opaque,
+                        };
+                        fields = Fields::empty();
+                    }
+                    ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
                             Some(bits) => IntRange(IntRange::from_bits(cx.tcx, pat.ty, bits)),
                             None => Opaque,
@@ -1616,9 +1654,11 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 write!(f, "]")
             }
+            Bool(b) => write!(f, "{b}"),
+            // Best-effort, will render signed ranges incorrectly
+            IntRange(range) => write!(f, "{range:?}"),
             F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
-            IntRange(range) => write!(f, "{range:?}"), // Best-effort, will render e.g. `false` as `0..=0`
             Str(value) => write!(f, "{value}"),
             Opaque => write!(f, "<constant pattern>"),
             Or => {
@@ -1668,10 +1708,13 @@ impl<'tcx> WitnessPat<'tcx> {
         self.ty
     }
 
+    /// Convert back to a `thir::Pat` for diagnostic purposes.
     pub(crate) fn to_pat(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> Pat<'tcx> {
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
         let mut subpatterns = self.iter_fields().map(|p| Box::new(p.to_pat(cx)));
         let kind = match &self.ctor {
+            Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
+            IntRange(range) => return range.to_pat(cx.tcx, self.ty),
             Single | Variant(_) => match self.ty.kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
@@ -1741,7 +1784,6 @@ impl<'tcx> WitnessPat<'tcx> {
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            IntRange(range) => return range.to_pat(cx.tcx, self.ty),
             Wildcard | NonExhaustive | Hidden => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
