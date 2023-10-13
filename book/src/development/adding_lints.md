@@ -627,6 +627,10 @@ classification:
 * For all the other cases, they should be in different categories with different levels of allowance. For example,
 `implicit_return` (restriction, allow) and `needless_return` (style, warn).
 
+For lints that are in different categories, it is also recommended that at least one of them should be in the
+`restriction` category. The reason for this is that the `restriction` group is the only group where we don't
+recommend to enable the entire set, but cherry pick lints out of.
+
 ## PR Checklist
 
 Before submitting your PR make sure you followed all the basic requirements:
