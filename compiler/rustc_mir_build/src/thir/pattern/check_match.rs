@@ -19,7 +19,7 @@ use rustc_hir::HirId;
 use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
@@ -683,7 +683,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     expr_span: Span,
 ) -> ErrorGuaranteed {
     for &arm in arms {
-        if let Err(err) = thir[arm].pattern.error_reported() {
+        if let Err(err) = thir[arm].pattern.pat_error_reported() {
             return err;
         }
     }

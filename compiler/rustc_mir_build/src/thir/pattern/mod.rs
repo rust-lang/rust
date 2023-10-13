@@ -791,6 +791,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             PatKind::Wild => PatKind::Wild,
+            PatKind::Error(e) => PatKind::Error(e),
             PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: Ascription { ref annotation, variance },
