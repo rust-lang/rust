@@ -1,4 +1,4 @@
-error: internal compiler error: compiler/rustc_const_eval/src/interpret/step.rs:272:21: SizeOf MIR operator called for unsized type dyn Debug
+error: internal compiler error: compiler/rustc_const_eval/src/interpret/step.rs:274:21: SizeOf MIR operator called for unsized type dyn Debug
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 Box<dyn Any>
