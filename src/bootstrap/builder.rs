@@ -1329,7 +1329,7 @@ impl<'a> Builder<'a> {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
                 cargo.args(s.split_whitespace());
             }
-            // NOTE: MAGIC_EXTRA_RUSTFLAGS might also interest you!
+            // NOTE: See https://rustc-dev-guide.rust-lang.org/building/bootstrapping.html#passing-flags-to-commands-invoked-by-bootstrap to pass the flag as you want
             rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
         } else {
             if let Ok(s) = env::var("CARGOFLAGS_BOOTSTRAP") {
