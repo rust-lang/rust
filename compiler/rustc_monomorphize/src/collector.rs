@@ -1363,10 +1363,8 @@ fn collect_const_value<'tcx>(
             collect_alloc(tcx, ptr.provenance.alloc_id(), output)
         }
         mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
-        mir::ConstValue::Slice { data, meta: _ } => {
-            for &prov in data.inner().provenance().ptrs().values() {
-                collect_alloc(tcx, prov.alloc_id(), output);
-            }
+        mir::ConstValue::Slice { alloc_id, meta: _, phantom: _ } => {
+            collect_alloc(tcx, alloc_id, output);
         }
         _ => {}
     }

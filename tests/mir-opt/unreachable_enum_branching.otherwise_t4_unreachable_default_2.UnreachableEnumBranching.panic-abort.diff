@@ -73,3 +73,23 @@
       }
   }
   
+  ALLOC0 (size: 9, align: 1) {
+      41 28 6f 74 68 65 72 29 44                      │ A(other)D
+  }
+  
+  ALLOC1 (size: 4, align: 1) {
+      41 28 32 29                                     │ A(2)
+  }
+  
+  ALLOC2 (size: 4, align: 1) {
+      41 28 31 29                                     │ A(1)
+  }
+  
+  ALLOC3 (size: 6, align: 1) {
+      42 28 69 33 32 29                               │ B(i32)
+  }
+  
+  ALLOC4 (size: 1, align: 1) {
+      43                                              │ C
+  }
+  

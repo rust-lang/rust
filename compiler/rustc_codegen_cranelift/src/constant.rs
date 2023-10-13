@@ -210,8 +210,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
             layout,
         ),
-        ConstValue::Slice { data, meta } => {
-            let alloc_id = fx.tcx.reserve_and_set_memory_alloc(data);
+        ConstValue::Slice { alloc_id, meta, phantom: _ } => {
             let ptr = pointer_for_allocation(fx, alloc_id).get_addr(fx);
             let len = fx.bcx.ins().iconst(fx.pointer_type, meta as i64);
             CValue::by_val_pair(ptr, len, layout)

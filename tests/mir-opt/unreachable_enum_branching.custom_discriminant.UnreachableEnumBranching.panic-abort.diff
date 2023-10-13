@@ -41,3 +41,11 @@
       }
   }
   
+  ALLOC0 (size: 1, align: 1) {
+      45                                              │ E
+  }
+  
+  ALLOC1 (size: 1, align: 1) {
+      44                                              │ D
+  }
+  

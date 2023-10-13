@@ -54,8 +54,8 @@ pub(crate) fn try_new_allocation<'tcx>(
             alloc::try_new_scalar(layout, scalar, cx).map(|alloc| alloc.stable(tables, cx))
         }
         ConstValue::ZeroSized => Ok(new_empty_allocation(layout.align.abi)),
-        ConstValue::Slice { data, meta } => {
-            alloc::try_new_slice(layout, data, meta, cx).map(|alloc| alloc.stable(tables, cx))
+        ConstValue::Slice { alloc_id, meta, phantom: _ } => {
+            alloc::try_new_slice(layout, alloc_id, meta, cx).map(|alloc| alloc.stable(tables, cx))
         }
         ConstValue::Indirect { alloc_id, offset } => {
             let alloc = alloc::try_new_indirect(alloc_id, cx);
