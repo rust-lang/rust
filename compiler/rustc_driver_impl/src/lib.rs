@@ -312,6 +312,7 @@ fn run_compiler(
         locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
         parse_sess_created: None,
+        hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
         make_codegen_backend,

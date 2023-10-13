@@ -5,6 +5,7 @@ use rustc_ast::{self as ast, LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ErrorGuaranteed, Handler};
@@ -260,6 +261,12 @@ pub struct Config {
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
     pub parse_sess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
 
+    /// This is a callback to hash otherwise untracked state used by the caller, if the
+    /// hash changes between runs the incremental cache will be cleared.
+    ///
+    /// e.g. used by Clippy to hash its config file
+    pub hash_untracked_state: Option<Box<dyn FnOnce(&Session, &mut StableHasher) + Send>>,
+
     /// This is a callback from the driver that is called when we're registering lints;
     /// it is called during plugin registration when we have the LintStore in a non-shared state.
     ///
@@ -269,8 +276,6 @@ pub struct Config {
 
     /// This is a callback from the driver that is called just after we have populated
     /// the list of queries.
-    ///
-    /// The second parameter is local providers and the third parameter is external providers.
     pub override_queries: Option<fn(&Session, &mut Providers)>,
 
     /// This is a callback from the driver that is called to create a codegen backend.
@@ -328,6 +333,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             if let Some(parse_sess_created) = config.parse_sess_created {
                 parse_sess_created(&mut sess.parse_sess);
+            }
+
+            if let Some(hash_untracked_state) = config.hash_untracked_state {
+                let mut hasher = StableHasher::new();
+                hash_untracked_state(&sess, &mut hasher);
+                sess.opts.untracked_state_hash = hasher.finish()
             }
 
             let compiler = Compiler {

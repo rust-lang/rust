@@ -1047,6 +1047,7 @@ impl Default for Options {
             target_triple: TargetTriple::from_triple(host_triple()),
             test: false,
             incremental: None,
+            untracked_state_hash: Default::default(),
             unstable_opts: Default::default(),
             prints: Vec::new(),
             cg: Default::default(),
@@ -2889,6 +2890,7 @@ pub fn build_session_options(
         target_triple,
         test,
         incremental,
+        untracked_state_hash: Default::default(),
         unstable_opts,
         prints,
         cg,
@@ -3167,17 +3169,17 @@ impl PpMode {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
-    use super::Polonius;
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
         ErrorOutputType, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Passes,
+        LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Polonius,
         ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
         SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
-    use crate::utils::{NativeLib, NativeLibKind};
+    use crate::utils::NativeLib;
+    use rustc_data_structures::stable_hasher::Hash64;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
@@ -3233,6 +3235,7 @@ pub(crate) mod dep_tracking {
         usize,
         NonZeroUsize,
         u64,
+        Hash64,
         String,
         PathBuf,
         lint::Level,
@@ -3247,14 +3250,12 @@ pub(crate) mod dep_tracking {
         MergeFunctions,
         PanicStrategy,
         RelroLevel,
-        Passes,
         OptLevel,
         LtoCli,
         DebugInfo,
         DebugInfoCompression,
         UnstableFeatures,
         NativeLib,
-        NativeLibKind,
         SanitizerSet,
         CFGuard,
         CFProtection,
