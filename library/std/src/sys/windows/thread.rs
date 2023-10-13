@@ -60,6 +60,11 @@ impl Thread {
         }
     }
 
+    pub unsafe fn new_reactor<F>(_p: F) -> io::Result<Thread>
+    where F: Fn() + Send + Sync + 'static {
+        super::unsupported::unsupported()
+    }
+
     pub fn set_name(name: &CStr) {
         if let Ok(utf8) = name.to_str() {
             if let Ok(utf16) = to_u16s(utf8) {

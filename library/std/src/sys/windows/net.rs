@@ -210,6 +210,10 @@ impl Socket {
         }
     }
 
+    pub fn accept_timeout(&self, _storage: *mut c::SOCKADDR, _len: *mut c_int, _timeout: crate::time::Duration) -> io::Result<Socket> {
+        super::unsupported::unsupported()
+    }
+
     pub fn duplicate(&self) -> io::Result<Socket> {
         Ok(Self(self.0.try_clone()?))
     }

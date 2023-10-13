@@ -15,7 +15,7 @@ std = []
 generic_const_exprs = []
 all_lane_counts = []
 
-[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+[target.'cfg(target_family = "wasm")'.dev-dependencies]
 wasm-bindgen = "0.2"
 wasm-bindgen-test = "0.3"
 

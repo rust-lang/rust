@@ -74,7 +74,7 @@ mod lock {
             // form of `i32.atomic.wait` like so:
             //
             //     unsafe {
-            //         let r = core::arch::wasm32::i32_atomic_wait(
+            //         let r = core::arch::wasm::i32_atomic_wait(
             //             LOCKED.as_mut_ptr(),
             //             1,  //     expected value
             //             -1, //     timeout
@@ -150,7 +150,7 @@ mod lock {
             // anyone up, but if we did it'd likely look something like this:
             //
             //     unsafe {
-            //         core::arch::wasm32::atomic_notify(
+            //         core::arch::wasm::atomic_notify(
             //             LOCKED.as_mut_ptr(),
             //             1, //     only one thread
             //         );

@@ -1,4 +1,5 @@
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(unused_imports)]
 
 use super::fd::WasiFd;
 use crate::ffi::{CStr, OsStr, OsString};
@@ -7,6 +8,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::iter;
 use crate::mem::{self, ManuallyDrop};
 use crate::os::raw::c_int;
+#[allow(unused_imports)]
 use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
@@ -20,7 +22,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 pub use crate::sys_common::fs::try_exists;
 
 pub struct File {
-    fd: WasiFd,
+    pub(crate) fd: WasiFd,
 }
 
 #[derive(Clone)]
@@ -89,7 +91,7 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType { bits: self.meta.filetype }
+        FileType { bits: self.meta.filetype.into() }
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -131,15 +133,15 @@ impl FileTimes {
 
 impl FileType {
     pub fn is_dir(&self) -> bool {
-        self.bits == wasi::FILETYPE_DIRECTORY
+        self.bits.raw() == wasi::FILETYPE_DIRECTORY.raw()
     }
 
     pub fn is_file(&self) -> bool {
-        self.bits == wasi::FILETYPE_REGULAR_FILE
+        self.bits.raw() == wasi::FILETYPE_REGULAR_FILE.raw()
     }
 
     pub fn is_symlink(&self) -> bool {
-        self.bits == wasi::FILETYPE_SYMBOLIC_LINK
+        self.bits.raw() == wasi::FILETYPE_SYMBOLIC_LINK.raw()
     }
 
     pub(crate) fn bits(&self) -> wasi::Filetype {
@@ -256,7 +258,7 @@ impl DirEntry {
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(FileType { bits: self.meta.d_type })
+        Ok(FileType { bits: self.meta.d_type.into() })
     }
 
     pub fn ino(&self) -> wasi::Inode {
@@ -401,6 +403,10 @@ impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let (dir, file) = open_parent(path)?;
         open_at(&dir, &file, opts)
+    }
+
+    pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+        Self::open(Path::new(path.to_str().map_err(|_| io::const_io_error!(io::ErrorKind::InvalidInput, "failed to convert CStr to path"))?), opts)
     }
 
     pub fn open_at(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {

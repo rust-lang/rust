@@ -150,6 +150,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "span_locations", None),
     (Some(Mode::ToolRustc), "span_locations", None),
+    // Can be passed in RUSTFLAGS to prevent direct syscalls in rustix.
+    (None, "rustix_use_libc", None),
+    (Some(Mode::Std), "target_vendor", Some(&["wasmer"])),
     // FIXME: Used by rustix, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "rustix_use_libc", None),
     (Some(Mode::ToolRustc), "rustix_use_libc", None),
@@ -1591,7 +1594,7 @@ impl Build {
             return;
         }
         let _ = fs::remove_file(&dst);
-        let metadata = t!(src.symlink_metadata());
+        let metadata = t!(src.symlink_metadata().map_err(|err| { eprintln!("Copy {:?} to {:?}", src, dst); err }));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
             if dereference_symlinks {

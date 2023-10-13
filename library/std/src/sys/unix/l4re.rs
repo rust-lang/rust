@@ -329,6 +329,10 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn accept_timeout(&self, _timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
+            unimpl!();
+        }
+
         pub fn duplicate(&self) -> io::Result<TcpListener> {
             unimpl!();
         }

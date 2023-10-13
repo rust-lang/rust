@@ -1802,7 +1802,7 @@ fn brute_force_rotate_test_1() {
 }
 
 #[test]
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
@@ -1876,7 +1876,7 @@ fn sort_unstable() {
 }
 
 #[test]
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};

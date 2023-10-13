@@ -251,7 +251,7 @@ impl WasiFd {
     }
 
     pub fn sock_accept(&self, flags: wasi::Fdflags) -> io::Result<wasi::Fd> {
-        unsafe { wasi::sock_accept(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
+        unsafe { wasi::sock_accept_v2(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
     }
 
     pub fn sock_recv(

@@ -11,6 +11,8 @@
 #![allow(dead_code)]
 
 pub mod alloc;
+
+pub mod cvt;
 pub mod small_c_string;
 pub mod thread_local;
 

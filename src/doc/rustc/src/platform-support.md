@@ -179,8 +179,10 @@ target | std | notes
 [`sparc-unknown-none-elf`](./platform-support/sparc-unknown-none-elf.md) | * | Bare 32-bit SPARC V7+
 `wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ | WebAssembly
-`wasm32-wasi` | ✓ | WebAssembly with WASI
+`wasm32-unknown-wasi` | ✓ | WebAssembly with WASI
 [`wasm32-wasi-preview1-threads`](platform-support/wasm32-wasi-preview1-threads.md) | ✓ | WebAssembly with WASI Preview 1 and threads
+`wasm32-wasmer-wasi` | ✓ | WebAssembly with WASIX
+`wasm64-wasmer-wasi` | ✓ | WebAssembly with WASIX for 64-bit
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ | Alias for `x86_64-unknown-fuchsia`

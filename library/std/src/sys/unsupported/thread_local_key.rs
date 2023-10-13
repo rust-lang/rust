@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub type Key = usize;
 
 #[inline]

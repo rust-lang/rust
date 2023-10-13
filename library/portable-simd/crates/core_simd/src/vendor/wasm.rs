@@ -1,5 +1,5 @@
 use crate::simd::*;
-use core::arch::wasm32::v128;
+use core::arch::wasm::v128;
 
 from_transmute! { unsafe u8x16 => v128 }
 from_transmute! { unsafe i8x16 => v128 }

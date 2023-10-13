@@ -1004,9 +1004,9 @@ impl StackProbeType {
                     .and_then(|o| o.as_array())
                     .ok_or_else(|| "expected `min-llvm-version-for-inline` to be an array")?;
                 let mut iter = min_version.into_iter().map(|v| {
-                    let int = v.as_u64().ok_or_else(
-                        || "expected `min-llvm-version-for-inline` values to be integers",
-                    )?;
+                    let int = v.as_u64().ok_or_else(|| {
+                        "expected `min-llvm-version-for-inline` values to be integers"
+                    })?;
                     u32::try_from(int)
                         .map_err(|_| "`min-llvm-version-for-inline` values don't convert to u32")
                 });
@@ -1433,9 +1433,12 @@ supported_targets! {
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
-    ("wasm32-wasi", wasm32_wasi),
+    ("wasm32-unknown-wasi", wasm32_unknown_wasi),
     ("wasm32-wasi-preview1-threads", wasm32_wasi_preview1_threads),
+    ("wasm32-wasmer-wasi", wasm32_wasmer_wasi),
+    ("wasm64-unknown-emscripten", wasm64_unknown_emscripten),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
+    ("wasm64-wasmer-wasi", wasm64_wasmer_wasi),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
     ("thumbv7m-none-eabi", thumbv7m_none_eabi),

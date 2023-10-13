@@ -47,7 +47,7 @@ features = [
     "Win32_System_Threading",
 ]
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
 memmap2 = "0.2.1"
 
 [features]

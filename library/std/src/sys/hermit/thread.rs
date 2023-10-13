@@ -59,6 +59,11 @@ impl Thread {
         Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
     }
 
+    pub unsafe fn new_reactor<F>(p: F) -> io::Result<Thread>
+    where F: Fn() + Send + Sync + 'static {
+        unsupported()
+    }
+
     #[inline]
     pub fn yield_now() {
         unsafe {

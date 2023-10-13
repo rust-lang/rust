@@ -288,14 +288,25 @@ fn copy_self_contained_objects(
             let libunwind_path = copy_llvm_libunwind(builder, target, &libdir_self_contained);
             target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
         }
-    } else if target.contains("-wasi") {
-        let srcdir = builder
-            .wasi_root(target)
-            .unwrap_or_else(|| {
-                panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
-            })
-            .join("lib")
-            .join(target.to_string().replace("-preview1", ""));
+    } else if target.ends_with("-wasi") {
+        let srcdir = {
+            let target_dir = if target.contains("-preview1") {
+                target.to_string().replace("-preview1", "")
+            } else if target.starts_with("wasm32-") {
+                "wasm32-wasi".to_string()
+            } else if target.starts_with("wasm64-") {
+                "wasm64-wasi".to_string()
+            } else {
+                panic!("Target {:?} is not supported", target.triple)
+            };
+            builder
+                .wasi_root(target)
+                .unwrap_or_else(|| {
+                    panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
+                })
+                .join("lib")
+                .join(target_dir)
+        };
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
