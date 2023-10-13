@@ -159,3 +159,36 @@ fn test_program_kind() {
         );
     }
 }
+
+// Test that Rust std handles wait status values (`ExitStatus`) the way that Unix does,
+// at least for the values which represent a Unix exit status (`ExitCode`).
+// Should work on every #[cfg(unix)] platform.  However:
+#[cfg(not(any(
+    // Fuchsia is not Unix and has totally broken std::os::unix.
+    // https://github.com/rust-lang/rust/issues/58590#issuecomment-836535609
+    target_os = "fuchsia",
+)))]
+#[test]
+fn unix_exit_statuses() {
+    use crate::num::NonZeroI32;
+    use crate::os::unix::process::ExitStatusExt;
+    use crate::process::*;
+
+    for exit_code in 0..=0xff {
+        // FIXME impl From<ExitCode> for ExitStatus and then test that here too;
+        // the two ExitStatus values should be the same
+        let raw_wait_status = exit_code << 8;
+        let exit_status = ExitStatus::from_raw(raw_wait_status);
+
+        assert_eq!(exit_status.code(), Some(exit_code));
+
+        if let Ok(nz) = NonZeroI32::try_from(exit_code) {
+            assert!(!exit_status.success());
+            let es_error = exit_status.exit_ok().unwrap_err();
+            assert_eq!(es_error.code().unwrap(), i32::from(nz));
+        } else {
+            assert!(exit_status.success());
+            assert_eq!(exit_status.exit_ok(), Ok(()));
+        }
+    }
+}
