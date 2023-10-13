@@ -2209,6 +2209,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_closure(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
 
+        let before = self.prev_token.clone();
         let binder = if self.check_keyword(kw::For) {
             let lo = self.token.span;
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
@@ -2239,7 +2240,12 @@ impl<'a> Parser<'a> {
             FnRetTy::Default(_) => {
                 let restrictions =
                     self.restrictions - Restrictions::STMT_EXPR - Restrictions::ALLOW_LET;
-                self.parse_expr_res(restrictions, None)?
+                let prev = self.prev_token.clone();
+                let token = self.token.clone();
+                match self.parse_expr_res(restrictions, None) {
+                    Ok(expr) => expr,
+                    Err(err) => self.recover_closure_body(err, before, prev, token, lo, decl_hi)?,
+                }
             }
             _ => {
                 // If an explicit return type is given, require a block to appear (RFC 968).
@@ -2459,10 +2465,16 @@ impl<'a> Parser<'a> {
     /// Parses a `let $pat = $expr` pseudo-expression.
     fn parse_expr_let(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
         let is_recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
-            Some(self.sess.emit_err(errors::ExpectedExpressionFoundLet {
+            let err = errors::ExpectedExpressionFoundLet {
                 span: self.token.span,
                 reason: ForbiddenLetReason::OtherForbidden,
-            }))
+            };
+            if self.prev_token.kind == token::BinOp(token::Or) {
+                // This was part of a closure, the that part of the parser recover.
+                return Err(err.into_diagnostic(&self.sess.span_diagnostic));
+            } else {
+                Some(self.sess.emit_err(err))
+            }
         } else {
             None
         };
