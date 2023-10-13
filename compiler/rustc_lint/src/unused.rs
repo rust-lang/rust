@@ -353,7 +353,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 ty::Generator(def_id, ..) => {
                     // async fn should be treated as "implementor of `Future`"
                     let must_use = if cx.tcx.generator_is_async(def_id) {
-                        let def_id = cx.tcx.lang_items().future_trait().unwrap();
+                        let def_id = cx.tcx.lang_items().future_trait()?;
                         is_def_must_use(cx, def_id, span)
                             .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                     } else {
