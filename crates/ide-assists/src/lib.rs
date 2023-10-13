@@ -195,6 +195,7 @@ mod handlers {
     mod replace_try_expr_with_match;
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
+    mod replace_is_method_with_if_let_method;
     mod replace_method_eager_lazy;
     mod replace_arith_op;
     mod introduce_named_generic;
@@ -213,7 +214,6 @@ mod handlers {
     mod unwrap_block;
     mod unwrap_result_return_type;
     mod unqualify_method_call;
-    mod replace_is_some_with_if_let_some;
     mod wrap_return_type_in_result;
     mod into_to_qualified_from;
 
@@ -314,6 +314,7 @@ mod handlers {
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
+            replace_is_method_with_if_let_method::replace_is_method_with_if_let_method,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_method_eager_lazy::replace_with_eager_method,
             replace_method_eager_lazy::replace_with_lazy_method,
@@ -333,7 +334,6 @@ mod handlers {
             unwrap_result_return_type::unwrap_result_return_type,
             unwrap_tuple::unwrap_tuple,
             unqualify_method_call::unqualify_method_call,
-            replace_is_some_with_if_let_some::replace_is_some_with_if_let_some,
             wrap_return_type_in_result::wrap_return_type_in_result,
             // These are manually sorted for better priorities. By default,
             // priority is determined by the size of the target range (smaller
