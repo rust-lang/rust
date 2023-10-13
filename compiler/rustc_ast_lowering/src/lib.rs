@@ -1271,7 +1271,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &PolyTraitRef {
                         bound_generic_params: ThinVec::new(),
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
-                        span: t.span
+                        span: t.span,
                     },
                     itctx,
                     ast::Const::No,

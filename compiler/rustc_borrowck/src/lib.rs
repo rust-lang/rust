@@ -173,7 +173,9 @@ fn do_mir_borrowck<'tcx>(
     for var_debug_info in &input_body.var_debug_info {
         if let VarDebugInfoContents::Place(place) = var_debug_info.value {
             if let Some(local) = place.as_local() {
-                if let Some(prev_name) = local_names[local] && var_debug_info.name != prev_name {
+                if let Some(prev_name) = local_names[local]
+                    && var_debug_info.name != prev_name
+                {
                     span_bug!(
                         var_debug_info.source_info.span,
                         "local {:?} has many names (`{}` vs `{}`)",

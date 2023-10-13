@@ -162,37 +162,50 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 && tcx.item_name(def_id) == sym::const_eval_select
                 && tcx.is_intrinsic(def_id) =>
             {
-                let [tupled_args, called_in_const, called_at_rt]: [_; 3] = std::mem::take(args).try_into().unwrap();
+                let [tupled_args, called_in_const, called_at_rt]: [_; 3] =
+                    std::mem::take(args).try_into().unwrap();
                 let ty = tupled_args.ty(&body.local_decls, tcx);
                 let fields = ty.tuple_fields();
                 let num_args = fields.len();
-                let func = if context == hir::Constness::Const { called_in_const } else { called_at_rt };
-                let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) = match tupled_args {
-                    Operand::Constant(_) => {
-                        // there is no good way of extracting a tuple arg from a constant (const generic stuff)
-                        // so we just create a temporary and deconstruct that.
-                        let local = body.local_decls.push(LocalDecl::new(ty, fn_span));
-                        bb.statements.push(Statement {
-                            source_info: SourceInfo::outermost(fn_span),
-                            kind: StatementKind::Assign(Box::new((local.into(), Rvalue::Use(tupled_args.clone())))),
-                        });
-                        (Operand::Move, local.into())
-                    }
-                    Operand::Move(place) => (Operand::Move, place),
-                    Operand::Copy(place) => (Operand::Copy, place),
-                };
-                let place_elems = place.projection;
-                let arguments = (0..num_args).map(|x| {
-                    let mut place_elems = place_elems.to_vec();
-                    place_elems.push(ProjectionElem::Field(x.into(), fields[x]));
-                    let projection = tcx.mk_place_elems(&place_elems);
-                    let place = Place {
-                        local: place.local,
-                        projection,
+                let func =
+                    if context == hir::Constness::Const { called_in_const } else { called_at_rt };
+                let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
+                    match tupled_args {
+                        Operand::Constant(_) => {
+                            // there is no good way of extracting a tuple arg from a constant (const generic stuff)
+                            // so we just create a temporary and deconstruct that.
+                            let local = body.local_decls.push(LocalDecl::new(ty, fn_span));
+                            bb.statements.push(Statement {
+                                source_info: SourceInfo::outermost(fn_span),
+                                kind: StatementKind::Assign(Box::new((
+                                    local.into(),
+                                    Rvalue::Use(tupled_args.clone()),
+                                ))),
+                            });
+                            (Operand::Move, local.into())
+                        }
+                        Operand::Move(place) => (Operand::Move, place),
+                        Operand::Copy(place) => (Operand::Copy, place),
                     };
-                    method(place)
-                }).collect();
-                terminator.kind = TerminatorKind::Call { func, args: arguments, destination, target, unwind, call_source: CallSource::Misc, fn_span };
+                let place_elems = place.projection;
+                let arguments = (0..num_args)
+                    .map(|x| {
+                        let mut place_elems = place_elems.to_vec();
+                        place_elems.push(ProjectionElem::Field(x.into(), fields[x]));
+                        let projection = tcx.mk_place_elems(&place_elems);
+                        let place = Place { local: place.local, projection };
+                        method(place)
+                    })
+                    .collect();
+                terminator.kind = TerminatorKind::Call {
+                    func,
+                    args: arguments,
+                    destination,
+                    target,
+                    unwind,
+                    call_source: CallSource::Misc,
+                    fn_span,
+                };
             }
             _ => {}
         }

@@ -320,17 +320,23 @@ impl<'tcx> Cx<'tcx> {
                                 reason: errors::RustcBoxAttrReason::Attributes,
                             });
                         } else if let Some(box_item) = tcx.lang_items().owned_box() {
-                            if let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, fn_path)) = fun.kind
+                            if let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, fn_path)) =
+                                fun.kind
                                 && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
                                 && path.res.opt_def_id().is_some_and(|did| did == box_item)
                                 && fn_path.ident.name == sym::new
                                 && let [value] = args
                             {
-                                return Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind: ExprKind::Box { value: self.mirror_expr(value) } }
+                                return Expr {
+                                    temp_lifetime,
+                                    ty: expr_ty,
+                                    span: expr.span,
+                                    kind: ExprKind::Box { value: self.mirror_expr(value) },
+                                };
                             } else {
                                 tcx.sess.emit_err(errors::RustcBoxAttributeError {
                                     span: expr.span,
-                                    reason: errors::RustcBoxAttrReason::NotBoxNew
+                                    reason: errors::RustcBoxAttrReason::NotBoxNew,
                                 });
                             }
                         } else {
@@ -343,17 +349,16 @@ impl<'tcx> Cx<'tcx> {
 
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     let adt_data = if let hir::ExprKind::Path(ref qpath) = fun.kind
-                    && let Some(adt_def) = expr_ty.ty_adt_def() {
+                        && let Some(adt_def) = expr_ty.ty_adt_def()
+                    {
                         match qpath {
-                            hir::QPath::Resolved(_, ref path) => {
-                                match path.res {
-                                    Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_id) => {
-                                        Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id)))
-                                    }
-                                    Res::SelfCtor(..) => Some((adt_def, FIRST_VARIANT)),
-                                    _ => None,
+                            hir::QPath::Resolved(_, ref path) => match path.res {
+                                Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_id) => {
+                                    Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id)))
                                 }
-                            }
+                                Res::SelfCtor(..) => Some((adt_def, FIRST_VARIANT)),
+                                _ => None,
+                            },
                             hir::QPath::TypeRelative(_ty, _) => {
                                 if let Some((DefKind::Ctor(_, CtorKind::Fn), ctor_id)) =
                                     self.typeck_results().type_dependent_def(fun.hir_id)
@@ -362,7 +367,6 @@ impl<'tcx> Cx<'tcx> {
                                 } else {
                                     None
                                 }
-
                             }
                             _ => None,
                         }

@@ -491,12 +491,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
                     if let hir::StmtKind::Local(hir::Local {
-                                    span, pat: hir::Pat{..}, ty: None, init: Some(_), ..
-                                }) = &ex.kind
-                                && self.found_if
-                                && span.eq(&self.err_span) {
-                                self.result = true;
-                            }
+                        span,
+                        pat: hir::Pat { .. },
+                        ty: None,
+                        init: Some(_),
+                        ..
+                    }) = &ex.kind
+                        && self.found_if
+                        && span.eq(&self.err_span)
+                    {
+                        self.result = true;
+                    }
                     walk_stmt(self, ex);
                 }
 
@@ -546,45 +551,59 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let expected = expected.unpack();
         let found = found.unpack();
         // 3. Extract the tuple type from Fn trait and suggest the change.
-        if let GenericArgKind::Type(expected) = expected &&
-            let GenericArgKind::Type(found) = found &&
-            let ty::Tuple(expected) = expected.kind() &&
-            let ty::Tuple(found)= found.kind() &&
-            expected.len() == found.len() {
+        if let GenericArgKind::Type(expected) = expected
+            && let GenericArgKind::Type(found) = found
+            && let ty::Tuple(expected) = expected.kind()
+            && let ty::Tuple(found) = found.kind()
+            && expected.len() == found.len()
+        {
             let mut suggestion = "|".to_string();
             let mut is_first = true;
             let mut has_suggestion = false;
 
-            for (((expected, found), param_hir), arg_hir) in expected.iter()
-                .zip(found.iter())
-                .zip(params.iter())
-                .zip(fn_decl.inputs.iter()) {
+            for (((expected, found), param_hir), arg_hir) in
+                expected.iter().zip(found.iter()).zip(params.iter()).zip(fn_decl.inputs.iter())
+            {
                 if is_first {
                     is_first = false;
                 } else {
                     suggestion += ", ";
                 }
 
-                if let ty::Ref(expected_region, _, _) = expected.kind() &&
-                    let ty::Ref(found_region, _, _) = found.kind() &&
-                    expected_region.is_late_bound() &&
-                    !found_region.is_late_bound() &&
-                    let hir::TyKind::Infer = arg_hir.kind {
+                if let ty::Ref(expected_region, _, _) = expected.kind()
+                    && let ty::Ref(found_region, _, _) = found.kind()
+                    && expected_region.is_late_bound()
+                    && !found_region.is_late_bound()
+                    && let hir::TyKind::Infer = arg_hir.kind
+                {
                     // If the expected region is late bound, the found region is not, and users are asking compiler
                     // to infer the type, we can suggest adding `: &_`.
                     if param_hir.pat.span == param_hir.ty_span {
                         // for `|x|`, `|_|`, `|x: impl Foo|`
-                        let Ok(pat) = self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span) else { return; };
+                        let Ok(pat) =
+                            self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span)
+                        else {
+                            return;
+                        };
                         suggestion += &format!("{pat}: &_");
                     } else {
                         // for `|x: ty|`, `|_: ty|`
-                        let Ok(pat) = self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span) else { return; };
-                        let Ok(ty) = self.tcx.sess.source_map().span_to_snippet(param_hir.ty_span) else { return; };
+                        let Ok(pat) =
+                            self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span)
+                        else {
+                            return;
+                        };
+                        let Ok(ty) = self.tcx.sess.source_map().span_to_snippet(param_hir.ty_span)
+                        else {
+                            return;
+                        };
                         suggestion += &format!("{pat}: &{ty}");
                     }
                     has_suggestion = true;
                 } else {
-                    let Ok(arg) = self.tcx.sess.source_map().span_to_snippet(param_hir.span) else { return; };
+                    let Ok(arg) = self.tcx.sess.source_map().span_to_snippet(param_hir.span) else {
+                        return;
+                    };
                     // Otherwise, keep it as-is.
                     suggestion += &arg;
                 }

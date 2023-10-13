@@ -254,7 +254,8 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // projection coming from another associated type. See
             // `tests/ui/associated-types/point-at-type-on-obligation-failure.rs` and
             // `traits-assoc-type-in-supertrait-bad.rs`.
-            if let Some(ty::Alias(ty::Projection, projection_ty)) = proj.term.ty().map(|ty| ty.kind())
+            if let Some(ty::Alias(ty::Projection, projection_ty)) =
+                proj.term.ty().map(|ty| ty.kind())
                 && let Some(&impl_item_id) =
                     tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.def_id)
                 && let Some(impl_item_span) = items
@@ -270,8 +271,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);
             if let ty::Alias(ty::Projection, ty::AliasTy { def_id, .. }) = *pred.self_ty().kind()
-                && let Some(&impl_item_id) =
-                    tcx.impl_item_implementor_ids(impl_def_id).get(&def_id)
+                && let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(&def_id)
                 && let Some(impl_item_span) = items
                     .iter()
                     .find(|item| item.id.owner_id.to_def_id() == impl_item_id)

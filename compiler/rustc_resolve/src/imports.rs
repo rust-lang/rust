@@ -313,26 +313,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     (true, true) => {
                         // FIXME: remove `!binding.is_ambiguity()` after delete the warning ambiguity.
                         if !binding.is_ambiguity()
-                            && let NameBindingKind::Import { import: old_import, .. } = old_binding.kind
+                            && let NameBindingKind::Import { import: old_import, .. } =
+                                old_binding.kind
                             && let NameBindingKind::Import { import, .. } = binding.kind
-                            && old_import == import {
+                            && old_import == import
+                        {
                             // We should replace the `old_binding` with `binding` regardless
                             // of whether they has same resolution or not when they are
                             // imported from the same glob-import statement.
                             resolution.binding = Some(binding);
                         } else if res != old_binding.res() {
                             let binding = if warn_ambiguity {
-                                this.warn_ambiguity(
-                                    AmbiguityKind::GlobVsGlob,
-                                    old_binding,
-                                    binding,
-                                )
+                                this.warn_ambiguity(AmbiguityKind::GlobVsGlob, old_binding, binding)
                             } else {
-                                this.ambiguity(
-                                    AmbiguityKind::GlobVsGlob,
-                                    old_binding,
-                                    binding,
-                                )
+                                this.ambiguity(AmbiguityKind::GlobVsGlob, old_binding, binding)
                             };
                             resolution.binding = Some(binding);
                         } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
@@ -434,7 +428,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             let t = f(self, resolution);
 
-            if let Some(binding) = resolution.binding() && old_binding != Some(binding) {
+            if let Some(binding) = resolution.binding()
+                && old_binding != Some(binding)
+            {
                 (binding, t, warn_ambiguity || old_binding.is_some())
             } else {
                 return t;
@@ -637,7 +633,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                         if binding.res() != Res::Err
                             && glob_binding.res() != Res::Err
-                            && let NameBindingKind::Import { import: glob_import, .. } = glob_binding.kind
+                            && let NameBindingKind::Import { import: glob_import, .. } =
+                                glob_binding.kind
                             && let Some(binding_id) = binding_id
                             && let Some(glob_import_id) = glob_import.id()
                             && let glob_import_def_id = self.local_def_id(glob_import_id)
@@ -738,11 +735,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             match &import.kind {
                 ImportKind::Single { source, .. } => {
                     if let Some(ModuleOrUniformRoot::Module(module)) = import.imported_module.get()
-                     && let Some(module) = module.opt_def_id()
+                        && let Some(module) = module.opt_def_id()
                     {
                         self.find_cfg_stripped(&mut diag, &source.name, module)
                     }
-                },
+                }
                 _ => {}
             }
         }
@@ -989,10 +986,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                     }
                     if !is_prelude
-                    && let Some(max_vis) = max_vis.get()
-                    && !max_vis.is_at_least(import.expect_vis(), self.tcx)
+                        && let Some(max_vis) = max_vis.get()
+                        && !max_vis.is_at_least(import.expect_vis(), self.tcx)
                     {
-                        self.lint_buffer.buffer_lint(UNUSED_IMPORTS, id, import.span, fluent::resolve_glob_import_doesnt_reexport);
+                        self.lint_buffer.buffer_lint(
+                            UNUSED_IMPORTS,
+                            id,
+                            import.span,
+                            fluent::resolve_glob_import_doesnt_reexport,
+                        );
                     }
                     return None;
                 }

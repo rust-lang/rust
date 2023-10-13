@@ -1220,7 +1220,12 @@ pub struct AliasTy<'tcx> {
 impl<'tcx> AliasTy<'tcx> {
     pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
         match tcx.def_kind(self.def_id) {
-            DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
+            DefKind::AssocTy
+                if let DefKind::Impl { of_trait: false } =
+                    tcx.def_kind(tcx.parent(self.def_id)) =>
+            {
+                ty::Inherent
+            }
             DefKind::AssocTy => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
             DefKind::TyAlias => ty::Weak,

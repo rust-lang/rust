@@ -346,7 +346,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // tighter bound than `'static`.
                 //
                 // (This might e.g. arise from being asked to prove `for<'a> { 'b: 'a }`.)
-                if let ty::RePlaceholder(p) = *lub && b_universe.cannot_name(p.universe) {
+                if let ty::RePlaceholder(p) = *lub
+                    && b_universe.cannot_name(p.universe)
+                {
                     lub = self.tcx().lifetimes.re_static;
                 }
 

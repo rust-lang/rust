@@ -168,14 +168,15 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             && self.storage_to_remove.contains(l)
         {
             stmt.make_nop();
-            return
+            return;
         }
 
         self.super_statement(stmt, loc);
 
         // Do not leave tautological assignments around.
         if let StatementKind::Assign(box (lhs, ref rhs)) = stmt.kind
-            && let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)) | Rvalue::CopyForDeref(rhs) = *rhs
+            && let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)) | Rvalue::CopyForDeref(rhs) =
+                *rhs
             && lhs == rhs
         {
             stmt.make_nop();

@@ -226,7 +226,9 @@ impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
         let mut suggested = false;
         // Don't suggest setting the type params if there are some already: the order is
         // tricky to get right and the user will already know what the syntax is.
-        if let Some(snippet) = self.span_snippet && self.empty_generic_args {
+        if let Some(snippet) = self.span_snippet
+            && self.empty_generic_args
+        {
             if snippet.ends_with('>') {
                 // The user wrote `Trait<'a, T>` or similar. To provide an accurate suggestion
                 // we would have to preserve the right order. For now, as clearly the user is

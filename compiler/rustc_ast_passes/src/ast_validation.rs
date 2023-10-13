@@ -215,14 +215,15 @@ impl<'a> AstValidator<'a> {
     }
 
     fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
-        if let Some(ident) = field.ident &&
-            ident.name == kw::Underscore {
-                self.check_unnamed_field_ty(&field.ty, ident.span);
-                self.visit_vis(&field.vis);
-                self.visit_ident(ident);
-                self.visit_ty_common(&field.ty);
-                self.walk_ty(&field.ty);
-                walk_list!(self, visit_attribute, &field.attrs);
+        if let Some(ident) = field.ident
+            && ident.name == kw::Underscore
+        {
+            self.check_unnamed_field_ty(&field.ty, ident.span);
+            self.visit_vis(&field.vis);
+            self.visit_ident(ident);
+            self.visit_ty_common(&field.ty);
+            self.walk_ty(&field.ty);
+            walk_list!(self, visit_attribute, &field.attrs);
         } else {
             self.visit_field_def(field);
         }
@@ -291,13 +292,11 @@ impl<'a> AstValidator<'a> {
     }
 
     fn deny_unnamed_field(&self, field: &FieldDef) {
-        if let Some(ident) = field.ident &&
-            ident.name == kw::Underscore {
-                self.err_handler()
-                    .emit_err(errors::InvalidUnnamedField {
-                        span: field.span,
-                        ident_span: ident.span
-                    });
+        if let Some(ident) = field.ident
+            && ident.name == kw::Underscore
+        {
+            self.err_handler()
+                .emit_err(errors::InvalidUnnamedField { span: field.span, ident_span: ident.span });
         }
     }
 
@@ -1180,28 +1179,40 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
                     self.err_handler().emit_err(errors::OptionalTraitSupertrait {
                         span: poly.span,
-                        path_str: pprust::path_to_string(&poly.trait_ref.path)
+                        path_str: pprust::path_to_string(&poly.trait_ref.path),
                     });
                 }
                 (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
-                    self.err_handler().emit_err(errors::OptionalTraitObject {span: poly.span});
+                    self.err_handler().emit_err(errors::OptionalTraitObject { span: poly.span });
                 }
-                (_, TraitBoundModifier::MaybeConst) if let Some(reason) = &self.disallow_tilde_const => {
+                (_, TraitBoundModifier::MaybeConst)
+                    if let Some(reason) = &self.disallow_tilde_const =>
+                {
                     let reason = match reason {
-                        DisallowTildeConstContext::TraitObject => errors::TildeConstReason::TraitObject,
-                        DisallowTildeConstContext::Fn(FnKind::Closure(..)) => errors::TildeConstReason::Closure,
-                        DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => errors::TildeConstReason::Function { ident: ident.span },
+                        DisallowTildeConstContext::TraitObject => {
+                            errors::TildeConstReason::TraitObject
+                        }
+                        DisallowTildeConstContext::Fn(FnKind::Closure(..)) => {
+                            errors::TildeConstReason::Closure
+                        }
+                        DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
+                            errors::TildeConstReason::Function { ident: ident.span }
+                        }
                     };
-                    self.err_handler().emit_err(errors::TildeConstDisallowed {
-                        span: bound.span(),
-                        reason
-                    });
+                    self.err_handler()
+                        .emit_err(errors::TildeConstDisallowed { span: bound.span(), reason });
                 }
                 (_, TraitBoundModifier::MaybeConstMaybe) => {
-                    self.err_handler().emit_err(errors::OptionalConstExclusive {span: bound.span(), modifier: "?" });
+                    self.err_handler().emit_err(errors::OptionalConstExclusive {
+                        span: bound.span(),
+                        modifier: "?",
+                    });
                 }
                 (_, TraitBoundModifier::MaybeConstNegative) => {
-                    self.err_handler().emit_err(errors::OptionalConstExclusive {span: bound.span(), modifier: "!" });
+                    self.err_handler().emit_err(errors::OptionalConstExclusive {
+                        span: bound.span(),
+                        modifier: "!",
+                    });
                 }
                 _ => {}
             }
@@ -1214,7 +1225,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         {
             for arg in &args.args {
                 if let ast::AngleBracketedArg::Constraint(constraint) = arg {
-                    self.err_handler().emit_err(errors::ConstraintOnNegativeBound { span: constraint.span });
+                    self.err_handler()
+                        .emit_err(errors::ConstraintOnNegativeBound { span: constraint.span });
                 }
             }
         }

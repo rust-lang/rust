@@ -1555,7 +1555,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn terminate_block(&mut self, reason: UnwindTerminateReason) -> Bx::BasicBlock {
-        if let Some((cached_bb, cached_reason)) = self.terminate_block && reason == cached_reason {
+        if let Some((cached_bb, cached_reason)) = self.terminate_block
+            && reason == cached_reason
+        {
             return cached_bb;
         }
 

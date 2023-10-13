@@ -508,7 +508,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH,
                 id,
                 span,
-                NontrivialStructuralMatch {non_sm_ty}
+                NontrivialStructuralMatch { non_sm_ty },
             );
         }
 

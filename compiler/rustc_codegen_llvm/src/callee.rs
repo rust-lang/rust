@@ -46,8 +46,8 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
         llfn
     } else {
         let instance_def_id = instance.def_id();
-        let llfn = if tcx.sess.target.arch == "x86" &&
-            let Some(dllimport) = common::get_dllimport(tcx, instance_def_id, sym)
+        let llfn = if tcx.sess.target.arch == "x86"
+            && let Some(dllimport) = common::get_dllimport(tcx, instance_def_id, sym)
         {
             // Fix for https://github.com/rust-lang/rust/issues/104453
             // On x86 Windows, LLVM uses 'L' as the prefix for any private
@@ -60,8 +60,18 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
             // LLVM will prefix the name with `__imp_`. Ideally, we'd like the
             // existing logic below to set the Storage Class, but it has an
             // exemption for MinGW for backwards compatability.
-            let llfn = cx.declare_fn(&common::i686_decorated_name(&dllimport, common::is_mingw_gnu_toolchain(&tcx.sess.target), true), fn_abi, Some(instance));
-            unsafe { llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport); }
+            let llfn = cx.declare_fn(
+                &common::i686_decorated_name(
+                    &dllimport,
+                    common::is_mingw_gnu_toolchain(&tcx.sess.target),
+                    true,
+                ),
+                fn_abi,
+                Some(instance),
+            );
+            unsafe {
+                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
+            }
             llfn
         } else {
             cx.declare_fn(sym, fn_abi, Some(instance))

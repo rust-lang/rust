@@ -126,7 +126,7 @@ impl Span {
                 return Span {
                     lo_or_index: lo2,
                     len_with_tag_or_marker: PARENT_TAG | len as u16,
-                    ctxt_or_parent_or_marker: parent2 as u16
+                    ctxt_or_parent_or_marker: parent2 as u16,
                 };
             }
         }

@@ -177,7 +177,9 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstHigherRankedOutlives<'tcx> {
         value: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("self.pattern_depth = {:?}", self.pattern_depth);
-        if let ty::RegionKind::ReLateBound(depth, br) = pattern.kind() && depth == self.pattern_depth {
+        if let ty::RegionKind::ReLateBound(depth, br) = pattern.kind()
+            && depth == self.pattern_depth
+        {
             self.bind(br, value)
         } else if pattern == value {
             Ok(pattern)

@@ -46,22 +46,26 @@ fn incorrect_check<'a, 'tcx: 'a>(
         if let ExprKind::MethodCall(_, _expr, [], _) = e.kind
             && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
             && cx.tcx.has_attr(def_id, sym::rustc_never_returns_null_ptr)
-            && let Some(fn_name) = cx.tcx.opt_item_ident(def_id) {
+            && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
+        {
             return Some(PtrNullChecksDiag::FnRet { fn_name });
         } else if let ExprKind::Call(path, _args) = e.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
             && cx.tcx.has_attr(def_id, sym::rustc_never_returns_null_ptr)
-            && let Some(fn_name) = cx.tcx.opt_item_ident(def_id) {
+            && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
+        {
             return Some(PtrNullChecksDiag::FnRet { fn_name });
         }
         e = if let ExprKind::Cast(expr, t) = e.kind
-            && let TyKind::Ptr(_) = t.kind {
+            && let TyKind::Ptr(_) = t.kind
+        {
             had_at_least_one_cast = true;
             expr
         } else if let ExprKind::MethodCall(_, expr, [], _) = e.kind
             && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-            && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::ptr_cast | sym::ptr_cast_mut)) {
+            && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::ptr_cast | sym::ptr_cast_mut))
+        {
             had_at_least_one_cast = true;
             expr
         } else if had_at_least_one_cast {
@@ -127,10 +131,11 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                     // (fn_ptr as *<const/mut> <ty>) == (0 as <ty>)
                     ExprKind::Cast(cast_expr, _)
                         if let ExprKind::Lit(spanned) = cast_expr.kind
-                            && let LitKind::Int(v, _) = spanned.node && v == 0 =>
+                            && let LitKind::Int(v, _) = spanned.node
+                            && v == 0 =>
                     {
                         cx.emit_spanned_lint(USELESS_PTR_NULL_CHECKS, expr.span, diag)
-                    },
+                    }
 
                     // Catching:
                     // (fn_ptr as *<const/mut> <ty>) == std::ptr::null()
@@ -141,9 +146,9 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                             && (diag_item == sym::ptr_null || diag_item == sym::ptr_null_mut) =>
                     {
                         cx.emit_spanned_lint(USELESS_PTR_NULL_CHECKS, expr.span, diag)
-                    },
+                    }
 
-                    _ => {},
+                    _ => {}
                 }
             }
             _ => {}

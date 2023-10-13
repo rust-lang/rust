@@ -163,13 +163,13 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         let ty_vars = infcx_inner.type_variables();
         let var_origin = ty_vars.var_origin(ty_vid);
         if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind
-            && name != kw::SelfUpper && !var_origin.span.from_expansion()
+            && name != kw::SelfUpper
+            && !var_origin.span.from_expansion()
         {
             let generics = infcx.tcx.generics_of(infcx.tcx.parent(def_id));
             let idx = generics.param_def_id_to_index(infcx.tcx, def_id).unwrap();
             let generic_param_def = generics.param_at(idx as usize, infcx.tcx);
-            if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param_def.kind
-            {
+            if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param_def.kind {
                 None
             } else {
                 Some(name)
@@ -792,8 +792,9 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         let cost = self.source_cost(&new_source) + self.attempt;
         debug!(?cost);
         self.attempt += 1;
-        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id: did, ..}, .. }) = self.infer_source
-            && let InferSourceKind::LetBinding { ref ty, ref mut def_id, ..} = new_source.kind
+        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id: did, .. }, .. }) =
+            self.infer_source
+            && let InferSourceKind::LetBinding { ref ty, ref mut def_id, .. } = new_source.kind
             && ty.is_ty_or_numeric_infer()
         {
             // Customize the output so we talk about `let x: Vec<_> = iter.collect();` instead of
@@ -1242,7 +1243,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                     successor,
                     args,
                     def_id,
-                }
+                },
             })
         }
     }

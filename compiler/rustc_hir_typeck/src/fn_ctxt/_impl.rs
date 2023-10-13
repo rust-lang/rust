@@ -445,7 +445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => t,
-            None if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx,e),
+            None if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
             None => {
                 bug!(
                     "no type for node {} in fcx {}",
@@ -459,7 +459,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => Some(t),
-            None if let Some(e) = self.tainted_by_errors() => Some(Ty::new_error(self.tcx,e)),
+            None if let Some(e) = self.tainted_by_errors() => Some(Ty::new_error(self.tcx, e)),
             None => None,
         }
     }
@@ -713,7 +713,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::GenericArgKind::Type(ty) = ty.unpack()
                     && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind()
                     && let Some(def_id) = def_id.as_local()
-                    && self.opaque_type_origin(def_id).is_some() {
+                    && self.opaque_type_origin(def_id).is_some()
+                {
                     return None;
                 }
             }
@@ -833,7 +834,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
             .and_then(|r| {
                 // lint bare trait if the method is found in the trait
-                if span.edition().at_least_rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
+                if span.edition().at_least_rust_2021()
+                    && let Some(mut diag) = self
+                        .tcx
+                        .sess
+                        .diagnostic()
+                        .steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
+                {
                     diag.emit();
                 }
                 Ok(r)
@@ -863,7 +870,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 // emit or cancel the diagnostic for bare traits
-                if span.edition().at_least_rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
+                if span.edition().at_least_rust_2021()
+                    && let Some(mut diag) = self
+                        .tcx
+                        .sess
+                        .diagnostic()
+                        .steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
+                {
                     if trait_missing_method {
                         // cancel the diag for bare traits when meeting `MyTrait::missing_method`
                         diag.cancel();
@@ -949,12 +962,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: hir::ItemKind::Fn(ref sig, ..),
                     owner_id,
                     ..
-                })) = self.tcx.hir().find_parent(hir_id) => Some((
-                hir::HirId::make_owner(owner_id.def_id),
-                &sig.decl,
-                ident,
-                ident.name != sym::main,
-            )),
+                })) = self.tcx.hir().find_parent(hir_id) =>
+            {
+                Some((
+                    hir::HirId::make_owner(owner_id.def_id),
+                    &sig.decl,
+                    ident,
+                    ident.name != sym::main,
+                ))
+            }
             _ => None,
         }
     }
@@ -1077,11 +1093,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
         match res {
-            Res::Def(DefKind::Ctor(CtorOf::Variant, _), _)
-                if let Some(self_ty) = self_ty =>
-            {
+            Res::Def(DefKind::Ctor(CtorOf::Variant, _), _) if let Some(self_ty) = self_ty => {
                 let adt_def = self_ty.normalized.ty_adt_def().unwrap();
-                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did(), self_ty: self_ty.raw });
+                user_self_ty =
+                    Some(UserSelfTy { impl_def_id: adt_def.did(), self_ty: self_ty.raw });
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
@@ -1090,9 +1105,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let container_id = assoc_item.container_id(tcx);
                 debug!(?def_id, ?container, ?container_id);
                 match container {
-                    ty::TraitContainer => {
-                        callee::check_legal_trait_for_method_call(tcx, span, None, span, container_id)
-                    }
+                    ty::TraitContainer => callee::check_legal_trait_for_method_call(
+                        tcx,
+                        span,
+                        None,
+                        span,
+                        container_id,
+                    ),
                     ty::ImplContainer => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
@@ -1478,12 +1497,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(normalized_ty) => normalized_ty,
                 Err(errors) => {
                     let guar = self.err_ctxt().report_fulfillment_errors(errors);
-                    return Ty::new_error(self.tcx,guar);
+                    return Ty::new_error(self.tcx, guar);
                 }
             }
         } else {
             ty
-       }
+        }
     }
 
     /// Resolves `ty` by a single level if `ty` is a type variable.

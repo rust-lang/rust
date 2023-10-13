@@ -517,8 +517,10 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         );
 
                         if let DefKind::AssocConst = def_kind
-                          && let Some(t) = term.ty() && (t.is_enum() || t.references_error())
-                          && tcx.features().associated_const_equality {
+                            && let Some(t) = term.ty()
+                            && (t.is_enum() || t.references_error())
+                            && tcx.features().associated_const_equality
+                        {
                             err.span_suggestion(
                                 binding.span,
                                 "if equating a const, try wrapping with braces",

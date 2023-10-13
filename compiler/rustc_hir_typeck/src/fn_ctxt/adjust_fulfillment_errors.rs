@@ -129,21 +129,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return false;
                 }
 
-                for param in
-                    [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
                 {
                     if self.blame_specific_arg_if_possible(
-                            error,
-                            def_id,
-                            param,
-                            *call_hir_id,
-                            callee.span,
-                            None,
-                            args,
-                        )
-                    {
+                        error,
+                        def_id,
+                        param,
+                        *call_hir_id,
+                        callee.span,
+                        None,
+                        args,
+                    ) {
                         return true;
                     }
                 }
@@ -346,8 +344,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let TypeVariableOriginKind::TypeParameterDefinition(_, def_id) = origin.kind
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
-                    && let Some(subst) = ty::GenericArgs::identity_for_item(self.0.tcx, self.1)
-                        .get(index as usize)
+                    && let Some(subst) =
+                        ty::GenericArgs::identity_for_item(self.0.tcx, self.1).get(index as usize)
                 {
                     ControlFlow::Break(*subst)
                 } else {
@@ -364,11 +362,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
     ) -> bool {
         if let traits::FulfillmentErrorCode::CodeSelectionError(
-            traits::SelectionError::OutputTypeParameterMismatch(box traits::SelectionOutputTypeParameterMismatch{
-                expected_trait_ref, ..
-            }),
+            traits::SelectionError::OutputTypeParameterMismatch(
+                box traits::SelectionOutputTypeParameterMismatch { expected_trait_ref, .. },
+            ),
         ) = error.code
-            && let ty::Closure(def_id, _) | ty::Generator(def_id, ..) = expected_trait_ref.skip_binder().self_ty().kind()
+            && let ty::Closure(def_id, _) | ty::Generator(def_id, ..) =
+                expected_trait_ref.skip_binder().self_ty().kind()
             && span.overlaps(self.tcx.def_span(*def_id))
         {
             true
@@ -446,10 +445,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
         // If there's one field that references the given generic, great!
         if let [(idx, _)] = args_referencing_param.as_slice()
-            && let Some(arg) = receiver
-                .map_or(args.get(*idx), |rcvr| if *idx == 0 { Some(rcvr) } else { args.get(*idx - 1) }) {
-
-            error.obligation.cause.span = arg.span.find_ancestor_in_same_ctxt(error.obligation.cause.span).unwrap_or(arg.span);
+            && let Some(arg) = receiver.map_or(args.get(*idx), |rcvr| {
+                if *idx == 0 { Some(rcvr) } else { args.get(*idx - 1) }
+            })
+        {
+            error.obligation.cause.span = arg
+                .span
+                .find_ancestor_in_same_ctxt(error.obligation.cause.span)
+                .unwrap_or(arg.span);
 
             if let hir::Node::Expr(arg_expr) = self.tcx.hir().get(arg.hir_id) {
                 // This is more specific than pointing at the entire argument.
@@ -934,16 +937,16 @@ fn find_param_in_ty<'tcx>(
             return true;
         }
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                && let ty::Alias(ty::Projection | ty::Inherent, ..) = ty.kind()
-            {
-                // This logic may seem a bit strange, but typically when
-                // we have a projection type in a function signature, the
-                // argument that's being passed into that signature is
-                // not actually constraining that projection's args in
-                // a meaningful way. So we skip it, and see improvements
-                // in some UI tests.
-                walk.skip_current_subtree();
-            }
+            && let ty::Alias(ty::Projection | ty::Inherent, ..) = ty.kind()
+        {
+            // This logic may seem a bit strange, but typically when
+            // we have a projection type in a function signature, the
+            // argument that's being passed into that signature is
+            // not actually constraining that projection's args in
+            // a meaningful way. So we skip it, and see improvements
+            // in some UI tests.
+            walk.skip_current_subtree();
+        }
     }
     false
 }

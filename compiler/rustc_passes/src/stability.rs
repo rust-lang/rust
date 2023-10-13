@@ -998,14 +998,17 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         all_implications: &FxHashMap<Symbol, Symbol>,
     ) {
         for (feature, since) in defined_features {
-            if let Some(since) = since && let Some(span) = remaining_lib_features.get(&feature) {
+            if let Some(since) = since
+                && let Some(span) = remaining_lib_features.get(&feature)
+            {
                 // Warn if the user has enabled an already-stable lib feature.
                 if let Some(implies) = all_implications.get(&feature) {
-                    unnecessary_partially_stable_feature_lint(tcx, *span, *feature, *implies, *since);
+                    unnecessary_partially_stable_feature_lint(
+                        tcx, *span, *feature, *implies, *since,
+                    );
                 } else {
                     unnecessary_stable_feature_lint(tcx, *span, *feature, *since);
                 }
-
             }
             remaining_lib_features.remove(feature);
 

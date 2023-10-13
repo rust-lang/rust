@@ -421,13 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
                 {
                     // Try suggesting `foo(a)` -> `a.foo()` if possible.
-                    self.suggest_call_as_method(
-                        &mut diag,
-                        segment,
-                        arg_exprs,
-                        call_expr,
-                        expected
-                    );
+                    self.suggest_call_as_method(&mut diag, segment, arg_exprs, call_expr, expected);
                     diag.emit();
                 }
 

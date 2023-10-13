@@ -99,7 +99,9 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn terminate_block(&mut self, reason: UnwindTerminateReason) -> BasicBlock {
-        if let Some((cached_bb, cached_reason)) = self.terminate_block && reason == cached_reason {
+        if let Some((cached_bb, cached_reason)) = self.terminate_block
+            && reason == cached_reason
+        {
             return cached_bb;
         }
 

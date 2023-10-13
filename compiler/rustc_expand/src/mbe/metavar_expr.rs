@@ -124,8 +124,7 @@ fn parse_depth<'sess>(
         && let Ok(n_usize) = usize::try_from(n_u128)
     {
         Ok(n_usize)
-    }
-    else {
+    } else {
         let msg = "only unsuffixes integer literals are supported in meta-variable expressions";
         Err(sess.span_diagnostic.struct_span_err(span, msg))
     }
@@ -137,15 +136,16 @@ fn parse_ident<'sess>(
     sess: &'sess ParseSess,
     span: Span,
 ) -> PResult<'sess, Ident> {
-    if let Some(tt) = iter.next() && let TokenTree::Token(token, _) = tt {
+    if let Some(tt) = iter.next()
+        && let TokenTree::Token(token, _) = tt
+    {
         if let Some((elem, false)) = token.ident() {
             return Ok(elem);
         }
         let token_str = pprust::token_to_string(token);
-        let mut err = sess.span_diagnostic.struct_span_err(
-            span,
-            format!("expected identifier, found `{}`", &token_str)
-        );
+        let mut err = sess
+            .span_diagnostic
+            .struct_span_err(span, format!("expected identifier, found `{}`", &token_str));
         err.span_suggestion(
             token.span,
             format!("try removing `{}`", &token_str),

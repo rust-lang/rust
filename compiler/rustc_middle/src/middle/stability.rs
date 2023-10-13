@@ -455,7 +455,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 // If this item was previously part of a now-stabilized feature which is still
                 // active (i.e. the user hasn't removed the attribute for the stabilized feature
                 // yet) then allow use of this item.
-                if let Some(implied_by) = implied_by && self.features().declared(implied_by) {
+                if let Some(implied_by) = implied_by
+                    && self.features().declared(implied_by)
+                {
                     return EvalResult::Allow;
                 }
 

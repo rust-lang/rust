@@ -140,8 +140,8 @@ pub fn expand_concat_bytes(
             }
             ast::ExprKind::Repeat(expr, count) => {
                 if let ast::ExprKind::Lit(token_lit) = count.value.kind
-                && let Ok(ast::LitKind::Int(count_val, _)) =
-                    ast::LitKind::from_token_lit(token_lit)
+                    && let Ok(ast::LitKind::Int(count_val, _)) =
+                        ast::LitKind::from_token_lit(token_lit)
                 {
                     if let Some(elem) =
                         handle_array_element(cx, &mut has_errors, &mut missing_literals, expr)
@@ -151,7 +151,7 @@ pub fn expand_concat_bytes(
                         }
                     }
                 } else {
-                    cx.emit_err(errors::ConcatBytesBadRepeat {span: count.value.span });
+                    cx.emit_err(errors::ConcatBytesBadRepeat { span: count.value.span });
                 }
             }
             &ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {

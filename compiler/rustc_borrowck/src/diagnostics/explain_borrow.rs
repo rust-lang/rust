@@ -76,10 +76,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 expr_finder.visit_expr(body.value);
                 if let Some(mut expr) = expr_finder.result {
                     while let hir::ExprKind::AddrOf(_, _, inner)
-                        | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
-                        | hir::ExprKind::Field(inner, _)
-                        | hir::ExprKind::MethodCall(_, inner, _, _)
-                        | hir::ExprKind::Index(inner, _, _) = &expr.kind
+                    | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
+                    | hir::ExprKind::Field(inner, _)
+                    | hir::ExprKind::MethodCall(_, inner, _, _)
+                    | hir::ExprKind::Index(inner, _, _) = &expr.kind
                     {
                         expr = inner;
                     }
@@ -88,10 +88,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         && let hir::def::Res::Local(hir_id) = p.res
                         && let Some(hir::Node::Pat(pat)) = tcx.hir().find(hir_id)
                     {
-                        err.span_label(
-                            pat.span,
-                            format!("binding `{ident}` declared here"),
-                        );
+                        err.span_label(pat.span, format!("binding `{ident}` declared here"));
                     }
                 }
             }
@@ -419,7 +416,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if self.local_names[local].is_some()
                     && let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place
                     && let Some(borrowed_local) = place.as_local()
-                    && self.local_names[borrowed_local].is_some() && local != borrowed_local
+                    && self.local_names[borrowed_local].is_some()
+                    && local != borrowed_local
                 {
                     should_note_order = true;
                 }

@@ -481,8 +481,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                         fn_maybe_err(tcx, assoc_item.ident(tcx).span, abi);
                     }
                     ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
-                        let trait_args =
-                            GenericArgs::identity_for_item(tcx, id.owner_id);
+                        let trait_args = GenericArgs::identity_for_item(tcx, id.owner_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
@@ -502,7 +501,8 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
         }
         DefKind::OpaqueTy => {
             let origin = tcx.opaque_type_origin(id.owner_id.def_id);
-            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
+            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
+            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir().get_by_def_id(fn_def_id)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {
@@ -589,7 +589,9 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
         }
         DefKind::GlobalAsm => {
             let it = tcx.hir().item(id);
-            let hir::ItemKind::GlobalAsm(asm) = it.kind else { span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it) };
+            let hir::ItemKind::GlobalAsm(asm) = it.kind else {
+                span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it)
+            };
             InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, id.owner_id.def_id);
         }
         _ => {}
@@ -873,10 +875,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_) => (), // struct(u8, u8, u8, u8) is ok
             ty::Array(t, _) if matches!(t.kind(), ty::Param(_)) => (), // pass struct<T>([T; N]) through, let monomorphization catch errors
             ty::Array(t, _clen)
-                if matches!(
-                    t.kind(),
-                    ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_)
-                ) =>
+                if matches!(t.kind(), ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_)) =>
             { /* struct([f32; 4]) is ok */ }
             _ => {
                 struct_span_err!(
@@ -899,17 +898,17 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
         for attr in tcx.get_attrs(def.did(), sym::repr) {
             for r in attr::parse_repr_attr(&tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r
-                && let Some(repr_pack) = repr.pack
-                && pack as u64 != repr_pack.bytes()
-            {
-                        struct_span_err!(
-                            tcx.sess,
-                            sp,
-                            E0634,
-                            "type has conflicting packed representation hints"
-                        )
-                        .emit();
-            }
+                    && let Some(repr_pack) = repr.pack
+                    && pack as u64 != repr_pack.bytes()
+                {
+                    struct_span_err!(
+                        tcx.sess,
+                        sp,
+                        E0634,
+                        "type has conflicting packed representation hints"
+                    )
+                    .emit();
+                }
             }
         }
         if repr.align.is_some() {
@@ -1174,7 +1173,8 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
         let (span, display_discr) = match var.discr {
             ty::VariantDiscr::Explicit(discr_def_id) => {
                 // In the case the discriminant is both a duplicate and overflowed, let the user know
-                if let hir::Node::AnonConst(expr) = tcx.hir().get_by_def_id(discr_def_id.expect_local())
+                if let hir::Node::AnonConst(expr) =
+                    tcx.hir().get_by_def_id(discr_def_id.expect_local())
                     && let hir::ExprKind::Lit(lit) = &tcx.hir().body(expr.body).value.kind
                     && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
                     && *lit_value != dis.val
@@ -1303,15 +1303,9 @@ pub(super) fn check_type_params_are_used<'tcx>(
             && let ty::GenericParamDefKind::Type { .. } = param.kind
         {
             let span = tcx.def_span(param.def_id);
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0091,
-                "type parameter `{}` is unused",
-                param.name,
-            )
-            .span_label(span, "unused type parameter")
-            .emit();
+            struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name,)
+                .span_label(span, "unused type parameter")
+                .emit();
         }
     }
 }
@@ -1430,7 +1424,10 @@ fn opaque_type_cycle_error(
                     let mut label_match = |ty: Ty<'_>, span| {
                         for arg in ty.walk() {
                             if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                                && let ty::Alias(ty::Opaque, ty::AliasTy { def_id: captured_def_id, .. }) = *ty.kind()
+                                && let ty::Alias(
+                                    ty::Opaque,
+                                    ty::AliasTy { def_id: captured_def_id, .. },
+                                ) = *ty.kind()
                                 && captured_def_id == opaque_def_id.to_def_id()
                             {
                                 err.span_label(

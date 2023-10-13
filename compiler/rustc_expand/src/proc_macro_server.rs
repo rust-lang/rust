@@ -226,9 +226,8 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                 }
 
-                Interpolated(nt) if let NtIdent(ident, is_raw) = *nt => {
-                    trees.push(TokenTree::Ident(Ident { sym: ident.name, is_raw, span: ident.span }))
-                }
+                Interpolated(nt) if let NtIdent(ident, is_raw) = *nt => trees
+                    .push(TokenTree::Ident(Ident { sym: ident.name, is_raw, span: ident.span })),
 
                 Interpolated(nt) => {
                     let stream = TokenStream::from_nonterminal_ast(&nt);

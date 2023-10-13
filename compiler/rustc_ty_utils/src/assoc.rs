@@ -192,7 +192,8 @@ fn associated_types_for_impl_traits_in_associated_fn(
                     if let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind
                         && self.rpits.insert(item_id.owner_id.def_id)
                     {
-                        let opaque_item = self.tcx.hir().expect_item(item_id.owner_id.def_id).expect_opaque_ty();
+                        let opaque_item =
+                            self.tcx.hir().expect_item(item_id.owner_id.def_id).expect_opaque_ty();
                         for bound in opaque_item.bounds {
                             intravisit::walk_param_bound(self, bound);
                         }

@@ -1155,7 +1155,8 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
 
         DefKind::OpaqueTy => {
             let origin = tcx.opaque_type_origin(def_id);
-            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
+            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
+            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir().get_by_def_id(fn_def_id)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {
@@ -1357,7 +1358,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_expn_that_defined(def_kind) {
                 record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
             }
-            if should_encode_span(def_kind) && let Some(ident_span) = tcx.def_ident_span(def_id) {
+            if should_encode_span(def_kind)
+                && let Some(ident_span) = tcx.def_ident_span(def_id)
+            {
                 record!(self.tables.def_ident_span[def_id] <- ident_span);
             }
             if def_kind.has_codegen_attrs() {
@@ -1958,8 +1961,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
 
                 let trait_ref = trait_ref.instantiate_identity();
-                let simplified_self_ty =
-                    fast_reject::simplify_type(self.tcx, trait_ref.self_ty(), TreatParams::AsCandidateKey);
+                let simplified_self_ty = fast_reject::simplify_type(
+                    self.tcx,
+                    trait_ref.self_ty(),
+                    TreatParams::AsCandidateKey,
+                );
                 fx_hash_map
                     .entry(trait_ref.def_id)
                     .or_default()
@@ -2372,8 +2378,9 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
     let classification = classify(value);
 
     if classification == Literal
-    && !value.span.from_expansion()
-    && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) {
+        && !value.span.from_expansion()
+        && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span)
+    {
         // For literals, we avoid invoking the pretty-printer and use the source snippet instead to
         // preserve certain stylistic choices the user likely made for the sake legibility like
         //

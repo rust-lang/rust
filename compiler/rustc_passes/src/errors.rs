@@ -1311,7 +1311,9 @@ impl<'a> IntoDiagnostic<'a> for NoMainErr {
             diag.span_label(self.sp.shrink_to_hi(), note);
         }
 
-        if let Some(main_def) = self.main_def_opt && main_def.opt_fn_def_id().is_none(){
+        if let Some(main_def) = self.main_def_opt
+            && main_def.opt_fn_def_id().is_none()
+        {
             // There is something at `crate::main`, but it is not a function definition.
             diag.span_label(main_def.span, fluent::passes_non_function_main);
         }

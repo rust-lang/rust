@@ -667,8 +667,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // will still match the original object type, but it won't pollute our
                 // type variables in any form, so just do that!
                 let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
-                    self.fcx
-                        .instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
+                    self.fcx.instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id());
@@ -1690,15 +1689,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
 
-                debug!(
-                    "comparing return_ty {:?} with xform ret ty {:?}",
-                    return_ty, xform_ret_ty
-                );
+                debug!("comparing return_ty {:?} with xform ret ty {:?}", return_ty, xform_ret_ty);
                 if let ProbeResult::Match = result
                     && self
-                    .at(&ObligationCause::dummy(), self.param_env)
-                    .sup(DefineOpaqueTypes::No, return_ty, xform_ret_ty)
-                    .is_err()
+                        .at(&ObligationCause::dummy(), self.param_env)
+                        .sup(DefineOpaqueTypes::No, return_ty, xform_ret_ty)
+                        .is_err()
                 {
                     result = ProbeResult::BadReturnType;
                 }
@@ -1959,15 +1955,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let Some(nested) = v.meta_item_list() {
                     // #[doc(alias("foo", "bar"))]
                     for n in nested {
-                        if let Some(lit) = n.lit() && name.as_str() == lit.symbol.as_str() {
+                        if let Some(lit) = n.lit()
+                            && name.as_str() == lit.symbol.as_str()
+                        {
                             return true;
                         }
                     }
                 } else if let Some(meta) = v.meta_item()
                     && let Some(lit) = meta.name_value_literal()
-                    && name.as_str() == lit.symbol.as_str() {
-                        // #[doc(alias = "foo")]
-                        return true;
+                    && name.as_str() == lit.symbol.as_str()
+                {
+                    // #[doc(alias = "foo")]
+                    return true;
                 }
             }
         }
