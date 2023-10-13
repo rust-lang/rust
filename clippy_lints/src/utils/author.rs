@@ -268,8 +268,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     fn qpath(&self, qpath: &Binding<&QPath<'_>>) {
         if let QPath::LangItem(lang_item, ..) = *qpath.value {
             chain!(self, "matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _))");
-        } else {
-            chain!(self, "match_qpath({qpath}, &[{}])", path_to_string(qpath.value));
+        } else if let Ok(path) = path_to_string(qpath.value) {
+            chain!(self, "match_qpath({qpath}, &[{}])", path);
         }
     }
 
@@ -738,8 +738,8 @@ fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
     get_attr(cx.sess(), attrs, "author").count() > 0
 }
 
-fn path_to_string(path: &QPath<'_>) -> String {
-    fn inner(s: &mut String, path: &QPath<'_>) {
+fn path_to_string(path: &QPath<'_>) -> Result<String, ()> {
+    fn inner(s: &mut String, path: &QPath<'_>) -> Result<(), ()> {
         match *path {
             QPath::Resolved(_, path) => {
                 for (i, segment) in path.segments.iter().enumerate() {
@@ -751,16 +751,18 @@ fn path_to_string(path: &QPath<'_>) -> String {
             },
             QPath::TypeRelative(ty, segment) => match &ty.kind {
                 hir::TyKind::Path(inner_path) => {
-                    inner(s, inner_path);
+                    inner(s, inner_path)?;
                     *s += ", ";
                     write!(s, "{:?}", segment.ident.as_str()).unwrap();
                 },
                 other => write!(s, "/* unimplemented: {other:?}*/").unwrap(),
             },
-            QPath::LangItem(..) => panic!("path_to_string: called for lang item qpath"),
+            QPath::LangItem(..) => return Err(()),
         }
+
+        Ok(())
     }
     let mut s = String::new();
-    inner(&mut s, path);
-    s
+    inner(&mut s, path)?;
+    Ok(s)
 }

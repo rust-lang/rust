@@ -1,0 +1,48 @@
+if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr)
+    && let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = pat.kind
+    && name.as_str() == "i"
+    && let ExprKind::Struct(qpath, fields, None) = arg.kind
+    && matches!(qpath, QPath::LangItem(LangItem::Range, _))
+    && fields.len() == 2
+    && fields[0].ident.as_str() == "start"
+    && let ExprKind::Lit(ref lit) = fields[0].expr.kind
+    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+    && fields[1].ident.as_str() == "end"
+    && let ExprKind::Lit(ref lit1) = fields[1].expr.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit1.node
+    && let ExprKind::Block(block, None) = body.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Semi(e) = block.stmts[0].kind
+    && let ExprKind::Block(block1, None) = e.kind
+    && block1.stmts.len() == 1
+    && let StmtKind::Semi(e1) = block1.stmts[0].kind
+    && let ExprKind::Call(func, args) = e1.kind
+    && let ExprKind::Path(ref qpath1) = func.kind
+    && match_qpath(qpath1, &["$crate", "io", "_print"])
+    && args.len() == 1
+    && let ExprKind::Call(func1, args1) = args[0].kind
+    && let ExprKind::Path(ref qpath2) = func1.kind
+    && args1.len() == 2
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = args1[0].kind
+    && let ExprKind::Array(elements) = inner.kind
+    && elements.len() == 2
+    && let ExprKind::Lit(ref lit2) = elements[0].kind
+    && let LitKind::Str(s, _) = lit2.node
+    && s.as_str() == ""
+    && let ExprKind::Lit(ref lit3) = elements[1].kind
+    && let LitKind::Str(s1, _) = lit3.node
+    && s1.as_str() == "\n"
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner1) = args1[1].kind
+    && let ExprKind::Array(elements1) = inner1.kind
+    && elements1.len() == 1
+    && let ExprKind::Call(func2, args2) = elements1[0].kind
+    && let ExprKind::Path(ref qpath3) = func2.kind
+    && args2.len() == 1
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner2) = args2[0].kind
+    && let ExprKind::Path(ref qpath4) = inner2.kind
+    && match_qpath(qpath4, &["i"])
+    && block1.expr.is_none()
+    && block.expr.is_none()
+{
+    // report your lint here
+}
