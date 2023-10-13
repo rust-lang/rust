@@ -860,9 +860,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             mir::ConstValue::Scalar(x) => adjust_scalar(x)?.into(),
             mir::ConstValue::ZeroSized => Immediate::Uninit,
-            mir::ConstValue::Slice { data, meta } => {
+            mir::ConstValue::Slice { alloc_id, meta, phantom: _ } => {
                 // This is const data, no mutation allowed.
-                let alloc_id = self.tcx.reserve_and_set_memory_alloc(data);
                 let ptr = Pointer::new(CtfeProvenance::from(alloc_id).as_immutable(), Size::ZERO);
                 Immediate::new_slice(self.global_root_pointer(ptr)?.into(), meta, self)
             }

@@ -274,7 +274,7 @@
 -         resume;
 +     bb7: {
 +         unreachable;
-+     }
+      }
 + 
 +     bb8: {
 +         _17 = const ();
@@ -370,6 +370,11 @@
 +         StorageDead(_19);
 +         _25 = discriminant(_18);
 +         switchInt(move _25) -> [0: bb9, 1: bb8, otherwise: bb7];
-      }
++     }
++ }
++ 
++ ALLOC0 (size: 31, align: 1) {
++     0x00 │ 60 52 65 61 64 79 60 20 70 6f 6c 6c 65 64 20 61 │ `Ready` polled a
++     0x10 │ 66 74 65 72 20 63 6f 6d 70 6c 65 74 69 6f 6e    │ fter completion
   }
   
