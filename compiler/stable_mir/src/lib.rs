@@ -201,13 +201,13 @@ pub trait Context {
     fn name_of_def_id(&self, def_id: DefId) -> String;
 
     /// Returns printable, human readable form of `Span`
-    fn print_span(&self, span: Span) -> String;
+    fn span_to_string(&self, span: Span) -> String;
 
     /// Return filename from given `Span`, for diagnostic purposes
     fn get_filename(&self, span: &Span) -> Filename;
 
     /// Return lines corresponding to this `Span`
-    fn get_lines(&self, span: &Span) -> Vec<LineInfo>;
+    fn get_lines(&self, span: &Span) -> LineInfo;
 
     /// Returns the `kind` of given `DefId`
     fn def_kind(&mut self, def_id: DefId) -> DefKind;

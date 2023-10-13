@@ -81,7 +81,7 @@ impl Debug for Span {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Span")
             .field("id", &self.0)
-            .field("repr", &with(|cx| cx.print_span(*self)))
+            .field("repr", &with(|cx| cx.span_to_string(*self)))
             .finish()
     }
 }
@@ -93,7 +93,7 @@ impl Span {
     }
 
     /// Return lines that corespond to this `Span`
-    pub fn get_lines(&self) -> Vec<LineInfo> {
+    pub fn get_lines(&self) -> LineInfo {
         with(|c| c.get_lines(&self))
     }
 }
@@ -102,8 +102,9 @@ impl Span {
 /// Information you get from `Span` in a struct form.
 /// Line and col start from 1.
 pub struct LineInfo {
-    pub line_index: usize,
+    pub start_line: usize,
     pub start_col: usize,
+    pub end_line: usize,
     pub end_col: usize,
 }
 
