@@ -220,7 +220,10 @@ fn overlap<'tcx>(
         ),
     );
 
-    if overlap_mode.use_implicit_negative() {
+    if overlap_mode.use_implicit_negative()
+        && !tcx.has_attr(impl1_def_id, sym::rustc_no_implicit_negative_coherence)
+        && !tcx.has_attr(impl2_def_id, sym::rustc_no_implicit_negative_coherence)
+    {
         for mode in [TreatInductiveCycleAs::Ambig, TreatInductiveCycleAs::Recur] {
             if let Some(failing_obligation) = selcx.with_treat_inductive_cycle_as(mode, |selcx| {
                 impl_intersection_has_impossible_obligation(selcx, &obligations)

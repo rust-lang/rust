@@ -1,6 +1,3 @@
-// check-pass
-// known-bug: #85099
-
 // Should fail. Can coerce `Pin<T>` into `Pin<U>` where
 // `T: Deref<Target: Unpin>` and `U: Deref<Target: !Unpin>`, using the
 // `CoerceUnsized` impl on `Pin` and an unorthodox `DerefMut` impl for
@@ -43,6 +40,7 @@ impl<'a, Fut: Future<Output = ()>> SomeTrait<'a, Fut> for Fut {
 }
 
 impl<'b, 'a, Fut> DerefMut for Pin<&'b dyn SomeTrait<'a, Fut>> {
+//~^ ERROR conflicting implementations of trait `DerefMut` for type `Pin<&dyn SomeTrait<'_, _>>`
     fn deref_mut<'c>(
         self: &'c mut Pin<&'b dyn SomeTrait<'a, Fut>>,
     ) -> &'c mut (dyn SomeTrait<'a, Fut> + 'b) {

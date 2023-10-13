@@ -715,6 +715,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#![rustc_coinductive] changes a trait to be coinductive, allowing cycles in the trait solver."
     ),
     rustc_attr!(
+        rustc_no_implicit_negative_coherence, AttributeType::Normal, template!(Word), WarnFollowing, @only_local: false,
+        "#![rustc_no_implicit_negative_coherence] makes the implementation overlap \
+        with other implementations even if where clauses are known to never hold"
+    ),
+    rustc_attr!(
         rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,
         "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),

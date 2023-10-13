@@ -406,7 +406,7 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 #[lang = "pin"]
 #[fundamental]
 #[repr(transparent)]
-#[derive(Copy, Clone)]
+#[derive(Copy)]
 pub struct Pin<P> {
     // FIXME(#93176): this field is made `#[unstable] #[doc(hidden)] pub` to:
     //   - deter downstream users from accessing it (which would be unsound!),
@@ -416,6 +416,15 @@ pub struct Pin<P> {
     #[unstable(feature = "unsafe_pin_internals", issue = "none")]
     #[doc(hidden)]
     pub pointer: P,
+}
+
+// N.B. manual implementation exists to add `rustc_no_implicit_negative_coherence`
+#[stable(feature = "pin", since = "1.33.0")]
+#[cfg_attr(not(bootstrap), rustc_no_implicit_negative_coherence)]
+impl<P: Clone> Clone for Pin<P> {
+    fn clone(&self) -> Self {
+        Pin { pointer: self.pointer.clone() }
+    }
 }
 
 // The following implementations aren't derived in order to avoid soundness
@@ -967,6 +976,7 @@ impl<P: Deref> Deref for Pin<P> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
+#[cfg_attr(not(bootstrap), rustc_no_implicit_negative_coherence)]
 impl<P: DerefMut<Target: Unpin>> DerefMut for Pin<P> {
     fn deref_mut(&mut self) -> &mut P::Target {
         Pin::get_mut(Pin::as_mut(self))
