@@ -426,6 +426,12 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn check_irrefutable(&mut self, pat: &Pat<'tcx>, origin: &str, sp: Option<Span>) {
+        // If we got errors while lowering, don't emit anything more.
+        if let Err(err) = pat.pat_error_reported() {
+            self.error = Err(err);
+            return;
+        }
+
         let mut cx = self.new_cx(self.lint_level, false);
 
         let pattern = self.lower_pattern(&mut cx, pat);
