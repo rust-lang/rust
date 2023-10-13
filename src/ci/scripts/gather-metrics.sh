@@ -1,6 +1,5 @@
 #!/bin/bash -eux
 
-# if upload_dir is not set, fetch the value from $1
 if [ -z "${upload_dir+x}" ]; then
     upload_dir="$1"
 fi
