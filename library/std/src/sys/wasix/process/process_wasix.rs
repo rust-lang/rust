@@ -10,7 +10,7 @@ use crate::io::ErrorKind;
 
 use libc::{c_int, pid_t};
 
-pub use crate::sys::{cvt, cvt_r, cvt_nz};
+pub use crate::sys::{cvt, cvt_nz, cvt_r};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -50,12 +50,10 @@ impl Command {
         }
 
         match self.setup_io(default, true) {
-            Ok((_, theirs)) => {
-                unsafe {
-                    let Err(e) = self.do_exec(theirs, envp.as_ref());
-                    e
-                }
-            }
+            Ok((_, theirs)) => unsafe {
+                let Err(e) = self.do_exec(theirs, envp.as_ref());
+                e
+            },
             Err(e) => e,
         }
     }
@@ -237,7 +235,7 @@ impl Process {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Default)]
 pub struct ExitStatus(c_int);
 
 impl fmt::Debug for ExitStatus {

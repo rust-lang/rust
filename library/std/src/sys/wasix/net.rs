@@ -3,16 +3,16 @@
 
 use super::err2io;
 use super::fd::WasiFd;
-use crate::fmt;
 use crate::collections::VecDeque;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::fmt;
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 
-use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::sync::{Arc, Mutex};
-use crate::time::Instant;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
+use crate::time::Instant;
 use libc::c_int;
 
 pub use crate::sys::{cvt, cvt_r};
@@ -23,8 +23,7 @@ pub struct Socket {
     peer: Arc<Mutex<Option<SocketAddr>>>,
 }
 
-impl Socket
-{
+impl Socket {
     pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
         let fam = match *addr {
             SocketAddr::V4(..) => AF_INET,
@@ -44,23 +43,43 @@ impl Socket
             let wasi_fam = match fam {
                 AF_INET6 => wasi::ADDRESS_FAMILY_INET6,
                 AF_INET => wasi::ADDRESS_FAMILY_INET4,
-                _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid address family")); }
+                _ => {
+                    return Err(io::const_io_error!(
+                        io::ErrorKind::Uncategorized,
+                        "invalid address family"
+                    ));
+                }
             };
             let wasi_ty = match ty {
                 SOCK_DGRAM => wasi::SOCK_TYPE_SOCKET_DGRAM,
                 SOCK_STREAM => wasi::SOCK_TYPE_SOCKET_STREAM,
                 SOCK_RAW => wasi::SOCK_TYPE_SOCKET_RAW,
-                _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid socket type")); }
+                _ => {
+                    return Err(io::const_io_error!(
+                        io::ErrorKind::Uncategorized,
+                        "invalid socket type"
+                    ));
+                }
             };
             let wasi_proto = match ty {
                 SOCK_DGRAM => wasi::SOCK_PROTO_UDP,
                 SOCK_STREAM => wasi::SOCK_PROTO_TCP,
-                _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid socket protocol")); }
+                _ => {
+                    return Err(io::const_io_error!(
+                        io::ErrorKind::Uncategorized,
+                        "invalid socket protocol"
+                    ));
+                }
             };
             let ip = match fam {
                 AF_INET6 => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
                 AF_INET => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid address family")); }
+                _ => {
+                    return Err(io::const_io_error!(
+                        io::ErrorKind::Uncategorized,
+                        "invalid address family"
+                    ));
+                }
             };
             let fd = wasi::sock_open(wasi_fam, wasi_ty, wasi_proto).map_err(err2io)?;
             Ok(Socket {
@@ -75,11 +94,14 @@ impl Socket
         let ip = match fam {
             AF_INET6 => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
             AF_INET => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-            _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid address family")); }
+            _ => {
+                return Err(io::const_io_error!(
+                    io::ErrorKind::Uncategorized,
+                    "invalid address family"
+                ));
+            }
         };
-        let (fd1, fd2) = unsafe {
-            wasi::fd_pipe().map_err(err2io)?
-        };
+        let (fd1, fd2) = unsafe { wasi::fd_pipe().map_err(err2io)? };
         let socket1 = Socket {
             fd: Some(unsafe { WasiFd::from_raw_fd(fd1 as RawFd) }),
             addr: SocketAddr::new(ip, 0),
@@ -94,7 +116,8 @@ impl Socket
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
-        let timeout = self.timeout_internal(wasi::SOCK_OPTION_CONNECT_TIMEOUT)?
+        let timeout = self
+            .timeout_internal(wasi::SOCK_OPTION_CONNECT_TIMEOUT)?
             .unwrap_or_else(|| Duration::from_secs(20));
         self.connect_timeout(addr, timeout)
     }
@@ -172,9 +195,7 @@ impl Socket
     }
 
     pub fn accept(&self) -> io::Result<Socket> {
-        let (fd, addr) = unsafe {
-            wasi::sock_accept_v2(self.fd(), 0).map_err(err2io)?
-        };
+        let (fd, addr) = unsafe { wasi::sock_accept_v2(self.fd(), 0).map_err(err2io)? };
         let addr = conv_addr_port(addr);
         Ok(Socket {
             fd: Some(unsafe { WasiFd::from_raw_fd(fd as RawFd) }),
@@ -182,16 +203,20 @@ impl Socket
             peer: Arc::new(Mutex::new(Some(addr))),
         })
     }
-    
+
     pub fn accept_timeout(&self, timeout: Duration) -> io::Result<Socket> {
         self.set_nonblocking(true)?;
         loop {
-            let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLIN, revents: 0 };
+            let mut pollfd =
+                libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLIN, revents: 0 };
             let start = Instant::now();
             loop {
                 let elapsed = start.elapsed();
                 if elapsed >= timeout {
-                    return Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out"));
+                    return Err(io::const_io_error!(
+                        io::ErrorKind::TimedOut,
+                        "connection timed out"
+                    ));
                 }
 
                 let timeout = timeout - elapsed;
@@ -218,7 +243,7 @@ impl Socket
                     }
                 }
             }
-            
+
             unsafe {
                 match wasi::sock_accept_v2(self.fd(), 0) {
                     Ok((fd, addr)) => {
@@ -233,9 +258,7 @@ impl Socket
                         crate::thread::yield_now();
                         continue;
                     }
-                    Err(err) => {
-                        return Err(err2io(err))
-                    }
+                    Err(err) => return Err(err2io(err)),
                 }
             }
         }
@@ -243,16 +266,12 @@ impl Socket
 
     pub fn duplicate(&self) -> io::Result<Socket> {
         let peer = self.peer.lock().unwrap();
-        let fd = unsafe {
-            wasi::fd_dup(self.fd()).map_err(err2io)?
-        };
-        Ok(
-            Socket {
-                fd: Some(unsafe { WasiFd::from_raw_fd(fd as RawFd) }),
-                addr: self.addr.clone(),
-                peer: Arc::new(Mutex::new(peer.clone())),
-            }
-        )
+        let fd = unsafe { wasi::fd_dup(self.fd()).map_err(err2io)? };
+        Ok(Socket {
+            fd: Some(unsafe { WasiFd::from_raw_fd(fd as RawFd) }),
+            addr: self.addr.clone(),
+            peer: Arc::new(Mutex::new(peer.clone())),
+        })
     }
 
     fn recv_with_flags(
@@ -267,7 +286,7 @@ impl Socket
     }
 
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut data = [ IoSliceMut::new(buf) ];
+        let mut data = [IoSliceMut::new(buf)];
         let ret = self.recv_with_flags(&mut data, 0)?;
         Ok(ret.0)
     }
@@ -276,8 +295,24 @@ impl Socket
         self.recv(buf)
     }
 
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+        unsafe {
+            let slice = crate::slice::from_raw_parts_mut(
+                buf.as_mut().as_mut_ptr() as *mut u8,
+                buf.capacity(),
+            );
+            match self.recv(slice) {
+                Ok(n) => {
+                    buf.advance(n);
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
+        }
+    }
+
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut data = [ IoSliceMut::new(buf) ];
+        let mut data = [IoSliceMut::new(buf)];
         let ret = self.recv_with_flags(&mut data, MSG_PEEK as u16)?;
         Ok(ret.0)
     }
@@ -309,15 +344,11 @@ impl Socket
         let ret = unsafe {
             wasi::sock_recv_from(self.fd(), super::fd::iovec(ri_data), ri_flags).map_err(err2io)?
         };
-        Ok((
-            ret.0 as usize,
-            ret.1,
-            conv_addr_port(ret.2)
-        ))
+        Ok((ret.0 as usize, ret.1, conv_addr_port(ret.2)))
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        let mut data = [ IoSliceMut::new(buf) ];
+        let mut data = [IoSliceMut::new(buf)];
         let ret = self.recv_from_with_flags(&mut data, 0)?;
         Ok((ret.0, ret.2))
     }
@@ -328,7 +359,7 @@ impl Socket
     }
 
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        let mut data = [ IoSliceMut::new(buf) ];
+        let mut data = [IoSliceMut::new(buf)];
         let ret = self.recv_from_with_flags(&mut data, MSG_PEEK as u16)?;
         Ok((ret.0, ret.2))
     }
@@ -336,15 +367,17 @@ impl Socket
     fn send_with_flags(
         &self,
         si_data: &[IoSlice<'_>],
-        si_flags: wasi::Siflags
+        si_flags: wasi::Siflags,
     ) -> io::Result<usize> {
         unsafe {
-            wasi::sock_send(self.fd(), super::fd::ciovec(si_data), si_flags).map(|a| a as usize).map_err(err2io)
+            wasi::sock_send(self.fd(), super::fd::ciovec(si_data), si_flags)
+                .map(|a| a as usize)
+                .map_err(err2io)
         }
     }
 
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
-        let data = [ IoSlice::new(buf) ];
+        let data = [IoSlice::new(buf)];
         self.send_with_flags(&data, 0)
     }
 
@@ -374,16 +407,18 @@ impl Socket
         &self,
         si_data: &[IoSlice<'_>],
         si_flags: wasi::Siflags,
-        addr: SocketAddr
+        addr: SocketAddr,
     ) -> io::Result<usize> {
         let addr = to_wasi_addr_port(addr);
         unsafe {
-            wasi::sock_send_to(self.fd(), super::fd::ciovec(si_data), si_flags, &addr).map(|a| a as usize).map_err(err2io)
+            wasi::sock_send_to(self.fd(), super::fd::ciovec(si_data), si_flags, &addr)
+                .map(|a| a as usize)
+                .map_err(err2io)
         }
     }
 
     pub fn send_to(&self, buf: &[u8], addr: SocketAddr) -> io::Result<usize> {
-        let data = [ IoSlice::new(buf) ];
+        let data = [IoSlice::new(buf)];
         self.send_to_with_flags(&data, 0, addr)
     }
 
@@ -402,7 +437,12 @@ impl Socket
             SO_SNDTIMEO => wasi::SOCK_OPTION_SEND_TIMEOUT,
             SO_CONNTIMEO => wasi::SOCK_OPTION_CONNECT_TIMEOUT,
             SO_ACCPTIMEO => wasi::SOCK_OPTION_ACCEPT_TIMEOUT,
-            _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid timeout type")); }
+            _ => {
+                return Err(io::const_io_error!(
+                    io::ErrorKind::Uncategorized,
+                    "invalid timeout type"
+                ));
+            }
         };
         self.set_timeout_internal(dur, option)
     }
@@ -413,48 +453,45 @@ impl Socket
             SO_SNDTIMEO => wasi::SOCK_OPTION_SEND_TIMEOUT,
             SO_CONNTIMEO => wasi::SOCK_OPTION_CONNECT_TIMEOUT,
             SO_ACCPTIMEO => wasi::SOCK_OPTION_ACCEPT_TIMEOUT,
-            _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid timeout type")); }
+            _ => {
+                return Err(io::const_io_error!(
+                    io::ErrorKind::Uncategorized,
+                    "invalid timeout type"
+                ));
+            }
         };
         self.timeout_internal(option)
     }
 
-    fn set_timeout_internal(&self, dur: Option<Duration>, option: wasi::SockOption) -> io::Result<()> {
+    fn set_timeout_internal(
+        &self,
+        dur: Option<Duration>,
+        option: wasi::SockOption,
+    ) -> io::Result<()> {
         let dur = match dur {
             Some(dur) => wasi::OptionTimestamp {
                 tag: wasi::OPTION_SOME.raw(),
-                u: wasi::OptionTimestampU {
-                    some: dur.as_nanos() as u64,
-                }
+                u: wasi::OptionTimestampU { some: dur.as_nanos() as u64 },
             },
             None => wasi::OptionTimestamp {
                 tag: wasi::OPTION_NONE.raw(),
-                u: wasi::OptionTimestampU {
-                    none: 0,
-                }
-            }
+                u: wasi::OptionTimestampU { none: 0 },
+            },
         };
-        unsafe {
-            wasi::sock_set_opt_time(self.fd(), option, &dur).map_err(err2io)
-        }
+        unsafe { wasi::sock_set_opt_time(self.fd(), option, &dur).map_err(err2io) }
     }
 
     fn timeout_internal(&self, option: wasi::SockOption) -> io::Result<Option<Duration>> {
-        let ret = unsafe {
-            wasi::sock_get_opt_time(self.fd(), option).map_err(err2io)?
-        };
-        Ok(
-            match ret.tag {
-                a if a == wasi::OPTION_SOME.raw() => {
-                    unsafe {
-                        Some(Duration::from_nanos(ret.u.some as u64))
-                    }
-                },
-                a if a == wasi::OPTION_NONE.raw() => {
-                    None
-                },
-                _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid response")); }
+        let ret = unsafe { wasi::sock_get_opt_time(self.fd(), option).map_err(err2io)? };
+        Ok(match ret.tag {
+            a if a == wasi::OPTION_SOME.raw() => unsafe {
+                Some(Duration::from_nanos(ret.u.some as u64))
+            },
+            a if a == wasi::OPTION_NONE.raw() => None,
+            _ => {
+                return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid response"));
             }
-        )
+        })
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -463,12 +500,10 @@ impl Socket
         if let Some(peer) = peer.deref() {
             Ok(peer.clone())
         } else {
-            Ok(
-                match self.addr {
-                    SocketAddr::V4(..) => SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
-                    SocketAddr::V6(..) => SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
-                }
-            )
+            Ok(match self.addr {
+                SocketAddr::V4(..) => SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
+                SocketAddr::V6(..) => SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+            })
         }
     }
 
@@ -544,38 +579,30 @@ impl Socket
         unsafe {
             let val = match val {
                 false => wasi::BOOL_FALSE,
-                true => wasi::BOOL_TRUE
+                true => wasi::BOOL_TRUE,
             };
             wasi::sock_set_opt_flag(self.fd(), sockopt, val).map_err(err2io)
         }
     }
 
     fn get_opt_flag(&self, sockopt: wasi::SockOption) -> io::Result<bool> {
-        let val = unsafe {
-            wasi::sock_get_opt_flag(self.fd(), sockopt).map_err(err2io)?
-        };
-        Ok(
-            match val {
-                wasi::BOOL_TRUE => true,
-                wasi::BOOL_FALSE | _ => false,
-            }
-        )
+        let val = unsafe { wasi::sock_get_opt_flag(self.fd(), sockopt).map_err(err2io)? };
+        Ok(match val {
+            wasi::BOOL_TRUE => true,
+            wasi::BOOL_FALSE | _ => false,
+        })
     }
 
     pub fn set_linger(&self, val: Option<Duration>) -> io::Result<()> {
         let val = match val {
             Some(dur) => wasi::OptionTimestamp {
                 tag: wasi::OPTION_SOME.raw(),
-                u: wasi::OptionTimestampU {
-                    some: dur.as_nanos() as u64,
-                }
+                u: wasi::OptionTimestampU { some: dur.as_nanos() as u64 },
             },
             None => wasi::OptionTimestamp {
                 tag: wasi::OPTION_NONE.raw(),
-                u: wasi::OptionTimestampU {
-                    none: 0,
-                }
-            }
+                u: wasi::OptionTimestampU { none: 0 },
+            },
         };
         unsafe {
             wasi::sock_set_opt_time(self.fd(), wasi::SOCK_OPTION_LINGER, &val).map_err(err2io)
@@ -586,25 +613,19 @@ impl Socket
         let ret = unsafe {
             wasi::sock_get_opt_time(self.fd(), wasi::SOCK_OPTION_LINGER).map_err(err2io)?
         };
-        Ok(
-            match ret.tag {
-                a if a == wasi::OPTION_SOME.raw() => {
-                    unsafe {
-                        Some(Duration::from_nanos(ret.u.some as u64))
-                    }
-                },
-                a if a == wasi::OPTION_NONE.raw() => {
-                    None
-                },
-                _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid response")); }
+        Ok(match ret.tag {
+            a if a == wasi::OPTION_SOME.raw() => unsafe {
+                Some(Duration::from_nanos(ret.u.some as u64))
+            },
+            a if a == wasi::OPTION_NONE.raw() => None,
+            _ => {
+                return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid response"));
             }
-        )
+        })
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        let fdstat = unsafe {
-            wasi::fd_fdstat_get(self.fd()).map_err(err2io)?
-        };
+        let fdstat = unsafe { wasi::fd_fdstat_get(self.fd()).map_err(err2io)? };
 
         let mut flags = fdstat.fs_flags;
 
@@ -615,8 +636,7 @@ impl Socket
         }
 
         unsafe {
-            wasi::fd_fdstat_set_flags(self.fd(), flags)
-                .map_err(err2io)?;
+            wasi::fd_fdstat_set_flags(self.fd(), flags).map_err(err2io)?;
         }
 
         Ok(())
@@ -624,7 +644,8 @@ impl Socket
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         unsafe {
-            wasi::sock_set_opt_size(self.fd(), wasi::SOCK_OPTION_TTL, ttl as wasi::Filesize).map_err(err2io)
+            wasi::sock_set_opt_size(self.fd(), wasi::SOCK_OPTION_TTL, ttl as wasi::Filesize)
+                .map_err(err2io)
         }
     }
 
@@ -637,13 +658,19 @@ impl Socket
 
     pub fn set_multicast_ttl_v4(&self, ttl: u32) -> io::Result<()> {
         unsafe {
-            wasi::sock_set_opt_size(self.fd(), wasi::SOCK_OPTION_MULTICAST_TTL_V4, ttl as wasi::Filesize).map_err(err2io)
+            wasi::sock_set_opt_size(
+                self.fd(),
+                wasi::SOCK_OPTION_MULTICAST_TTL_V4,
+                ttl as wasi::Filesize,
+            )
+            .map_err(err2io)
         }
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
         let ttl = unsafe {
-            wasi::sock_get_opt_size(self.fd(), wasi::SOCK_OPTION_MULTICAST_TTL_V4).map_err(err2io)? as u32
+            wasi::sock_get_opt_size(self.fd(), wasi::SOCK_OPTION_MULTICAST_TTL_V4)
+                .map_err(err2io)? as u32
         };
         Ok(ttl)
     }
@@ -651,31 +678,23 @@ impl Socket
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let multiaddr = to_wasi_addr_v4(*multiaddr);
         let interface = to_wasi_addr_v4(*interface);
-        unsafe {
-            wasi::sock_join_multicast_v4(self.fd(), &multiaddr, &interface).map_err(err2io)
-        }
+        unsafe { wasi::sock_join_multicast_v4(self.fd(), &multiaddr, &interface).map_err(err2io) }
     }
 
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let multiaddr = to_wasi_addr_v6(*multiaddr);
-        unsafe {
-            wasi::sock_join_multicast_v6(self.fd(), &multiaddr, interface).map_err(err2io)
-        }
+        unsafe { wasi::sock_join_multicast_v6(self.fd(), &multiaddr, interface).map_err(err2io) }
     }
 
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let multiaddr = to_wasi_addr_v4(*multiaddr);
         let interface = to_wasi_addr_v4(*interface);
-        unsafe {
-            wasi::sock_leave_multicast_v4(self.fd(), &multiaddr, &interface).map_err(err2io)
-        }
+        unsafe { wasi::sock_leave_multicast_v4(self.fd(), &multiaddr, &interface).map_err(err2io) }
     }
 
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let multiaddr = to_wasi_addr_v6(*multiaddr);
-        unsafe {
-            wasi::sock_leave_multicast_v6(self.fd(), &multiaddr, interface).map_err(err2io)
-        }
+        unsafe { wasi::sock_leave_multicast_v6(self.fd(), &multiaddr, interface).map_err(err2io) }
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -691,9 +710,7 @@ impl Socket
     }
 }
 
-impl Drop
-for Socket
-{
+impl Drop for Socket {
     fn drop(&mut self) {
         unsafe {
             if let Some(fd) = self.fd.take() {
@@ -715,7 +732,7 @@ fn conv_addr_port(addr: wasi::AddrPort) -> SocketAddr {
                 let u = &addr.u.inet4.addr;
                 let ip = IpAddr::V4(Ipv4Addr::new(u.n0, u.n1, u.h0, u.h1));
                 SocketAddr::new(ip, addr.u.inet4.port)
-            },
+            }
         }
     }
 }
@@ -731,12 +748,8 @@ fn conv_addr_v6(u: wasi::AddrIp6) -> Ipv6Addr {
 fn conv_addr(addr: wasi::Addr) -> IpAddr {
     unsafe {
         match addr.tag {
-            a if a == wasi::ADDRESS_FAMILY_INET6.raw() => {
-                IpAddr::V6(conv_addr_v6(addr.u.inet6))
-            },
-            _ => {
-                IpAddr::V4(conv_addr_v4(addr.u.inet4))
-            }
+            a if a == wasi::ADDRESS_FAMILY_INET6.raw() => IpAddr::V6(conv_addr_v6(addr.u.inet6)),
+            _ => IpAddr::V4(conv_addr_v4(addr.u.inet4)),
         }
     }
 }
@@ -747,35 +760,20 @@ fn to_wasi_addr_port(addr: SocketAddr) -> wasi::AddrPort {
         wasi::AddrPort {
             tag: ip.tag,
             u: match ip.tag {
-                a if a == wasi::ADDRESS_FAMILY_INET6.raw() => {
-                    wasi::AddrPortU {
-                        inet6: wasi::AddrIp6Port {
-                            addr: ip.u.inet6,
-                            port: addr.port()
-                        }
-                    }
+                a if a == wasi::ADDRESS_FAMILY_INET6.raw() => wasi::AddrPortU {
+                    inet6: wasi::AddrIp6Port { addr: ip.u.inet6, port: addr.port() },
                 },
-                _ => {
-                    wasi::AddrPortU {
-                        inet4: wasi::AddrIp4Port {
-                            addr: ip.u.inet4,
-                            port: addr.port()
-                        }
-                    }
-                }            
-            }
+                _ => wasi::AddrPortU {
+                    inet4: wasi::AddrIp4Port { addr: ip.u.inet4, port: addr.port() },
+                },
+            },
         }
     }
 }
 
 fn to_wasi_addr_v4(ip: Ipv4Addr) -> wasi::AddrIp4 {
     let octs = ip.octets();
-    wasi::AddrIp4 {
-        n0: octs[0],
-        n1: octs[1],
-        h0: octs[2],
-        h1: octs[3],
-    }
+    wasi::AddrIp4 { n0: octs[0], n1: octs[1], h0: octs[2], h1: octs[3] }
 }
 
 fn to_wasi_addr_v6(ip: Ipv6Addr) -> wasi::AddrIp6 {
@@ -788,28 +786,20 @@ fn to_wasi_addr_v6(ip: Ipv6Addr) -> wasi::AddrIp6 {
         h0: segs[4],
         h1: segs[5],
         h2: segs[6],
-        h3: segs[7]
+        h3: segs[7],
     }
 }
 
 fn to_wasi_addr(addr: IpAddr) -> wasi::Addr {
     match addr {
-        IpAddr::V4(ip) => {
-            wasi::Addr {
-                tag: wasi::ADDRESS_FAMILY_INET4.raw(),
-                u: wasi::AddrU {
-                    inet4: to_wasi_addr_v4(ip)
-                }
-            }
+        IpAddr::V4(ip) => wasi::Addr {
+            tag: wasi::ADDRESS_FAMILY_INET4.raw(),
+            u: wasi::AddrU { inet4: to_wasi_addr_v4(ip) },
         },
-        IpAddr::V6(ip) => {
-            wasi::Addr {
-                tag: wasi::ADDRESS_FAMILY_INET6.raw(),
-                u: wasi::AddrU {
-                    inet6: to_wasi_addr_v6(ip)
-                }
-            }
-        }
+        IpAddr::V6(ip) => wasi::Addr {
+            tag: wasi::ADDRESS_FAMILY_INET6.raw(),
+            u: wasi::AddrU { inet6: to_wasi_addr_v6(ip) },
+        },
     }
 }
 
@@ -838,9 +828,7 @@ impl FromInner<WasiFd> for Socket {
 impl AsFd for Socket {
     fn as_fd(&self) -> BorrowedFd<'_> {
         let fd = self.as_raw_fd();
-        unsafe {
-            BorrowedFd::borrow_raw(fd)
-        }
+        unsafe { BorrowedFd::borrow_raw(fd) }
     }
 }
 
@@ -879,11 +867,7 @@ impl TcpStream {
         };
         let sock = Socket::new_raw(fam, SOCK_STREAM)?;
         sock.connect(addr)?;
-        Ok(
-            TcpStream {
-                inner: sock
-            }
-        )
+        Ok(TcpStream { inner: sock })
     }
 
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
@@ -893,11 +877,7 @@ impl TcpStream {
         };
         let sock = Socket::new_raw(fam, SOCK_STREAM)?;
         sock.connect_timeout(addr, timeout)?;
-        Ok(
-            TcpStream {
-                inner: sock
-            }
-        )
+        Ok(TcpStream { inner: sock })
     }
 
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
@@ -922,6 +902,10 @@ impl TcpStream {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.recv(buf)
+    }
+
+    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(buf)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -957,11 +941,7 @@ impl TcpStream {
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
-        Ok(
-            TcpStream {
-                inner: self.inner.duplicate()?
-            }
-        )
+        Ok(TcpStream { inner: self.inner.duplicate()? })
     }
 
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
@@ -1032,11 +1012,7 @@ impl TcpListener {
             wasi::sock_listen(sock.fd(), 128).map_err(err2io)?;
         }
 
-        Ok(
-            TcpListener {
-                inner: sock
-            }
-        )
+        Ok(TcpListener { inner: sock })
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
@@ -1046,35 +1022,20 @@ impl TcpListener {
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         let socket = self.inner.accept()?;
         let addr = socket.socket_addr()?;
-        Ok(
-            (
-                TcpStream {
-                    inner: socket,
-                },
-                addr
-            )
-        )
+        Ok((TcpStream { inner: socket }, addr))
     }
 
-    pub fn accept_timeout(&self, timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
+    pub fn accept_timeout(
+        &self,
+        timeout: crate::time::Duration,
+    ) -> io::Result<(TcpStream, SocketAddr)> {
         let socket = self.inner.accept_timeout(timeout)?;
         let addr = socket.socket_addr()?;
-        Ok(
-            (
-                TcpStream {
-                    inner: socket,
-                },
-                addr
-            )
-        )
+        Ok((TcpStream { inner: socket }, addr))
     }
 
     pub fn duplicate(&self) -> io::Result<TcpListener> {
-        Ok(
-            TcpListener {
-                inner: self.inner.duplicate()?
-            }
-        )
+        Ok(TcpListener { inner: self.inner.duplicate()? })
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
@@ -1142,11 +1103,7 @@ impl UdpSocket {
     pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
         let addr = addr?;
         let sock = Socket::new(addr, SOCK_DGRAM)?;
-        Ok(
-            UdpSocket {
-                inner: sock
-            }
-        )
+        Ok(UdpSocket { inner: sock })
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -1171,11 +1128,7 @@ impl UdpSocket {
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
         let sock = self.inner.duplicate()?;
-        Ok(
-            UdpSocket {
-                inner: sock
-            }
-        )
+        Ok(UdpSocket { inner: sock })
     }
 
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
@@ -1319,10 +1272,7 @@ impl LookupHost {
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
-        self.0.pop_front()
-            .map(|ip| {
-                SocketAddr::new(ip, self.port())
-            })
+        self.0.pop_front().map(|ip| SocketAddr::new(ip, self.port()))
     }
 }
 
@@ -1355,16 +1305,15 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
         let mut ret = VecDeque::new();
         unsafe {
             let mut ips = [crate::mem::MaybeUninit::<wasi::Addr>::zeroed(); 50];
-            let cnt = wasi::resolve(host, port, ips.as_mut_ptr() as *mut wasi::Addr, ips.len()).map_err(err2io)?;
+            let cnt = wasi::resolve(host, port, ips.as_mut_ptr() as *mut wasi::Addr, ips.len())
+                .map_err(err2io)?;
             for n in 0..cnt {
                 let ip = ips[n].assume_init();
                 let ip = conv_addr(ip);
                 ret.push_back(ip);
             }
         }
-        Ok(
-            LookupHost(ret, port)
-        )
+        Ok(LookupHost(ret, port))
     }
 }
 
