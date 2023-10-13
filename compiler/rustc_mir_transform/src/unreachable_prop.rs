@@ -43,24 +43,12 @@ impl MirPass<'_> for UnreachablePropagation {
 
         // We do want do keep some unreachable blocks, but make them empty.
         for bb in unreachable_blocks {
-            if !tcx.consider_optimizing(|| {
-                format!("UnreachablePropagation {:?} ", body.source.def_id())
-            }) {
-                break;
-            }
-
             body.basic_blocks_mut()[bb].statements.clear();
         }
 
         let replaced = !replacements.is_empty();
 
         for (bb, terminator_kind) in replacements {
-            if !tcx.consider_optimizing(|| {
-                format!("UnreachablePropagation {:?} ", body.source.def_id())
-            }) {
-                break;
-            }
-
             body.basic_blocks_mut()[bb].terminator_mut().kind = terminator_kind;
         }
 

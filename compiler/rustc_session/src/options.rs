@@ -380,7 +380,6 @@ mod desc {
     pub const parse_debuginfo_compression: &str = "one of `none`, `zlib`, or `zstd`";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
-    pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str =
@@ -818,28 +817,6 @@ mod parse {
             _ => return false,
         }
         true
-    }
-
-    pub(crate) fn parse_optimization_fuel(
-        slot: &mut Option<(String, u64)>,
-        v: Option<&str>,
-    ) -> bool {
-        match v {
-            None => false,
-            Some(s) => {
-                let parts = s.split('=').collect::<Vec<_>>();
-                if parts.len() != 2 {
-                    return false;
-                }
-                let crate_name = parts[0].to_string();
-                let fuel = parts[1].parse::<u64>();
-                if fuel.is_err() {
-                    return false;
-                }
-                *slot = Some((crate_name, fuel.unwrap()));
-                true
-            }
-        }
     }
 
     pub(crate) fn parse_unpretty(slot: &mut Option<String>, v: Option<&str>) -> bool {
@@ -1521,8 +1498,6 @@ options! {
         (default: yes)"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
-    fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
-        "set the optimization fuel quota for a crate"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether each function should go in its own section"),
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
@@ -1690,8 +1665,6 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::print_codegen_stats` instead of this field")]
     print_codegen_stats: bool = (false, parse_bool, [UNTRACKED],
         "print codegen statistics (default: no)"),
-    print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
-        "make rustc print the total optimization fuel used by a crate"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],

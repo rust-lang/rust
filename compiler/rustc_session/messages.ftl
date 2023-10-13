@@ -78,7 +78,6 @@ session_not_supported = not supported
 session_nul_in_c_str = null characters in C string literals are not supported
 
 session_octal_float_literal_not_supported = octal float literal is not supported
-session_optimization_fuel_exhausted = optimization-fuel-exhausted: {$msg}
 
 session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C profile-sample-use` does not exist.
 

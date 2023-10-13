@@ -443,12 +443,6 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
 }
 
 #[derive(Diagnostic)]
-#[diag(session_optimization_fuel_exhausted)]
-pub struct OptimisationFuelExhausted {
-    pub msg: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(session_incompatible_linker_flavor)]
 #[note]
 pub struct IncompatibleLinkerFlavor {

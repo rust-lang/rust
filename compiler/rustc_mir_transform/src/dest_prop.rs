@@ -222,11 +222,6 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 else {
                     continue;
                 };
-                if !tcx.consider_optimizing(|| {
-                    format!("{} round {}", tcx.def_path_str(def_id), round_count)
-                }) {
-                    break;
-                }
                 merges.insert(*src, *dest);
                 merged_locals.insert(*src);
                 merged_locals.insert(*dest);

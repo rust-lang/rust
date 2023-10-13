@@ -2124,10 +2124,6 @@ fn check_thread_count(handler: &EarlyErrorHandler, unstable_opts: &UnstableOptio
     if unstable_opts.threads == 0 {
         handler.early_error("value for threads must be a positive non-zero integer");
     }
-
-    if unstable_opts.threads > 1 && unstable_opts.fuel.is_some() {
-        handler.early_error("optimization fuel is incompatible with multiple threads");
-    }
 }
 
 fn collect_print_requests(
