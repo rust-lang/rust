@@ -521,7 +521,7 @@ fn clean_generic_param_def<'tcx>(
                 },
             )
         }
-        ty::GenericParamDefKind::Const { has_default, .. } => (
+        ty::GenericParamDefKind::Const { has_default, is_host_effect } => (
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
@@ -541,6 +541,7 @@ fn clean_generic_param_def<'tcx>(
                     )),
                     false => None,
                 },
+                is_host_effect,
             },
         ),
     };
@@ -597,6 +598,7 @@ fn clean_generic_param<'tcx>(
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default
                     .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
+                is_host_effect: cx.tcx.has_attr(param.def_id, sym::rustc_host),
             },
         ),
     };
@@ -2508,14 +2510,22 @@ fn clean_generic_args<'tcx>(
         let args = generic_args
             .args
             .iter()
-            .map(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
-                    GenericArg::Lifetime(clean_lifetime(*lt, cx))
-                }
-                hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
-                hir::GenericArg::Infer(_inf) => GenericArg::Infer,
+            .filter_map(|arg| {
+                Some(match arg {
+                    hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
+                        GenericArg::Lifetime(clean_lifetime(*lt, cx))
+                    }
+                    hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                    hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
+                    // FIXME(effects): This will still emit `<true>` for non-const impls of const traits
+                    hir::GenericArg::Const(ct)
+                        if cx.tcx.has_attr(ct.value.def_id, sym::rustc_host) =>
+                    {
+                        return None;
+                    }
+                    hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
+                    hir::GenericArg::Infer(_inf) => GenericArg::Infer,
+                })
             })
             .collect::<Vec<_>>()
             .into();
