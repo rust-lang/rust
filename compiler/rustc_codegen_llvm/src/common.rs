@@ -8,7 +8,6 @@ use crate::value::Value;
 
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
@@ -255,14 +254,6 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
                             _ => self.static_addr_of(init, alloc.align, None),
                         };
-                        if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty() {
-                            let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
-                                let mut hasher = StableHasher::new();
-                                alloc.hash_stable(&mut hcx, &mut hasher);
-                                hasher.finish::<Hash128>()
-                            });
-                            llvm::set_value_name(value, format!("alloc_{hash:032x}").as_bytes());
-                        }
                         (value, AddressSpace::DATA)
                     }
                     GlobalAlloc::Function(fn_instance) => (
