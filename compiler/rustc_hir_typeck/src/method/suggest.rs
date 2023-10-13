@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let path = self.tcx.def_path_str(trait_ref.skip_binder().def_id);
 
                         let ty = match item.kind {
-                            ty::AssocKind::Const | ty::AssocKind::Type => rcvr_ty,
+                            ty::AssocKind::Const | ty::AssocKind::Type => impl_ty,
                             ty::AssocKind::Fn => self
                                 .tcx
                                 .fn_sig(item.def_id)
@@ -1340,6 +1340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err,
                             path,
                             ty,
+                            impl_ty,
                             item.kind,
                             self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
@@ -1375,6 +1376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             args,
                             err,
                             path,
+                            rcvr_ty,
                             rcvr_ty,
                             item.kind,
                             self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
@@ -3146,6 +3148,7 @@ fn print_disambiguation_help<'tcx>(
     err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
+    self_ty: Ty<'_>,
     kind: ty::AssocKind,
     def_kind_descr: &'static str,
     span: Span,
@@ -3172,13 +3175,13 @@ fn print_disambiguation_help<'tcx>(
                 .join(", "),
         );
         let trait_name = if !fn_has_self_parameter {
-            format!("<{rcvr_ty} as {trait_name}>")
+            format!("<{self_ty} as {trait_name}>")
         } else {
             trait_name
         };
         (span, format!("{trait_name}::{item_name}{args}"))
     } else {
-        (span.with_hi(item_name.span.lo()), format!("<{rcvr_ty} as {trait_name}>::"))
+        (span.with_hi(item_name.span.lo()), format!("<{self_ty} as {trait_name}>::"))
     };
     err.span_suggestion_verbose(
         span,
