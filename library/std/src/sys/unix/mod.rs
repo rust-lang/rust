@@ -245,6 +245,7 @@ pub use crate::sys::android::signal;
 pub use libc::signal;
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub(crate) fn is_interrupted(errno: i32) -> bool {
     errno == libc::EINTR
 }

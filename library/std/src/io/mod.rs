@@ -308,8 +308,9 @@ use crate::sys_common::memchr;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
-#[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub use self::error::RawOsError;
+#[cfg(bootstrap)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::error::{Error, Result};
 pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "internal_output_capture", issue = "none")]
 #[doc(no_inline, hidden)]
@@ -323,14 +324,23 @@ pub use self::{
     buffered::{BufReader, BufWriter, IntoInnerError, LineWriter},
     copy::copy,
     cursor::Cursor,
-    error::{Error, ErrorKind, Result},
     stdio::{stderr, stdin, stdout, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock},
     util::{empty, repeat, sink, Empty, Repeat, Sink},
 };
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc::io::ErrorKind;
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+pub use alloc::io::{Error, Result};
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub use core::io::RawOsError;
 
+#[cfg(bootstrap)]
+pub(crate) use self::error::const_io_error;
 #[unstable(feature = "read_buf", issue = "78485")]
 pub use self::readbuf::{BorrowedBuf, BorrowedCursor};
-pub(crate) use error::const_io_error;
+#[cfg(not(bootstrap))]
+pub(crate) use core::io::const_io_error;
 
 mod buffered;
 pub(crate) mod copy;
@@ -386,10 +396,7 @@ where
     let ret = f(g.buf);
     if str::from_utf8(&g.buf[g.len..]).is_err() {
         ret.and_then(|_| {
-            Err(error::const_io_error!(
-                ErrorKind::InvalidData,
-                "stream did not contain valid UTF-8"
-            ))
+            Err(const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8"))
         })
     } else {
         g.len = g.buf.len();
@@ -520,7 +527,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
         }
     }
     if !buf.is_empty() {
-        Err(error::const_io_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
+        Err(const_io_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
     } else {
         Ok(())
     }
@@ -1621,7 +1628,7 @@ pub trait Write {
         while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => {
-                    return Err(error::const_io_error!(
+                    return Err(const_io_error!(
                         ErrorKind::WriteZero,
                         "failed to write whole buffer",
                     ));
@@ -1689,7 +1696,7 @@ pub trait Write {
         while !bufs.is_empty() {
             match self.write_vectored(bufs) {
                 Ok(0) => {
-                    return Err(error::const_io_error!(
+                    return Err(const_io_error!(
                         ErrorKind::WriteZero,
                         "failed to write whole buffer",
                     ));
@@ -1766,7 +1773,7 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(error::const_io_error!(ErrorKind::Uncategorized, "formatter error"))
+                    Err(const_io_error!(ErrorKind::Uncategorized, "formatter error"))
                 }
             }
         }

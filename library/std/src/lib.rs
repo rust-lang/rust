@@ -308,8 +308,12 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
+#![feature(alloc_io)]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
+#![feature(core_io)]
+#![feature(core_io_error)]
+#![feature(core_io_error_internals)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
@@ -322,6 +326,9 @@
 #![feature(float_next_up_down)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(int_roundings)]
+#![feature(io_error_more)]
+#![feature(io_error_uncategorized)]
 #![feature(ip)]
 #![feature(ip_in_core)]
 #![feature(maybe_uninit_slice)]
@@ -336,6 +343,7 @@
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
+#![feature(raw_os_error_ty)]
 #![feature(raw_os_nonzero)]
 #![feature(round_ties_even)]
 #![feature(slice_internals)]

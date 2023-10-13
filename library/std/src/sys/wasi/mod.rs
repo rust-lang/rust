@@ -77,6 +77,7 @@ mod common;
 pub use common::*;
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(errno: i32) -> bool {
     errno == wasi::ERRNO_INTR.raw().into()
 }

@@ -73,6 +73,7 @@ pub fn unsupported_err() -> crate::io::Error {
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(code: i32) -> bool {
     net::is_interrupted(code)
 }

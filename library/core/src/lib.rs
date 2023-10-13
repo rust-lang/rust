@@ -367,6 +367,7 @@ pub mod async_iter;
 pub mod cell;
 pub mod char;
 pub mod ffi;
+pub mod io;
 pub mod iter;
 pub mod net;
 pub mod option;

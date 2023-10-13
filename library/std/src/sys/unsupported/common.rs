@@ -23,6 +23,7 @@ pub fn unsupported_err() -> std_io::Error {
     )
 }
 
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(_code: i32) -> bool {
     false
 }

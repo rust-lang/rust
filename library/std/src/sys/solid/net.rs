@@ -182,6 +182,7 @@ pub(super) fn error_name(er: abi::ER) -> Option<&'static str> {
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(er: abi::ER) -> bool {
     er == netc::SOLID_NET_ERR_BASE - libc::EINTR
 }

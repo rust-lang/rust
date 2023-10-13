@@ -61,6 +61,7 @@ pub unsafe fn cleanup() {
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(_errno: i32) -> bool {
     false
 }

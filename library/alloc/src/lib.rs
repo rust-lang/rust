@@ -121,6 +121,8 @@
 #![feature(const_size_of_val)]
 #![feature(const_waker)]
 #![feature(core_intrinsics)]
+#![feature(core_io)]
+#![feature(core_io_error_internals)]
 #![feature(core_panic)]
 #![feature(deprecated_suggestion)]
 #![feature(dispatch_from_dyn)]
@@ -177,6 +179,7 @@
 #![feature(associated_type_bounds)]
 #![feature(c_unwind)]
 #![feature(cfg_sanitize)]
+#![feature(cfg_target_has_atomic)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_write)]
@@ -246,6 +249,7 @@ pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;
 pub mod fmt;
+pub mod io;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;

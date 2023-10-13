@@ -102,9 +102,7 @@
 //! to use a pointer type to store something that may hold an integer, some of
 //! the time.
 
-use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
-use alloc::boxed::Box;
-use core::io::error_internals::kind_from_prim;
+use super::{Custom, ErrorBox, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
 use core::ptr::{self, NonNull};
@@ -126,14 +124,14 @@ const TAG_SIMPLE: usize = 0b11;
 /// is_unwind_safe::<std::io::Error>();
 /// ```
 #[repr(transparent)]
-pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<Box<Custom>>>);
+pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<ErrorBox<Custom>>>);
 
 // All the types `Repr` stores internally are Send + Sync, and so is it.
 unsafe impl Send for Repr {}
 unsafe impl Sync for Repr {}
 
 impl Repr {
-    pub(super) fn new(dat: ErrorData<Box<Custom>>) -> Self {
+    pub(super) fn new(dat: ErrorData<ErrorBox<Custom>>) -> Self {
         match dat {
             ErrorData::Os(code) => Self::new_os(code),
             ErrorData::Simple(kind) => Self::new_simple(kind),
@@ -142,8 +140,8 @@ impl Repr {
         }
     }
 
-    pub(super) fn new_custom(b: Box<Custom>) -> Self {
-        let p = Box::into_raw(b).cast::<u8>();
+    pub(super) fn new_custom(b: ErrorBox<Custom>) -> Self {
+        let p = ErrorBox::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
         debug_assert_eq!(p.addr() & TAG_MASK, 0);
@@ -155,7 +153,7 @@ impl Repr {
         // (rather than `ptr::wrapping_add`), but it's unclear this would give
         // any benefit, so we just use `wrapping_add` instead.
         let tagged = p.wrapping_add(TAG_CUSTOM).cast::<()>();
-        // Safety: `TAG_CUSTOM + p` is the same as `TAG_CUSTOM | p`,
+        // SAFETY: `TAG_CUSTOM + p` is the same as `TAG_CUSTOM | p`,
         // because `p`'s alignment means it isn't allowed to have any of the
         // `TAG_BITS` set (you can verify that addition and bitwise-or are the
         // same when the operands have no bits in common using a truth table).
@@ -175,7 +173,7 @@ impl Repr {
     #[inline]
     pub(super) fn new_os(code: RawOsError) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
-        // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
+        // SAFETY: `TAG_OS` is not zero, so the result of the `|` is not 0.
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in std's tests, unless the user uses -Zbuild-std)
@@ -189,7 +187,7 @@ impl Repr {
     #[inline]
     pub(super) fn new_simple(kind: ErrorKind) -> Self {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
-        // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
+        // SAFETY: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in std's tests, unless the user uses -Zbuild-std)
@@ -203,38 +201,38 @@ impl Repr {
 
     #[inline]
     pub(super) const fn new_simple_message(m: &'static SimpleMessage) -> Self {
-        // Safety: References are never null.
+        // SAFETY: References are never null.
         Self(unsafe { NonNull::new_unchecked(m as *const _ as *mut ()) }, PhantomData)
     }
 
     #[inline]
     pub(super) fn data(&self) -> ErrorData<&Custom> {
-        // Safety: We're a Repr, decode_repr is fine.
+        // SAFETY: We're a Repr, decode_repr is fine.
         unsafe { decode_repr(self.0, |c| &*c) }
     }
 
     #[inline]
     pub(super) fn data_mut(&mut self) -> ErrorData<&mut Custom> {
-        // Safety: We're a Repr, decode_repr is fine.
+        // SAFETY: We're a Repr, decode_repr is fine.
         unsafe { decode_repr(self.0, |c| &mut *c) }
     }
 
     #[inline]
-    pub(super) fn into_data(self) -> ErrorData<Box<Custom>> {
+    pub(super) fn into_data(self) -> ErrorData<ErrorBox<Custom>> {
         let this = core::mem::ManuallyDrop::new(self);
-        // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
+        // SAFETY: We're a Repr, decode_repr is fine. The `Box::from_raw` is
         // safe because we prevent double-drop using `ManuallyDrop`.
-        unsafe { decode_repr(this.0, |p| Box::from_raw(p)) }
+        unsafe { decode_repr(this.0, |p| ErrorBox::from_raw(p)) }
     }
 }
 
 impl Drop for Repr {
     #[inline]
     fn drop(&mut self) {
-        // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
+        // SAFETY: We're a Repr, decode_repr is fine. The `Box::from_raw` is
         // safe because we're being dropped.
         unsafe {
-            let _ = decode_repr(self.0, |p| Box::<Custom>::from_raw(p));
+            let _ = decode_repr(self.0, |p| ErrorBox::<Custom>::from_raw(p));
         }
     }
 }
@@ -258,17 +256,23 @@ where
             let kind_bits = (bits >> 32) as u32;
             let kind = kind_from_prim(kind_bits).unwrap_or_else(|| {
                 debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#018x})`", bits);
-                // This means the `ptr` passed in was not valid, which violates
-                // the unsafe contract of `decode_repr`.
+                // SAFETY: This means the `ptr` passed in was not valid, which
+                // violates the unsafe contract of `decode_repr`.
                 //
                 // Using this rather than unwrap meaningfully improves the code
                 // for callers which only care about one variant (usually
                 // `Custom`)
-                core::hint::unreachable_unchecked();
+                unsafe {
+                    core::hint::unreachable_unchecked();
+                }
             });
             ErrorData::Simple(kind)
         }
-        TAG_SIMPLE_MESSAGE => ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr()),
+        // SAFETY: ptr has the right lsb bits and is guaranteed valid by
+        // Repr's safety invariant
+        TAG_SIMPLE_MESSAGE => unsafe {
+            ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr())
+        },
         TAG_CUSTOM => {
             // It would be correct for us to use `ptr::byte_sub` here (see the
             // comment above the `wrapping_add` call in `new_custom` for why),
@@ -281,6 +285,70 @@ where
             unreachable!();
         }
     }
+}
+
+// This compiles to the same code as the check+transmute, but doesn't require
+// unsafe, or to hard-code max ErrorKind or its size in a way the compiler
+// couldn't verify.
+/// implementation detail of [`super::Error`]
+#[unstable(feature = "core_io_error_internals", issue = "none")]
+#[inline]
+pub fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
+    macro_rules! from_prim {
+        ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
+            // Force a compile error if the list gets out of date.
+            const _: fn(e: $Enum) = |e: $Enum| match e {
+                $($Enum::$Variant => ()),*
+            };
+            match $prim {
+                $(v if v == ($Enum::$Variant as _) => Some($Enum::$Variant),)*
+                _ => None,
+            }
+        }}
+    }
+    from_prim!(ek => ErrorKind {
+        NotFound,
+        PermissionDenied,
+        ConnectionRefused,
+        ConnectionReset,
+        HostUnreachable,
+        NetworkUnreachable,
+        ConnectionAborted,
+        NotConnected,
+        AddrInUse,
+        AddrNotAvailable,
+        NetworkDown,
+        BrokenPipe,
+        AlreadyExists,
+        WouldBlock,
+        NotADirectory,
+        IsADirectory,
+        DirectoryNotEmpty,
+        ReadOnlyFilesystem,
+        FilesystemLoop,
+        StaleNetworkFileHandle,
+        InvalidInput,
+        InvalidData,
+        TimedOut,
+        WriteZero,
+        StorageFull,
+        NotSeekable,
+        FilesystemQuotaExceeded,
+        FileTooLarge,
+        ResourceBusy,
+        ExecutableFileBusy,
+        Deadlock,
+        CrossesDevices,
+        TooManyLinks,
+        InvalidFilename,
+        ArgumentListTooLong,
+        Interrupted,
+        Other,
+        UnexpectedEof,
+        Unsupported,
+        OutOfMemory,
+        Uncategorized,
+    })
 }
 
 // Some static checking to alert us if a change breaks any of the assumptions
@@ -306,12 +374,15 @@ static_assert!(@usize_eq: size_of::<NonNull<()>>(), size_of::<usize>());
 
 // `Custom` and `SimpleMessage` need to be thin pointers.
 static_assert!(@usize_eq: size_of::<&'static SimpleMessage>(), 8);
-static_assert!(@usize_eq: size_of::<Box<Custom>>(), 8);
+static_assert!(@usize_eq: size_of::<ErrorBox<Custom>>(), 8);
 
 static_assert!((TAG_MASK + 1).is_power_of_two());
 // And they must have sufficient alignment.
 static_assert!(align_of::<SimpleMessage>() >= TAG_MASK + 1);
 static_assert!(align_of::<Custom>() >= TAG_MASK + 1);
+
+// `RawOsError` must be an alias for `i32`.
+const _: fn(RawOsError) -> i32 = |os| os;
 
 static_assert!(@usize_eq: TAG_MASK & TAG_SIMPLE_MESSAGE, TAG_SIMPLE_MESSAGE);
 static_assert!(@usize_eq: TAG_MASK & TAG_CUSTOM, TAG_CUSTOM);

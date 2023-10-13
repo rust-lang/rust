@@ -1,20 +1,32 @@
 #[cfg(test)]
 mod tests;
 
+#[cfg(bootstrap)]
 #[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 mod repr_bitpacked;
+#[cfg(bootstrap)]
 #[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 use repr_bitpacked::Repr;
 
+#[cfg(bootstrap)]
 #[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 mod repr_unpacked;
+#[cfg(bootstrap)]
 #[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 use repr_unpacked::Repr;
 
-use crate::error;
-use crate::fmt;
-use crate::result;
+#[cfg(not(any(bootstrap, test)))]
+use super::RawOsError;
+#[cfg(not(bootstrap))]
+use super::{Error, ErrorKind};
+#[cfg(any(bootstrap, not(test)))]
 use crate::sys;
+#[cfg(bootstrap)]
+use crate::{error, fmt, result};
+#[cfg(not(any(bootstrap, test)))]
+use core::io::error_internals::{ErrorString, StdVTable};
+#[cfg(bootstrap)]
+use core::io::{ErrorKind, RawOsError};
 
 /// A specialized [`Result`] type for I/O operations.
 ///
@@ -51,6 +63,7 @@ use crate::sys;
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 pub type Result<T> = result::Result<T, Error>;
 
 /// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
@@ -64,11 +77,13 @@ pub type Result<T> = result::Result<T, Error>;
 /// [`Write`]: crate::io::Write
 /// [`Seek`]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 pub struct Error {
     repr: Repr,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.repr, f)
@@ -76,6 +91,7 @@ impl fmt::Debug for Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl From<alloc::ffi::NulError> for Error {
     /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
     fn from(_: alloc::ffi::NulError) -> Error {
@@ -86,23 +102,13 @@ impl From<alloc::ffi::NulError> for Error {
 // Only derive debug in tests, to make sure it
 // doesn't accidentally get printed.
 #[cfg_attr(test, derive(Debug))]
+#[cfg(bootstrap)]
 enum ErrorData<C> {
     Os(RawOsError),
     Simple(ErrorKind),
     SimpleMessage(&'static SimpleMessage),
     Custom(C),
 }
-
-/// The type of raw OS error codes returned by [`Error::raw_os_error`].
-///
-/// This is an [`i32`] on all currently supported platforms, but platforms
-/// added in the future (such as UEFI) may use a different primitive type like
-/// [`usize`]. Use `as`or [`into`] conversions where applicable to ensure maximum
-/// portability.
-///
-/// [`into`]: Into::into
-#[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub type RawOsError = sys::RawOsError;
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or
 // higher already. We include it just because repr_bitpacked.rs's encoding
@@ -120,11 +126,13 @@ pub type RawOsError = sys::RawOsError;
 // matter at all)
 #[repr(align(4))]
 #[derive(Debug)]
+#[cfg(bootstrap)]
 pub(crate) struct SimpleMessage {
     kind: ErrorKind,
     message: &'static str,
 }
 
+#[cfg(bootstrap)]
 impl SimpleMessage {
     pub(crate) const fn new(kind: ErrorKind, message: &'static str) -> Self {
         Self { kind, message }
@@ -133,6 +141,7 @@ impl SimpleMessage {
 
 /// Create and return an `io::Error` for a given `ErrorKind` and constant
 /// message. This doesn't allocate.
+#[cfg(bootstrap)]
 pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
     $crate::io::error::Error::from_static_message({
         const MESSAGE_DATA: $crate::io::error::SimpleMessage =
@@ -146,324 +155,16 @@ pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
 // already be this high or higher.
 #[derive(Debug)]
 #[repr(align(4))]
+#[cfg(bootstrap)]
 struct Custom {
     kind: ErrorKind,
     error: Box<dyn error::Error + Send + Sync>,
 }
 
-/// A list specifying general categories of I/O error.
-///
-/// This list is intended to grow over time and it is not recommended to
-/// exhaustively match against it.
-///
-/// It is used with the [`io::Error`] type.
-///
-/// [`io::Error`]: Error
-///
-/// # Handling errors and matching on `ErrorKind`
-///
-/// In application code, use `match` for the `ErrorKind` values you are
-/// expecting; use `_` to match "all other errors".
-///
-/// In comprehensive and thorough tests that want to verify that a test doesn't
-/// return any known incorrect error kind, you may want to cut-and-paste the
-/// current full list of errors from here into your test code, and then match
-/// `_` as the correct case. This seems counterintuitive, but it will make your
-/// tests more robust. In particular, if you want to verify that your code does
-/// produce an unrecognized error kind, the robust solution is to check for all
-/// the recognized error kinds and fail in those cases.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-#[non_exhaustive]
-pub enum ErrorKind {
-    /// An entity was not found, often a file.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    NotFound,
-    /// The operation lacked the necessary privileges to complete.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    PermissionDenied,
-    /// The connection was refused by the remote server.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    ConnectionRefused,
-    /// The connection was reset by the remote server.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    ConnectionReset,
-    /// The remote host is not reachable.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    HostUnreachable,
-    /// The network containing the remote host is not reachable.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    NetworkUnreachable,
-    /// The connection was aborted (terminated) by the remote server.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    ConnectionAborted,
-    /// The network operation failed because it was not connected yet.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    NotConnected,
-    /// A socket address could not be bound because the address is already in
-    /// use elsewhere.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    AddrInUse,
-    /// A nonexistent interface was requested or the requested address was not
-    /// local.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    AddrNotAvailable,
-    /// The system's networking is down.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    NetworkDown,
-    /// The operation failed because a pipe was closed.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    BrokenPipe,
-    /// An entity already exists, often a file.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    AlreadyExists,
-    /// The operation needs to block to complete, but the blocking operation was
-    /// requested to not occur.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    WouldBlock,
-    /// A filesystem object is, unexpectedly, not a directory.
-    ///
-    /// For example, a filesystem path was specified where one of the intermediate directory
-    /// components was, in fact, a plain file.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    NotADirectory,
-    /// The filesystem object is, unexpectedly, a directory.
-    ///
-    /// A directory was specified when a non-directory was expected.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    IsADirectory,
-    /// A non-empty directory was specified where an empty directory was expected.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    DirectoryNotEmpty,
-    /// The filesystem or storage medium is read-only, but a write operation was attempted.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    ReadOnlyFilesystem,
-    /// Loop in the filesystem or IO subsystem; often, too many levels of symbolic links.
-    ///
-    /// There was a loop (or excessively long chain) resolving a filesystem object
-    /// or file IO object.
-    ///
-    /// On Unix this is usually the result of a symbolic link loop; or, of exceeding the
-    /// system-specific limit on the depth of symlink traversal.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    FilesystemLoop,
-    /// Stale network file handle.
-    ///
-    /// With some network filesystems, notably NFS, an open file (or directory) can be invalidated
-    /// by problems with the network or server.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    StaleNetworkFileHandle,
-    /// A parameter was incorrect.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    InvalidInput,
-    /// Data not valid for the operation were encountered.
-    ///
-    /// Unlike [`InvalidInput`], this typically means that the operation
-    /// parameters were valid, however the error was caused by malformed
-    /// input data.
-    ///
-    /// For example, a function that reads a file into a string will error with
-    /// `InvalidData` if the file's contents are not valid UTF-8.
-    ///
-    /// [`InvalidInput`]: ErrorKind::InvalidInput
-    #[stable(feature = "io_invalid_data", since = "1.2.0")]
-    InvalidData,
-    /// The I/O operation's timeout expired, causing it to be canceled.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    TimedOut,
-    /// An error returned when an operation could not be completed because a
-    /// call to [`write`] returned [`Ok(0)`].
-    ///
-    /// This typically means that an operation could only succeed if it wrote a
-    /// particular number of bytes but only a smaller number of bytes could be
-    /// written.
-    ///
-    /// [`write`]: crate::io::Write::write
-    /// [`Ok(0)`]: Ok
-    #[stable(feature = "rust1", since = "1.0.0")]
-    WriteZero,
-    /// The underlying storage (typically, a filesystem) is full.
-    ///
-    /// This does not include out of quota errors.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    StorageFull,
-    /// Seek on unseekable file.
-    ///
-    /// Seeking was attempted on an open file handle which is not suitable for seeking - for
-    /// example, on Unix, a named pipe opened with `File::open`.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    NotSeekable,
-    /// Filesystem quota was exceeded.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    FilesystemQuotaExceeded,
-    /// File larger than allowed or supported.
-    ///
-    /// This might arise from a hard limit of the underlying filesystem or file access API, or from
-    /// an administratively imposed resource limitation.  Simple disk full, and out of quota, have
-    /// their own errors.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    FileTooLarge,
-    /// Resource is busy.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    ResourceBusy,
-    /// Executable file is busy.
-    ///
-    /// An attempt was made to write to a file which is also in use as a running program.  (Not all
-    /// operating systems detect this situation.)
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    ExecutableFileBusy,
-    /// Deadlock (avoided).
-    ///
-    /// A file locking operation would result in deadlock.  This situation is typically detected, if
-    /// at all, on a best-effort basis.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    Deadlock,
-    /// Cross-device or cross-filesystem (hard) link or rename.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    CrossesDevices,
-    /// Too many (hard) links to the same filesystem object.
-    ///
-    /// The filesystem does not support making so many hardlinks to the same file.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    TooManyLinks,
-    /// A filename was invalid.
-    ///
-    /// This error can also cause if it exceeded the filename length limit.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    InvalidFilename,
-    /// Program argument list too long.
-    ///
-    /// When trying to run an external program, a system or process limit on the size of the
-    /// arguments would have been exceeded.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    ArgumentListTooLong,
-    /// This operation was interrupted.
-    ///
-    /// Interrupted operations can typically be retried.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Interrupted,
-
-    /// This operation is unsupported on this platform.
-    ///
-    /// This means that the operation can never succeed.
-    #[stable(feature = "unsupported_error", since = "1.53.0")]
-    Unsupported,
-
-    // ErrorKinds which are primarily categorisations for OS error
-    // codes should be added above.
-    //
-    /// An error returned when an operation could not be completed because an
-    /// "end of file" was reached prematurely.
-    ///
-    /// This typically means that an operation could only succeed if it read a
-    /// particular number of bytes but only a smaller number of bytes could be
-    /// read.
-    #[stable(feature = "read_exact", since = "1.6.0")]
-    UnexpectedEof,
-
-    /// An operation could not be completed, because it failed
-    /// to allocate enough memory.
-    #[stable(feature = "out_of_memory_error", since = "1.54.0")]
-    OutOfMemory,
-
-    // "Unusual" error kinds which do not correspond simply to (sets
-    // of) OS error codes, should be added just above this comment.
-    // `Other` and `Uncategorized` should remain at the end:
-    //
-    /// A custom error that does not fall under any other I/O error kind.
-    ///
-    /// This can be used to construct your own [`Error`]s that do not match any
-    /// [`ErrorKind`].
-    ///
-    /// This [`ErrorKind`] is not used by the standard library.
-    ///
-    /// Errors from the standard library that do not fall under any of the I/O
-    /// error kinds cannot be `match`ed on, and will only match a wildcard (`_`) pattern.
-    /// New [`ErrorKind`]s might be added in the future for some of those.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Other,
-
-    /// Any I/O error from the standard library that's not part of this list.
-    ///
-    /// Errors that are `Uncategorized` now may move to a different or a new
-    /// [`ErrorKind`] variant in the future. It is not recommended to match
-    /// an error against `Uncategorized`; use a wildcard match (`_`) instead.
-    #[unstable(feature = "io_error_uncategorized", issue = "none")]
-    #[doc(hidden)]
-    Uncategorized,
-}
-
-impl ErrorKind {
-    pub(crate) fn as_str(&self) -> &'static str {
-        use ErrorKind::*;
-        // tidy-alphabetical-start
-        match *self {
-            AddrInUse => "address in use",
-            AddrNotAvailable => "address not available",
-            AlreadyExists => "entity already exists",
-            ArgumentListTooLong => "argument list too long",
-            BrokenPipe => "broken pipe",
-            ConnectionAborted => "connection aborted",
-            ConnectionRefused => "connection refused",
-            ConnectionReset => "connection reset",
-            CrossesDevices => "cross-device link or rename",
-            Deadlock => "deadlock",
-            DirectoryNotEmpty => "directory not empty",
-            ExecutableFileBusy => "executable file busy",
-            FileTooLarge => "file too large",
-            FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
-            FilesystemQuotaExceeded => "filesystem quota exceeded",
-            HostUnreachable => "host unreachable",
-            Interrupted => "operation interrupted",
-            InvalidData => "invalid data",
-            InvalidFilename => "invalid filename",
-            InvalidInput => "invalid input parameter",
-            IsADirectory => "is a directory",
-            NetworkDown => "network down",
-            NetworkUnreachable => "network unreachable",
-            NotADirectory => "not a directory",
-            NotConnected => "not connected",
-            NotFound => "entity not found",
-            NotSeekable => "seek on unseekable file",
-            Other => "other error",
-            OutOfMemory => "out of memory",
-            PermissionDenied => "permission denied",
-            ReadOnlyFilesystem => "read-only filesystem or storage medium",
-            ResourceBusy => "resource busy",
-            StaleNetworkFileHandle => "stale network file handle",
-            StorageFull => "no storage space",
-            TimedOut => "timed out",
-            TooManyLinks => "too many links",
-            Uncategorized => "uncategorized error",
-            UnexpectedEof => "unexpected end of file",
-            Unsupported => "unsupported",
-            WouldBlock => "operation would block",
-            WriteZero => "write zero",
-        }
-        // tidy-alphabetical-end
-    }
-}
-
-#[stable(feature = "io_errorkind_display", since = "1.60.0")]
-impl fmt::Display for ErrorKind {
-    /// Shows a human-readable description of the `ErrorKind`.
-    ///
-    /// This is similar to `impl Display for Error`, but doesn't require first converting to Error.
-    ///
-    /// # Examples
-    /// ```
-    /// use std::io::ErrorKind;
-    /// assert_eq!("entity not found", ErrorKind::NotFound.to_string());
-    /// ```
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.write_str(self.as_str())
-    }
-}
-
 /// Intended for use for errors not exposed to the user, where allocating onto
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
+#[cfg(bootstrap)]
 impl From<ErrorKind> for Error {
     /// Converts an [`ErrorKind`] into an [`Error`].
     ///
@@ -484,6 +185,7 @@ impl From<ErrorKind> for Error {
     }
 }
 
+#[cfg(bootstrap)]
 impl Error {
     /// Creates a new I/O error from a known kind of error as well as an
     /// arbitrary error payload.
@@ -927,6 +629,7 @@ impl Error {
     }
 }
 
+#[cfg(bootstrap)]
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.data() {
@@ -948,6 +651,7 @@ impl fmt::Debug for Repr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr.data() {
@@ -963,6 +667,7 @@ impl fmt::Display for Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl error::Error for Error {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
@@ -993,7 +698,99 @@ impl error::Error for Error {
     }
 }
 
+#[cfg(bootstrap)]
 fn _assert_error_is_sync_send() {
     fn _is_sync_send<T: Sync + Send>() {}
     _is_sync_send::<Error>();
+}
+
+#[cfg(not(any(bootstrap, test)))]
+unsafe fn set_std_vtable() {
+    static STD_VTABLE: StdVTable = StdVTable {
+        decode_error_kind: sys::decode_error_kind,
+        error_string: |code| ErrorString::from(sys::os::error_string(code)),
+    };
+    unsafe {
+        STD_VTABLE.install();
+    }
+}
+
+#[cfg(not(any(bootstrap, test)))]
+impl Error {
+    /// Returns an error representing the last OS error which occurred.
+    ///
+    /// This function reads the value of `errno` for the target platform (e.g.
+    /// `GetLastError` on Windows) and will return a corresponding instance of
+    /// [`Error`] for the error code.
+    ///
+    /// This should be called immediately after a call to a platform function,
+    /// otherwise the state of the error value is indeterminate. In particular,
+    /// other standard library functions may call platform functions that may
+    /// (or may not) reset the error value even if they succeed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::Error;
+    ///
+    /// let os_error = Error::last_os_error();
+    /// println!("last OS error: {os_error:?}");
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "GetLastError")]
+    #[doc(alias = "errno")]
+    #[must_use]
+    #[inline]
+    #[rustc_allow_incoherent_impl]
+    pub fn last_os_error() -> Error {
+        Error::from_raw_os_error(sys::os::errno())
+    }
+
+    /// Creates a new instance of an [`Error`] from a particular OS error code.
+    ///
+    /// # Examples
+    ///
+    /// On Linux:
+    ///
+    /// ```
+    /// # if cfg!(target_os = "linux") {
+    /// use std::io;
+    ///
+    /// let error = io::Error::from_raw_os_error(22);
+    /// assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+    /// # }
+    /// ```
+    ///
+    /// On Windows:
+    ///
+    /// ```
+    /// # if cfg!(windows) {
+    /// use std::io;
+    ///
+    /// let error = io::Error::from_raw_os_error(10022);
+    /// assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+    /// # }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_allow_incoherent_impl]
+    pub fn from_raw_os_error(code: RawOsError) -> Error {
+        unsafe {
+            set_std_vtable();
+            Self::from_raw_os_error_impl(code)
+        }
+    }
+
+    /// implementation detail of [`Error`]
+    #[inline]
+    #[rustc_allow_incoherent_impl]
+    #[unstable(feature = "core_io_error_internals", issue = "none")]
+    pub fn is_interrupted(&self) -> bool {
+        if let Some(code) = self.raw_os_error() {
+            sys::is_interrupted(code)
+        } else {
+            self.kind() == ErrorKind::Interrupted
+        }
+    }
 }

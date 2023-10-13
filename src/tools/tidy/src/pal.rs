@@ -46,6 +46,8 @@ const EXCEPTION_PATHS: &[&str] = &[
     // we must use `#[cfg(windows)]` to conditionally compile the
     // correct `VaList` structure for windows.
     "library/core/src/ffi/mod.rs",
+    // need platform-specific code to select correct RawOsError type and Repr mod.
+    "library/core/src/io/error.rs",
     "library/std/src/sys/", // Platform-specific code for std lives here.
     "library/std/src/os",   // Platform-specific public interfaces
     // Temporary `std` exceptions

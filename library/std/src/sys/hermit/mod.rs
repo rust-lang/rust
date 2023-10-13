@@ -130,6 +130,7 @@ pub unsafe extern "C" fn runtime_entry(
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub(crate) fn is_interrupted(errno: i32) -> bool {
     errno == abi::errno::EINTR
 }

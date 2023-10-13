@@ -116,6 +116,3 @@ pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
 pub fn log_wrapper<F: Fn(f64) -> f64>(n: f64, log_fn: F) -> f64 {
     log_fn(n)
 }
-
-#[cfg(not(target_os = "uefi"))]
-pub type RawOsError = i32;

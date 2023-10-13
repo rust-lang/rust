@@ -87,6 +87,7 @@ pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(code: i32) -> bool {
     use fortanix_sgx_abi::Error;
     code == Error::Interrupted as _

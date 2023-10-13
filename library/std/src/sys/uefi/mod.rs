@@ -51,12 +51,11 @@ mod helpers;
 #[cfg(test)]
 mod tests;
 
-pub type RawOsError = usize;
-
 use crate::io as std_io;
 use crate::os::uefi;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
+use core::io::RawOsError;
 
 pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
@@ -238,6 +237,7 @@ extern "efiapi" fn exit_boot_service_handler(_e: r_efi::efi::Event, _ctx: *mut c
     uefi::env::disable_boot_services();
 }
 
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(_code: RawOsError) -> bool {
     false
 }
