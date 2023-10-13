@@ -578,7 +578,11 @@ impl Config {
             return;
         }
 
-        let cache_dst = self.out.join("cache");
+        let cache_dst = match env::var_os("RUSTC_BOOTSTRAP_CACHE") {
+            Some(v) => PathBuf::from(v),
+            None => self.out.join("cache"),
+        };
+
         let cache_dir = cache_dst.join(key);
         if !cache_dir.exists() {
             t!(fs::create_dir_all(&cache_dir));
@@ -705,7 +709,10 @@ download-rustc = false
         let llvm_assertions = self.llvm_assertions;
 
         let cache_prefix = format!("llvm-{llvm_sha}-{llvm_assertions}");
-        let cache_dst = self.out.join("cache");
+        let cache_dst = match env::var_os("RUSTC_BOOTSTRAP_CACHE") {
+            Some(v) => PathBuf::from(v),
+            None => self.out.join("cache"),
+        };
         let rustc_cache = cache_dst.join(cache_prefix);
         if !rustc_cache.exists() {
             t!(fs::create_dir_all(&rustc_cache));
