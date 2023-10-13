@@ -1,11 +1,18 @@
 #!/bin/bash -eux
 
 if [ -z "${upload_dir+x}" ]; then
-    upload_dir="$1"
+  upload_dir="$1"
 fi
 
 if [ -z "${build_dir+x}" ]; then
-    build_dir="build"
+  source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
+
+  build_dir="build"
+
+  if isLinux; then
+    build_dir=obj/build
+  fi
+
 fi
 
 # CPU usage statistics.
