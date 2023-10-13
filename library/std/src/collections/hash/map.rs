@@ -271,7 +271,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use std::collections::hash_map::RandomState;
+    /// use std::hash::RandomState;
     ///
     /// let s = RandomState::new();
     /// let mut map = HashMap::with_hasher(s);
@@ -303,7 +303,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use std::collections::hash_map::RandomState;
+    /// use std::hash::RandomState;
     ///
     /// let s = RandomState::new();
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
@@ -714,7 +714,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use std::collections::hash_map::RandomState;
+    /// use std::hash::RandomState;
     ///
     /// let hasher = RandomState::new();
     /// let map: HashMap<i32, i32> = HashMap::with_hasher(hasher);

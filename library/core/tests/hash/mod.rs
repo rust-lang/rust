@@ -167,7 +167,7 @@ fn test_indirect_hasher() {
 
 #[test]
 fn test_build_hasher_object_safe() {
-    use std::collections::hash_map::{DefaultHasher, RandomState};
+    use std::hash::{DefaultHasher, RandomState};
 
     let _: &dyn BuildHasher<Hasher = DefaultHasher> = &RandomState::new();
 }
