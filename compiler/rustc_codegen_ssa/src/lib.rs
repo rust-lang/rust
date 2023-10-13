@@ -46,6 +46,7 @@ use std::collections::BTreeSet;
 use std::io;
 use std::path::{Path, PathBuf};
 
+pub mod assert_module_sources;
 pub mod back;
 pub mod base;
 pub mod codegen_attrs;
