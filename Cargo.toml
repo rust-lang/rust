@@ -104,7 +104,7 @@ miniz_oxide.debug = 0
 object.debug = 0
 
 [patch.crates-io]
-libc = { git = "https://github.com/wasix-org/libc.git", branch = "v0.2.147" }
+libc = { git = "https://github.com/wasix-org/libc.git", branch = "main" }
 
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
 # here
