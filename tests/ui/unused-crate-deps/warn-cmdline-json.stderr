@@ -1,1 +1,1 @@
-{"type":"unused_extern","lint_level":"warn","unused_extern_names":["bar"]}
+{"$message_type":"unused_extern","lint_level":"warn","unused_extern_names":["bar"]}

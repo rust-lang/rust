@@ -158,7 +158,7 @@ impl JsonEmitter {
 }
 
 #[derive(Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "$message_type", rename_all = "snake_case")]
 enum EmitTyped<'a> {
     Diagnostic(Diagnostic),
     Artifact(ArtifactNotification<'a>),
