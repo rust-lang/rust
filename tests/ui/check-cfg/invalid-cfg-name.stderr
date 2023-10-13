@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `widnows`
   --> $DIR/invalid-cfg-name.rs:7:7
    |
 LL | #[cfg(widnows)]

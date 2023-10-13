@@ -727,11 +727,14 @@ pub trait LintContext: Sized {
                                 .collect::<Vec<_>>();
                             possibilities.sort();
 
+                            let mut should_print_possibilities = true;
                             if let Some((value, value_span)) = value {
                                 if best_match_values.contains(&Some(value)) {
                                     db.span_suggestion(name_span, "there is a config with a similar name and value", best_match, Applicability::MaybeIncorrect);
+                                    should_print_possibilities = false;
                                 } else if best_match_values.contains(&None) {
                                     db.span_suggestion(name_span.to(value_span), "there is a config with a similar name and no value", best_match, Applicability::MaybeIncorrect);
+                                    should_print_possibilities = false;
                                 } else if let Some(first_value) = possibilities.first() {
                                     db.span_suggestion(name_span.to(value_span), "there is a config with a similar name and different values", format!("{best_match} = \"{first_value}\""), Applicability::MaybeIncorrect);
                                 } else {
@@ -741,13 +744,25 @@ pub trait LintContext: Sized {
                                 db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
                             }
 
-                            if !possibilities.is_empty() {
+                            if !possibilities.is_empty() && should_print_possibilities {
                                 let possibilities = possibilities.join("`, `");
                                 db.help(format!("expected values for `{best_match}` are: `{possibilities}`"));
                             }
                         } else {
                             db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
                         }
+                    } else if !possibilities.is_empty() {
+                        let mut possibilities = possibilities.iter()
+                            .map(Symbol::as_str)
+                            .collect::<Vec<_>>();
+                        possibilities.sort();
+                        let possibilities = possibilities.join("`, `");
+
+                        // The list of expected names can be long (even by default) and
+                        // so the diagnostic produced can take a lot of space. To avoid
+                        // cloging the user output we only want to print that diagnostic
+                        // once.
+                        db.help_once(format!("expected names are: `{possibilities}`"));
                     }
                 },
                 BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {

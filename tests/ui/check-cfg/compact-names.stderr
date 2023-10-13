@@ -1,9 +1,10 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `target_architecture`
   --> $DIR/compact-names.rs:11:28
    |
 LL | #[cfg(target(os = "linux", architecture = "arm"))]
    |                            ^^^^^^^^^^^^^^^^^^^^
    |
+   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: 1 warning emitted
