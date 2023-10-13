@@ -70,10 +70,12 @@ use rustc_middle::ty::InstanceDef;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_middle::ty::{GeneratorArgs, GenericArgsRef};
 use rustc_mir_dataflow::impls::{
-    MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
+    MaybeBorrowedLocals, MaybeInitializedPlaces, MaybeLiveLocals, MaybeRequiresStorage,
+    MaybeStorageLive,
 };
+use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_mir_dataflow::{self, Analysis};
+use rustc_mir_dataflow::{self, Analysis, MaybeReachable, MoveDataParamEnv};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -567,6 +569,10 @@ struct LivenessInfo {
     /// Which locals are live across any suspension point.
     saved_locals: GeneratorSavedLocals,
 
+    /// Which locals are live *and* initialized across any suspension point.
+    /// A local that is live but is not initialized does not need to accounted in auto trait checking.
+    init_locals: BitSet<Local>,
+
     /// The set of saved locals live at each suspension point.
     live_locals_at_suspension_points: Vec<BitSet<GeneratorSavedLocal>>,
 
@@ -620,10 +626,25 @@ fn locals_live_across_suspend_points<'tcx>(
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);
 
+    let param_env = tcx.param_env(body.source.def_id());
+    let move_data =
+        MoveData::gather_moves(body, tcx, param_env).unwrap_or_else(|(move_data, _)| {
+            tcx.sess.delay_span_bug(body.span, "gather_moves failed");
+            move_data
+        });
+    let mdpe = MoveDataParamEnv { move_data, param_env };
+
+    // Calculate the set of locals which are initialized
+    let mut inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
+        .into_engine(tcx, body)
+        .iterate_to_fixpoint()
+        .into_results_cursor(body_ref);
+
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
+    let mut init_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
@@ -662,12 +683,27 @@ fn locals_live_across_suspend_points<'tcx>(
             // The generator argument is ignored.
             live_locals.remove(SELF_ARG);
 
-            debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
+            inits.seek_to_block_end(block);
+            let mut init_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
+            if let MaybeReachable::Reachable(bitset) = inits.get() {
+                for move_path_index in bitset.iter() {
+                    if let Some(local) = mdpe.move_data.move_paths[move_path_index].place.as_local()
+                    {
+                        init_locals.insert(local);
+                    }
+                }
+            }
+            init_locals.intersect(&live_locals);
+
+            debug!(
+                "loc = {:?}, live_locals = {:?}, init_locals = {:?}",
+                loc, live_locals, init_locals
+            );
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
             live_locals_at_any_suspension_point.union(&live_locals);
-
+            init_locals_at_any_suspension_point.union(&init_locals);
             live_locals_at_suspension_points.push(live_locals);
             source_info_at_suspension_points.push(data.terminator().source_info);
         }
@@ -692,6 +728,7 @@ fn locals_live_across_suspend_points<'tcx>(
 
     LivenessInfo {
         saved_locals,
+        init_locals: init_locals_at_any_suspension_point,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
         storage_conflicts,
@@ -863,6 +900,7 @@ fn compute_layout<'tcx>(
 ) {
     let LivenessInfo {
         saved_locals,
+        init_locals,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
         storage_conflicts,
@@ -879,20 +917,26 @@ fn compute_layout<'tcx>(
         let decl = &body.local_decls[local];
         debug!(?decl);
 
-        // Do not `assert_crate_local` here, as post-borrowck cleanup may have already cleared
-        // the information. This is alright, since `ignore_for_traits` is only relevant when
-        // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
-        // default.
-        let ignore_for_traits = match decl.local_info {
-            // Do not include raw pointers created from accessing `static` items, as those could
-            // well be re-created by another access to the same static.
-            ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
-                !is_thread_local
+        let ignore_for_traits = if !init_locals.contains(local) {
+            // If only the storage is required to be live, but local is not initialized, then we can
+            // ignore such type for auto trait purposes.
+            true
+        } else {
+            // Do not `assert_crate_local` here, as post-borrowck cleanup may have already cleared
+            // the information. This is alright, since `ignore_for_traits` is only relevant when
+            // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
+            // default.
+            match decl.local_info {
+                // Do not include raw pointers created from accessing `static` items, as those could
+                // well be re-created by another access to the same static.
+                ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
+                    !is_thread_local
+                }
+                // Fake borrows are only read by fake reads, so do not have any reality in
+                // post-analysis MIR.
+                ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
+                _ => false,
             }
-            // Fake borrows are only read by fake reads, so do not have any reality in
-            // post-analysis MIR.
-            ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
-            _ => false,
         };
         let decl =
             GeneratorSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
