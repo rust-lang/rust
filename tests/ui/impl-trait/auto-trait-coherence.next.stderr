@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
-  --> $DIR/auto-trait.rs:21:1
+  --> $DIR/auto-trait-coherence.rs:24:1
    |
 LL | impl<T: Send> AnotherTrait for T {}
    | -------------------------------- first implementation here

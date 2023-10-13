@@ -1,3 +1,6 @@
+// revisions: old next
+//[next] compile-flags: -Ztrait-solver=next
+
 // Tests that type alias impls traits do not leak auto-traits for
 // the purposes of coherence checking
 #![feature(type_alias_impl_trait)]
