@@ -69,7 +69,7 @@
 //! An allocated object can never contain the null address, and the address "at the end"
 //! (i.e., one past the last byte that is contained inside the allocated object) can always
 //! be computed without wrapping around the address space. (The last part is equivalent
-//! to saying that `usize::MAX` is never contained in an allocated object.)
+//! to saying that the address `usize::MAX` is never contained in an allocated object.)
 //!
 //! # Strict Provenance
 //!
