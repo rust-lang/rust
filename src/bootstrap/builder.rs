@@ -1329,6 +1329,7 @@ impl<'a> Builder<'a> {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
                 cargo.args(s.split_whitespace());
             }
+            // NOTE: MAGIC_EXTRA_RUSTFLAGS might also interest you!
             rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
         } else {
             if let Ok(s) = env::var("CARGOFLAGS_BOOTSTRAP") {
