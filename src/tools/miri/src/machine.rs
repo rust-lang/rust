@@ -169,11 +169,29 @@ impl fmt::Display for MiriMemoryKind {
 /// Pointer provenance.
 #[derive(Clone, Copy)]
 pub enum Provenance {
+    /// For pointers with concrete provenance. we exactly know which allocation they are attached to
+    /// and what their borrow tag is.
     Concrete {
         alloc_id: AllocId,
         /// Borrow Tracker tag.
         tag: BorTag,
     },
+    /// Pointers with wildcard provenance are created on int-to-ptr casts. According to the
+    /// specification, we should at that point angelically "guess" a provenance that will make all
+    /// future uses of this pointer work, if at all possible. Of course such a semantics cannot be
+    /// actually implemented in Miri. So instead, we approximate this, erroring on the side of
+    /// accepting too much code rather than rejecting correct code: a pointer with wildcard
+    /// provenance "acts like" any previously exposed pointer. Each time it is used, we check
+    /// whether *some* exposed pointer could have done what we want to do, and if the answer is yes
+    /// then we allow the access. This allows too much code in two ways:
+    /// - The same wildcard pointer can "take the role" of multiple different exposed pointers on
+    ///   subsequenct memory accesses.
+    /// - In the aliasing model, we don't just have to know the borrow tag of the pointer used for
+    ///   the access, we also have to update the aliasing state -- and that update can be very
+    ///   different depending on which borrow tag we pick! Stacked Borrows has support for this by
+    ///   switching to a stack that is only approximately known, i.e. we overapproximate the effect
+    ///   of using *any* exposed pointer for this access, and only keep information about the borrow
+    ///   stack that would be true with all possible choices.
     Wildcard,
 }
 
