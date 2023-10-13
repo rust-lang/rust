@@ -23,7 +23,7 @@ fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
 #[allow(rustc::usage_of_qualified_ty)]
 pub fn new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
-    const_value: ConstValue<'tcx>,
+    const_value: ConstValue,
     tables: &mut Tables<'tcx>,
 ) -> Allocation {
     match const_value {
@@ -45,8 +45,7 @@ pub fn new_allocation<'tcx>(
                 tables.tcx.layout_of(rustc_middle::ty::ParamEnv::empty().and(ty)).unwrap().align;
             new_empty_allocation(align.abi)
         }
-        ConstValue::Slice { data, meta } => {
-            let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
+        ConstValue::Slice { alloc_id, meta } => {
             let ptr = Pointer::new(alloc_id, rustc_target::abi::Size::ZERO);
             let scalar_ptr = rustc_middle::mir::interpret::Scalar::from_pointer(ptr, &tables.tcx);
             let scalar_meta =

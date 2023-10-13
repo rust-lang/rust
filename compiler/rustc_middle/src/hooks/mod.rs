@@ -66,5 +66,5 @@ macro_rules! declare_hooks {
 declare_hooks! {
     /// Tries to destructure an `mir::Const` ADT or array into its variant index
     /// and its field values. This should only be used for pretty printing.
-    hook try_destructure_mir_constant_for_diagnostics(val: mir::ConstValue<'tcx>, ty: Ty<'tcx>) -> Option<mir::DestructuredConstant<'tcx>>;
+    hook try_destructure_mir_constant_for_diagnostics(val: mir::ConstValue, ty: Ty<'tcx>) -> Option<mir::DestructuredConstant<'tcx>>;
 }

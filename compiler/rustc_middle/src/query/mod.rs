@@ -1080,7 +1080,7 @@ rustc_queries! {
     /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
     /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
     query eval_to_const_value_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-        -> EvalToConstValueResult<'tcx> {
+        -> EvalToConstValueResult {
         desc { |tcx|
             "simplifying constant for the type system `{}`",
             key.value.display(tcx)
@@ -1097,7 +1097,7 @@ rustc_queries! {
     }
 
     /// Converts a type level constant value into `ConstValue`
-    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> mir::ConstValue<'tcx> {
+    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> mir::ConstValue {
         desc { "converting type-level constant value to mir constant value"}
     }
 
@@ -1107,7 +1107,7 @@ rustc_queries! {
         desc { "destructuring type level constant"}
     }
 
-    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> mir::ConstValue<'tcx> {
+    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> mir::ConstValue {
         desc { "getting a &core::panic::Location referring to a span" }
     }
 

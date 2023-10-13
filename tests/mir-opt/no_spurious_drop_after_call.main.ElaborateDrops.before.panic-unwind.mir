@@ -38,3 +38,5 @@ fn main() -> () {
         resume;
     }
 }
+
+alloc1 (size: 0, align: 1) {}

@@ -78,3 +78,23 @@
       }
   }
   
+  alloc7 (size: 1, align: 1) {
+      45                                              │ E
+  }
+  
+  alloc6 (size: 1, align: 1) {
+      44                                              │ D
+  }
+  
+  alloc5 (size: 1, align: 1) {
+      43                                              │ C
+  }
+  
+  alloc4 (size: 8, align: 1) {
+      42 28 45 6d 70 74 79 29                         │ B(Empty)
+  }
+  
+  alloc3 (size: 8, align: 1) {
+      41 28 45 6d 70 74 79 29                         │ A(Empty)
+  }
+  

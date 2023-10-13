@@ -3,7 +3,7 @@
 use crate::build::{parse_float_into_constval, Builder};
 use rustc_ast as ast;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput, Scalar};
+use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
@@ -128,27 +128,27 @@ fn lit_to_mir_constant<'tcx>(
 
     let value = match (lit, &ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
-            let s = s.as_str();
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes());
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
+            let s = s.as_str().as_bytes();
+            let len = s.len();
+            let allocation = tcx.allocate_bytes(s);
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
+            let len = data.len();
+            let allocation = tcx.allocate_bytes(&**data);
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
-            let id = tcx.allocate_bytes(data);
+            let id = tcx.allocate_bytes(&**data);
             ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
         }
         (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().c_str()) =>
         {
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
-            let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
+            let len = data.len();
+            let allocation = tcx.allocate_bytes(&**data);
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
