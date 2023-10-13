@@ -1397,7 +1397,11 @@ mod prim_usize {}
 /// which violates any of these properties.
 ///
 /// * `t` is aligned to `align_of_val(t)`
-/// * `t` refers to a single [allocated object]
+/// * `t` is dereferenceable for `size_of_val(t)` many bytes
+///
+///  Being "dereferenceable" for N bytes means that the memory range beginning
+/// at the address `t` points to and ending N bytes later is all contained within a
+/// single [allocated object].
 ///
 /// [allocated object]: ptr#allocated-object
 #[stable(feature = "rust1", since = "1.0.0")]
