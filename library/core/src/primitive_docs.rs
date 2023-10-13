@@ -1397,7 +1397,6 @@ mod prim_usize {}
 /// which violates any of these properties.
 ///
 /// * `t` is aligned to `align_of_val(t)`
-/// * `t` refers to a valid instance of `T`
 /// * `t` refers to a single [allocated object]
 ///
 /// [allocated object]: ptr#allocated-object
