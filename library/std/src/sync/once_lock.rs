@@ -126,11 +126,48 @@ impl<T> OnceLock<T> {
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn set(&self, value: T) -> Result<(), T> {
+        match self.try_insert(value) {
+            Ok(_) => Ok(()),
+            Err((_, value)) => Err(value),
+        }
+    }
+
+    /// Sets the contents of this cell to `value` if the cell was empty, then
+    /// returns a reference to it.
+    ///
+    /// May block if another thread is currently attempting to initialize the cell. The cell is
+    /// guaranteed to contain a value when set returns, though not necessarily the one provided.
+    ///
+    /// Returns `Ok(&value)` if the cell was empty and `Err(&current_value, value)` if it was full.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell_try_insert)]
+    ///
+    /// use std::sync::OnceLock;
+    ///
+    /// static CELL: OnceLock<i32> = OnceLock::new();
+    ///
+    /// fn main() {
+    ///     assert!(CELL.get().is_none());
+    ///
+    ///     std::thread::spawn(|| {
+    ///         assert_eq!(CELL.try_insert(92), Ok(&92));
+    ///     }).join().unwrap();
+    ///
+    ///     assert_eq!(CELL.try_insert(62), Err((&92, 62)));
+    ///     assert_eq!(CELL.get(), Some(&92));
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "once_cell_try_insert", issue = "116693")]
+    pub fn try_insert(&self, value: T) -> Result<&T, (&T, T)> {
         let mut value = Some(value);
-        self.get_or_init(|| value.take().unwrap());
+        let res = self.get_or_init(|| value.take().unwrap());
         match value {
-            None => Ok(()),
-            Some(value) => Err(value),
+            None => Ok(res),
+            Some(value) => Err((res, value)),
         }
     }
 

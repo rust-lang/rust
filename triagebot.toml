@@ -23,6 +23,12 @@ allow-unauthenticated = [
     "needs-triage",
 ]
 
+[review-submitted] 
+# This label is added when a "request changes" review is submitted. 
+reviewed_label = "S-waiting-on-author" 
+# These labels are removed when a "request changes" review is submitted. 
+review_labels = ["S-waiting-on-review"]
+
 [glacier]
 
 [ping.icebreakers-llvm]

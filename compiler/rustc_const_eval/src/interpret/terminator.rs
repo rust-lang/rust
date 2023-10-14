@@ -890,11 +890,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     fn check_fn_target_features(&self, instance: ty::Instance<'tcx>) -> InterpResult<'tcx, ()> {
+        // Calling functions with `#[target_feature]` is not unsafe on WASM, see #84988
         let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
-        if attrs
-            .target_features
-            .iter()
-            .any(|feature| !self.tcx.sess.target_features.contains(feature))
+        if !self.tcx.sess.target.is_like_wasm
+            && attrs
+                .target_features
+                .iter()
+                .any(|feature| !self.tcx.sess.target_features.contains(feature))
         {
             throw_ub_custom!(
                 fluent::const_eval_unavailable_target_features_for_fn,
