@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/dont-project-to-rpitit-with-no-value.rs:8:1
+  --> $DIR/dont-project-to-rpitit-with-no-value.rs:6:1
    |
 LL |     fn foo(&self) -> impl Sized;
    |     ---------------------------- `foo` from trait

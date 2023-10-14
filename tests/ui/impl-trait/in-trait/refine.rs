@@ -1,4 +1,3 @@
-#![feature(return_position_impl_trait_in_trait, async_fn_in_trait)]
 #![deny(refining_impl_trait)]
 
 pub trait Foo {

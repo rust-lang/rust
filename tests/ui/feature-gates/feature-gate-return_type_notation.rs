@@ -4,7 +4,6 @@
 // [no] check-pass
 // Since we're not adding new syntax, `cfg`'d out RTN must pass.
 
-#![feature(async_fn_in_trait)]
 
 trait Trait {
     #[allow(async_fn_in_trait)]

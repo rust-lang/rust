@@ -1,9 +1,6 @@
 // check-pass
 // edition: 2021
 
-#![feature(async_fn_in_trait)]
-#![allow(incomplete_features)]
-
 use std::fmt::Debug;
 
 trait MyTrait<'a, 'b, T> where Self: 'a, T: Debug + Sized + 'b {

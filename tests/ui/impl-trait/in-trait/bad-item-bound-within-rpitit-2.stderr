@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/bad-item-bound-within-rpitit-2.rs:6:20
+  --> $DIR/bad-item-bound-within-rpitit-2.rs:5:20
    |
 LL |     fn bar<'other: 'a>() -> impl Sized + 'a {}
    |                    ^^ undeclared lifetime
@@ -14,7 +14,7 @@ LL | trait Foo<'a> {
    |          ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/bad-item-bound-within-rpitit-2.rs:6:42
+  --> $DIR/bad-item-bound-within-rpitit-2.rs:5:42
    |
 LL |     fn bar<'other: 'a>() -> impl Sized + 'a {}
    |                                          ^^ undeclared lifetime

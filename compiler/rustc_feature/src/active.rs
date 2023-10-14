@@ -351,8 +351,6 @@ declare_features! (
     (active, associated_type_defaults, "1.2.0", Some(29661), None),
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
-    /// Allows async functions to be declared, implemented, and used in traits.
-    (active, async_fn_in_trait, "1.66.0", Some(91611), None),
     /// Allows `#[track_caller]` on async functions.
     (active, async_fn_track_caller, "1.73.0", Some(110011), None),
     /// Allows builtin # foo() syntax
@@ -551,8 +549,6 @@ declare_features! (
     (incomplete, repr128, "1.16.0", Some(56071), None),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (active, repr_simd, "1.4.0", Some(27731), None),
-    /// Allows return-position `impl Trait` in traits.
-    (active, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
     /// Allows bounding the return type of AFIT/RPITIT.
     (incomplete, return_type_notation, "1.70.0", Some(109417), None),
     /// Allows `extern "rust-cold"`.

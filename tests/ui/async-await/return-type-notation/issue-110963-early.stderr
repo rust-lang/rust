@@ -8,7 +8,7 @@ LL | #![feature(return_type_notation)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0308]: mismatched types
-  --> $DIR/issue-110963-early.rs:15:5
+  --> $DIR/issue-110963-early.rs:14:5
    |
 LL | /     spawn(async move {
 LL | |         let mut hc = hc;
@@ -21,13 +21,13 @@ LL | |     });
    = note: expected trait `Send`
               found trait `for<'a> Send`
 note: the lifetime requirement is introduced here
-  --> $DIR/issue-110963-early.rs:35:17
+  --> $DIR/issue-110963-early.rs:34:17
    |
 LL |     F: Future + Send + 'static,
    |                 ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/issue-110963-early.rs:15:5
+  --> $DIR/issue-110963-early.rs:14:5
    |
 LL | /     spawn(async move {
 LL | |         let mut hc = hc;
@@ -40,7 +40,7 @@ LL | |     });
    = note: expected trait `Send`
               found trait `for<'a> Send`
 note: the lifetime requirement is introduced here
-  --> $DIR/issue-110963-early.rs:35:17
+  --> $DIR/issue-110963-early.rs:34:17
    |
 LL |     F: Future + Send + 'static,
    |                 ^^^^

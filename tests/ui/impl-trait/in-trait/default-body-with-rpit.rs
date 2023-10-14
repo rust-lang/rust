@@ -1,7 +1,6 @@
 // edition:2021
 // check-pass
 
-#![feature(async_fn_in_trait, return_position_impl_trait_in_trait)]
 #![allow(incomplete_features)]
 
 use std::fmt::Debug;

@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'missing`
-  --> $DIR/missing-lt-outlives-in-rpitit-114274.rs:8:55
+  --> $DIR/missing-lt-outlives-in-rpitit-114274.rs:6:55
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Self::Item<'missing>>;
    |                                                       ^^^^^^^^ undeclared lifetime

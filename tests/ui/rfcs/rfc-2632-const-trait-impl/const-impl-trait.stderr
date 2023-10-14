@@ -5,31 +5,31 @@ LL |     const_cmp,
    |     ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:12:30
+  --> $DIR/const-impl-trait.rs:11:30
    |
 LL | const fn cmp(a: &impl ~const PartialEq) -> bool {
    |                              ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:16:30
+  --> $DIR/const-impl-trait.rs:15:30
    |
 LL | const fn wrap(x: impl ~const PartialEq + ~const Destruct)
    |                              ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:17:20
+  --> $DIR/const-impl-trait.rs:16:20
    |
 LL |     -> impl ~const PartialEq + ~const Destruct
    |                    ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:24:29
+  --> $DIR/const-impl-trait.rs:23:29
    |
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
    |                             ^^^^^^^^^
 
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:28:29
+  --> $DIR/const-impl-trait.rs:27:29
    |
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
    |                             ^^^^^^^^^

@@ -783,21 +783,21 @@ fn check_impl_items_against_trait<'tcx>(
                 let (msg, feature) = if tcx.asyncness(def_id).is_async() {
                     (
                         format!("async {descr} in trait cannot be specialized"),
-                        sym::async_fn_in_trait,
+                        "async functions in traits",
                     )
                 } else {
                     (
                         format!(
                             "{descr} with return-position `impl Trait` in trait cannot be specialized"
                         ),
-                        sym::return_position_impl_trait_in_trait,
+                        "return position `impl Trait` in traits",
                     )
                 };
                 tcx.sess
                     .struct_span_err(tcx.def_span(def_id), msg)
                     .note(format!(
                         "specialization behaves in inconsistent and \
-                        surprising ways with `#![feature({feature})]`, \
+                        surprising ways with {feature}, \
                         and for now is disallowed"
                     ))
                     .emit();

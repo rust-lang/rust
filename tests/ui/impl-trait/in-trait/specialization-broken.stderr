@@ -1,5 +1,5 @@
 error[E0053]: method `bar` has an incompatible type for trait
-  --> $DIR/specialization-broken.rs:16:22
+  --> $DIR/specialization-broken.rs:15:22
    |
 LL | default impl<U> Foo for U
    |              - this type parameter
@@ -11,7 +11,7 @@ LL |     fn bar(&self) -> U {
    |                      help: change the output type to match the trait: `impl Sized`
    |
 note: type in trait
-  --> $DIR/specialization-broken.rs:9:22
+  --> $DIR/specialization-broken.rs:8:22
    |
 LL |     fn bar(&self) -> impl Sized;
    |                      ^^^^^^^^^^
@@ -19,12 +19,12 @@ LL |     fn bar(&self) -> impl Sized;
               found signature `fn(&U) -> U`
 
 error: method with return-position `impl Trait` in trait cannot be specialized
-  --> $DIR/specialization-broken.rs:16:5
+  --> $DIR/specialization-broken.rs:15:5
    |
 LL |     fn bar(&self) -> U {
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: specialization behaves in inconsistent and surprising ways with `#![feature(return_position_impl_trait_in_trait)]`, and for now is disallowed
+   = note: specialization behaves in inconsistent and surprising ways with return position `impl Trait` in traits, and for now is disallowed
 
 error: aborting due to 2 previous errors
 

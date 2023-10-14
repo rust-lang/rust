@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, return_position_impl_trait_in_trait)]
+#![feature(rustc_attrs)]
 #![allow(internal_features)]
 #![rustc_variance_of_opaques]
 

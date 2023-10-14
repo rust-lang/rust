@@ -104,10 +104,9 @@ trait InTraitDefnParameters {
     fn in_parameters(_: impl Debug);
 }
 
-// Disallowed
+// Allowed
 trait InTraitDefnReturn {
     fn in_return() -> impl Debug;
-    //~^ ERROR `impl Trait` only allowed in function and inherent method argument and return types
 }
 
 // Allowed and disallowed in trait impls
@@ -124,7 +123,7 @@ impl DummyTrait for () {
     // Allowed
 
     fn in_trait_impl_return() -> impl Debug { () }
-    //~^ ERROR `impl Trait` only allowed in function and inherent method argument and return types
+    // Allowed
 }
 
 // Allowed

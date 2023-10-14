@@ -1,8 +1,6 @@
 // edition:2021
 // run-rustfix
 
-#![feature(async_fn_in_trait, return_position_impl_trait_in_trait)]
-
 trait Trait {
     #[allow(async_fn_in_trait)]
     async fn foo();

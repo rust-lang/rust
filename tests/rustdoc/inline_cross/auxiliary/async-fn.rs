@@ -1,4 +1,3 @@
-#![feature(async_fn_in_trait)]
 // edition: 2021
 
 pub async fn load() -> i32 {

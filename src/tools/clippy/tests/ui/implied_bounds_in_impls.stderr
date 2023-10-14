@@ -1,5 +1,5 @@
 error: this bound is already specified as the supertrait of `DerefMut<Target = T>`
-  --> $DIR/implied_bounds_in_impls.rs:13:36
+  --> $DIR/implied_bounds_in_impls.rs:12:36
    |
 LL | fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T> {
    |                                    ^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL + fn deref_derefmut<T>(x: T) -> impl DerefMut<Target = T> {
    |
 
 error: this bound is already specified as the supertrait of `GenericSubtrait<U, W, U>`
-  --> $DIR/implied_bounds_in_impls.rs:30:37
+  --> $DIR/implied_bounds_in_impls.rs:29:37
    |
 LL | fn generics_implied<U, W>() -> impl GenericTrait<W> + GenericSubtrait<U, W, U>
    |                                     ^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL + fn generics_implied<U, W>() -> impl GenericSubtrait<U, W, U>
    |
 
 error: this bound is already specified as the supertrait of `GenericSubtrait<(), i32, V>`
-  --> $DIR/implied_bounds_in_impls.rs:36:40
+  --> $DIR/implied_bounds_in_impls.rs:35:40
    |
 LL | fn generics_implied_multi<V>() -> impl GenericTrait<i32> + GenericTrait2<V> + GenericSubtrait<(), i32, V> {}
    |                                        ^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL + fn generics_implied_multi<V>() -> impl GenericTrait2<V> + GenericSubtrait<(
    |
 
 error: this bound is already specified as the supertrait of `GenericSubtrait<(), i32, V>`
-  --> $DIR/implied_bounds_in_impls.rs:36:60
+  --> $DIR/implied_bounds_in_impls.rs:35:60
    |
 LL | fn generics_implied_multi<V>() -> impl GenericTrait<i32> + GenericTrait2<V> + GenericSubtrait<(), i32, V> {}
    |                                                            ^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL + fn generics_implied_multi<V>() -> impl GenericTrait<i32> + GenericSubtrait<
    |
 
 error: this bound is already specified as the supertrait of `GenericSubtrait<(), T, V>`
-  --> $DIR/implied_bounds_in_impls.rs:38:44
+  --> $DIR/implied_bounds_in_impls.rs:37:44
    |
 LL | fn generics_implied_multi2<T, V>() -> impl GenericTrait<T> + GenericTrait2<V> + GenericSubtrait<(), T, V>
    |                                            ^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL + fn generics_implied_multi2<T, V>() -> impl GenericTrait2<V> + GenericSubtra
    |
 
 error: this bound is already specified as the supertrait of `GenericSubtrait<(), T, V>`
-  --> $DIR/implied_bounds_in_impls.rs:38:62
+  --> $DIR/implied_bounds_in_impls.rs:37:62
    |
 LL | fn generics_implied_multi2<T, V>() -> impl GenericTrait<T> + GenericTrait2<V> + GenericSubtrait<(), T, V>
    |                                                              ^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL + fn generics_implied_multi2<T, V>() -> impl GenericTrait<T> + GenericSubtrai
    |
 
 error: this bound is already specified as the supertrait of `GenericSubtrait<(), i32, ()>`
-  --> $DIR/implied_bounds_in_impls.rs:48:28
+  --> $DIR/implied_bounds_in_impls.rs:47:28
    |
 LL | fn generics_same() -> impl GenericTrait<i32> + GenericSubtrait<(), i32, ()> {}
    |                            ^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL + fn generics_same() -> impl GenericSubtrait<(), i32, ()> {}
    |
 
 error: this bound is already specified as the supertrait of `DerefMut<Target = u8>`
-  --> $DIR/implied_bounds_in_impls.rs:52:20
+  --> $DIR/implied_bounds_in_impls.rs:51:20
    |
 LL |     fn f() -> impl Deref + DerefMut<Target = u8>;
    |                    ^^^^^
@@ -97,7 +97,7 @@ LL +     fn f() -> impl DerefMut<Target = u8>;
    |
 
 error: this bound is already specified as the supertrait of `DerefMut<Target = u8>`
-  --> $DIR/implied_bounds_in_impls.rs:57:20
+  --> $DIR/implied_bounds_in_impls.rs:56:20
    |
 LL |     fn f() -> impl Deref + DerefMut<Target = u8> {
    |                    ^^^^^
@@ -109,7 +109,7 @@ LL +     fn f() -> impl DerefMut<Target = u8> {
    |
 
 error: this bound is already specified as the supertrait of `DerefMut<Target = u8>`
-  --> $DIR/implied_bounds_in_impls.rs:63:20
+  --> $DIR/implied_bounds_in_impls.rs:62:20
    |
 LL |     fn f() -> impl Deref + DerefMut<Target = u8> {
    |                    ^^^^^
@@ -121,7 +121,7 @@ LL +     fn f() -> impl DerefMut<Target = u8> {
    |
 
 error: this bound is already specified as the supertrait of `PartialOrd`
-  --> $DIR/implied_bounds_in_impls.rs:74:41
+  --> $DIR/implied_bounds_in_impls.rs:73:41
    |
 LL |     fn default_generic_param1() -> impl PartialEq + PartialOrd + Debug {}
    |                                         ^^^^^^^^^
@@ -133,7 +133,7 @@ LL +     fn default_generic_param1() -> impl PartialOrd + Debug {}
    |
 
 error: this bound is already specified as the supertrait of `PartialOrd`
-  --> $DIR/implied_bounds_in_impls.rs:75:54
+  --> $DIR/implied_bounds_in_impls.rs:74:54
    |
 LL |     fn default_generic_param2() -> impl PartialOrd + PartialEq + Debug {}
    |                                                      ^^^^^^^^^
@@ -145,7 +145,7 @@ LL +     fn default_generic_param2() -> impl PartialOrd + Debug {}
    |
 
 error: this bound is already specified as the supertrait of `DoubleEndedIterator`
-  --> $DIR/implied_bounds_in_impls.rs:88:26
+  --> $DIR/implied_bounds_in_impls.rs:87:26
    |
 LL |     fn my_iter() -> impl Iterator<Item = u32> + DoubleEndedIterator {
    |                          ^^^^^^^^^^^^^^^^^^^^
@@ -157,7 +157,7 @@ LL +     fn my_iter() -> impl DoubleEndedIterator<Item = u32> {
    |
 
 error: this bound is already specified as the supertrait of `Copy`
-  --> $DIR/implied_bounds_in_impls.rs:93:27
+  --> $DIR/implied_bounds_in_impls.rs:92:27
    |
 LL |     fn f() -> impl Copy + Clone {
    |                           ^^^^^
@@ -169,7 +169,7 @@ LL +     fn f() -> impl Copy {
    |
 
 error: this bound is already specified as the supertrait of `Trait2<i32>`
-  --> $DIR/implied_bounds_in_impls.rs:107:21
+  --> $DIR/implied_bounds_in_impls.rs:106:21
    |
 LL |     fn f2() -> impl Trait1<i32, U = i64> + Trait2<i32> {}
    |                     ^^^^^^^^^^^^^^^^^^^^
@@ -181,7 +181,7 @@ LL +     fn f2() -> impl Trait2<i32, U = i64> {}
    |
 
 error: this bound is already specified as the supertrait of `Trait4<i8, X = i32>`
-  --> $DIR/implied_bounds_in_impls.rs:122:21
+  --> $DIR/implied_bounds_in_impls.rs:121:21
    |
 LL |     fn f3() -> impl Trait3<i8, i16, i64, X = i32, Y = i128> + Trait4<i8, X = i32> {}
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

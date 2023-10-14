@@ -11,7 +11,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// # #![feature(async_fn_in_trait)]
     /// pub trait Trait {
     ///     async fn method(&self);
     /// }
@@ -33,7 +32,6 @@ declare_lint! {
     /// For example, this code is invalid:
     ///
     /// ```rust,compile_fail
-    /// # #![feature(async_fn_in_trait)]
     /// pub trait Trait {
     ///     async fn method(&self) {}
     /// }
@@ -51,7 +49,6 @@ declare_lint! {
     /// For example, instead of:
     ///
     /// ```rust
-    /// # #![feature(async_fn_in_trait)]
     /// pub trait Trait {
     ///     async fn method(&self) {}
     /// }

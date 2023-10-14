@@ -1,7 +1,6 @@
 // run-pass
 // edition:2021
 
-#![feature(async_fn_in_trait)]
 
 use std::future::Future;
 
