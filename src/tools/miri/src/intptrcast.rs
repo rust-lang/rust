@@ -82,9 +82,12 @@ impl<'mir, 'tcx> GlobalStateInner {
                 let (glb, alloc_id) = global_state.int_to_ptr_map[pos - 1];
                 // This never overflows because `addr >= glb`
                 let offset = addr - glb;
-                // If the offset exceeds the size of the allocation, don't use this `alloc_id`.
+                // We require this to be strict in-bounds of the allocation. This arm is only
+                // entered for addresses that are not the base address, so even zero-sized
+                // allocations will get recognized at their base address -- but all other
+                // allocations will *not* be recognized at their "end" address.
                 let size = ecx.get_alloc_info(alloc_id).0;
-                if offset <= size.bytes() { Some(alloc_id) } else { None }
+                if offset < size.bytes() { Some(alloc_id) } else { None }
             }
         }?;
 
