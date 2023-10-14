@@ -252,10 +252,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
-                // FIXME?: returning `_` can cause inaccurate "unreachable" warnings. This can be
-                // fixed by returning `PatKind::Const(ConstKind::Error(...))` if #115937 gets
-                // merged.
-                self.lower_pattern_range(lo_expr, hi_expr, end, ty, span).unwrap_or(PatKind::Wild)
+                self.lower_pattern_range(lo_expr, hi_expr, end, ty, span)
+                    .unwrap_or_else(PatKind::Error)
             }
 
             hir::PatKind::Path(ref qpath) => {
@@ -423,9 +421,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if adt_def.is_enum() {
                     let args = match ty.kind() {
                         ty::Adt(_, args) | ty::FnDef(_, args) => args,
-                        ty::Error(_) => {
+                        ty::Error(e) => {
                             // Avoid ICE (#50585)
-                            return PatKind::Wild;
+                            return PatKind::Error(*e);
                         }
                         _ => bug!("inappropriate type for def: {:?}", ty),
                     };
@@ -452,7 +450,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
             _ => {
-                match res {
+                let e = match res {
                     Res::Def(DefKind::ConstParam, _) => {
                         self.tcx.sess.emit_err(ConstParamInPattern { span })
                     }
@@ -461,7 +459,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     }
                     _ => self.tcx.sess.emit_err(NonConstPath { span }),
                 };
-                PatKind::Wild
+                PatKind::Error(e)
             }
         };
 
@@ -513,14 +511,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // It should be assoc consts if there's no error but we cannot resolve it.
                 debug_assert!(is_associated_const);
 
-                self.tcx.sess.emit_err(AssocConstInPattern { span });
-
-                return pat_from_kind(PatKind::Wild);
+                let e = self.tcx.sess.emit_err(AssocConstInPattern { span });
+                return pat_from_kind(PatKind::Error(e));
             }
 
             Err(_) => {
-                self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
-                return pat_from_kind(PatKind::Wild);
+                let e = self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
+                return pat_from_kind(PatKind::Error(e));
             }
         };
 
@@ -574,12 +571,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             Err(ErrorHandled::TooGeneric(_)) => {
                 // While `Reported | Linted` cases will have diagnostics emitted already
                 // it is not true for TooGeneric case, so we need to give user more information.
-                self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
-                pat_from_kind(PatKind::Wild)
+                let e = self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
+                pat_from_kind(PatKind::Error(e))
             }
             Err(_) => {
-                self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
-                pat_from_kind(PatKind::Wild)
+                let e = self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
+                pat_from_kind(PatKind::Error(e))
             }
         }
     }
@@ -629,7 +626,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let uneval = mir::UnevaluatedConst { def: def_id.to_def_id(), args, promoted: None };
         debug_assert!(!args.has_free_regions());
 
-        let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args: args };
+        let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         // First try using a valtree in order to destructure the constant into a pattern.
         // FIXME: replace "try to do a thing, then fall back to another thing"
         // but something more principled, like a trait query checking whether this can be turned into a valtree.
@@ -649,10 +646,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 Ok(val) => self.const_to_pat(mir::Const::Val(val, ty), id, span, None).kind,
                 Err(ErrorHandled::TooGeneric(_)) => {
                     // If we land here it means the const can't be evaluated because it's `TooGeneric`.
-                    self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
-                    PatKind::Wild
+                    let e = self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
+                    PatKind::Error(e)
                 }
-                Err(ErrorHandled::Reported(..)) => PatKind::Wild,
+                Err(ErrorHandled::Reported(err, ..)) => PatKind::Error(err.into()),
             }
         }
     }
@@ -685,7 +682,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             Ok(constant) => {
                 self.const_to_pat(Const::Ty(constant), expr.hir_id, lit.span, None).kind
             }
-            Err(LitToConstError::Reported(_)) => PatKind::Wild,
+            Err(LitToConstError::Reported(e)) => PatKind::Error(e),
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
     }
@@ -791,6 +788,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             PatKind::Wild => PatKind::Wild,
+            PatKind::Error(e) => PatKind::Error(e),
             PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: Ascription { ref annotation, variance },

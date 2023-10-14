@@ -1525,6 +1525,10 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 let pats = expand_or_pat(pat);
                 fields = Fields::from_iter(cx, pats.into_iter().map(mkpat));
             }
+            PatKind::Error(_) => {
+                ctor = Opaque;
+                fields = Fields::empty();
+            }
         }
         DeconstructedPat::new(ctor, fields, pat.ty, pat.span)
     }

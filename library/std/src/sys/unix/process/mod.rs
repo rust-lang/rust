@@ -6,6 +6,9 @@ pub use crate::sys_common::process::CommandEnvs;
 #[cfg_attr(any(target_os = "espidf", target_os = "horizon"), allow(unused))]
 mod process_common;
 
+#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
+mod process_unsupported;
+
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
         #[path = "process_fuchsia.rs"]
@@ -15,8 +18,9 @@ cfg_if::cfg_if! {
         #[path = "process_vxworks.rs"]
         mod process_inner;
     } else if #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))] {
-        #[path = "process_unsupported.rs"]
-        mod process_inner;
+        mod process_inner {
+            pub use super::process_unsupported::*;
+        }
     } else {
         #[path = "process_unix.rs"]
         mod process_inner;

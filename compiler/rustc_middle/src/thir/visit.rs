@@ -226,7 +226,7 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
             is_primary: _,
             name: _,
         } => visitor.visit_pat(&subpattern),
-        Binding { .. } | Wild => {}
+        Binding { .. } | Wild | Error(_) => {}
         Variant { subpatterns, adt_def: _, args: _, variant_index: _ } | Leaf { subpatterns } => {
             for subpattern in subpatterns {
                 visitor.visit_pat(&subpattern.pattern);

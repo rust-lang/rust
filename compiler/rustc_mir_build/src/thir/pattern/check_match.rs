@@ -19,7 +19,7 @@ use rustc_hir::HirId;
 use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
@@ -231,6 +231,10 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         if let LetSource::None = source {
             return;
         }
+        if let Err(err) = pat.pat_error_reported() {
+            self.error = Err(err);
+            return;
+        }
         self.check_patterns(pat, Refutable);
         let mut cx = self.new_cx(self.lint_level, true);
         let tpat = self.lower_pattern(&mut cx, pat);
@@ -252,6 +256,10 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             self.with_lint_level(arm.lint_level, |this| {
                 this.check_patterns(&arm.pattern, Refutable);
             });
+            if let Err(err) = arm.pattern.pat_error_reported() {
+                self.error = Err(err);
+                return;
+            }
         }
 
         let tarms: Vec<_> = arms
@@ -334,7 +342,8 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         // and record chain members that aren't let exprs.
         let mut chain_refutabilities = Vec::new();
 
-        let add = |expr: ExprId, mut local_lint_level| {
+        let mut error = Ok(());
+        let mut add = |expr: ExprId, mut local_lint_level| {
             // `local_lint_level` is the lint level enclosing the pattern inside `expr`.
             let mut expr = &self.thir[expr];
             debug!(?expr, ?local_lint_level, "add");
@@ -348,6 +357,10 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             debug!(?expr, ?local_lint_level, "after scopes");
             match expr.kind {
                 ExprKind::Let { box ref pat, expr: _ } => {
+                    if let Err(err) = pat.pat_error_reported() {
+                        error = Err(err);
+                        return None;
+                    }
                     let mut ncx = self.new_cx(local_lint_level, true);
                     let tpat = self.lower_pattern(&mut ncx, pat);
                     let refutable = !is_let_irrefutable(&mut ncx, local_lint_level, tpat);
@@ -379,6 +392,11 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         }
         debug!(?chain_refutabilities);
         chain_refutabilities.reverse();
+
+        if error.is_err() {
+            self.error = error;
+            return;
+        }
 
         // Third, emit the actual warnings.
         if chain_refutabilities.iter().all(|r| matches!(*r, Some((_, false)))) {
@@ -426,6 +444,12 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn check_irrefutable(&mut self, pat: &Pat<'tcx>, origin: &str, sp: Option<Span>) {
+        // If we got errors while lowering, don't emit anything more.
+        if let Err(err) = pat.pat_error_reported() {
+            self.error = Err(err);
+            return;
+        }
+
         let mut cx = self.new_cx(self.lint_level, false);
 
         let pattern = self.lower_pattern(&mut cx, pat);
@@ -682,12 +706,6 @@ fn non_exhaustive_match<'p, 'tcx>(
     arms: &[ArmId],
     expr_span: Span,
 ) -> ErrorGuaranteed {
-    for &arm in arms {
-        if let Err(err) = thir[arm].pattern.error_reported() {
-            return err;
-        }
-    }
-
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
         ty::Adt(def, _) => def.is_enum() && !def.variants().is_empty(),

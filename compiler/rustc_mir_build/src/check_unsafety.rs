@@ -224,7 +224,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 PatKind::Wild |
                 // these just wrap other patterns
                 PatKind::Or { .. } |
-                PatKind::AscribeUserType { .. } => {}
+                PatKind::AscribeUserType { .. } |
+                PatKind::Error(_) => {}
             }
         };
 

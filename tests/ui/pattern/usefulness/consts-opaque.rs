@@ -52,7 +52,6 @@ fn main() {
         BAR => {}
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         _ => {}
-        //~^ ERROR unreachable pattern
     }
 
     match BAR {
@@ -60,7 +59,6 @@ fn main() {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Bar => {}
         _ => {}
-        //~^ ERROR unreachable pattern
     }
 
     match BAR {

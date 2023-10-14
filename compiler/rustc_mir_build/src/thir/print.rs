@@ -757,6 +757,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "]", depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
+            PatKind::Error(_) => {
+                print_indented!(self, "Error", depth_lvl + 1);
+            }
         }
 
         print_indented!(self, "}", depth_lvl);

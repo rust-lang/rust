@@ -196,9 +196,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     };
                     // All branches above emitted an error. Don't print any more lints.
                     // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                    let kind = PatKind::Constant {
-                        value: mir::Const::Ty(ty::Const::new_error(self.tcx(), e, cv.ty())),
-                    };
+                    let kind = PatKind::Error(e);
                     return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
                 } else if !self.saw_const_match_lint.get() {
                     if let Some(mir_structural_match_violation) = mir_structural_match_violation {
@@ -351,7 +349,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let e = tcx.sess.emit_err(InvalidPattern { span, non_sm_ty: ty });
                 self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)) }
+                PatKind::Error(e)
             }
             ty::Adt(adt_def, _) if !self.type_marked_structural(ty) => {
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty,);
@@ -359,7 +357,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let e = tcx.sess.emit_err(err);
                 self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)) }
+                PatKind::Error(e)
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
@@ -434,17 +432,13 @@ impl<'tcx> ConstToPat<'tcx> {
                     } else {
                         if let Some(e) = self.saw_const_match_error.get() {
                             // We already errored. Signal that in the pattern, so that follow up errors can be silenced.
-                            PatKind::Constant {
-                                value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)),
-                            }
+                            PatKind::Error(e)
                         } else {
                             let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
                             let e = tcx.sess.emit_err(err);
                             self.saw_const_match_error.set(Some(e));
                             // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                            PatKind::Constant {
-                                value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)),
-                            }
+                            PatKind::Error(e)
                         }
                     }
                 }
@@ -456,9 +450,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
                         let e = tcx.sess.emit_err(err);
                         // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                        PatKind::Constant {
-                            value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)),
-                        }
+                        PatKind::Error(e)
                     } else {
                         let old = self.behind_reference.replace(true);
                         // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
@@ -489,7 +481,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let e = tcx.sess.emit_err(err);
                 self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_error(tcx, e, ty)) }
+                PatKind::Error(e)
             }
         };
 
