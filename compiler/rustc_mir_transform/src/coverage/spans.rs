@@ -384,19 +384,15 @@ impl<'a> CoverageSpansGenerator<'a> {
     }
 
     fn push_refined_span(&mut self, covspan: CoverageSpan) {
-        let len = self.refined_spans.len();
-        if len > 0 {
-            let last = &mut self.refined_spans[len - 1];
-            if last.is_mergeable(&covspan) {
-                debug!(
-                    "merging new refined span with last refined span, last={:?}, covspan={:?}",
-                    last, covspan
-                );
-                last.merge_from(covspan);
-                return;
-            }
+        if let Some(last) = self.refined_spans.last_mut()
+            && last.is_mergeable(&covspan)
+        {
+            // Instead of pushing the new span, merge it with the last refined span.
+            debug!(?last, ?covspan, "merging new refined span with last refined span");
+            last.merge_from(covspan);
+        } else {
+            self.refined_spans.push(covspan);
         }
-        self.refined_spans.push(covspan)
     }
 
     /// If `curr` is part of a new macro expansion, carve out and push a separate
