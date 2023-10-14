@@ -26,7 +26,6 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::exported_symbols::SymbolExportInfo;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutFileName, OutputFilenames, OutputType};
 use rustc_session::config::{Passes, SwitchWithOptPath};
 use rustc_session::Session;
@@ -366,8 +365,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     /// The incremental compilation session directory, or None if we are not
     /// compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
-    /// Used to update CGU re-use information during the thinlto phase.
-    pub cgu_reuse_tracker: CguReuseTracker,
     /// Channel back to the main control thread to send messages to
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
 }
@@ -1119,7 +1116,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         remark: sess.opts.cg.remark.clone(),
         remark_dir,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
-        cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
         expanded_args: tcx.sess.expanded_args.clone(),
         diag_emitter: shared_emitter.clone(),
@@ -1968,8 +1964,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
                 bug!("panic during codegen/LLVM phase");
             }
         });
-
-        sess.cgu_reuse_tracker.check_expected_reuse(sess);
 
         sess.abort_if_errors();
 

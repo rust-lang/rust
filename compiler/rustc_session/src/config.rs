@@ -2925,8 +2925,8 @@ fn parse_pretty(handler: &EarlyErrorHandler, unstable_opts: &UnstableOptions) ->
         "expanded" => Source(PpSourceMode::Expanded),
         "expanded,identified" => Source(PpSourceMode::ExpandedIdentified),
         "expanded,hygiene" => Source(PpSourceMode::ExpandedHygiene),
-        "ast-tree" => AstTree(PpAstTreeMode::Normal),
-        "ast-tree,expanded" => AstTree(PpAstTreeMode::Expanded),
+        "ast-tree" => AstTree,
+        "ast-tree,expanded" => AstTreeExpanded,
         "hir" => Hir(PpHirMode::Normal),
         "hir,identified" => Hir(PpHirMode::Identified),
         "hir,typed" => Hir(PpHirMode::Typed),
@@ -3084,14 +3084,6 @@ pub enum PpSourceMode {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum PpAstTreeMode {
-    /// `-Zunpretty=ast`
-    Normal,
-    /// `-Zunpretty=ast,expanded`
-    Expanded,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpHirMode {
     /// `-Zunpretty=hir`
     Normal,
@@ -3106,7 +3098,10 @@ pub enum PpMode {
     /// Options that print the source code, i.e.
     /// `-Zunpretty=normal` and `-Zunpretty=expanded`
     Source(PpSourceMode),
-    AstTree(PpAstTreeMode),
+    /// `-Zunpretty=ast-tree`
+    AstTree,
+    /// `-Zunpretty=ast-tree,expanded`
+    AstTreeExpanded,
     /// Options that print the HIR, i.e. `-Zunpretty=hir`
     Hir(PpHirMode),
     /// `-Zunpretty=hir-tree`
@@ -3126,10 +3121,10 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            Source(Normal | Identified) | AstTree(PpAstTreeMode::Normal) => false,
+            Source(Normal | Identified) | AstTree => false,
 
             Source(Expanded | ExpandedIdentified | ExpandedHygiene)
-            | AstTree(PpAstTreeMode::Expanded)
+            | AstTreeExpanded
             | Hir(_)
             | HirTree
             | ThirTree
@@ -3141,7 +3136,7 @@ impl PpMode {
     pub fn needs_hir(&self) -> bool {
         use PpMode::*;
         match *self {
-            Source(_) | AstTree(_) => false,
+            Source(_) | AstTree | AstTreeExpanded => false,
 
             Hir(_) | HirTree | ThirTree | ThirFlat | Mir | MirCFG => true,
         }
@@ -3149,7 +3144,7 @@ impl PpMode {
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        matches!(*self, Mir | MirCFG | ThirTree | ThirFlat)
+        matches!(*self, Hir(PpHirMode::Typed) | Mir | MirCFG | ThirTree | ThirFlat)
     }
 }
 

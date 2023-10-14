@@ -319,7 +319,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned)]
     /// use std::sync::atomic::{self, AtomicBool};
     /// use std::mem::align_of;
     ///
@@ -346,13 +346,21 @@ impl AtomicBool {
     ///
     /// # Safety
     ///
-    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can be bigger than `align_of::<bool>()`).
+    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can
+    ///   be bigger than `align_of::<bool>()`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-    /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+    /// * Non-atomic accesses to the value behind `ptr` must have a happens-before relationship
+    ///   with atomic accesses via the returned value (or vice-versa).
+    ///   * In other words, time periods where the value is accessed atomically may not overlap
+    ///     with periods where the value is accessed non-atomically.
+    ///   * This requirement is trivially satisfied if `ptr` is never used non-atomically for the
+    ///     duration of lifetime `'a`. Most use cases should be able to follow this guideline.
+    ///   * This requirement is also trivially satisfied if all accesses (atomic or not) are done
+    ///     from the same thread.
     ///
     /// [valid]: crate::ptr#safety
-    #[unstable(feature = "atomic_from_ptr", issue = "108652")]
-    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+    #[stable(feature = "atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut bool) -> &'a AtomicBool {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -1113,7 +1121,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+    /// #![feature(pointer_is_aligned)]
     /// use std::sync::atomic::{self, AtomicPtr};
     /// use std::mem::align_of;
     ///
@@ -1140,13 +1148,23 @@ impl<T> AtomicPtr<T> {
     ///
     /// # Safety
     ///
-    /// * `ptr` must be aligned to `align_of::<AtomicPtr<T>>()` (note that on some platforms this can be bigger than `align_of::<*mut T>()`).
+    /// * `ptr` must be aligned to `align_of::<AtomicPtr<T>>()` (note that on some platforms this
+    ///   can be bigger than `align_of::<*mut T>()`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-    /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+    /// * Non-atomic accesses to the value behind `ptr` must have a happens-before relationship
+    ///   with atomic accesses via the returned value (or vice-versa).
+    ///   * In other words, time periods where the value is accessed atomically may not overlap
+    ///     with periods where the value is accessed non-atomically.
+    ///   * This requirement is trivially satisfied if `ptr` is never used non-atomically for the
+    ///     duration of lifetime `'a`. Most use cases should be able to follow this guideline.
+    ///   * This requirement is also trivially satisfied if all accesses (atomic or not) are done
+    ///     from the same thread.
+    /// * This method should not be used to create overlapping or mixed-size atomic accesses, as
+    ///   these are not supported by the memory model.
     ///
     /// [valid]: crate::ptr#safety
-    #[unstable(feature = "atomic_from_ptr", issue = "108652")]
-    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+    #[stable(feature = "atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut *mut T) -> &'a AtomicPtr<T> {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -2083,7 +2101,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// #![feature(atomic_from_ptr, pointer_is_aligned)]
+            /// #![feature(pointer_is_aligned)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{self, ", stringify!($atomic_type), "};")]
             /// use std::mem::align_of;
             ///
@@ -2111,14 +2129,25 @@ macro_rules! atomic_int {
             ///
             /// # Safety
             ///
-            /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can be bigger than `align_of::<bool>()`).
-            #[doc = concat!(" * `ptr` must be aligned to `align_of::<", stringify!($atomic_type), ">()` (note that on some platforms this can be bigger than `align_of::<", stringify!($int_type), ">()`).")]
+            #[doc = concat!(" * `ptr` must be aligned to \
+                `align_of::<", stringify!($atomic_type), ">()` (note that on some platforms this \
+                can be bigger than `align_of::<", stringify!($int_type), ">()`).")]
             /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-            /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
+            /// * Non-atomic accesses to the value behind `ptr` must have a happens-before
+            ///   relationship with atomic accesses via the returned value (or vice-versa).
+            ///   * In other words, time periods where the value is accessed atomically may not
+            ///     overlap with periods where the value is accessed non-atomically.
+            ///   * This requirement is trivially satisfied if `ptr` is never used non-atomically
+            ///     for the duration of lifetime `'a`. Most use cases should be able to follow
+            ///     this guideline.
+            ///   * This requirement is also trivially satisfied if all accesses (atomic or not) are
+            ///     done from the same thread.
+            /// * This method should not be used to create overlapping or mixed-size atomic
+            ///   accesses, as these are not supported by the memory model.
             ///
             /// [valid]: crate::ptr#safety
-            #[unstable(feature = "atomic_from_ptr", issue = "108652")]
-            #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
+            #[stable(feature = "atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
             pub const unsafe fn from_ptr<'a>(ptr: *mut $int_type) -> &'a $atomic_type {
                 // SAFETY: guaranteed by the caller
                 unsafe { &*ptr.cast() }

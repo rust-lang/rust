@@ -827,6 +827,65 @@ impl<'a> Parser<'a> {
         None
     }
 
+    pub(super) fn recover_closure_body(
+        &mut self,
+        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        before: token::Token,
+        prev: token::Token,
+        token: token::Token,
+        lo: Span,
+        decl_hi: Span,
+    ) -> PResult<'a, P<Expr>> {
+        err.span_label(lo.to(decl_hi), "while parsing the body of this closure");
+        match before.kind {
+            token::OpenDelim(Delimiter::Brace)
+                if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) =>
+            {
+                // `{ || () }` should have been `|| { () }`
+                err.multipart_suggestion(
+                    "you might have meant to open the body of the closure, instead of enclosing \
+                     the closure in a block",
+                    vec![
+                        (before.span, String::new()),
+                        (prev.span.shrink_to_hi(), " {".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+                self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Brace)]);
+            }
+            token::OpenDelim(Delimiter::Parenthesis)
+                if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) =>
+            {
+                // We are within a function call or tuple, we can emit the error
+                // and recover.
+                self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis), &token::Comma]);
+
+                err.multipart_suggestion_verbose(
+                    "you might have meant to open the body of the closure",
+                    vec![
+                        (prev.span.shrink_to_hi(), " {".to_string()),
+                        (self.token.span.shrink_to_lo(), "}".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+            }
+            _ if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) => {
+                // We don't have a heuristic to correctly identify where the block
+                // should be closed.
+                err.multipart_suggestion_verbose(
+                    "you might have meant to open the body of the closure",
+                    vec![(prev.span.shrink_to_hi(), " {".to_string())],
+                    Applicability::HasPlaceholders,
+                );
+                return Err(err);
+            }
+            _ => return Err(err),
+        }
+        Ok(self.mk_expr_err(lo.to(self.token.span)))
+    }
+
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     pub(super) fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {

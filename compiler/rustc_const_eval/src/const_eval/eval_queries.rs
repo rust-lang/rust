@@ -1,6 +1,3 @@
-use crate::const_eval::CheckAlignment;
-use crate::errors::ConstEvalError;
-
 use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
@@ -15,7 +12,9 @@ use rustc_span::source_map::Span;
 use rustc_target::abi::{self, Abi};
 
 use super::{CanAccessStatics, CompileTimeEvalContext, CompileTimeInterpreter};
+use crate::const_eval::CheckAlignment;
 use crate::errors;
+use crate::errors::ConstEvalError;
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate, InternKind, InterpCx,
@@ -290,14 +289,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         key.param_env,
         // Statics (and promoteds inside statics) may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
-        CompileTimeInterpreter::new(
-            CanAccessStatics::from(is_static),
-            if tcx.sess.opts.unstable_opts.extra_const_ub_checks {
-                CheckAlignment::Error
-            } else {
-                CheckAlignment::FutureIncompat
-            },
-        ),
+        CompileTimeInterpreter::new(CanAccessStatics::from(is_static), CheckAlignment::Error),
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);

@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `featur`
   --> $DIR/diagnotics.rs:4:7
    |
 LL | #[cfg(featur)]
@@ -7,19 +7,18 @@ LL | #[cfg(featur)]
    = help: expected values for `feature` are: `foo`
    = note: `#[warn(unexpected_cfgs)]` on by default
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `featur`
   --> $DIR/diagnotics.rs:8:7
    |
 LL | #[cfg(featur = "foo")]
    |       ^^^^^^^^^^^^^^
    |
-   = help: expected values for `feature` are: `foo`
 help: there is a config with a similar name and value
    |
 LL | #[cfg(feature = "foo")]
    |       ~~~~~~~
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `featur`
   --> $DIR/diagnotics.rs:12:7
    |
 LL | #[cfg(featur = "fo")]
@@ -31,13 +30,13 @@ help: there is a config with a similar name and different values
 LL | #[cfg(feature = "foo")]
    |       ~~~~~~~~~~~~~~~
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `no_value`
   --> $DIR/diagnotics.rs:19:7
    |
 LL | #[cfg(no_value)]
    |       ^^^^^^^^ help: there is a config with a similar name: `no_values`
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `no_value`
   --> $DIR/diagnotics.rs:23:7
    |
 LL | #[cfg(no_value = "foo")]
@@ -48,7 +47,7 @@ help: there is a config with a similar name and no value
 LL | #[cfg(no_values)]
    |       ~~~~~~~~~
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `bar`
   --> $DIR/diagnotics.rs:27:7
    |
 LL | #[cfg(no_values = "bar")]

@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `uniz`
   --> $DIR/check-cfg.rs:5:7
    |
 LL | #[cfg(uniz)]

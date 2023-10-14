@@ -1,4 +1,3 @@
-use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
@@ -153,9 +152,6 @@ pub struct Session {
     pub io: CompilerIO,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
-    /// Used for incremental compilation tests. Will only be populated if
-    /// `-Zquery-dep-graph` is specified.
-    pub cgu_reuse_tracker: CguReuseTracker,
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
@@ -1431,12 +1427,6 @@ pub fn build_session(
     });
     let print_fuel = AtomicU64::new(0);
 
-    let cgu_reuse_tracker = if sopts.unstable_opts.query_dep_graph {
-        CguReuseTracker::new()
-    } else {
-        CguReuseTracker::new_disabled()
-    };
-
     let prof = SelfProfilerRef::new(
         self_profiler,
         sopts.unstable_opts.time_passes.then(|| sopts.unstable_opts.time_passes_format),
@@ -1461,7 +1451,6 @@ pub fn build_session(
         sysroot,
         io,
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
-        cgu_reuse_tracker,
         prof,
         perf_stats: PerfStats {
             symbol_hash_time: Lock::new(Duration::from_secs(0)),

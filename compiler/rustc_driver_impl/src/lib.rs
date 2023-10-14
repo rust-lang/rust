@@ -8,10 +8,10 @@
 #![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
-#![feature(lazy_cell)]
 #![feature(decl_macro)]
-#![feature(panic_update_hook)]
+#![feature(lazy_cell)]
 #![feature(let_chains)]
+#![feature(panic_update_hook)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -395,7 +395,7 @@ fn run_compiler(
                 if ppm.needs_ast_map() {
                     queries.global_ctxt()?.enter(|tcx| {
                         tcx.ensure().early_lint_checks(());
-                        pretty::print_after_hir_lowering(tcx, *ppm);
+                        pretty::print(sess, *ppm, pretty::PrintExtra::NeedsAstMap { tcx });
                         Ok(())
                     })?;
 
@@ -404,7 +404,7 @@ fn run_compiler(
                     queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
                 } else {
                     let krate = queries.parse()?.steal();
-                    pretty::print_after_parsing(sess, &krate, *ppm);
+                    pretty::print(sess, *ppm, pretty::PrintExtra::AfterParsing { krate });
                 }
                 trace!("finished pretty-printing");
                 return early_exit();
@@ -545,7 +545,7 @@ pub enum Compilation {
 }
 
 impl Compilation {
-    pub fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
+    fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
         match self {
             Compilation::Stop => Compilation::Stop,
             Compilation::Continue => next(),
@@ -657,7 +657,7 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     }
 }
 
-pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
+fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
     if sess.opts.unstable_opts.link_only {
         if let Input::File(file) = &sess.io.input {
             let outputs = compiler.build_output_filenames(sess, &[]);
@@ -698,7 +698,7 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
     }
 }
 
-pub fn list_metadata(
+fn list_metadata(
     handler: &EarlyErrorHandler,
     sess: &Session,
     metadata_loader: &dyn MetadataLoader,
@@ -1184,7 +1184,7 @@ fn print_flag_list<T>(
 ///
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
-pub fn handle_options(handler: &EarlyErrorHandler, args: &[String]) -> Option<getopts::Matches> {
+fn handle_options(handler: &EarlyErrorHandler, args: &[String]) -> Option<getopts::Matches> {
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
@@ -1283,9 +1283,9 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
     }
 }
 
-pub static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
+static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
-pub fn ice_path() -> &'static Option<PathBuf> {
+fn ice_path() -> &'static Option<PathBuf> {
     ICE_PATH.get_or_init(|| {
         if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
             return None;
@@ -1394,7 +1394,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
 ///
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
-pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info: fn(&Handler)) {
+fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info: fn(&Handler)) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(

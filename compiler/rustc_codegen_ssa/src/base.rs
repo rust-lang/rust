@@ -1,3 +1,4 @@
+use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
 use crate::back::metadata::create_compressed_metadata_file;
 use crate::back::write::{
@@ -31,7 +32,6 @@ use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -683,6 +683,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect::<Vec<_>>()
     });
 
+    crate::assert_module_sources::assert_module_sources(tcx, &|cgu_reuse_tracker| {
+        for (i, cgu) in codegen_units.iter().enumerate() {
+            let cgu_reuse = cgu_reuse[i];
+            cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
+        }
+    });
+
     let mut total_codegen_time = Duration::new(0, 0);
     let start_rss = tcx.sess.opts.unstable_opts.time_passes.then(|| get_resident_set_size());
 
@@ -727,7 +734,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         ongoing_codegen.check_for_errors(tcx.sess);
 
         let cgu_reuse = cgu_reuse[i];
-        tcx.sess.cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
 
         match cgu_reuse {
             CguReuse::No => {
@@ -994,7 +1000,7 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
+pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
     if !tcx.dep_graph.is_fully_enabled() {
         return CguReuse::No;
     }

@@ -397,7 +397,12 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             // extracts all the individual values.
 
             let ety = element.llvm_type(cx);
-            return Some(cx.type_vector(ety, *count));
+            if *count == 1 {
+                // Emitting `<1 x T>` would be silly; just use the scalar.
+                return Some(ety);
+            } else {
+                return Some(cx.type_vector(ety, *count));
+            }
         }
 
         // FIXME: The above only handled integer arrays; surely more things

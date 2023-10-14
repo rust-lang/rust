@@ -41,56 +41,6 @@ pub struct NoPath {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_unknown_reuse_kind)]
-pub struct UnknownReuseKind {
-    #[primary_span]
-    pub span: Span,
-    pub kind: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(incremental_missing_query_depgraph)]
-pub struct MissingQueryDepGraph {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(incremental_malformed_cgu_name)]
-pub struct MalformedCguName {
-    #[primary_span]
-    pub span: Span,
-    pub user_path: String,
-    pub crate_name: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(incremental_no_module_named)]
-pub struct NoModuleNamed<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub user_path: &'a str,
-    pub cgu_name: Symbol,
-    pub cgu_names: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(incremental_field_associated_value_expected)]
-pub struct FieldAssociatedValueExpected {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(incremental_no_field)]
-pub struct NoField {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(incremental_assertion_auto)]
 pub struct AssertionAuto<'a> {
     #[primary_span]

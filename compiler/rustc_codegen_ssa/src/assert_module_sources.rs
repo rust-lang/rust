@@ -25,16 +25,21 @@
 
 use crate::errors;
 use rustc_ast as ast;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::cgu_reuse_tracker::*;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_session::Session;
+use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
+use std::borrow::Cow;
+use std::fmt;
 use thin_vec::ThinVec;
 
 #[allow(missing_docs)]
-pub fn assert_module_sources(tcx: TyCtxt<'_>) {
+pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTracker)) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
             return;
@@ -43,21 +48,34 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
         let available_cgus =
             tcx.collect_and_partition_mono_items(()).1.iter().map(|cgu| cgu.name()).collect();
 
-        let ams = AssertModuleSource { tcx, available_cgus };
+        let mut ams = AssertModuleSource {
+            tcx,
+            available_cgus,
+            cgu_reuse_tracker: if tcx.sess.opts.unstable_opts.query_dep_graph {
+                CguReuseTracker::new()
+            } else {
+                CguReuseTracker::new_disabled()
+            },
+        };
 
         for attr in tcx.hir().attrs(rustc_hir::CRATE_HIR_ID) {
             ams.check_attr(attr);
         }
-    })
+
+        set_reuse(&mut ams.cgu_reuse_tracker);
+
+        ams.cgu_reuse_tracker.check_expected_reuse(tcx.sess);
+    });
 }
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
     available_cgus: UnordSet<Symbol>,
+    cgu_reuse_tracker: CguReuseTracker,
 }
 
 impl<'tcx> AssertModuleSource<'tcx> {
-    fn check_attr(&self, attr: &ast::Attribute) {
+    fn check_attr(&mut self, attr: &ast::Attribute) {
         let (expected_reuse, comp_kind) = if attr.has_name(sym::rustc_partition_reused) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)
         } else if attr.has_name(sym::rustc_partition_codegened) {
@@ -129,7 +147,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
             });
         }
 
-        self.tcx.sess.cgu_reuse_tracker.set_expectation(
+        self.cgu_reuse_tracker.set_expectation(
             cgu_name,
             &user_path,
             attr.span,
@@ -167,5 +185,111 @@ impl<'tcx> AssertModuleSource<'tcx> {
         }
         debug!("check_config: no match found");
         false
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub enum CguReuse {
+    No,
+    PreLto,
+    PostLto,
+}
+
+impl fmt::Display for CguReuse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            CguReuse::No => write!(f, "No"),
+            CguReuse::PreLto => write!(f, "PreLto "),
+            CguReuse::PostLto => write!(f, "PostLto "),
+        }
+    }
+}
+
+impl IntoDiagnosticArg for CguReuse {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ComparisonKind {
+    Exact,
+    AtLeast,
+}
+
+struct TrackerData {
+    actual_reuse: FxHashMap<String, CguReuse>,
+    expected_reuse: FxHashMap<String, (String, Span, CguReuse, ComparisonKind)>,
+}
+
+pub struct CguReuseTracker {
+    data: Option<TrackerData>,
+}
+
+impl CguReuseTracker {
+    fn new() -> CguReuseTracker {
+        let data =
+            TrackerData { actual_reuse: Default::default(), expected_reuse: Default::default() };
+
+        CguReuseTracker { data: Some(data) }
+    }
+
+    fn new_disabled() -> CguReuseTracker {
+        CguReuseTracker { data: None }
+    }
+
+    pub fn set_actual_reuse(&mut self, cgu_name: &str, kind: CguReuse) {
+        if let Some(data) = &mut self.data {
+            debug!("set_actual_reuse({cgu_name:?}, {kind:?})");
+
+            let prev_reuse = data.actual_reuse.insert(cgu_name.to_string(), kind);
+            assert!(prev_reuse.is_none());
+        }
+    }
+
+    fn set_expectation(
+        &mut self,
+        cgu_name: Symbol,
+        cgu_user_name: &str,
+        error_span: Span,
+        expected_reuse: CguReuse,
+        comparison_kind: ComparisonKind,
+    ) {
+        if let Some(data) = &mut self.data {
+            debug!("set_expectation({cgu_name:?}, {expected_reuse:?}, {comparison_kind:?})");
+
+            data.expected_reuse.insert(
+                cgu_name.to_string(),
+                (cgu_user_name.to_string(), error_span, expected_reuse, comparison_kind),
+            );
+        }
+    }
+
+    fn check_expected_reuse(&self, sess: &Session) {
+        if let Some(ref data) = self.data {
+            for (cgu_name, &(ref cgu_user_name, ref error_span, expected_reuse, comparison_kind)) in
+                &data.expected_reuse
+            {
+                if let Some(&actual_reuse) = data.actual_reuse.get(cgu_name) {
+                    let (error, at_least) = match comparison_kind {
+                        ComparisonKind::Exact => (expected_reuse != actual_reuse, false),
+                        ComparisonKind::AtLeast => (actual_reuse < expected_reuse, true),
+                    };
+
+                    if error {
+                        let at_least = if at_least { 1 } else { 0 };
+                        errors::IncorrectCguReuseType {
+                            span: *error_span,
+                            cgu_user_name,
+                            actual_reuse,
+                            expected_reuse,
+                            at_least,
+                        };
+                    }
+                } else {
+                    sess.emit_fatal(errors::CguNotRecorded { cgu_user_name, cgu_name });
+                }
+            }
+        }
     }
 }

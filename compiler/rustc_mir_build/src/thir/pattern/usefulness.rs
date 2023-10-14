@@ -307,7 +307,7 @@
 
 use self::ArmType::*;
 use self::Usefulness::*;
-use super::deconstruct_pat::{Constructor, DeconstructedPat, Fields, SplitWildcard};
+use super::deconstruct_pat::{Constructor, ConstructorSet, DeconstructedPat, Fields};
 use crate::errors::{NonExhaustiveOmittedPattern, Uncovered};
 
 use rustc_data_structures::captures::Captures;
@@ -368,8 +368,6 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
-    /// Whether the current pattern is from a `non_exhaustive` enum.
-    pub(super) is_non_exhaustive: bool,
 }
 
 impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
@@ -616,62 +614,41 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
             WithWitnesses(ref witnesses) if witnesses.is_empty() => self,
             WithWitnesses(witnesses) => {
                 let new_witnesses = if let Constructor::Missing { .. } = ctor {
-                    // We got the special `Missing` constructor, so each of the missing constructors
-                    // gives a new pattern that is not caught by the match. We list those patterns.
-                    if pcx.is_non_exhaustive {
-                        witnesses
-                            .into_iter()
-                            // Here we don't want the user to try to list all variants, we want them to add
-                            // a wildcard, so we only suggest that.
-                            .map(|witness| {
-                                witness.apply_constructor(pcx, &Constructor::NonExhaustive)
-                            })
-                            .collect()
-                    } else {
-                        let mut split_wildcard = SplitWildcard::new(pcx);
-                        split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
-
-                        // This lets us know if we skipped any variants because they are marked
-                        // `doc(hidden)` or they are unstable feature gate (only stdlib types).
-                        let mut hide_variant_show_wild = false;
-                        // Construct for each missing constructor a "wild" version of this
-                        // constructor, that matches everything that can be built with
-                        // it. For example, if `ctor` is a `Constructor::Variant` for
-                        // `Option::Some`, we get the pattern `Some(_)`.
-                        let mut new_patterns: Vec<DeconstructedPat<'_, '_>> = split_wildcard
-                            .iter_missing(pcx)
-                            .filter_map(|missing_ctor| {
-                                // Check if this variant is marked `doc(hidden)`
-                                if missing_ctor.is_doc_hidden_variant(pcx)
-                                    || missing_ctor.is_unstable_variant(pcx)
-                                {
-                                    hide_variant_show_wild = true;
-                                    return None;
-                                }
-                                Some(DeconstructedPat::wild_from_ctor(pcx, missing_ctor.clone()))
-                            })
-                            .collect();
-
-                        if hide_variant_show_wild {
-                            new_patterns.push(DeconstructedPat::wildcard(pcx.ty, pcx.span));
-                        }
-
-                        witnesses
-                            .into_iter()
-                            .flat_map(|witness| {
-                                new_patterns.iter().map(move |pat| {
-                                    Witness(
-                                        witness
-                                            .0
-                                            .iter()
-                                            .chain(once(pat))
-                                            .map(DeconstructedPat::clone_and_forget_reachability)
-                                            .collect(),
-                                    )
-                                })
-                            })
-                            .collect()
+                    let mut missing = ConstructorSet::for_ty(pcx.cx, pcx.ty)
+                        .compute_missing(pcx, matrix.heads().map(DeconstructedPat::ctor));
+                    if missing.iter().any(|c| c.is_non_exhaustive()) {
+                        // We only report `_` here; listing other constructors would be redundant.
+                        missing = vec![Constructor::NonExhaustive];
                     }
+
+                    // We got the special `Missing` constructor, so each of the missing constructors
+                    // gives a new pattern that is not caught by the match.
+                    // We construct for each missing constructor a version of this constructor with
+                    // wildcards for fields, i.e. that matches everything that can be built with it.
+                    // For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get
+                    // the pattern `Some(_)`.
+                    let new_patterns: Vec<DeconstructedPat<'_, '_>> = missing
+                        .into_iter()
+                        .map(|missing_ctor| {
+                            DeconstructedPat::wild_from_ctor(pcx, missing_ctor.clone())
+                        })
+                        .collect();
+
+                    witnesses
+                        .into_iter()
+                        .flat_map(|witness| {
+                            new_patterns.iter().map(move |pat| {
+                                Witness(
+                                    witness
+                                        .0
+                                        .iter()
+                                        .chain(once(pat))
+                                        .map(DeconstructedPat::clone_and_forget_reachability)
+                                        .collect(),
+                                )
+                            })
+                        })
+                        .collect()
                 } else {
                     witnesses
                         .into_iter()
@@ -844,9 +821,8 @@ fn is_useful<'p, 'tcx>(
                 ty = row.head().ty();
             }
         }
-        let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
         debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
-        let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
+        let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level };
 
         let v_ctor = v.head().ctor();
         debug!(?v_ctor);
@@ -861,7 +837,8 @@ fn is_useful<'p, 'tcx>(
         }
         // We split the head constructor of `v`.
         let split_ctors = v_ctor.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
-        let is_non_exhaustive_and_wild = is_non_exhaustive && v_ctor.is_wildcard();
+        let is_non_exhaustive_and_wild =
+            cx.is_foreign_non_exhaustive_enum(ty) && v_ctor.is_wildcard();
         // For each constructor, we compute whether there's a value that starts with it that would
         // witness the usefulness of `v`.
         let start_matrix = &matrix;
@@ -895,27 +872,21 @@ fn is_useful<'p, 'tcx>(
                 && usefulness.is_useful() && matches!(witness_preference, RealArm)
                 && matches!(
                     &ctor,
-                    Constructor::Missing { nonexhaustive_enum_missing_real_variants: true }
+                    Constructor::Missing { nonexhaustive_enum_missing_visible_variants: true }
                 )
             {
-                let patterns = {
-                    let mut split_wildcard = SplitWildcard::new(pcx);
-                    split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
-                    // Construct for each missing constructor a "wild" version of this
-                    // constructor, that matches everything that can be built with
-                    // it. For example, if `ctor` is a `Constructor::Variant` for
-                    // `Option::Some`, we get the pattern `Some(_)`.
-                    split_wildcard
-                        .iter_missing(pcx)
-                        // Filter out the `NonExhaustive` because we want to list only real
-                        // variants. Also remove any unstable feature gated variants.
-                        // Because of how we computed `nonexhaustive_enum_missing_real_variants`,
-                        // this will not return an empty `Vec`.
-                        .filter(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx)))
-                        .cloned()
-                        .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor))
-                        .collect::<Vec<_>>()
-                };
+                let missing = ConstructorSet::for_ty(pcx.cx, pcx.ty)
+                    .compute_missing(pcx, matrix.heads().map(DeconstructedPat::ctor));
+                // Construct for each missing constructor a "wild" version of this constructor, that
+                // matches everything that can be built with it. For example, if `ctor` is a
+                // `Constructor::Variant` for `Option::Some`, we get the pattern `Some(_)`.
+                let patterns = missing
+                    .into_iter()
+                    // Because of how we computed `nonexhaustive_enum_missing_visible_variants`,
+                    // this will not return an empty `Vec`.
+                    .filter(|c| !(matches!(c, Constructor::NonExhaustive | Constructor::Hidden)))
+                    .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor))
+                    .collect::<Vec<_>>();
 
                 // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
                 // is not exhaustive enough.

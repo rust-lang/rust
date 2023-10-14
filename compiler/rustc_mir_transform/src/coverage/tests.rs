@@ -628,7 +628,7 @@ fn test_traverse_coverage_with_loops() {
     let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
     let mut traversed_in_order = Vec::new();
     let mut traversal = graph::TraverseCoverageGraphWithLoops::new(&basic_coverage_blocks);
-    while let Some(bcb) = traversal.next(&basic_coverage_blocks) {
+    while let Some(bcb) = traversal.next() {
         traversed_in_order.push(bcb);
     }
 

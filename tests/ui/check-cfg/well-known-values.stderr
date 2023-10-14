@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `linuz`
   --> $DIR/well-known-values.rs:7:7
    |
 LL | #[cfg(target_os = "linuz")]
@@ -9,7 +9,7 @@ LL | #[cfg(target_os = "linuz")]
    = note: expected values for `target_os` are: `aix`, `android`, `cuda`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `macos`, `netbsd`, `none`, `nto`, `openbsd`, `psp`, `redox`, `solaris`, `solid_asp3`, `teeos`, `tvos`, `uefi`, `unknown`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`
    = note: `#[warn(unexpected_cfgs)]` on by default
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `0`
   --> $DIR/well-known-values.rs:14:7
    |
 LL | #[cfg(target_has_atomic = "0")]
@@ -19,7 +19,7 @@ LL | #[cfg(target_has_atomic = "0")]
    |
    = note: expected values for `target_has_atomic` are: (none), `128`, `16`, `32`, `64`, `8`, `ptr`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `aa`
   --> $DIR/well-known-values.rs:21:7
    |
 LL | #[cfg(unix = "aa")]
@@ -29,7 +29,7 @@ LL | #[cfg(unix = "aa")]
    |
    = note: no expected value for `unix`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `miri`
   --> $DIR/well-known-values.rs:28:7
    |
 LL | #[cfg(miri = "miri")]
@@ -39,7 +39,7 @@ LL | #[cfg(miri = "miri")]
    |
    = note: no expected value for `miri`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `linux`
   --> $DIR/well-known-values.rs:35:7
    |
 LL | #[cfg(doc = "linux")]

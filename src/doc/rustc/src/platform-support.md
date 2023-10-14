@@ -286,10 +286,6 @@ target | std | host | notes
 `mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl libc
 `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
 [`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
-`mips-unknown-linux-gnu` | MIPS Linux (kernel 4.4, glibc 2.23)
-`mips64-unknown-linux-gnuabi64` | MIPS64 Linux, n64 ABI (kernel 4.4, glibc 2.23)
-`mips64el-unknown-linux-gnuabi64` | MIPS64 (LE) Linux, n64 ABI (kernel 4.4, glibc 2.23)
-`mipsel-unknown-linux-gnu` | MIPS (LE) Linux (kernel 4.4, glibc 2.23)
 `mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
 `mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
 [`mipsisa32r6-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Big Endian
