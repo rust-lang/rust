@@ -193,6 +193,12 @@ fn main() {
         eprintln!("{prefix} libdir: {libdir:?}");
     }
 
+    if env::var_os("RUSTC_BOLT_LINK_FLAGS").is_some() {
+        if let Some("rustc_driver") = crate_name {
+            cmd.arg("-Clink-args=-Wl,-q");
+        }
+    }
+
     let start = Instant::now();
     let (child, status) = {
         let errmsg = format!("\nFailed to run:\n{cmd:?}\n-------------");

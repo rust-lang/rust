@@ -1,7 +1,7 @@
 use crate::environment::Environment;
 use crate::metrics::{load_metrics, record_metrics};
 use crate::timer::TimerSection;
-use crate::training::{LlvmBoltProfile, LlvmPGOProfile, RustcPGOProfile};
+use crate::training::{BoltProfile, LlvmPGOProfile, RustcPGOProfile};
 use camino::{Utf8Path, Utf8PathBuf};
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -159,7 +159,12 @@ impl Bootstrap {
         self
     }
 
-    pub fn with_bolt_profile(mut self, profile: LlvmBoltProfile) -> Self {
+    pub fn with_rustc_bolt_ldflags(mut self) -> Self {
+        self.cmd = self.cmd.arg("--enable-bolt-settings");
+        self
+    }
+
+    pub fn with_bolt_profile(mut self, profile: BoltProfile) -> Self {
         self.cmd = self.cmd.arg("--reproducible-artifact").arg(profile.0.as_str());
         self
     }
