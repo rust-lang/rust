@@ -125,7 +125,7 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
     "4825b2a64d765317066948867e8714674419359b",
-    "8b188cc41f5af835",
+    "9e67d07c00f5fb0b",
     "portable-simd",
 );
 
