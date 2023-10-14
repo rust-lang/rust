@@ -31,3 +31,7 @@ unsafe fn without_avx(x: __m256) -> __m256 {
     };
     add(x, x)
 }
+
+// Don't allow the above CHECK-NOT to accidentally match a commit hash in the
+// compiler version.
+// CHECK-LABEL: rustc version
