@@ -136,12 +136,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // `assemble_candidates_after_normalizing_self_ty`, and we'd
         // just be registering an identical candidate here.
         //
-        // Returning `Err(NoSolution)` here is ok in `SolverMode::Coherence`
-        // since we'll always be registering an ambiguous candidate in
+        // We always return `Err(NoSolution)` here in `SolverMode::Coherence`
+        // since we'll always register an ambiguous candidate in
         // `assemble_candidates_after_normalizing_self_ty` due to normalizing
         // the TAIT.
         if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
             if matches!(goal.param_env.reveal(), Reveal::All)
+                || matches!(ecx.solver_mode(), SolverMode::Coherence)
                 || opaque_ty
                     .def_id
                     .as_local()
