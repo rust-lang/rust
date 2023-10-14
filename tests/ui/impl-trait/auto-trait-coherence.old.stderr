@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
+  --> $DIR/auto-trait-coherence.rs:24:1
+   |
+LL | impl<T: Send> AnotherTrait for T {}
+   | -------------------------------- first implementation here
+...
+LL | impl AnotherTrait for D<OpaqueType> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.
