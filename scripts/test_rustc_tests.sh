@@ -27,8 +27,6 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # missing features
 # ================
 
-rm -r tests/run-make/comment-section # cg_clif doesn't yet write the .comment section
-
 # requires stack unwinding
 # FIXME add needs-unwind to these tests
 rm -r tests/run-make/libtest-junit
