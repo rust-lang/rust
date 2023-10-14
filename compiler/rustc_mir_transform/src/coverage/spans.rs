@@ -353,8 +353,10 @@ impl<'a> CoverageSpansGenerator<'a> {
 
         let prev = self.take_prev();
         debug!("    AT END, adding last prev={prev:?}");
-        let pending_dups = self.pending_dups.split_off(0);
-        for dup in pending_dups {
+
+        // Take `pending_dups` so that we can drain it while calling self methods.
+        // It is never used as a field after this point.
+        for dup in std::mem::take(&mut self.pending_dups) {
             debug!("    ...adding at least one pending dup={:?}", dup);
             self.push_refined_span(dup);
         }
@@ -474,11 +476,16 @@ impl<'a> CoverageSpansGenerator<'a> {
             previous iteration, or prev started a new disjoint span"
         );
         if last_dup.span.hi() <= self.curr().span.lo() {
-            let pending_dups = self.pending_dups.split_off(0);
-            for dup in pending_dups.into_iter() {
+            // Temporarily steal `pending_dups` into a local, so that we can
+            // drain it while calling other self methods.
+            let mut pending_dups = std::mem::take(&mut self.pending_dups);
+            for dup in pending_dups.drain(..) {
                 debug!("    ...adding at least one pending={:?}", dup);
                 self.push_refined_span(dup);
             }
+            // The list of dups is now empty, but we can recycle its capacity.
+            assert!(pending_dups.is_empty() && self.pending_dups.is_empty());
+            self.pending_dups = pending_dups;
         } else {
             self.pending_dups.clear();
         }
@@ -526,7 +533,10 @@ impl<'a> CoverageSpansGenerator<'a> {
         let has_pre_closure_span = prev.span.lo() < right_cutoff;
         let has_post_closure_span = prev.span.hi() > right_cutoff;
 
-        let mut pending_dups = self.pending_dups.split_off(0);
+        // Temporarily steal `pending_dups` into a local, so that we can
+        // mutate and/or drain it while calling other self methods.
+        let mut pending_dups = std::mem::take(&mut self.pending_dups);
+
         if has_pre_closure_span {
             let mut pre_closure = self.prev().clone();
             pre_closure.span = pre_closure.span.with_hi(left_cutoff);
@@ -540,6 +550,7 @@ impl<'a> CoverageSpansGenerator<'a> {
             }
             self.push_refined_span(pre_closure);
         }
+
         if has_post_closure_span {
             // Mutate `prev.span()` to start after the closure (and discard curr).
             // (**NEVER** update `prev_original_span` because it affects the assumptions
@@ -550,12 +561,15 @@ impl<'a> CoverageSpansGenerator<'a> {
                 debug!("    ...and at least one overlapping dup={:?}", dup);
                 dup.span = dup.span.with_lo(right_cutoff);
             }
-            self.pending_dups.append(&mut pending_dups);
             let closure_covspan = self.take_curr(); // Prevent this curr from becoming prev.
             self.push_refined_span(closure_covspan); // since self.prev() was already updated
         } else {
             pending_dups.clear();
         }
+
+        // Restore the modified post-closure spans, or the empty vector's capacity.
+        assert!(self.pending_dups.is_empty());
+        self.pending_dups = pending_dups;
     }
 
     /// Called if `curr.span` equals `prev_original_span` (and potentially equal to all
