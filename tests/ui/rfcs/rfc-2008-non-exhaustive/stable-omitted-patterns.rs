@@ -19,10 +19,10 @@ fn main() {
 
     #[deny(non_exhaustive_omitted_patterns)]
     match UnstableEnum::Stable {
+        //~^ some variants are not matched explicitly
         UnstableEnum::Stable => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     // Ok: although this is a bit odd, we don't have anything to report
     // since there is no stable variants and the feature is off

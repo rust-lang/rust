@@ -629,18 +629,11 @@ pub(super) enum Constructor<'tcx> {
     /// `#[doc(hidden)]` ones.
     Hidden,
     /// Fake extra constructor for constructors that are not seen in the matrix, as explained in the
-    /// code for [`Constructor::split`]. The carried `bool` is used for the
-    /// `non_exhaustive_omitted_patterns` lint.
-    Missing {
-        nonexhaustive_enum_missing_visible_variants: bool,
-    },
+    /// code for [`Constructor::split`].
+    Missing,
 }
 
 impl<'tcx> Constructor<'tcx> {
-    pub(super) fn is_wildcard(&self) -> bool {
-        matches!(self, Wildcard)
-    }
-
     pub(super) fn is_non_exhaustive(&self) -> bool {
         matches!(self, NonExhaustive)
     }
@@ -778,14 +771,8 @@ impl<'tcx> Constructor<'tcx> {
                     let all_missing = split_set.present.is_empty();
                     let report_when_all_missing =
                         pcx.is_top_level && !IntRange::is_integral(pcx.ty);
-                    let ctor = if all_missing && !report_when_all_missing {
-                        Wildcard
-                    } else {
-                        Missing {
-                            nonexhaustive_enum_missing_visible_variants: split_set
-                                .nonexhaustive_enum_missing_visible_variants,
-                        }
-                    };
+                    let ctor =
+                        if all_missing && !report_when_all_missing { Wildcard } else { Missing };
                     smallvec![ctor]
                 } else {
                     split_set.present
@@ -905,11 +892,9 @@ pub(super) enum ConstructorSet {
 ///     either fully included in or disjoint from each constructor in the column. This avoids
 ///     non-trivial intersections like between `0..10` and `5..15`.
 #[derive(Debug)]
-struct SplitConstructorSet<'tcx> {
-    present: SmallVec<[Constructor<'tcx>; 1]>,
-    missing: Vec<Constructor<'tcx>>,
-    /// For the `non_exhaustive_omitted_patterns` lint.
-    nonexhaustive_enum_missing_visible_variants: bool,
+pub(super) struct SplitConstructorSet<'tcx> {
+    pub(super) present: SmallVec<[Constructor<'tcx>; 1]>,
+    pub(super) missing: Vec<Constructor<'tcx>>,
 }
 
 impl ConstructorSet {
@@ -1039,7 +1024,7 @@ impl ConstructorSet {
     /// constructors to 1/ determine which constructors of the type (if any) are missing; 2/ split
     /// constructors to handle non-trivial intersections e.g. on ranges or slices.
     #[instrument(level = "debug", skip(self, pcx, ctors), ret)]
-    fn split<'a, 'tcx>(
+    pub(super) fn split<'a, 'tcx>(
         &self,
         pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
@@ -1051,7 +1036,6 @@ impl ConstructorSet {
         let mut missing = Vec::new();
         // Constructors in `ctors`, except wildcards.
         let mut seen = ctors.filter(|c| !(matches!(c, Opaque | Wildcard)));
-        let mut nonexhaustive_enum_missing_visible_variants = false;
         match self {
             ConstructorSet::Single => {
                 if seen.next().is_none() {
@@ -1063,6 +1047,7 @@ impl ConstructorSet {
             ConstructorSet::Variants { visible_variants, hidden_variants, non_exhaustive } => {
                 let seen_set: FxHashSet<_> = seen.map(|c| c.as_variant().unwrap()).collect();
                 let mut skipped_a_hidden_variant = false;
+
                 for variant in visible_variants {
                     let ctor = Variant(*variant);
                     if seen_set.contains(&variant) {
@@ -1071,8 +1056,6 @@ impl ConstructorSet {
                         missing.push(ctor);
                     }
                 }
-                nonexhaustive_enum_missing_visible_variants =
-                    *non_exhaustive && !missing.is_empty();
 
                 for variant in hidden_variants {
                     let ctor = Variant(*variant);
@@ -1159,7 +1142,7 @@ impl ConstructorSet {
             ConstructorSet::Uninhabited => {}
         }
 
-        SplitConstructorSet { present, missing, nonexhaustive_enum_missing_visible_variants }
+        SplitConstructorSet { present, missing }
     }
 
     /// Compute the set of constructors missing from this column.
@@ -1519,6 +1502,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     pub(super) fn is_or_pat(&self) -> bool {
         matches!(self.ctor, Or)
     }
+    pub(super) fn flatten_or_pat(&'p self) -> SmallVec<[&'p Self; 1]> {
+        if self.is_or_pat() {
+            self.iter_fields().flat_map(|p| p.flatten_or_pat()).collect()
+        } else {
+            smallvec![self]
+        }
+    }
 
     pub(super) fn ctor(&self) -> &Constructor<'tcx> {
         &self.ctor
@@ -1704,7 +1694,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
 #[derive(Debug, Clone)]
 pub(crate) struct WitnessPat<'tcx> {
     ctor: Constructor<'tcx>,
-    fields: Vec<WitnessPat<'tcx>>,
+    pub(crate) fields: Vec<WitnessPat<'tcx>>,
     ty: Ty<'tcx>,
 }
 

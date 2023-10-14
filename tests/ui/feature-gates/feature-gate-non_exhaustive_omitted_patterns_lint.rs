@@ -3,8 +3,10 @@
 #![deny(non_exhaustive_omitted_patterns)]
 //~^ WARNING unknown lint: `non_exhaustive_omitted_patterns`
 //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
+//~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
 #![allow(non_exhaustive_omitted_patterns)]
 //~^ WARNING unknown lint: `non_exhaustive_omitted_patterns`
+//~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
 //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
 
 fn main() {
@@ -19,14 +21,16 @@ fn main() {
     //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
+    //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     match Foo::A {
+        //~^ ERROR non-exhaustive patterns: `Foo::C` not covered
         Foo::A => {}
         Foo::B => {}
     }
-    //~^^^^ ERROR non-exhaustive patterns: `Foo::C` not covered
 
     #[warn(non_exhaustive_omitted_patterns)]
     //~^ WARNING unknown lint: `non_exhaustive_omitted_patterns`
+    //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`

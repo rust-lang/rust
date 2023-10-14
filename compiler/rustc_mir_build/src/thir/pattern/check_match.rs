@@ -269,7 +269,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
         let scrut = &self.thir[scrut];
         let scrut_ty = scrut.ty;
-        let report = compute_match_usefulness(&cx, &tarms, self.lint_level, scrut_ty);
+        let report = compute_match_usefulness(&cx, &tarms, self.lint_level, scrut_ty, scrut.span);
 
         match source {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
@@ -431,7 +431,8 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let pattern = self.lower_pattern(&mut cx, pat);
         let pattern_ty = pattern.ty();
         let arm = MatchArm { pat: pattern, hir_id: self.lint_level, has_guard: false };
-        let report = compute_match_usefulness(&cx, &[arm], self.lint_level, pattern_ty);
+        let report =
+            compute_match_usefulness(&cx, &[arm], self.lint_level, pattern_ty, pattern.span());
 
         // Note: we ignore whether the pattern is unreachable (i.e. whether the type is empty). We
         // only care about exhaustiveness here.
@@ -622,7 +623,7 @@ fn is_let_irrefutable<'p, 'tcx>(
     pat: &'p DeconstructedPat<'p, 'tcx>,
 ) -> bool {
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
-    let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty());
+    let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty(), pat.span());
 
     // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
     // This also reports unreachable sub-patterns though, so we can't just replace it with an

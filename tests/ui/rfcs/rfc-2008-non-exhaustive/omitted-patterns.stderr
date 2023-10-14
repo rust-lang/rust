@@ -1,5 +1,5 @@
 warning: some fields are not explicitly listed
-  --> $DIR/omitted-patterns.rs:144:9
+  --> $DIR/omitted-patterns.rs:139:9
    |
 LL |         VariantNonExhaustive::Bar { x, .. } => {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `y` not listed
@@ -7,13 +7,13 @@ LL |         VariantNonExhaustive::Bar { x, .. } => {}
    = help: ensure that all fields are mentioned explicitly by adding the suggested fields
    = note: the pattern is of type `VariantNonExhaustive` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:141:12
+  --> $DIR/omitted-patterns.rs:136:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: some fields are not explicitly listed
-  --> $DIR/omitted-patterns.rs:149:9
+  --> $DIR/omitted-patterns.rs:144:9
    |
 LL |     let FunctionalRecord { first_field, second_field, .. } = FunctionalRecord::default();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `third_field` not listed
@@ -21,13 +21,13 @@ LL |     let FunctionalRecord { first_field, second_field, .. } = FunctionalReco
    = help: ensure that all fields are mentioned explicitly by adding the suggested fields
    = note: the pattern is of type `FunctionalRecord` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:148:12
+  --> $DIR/omitted-patterns.rs:143:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: some fields are not explicitly listed
-  --> $DIR/omitted-patterns.rs:157:29
+  --> $DIR/omitted-patterns.rs:152:29
    |
 LL |     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = NestedStruct::default();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `second_field` not listed
@@ -35,13 +35,13 @@ LL |     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = Nested
    = help: ensure that all fields are mentioned explicitly by adding the suggested fields
    = note: the pattern is of type `NormalStruct` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:156:12
+  --> $DIR/omitted-patterns.rs:151:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: some fields are not explicitly listed
-  --> $DIR/omitted-patterns.rs:157:9
+  --> $DIR/omitted-patterns.rs:152:9
    |
 LL |     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = NestedStruct::default();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `foo` not listed
@@ -50,7 +50,7 @@ LL |     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = Nested
    = note: the pattern is of type `NestedStruct` and the `non_exhaustive_omitted_patterns` attribute was found
 
 warning: some fields are not explicitly listed
-  --> $DIR/omitted-patterns.rs:219:9
+  --> $DIR/omitted-patterns.rs:216:9
    |
 LL |     let OnlyUnstableStruct { unstable, .. } = OnlyUnstableStruct::new();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `unstable2` not listed
@@ -58,13 +58,13 @@ LL |     let OnlyUnstableStruct { unstable, .. } = OnlyUnstableStruct::new();
    = help: ensure that all fields are mentioned explicitly by adding the suggested fields
    = note: the pattern is of type `OnlyUnstableStruct` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:218:12
+  --> $DIR/omitted-patterns.rs:215:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: some fields are not explicitly listed
-  --> $DIR/omitted-patterns.rs:227:9
+  --> $DIR/omitted-patterns.rs:224:9
    |
 LL |     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `unstable` not listed
@@ -72,16 +72,16 @@ LL |     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
    = help: ensure that all fields are mentioned explicitly by adding the suggested fields
    = note: the pattern is of type `UnstableStruct` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:226:12
+  --> $DIR/omitted-patterns.rs:223:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:58:9
+  --> $DIR/omitted-patterns.rs:55:11
    |
-LL |         _ => {}
-   |         ^ pattern `NonExhaustiveEnum::Struct { .. }` not covered
+LL |     match non_enum {
+   |           ^^^^^^^^ pattern `NonExhaustiveEnum::Struct { .. }` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
@@ -92,10 +92,10 @@ LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:65:9
+  --> $DIR/omitted-patterns.rs:63:11
    |
-LL |         _ => {}
-   |         ^ pattern `NonExhaustiveEnum::Tuple(_)` not covered
+LL |     match non_enum {
+   |           ^^^^^^^^ pattern `NonExhaustiveEnum::Tuple(_)` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
@@ -106,27 +106,13 @@ LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:75:9
+  --> $DIR/omitted-patterns.rs:87:11
    |
-LL |         _ => {}
-   |         ^ pattern `NonExhaustiveEnum::Unit` not covered
-   |
-   = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
-note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:70:12
-   |
-LL |     #[deny(non_exhaustive_omitted_patterns)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:90:9
-   |
-LL |         _ => {}
-   |         ^ pattern `NonExhaustiveEnum::Struct { .. }` not covered
+LL |     match (non_enum, true) {
+   |           ^^^^^^^^^^^^^^^^ pattern `(NonExhaustiveEnum::Struct { .. }, _)` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+   = note: the matched value is of type `(NonExhaustiveEnum, bool)` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
   --> $DIR/omitted-patterns.rs:86:12
    |
@@ -134,118 +120,77 @@ LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:100:9
+  --> $DIR/omitted-patterns.rs:102:11
    |
-LL |         _ => {}
-   |         ^ pattern `NonExhaustiveEnum::Unit` not covered
+LL |     match (true, non_enum) {
+   |           ^^^^^^^^^^^^^^^^ pattern `(_, NonExhaustiveEnum::Struct { .. })` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+   = note: the matched value is of type `(bool, NonExhaustiveEnum)` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:95:12
+  --> $DIR/omitted-patterns.rs:101:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:100:9
+  --> $DIR/omitted-patterns.rs:110:11
    |
-LL |         _ => {}
-   |         ^ patterns `NonExhaustiveEnum::Tuple(_)` and `NonExhaustiveEnum::Struct { .. }` not covered
-   |
-   = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
-
-error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:108:9
-   |
-LL |         _ => {}
-   |         ^ patterns `NonExhaustiveEnum::Unit` and `NonExhaustiveEnum::Struct { .. }` not covered
+LL |     match Some(non_enum) {
+   |           ^^^^^^^^^^^^^^ pattern `Some(NonExhaustiveEnum::Struct { .. })` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+   = note: the matched value is of type `Option<NonExhaustiveEnum>` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:104:12
+  --> $DIR/omitted-patterns.rs:109:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:108:9
+  --> $DIR/omitted-patterns.rs:128:11
    |
-LL |         _ => {}
-   |         ^ patterns `NonExhaustiveEnum::Tuple(_)` and `NonExhaustiveEnum::Struct { .. }` not covered
-   |
-   = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
-
-error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:134:32
-   |
-LL |         NestedNonExhaustive::A(_) => {}
-   |                                ^ patterns `NonExhaustiveEnum::Tuple(_)` and `NonExhaustiveEnum::Struct { .. }` not covered
-   |
-   = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
-note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:131:12
-   |
-LL |     #[deny(non_exhaustive_omitted_patterns)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:136:9
-   |
-LL |         _ => {}
-   |         ^ pattern `NestedNonExhaustive::C` not covered
+LL |     match NestedNonExhaustive::B {
+   |           ^^^^^^^^^^^^^^^^^^^^^^ patterns `NestedNonExhaustive::C`, `NestedNonExhaustive::A(NonExhaustiveEnum::Tuple(_))` and `NestedNonExhaustive::A(NonExhaustiveEnum::Struct { .. })` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `NestedNonExhaustive` and the `non_exhaustive_omitted_patterns` attribute was found
-
-error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:174:9
-   |
-LL |         _ => {}
-   |         ^ pattern `NonExhaustiveSingleVariant::A(_)` not covered
-   |
-   = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveSingleVariant` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:172:12
+  --> $DIR/omitted-patterns.rs:127:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:190:9
+  --> $DIR/omitted-patterns.rs:184:11
    |
-LL |         _ => {}
-   |         ^ pattern `UnstableEnum::Unstable` not covered
+LL |     match UnstableEnum::Stable {
+   |           ^^^^^^^^^^^^^^^^^^^^ pattern `UnstableEnum::Unstable` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `UnstableEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:186:12
+  --> $DIR/omitted-patterns.rs:183:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:214:9
+  --> $DIR/omitted-patterns.rs:209:11
    |
-LL |         _ => {}
-   |         ^ pattern `OnlyUnstableEnum::Unstable2` not covered
+LL |     match OnlyUnstableEnum::Unstable {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `OnlyUnstableEnum::Unstable2` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `OnlyUnstableEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:211:12
+  --> $DIR/omitted-patterns.rs:208:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/omitted-patterns.rs:240:9
+  --> $DIR/omitted-patterns.rs:237:9
    |
 LL |     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit;
    |         ^^^^^^^^^^^^^^^ pattern `_` not covered
@@ -259,19 +204,19 @@ LL |     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit
    |                                                                             ++++++++++++++++
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:248:9
+  --> $DIR/omitted-patterns.rs:241:11
    |
-LL |         _ => {}
-   |         ^ pattern `NonExhaustiveEnum::Struct { .. }` not covered
+LL |     match &non_enum {
+   |           ^^^^^^^^^ pattern `&NonExhaustiveEnum::Struct { .. }` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
-   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+   = note: the matched value is of type `&NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:244:12
+  --> $DIR/omitted-patterns.rs:240:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors; 6 warnings emitted
+error: aborting due to 10 previous errors; 6 warnings emitted
 
 For more information about this error, try `rustc --explain E0005`.
