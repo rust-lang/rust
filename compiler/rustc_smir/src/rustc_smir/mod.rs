@@ -17,8 +17,10 @@ use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
 use stable_mir::mir::{CopyNonOverlapping, Statement, UserTypeProjection, VariantIdx};
-use stable_mir::ty::{FloatTy, GenericParamDef, IntTy, Movability, RigidTy, Span, TyKind, UintTy};
-use stable_mir::{self, opaque, Context};
+use stable_mir::ty::{
+    FloatTy, GenericParamDef, IntTy, LineInfo, Movability, RigidTy, Span, TyKind, UintTy,
+};
+use stable_mir::{self, opaque, Context, Filename};
 use tracing::debug;
 
 mod alloc;
@@ -50,8 +52,25 @@ impl<'tcx> Context for Tables<'tcx> {
         self.tcx.def_path_str(self[def_id])
     }
 
-    fn print_span(&self, span: stable_mir::ty::Span) -> String {
+    fn span_to_string(&self, span: stable_mir::ty::Span) -> String {
         self.tcx.sess.source_map().span_to_diagnostic_string(self[span])
+    }
+
+    fn get_filename(&self, span: &Span) -> Filename {
+        opaque(
+            &self
+                .tcx
+                .sess
+                .source_map()
+                .span_to_filename(self[*span])
+                .display(rustc_span::FileNameDisplayPreference::Local)
+                .to_string(),
+        )
+    }
+
+    fn get_lines(&self, span: &Span) -> LineInfo {
+        let lines = &self.tcx.sess.source_map().span_to_location_info(self[*span]);
+        LineInfo { start_line: lines.1, start_col: lines.2, end_line: lines.3, end_col: lines.4 }
     }
 
     fn def_kind(&mut self, def_id: stable_mir::DefId) -> stable_mir::DefKind {
