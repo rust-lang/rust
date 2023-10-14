@@ -22,8 +22,8 @@ use std::fmt;
 use std::fmt::Debug;
 
 use self::ty::{
-    GenericPredicates, Generics, ImplDef, ImplTrait, IndexedVal, Span, TraitDecl, TraitDef, Ty,
-    TyKind,
+    GenericPredicates, Generics, ImplDef, ImplTrait, IndexedVal, LineInfo, Span, TraitDecl,
+    TraitDef, Ty, TyKind,
 };
 
 #[macro_use]
@@ -108,6 +108,7 @@ pub struct Crate {
 }
 
 pub type DefKind = Opaque;
+pub type Filename = Opaque;
 
 /// Holds information about an item in the crate.
 /// For now, it only stores the item DefId. Use functions inside `rustc_internal` module to
@@ -196,13 +197,19 @@ pub trait Context {
     /// Find a crate with the given name.
     fn find_crates(&self, name: &str) -> Vec<Crate>;
 
-    /// Prints the name of given `DefId`
+    /// Returns the name of given `DefId`
     fn name_of_def_id(&self, def_id: DefId) -> String;
 
-    /// Prints a human readable form of `Span`
-    fn print_span(&self, span: Span) -> String;
+    /// Returns printable, human readable form of `Span`
+    fn span_to_string(&self, span: Span) -> String;
 
-    /// Prints the kind of given `DefId`
+    /// Return filename from given `Span`, for diagnostic purposes
+    fn get_filename(&self, span: &Span) -> Filename;
+
+    /// Return lines corresponding to this `Span`
+    fn get_lines(&self, span: &Span) -> LineInfo;
+
+    /// Returns the `kind` of given `DefId`
     fn def_kind(&mut self, def_id: DefId) -> DefKind;
 
     /// `Span` of an item
