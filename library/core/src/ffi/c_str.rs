@@ -83,11 +83,9 @@ use crate::str;
 #[rustc_has_incoherent_inherent_impls]
 #[lang = "CStr"]
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
-// on `CStr` being layout-compatible with `[u8]`.
-// However, `CStr` layout is considered an implementation detail and must not be relied upon. We
-// want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
-// `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
-#[cfg_attr(not(doc), repr(transparent))]
+// on `CStr` being layout-compatible with `[u8]`. However, `CStr` layout is
+// considered an implementation detail and must not be relied upon.
+#[repr(transparent)]
 pub struct CStr {
     // FIXME: this should not be represented with a DST slice but rather with
     //        just a raw `c_char` along with some form of marker to make

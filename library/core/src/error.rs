@@ -509,7 +509,7 @@ where
 /// ```
 ///
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
+#[repr(transparent)]
 pub struct Request<'a>(dyn Erased<'a> + 'a);
 
 impl<'a> Request<'a> {
