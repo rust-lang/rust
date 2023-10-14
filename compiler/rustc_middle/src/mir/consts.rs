@@ -498,7 +498,8 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    /// Return true if any evaluation of this constant returns the same value.
+    /// Return true if any evaluation of this constant always returns the same value,
+    /// taking into account even pointer identity tests.
     pub fn is_deterministic(&self) -> bool {
         // Some constants may contain pointers. We need to preserve the provenance of these
         // pointers, but not all constants guarantee this:
@@ -506,14 +507,10 @@ impl<'tcx> Const<'tcx> {
         // - ConstValue::Slice does not either.
         match self {
             Const::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(valtree) => match valtree {
-                    // This is just an integer, keep it.
-                    ty::ValTree::Leaf(_) => true,
-                    // This branch may be a reference. Valtree references correspond to a
-                    // different allocation each time they are evaluated.
-                    ty::ValTree::Branch(_) => false,
-                },
                 ty::ConstKind::Param(..) => true,
+                // A valtree may be a reference. Valtree references correspond to a
+                // different allocation each time they are evaluated.
+                ty::ConstKind::Value(_) => false,
                 ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
                 // Should not appear in runtime MIR.
                 ty::ConstKind::Infer(..)
