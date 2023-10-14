@@ -3,7 +3,12 @@ use crate::config::TomlConfig;
 use super::{Config, Flags};
 use clap::CommandFactory;
 use serde::Deserialize;
-use std::{env, path::Path};
+use std::{
+    env,
+    fs::{remove_file, File},
+    io::Write,
+    path::Path,
+};
 
 fn parse(config: &str) -> Config {
     Config::parse_inner(&["check".to_owned(), "--config=/does/not/exist".to_owned()], |&_| {
@@ -195,4 +200,20 @@ fn rust_optimize() {
 #[should_panic]
 fn invalid_rust_optimize() {
     parse("rust.optimize = \"a\"");
+}
+
+#[test]
+fn verify_file_integrity() {
+    let config = parse("");
+
+    let tempfile = config.tempdir().join(".tmp-test-file");
+    File::create(&tempfile).unwrap().write_all(b"dummy value").unwrap();
+    assert!(tempfile.exists());
+
+    assert!(
+        config
+            .verify(&tempfile, "7e255dd9542648a8779268a0f268b891a198e9828e860ed23f826440e786eae5")
+    );
+
+    remove_file(tempfile).unwrap();
 }
