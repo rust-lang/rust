@@ -19,11 +19,12 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, AdtDef, FnSig, List, Ty, UpvarArgs};
-use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
+use rustc_middle::ty::{
+    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, List, Ty,
+    UpvarArgs,
+};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{sym, ErrorGuaranteed, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
@@ -632,7 +633,7 @@ impl<'tcx> Pat<'tcx> {
 
         use PatKind::*;
         match &self.kind {
-            Wild | Range(..) | Binding { subpattern: None, .. } | Constant { .. } => {}
+            Wild | Range(..) | Binding { subpattern: None, .. } | Constant { .. } | Error(_) => {}
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern } => subpattern.walk_(it),
@@ -644,6 +645,21 @@ impl<'tcx> Pat<'tcx> {
             | Slice { box ref prefix, ref slice, box ref suffix } => {
                 prefix.iter().chain(slice.iter()).chain(suffix.iter()).for_each(|p| p.walk_(it))
             }
+        }
+    }
+
+    /// Whether the pattern has a `PatKind::Error` nested within.
+    pub fn pat_error_reported(&self) -> Result<(), ErrorGuaranteed> {
+        let mut error = None;
+        self.walk(|pat| {
+            if let PatKind::Error(e) = pat.kind && error.is_none() {
+                error = Some(e);
+            }
+            error.is_none()
+        });
+        match error {
+            None => Ok(()),
+            Some(e) => Err(e),
         }
     }
 
@@ -771,6 +787,10 @@ pub enum PatKind<'tcx> {
     Or {
         pats: Box<[Box<Pat<'tcx>>]>,
     },
+
+    /// An error has been encountered during lowering. We probably shouldn't report more lints
+    /// related to this pattern.
+    Error(ErrorGuaranteed),
 }
 
 #[derive(Clone, Debug, PartialEq, HashStable, TypeVisitable)]
@@ -934,6 +954,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 }
                 Ok(())
             }
+            PatKind::Error(_) => write!(f, "<error>"),
         }
     }
 }

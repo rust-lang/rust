@@ -38,7 +38,16 @@ LL |         BAR => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:59:9
+  --> $DIR/consts-opaque.rs:58:9
+   |
+LL |         BAR => {}
+   |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
+
+error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/consts-opaque.rs:65:9
    |
 LL |         BAR => {}
    |         ^^^
@@ -55,17 +64,8 @@ LL |         BAR => {}
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
-error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:69:9
-   |
-LL |         BAR => {}
-   |         ^^^
-   |
-   = note: the traits must be derived, manual `impl`s are not sufficient
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
-
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:75:9
+  --> $DIR/consts-opaque.rs:73:9
    |
 LL |         BAZ => {}
    |         ^^^
@@ -74,7 +74,7 @@ LL |         BAZ => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:83:9
+  --> $DIR/consts-opaque.rs:81:9
    |
 LL |         BAZ => {}
    |         ^^^
@@ -83,45 +83,22 @@ LL |         BAZ => {}
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:89:9
+  --> $DIR/consts-opaque.rs:87:9
    |
 LL |         BAZ => {}
    |         ^^^
    |
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:54:9
-   |
-LL |         Bar => {}
-   |         --- matches any value
-...
-LL |         _ => {}
-   |         ^ unreachable pattern
-   |
-note: the lint level is defined here
-  --> $DIR/consts-opaque.rs:6:9
-   |
-LL | #![deny(unreachable_patterns)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:62:9
-   |
-LL |         Bar => {}
-   |         --- matches any value
-LL |         _ => {}
-   |         ^ unreachable pattern
 
 error[E0004]: non-exhaustive patterns: `Wrap(_)` not covered
-  --> $DIR/consts-opaque.rs:124:11
+  --> $DIR/consts-opaque.rs:122:11
    |
 LL |     match WRAPQUUX {
    |           ^^^^^^^^ pattern `Wrap(_)` not covered
    |
 note: `Wrap<fn(usize, usize) -> usize>` defined here
-  --> $DIR/consts-opaque.rs:106:12
+  --> $DIR/consts-opaque.rs:104:12
    |
 LL |     struct Wrap<T>(T);
    |            ^^^^
@@ -132,6 +109,6 @@ LL ~         WRAPQUUX => {},
 LL +         Wrap(_) => todo!()
    |
 
-error: aborting due to 12 previous errors; 1 warning emitted
+error: aborting due to 10 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0004`.

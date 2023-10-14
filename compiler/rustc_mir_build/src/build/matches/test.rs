@@ -77,7 +77,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Wild
             | PatKind::Binding { .. }
             | PatKind::Leaf { .. }
-            | PatKind::Deref { .. } => self.error_simplifiable(match_pair),
+            | PatKind::Deref { .. }
+            | PatKind::Error(_) => self.error_simplifiable(match_pair),
         }
     }
 
@@ -111,7 +112,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Binding { .. }
             | PatKind::AscribeUserType { .. }
             | PatKind::Leaf { .. }
-            | PatKind::Deref { .. } => {
+            | PatKind::Deref { .. }
+            | PatKind::Error(_) => {
                 // don't know how to add these patterns to a switch
                 false
             }

@@ -168,7 +168,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatKind::Wild => {
+            PatKind::Wild | PatKind::Error(_) => {
                 // nothing left to do
                 Ok(())
             }
