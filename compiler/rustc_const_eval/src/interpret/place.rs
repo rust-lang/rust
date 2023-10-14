@@ -500,8 +500,7 @@ where
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // Due to packed places, only `mplace.align` matters.
-        let align =
-            if M::enforce_alignment(self).should_check() { mplace.align } else { Align::ONE };
+        let align = if M::enforce_alignment(self) { mplace.align } else { Align::ONE };
         self.check_ptr_access_align(mplace.ptr(), size, align, CheckInAllocMsg::DerefTest)?;
         Ok(())
     }

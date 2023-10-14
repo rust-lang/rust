@@ -1,10 +1,9 @@
 use rustc_hir::def::DefKind;
-use rustc_hir::{LangItem, CRATE_HIR_ID};
+use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::lint::builtin::INVALID_ALIGNMENT;
 use std::borrow::Borrow;
 use std::hash::Hash;
 use std::ops::ControlFlow;
@@ -21,11 +20,11 @@ use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::errors::{LongRunning, LongRunningWarn};
+use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, FnArg, FnVal, Frame, ImmTy, InterpCx,
     InterpResult, OpTy, PlaceTy, Pointer, Scalar,
 };
-use crate::{errors, fluent_generated as fluent};
 
 use super::error::*;
 
@@ -65,22 +64,11 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
 
 #[derive(Copy, Clone)]
 pub enum CheckAlignment {
-    /// Ignore alignment when following relocations.
+    /// Ignore all alignment requirements.
     /// This is mainly used in interning.
     No,
     /// Hard error when dereferencing a misaligned pointer.
     Error,
-    /// Emit a future incompat lint when dereferencing a misaligned pointer.
-    FutureIncompat,
-}
-
-impl CheckAlignment {
-    pub fn should_check(&self) -> bool {
-        match self {
-            CheckAlignment::No => false,
-            CheckAlignment::Error | CheckAlignment::FutureIncompat => true,
-        }
-    }
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -358,46 +346,13 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
     #[inline(always)]
-    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
-        ecx.machine.check_alignment
+    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        matches!(ecx.machine.check_alignment, CheckAlignment::Error)
     }
 
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool {
         ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks || layout.abi.is_uninhabited()
-    }
-
-    fn alignment_check_failed(
-        ecx: &InterpCx<'mir, 'tcx, Self>,
-        has: Align,
-        required: Align,
-        check: CheckAlignment,
-    ) -> InterpResult<'tcx, ()> {
-        let err = err_ub!(AlignmentCheckFailed { has, required }).into();
-        match check {
-            CheckAlignment::Error => Err(err),
-            CheckAlignment::No => span_bug!(
-                ecx.cur_span(),
-                "`alignment_check_failed` called when no alignment check requested"
-            ),
-            CheckAlignment::FutureIncompat => {
-                let (_, backtrace) = err.into_parts();
-                backtrace.print_backtrace();
-                let (span, frames) = super::get_span_and_frames(&ecx);
-
-                ecx.tcx.emit_spanned_lint(
-                    INVALID_ALIGNMENT,
-                    ecx.stack().iter().find_map(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
-                    span,
-                    errors::AlignmentCheckFailed {
-                        has: has.bytes(),
-                        required: required.bytes(),
-                        frames,
-                    },
-                );
-                Ok(())
-            }
-        }
     }
 
     fn load_mir(

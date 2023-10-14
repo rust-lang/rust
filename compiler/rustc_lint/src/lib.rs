@@ -506,6 +506,11 @@ fn register_builtins(store: &mut LintStore) {
         "replaced with another group of lints, see RFC \
          <https://rust-lang.github.io/rfcs/2145-type-privacy.html> for more information",
     );
+    store.register_removed(
+        "invalid_alignment",
+        "converted into hard error, see PR #104616 \
+         <https://github.com/rust-lang/rust/pull/104616> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

@@ -12,10 +12,8 @@ use rustc_middle::mir;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{Align, Size};
+use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi as CallAbi;
-
-use crate::const_eval::CheckAlignment;
 
 use super::{
     AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
@@ -135,20 +133,13 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     const POST_MONO_CHECKS: bool = true;
 
     /// Whether memory accesses should be alignment-checked.
-    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment;
+    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether, when checking alignment, we should look at the actual address and thus support
     /// custom alignment logic based on whatever the integer address happens to be.
     ///
     /// If this returns true, Provenance::OFFSET_IS_ADDR must be true.
     fn use_addr_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
-
-    fn alignment_check_failed(
-        ecx: &InterpCx<'mir, 'tcx, Self>,
-        has: Align,
-        required: Align,
-        check: CheckAlignment,
-    ) -> InterpResult<'tcx, ()>;
 
     /// Whether to enforce the validity invariant for a specific layout.
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool;
