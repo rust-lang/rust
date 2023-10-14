@@ -275,6 +275,21 @@ impl<T: ?Sized> Mutex<T> {
         }
     }
 
+    /// On the "custom" platform, allocator and thread local storage
+    /// implementations use Mutex & RwLock, sometimes while a panic is
+    /// being handled.
+    ///
+    /// The poison checks that these primitives do are deadlock sources
+    /// in these cases; to prevent these deadlocks, it is preferable to
+    /// bypass the poison checks.
+    #[cfg(target_os = "custom")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub(crate) fn lock_no_poison_check(&self) -> MutexGuard<'_, T> {
+        self.inner.lock();
+        let poison = poison::Guard::no_check();
+        MutexGuard { lock: self, poison }
+    }
+
     /// Attempts to acquire this lock.
     ///
     /// If the lock could not be acquired at this time, then [`Err`] is returned.

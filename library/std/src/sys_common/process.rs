@@ -9,7 +9,7 @@ use crate::io;
 use crate::sys::pipe::read2;
 use crate::sys::process::{EnvKey, ExitStatus, Process, StdioPipes};
 
-// Stores a set of changes to an environment
+/// Stores a set of changes to an environment
 #[derive(Clone)]
 pub struct CommandEnv {
     clear: bool,
