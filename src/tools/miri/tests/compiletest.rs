@@ -168,6 +168,9 @@ regexes! {
     r"\.rs:[0-9]+:[0-9]+(: [0-9]+:[0-9]+)?" => ".rs:LL:CC",
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
+    "static[0-9]+"                   => "STATIC",
+    "fn[0-9]+"                       => "FN",
+    "vtable[0-9]+"                   => "VTABLE",
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",

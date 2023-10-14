@@ -473,7 +473,7 @@ fn main() {
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
             let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZeroU64>(param) {
-                Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
+                Ok(ids) => ids.into_iter().map(miri::AllocId::unchecked_new).collect(),
                 Err(err) =>
                     show_error!(
                         "-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {}",

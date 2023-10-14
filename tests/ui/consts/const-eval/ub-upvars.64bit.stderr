@@ -6,7 +6,7 @@ LL | const BAD_UPVAR: &dyn FnOnce() = &{
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾───────alloc3────────╼ ╾───────alloc4────────╼ │ ╾──────╼╾──────╼
+               ╾───────alloc3────────╼ ╾───────vtable0───────╼ │ ╾──────╼╾──────╼
            }
 
 error: aborting due to previous error

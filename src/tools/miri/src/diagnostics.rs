@@ -534,14 +534,14 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
-            CreatedCallId(id) => format!("function call with id {id}"),
-            CreatedAlloc(AllocId(id), size, align, kind) =>
+            CreatedCallId(id) => format!("function call with id {id:?}"),
+            CreatedAlloc(id, size, align, kind) =>
                 format!(
-                    "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
+                    "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id:?}",
                     size = size.bytes(),
                     align = align.bytes(),
                 ),
-            FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
+            FreedAlloc(id) => format!("freed allocation with id {id:?}"),
             RejectedIsolatedOp(ref op) =>
                 format!("{op} was made to return an error due to isolation"),
             ProgressReport { .. } =>
