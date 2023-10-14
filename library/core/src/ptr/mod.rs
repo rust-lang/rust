@@ -699,7 +699,7 @@ where
 #[inline(always)]
 #[must_use]
 #[unstable(feature = "ptr_from_ref", issue = "106116")]
-#[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
+#[rustc_never_returns_null_ptr]
 #[rustc_diagnostic_item = "ptr_from_ref"]
 pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
     r
@@ -712,7 +712,7 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 #[inline(always)]
 #[must_use]
 #[unstable(feature = "ptr_from_ref", issue = "106116")]
-#[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
+#[rustc_never_returns_null_ptr]
 pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
     r
 }

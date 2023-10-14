@@ -1258,7 +1258,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     /// [`as_ptr`]: Vec::as_ptr
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
-    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
+    #[rustc_never_returns_null_ptr]
     #[inline]
     pub fn as_ptr(&self) -> *const T {
         // We shadow the slice method of the same name to avoid going through
@@ -1318,7 +1318,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     /// [`as_ptr`]: Vec::as_ptr
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
-    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
+    #[rustc_never_returns_null_ptr]
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         // We shadow the slice method of the same name to avoid going through
@@ -3155,7 +3155,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "vec_from_array_ref", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "vec_from_array_ref", since = "1.74.0")]
 impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
@@ -3170,7 +3170,7 @@ impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "vec_from_array_ref", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "vec_from_array_ref", since = "1.74.0")]
 impl<T: Clone, const N: usize> From<&mut [T; N]> for Vec<T> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///

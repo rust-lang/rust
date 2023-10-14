@@ -229,7 +229,6 @@ fn panic_cannot_unwind() -> ! {
 /// pass to `panic_nounwind`.
 /// This function is called directly by the codegen backend, and must not have
 /// any extra arguments (including those synthesized by track_caller).
-#[cfg(not(bootstrap))]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_in_cleanup"] // needed by codegen for panic in nounwind function

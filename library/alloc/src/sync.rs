@@ -1455,7 +1455,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
+    #[rustc_never_returns_null_ptr]
     pub fn into_raw(this: Self) -> *const T {
         let ptr = Self::as_ptr(&this);
         mem::forget(this);
@@ -1480,7 +1480,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
-    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
+    #[rustc_never_returns_null_ptr]
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
 
@@ -3271,7 +3271,7 @@ impl<T> From<T> for Arc<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "shared_from_array", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_array", since = "1.74.0")]
 impl<T, const N: usize> From<[T; N]> for Arc<[T]> {
     /// Converts a [`[T; N]`](prim@array) into an `Arc<[T]>`.
     ///

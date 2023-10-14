@@ -1500,7 +1500,7 @@ impl From<fs::File> for Stdio {
     }
 }
 
-#[stable(feature = "stdio_from_stdio", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdio_from_stdio", since = "1.74.0")]
 impl From<io::Stdout> for Stdio {
     /// Redirect command stdout/stderr to our stdout
     ///
@@ -1531,7 +1531,7 @@ impl From<io::Stdout> for Stdio {
     }
 }
 
-#[stable(feature = "stdio_from_stdio", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdio_from_stdio", since = "1.74.0")]
 impl From<io::Stderr> for Stdio {
     /// Redirect command stdout/stderr to our stderr
     ///
