@@ -496,10 +496,12 @@ impl<V: Clone> State<V> {
         values.raw.fill(value);
     }
 
+    /// Assign `value` to all places that are contained in `place` or may alias one.
     pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
-        self.flood_with_extra(place, None, map, value)
+        self.flood_with_tail_elem(place, None, map, value)
     }
 
+    /// Assign `TOP` to all places that are contained in `place` or may alias one.
     pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map)
     where
         V: HasTop,
@@ -507,10 +509,12 @@ impl<V: Clone> State<V> {
         self.flood_with(place, map, V::TOP)
     }
 
+    /// Assign `value` to the discriminant of `place` and all places that may alias it.
     pub fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
-        self.flood_with_extra(place, Some(TrackElem::Discriminant), map, value)
+        self.flood_with_tail_elem(place, Some(TrackElem::Discriminant), map, value)
     }
 
+    /// Assign `TOP` to the discriminant of `place` and all places that may alias it.
     pub fn flood_discr(&mut self, place: PlaceRef<'_>, map: &Map)
     where
         V: HasTop,
@@ -518,7 +522,14 @@ impl<V: Clone> State<V> {
         self.flood_discr_with(place, map, V::TOP)
     }
 
-    pub fn flood_with_extra(
+    /// This method is the most general version of the `flood_*` method.
+    ///
+    /// Assign `value` on the given place and all places that may alias it. In particular, when
+    /// the given place has a variant downcast, we invoke the function on all the other variants.
+    ///
+    /// `tail_elem` allows to support discriminants that are not a place in MIR, but that we track
+    /// as such.
+    pub fn flood_with_tail_elem(
         &mut self,
         place: PlaceRef<'_>,
         tail_elem: Option<TrackElem>,
@@ -602,62 +613,79 @@ impl<V: Clone> State<V> {
         }
     }
 
-    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    /// Retrieve the value stored for a place, or `None` if it is not tracked.
     pub fn try_get(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
         let place = map.find(place)?;
         self.try_get_idx(place, map)
     }
 
-    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    /// Retrieve the discriminant stored for a place, or `None` if it is not tracked.
     pub fn try_get_discr(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
         let place = map.find_discr(place)?;
         self.try_get_idx(place, map)
     }
 
-    /// Retrieve the value stored for a place index, or ⊤ if it is not tracked.
+    /// Retrieve the slice length stored for a place, or `None` if it is not tracked.
+    pub fn try_get_len(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
+        let place = map.find_len(place)?;
+        self.try_get_idx(place, map)
+    }
+
+    /// Retrieve the value stored for a place index, or `None` if it is not tracked.
     pub fn try_get_idx(&self, place: PlaceIndex, map: &Map) -> Option<V> {
         match &self.0 {
             StateData::Reachable(values) => {
                 map.places[place].value_index.map(|v| values[v].clone())
             }
-            StateData::Unreachable => {
-                // Because this is unreachable, we can return any value we want.
-                None
-            }
+            StateData::Unreachable => None,
         }
     }
 
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    ///
+    /// This method returns ⊥ if the place is tracked and the state is unreachable.
     pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V
     where
         V: HasBottom + HasTop,
     {
-        map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::TOP)
+        match &self.0 {
+            StateData::Reachable(_) => self.try_get(place, map).unwrap_or(V::TOP),
+            // Because this is unreachable, we can return any value we want.
+            StateData::Unreachable => V::BOTTOM,
+        }
     }
 
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    ///
+    /// This method returns ⊥ the current state is unreachable.
     pub fn get_discr(&self, place: PlaceRef<'_>, map: &Map) -> V
     where
         V: HasBottom + HasTop,
     {
-        match map.find_discr(place) {
-            Some(place) => self.get_idx(place, map),
-            None => V::TOP,
+        match &self.0 {
+            StateData::Reachable(_) => self.try_get_discr(place, map).unwrap_or(V::TOP),
+            // Because this is unreachable, we can return any value we want.
+            StateData::Unreachable => V::BOTTOM,
         }
     }
 
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    ///
+    /// This method returns ⊥ the current state is unreachable.
     pub fn get_len(&self, place: PlaceRef<'_>, map: &Map) -> V
     where
         V: HasBottom + HasTop,
     {
-        match map.find_len(place) {
-            Some(place) => self.get_idx(place, map),
-            None => V::TOP,
+        match &self.0 {
+            StateData::Reachable(_) => self.try_get_len(place, map).unwrap_or(V::TOP),
+            // Because this is unreachable, we can return any value we want.
+            StateData::Unreachable => V::BOTTOM,
         }
     }
 
     /// Retrieve the value stored for a place index, or ⊤ if it is not tracked.
+    ///
+    /// This method returns ⊥ the current state is unreachable.
     pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V
     where
         V: HasBottom + HasTop,

@@ -222,7 +222,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             //   _1 = 5 // Whatever happens here, it won't change the result of a `SwitchInt`.
             //   _1 = 6
             if let Some((lhs, tail)) = self.mutated_statement(stmt) {
-                state.flood_with_extra(lhs.as_ref(), tail, self.map, ConditionSet::default());
+                state.flood_with_tail_elem(lhs.as_ref(), tail, self.map, ConditionSet::default());
             }
         }
 
