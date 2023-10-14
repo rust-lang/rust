@@ -298,6 +298,24 @@ types in the impl, since this mapping describes the type that should
 come after the `=` in `type Assoc = ...` for each RPITIT.
 </details>
 
+##### Implied bounds in RPITIT hidden type inference
+
+Since `collect_return_position_impl_trait_in_trait_tys` does fulfillment and
+region resolution, we must provide it `assumed_wf_types` so that we can prove
+region obligations with the same expected implied bounds as
+`compare_method_predicate_entailment` does.
+
+Since the return type of a method is understood to be one of the assumed WF
+types, and we eagerly fold the return type with inference variables to do
+opaque type inference, after opaque type inference, the return type will
+resolve to contain the hidden types of the RPITITs. this would mean that the
+hidden types of the RPITITs would be assumed to be well-formed without having
+independently proven that they are. This resulted in a
+[subtle unsoundness bug](https://github.com/rust-lang/rust/pull/116072). In
+order to prevent this cyclic reasoning, we instead replace the hidden types of
+the RPITITs in the return type of the method with *placeholders*, which lead
+to no implied well-formedness bounds.
+
 #### Default trait body
 
 Type-checking a default trait body, like:
