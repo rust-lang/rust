@@ -63,12 +63,12 @@ pub struct ExitStatusError(NonZero_c_int);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
-        ExitStatus(self.0.into())
+        ExitStatus::from(c_int::from(self.0))
     }
 }
 
 impl ExitStatusError {
     pub fn code(self) -> Option<NonZeroI32> {
-        ExitStatus(self.0.into()).code().map(|st| st.try_into().unwrap())
+        ExitStatus::from(c_int::from(self.0)).code().map(|st| st.try_into().unwrap())
     }
 }
