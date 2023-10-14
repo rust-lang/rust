@@ -604,8 +604,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let box_found = Ty::new_box(self.tcx, found);
-        let pin_box_found = Ty::new_lang_item(self.tcx, box_found, LangItem::Pin).unwrap();
-        let pin_found = Ty::new_lang_item(self.tcx, found, LangItem::Pin).unwrap();
+        let Some(pin_box_found) = Ty::new_lang_item(self.tcx, box_found, LangItem::Pin) else {
+            return false;
+        };
+        let Some(pin_found) = Ty::new_lang_item(self.tcx, found, LangItem::Pin) else {
+            return false;
+        };
         match expected.kind() {
             ty::Adt(def, _) if Some(def.did()) == pin_did => {
                 if self.can_coerce(pin_box_found, expected) {
