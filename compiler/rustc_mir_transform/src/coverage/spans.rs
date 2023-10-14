@@ -492,11 +492,13 @@ impl<'a> CoverageSpansGenerator<'a> {
         }
         while let Some(curr) = self.sorted_spans_iter.next() {
             debug!("FOR curr={:?}", curr);
-            if self.some_prev.is_some() && self.prev_starts_after_next(&curr) {
+            if let Some(prev) = &self.some_prev && prev.span.lo() > curr.span.lo() {
+                // Skip curr because prev has already advanced beyond the end of curr.
+                // This can only happen if a prior iteration updated `prev` to skip past
+                // a region of code, such as skipping past a closure.
                 debug!(
                     "  prev.span starts after curr.span, so curr will be dropped (skipping past \
-                    closure?); prev={:?}",
-                    self.prev()
+                    closure?); prev={prev:?}",
                 );
             } else {
                 // Save a copy of the original span for `curr` in case the `CoverageSpan` is changed
@@ -508,13 +510,6 @@ impl<'a> CoverageSpansGenerator<'a> {
             }
         }
         false
-    }
-
-    /// Returns true if the curr span should be skipped because prev has already advanced beyond the
-    /// end of curr. This can only happen if a prior iteration updated `prev` to skip past a region
-    /// of code, such as skipping past a closure.
-    fn prev_starts_after_next(&self, next_curr: &CoverageSpan) -> bool {
-        self.prev().span.lo() > next_curr.span.lo()
     }
 
     /// If `prev`s span extends left of the closure (`curr`), carve out the closure's span from
