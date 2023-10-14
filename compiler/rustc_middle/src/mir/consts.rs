@@ -509,8 +509,9 @@ impl<'tcx> Const<'tcx> {
             Const::Ty(c) => match c.kind() {
                 ty::ConstKind::Param(..) => true,
                 // A valtree may be a reference. Valtree references correspond to a
-                // different allocation each time they are evaluated.
-                ty::ConstKind::Value(_) => false,
+                // different allocation each time they are evaluated. Valtrees for primitive
+                // types are fine though.
+                ty::ConstKind::Value(_) => c.ty().is_primitive(),
                 ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
                 // Should not appear in runtime MIR.
                 ty::ConstKind::Infer(..)
