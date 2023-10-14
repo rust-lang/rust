@@ -497,6 +497,40 @@ impl<'tcx> Const<'tcx> {
             _ => Self::Ty(c),
         }
     }
+
+    /// Return true if any evaluation of this constant returns the same value.
+    pub fn is_deterministic(&self) -> bool {
+        // Some constants may contain pointers. We need to preserve the provenance of these
+        // pointers, but not all constants guarantee this:
+        // - valtrees purposefully do not;
+        // - ConstValue::Slice does not either.
+        match self {
+            Const::Ty(c) => match c.kind() {
+                ty::ConstKind::Value(valtree) => match valtree {
+                    // This is just an integer, keep it.
+                    ty::ValTree::Leaf(_) => true,
+                    // This branch may be a reference. Valtree references correspond to a
+                    // different allocation each time they are evaluated.
+                    ty::ValTree::Branch(_) => false,
+                },
+                ty::ConstKind::Param(..) => true,
+                ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
+                // Should not appear in runtime MIR.
+                ty::ConstKind::Infer(..)
+                | ty::ConstKind::Bound(..)
+                | ty::ConstKind::Placeholder(..)
+                | ty::ConstKind::Error(..) => bug!(),
+            },
+            Const::Unevaluated(..) => false,
+            // If the same slice appears twice in the MIR, we cannot guarantee that we will
+            // give the same `AllocId` to the data.
+            Const::Val(ConstValue::Slice { .. }, _) => false,
+            Const::Val(
+                ConstValue::ZeroSized | ConstValue::Scalar(_) | ConstValue::Indirect { .. },
+                _,
+            ) => true,
+        }
+    }
 }
 
 /// An unevaluated (potentially generic) constant used in MIR.

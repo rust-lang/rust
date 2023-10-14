@@ -1,10 +1,16 @@
 // skip-filecheck
 // unit-test: GVN
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+// only-64bit
 
 #![feature(raw_ref_op)]
 #![feature(rustc_attrs)]
+#![feature(custom_mir)]
+#![feature(core_intrinsics)]
 #![allow(unconditional_panic)]
+
+use std::intrinsics::mir::*;
+use std::mem::transmute;
 
 struct S<T>(T);
 
@@ -225,9 +231,47 @@ fn slices() {
     let t = s; // This should be the same pointer, so cannot be a `Const::Slice`.
     opaque(t);
     assert_eq!(s.as_ptr(), t.as_ptr());
-    let u = unsafe { std::mem::transmute::<&str, &[u8]>(s) };
+    let u = unsafe { transmute::<&str, &[u8]>(s) };
     opaque(u);
     assert_eq!(s.as_ptr(), u.as_ptr());
+}
+
+#[custom_mir(dialect = "analysis")]
+fn duplicate_slice() -> (bool, bool) {
+    mir!(
+        let au: u128;
+        let bu: u128;
+        let cu: u128;
+        let du: u128;
+        let c: &str;
+        let d: &str;
+        {
+            let a = ("a",);
+            Call(au = transmute::<_, u128>(a.0), bb1)
+        }
+        bb1 = {
+            Call(c = identity(a.0), bb2)
+        }
+        bb2 = {
+            Call(cu = transmute::<_, u128>(c), bb3)
+        }
+        bb3 = {
+            let b = "a"; // This slice is different from `a.0`.
+            Call(bu = transmute::<_, u128>(b), bb4) // Hence `bu` is not `au`.
+        }
+        bb4 = {
+            Call(d = identity(b), bb5) // This returns a copy of `b`, which is not `a`.
+        }
+        bb5 = {
+            Call(du = transmute::<_, u128>(d), bb6)
+        }
+        bb6 = {
+            let direct = au == bu; // Must not fold to `true`...
+            let indirect = cu == du; // ...as this will not.
+            RET = (direct, indirect);
+            Return()
+        }
+    )
 }
 
 fn aggregates() {
@@ -253,11 +297,18 @@ fn main() {
     references(5);
     dereferences(&mut 5, &6, &S(7));
     slices();
+    let (direct, indirect) = duplicate_slice();
+    assert_eq!(direct, indirect);
     aggregates();
 }
 
 #[inline(never)]
 fn opaque(_: impl Sized) {}
+
+#[inline(never)]
+fn identity<T>(x: T) -> T {
+    x
+}
 
 // EMIT_MIR gvn.subexpression_elimination.GVN.diff
 // EMIT_MIR gvn.wrap_unwrap.GVN.diff
@@ -270,4 +321,5 @@ fn opaque(_: impl Sized) {}
 // EMIT_MIR gvn.references.GVN.diff
 // EMIT_MIR gvn.dereferences.GVN.diff
 // EMIT_MIR gvn.slices.GVN.diff
+// EMIT_MIR gvn.duplicate_slice.GVN.diff
 // EMIT_MIR gvn.aggregates.GVN.diff

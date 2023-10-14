@@ -52,6 +52,35 @@
 //! _a = *_b // _b is &Freeze
 //! _c = *_b // replaced by _c = _a
 //! ```
+//!
+//! # Determinism of constant propagation
+//!
+//! When registering a new `Value`, we attempt to opportunistically evaluate it as a constant.
+//! The evaluated form is inserted in `evaluated` as an `OpTy` or `None` if evaluation failed.
+//!
+//! The difficulty is non-deterministic evaluation of MIR constants. Some `Const` can have
+//! different runtime values each time they are evaluated. This is the case with
+//! `Const::Slice` which have a new pointer each time they are evaluated, and constants that
+//! contain a fn pointer (`AllocId` pointing to a `GlobalAlloc::Function`) pointing to a different
+//! symbol in each codegen unit.
+//!
+//! Meanwhile, we want to be able to read indirect constants. For instance:
+//! ```
+//! static A: &'static &'static u8 = &&63;
+//! fn foo() -> u8 {
+//!     **A // We want to replace by 63.
+//! }
+//! fn bar() -> u8 {
+//!     b"abc"[1] // We want to replace by 'b'.
+//! }
+//! ```
+//!
+//! The `Value::Constant` variant stores a possibly unevaluated constant. Evaluating that constant
+//! may be non-deterministic. When that happens, we assign a disambiguator to ensure that we do not
+//! merge the constants. See `duplicate_slice` test in `gvn.rs`.
+//!
+//! Second, when writing constants in MIR, we do not write `Const::Slice` or `Const`
+//! that contain `AllocId`s.
 
 use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemoryKind};
 use rustc_const_eval::interpret::{ImmTy, InterpCx, OpTy, Projectable, Scalar};
@@ -161,7 +190,12 @@ enum Value<'tcx> {
     /// The `usize` is a counter incremented by `new_opaque`.
     Opaque(usize),
     /// Evaluated or unevaluated constant value.
-    Constant(Const<'tcx>),
+    Constant {
+        value: Const<'tcx>,
+        /// Some constants do not have a deterministic value. To avoid merging two instances of the
+        /// same `Const`, we assign them an additional integer index.
+        disambiguator: usize,
+    },
     /// An aggregate value, either tuple/closure/struct/enum.
     /// This does not contain unions, as we cannot reason with the value.
     Aggregate(AggregateTy<'tcx>, VariantIdx, Vec<VnIndex>),
@@ -288,8 +322,24 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
     }
 
+    fn insert_constant(&mut self, value: Const<'tcx>) -> Option<VnIndex> {
+        let disambiguator = if value.is_deterministic() {
+            // The constant is deterministic, no need to disambiguate.
+            0
+        } else {
+            // Multiple mentions of this constant will yield different values,
+            // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
+            let next_opaque = self.next_opaque.as_mut()?;
+            let disambiguator = *next_opaque;
+            *next_opaque += 1;
+            disambiguator
+        };
+        Some(self.insert(Value::Constant { value, disambiguator }))
+    }
+
     fn insert_scalar(&mut self, scalar: Scalar, ty: Ty<'tcx>) -> VnIndex {
-        self.insert(Value::Constant(Const::from_scalar(self.tcx, scalar, ty)))
+        self.insert_constant(Const::from_scalar(self.tcx, scalar, ty))
+            .expect("scalars are deterministic")
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -300,7 +350,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // Do not bother evaluating repeat expressions. This would uselessly consume memory.
             Repeat(..) => return None,
 
-            Constant(ref constant) => self.ecx.eval_mir_constant(constant, None, None).ok()?,
+            Constant { ref value, disambiguator: _ } => {
+                self.ecx.eval_mir_constant(value, None, None).ok()?
+            }
             Aggregate(kind, variant, ref fields) => {
                 let fields = fields
                     .iter()
@@ -657,7 +709,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         match *operand {
             Operand::Constant(ref mut constant) => {
                 let const_ = constant.const_.normalize(self.tcx, self.param_env);
-                Some(self.insert(Value::Constant(const_)))
+                self.insert_constant(const_)
             }
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
@@ -691,7 +743,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 Value::Repeat(op, amount)
             }
             Rvalue::NullaryOp(op, ty) => Value::NullaryOp(op, ty),
-            Rvalue::Aggregate(..) => self.simplify_aggregate(rvalue, location)?,
+            Rvalue::Aggregate(..) => return self.simplify_aggregate(rvalue, location),
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
@@ -757,7 +809,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         &mut self,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
-    ) -> Option<Value<'tcx>> {
+    ) -> Option<VnIndex> {
         let Rvalue::Aggregate(box ref kind, ref mut fields) = *rvalue else { bug!() };
 
         let tcx = self.tcx;
@@ -774,8 +826,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             if is_zst {
                 let ty = rvalue.ty(self.local_decls, tcx);
-                let value = Value::Constant(Const::zero_sized(ty));
-                return Some(value);
+                return self.insert_constant(Const::zero_sized(ty));
             }
         }
 
@@ -814,12 +865,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     *rvalue = Rvalue::Repeat(Operand::Copy(local.into()), len);
                     self.reused_locals.insert(local);
                 }
-                return Some(Value::Repeat(first, len));
+                return Some(self.insert(Value::Repeat(first, len)));
             }
         }
 
-        let value = Value::Aggregate(ty, variant_index, fields);
-        Some(value)
+        Some(self.insert(Value::Aggregate(ty, variant_index, fields)))
     }
 }
 
@@ -882,39 +932,12 @@ impl<'tcx> VnState<'_, 'tcx> {
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
         // This was already constant in MIR, do not change it.
-        if let Value::Constant(const_) = *self.get(index) {
-            // Some constants may contain pointers. We need to preserve the provenance of these
-            // pointers, but not all constants guarantee this:
-            // - valtrees purposefully do not;
-            // - ConstValue::Slice does not either.
-            let const_ok = match const_ {
-                Const::Ty(c) => match c.kind() {
-                    ty::ConstKind::Value(valtree) => match valtree {
-                        // This is just an integer, keep it.
-                        ty::ValTree::Leaf(_) => true,
-                        ty::ValTree::Branch(_) => false,
-                    },
-                    ty::ConstKind::Param(..)
-                    | ty::ConstKind::Unevaluated(..)
-                    | ty::ConstKind::Expr(..) => true,
-                    // Should not appear in runtime MIR.
-                    ty::ConstKind::Infer(..)
-                    | ty::ConstKind::Bound(..)
-                    | ty::ConstKind::Placeholder(..)
-                    | ty::ConstKind::Error(..) => bug!(),
-                },
-                Const::Unevaluated(..) => true,
-                // If the same slice appears twice in the MIR, we cannot guarantee that we will
-                // give the same `AllocId` to the data.
-                Const::Val(ConstValue::Slice { .. }, _) => false,
-                Const::Val(
-                    ConstValue::ZeroSized | ConstValue::Scalar(_) | ConstValue::Indirect { .. },
-                    _,
-                ) => true,
-            };
-            if const_ok {
-                return Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ });
-            }
+        if let Value::Constant { value, disambiguator: _ } = *self.get(index)
+            // If the constant is not deterministic, adding an additional mention of it in MIR will
+            // not give the same value as the former mention.
+            && value.is_deterministic()
+        {
+            return Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_: value });
         }
 
         let op = self.evaluated[index].as_ref()?;
