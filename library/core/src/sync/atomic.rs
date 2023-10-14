@@ -87,33 +87,30 @@
 //! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
 //! on read-only memory.
 //!
-//! (For the purpose of this section, "read-only memory" is defined as memory that is read-only in
+//! For the purpose of this section, "read-only memory" is defined as memory that is read-only in
 //! the underlying target, i.e., the pages are mapped with a read-only flag and any attempt to write
 //! will cause a page fault. In particular, an `&u128` reference that points to memory that is
 //! read-write mapped is *not* considered to point to "read-only memory". In Rust, almost all memory
 //! is read-write; the only exceptions are memory created by `const` items or `static` items without
 //! interior mutability, and memory that was specifically marked as read-only by the operating
-//! system via platform-specific APIs.)
+//! system via platform-specific APIs.
 //!
-//! However, as an exception from this general rule, "sufficiently small" atomic loads are
-//! implemented in a way that works on read-only memory. The exact threshold for what makes a load
-//! "sufficiently small" varies depending on the architecture and feature flags, but Rust guarantees
-//! that atomic loads that do not exceed the size documented in the following table are guaranteed
-//! to be read-only:
+//! As an exception from the general rule stated above, "sufficiently small" atomic loads with
+//! `Ordering::Relaxed` are implemented in a way that works on read-only memory, and are hence not
+//! Undefined Behavior. The exact size limit for what makes a load "sufficiently small" varies
+//! depending on the target:
 //!
-//! | Target architecture | Atomic loads no larger than this are guaranteed read-only |
+//! | Target triple prefix (regular expression) | Size limit |
 //! |---------------|---------|
-//! | `x86`         | 4 bytes |
-//! | `x86_64`      | 8 bytes |
-//! | `arm`         | 4 bytes |
-//! | `aarch64`     | 8 bytes |
-//! | `riscv32`     | 4 bytes |
-//! | `riscv64`     | 8 bytes |
-//! | `powerpc64`   | 8 bytes |
+//! | `i(3|5|6)86-`, `arm`, `thumb`, `mips(|el)-`, `powerpc-`, `riscv32`, `sparc-`    | 4 bytes |
+//! | `x86_64-`, `aarch64-`, `loongarch64-`, `mips64(|el)-`, `powerpc64-`, `riscv64`  | 8 bytes |
+//! | `powerpc64le-` | 16 bytes |
+//! | `s390x-`       | 16 bytes |
 //!
-//! Atomics loads that are larger than this threshold (and *all* atomic loads on targets not listed
-//! in the table) might still be read-only under certain conditions, but that is not a stable
-//! guarantee and should not be relied upon.
+//! Atomics loads that are larger than this limit as well as atomic loads with ordering other
+//! than `Relaxed`, as well as *all* atomic loads on targets not listed in the table, might still be
+//! read-only under certain conditions, but that is not a stable guarantee and should not be relied
+//! upon.
 //!
 //! # Examples
 //!
