@@ -10,7 +10,7 @@ note: the lint level is defined here
    |
 LL | #![deny(async_fn_in_trait)]
    |         ^^^^^^^^^^^^^^^^^
-help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`
+help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
    |
 LL -     async fn not_send();
 LL +     fn not_send() -> impl std::future::Future<Output = ()> + Send;
