@@ -1616,7 +1616,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         continue;
                     }
 
-                    let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
+                    let Some(range_def_id) =
+                        lang_item.and_then(|lang_item| self.tcx.lang_items().get(lang_item))
+                    else {
+                        continue;
+                    };
                     let range_ty =
                         self.tcx.type_of(range_def_id).instantiate(self.tcx, &[actual.into()]);
 
@@ -2539,11 +2543,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Err(_) => (),
                 }
 
-                let pred = ty::TraitRef::new(
-                    self.tcx,
-                    self.tcx.lang_items().unpin_trait().unwrap(),
-                    [*rcvr_ty],
-                );
+                let Some(unpin_trait) = self.tcx.lang_items().unpin_trait() else {
+                    return;
+                };
+                let pred = ty::TraitRef::new(self.tcx, unpin_trait, [*rcvr_ty]);
                 let unpin = self.predicate_must_hold_considering_regions(&Obligation::new(
                     self.tcx,
                     ObligationCause::misc(rcvr.span, self.body_id),
