@@ -16,7 +16,6 @@ extern crate rustc_middle;
 extern crate tracing;
 
 mod assert_dep_graph;
-pub mod assert_module_sources;
 mod errors;
 mod persist;
 

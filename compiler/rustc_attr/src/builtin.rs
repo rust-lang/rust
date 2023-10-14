@@ -548,7 +548,11 @@ pub fn cfg_matches(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
-                    "unexpected `cfg` condition value",
+                    if let Some(value) = cfg.value {
+                        format!("unexpected `cfg` condition value: `{value}`")
+                    } else {
+                        format!("unexpected `cfg` condition value: (none)")
+                    },
                     BuiltinLintDiagnostics::UnexpectedCfgValue(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
@@ -560,7 +564,7 @@ pub fn cfg_matches(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
-                    "unexpected `cfg` condition name",
+                    format!("unexpected `cfg` condition name: `{}`", cfg.name),
                     BuiltinLintDiagnostics::UnexpectedCfgName(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),

@@ -659,6 +659,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self);
     forward!(pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
+    forward!(pub fn help_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
     forward!(pub fn span_help(
         &mut self,
         sp: impl Into<MultiSpan>,

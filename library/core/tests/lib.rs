@@ -15,7 +15,6 @@
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
-#![feature(const_maybe_uninit_assume_init_read)]
 #![feature(const_nonnull_new)]
 #![feature(const_pointer_byte_offsets)]
 #![feature(const_pointer_is_aligned)]

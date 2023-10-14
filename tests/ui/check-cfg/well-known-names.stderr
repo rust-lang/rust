@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `target_oz`
   --> $DIR/well-known-names.rs:6:7
    |
 LL | #[cfg(target_oz = "linux")]
@@ -8,7 +8,7 @@ LL | #[cfg(target_oz = "linux")]
    |
    = note: `#[warn(unexpected_cfgs)]` on by default
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `features`
   --> $DIR/well-known-names.rs:13:7
    |
 LL | #[cfg(features = "foo")]
@@ -16,7 +16,7 @@ LL | #[cfg(features = "foo")]
    |       |
    |       help: there is a config with a similar name: `feature`
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `uniw`
   --> $DIR/well-known-names.rs:20:7
    |
 LL | #[cfg(uniw)]

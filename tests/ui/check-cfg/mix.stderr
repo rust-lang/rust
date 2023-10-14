@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `widnows`
   --> $DIR/mix.rs:11:7
    |
 LL | #[cfg(widnows)]
@@ -6,7 +6,7 @@ LL | #[cfg(widnows)]
    |
    = note: `#[warn(unexpected_cfgs)]` on by default
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: (none)
   --> $DIR/mix.rs:15:7
    |
 LL | #[cfg(feature)]
@@ -14,7 +14,7 @@ LL | #[cfg(feature)]
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `bar`
   --> $DIR/mix.rs:22:7
    |
 LL | #[cfg(feature = "bar")]
@@ -22,7 +22,7 @@ LL | #[cfg(feature = "bar")]
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:26:7
    |
 LL | #[cfg(feature = "zebra")]
@@ -30,11 +30,13 @@ LL | #[cfg(feature = "zebra")]
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `uu`
   --> $DIR/mix.rs:30:12
    |
 LL | #[cfg_attr(uu, test)]
    |            ^^
+   |
+   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
 
 warning: unexpected condition value `bar` for condition name `feature`
    |
@@ -44,13 +46,13 @@ warning: unexpected `unknown_name` as condition name
    |
    = help: was set with `--cfg` but isn't in the `--check-cfg` expected names
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `widnows`
   --> $DIR/mix.rs:39:10
    |
 LL |     cfg!(widnows);
    |          ^^^^^^^ help: there is a config with a similar name: `windows`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `bar`
   --> $DIR/mix.rs:42:10
    |
 LL |     cfg!(feature = "bar");
@@ -58,7 +60,7 @@ LL |     cfg!(feature = "bar");
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:44:10
    |
 LL |     cfg!(feature = "zebra");
@@ -66,25 +68,25 @@ LL |     cfg!(feature = "zebra");
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:46:10
    |
 LL |     cfg!(xxx = "foo");
    |          ^^^^^^^^^^^
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:48:10
    |
 LL |     cfg!(xxx);
    |          ^^^
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:50:14
    |
 LL |     cfg!(any(xxx, windows));
    |              ^^^
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `bad`
   --> $DIR/mix.rs:52:14
    |
 LL |     cfg!(any(feature = "bad", windows));
@@ -92,43 +94,43 @@ LL |     cfg!(any(feature = "bad", windows));
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:54:23
    |
 LL |     cfg!(any(windows, xxx));
    |                       ^^^
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:56:20
    |
 LL |     cfg!(all(unix, xxx));
    |                    ^^^
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `aa`
   --> $DIR/mix.rs:58:14
    |
 LL |     cfg!(all(aa, bb));
    |              ^^
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `bb`
   --> $DIR/mix.rs:58:18
    |
 LL |     cfg!(all(aa, bb));
    |                  ^^
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `aa`
   --> $DIR/mix.rs:61:14
    |
 LL |     cfg!(any(aa, bb));
    |              ^^
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `bb`
   --> $DIR/mix.rs:61:18
    |
 LL |     cfg!(any(aa, bb));
    |                  ^^
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:64:20
    |
 LL |     cfg!(any(unix, feature = "zebra"));
@@ -136,13 +138,13 @@ LL |     cfg!(any(unix, feature = "zebra"));
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:66:14
    |
 LL |     cfg!(any(xxx, feature = "zebra"));
    |              ^^^
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:66:19
    |
 LL |     cfg!(any(xxx, feature = "zebra"));
@@ -150,19 +152,19 @@ LL |     cfg!(any(xxx, feature = "zebra"));
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:69:14
    |
 LL |     cfg!(any(xxx, unix, xxx));
    |              ^^^
 
-warning: unexpected `cfg` condition name
+warning: unexpected `cfg` condition name: `xxx`
   --> $DIR/mix.rs:69:25
    |
 LL |     cfg!(any(xxx, unix, xxx));
    |                         ^^^
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:72:14
    |
 LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
@@ -170,7 +172,7 @@ LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:72:33
    |
 LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
@@ -178,7 +180,7 @@ LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    |
    = note: expected values for `feature` are: `foo`
 
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `zebra`
   --> $DIR/mix.rs:72:52
    |
 LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));

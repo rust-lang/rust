@@ -23,7 +23,6 @@ extern crate tracing;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 
-pub mod cgu_reuse_tracker;
 pub mod utils;
 pub use lint::{declare_lint, declare_lint_pass, declare_tool_lint, impl_lint_pass};
 pub use rustc_lint_defs as lint;

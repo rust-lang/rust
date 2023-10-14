@@ -11,6 +11,9 @@ codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing 
 
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
 
+codegen_ssa_cgu_not_recorded =
+    CGU-reuse for `{$cgu_user_name}` is (mangled: `{$cgu_name}`) was not recorded
+
 codegen_ssa_check_installed_visual_studio = please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option.
 
 codegen_ssa_copy_path = could not copy {$from} to {$to}: {$error}
@@ -39,12 +42,20 @@ codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
 
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
+codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
+
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
 codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
 
 codegen_ssa_illegal_link_ordinal_format = illegal ordinal format in `link_ordinal`
     .note = an unsuffixed integer value, e.g., `1`, is expected
+
+codegen_ssa_incorrect_cgu_reuse_type =
+    CGU-reuse for `{$cgu_user_name}` is `{$actual_reuse}` but should be {$at_least ->
+    [one] {"at least "}
+    *[other] {""}
+    }`{$expected_reuse}`
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
@@ -153,11 +164,17 @@ codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for
 
 codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status}
 
+codegen_ssa_malformed_cgu_name =
+    found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case).
+
 codegen_ssa_metadata_object_file_write = error writing metadata object file: {$error}
 
 codegen_ssa_missing_cpp_build_tool_component = or a necessary component may be missing from the "C++ build tools" workload
 
 codegen_ssa_missing_memory_ordering = Atomic intrinsic missing memory ordering
+
+codegen_ssa_missing_query_depgraph =
+    found CGU-reuse attribute but `-Zquery-dep-graph` was not specified
 
 codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but `link.exe` was not found
 
@@ -165,6 +182,11 @@ codegen_ssa_multiple_external_func_decl = multiple declarations of external func
 
 codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple times
     .help = did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead
+
+codegen_ssa_no_field = no field `{$name}`
+
+codegen_ssa_no_module_named =
+    no module named `{$user_path}` (mangled: {$cgu_name}). available modules: {$cgu_names}
 
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
@@ -296,6 +318,8 @@ codegen_ssa_unknown_archive_kind =
 codegen_ssa_unknown_atomic_operation = unknown atomic operation
 
 codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
+
+codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
 
 codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
 

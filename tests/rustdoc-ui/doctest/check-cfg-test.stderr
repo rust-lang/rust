@@ -1,4 +1,4 @@
-warning: unexpected `cfg` condition value
+warning: unexpected `cfg` condition value: `invalid`
   --> $DIR/check-cfg-test.rs:9:7
    |
 LL | #[cfg(feature = "invalid")]
