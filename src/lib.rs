@@ -186,7 +186,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
-        vec![]
+        vec![] // FIXME necessary for #[cfg(target_feature]
     }
 
     fn print_version(&self) {

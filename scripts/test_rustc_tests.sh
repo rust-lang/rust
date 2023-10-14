@@ -44,10 +44,8 @@ rm tests/ui/proc-macro/allowed-signatures.rs
 rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
 
 # vendor intrinsics
-rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
+rm tests/ui/sse2.rs # CodegenBackend::target_features not yet implemented
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
-rm tests/ui/simd/intrinsic/generic-bswap-byte.rs # simd_bswap not yet implemented
-rm tests/ui/simd/intrinsic/generic-arithmetic-pass.rs # many missing simd intrinsics
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
