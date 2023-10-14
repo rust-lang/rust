@@ -180,7 +180,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     //
     //     default impl Foo for Bar { .. }
     //
-    // we add a default where clause `Foo: Bar`. We do a similar thing for traits
+    // we add a default where clause `Bar: Foo`. We do a similar thing for traits
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
