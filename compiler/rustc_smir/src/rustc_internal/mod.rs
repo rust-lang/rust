@@ -6,9 +6,11 @@
 use crate::rustc_internal;
 use crate::rustc_smir::Tables;
 use rustc_data_structures::fx;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::interpret::AllocId;
+use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
@@ -97,7 +99,7 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::Prov(self.create_alloc_id(aid))
     }
 
-    fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
+    pub(crate) fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
         self.def_ids.create_or_fetch(did)
     }
 
@@ -107,6 +109,17 @@ impl<'tcx> Tables<'tcx> {
 
     pub(crate) fn create_span(&mut self, span: Span) -> stable_mir::ty::Span {
         self.spans.create_or_fetch(span)
+    }
+
+    pub(crate) fn instance_def(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+    ) -> stable_mir::mir::mono::InstanceDef {
+        self.instances.create_or_fetch(instance)
+    }
+
+    pub(crate) fn static_def(&mut self, did: DefId) -> stable_mir::mir::mono::StaticDef {
+        stable_mir::mir::mono::StaticDef(self.create_def_id(did))
     }
 }
 
@@ -118,10 +131,11 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
     stable_mir::run(
         Tables {
             tcx,
-            def_ids: rustc_internal::IndexMap { index_map: fx::FxIndexMap::default() },
-            alloc_ids: rustc_internal::IndexMap { index_map: fx::FxIndexMap::default() },
-            spans: rustc_internal::IndexMap { index_map: fx::FxIndexMap::default() },
+            def_ids: IndexMap::default(),
+            alloc_ids: IndexMap::default(),
+            spans: IndexMap::default(),
             types: vec![],
+            instances: IndexMap::default(),
         },
         f,
     );
@@ -190,6 +204,12 @@ where
 /// safety features added.
 pub struct IndexMap<K, V> {
     index_map: fx::FxIndexMap<K, V>,
+}
+
+impl<K, V> Default for IndexMap<K, V> {
+    fn default() -> Self {
+        Self { index_map: FxIndexMap::default() }
+    }
 }
 
 impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> IndexMap<K, V> {

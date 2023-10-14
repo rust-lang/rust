@@ -17,6 +17,8 @@
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
 
+use crate::mir::mono::InstanceDef;
+use crate::mir::Body;
 use std::cell::Cell;
 use std::fmt;
 use std::fmt::Debug;
@@ -29,10 +31,14 @@ use self::ty::{
 #[macro_use]
 extern crate scoped_tls;
 
+pub mod error;
 pub mod fold;
 pub mod mir;
 pub mod ty;
 pub mod visitor;
+
+pub use error::*;
+use mir::mono::Instance;
 
 /// Use String for now but we should replace it.
 pub type Symbol = String;
@@ -85,20 +91,6 @@ pub type TraitDecls = Vec<TraitDef>;
 /// A list of impl trait decls.
 pub type ImplTraitDecls = Vec<ImplDef>;
 
-/// An error type used to represent an error that has already been reported by the compiler.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CompilerError<T> {
-    /// Internal compiler error (I.e.: Compiler crashed).
-    ICE,
-    /// Compilation failed.
-    CompilationFailed,
-    /// Compilation was interrupted.
-    Interrupted(T),
-    /// Compilation skipped. This happens when users invoke rustc to retrieve information such as
-    /// --version.
-    Skipped,
-}
-
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Crate {
@@ -113,7 +105,7 @@ pub type Filename = Opaque;
 /// Holds information about an item in the crate.
 /// For now, it only stores the item DefId. Use functions inside `rustc_internal` module to
 /// use this item.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct CrateItem(pub DefId);
 
 impl CrateItem {
@@ -131,6 +123,10 @@ impl CrateItem {
 
     pub fn kind(&self) -> DefKind {
         with(|cx| cx.def_kind(self.0))
+    }
+
+    pub fn requires_monomorphization(&self) -> bool {
+        with(|cx| cx.requires_monomorphization(self.0))
     }
 }
 
@@ -220,6 +216,23 @@ pub trait Context {
 
     /// Create a new `Ty` from scratch without information from rustc.
     fn mk_ty(&mut self, kind: TyKind) -> Ty;
+
+    /// Get the body of an Instance.
+    /// FIXME: Monomorphize the body.
+    fn instance_body(&mut self, instance: InstanceDef) -> Body;
+
+    /// Get the instance type with generic substitutions applied and lifetimes erased.
+    fn instance_ty(&mut self, instance: InstanceDef) -> Ty;
+
+    /// Get the instance.
+    fn instance_def_id(&mut self, instance: InstanceDef) -> DefId;
+
+    /// Convert a non-generic crate item into an instance.
+    /// This function will panic if the item is generic.
+    fn mono_instance(&mut self, item: CrateItem) -> Instance;
+
+    /// Item requires monomorphization.
+    fn requires_monomorphization(&self, def_id: DefId) -> bool;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
