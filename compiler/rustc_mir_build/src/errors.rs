@@ -1,6 +1,6 @@
 use crate::{
     fluent_generated as fluent,
-    thir::pattern::{deconstruct_pat::DeconstructedPat, MatchCheckCtxt},
+    thir::pattern::{deconstruct_pat::WitnessPat, MatchCheckCtxt},
 };
 use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
@@ -810,7 +810,7 @@ impl<'tcx> Uncovered<'tcx> {
     pub fn new<'p>(
         span: Span,
         cx: &MatchCheckCtxt<'p, 'tcx>,
-        witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
+        witnesses: Vec<WitnessPat<'tcx>>,
     ) -> Self {
         let witness_1 = witnesses.get(0).unwrap().to_pat(cx);
         Self {
