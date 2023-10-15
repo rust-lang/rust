@@ -343,7 +343,7 @@ impl<'a> CoverageSpansGenerator<'a> {
                     );
                     self.take_curr();
                 } else {
-                    self.hold_pending_dups_unless_dominated();
+                    self.update_pending_dups();
                 }
             } else {
                 self.cutoff_prev_at_overlapping_curr();
@@ -585,7 +585,7 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// neither `CoverageSpan` dominates the other, both (or possibly more than two) are held,
     /// until their disposition is determined. In this latter case, the `prev` dup is moved into
     /// `pending_dups` so the new `curr` dup can be moved to `prev` for the next iteration.
-    fn hold_pending_dups_unless_dominated(&mut self) {
+    fn update_pending_dups(&mut self) {
         // Equal coverage spans are ordered by dominators before dominated (if any), so it should be
         // impossible for `curr` to dominate any previous `CoverageSpan`.
         debug_assert!(!self.span_bcb_dominates(self.curr(), self.prev()));
