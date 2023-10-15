@@ -16,7 +16,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn main() {
 //     let x = Some(1);
-//     if let Some(_tmp) = x {}
+//     if let Some(${0:_tmp}) = x {}
 // }
 // ```
 pub(crate) fn replace_is_method_with_if_let_method(
@@ -44,7 +44,7 @@ pub(crate) fn replace_is_method_with_if_let_method(
             };
 
             acc.add(AssistId(assist_id, AssistKind::RefactorRewrite), message, target, |edit| {
-                let replacement = format!("let {}(_tmp) = {}", text, receiver);
+                let replacement = format!("let {}({}) = {}", text, "${0:_tmp}", receiver);
                 edit.replace(target, replacement);
             })
         }
@@ -71,7 +71,7 @@ fn main() {
             r#"
 fn main() {
     let x = Some(1);
-    if let Some(_tmp) = x {}
+    if let Some(${0:_tmp}) = x {}
 }
 "#,
         );
@@ -103,7 +103,7 @@ fn main() {
             r#"
 fn main() {
     let x = Ok(1);
-    if let Ok(_tmp) = x {}
+    if let Ok(${0:_tmp}) = x {}
 }
 "#,
         );
