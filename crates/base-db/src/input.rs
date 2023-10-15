@@ -329,12 +329,10 @@ pub struct CrateData {
 }
 
 impl CrateData {
-    /**
-    Check if [`other`] is almost equal to [`self`].
-    This method has some obscure bits. These are mostly there to be compliant with
-    some patches. References to the patches are given.
-    */
-    pub fn almost_eq(&self, other: &CrateData) -> bool {
+    /// Check if [`other`] is almost equal to [`self`] ignoring `CrateOrigin` value.
+    pub fn eq_ignoring_origin(&self, other: &CrateData) -> bool {
+        // This method has some obscure bits. These are mostly there to be compliant with
+        // some patches. References to the patches are given.
         if self.root_file_id != other.root_file_id {
             return false;
         }
@@ -356,16 +354,16 @@ impl CrateData {
         }
 
         let mut opts = self.cfg_options.clone();
-        opts.apply_diff(CfgDiff {
-            disable: other.cfg_options.clone().into_iter().collect(),
-            enable: vec![],
-        });
+        opts.apply_diff(
+            CfgDiff::new(vec![], other.cfg_options.clone().into_iter().collect())
+                .expect("CfgOptions were expected to contain no duplicates."),
+        );
 
         let mut cfgs = opts.into_iter();
         if let Some(cfg) = cfgs.next() {
             // Don't care if rust_analyzer CfgAtom is the only cfg in the difference set of self's and other's cfgs.
             // https://github.com/rust-lang/rust-analyzer/blob/0840038f02daec6ba3238f05d8caa037d28701a0/crates/project-model/src/workspace.rs#L894
-            if !cfgs.next().is_none() || cfg.to_string() != "rust_analyzer" {
+            if cfgs.next().is_some() || cfg.to_string() != "rust_analyzer" {
                 return false;
             }
         }
@@ -686,41 +684,35 @@ impl CrateGraph {
     /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
     /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also have the crate dependencies sorted.
     pub fn extend(&mut self, mut other: CrateGraph, proc_macros: &mut ProcMacroPaths) {
-        enum ExtendStrategy {
-            Dedup(CrateId),
-            Replace(CrateId),
-        }
-
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
         for topo in topo {
             let crate_data = &mut other.arena[topo];
 
-            crate_data.dependencies.iter_mut().for_each(|dep| {
-                dep.crate_id = id_map[&dep.crate_id];
-            });
+            crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
             crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
             let res = self.arena.iter().find_map(|(id, data)| {
-                if data.almost_eq(crate_data) {
+                if data.eq_ignoring_origin(crate_data) {
                     if data.origin.is_lib() && crate_data.origin.is_local() {
                         // See #15656 for a relevant example.
-                        return Some(ExtendStrategy::Replace(id));
+                        return Some((id, true));
                     }
 
-                    return Some(ExtendStrategy::Dedup(id));
+                    return Some((id, false));
                 }
                 None
             });
 
-            if let Some(res) = res {
-                match res {
-                    ExtendStrategy::Dedup(res) => id_map.insert(topo, res),
-                    ExtendStrategy::Replace(res) => {
-                        let id = self.arena.alloc(crate_data.clone());
-                        let _ = self.remove_and_replace(res, id);
-                        id_map.insert(topo, id)
+            if let Some((res, should_update_lib_to_local)) = res {
+                id_map.insert(topo, res);
+                if should_update_lib_to_local {
+                    let origin_old = self.arena[res].origin.clone();
+                    assert!(origin_old.is_lib());
+
+                    if let CrateOrigin::Library { repo, name } = origin_old {
+                        self.arena[res].origin = CrateOrigin::Local { repo, name: Some(name) };
                     }
-                };
+                }
             } else {
                 let id = self.arena.alloc(crate_data.clone());
                 id_map.insert(topo, id);

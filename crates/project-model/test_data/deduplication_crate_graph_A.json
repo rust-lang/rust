@@ -1,0 +1,66 @@
+{
+  "packages": [
+    {
+      "name": "p1",
+      "version": "0.1.0",
+      "id": "p1 0.1.0 (path+file:///path/to/project/projects/p1)",
+      "license": null,
+      "license_file": null,
+      "description": null,
+      "source": null,
+      "dependencies": [],
+      "targets": [
+        {
+          "kind": [
+            "lib"
+          ],
+          "crate_types": [
+            "lib"
+          ],
+          "name": "p1",
+          "src_path": "/path/to/project/projects/p1/src/lib.rs",
+          "edition": "2021",
+          "doc": true,
+          "doctest": true,
+          "test": true
+        }
+      ],
+      "features": {},
+      "manifest_path": "/path/to/project/projects/p1/Cargo.toml",
+      "metadata": null,
+      "publish": null,
+      "authors": [],
+      "categories": [],
+      "keywords": [],
+      "readme": null,
+      "repository": null,
+      "homepage": null,
+      "documentation": null,
+      "edition": "2021",
+      "links": null,
+      "default_run": null,
+      "rust_version": null
+    }
+  ],
+  "workspace_members": [
+    "p1 0.1.0 (path+file:///path/to/project/projects/p1)"
+  ],
+  "workspace_default_members": [
+    "p1 0.1.0 (path+file:///path/to/project/projects/p1)"
+  ],
+  "resolve": {
+    "nodes": [
+      {
+        "id": "p1 0.1.0 (path+file:///path/to/project/projects/p1)",
+        "dependencies": [],
+        "deps": [],
+        "features": []
+      }
+    ],
+    "root": "p1 0.1.0 (path+file:///path/to/project/projects/p1)"
+  },
+  "target_directory": "/path/to/project/projects/p1/target",
+  "version": 1,
+  "workspace_root": "/path/to/project/projects/p1",
+  "metadata": null
+}
