@@ -573,26 +573,27 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// until their disposition is determined. In this latter case, the `prev` dup is moved into
     /// `pending_dups` so the new `curr` dup can be moved to `prev` for the next iteration.
     fn update_pending_dups(&mut self) {
+        let prev_bcb = self.prev().bcb;
+        let curr_bcb = self.curr().bcb;
+
         // Equal coverage spans are ordered by dominators before dominated (if any), so it should be
         // impossible for `curr` to dominate any previous `CoverageSpan`.
-        debug_assert!(!self.span_bcb_dominates(self.curr(), self.prev()));
+        debug_assert!(!self.basic_coverage_blocks.dominates(curr_bcb, prev_bcb));
 
         let initial_pending_count = self.pending_dups.len();
         if initial_pending_count > 0 {
-            let mut pending_dups = self.pending_dups.split_off(0);
-            let curr = self.curr();
-            pending_dups.retain(|dup| !self.span_bcb_dominates(dup, curr));
-            self.pending_dups.append(&mut pending_dups);
-            if self.pending_dups.len() < initial_pending_count {
+            self.pending_dups
+                .retain(|dup| !self.basic_coverage_blocks.dominates(dup.bcb, curr_bcb));
+
+            let n_discarded = initial_pending_count - self.pending_dups.len();
+            if n_discarded > 0 {
                 debug!(
-                    "  discarded {} of {} pending_dups that dominated curr",
-                    initial_pending_count - self.pending_dups.len(),
-                    initial_pending_count
+                    "  discarded {n_discarded} of {initial_pending_count} pending_dups that dominated curr",
                 );
             }
         }
 
-        if self.span_bcb_dominates(self.prev(), self.curr()) {
+        if self.basic_coverage_blocks.dominates(prev_bcb, curr_bcb) {
             debug!(
                 "  different bcbs but SAME spans, and prev dominates curr. Discard prev={:?}",
                 self.prev()
@@ -656,9 +657,5 @@ impl<'a> CoverageSpansGenerator<'a> {
             // with `pending_dups`, `prev` cannot have any statements that don't overlap
             self.pending_dups.clear();
         }
-    }
-
-    fn span_bcb_dominates(&self, dom_covspan: &CoverageSpan, covspan: &CoverageSpan) -> bool {
-        self.basic_coverage_blocks.dominates(dom_covspan.bcb, covspan.bcb)
     }
 }
