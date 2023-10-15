@@ -19,7 +19,6 @@ use rustc_span::Span;
 
 pub use self::FulfillmentErrorCode::*;
 pub use self::ImplSource::*;
-pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
 
 pub use self::engine::{TraitEngine, TraitEngineExt};

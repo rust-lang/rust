@@ -1,5 +1,3 @@
-pub use self::AssocItemContainer::*;
-
 use crate::ty;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_hir as hir;

@@ -42,7 +42,13 @@ note: the lint level is defined here
 LL | #[deny(unused_imports)]
    |        ^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: unused import: `::E::*`
+  --> $DIR/private-variant-reexport.rs:15:13
+   |
+LL |     pub use ::E::*;
+   |             ^^^^^^
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0364, E0365.
 For more information about an error, try `rustc --explain E0364`.

@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable
 use rustc_span::Span;
 use smallvec::SmallVec;
 
-pub use rustc_infer::traits::{self, util::*};
+pub use rustc_infer::traits::util::*;
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator

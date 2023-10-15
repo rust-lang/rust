@@ -4,9 +4,7 @@ mod arg_matrix;
 mod checks;
 mod suggestions;
 
-pub use _impl::*;
 use rustc_errors::ErrorGuaranteed;
-pub use suggestions::*;
 
 use crate::coercion::DynamicCoerceMany;
 use crate::{Diverges, EnclosingBreakables, Inherited};
