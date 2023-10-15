@@ -315,7 +315,7 @@ impl<'a> CoverageSpansGenerator<'a> {
                 debug!(
                     "  curr overlaps a closure (prev). Drop curr and keep prev for next iter. prev={prev:?}",
                 );
-                self.take_curr();
+                self.take_curr(); // Discards curr.
             } else if curr.is_closure {
                 self.carve_out_span_for_closure();
             } else if self.prev_original_span == curr.span {
@@ -341,7 +341,7 @@ impl<'a> CoverageSpansGenerator<'a> {
                         as prev, but is in a different bcb. Drop curr and keep prev for next iter. \
                         prev={prev:?}",
                     );
-                    self.take_curr();
+                    self.take_curr(); // Discards curr.
                 } else {
                     self.update_pending_dups();
                 }
@@ -432,6 +432,12 @@ impl<'a> CoverageSpansGenerator<'a> {
             .unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
     }
 
+    /// If called, then the next call to `next_coverage_span()` will *not* update `prev` with the
+    /// `curr` coverage span.
+    fn take_curr(&mut self) -> CoverageSpan {
+        self.some_curr.take().unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
+    }
+
     fn prev(&self) -> &CoverageSpan {
         self.some_prev
             .as_ref()
@@ -504,12 +510,6 @@ impl<'a> CoverageSpansGenerator<'a> {
         false
     }
 
-    /// If called, then the next call to `next_coverage_span()` will *not* update `prev` with the
-    /// `curr` coverage span.
-    fn take_curr(&mut self) -> CoverageSpan {
-        self.some_curr.take().unwrap_or_else(|| bug!("invalid attempt to unwrap a None some_curr"))
-    }
-
     /// Returns true if the curr span should be skipped because prev has already advanced beyond the
     /// end of curr. This can only happen if a prior iteration updated `prev` to skip past a region
     /// of code, such as skipping past a closure.
@@ -556,7 +556,7 @@ impl<'a> CoverageSpansGenerator<'a> {
                 dup.span = dup.span.with_lo(right_cutoff);
             }
             self.pending_dups.append(&mut pending_dups);
-            let closure_covspan = self.take_curr();
+            let closure_covspan = self.take_curr(); // Prevent this curr from becoming prev.
             self.push_refined_span(closure_covspan); // since self.prev() was already updated
         } else {
             pending_dups.clear();
