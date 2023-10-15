@@ -5,9 +5,12 @@ mod a {
     mod foo {}
 
     mod a {
-        pub use super::foo; //~ ERROR cannot be re-exported
+        pub use super::foo;
+        //~^ ERROR cannot be re-exported
+        //~| WARNING unused import: `super::foo`
         pub use super::*;
         //~^ WARNING glob import doesn't reexport anything because no candidate is public enough
+        //~| WARNING unused import: `super::*`
     }
 }
 
