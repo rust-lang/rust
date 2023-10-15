@@ -842,7 +842,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        match intrinsics::ptr_guaranteed_cmp(self as _, other as _) {
+        match intrinsics::ptr_guaranteed_cmp(self, other) {
             2 => None,
             other => Some(other == 1),
         }
