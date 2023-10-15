@@ -95,6 +95,14 @@ where
     }
 
     #[inline]
+    fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        ZipImpl::fold(self, init, f)
+    }
+
+    #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -129,6 +137,9 @@ trait ZipImpl<A, B> {
     where
         A: DoubleEndedIterator + ExactSizeIterator,
         B: DoubleEndedIterator + ExactSizeIterator;
+    fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc;
     // This has the same safety requirements as `Iterator::__iterator_get_unchecked`
     unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
@@ -228,6 +239,14 @@ where
     {
         unreachable!("Always specialized");
     }
+
+    #[inline]
+    default fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        SpecFold::spec_fold(self, init, f)
+    }
 }
 
 #[doc(hidden)]
@@ -250,6 +269,24 @@ where
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
         unsafe { (self.a.__iterator_get_unchecked(idx), self.b.__iterator_get_unchecked(idx)) }
+    }
+
+    #[inline]
+    fn fold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        let len = ZipImpl::size_hint(&self).0;
+        for i in 0..len {
+            // SAFETY: since Self: TrustedRandomAccessNoCoerce we can trust the size-hint to
+            // calculate the length and then use that to do unchecked iteration.
+            // fold consumes the iterator so we don't need to fixup any state.
+            unsafe {
+                accum = f(accum, self.get_unchecked(i));
+            }
+        }
+        accum
     }
 }
 
@@ -588,5 +625,58 @@ unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> SpecTrustedRandomAccess f
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
         unsafe { self.__iterator_get_unchecked(index) }
+    }
+}
+
+trait SpecFold: Iterator {
+    fn spec_fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B;
+}
+
+impl<A: Iterator, B: Iterator> SpecFold for Zip<A, B> {
+    // Adapted from default impl from the Iterator trait
+    #[inline]
+    default fn spec_fold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        while let Some(x) = ZipImpl::next(&mut self) {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl<A: TrustedLen, B: TrustedLen> SpecFold for Zip<A, B> {
+    #[inline]
+    fn spec_fold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        loop {
+            let (upper, more) = if let Some(upper) = ZipImpl::size_hint(&self).1 {
+                (upper, false)
+            } else {
+                // Per TrustedLen contract a None upper bound means more than usize::MAX items
+                (usize::MAX, true)
+            };
+
+            for _ in 0..upper {
+                let pair =
+                    // SAFETY: TrustedLen guarantees that at least `upper` many items are available
+                    // therefore we know they can't be None
+                    unsafe { (self.a.next().unwrap_unchecked(), self.b.next().unwrap_unchecked()) };
+                accum = f(accum, pair);
+            }
+
+            if !more {
+                break;
+            }
+        }
+        accum
     }
 }

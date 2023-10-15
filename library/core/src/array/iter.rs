@@ -4,7 +4,7 @@ use crate::num::NonZeroUsize;
 use crate::{
     fmt,
     intrinsics::transmute_unchecked,
-    iter::{self, ExactSizeIterator, FusedIterator, TrustedLen},
+    iter::{self, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce},
     mem::MaybeUninit,
     ops::{IndexRange, Range},
     ptr,
@@ -294,6 +294,12 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
 
         NonZeroUsize::new(remaining).map_or(Ok(()), Err)
     }
+
+    #[inline]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
+        // SAFETY: The caller must provide an idx that is in bound of the remainder.
+        unsafe { self.data.as_ptr().add(self.alive.start()).add(idx).cast::<T>().read() }
+    }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
@@ -374,6 +380,25 @@ impl<T, const N: usize> FusedIterator for IntoIter<T, N> {}
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
+
+#[doc(hidden)]
+#[unstable(issue = "none", feature = "std_internals")]
+#[rustc_unsafe_specialization_marker]
+pub trait NonDrop {}
+
+// T: Copy as approximation for !Drop since get_unchecked does not advance self.alive
+// and thus we can't implement drop-handling
+#[unstable(issue = "none", feature = "std_internals")]
+impl<T: Copy> NonDrop for T {}
+
+#[doc(hidden)]
+#[unstable(issue = "none", feature = "std_internals")]
+unsafe impl<T, const N: usize> TrustedRandomAccessNoCoerce for IntoIter<T, N>
+where
+    T: NonDrop,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+}
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
