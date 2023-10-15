@@ -271,6 +271,6 @@ fn main() -> () {
     }
 }
 
-alloc4 (size: 4, align: 1) {
+ALLOC0 (size: 4, align: 1) {
     41 41 41 41                                     │ AAAA
 }

@@ -1,7 +1,7 @@
-// normalize-stderr-test "alloc\d+" -> "allocN"
 #![feature(const_pointer_byte_offsets)]
 #![feature(pointer_byte_offsets)]
 #![feature(const_mut_refs)]
+
 
 const MISALIGNED_LOAD: () = unsafe {
     let mem = [0u32; 8];

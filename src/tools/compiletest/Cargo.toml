@@ -11,6 +11,7 @@ colored = "2"
 diff = "0.1.10"
 unified-diff = "0.2.1"
 getopts = "0.2"
+indexmap = "2.0.0"
 miropt-test-tools = { path = "../miropt-test-tools" }
 build_helper = { path = "../build_helper" }
 tracing = "0.1"

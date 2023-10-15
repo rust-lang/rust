@@ -25,15 +25,15 @@
       }
 + }
 + 
-+ alloc12 (size: 2, align: 1) {
++ ALLOC0 (size: 2, align: 1) {
 +     01 02                                           │ ..
 + }
 + 
-+ alloc11 (size: 2, align: 1) {
++ ALLOC1 (size: 2, align: 1) {
 +     01 02                                           │ ..
 + }
 + 
-+ alloc8 (size: 2, align: 1) {
++ ALLOC2 (size: 2, align: 1) {
 +     01 02                                           │ ..
   }
   

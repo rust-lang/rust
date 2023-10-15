@@ -1,5 +1,5 @@
 // compile-flags: -Z ui-testing=no
-// normalize-stderr-test "alloc[0-9]+" -> "ALLOC_ID"
+
 
 #![feature(const_swap)]
 #![feature(const_mut_refs)]

@@ -4258,6 +4258,34 @@ impl<'test> TestCx<'test> {
                 V0_BACK_REF_RE.replace_all(&normalized, V0_BACK_REF_PLACEHOLDER).into_owned();
         }
 
+        // Normalize AllocId counter
+        {
+            use std::fmt::Write;
+
+            let re = Regex::new(r"(╾a|─a|\balloc)([0-9]+)\b(─|\+0x[0-9]+─)?").unwrap();
+            let mut seen_allocs = indexmap::IndexSet::new();
+            normalized = re
+                .replace_all(&normalized, |caps: &Captures<'_>| {
+                    // Use uppercase to distinguish with the non-normalized version.
+                    let mut ret = caps.get(1).unwrap().as_str().to_uppercase();
+                    // Renumber the captured index.
+                    let index = caps.get(2).unwrap().as_str().to_string();
+                    let (index, _) = seen_allocs.insert_full(index);
+                    write!(&mut ret, "{index}").unwrap();
+                    // If we have a tail finishing with `─`, this means pretty-printing.
+                    // Complete with filler `─` to preserve the pretty-print.
+                    if let Some(tail) = caps.get(3) {
+                        ret.push_str(tail.as_str());
+                        let diff = caps.get(0).unwrap().as_str().len() - ret.len();
+                        for _ in 0..diff {
+                            ret.push('─');
+                        }
+                    }
+                    ret
+                })
+                .into_owned();
+        }
+
         // Custom normalization rules
         for rule in custom_rules {
             let re = Regex::new(&rule.0).expect("bad regex in custom normalization rule");
