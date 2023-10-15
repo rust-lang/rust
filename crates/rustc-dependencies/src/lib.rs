@@ -6,34 +6,43 @@
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
 
-#[cfg(feature = "in-rust-tree")]
 pub mod lexer {
-    pub use ::rustc_lexer::*;
-}
-
-#[cfg(not(feature = "in-rust-tree"))]
-pub mod lexer {
+    #[cfg(not(feature = "in-rust-tree"))]
     pub use ::ra_ap_rustc_lexer::*;
+
+    #[cfg(feature = "in-rust-tree")]
+    pub use ::rustc_lexer::*;
 }
 
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_parse_format;
 
-#[cfg(feature = "in-rust-tree")]
 pub mod parse_format {
+    #[cfg(not(feature = "in-rust-tree"))]
+    pub use ::ra_ap_rustc_parse_format::*;
+
+    #[cfg(feature = "in-rust-tree")]
     pub use ::rustc_parse_format::*;
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
-pub mod parse_format {
-    pub use ::ra_ap_rustc_parse_format::*;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_abi;
+
+pub mod abi {
+    #[cfg(not(feature = "in-rust-tree"))]
+    pub use ::ra_ap_rustc_abi::*;
+
+    #[cfg(feature = "in-rust-tree")]
+    pub use ::rustc_abi::*;
 }
 
-// Upstream broke this for us so we can't update it
-pub mod abi {
-    pub use ::hkalbasi_rustc_ap_rustc_abi::*;
-}
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_index;
 
 pub mod index {
-    pub use ::hkalbasi_rustc_ap_rustc_index::*;
+    #[cfg(not(feature = "in-rust-tree"))]
+    pub use ::ra_ap_rustc_index::*;
+
+    #[cfg(feature = "in-rust-tree")]
+    pub use ::rustc_index::*;
 }

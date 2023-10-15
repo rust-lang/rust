@@ -178,7 +178,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
         }
     }
 
-    Some(ReprOptions { int, align: max_align, pack: min_pack, flags, field_shuffle_seed: 0 })
+    Some(ReprOptions { int, align: max_align, pack: min_pack, flags })
 }
 
 impl StructData {
