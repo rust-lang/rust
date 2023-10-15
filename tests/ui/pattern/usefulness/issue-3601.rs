@@ -31,7 +31,7 @@ fn main() {
             //~^ ERROR non-exhaustive patterns
             //~| NOTE the matched value is of type
             //~| NOTE match arms with guards don't count towards exhaustivity
-            //~| NOTE pattern `box _` not covered
+            //~| NOTE pattern `box ElementKind::HTMLImageElement(_)` not covered
             //~| NOTE `Box<ElementKind>` defined here
             box ElementKind::HTMLImageElement(ref d) if d.image.is_some() => true,
         },
