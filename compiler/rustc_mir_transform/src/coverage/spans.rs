@@ -284,43 +284,48 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// de-duplicated `CoverageSpan`s.
     fn to_refined_spans(mut self) -> Vec<CoverageSpan> {
         while self.next_coverage_span() {
+            // For the first span we don't have `prev` set, so most of the
+            // span-processing steps don't make sense yet.
             if self.some_prev.is_none() {
                 debug!("  initial span");
                 self.maybe_push_macro_name_span();
-            } else if self.curr().is_mergeable(self.prev()) {
-                debug!("  same bcb (and neither is a closure), merge with prev={:?}", self.prev());
+                continue;
+            }
+
+            // The remaining cases assume that `prev` and `curr` are set.
+            let prev = self.prev();
+            let curr = self.curr();
+
+            if curr.is_mergeable(prev) {
+                debug!("  same bcb (and neither is a closure), merge with prev={prev:?}");
                 let prev = self.take_prev();
                 self.curr_mut().merge_from(prev);
                 self.maybe_push_macro_name_span();
             // Note that curr.span may now differ from curr_original_span
-            } else if self.prev_ends_before_curr() {
+            } else if prev.span.hi() <= curr.span.lo() {
                 debug!(
-                    "  different bcbs and disjoint spans, so keep curr for next iter, and add \
-                    prev={:?}",
-                    self.prev()
+                    "  different bcbs and disjoint spans, so keep curr for next iter, and add prev={prev:?}",
                 );
                 let prev = self.take_prev();
                 self.push_refined_span(prev);
                 self.maybe_push_macro_name_span();
-            } else if self.prev().is_closure {
+            } else if prev.is_closure {
                 // drop any equal or overlapping span (`curr`) and keep `prev` to test again in the
                 // next iter
                 debug!(
-                    "  curr overlaps a closure (prev). Drop curr and keep prev for next iter. \
-                    prev={:?}",
-                    self.prev()
+                    "  curr overlaps a closure (prev). Drop curr and keep prev for next iter. prev={prev:?}",
                 );
                 self.take_curr();
-            } else if self.curr().is_closure {
+            } else if curr.is_closure {
                 self.carve_out_span_for_closure();
-            } else if self.prev_original_span == self.curr().span {
+            } else if self.prev_original_span == curr.span {
                 // Note that this compares the new (`curr`) span to `prev_original_span`.
                 // In this branch, the actual span byte range of `prev_original_span` is not
                 // important. What is important is knowing whether the new `curr` span was
                 // **originally** the same as the original span of `prev()`. The original spans
                 // reflect their original sort order, and for equal spans, conveys a partial
                 // ordering based on CFG dominator priority.
-                if self.prev().is_macro_expansion() && self.curr().is_macro_expansion() {
+                if prev.is_macro_expansion() && curr.is_macro_expansion() {
                     // Macros that expand to include branching (such as
                     // `assert_eq!()`, `assert_ne!()`, `info!()`, `debug!()`, or
                     // `trace!()`) typically generate callee spans with identical
@@ -334,8 +339,7 @@ impl<'a> CoverageSpansGenerator<'a> {
                     debug!(
                         "  curr and prev are part of a macro expansion, and curr has the same span \
                         as prev, but is in a different bcb. Drop curr and keep prev for next iter. \
-                        prev={:?}",
-                        self.prev()
+                        prev={prev:?}",
                     );
                     self.take_curr();
                 } else {
@@ -347,8 +351,8 @@ impl<'a> CoverageSpansGenerator<'a> {
             }
         }
 
-        debug!("    AT END, adding last prev={:?}", self.prev());
         let prev = self.take_prev();
+        debug!("    AT END, adding last prev={prev:?}");
         let pending_dups = self.pending_dups.split_off(0);
         for dup in pending_dups {
             debug!("    ...adding at least one pending dup={:?}", dup);
@@ -509,12 +513,6 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// of code, such as skipping past a closure.
     fn prev_starts_after_next(&self, next_curr: &CoverageSpan) -> bool {
         self.prev().span.lo() > next_curr.span.lo()
-    }
-
-    /// Returns true if the curr span starts past the end of the prev span, which means they don't
-    /// overlap, so we now know the prev can be added to the refined coverage spans.
-    fn prev_ends_before_curr(&self) -> bool {
-        self.prev().span.hi() <= self.curr().span.lo()
     }
 
     /// If `prev`s span extends left of the closure (`curr`), carve out the closure's span from
