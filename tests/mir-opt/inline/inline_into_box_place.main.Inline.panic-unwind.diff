@@ -41,28 +41,52 @@
 +                                 scope 20 {
 +                                     scope 21 (inlined NonNull::<[u8]>::as_ptr) {
 +                                         debug self => _11;
-+                                         let mut _18: *const [u8];
++                                         let mut _18: bool;
++                                         let mut _19: bool;
++                                         let mut _20: *const [u8];
++                                         let mut _21: *const [u8];
++                                         scope 22 {
++                                             scope 23 (inlined ptr::const_ptr::<impl *const [u8]>::is_null) {
++                                                 debug self => _20;
++                                                 let mut _22: *const u8;
++                                                 scope 24 {
++                                                     scope 25 (inlined ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
++                                                         debug ptr => _22;
++                                                         let mut _23: usize;
++                                                         scope 26 (inlined ptr::const_ptr::<impl *const u8>::addr) {
++                                                             debug self => _22;
++                                                             let mut _24: *const ();
++                                                             scope 27 {
++                                                                 scope 28 (inlined ptr::const_ptr::<impl *const u8>::cast::<()>) {
++                                                                     debug self => _22;
++                                                                 }
++                                                             }
++                                                         }
++                                                     }
++                                                 }
++                                             }
++                                         }
 +                                     }
-+                                     scope 22 (inlined ptr::mut_ptr::<impl *mut [u8]>::as_mut_ptr) {
++                                     scope 29 (inlined ptr::mut_ptr::<impl *mut [u8]>::as_mut_ptr) {
 +                                         debug self => _17;
 +                                     }
-+                                     scope 23 (inlined NonNull::<u8>::new_unchecked) {
++                                     scope 30 (inlined NonNull::<u8>::new_unchecked) {
 +                                         debug ptr => _16;
-+                                         let mut _19: *const u8;
-+                                         scope 24 {
-+                                             scope 25 (inlined NonNull::<T>::new_unchecked::runtime::<u8>) {
++                                         let mut _25: *const u8;
++                                         scope 31 {
++                                             scope 32 (inlined NonNull::<T>::new_unchecked::runtime::<u8>) {
 +                                                 debug ptr => _16;
-+                                                 scope 26 (inlined ptr::mut_ptr::<impl *mut u8>::is_null) {
++                                                 scope 33 (inlined ptr::mut_ptr::<impl *mut u8>::is_null) {
 +                                                     debug self => _16;
-+                                                     let mut _20: *mut u8;
-+                                                     scope 27 {
-+                                                         scope 28 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-+                                                             debug ptr => _20;
-+                                                             scope 29 (inlined ptr::mut_ptr::<impl *mut u8>::addr) {
-+                                                                 debug self => _20;
-+                                                                 scope 30 {
-+                                                                     scope 31 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-+                                                                         debug self => _20;
++                                                     let mut _26: *mut u8;
++                                                     scope 34 {
++                                                         scope 35 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
++                                                             debug ptr => _26;
++                                                             scope 36 (inlined ptr::mut_ptr::<impl *mut u8>::addr) {
++                                                                 debug self => _26;
++                                                                 scope 37 {
++                                                                     scope 38 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
++                                                                         debug self => _26;
 +                                                                     }
 +                                                                 }
 +                                                             }
@@ -74,9 +98,32 @@
 +                                     }
 +                                 }
 +                             }
-+                             scope 32 (inlined NonNull::<u8>::as_ptr) {
++                             scope 39 (inlined NonNull::<u8>::as_ptr) {
 +                                 debug self => _15;
-+                                 let mut _21: *const u8;
++                                 let mut _27: bool;
++                                 let mut _28: bool;
++                                 let mut _29: *const u8;
++                                 let mut _30: *const u8;
++                                 scope 40 {
++                                     scope 41 (inlined ptr::const_ptr::<impl *const u8>::is_null) {
++                                         debug self => _29;
++                                         scope 42 {
++                                             scope 43 (inlined ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
++                                                 debug ptr => _29;
++                                                 let mut _31: usize;
++                                                 scope 44 (inlined ptr::const_ptr::<impl *const u8>::addr) {
++                                                     debug self => _29;
++                                                     let mut _32: *const ();
++                                                     scope 45 {
++                                                         scope 46 (inlined ptr::const_ptr::<impl *const u8>::cast::<()>) {
++                                                             debug self => _29;
++                                                         }
++                                                     }
++                                                 }
++                                             }
++                                         }
++                                     }
++                                 }
 +                             }
 +                         }
 +                     }
@@ -133,6 +180,7 @@
 +         StorageLive(_11);
 +         StorageLive(_12);
 +         StorageLive(_13);
++         StorageLive(_29);
 +         StorageLive(_14);
 +         _14 = _5 as std::ptr::Alignment (Transmute);
 +         _8 = Layout { size: _4, align: move _14 };
@@ -179,24 +227,58 @@
 +         StorageLive(_16);
 +         StorageLive(_17);
 +         StorageLive(_18);
-+         _18 = (_11.0: *const [u8]);
-+         _17 = move _18 as *mut [u8] (PtrToPtr);
-+         StorageDead(_18);
-+         _16 = _17 as *mut u8 (PtrToPtr);
-+         StorageDead(_17);
 +         StorageLive(_19);
 +         StorageLive(_20);
-+         _19 = _16 as *const u8 (PointerCoercion(MutToConstPointer));
-+         _15 = NonNull::<u8> { pointer: _19 };
++         _20 = (_11.0: *const [u8]);
++         StorageLive(_22);
++         _22 = _20 as *const u8 (PtrToPtr);
++         StorageLive(_23);
++         StorageLive(_24);
++         _24 = _22 as *const () (PtrToPtr);
++         _23 = move _24 as usize (Transmute);
++         StorageDead(_24);
++         _19 = Eq(move _23, const 0_usize);
++         StorageDead(_23);
++         StorageDead(_22);
 +         StorageDead(_20);
++         _18 = Not(move _19);
 +         StorageDead(_19);
-+         StorageDead(_16);
++         assume(move _18);
++         StorageDead(_18);
 +         StorageLive(_21);
-+         _21 = (_15.0: *const u8);
-+         _6 = move _21 as *mut u8 (PtrToPtr);
++         _21 = (_11.0: *const [u8]);
++         _17 = move _21 as *mut [u8] (PtrToPtr);
 +         StorageDead(_21);
++         _16 = _17 as *mut u8 (PtrToPtr);
++         StorageDead(_17);
++         StorageLive(_25);
++         StorageLive(_26);
++         _25 = _16 as *const u8 (PointerCoercion(MutToConstPointer));
++         _15 = NonNull::<u8> { pointer: _25 };
++         StorageDead(_26);
++         StorageDead(_25);
++         StorageDead(_16);
++         StorageLive(_27);
++         StorageLive(_28);
++         _29 = (_15.0: *const u8);
++         StorageLive(_31);
++         StorageLive(_32);
++         _32 = _29 as *const () (PtrToPtr);
++         _31 = move _32 as usize (Transmute);
++         StorageDead(_32);
++         _28 = Eq(move _31, const 0_usize);
++         StorageDead(_31);
++         _27 = Not(move _28);
++         StorageDead(_28);
++         assume(move _27);
++         StorageDead(_27);
++         StorageLive(_30);
++         _30 = (_15.0: *const u8);
++         _6 = move _30 as *mut u8 (PtrToPtr);
++         StorageDead(_30);
 +         StorageDead(_15);
 +         StorageDead(_9);
++         StorageDead(_29);
 +         StorageDead(_13);
 +         StorageDead(_12);
 +         StorageDead(_11);

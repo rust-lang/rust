@@ -103,10 +103,12 @@ macro_rules! nonzero_integers {
                 #[$stability]
                 #[inline]
                 #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
+                #[rustc_allow_const_fn_unstable(const_assume)]
                 pub const fn get(self) -> $Int {
+                    // SAFETY: By definition of this type.
+                    unsafe { crate::intrinsics::assume(self.0 != 0) };
                     self.0
                 }
-
             }
 
             #[stable(feature = "from_nonzero", since = "1.31.0")]
