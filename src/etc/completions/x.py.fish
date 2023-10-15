@@ -12,10 +12,10 @@ complete -c x.py -n "__fish_use_subcommand" -l keep-stage -d 'stage(s) to keep w
 complete -c x.py -n "__fish_use_subcommand" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_use_subcommand" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_use_subcommand" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_use_subcommand" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_use_subcommand" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_use_subcommand" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_use_subcommand" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_use_subcommand" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_use_subcommand" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_use_subcommand" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_use_subcommand" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_use_subcommand" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_use_subcommand" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -57,10 +57,10 @@ complete -c x.py -n "__fish_seen_subcommand_from build" -l keep-stage -d 'stage(
 complete -c x.py -n "__fish_seen_subcommand_from build" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from build" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from build" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from build" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from build" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from build" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from build" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from build" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -88,10 +88,10 @@ complete -c x.py -n "__fish_seen_subcommand_from check" -l keep-stage -d 'stage(
 complete -c x.py -n "__fish_seen_subcommand_from check" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from check" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from check" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from check" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from check" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from check" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from check" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from check" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -124,10 +124,10 @@ complete -c x.py -n "__fish_seen_subcommand_from clippy" -l keep-stage -d 'stage
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from clippy" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from clippy" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -156,10 +156,10 @@ complete -c x.py -n "__fish_seen_subcommand_from fix" -l keep-stage -d 'stage(s)
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from fix" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from fix" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from fix" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -187,10 +187,10 @@ complete -c x.py -n "__fish_seen_subcommand_from fmt" -l keep-stage -d 'stage(s)
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from fmt" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from fmt" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -219,10 +219,10 @@ complete -c x.py -n "__fish_seen_subcommand_from doc" -l keep-stage -d 'stage(s)
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from doc" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from doc" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from doc" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -258,10 +258,10 @@ complete -c x.py -n "__fish_seen_subcommand_from test" -l keep-stage -d 'stage(s
 complete -c x.py -n "__fish_seen_subcommand_from test" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from test" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from test" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from test" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from test" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from test" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from test" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -297,10 +297,10 @@ complete -c x.py -n "__fish_seen_subcommand_from bench" -l keep-stage -d 'stage(
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from bench" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from bench" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from bench" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -328,10 +328,10 @@ complete -c x.py -n "__fish_seen_subcommand_from clean" -l keep-stage -d 'stage(
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from clean" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from clean" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -360,10 +360,10 @@ complete -c x.py -n "__fish_seen_subcommand_from dist" -l keep-stage -d 'stage(s
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from dist" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from dist" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from dist" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -391,10 +391,10 @@ complete -c x.py -n "__fish_seen_subcommand_from install" -l keep-stage -d 'stag
 complete -c x.py -n "__fish_seen_subcommand_from install" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from install" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from install" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from install" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from install" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from install" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from install" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from install" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -423,10 +423,10 @@ complete -c x.py -n "__fish_seen_subcommand_from run" -l keep-stage -d 'stage(s)
 complete -c x.py -n "__fish_seen_subcommand_from run" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from run" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from run" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from run" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from run" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from run" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from run" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from run" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from run" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -454,10 +454,10 @@ complete -c x.py -n "__fish_seen_subcommand_from setup" -l keep-stage -d 'stage(
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from setup" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from setup" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from setup" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -485,10 +485,10 @@ complete -c x.py -n "__fish_seen_subcommand_from suggest" -l keep-stage -d 'stag
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from suggest" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	,warn	,default	}"
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from suggest" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	,never	,auto	}"
-complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	,false	}"
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F

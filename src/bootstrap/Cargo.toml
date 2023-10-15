@@ -36,7 +36,7 @@ test = false
 build_helper = { path = "../tools/build_helper" }
 cc = "1.0.69"
 clap = { version = "4.2.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
-clap_complete = "4.2.2"
+clap_complete = "4.4.3"
 cmake = "0.1.38"
 filetime = "0.2"
 hex = "0.4"
