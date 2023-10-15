@@ -2,11 +2,16 @@
 //! crate or pertains to a type defined in this crate.
 
 use crate::errors;
+
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_middle::ty::{self, AliasKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_infer::infer::type_variable::TypeVariableOriginKind;
+use rustc_infer::infer::InferCtxt;
+use rustc_middle::ty::{self, AliasKind, Ty, TyCtxt};
+use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::traits::{self, IsFirstInputType};
 
 #[instrument(skip(tcx), level = "debug")]
@@ -23,20 +28,17 @@ pub(crate) fn orphan_check_impl(
         Ok(()) => {}
         Err(err) => {
             let item = tcx.hir().expect_item(impl_def_id);
-            let hir::ItemKind::Impl(impl_) = item.kind else {
-                bug!("{:?} is not an impl: {:?}", impl_def_id, item);
-            };
-            let tr = impl_.of_trait.as_ref().unwrap();
-            let sp = tcx.def_span(impl_def_id);
+            let impl_ = item.expect_impl();
+            let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
 
             emit_orphan_check_error(
                 tcx,
-                sp,
+                tcx.def_span(impl_def_id),
                 item.span,
-                tr.path.span,
+                hir_trait_ref.path.span,
                 trait_ref,
                 impl_.self_ty.span,
-                impl_.generics,
+                tcx.generics_of(impl_def_id),
                 err,
             )?
         }
@@ -277,12 +279,12 @@ fn emit_orphan_check_error<'tcx>(
     trait_span: Span,
     trait_ref: ty::TraitRef<'tcx>,
     self_ty_span: Span,
-    generics: &hir::Generics<'tcx>,
+    generics: &'tcx ty::Generics,
     err: traits::OrphanCheckErr<'tcx>,
 ) -> Result<!, ErrorGuaranteed> {
     let self_ty = trait_ref.self_ty();
-    Err(match err {
-        traits::OrphanCheckErr::NonLocalInputType(tys) => {
+    Err(match err.kind {
+        traits::OrphanCheckErrKind::NonLocalInputType(tys) => {
             let (mut opaque, mut foreign, mut name, mut pointer, mut ty_diag) =
                 (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
             let mut sugg = None;
@@ -294,6 +296,10 @@ fn emit_orphan_check_error<'tcx>(
                     // Point at `C<B>` in `impl<A, B> for C<B> in D<A>`
                     trait_span
                 };
+
+                if let Some(infcx) = &err.infcx {
+                    ty = ty.fold_with(&mut TyVarReplacer { infcx, generics });
+                }
 
                 ty = tcx.erase_regions(ty);
                 ty = match ty.kind() {
@@ -404,23 +410,87 @@ fn emit_orphan_check_error<'tcx>(
             };
             tcx.dcx().emit_err(err_struct)
         }
-        traits::OrphanCheckErr::UncoveredTy(param_ty, local_type) => {
-            let mut sp = sp;
-            for param in generics.params {
-                if param.name.ident().to_string() == param_ty.to_string() {
-                    sp = param.span;
-                }
-            }
+        traits::OrphanCheckErrKind::UncoveredTyParams { ty, local_ty } => {
+            let mut collector = UncoveredTyParamCollector {
+                infcx: &err.infcx.unwrap(), // FIXME: might be reachable
+                uncovered_params: Default::default(),
+            };
+            ty.visit_with(&mut collector);
 
-            match local_type {
-                Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
-                    span: sp,
-                    note: (),
-                    param_ty,
-                    local_type,
-                }),
-                None => tcx.dcx().emit_err(errors::TyParamSome { span: sp, note: (), param_ty }),
+            let mut reported = None;
+            for (param, span) in collector.uncovered_params {
+                reported.get_or_insert(match local_ty {
+                    Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
+                        span,
+                        note: (),
+                        param,
+                        local_type,
+                    }),
+                    None => tcx.dcx().emit_err(errors::TyParamSome { span, note: (), param }),
+                });
             }
+            // FIXME: might be reachable
+            reported.unwrap_or_else(|| bug!("failed to find ty param in `{ty}`"))
         }
     })
+}
+
+struct TyVarReplacer<'cx, 'tcx> {
+    infcx: &'cx InferCtxt<'tcx>,
+    generics: &'tcx ty::Generics,
+}
+
+impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for TyVarReplacer<'cx, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
+            return ty;
+        }
+        let Some(origin) = self.infcx.type_var_origin(ty) else {
+            return ty.super_fold_with(self);
+        };
+        if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = origin.kind
+            && let Some(index) = self.generics.param_def_id_to_index(self.infcx.tcx, def_id)
+        {
+            Ty::new_param(self.infcx.tcx, index, name)
+        } else {
+            ty
+        }
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if !ct.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
+            return ct;
+        }
+        ct.super_fold_with(self)
+    }
+}
+
+struct UncoveredTyParamCollector<'cx, 'tcx> {
+    infcx: &'cx InferCtxt<'tcx>,
+    uncovered_params: FxIndexMap<Symbol, Span>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UncoveredTyParamCollector<'_, 'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
+            return;
+        }
+        let Some(origin) = self.infcx.type_var_origin(ty) else {
+            return ty.super_visit_with(self);
+        };
+        if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = origin.kind {
+            let span = self.infcx.tcx.def_ident_span(def_id).unwrap();
+            self.uncovered_params.insert(name, span);
+        }
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
+        if ct.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
+            ct.super_visit_with(self)
+        }
+    }
 }
