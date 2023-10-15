@@ -139,3 +139,10 @@ pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result
 
     if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
 }
+
+/// Get the Protocol for current system handle.
+/// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
+pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> Option<NonNull<T>> {
+    let system_handle = uefi::env::try_image_handle()?;
+    open_protocol(system_handle, protocol_guid).ok()
+}

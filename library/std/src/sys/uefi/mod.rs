@@ -13,7 +13,6 @@
 //! [`OsString`]: crate::ffi::OsString
 
 pub mod alloc;
-#[path = "../unsupported/args.rs"]
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
