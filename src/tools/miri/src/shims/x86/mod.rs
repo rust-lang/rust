@@ -11,6 +11,7 @@ mod aesni;
 mod sse;
 mod sse2;
 mod sse3;
+mod sse41;
 mod ssse3;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -98,6 +99,11 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             }
             name if name.starts_with("ssse3.") => {
                 return ssse3::EvalContextExt::emulate_x86_ssse3_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("sse41.") => {
+                return sse41::EvalContextExt::emulate_x86_sse41_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
