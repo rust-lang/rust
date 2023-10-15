@@ -3,7 +3,7 @@ use std::cell::OnceCell;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{self, AggregateKind, Rvalue, Statement, StatementKind};
-use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol, DUMMY_SP};
 
 use super::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
 
@@ -272,13 +272,13 @@ impl<'a> CoverageSpansGenerator<'a> {
             body_span,
             basic_coverage_blocks,
             sorted_spans_iter: sorted_spans.into_iter(),
-            refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),
             some_curr: None,
-            curr_original_span: Span::with_root_ctxt(BytePos(0), BytePos(0)),
+            curr_original_span: DUMMY_SP,
             some_prev: None,
-            prev_original_span: Span::with_root_ctxt(BytePos(0), BytePos(0)),
+            prev_original_span: DUMMY_SP,
             prev_expn_span: None,
             pending_dups: Vec::new(),
+            refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),
         };
 
         coverage_spans.to_refined_spans()
