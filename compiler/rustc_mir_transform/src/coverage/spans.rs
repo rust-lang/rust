@@ -398,17 +398,19 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// If `curr` is part of a new macro expansion, carve out and push a separate
     /// span that ends just after the macro name and its subsequent `!`.
     fn maybe_push_macro_name_span(&mut self) {
-        let Some(visible_macro) = self.curr().visible_macro(self.body_span) else { return };
+        let curr = self.curr();
+
+        let Some(visible_macro) = curr.visible_macro(self.body_span) else { return };
         if let Some(prev) = &self.some_prev
-            && prev.expn_span.ctxt() == self.curr().expn_span.ctxt()
+            && prev.expn_span.ctxt() == curr.expn_span.ctxt()
         {
             return;
         }
 
-        let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
+        let merged_prefix_len = self.curr_original_span.lo() - curr.span.lo();
         let after_macro_bang = merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);
-        let mut macro_name_cov = self.curr().clone();
-        self.curr_mut().span = self.curr().span.with_lo(self.curr().span.lo() + after_macro_bang);
+        let mut macro_name_cov = curr.clone();
+        self.curr_mut().span = curr.span.with_lo(curr.span.lo() + after_macro_bang);
         macro_name_cov.span =
             macro_name_cov.span.with_hi(macro_name_cov.span.lo() + after_macro_bang);
         debug!(
@@ -521,11 +523,14 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// extends to the right of the closure, update `prev` to that portion of the span. For any
     /// `pending_dups`, repeat the same process.
     fn carve_out_span_for_closure(&mut self) {
-        let curr_span = self.curr().span;
-        let left_cutoff = curr_span.lo();
-        let right_cutoff = curr_span.hi();
-        let has_pre_closure_span = self.prev().span.lo() < right_cutoff;
-        let has_post_closure_span = self.prev().span.hi() > right_cutoff;
+        let prev = self.prev();
+        let curr = self.curr();
+
+        let left_cutoff = curr.span.lo();
+        let right_cutoff = curr.span.hi();
+        let has_pre_closure_span = prev.span.lo() < right_cutoff;
+        let has_post_closure_span = prev.span.hi() > right_cutoff;
+
         let mut pending_dups = self.pending_dups.split_off(0);
         if has_pre_closure_span {
             let mut pre_closure = self.prev().clone();
@@ -580,7 +585,8 @@ impl<'a> CoverageSpansGenerator<'a> {
         let initial_pending_count = self.pending_dups.len();
         if initial_pending_count > 0 {
             let mut pending_dups = self.pending_dups.split_off(0);
-            pending_dups.retain(|dup| !self.span_bcb_dominates(dup, self.curr()));
+            let curr = self.curr();
+            pending_dups.retain(|dup| !self.span_bcb_dominates(dup, curr));
             self.pending_dups.append(&mut pending_dups);
             if self.pending_dups.len() < initial_pending_count {
                 debug!(
