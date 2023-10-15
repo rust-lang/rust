@@ -1,0 +1,11 @@
+error: to use a constant of type `Vec<u8>` in a pattern, `Vec<u8>` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/issue-115599.rs:5:12
+   |
+LL |     if let CONST_STRING = empty_str {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
+
+error: aborting due to previous error
+
