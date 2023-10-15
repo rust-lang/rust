@@ -162,14 +162,22 @@ jobs:
       - name: gather collected metrics
         run: src/ci/scripts/gather-metrics.sh build
         if: always() && !env.SKIP_JOB
-      - name: upload metrics to GitHub Artifact
+      - name: upload metrics to GitHub Artifact for windows
         uses: actions/upload-artifact@v3
         with:
           name: "metrics-${CI_JOB_NAME}"
-          path: "build/cpu-${CI_JOB_NAME}.csv\nbuild/metrics-${CI_JOB_NAME}.json\n"
+          path: "build\\cpu-${CI_JOB_NAME}.csv\nbuild\\metrics-${CI_JOB_NAME}.json\n"
           if-no-files-found: ignore
           retention-days: 5
-        if: always() && !env.SKIP_JOB
+        if: "always() && !env.SKIP_JOB && contains(matrix.os, 'windows')"
+      - name: upload metrics to GitHub Artifact for linux
+        uses: actions/upload-artifact@v3
+        with:
+          name: "metrics-${CI_JOB_NAME}"
+          path: "obj/build/cpu-${CI_JOB_NAME}.csv\nobj/build/metrics-${CI_JOB_NAME}.json\n"
+          if-no-files-found: ignore
+          retention-days: 5
+        if: "always() && !env.SKIP_JOB && (contains(matrix.os, 'linux') || contains(matrix.os, 'ubuntu'))"
   auto:
     name: "auto - ${{ matrix.name }}"
     env:
@@ -538,14 +546,22 @@ jobs:
       - name: gather collected metrics
         run: src/ci/scripts/gather-metrics.sh build
         if: always() && !env.SKIP_JOB
-      - name: upload metrics to GitHub Artifact
+      - name: upload metrics to GitHub Artifact for windows
         uses: actions/upload-artifact@v3
         with:
           name: "metrics-${CI_JOB_NAME}"
-          path: "build/cpu-${CI_JOB_NAME}.csv\nbuild/metrics-${CI_JOB_NAME}.json\n"
+          path: "build\\cpu-${CI_JOB_NAME}.csv\nbuild\\metrics-${CI_JOB_NAME}.json\n"
           if-no-files-found: ignore
           retention-days: 5
-        if: always() && !env.SKIP_JOB
+        if: "always() && !env.SKIP_JOB && contains(matrix.os, 'windows')"
+      - name: upload metrics to GitHub Artifact for linux
+        uses: actions/upload-artifact@v3
+        with:
+          name: "metrics-${CI_JOB_NAME}"
+          path: "obj/build/cpu-${CI_JOB_NAME}.csv\nobj/build/metrics-${CI_JOB_NAME}.json\n"
+          if-no-files-found: ignore
+          retention-days: 5
+        if: "always() && !env.SKIP_JOB && (contains(matrix.os, 'linux') || contains(matrix.os, 'ubuntu'))"
   try:
     name: "try - ${{ matrix.name }}"
     env:
@@ -669,14 +685,22 @@ jobs:
       - name: gather collected metrics
         run: src/ci/scripts/gather-metrics.sh build
         if: always() && !env.SKIP_JOB
-      - name: upload metrics to GitHub Artifact
+      - name: upload metrics to GitHub Artifact for windows
         uses: actions/upload-artifact@v3
         with:
           name: "metrics-${CI_JOB_NAME}"
-          path: "build/cpu-${CI_JOB_NAME}.csv\nbuild/metrics-${CI_JOB_NAME}.json\n"
+          path: "build\\cpu-${CI_JOB_NAME}.csv\nbuild\\metrics-${CI_JOB_NAME}.json\n"
           if-no-files-found: ignore
           retention-days: 5
-        if: always() && !env.SKIP_JOB
+        if: "always() && !env.SKIP_JOB && contains(matrix.os, 'windows')"
+      - name: upload metrics to GitHub Artifact for linux
+        uses: actions/upload-artifact@v3
+        with:
+          name: "metrics-${CI_JOB_NAME}"
+          path: "obj/build/cpu-${CI_JOB_NAME}.csv\nobj/build/metrics-${CI_JOB_NAME}.json\n"
+          if-no-files-found: ignore
+          retention-days: 5
+        if: "always() && !env.SKIP_JOB && (contains(matrix.os, 'linux') || contains(matrix.os, 'ubuntu'))"
   master:
     name: master
     runs-on: ubuntu-latest
