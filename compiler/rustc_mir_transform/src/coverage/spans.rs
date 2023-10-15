@@ -215,9 +215,6 @@ struct CoverageSpansGenerator<'a> {
     /// is mutated.
     prev_original_span: Span,
 
-    /// A copy of the expn_span from the prior iteration.
-    prev_expn_span: Option<Span>,
-
     /// One or more `CoverageSpan`s with the same `Span` but different `BasicCoverageBlock`s, and
     /// no `BasicCoverageBlock` in this list dominates another `BasicCoverageBlock` in the list.
     /// If a new `curr` span also fits this criteria (compared to an existing list of
@@ -276,7 +273,6 @@ impl<'a> CoverageSpansGenerator<'a> {
             curr_original_span: DUMMY_SP,
             some_prev: None,
             prev_original_span: DUMMY_SP,
-            prev_expn_span: None,
             pending_dups: Vec::new(),
             refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),
         };
@@ -399,8 +395,8 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// span that ends just after the macro name and its subsequent `!`.
     fn maybe_push_macro_name_span(&mut self) {
         let Some(visible_macro) = self.curr().visible_macro(self.body_span) else { return };
-        if let Some(prev_expn_span) = &self.prev_expn_span
-            && prev_expn_span.ctxt() == self.curr().expn_span.ctxt()
+        if let Some(prev) = &self.some_prev
+            && prev.expn_span.ctxt() == self.curr().expn_span.ctxt()
         {
             return;
         }
@@ -479,7 +475,6 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// Advance `prev` to `curr` (if any), and `curr` to the next `CoverageSpan` in sorted order.
     fn next_coverage_span(&mut self) -> bool {
         if let Some(curr) = self.some_curr.take() {
-            self.prev_expn_span = Some(curr.expn_span);
             self.some_prev = Some(curr);
             self.prev_original_span = self.curr_original_span;
         }
