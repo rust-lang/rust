@@ -1088,7 +1088,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self.trait_defines_associated_item_named(r.def_id(), ty::AssocKind::Const, assoc_name)
         });
 
-        let (bound, next_cand) = match (matching_candidates.next(), const_candidates.next()) {
+        let (mut bound, mut next_cand) = match (matching_candidates.next(), const_candidates.next())
+        {
             (Some(bound), _) => (bound, matching_candidates.next()),
             (None, Some(bound)) => (bound, const_candidates.next()),
             (None, None) => {
@@ -1102,6 +1103,37 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         };
         debug!(?bound);
+
+        // look for a candidate that is not the same as our first bound, disregarding
+        // whether the bound is const.
+        while let Some(mut bound2) = next_cand {
+            debug!(?bound2);
+            let tcx = self.tcx();
+            if bound2.bound_vars() != bound.bound_vars() {
+                break;
+            }
+
+            let generics = tcx.generics_of(bound.def_id());
+            let Some(host_index) = generics.host_effect_index else { break };
+
+            // always return the bound that contains the host param.
+            if let ty::ConstKind::Param(_) = bound2.skip_binder().args.const_at(host_index).kind() {
+                (bound, bound2) = (bound2, bound);
+            }
+
+            let unconsted_args = bound
+                .skip_binder()
+                .args
+                .iter()
+                .enumerate()
+                .map(|(n, arg)| if host_index == n { tcx.consts.true_.into() } else { arg });
+
+            if unconsted_args.eq(bound2.skip_binder().args.iter()) {
+                next_cand = matching_candidates.next().or_else(|| const_candidates.next());
+            } else {
+                break;
+            }
+        }
 
         if let Some(bound2) = next_cand {
             debug!(?bound2);

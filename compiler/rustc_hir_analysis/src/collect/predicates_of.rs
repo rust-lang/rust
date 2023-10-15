@@ -11,7 +11,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericPredicates, ImplTraitInTraitData, ToPredicate};
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{sym, Span, DUMMY_SP};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
@@ -38,11 +38,38 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
         // an obligation and instead be skipped. Otherwise we'd use
         // `tcx.def_span(def_id);`
         let span = rustc_span::DUMMY_SP;
-        result.predicates =
-            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
-                ty::TraitRef::identity(tcx, def_id).to_predicate(tcx),
+        let non_const_bound = if tcx.features().effects && tcx.has_attr(def_id, sym::const_trait) {
+            // when `Self` is a const trait, also add `Self: Trait<.., true>` as implied bound,
+            // because only implementing `Self: Trait<.., false>` is currently not possible.
+            Some((
+                ty::TraitRef::new(
+                    tcx,
+                    def_id,
+                    ty::GenericArgs::for_item(tcx, def_id, |param, _| {
+                        if param.is_host_effect() {
+                            tcx.consts.true_.into()
+                        } else {
+                            tcx.mk_param_from_def(param)
+                        }
+                    }),
+                )
+                .to_predicate(tcx),
                 span,
-            ))));
+            ))
+        } else {
+            None
+        };
+        result.predicates = tcx.arena.alloc_from_iter(
+            result
+                .predicates
+                .iter()
+                .copied()
+                .chain(std::iter::once((
+                    ty::TraitRef::identity(tcx, def_id).to_predicate(tcx),
+                    span,
+                )))
+                .chain(non_const_bound),
+        );
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result

@@ -44,6 +44,33 @@ impl<'tcx> Bounds<'tcx> {
         span: Span,
         polarity: ty::ImplPolarity,
     ) {
+        self.push_trait_bound_inner(tcx, trait_ref, span, polarity);
+
+        // if we have a host param, we push an unconst trait bound in addition
+        // to the const one.
+        // FIXME(effects) we should find a better way than name matching
+        if tcx.features().effects && trait_ref.skip_binder().args.host_effect_param().is_some() {
+            let generics = tcx.generics_of(trait_ref.def_id());
+            let Some(host_index) = generics.host_effect_index else { return };
+            let trait_ref = trait_ref.map_bound(|mut trait_ref| {
+                trait_ref.args =
+                    tcx.mk_args_from_iter(trait_ref.args.iter().enumerate().map(|(n, arg)| {
+                        if host_index == n { tcx.consts.true_.into() } else { arg }
+                    }));
+                trait_ref
+            });
+
+            self.push_trait_bound_inner(tcx, trait_ref, span, polarity);
+        }
+    }
+
+    fn push_trait_bound_inner(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        span: Span,
+        polarity: ty::ImplPolarity,
+    ) {
         self.clauses.push((
             trait_ref
                 .map_bound(|trait_ref| {
