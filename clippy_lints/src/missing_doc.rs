@@ -67,7 +67,7 @@ impl MissingDoc {
         if_chain! {
             if let Some(meta) = meta;
             if let MetaItemKind::List(list) = meta.kind;
-            if let Some(meta) = list.get(0);
+            if let Some(meta) = list.first();
             if let Some(name) = meta.ident();
             then {
                 name.name == sym::include
