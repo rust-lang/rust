@@ -341,10 +341,13 @@ impl<T: ?Sized> NonNull<T> {
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
+    #[rustc_allow_const_fn_unstable(const_ptr_is_null)]
     #[rustc_never_returns_null_ptr]
     #[must_use]
     #[inline(always)]
     pub const fn as_ptr(self) -> *mut T {
+        // SAFETY: By definition of this type.
+        unsafe { crate::intrinsics::assume(!self.pointer.is_null()) };
         self.pointer as *mut T
     }
 
