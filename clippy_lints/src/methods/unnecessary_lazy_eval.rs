@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{eager_or_lazy, is_from_proc_macro, usage};
+use hir::FnRetTy;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -27,7 +28,7 @@ pub(super) fn check<'tcx>(
     let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
 
     if is_option || is_result || is_bool {
-        if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind {
+        if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl, .. }) = arg.kind {
             let body = cx.tcx.hir().body(body);
             let body_expr = &body.value;
 
@@ -48,7 +49,14 @@ pub(super) fn check<'tcx>(
                     .iter()
                     // bindings are checked to be unused above
                     .all(|param| matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
-                {
+                    && matches!(
+                        fn_decl.output,
+                        FnRetTy::DefaultReturn(_)
+                            | FnRetTy::Return(hir::Ty {
+                                kind: hir::TyKind::Infer,
+                                ..
+                            })
+                    ) {
                     Applicability::MachineApplicable
                 } else {
                     // replacing the lambda may break type inference
