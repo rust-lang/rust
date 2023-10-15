@@ -112,6 +112,9 @@
 //! read-only under certain conditions, but that is not a stable guarantee and should not be relied
 //! upon.
 //!
+//! If you need to do an acquire load on read-only memory, you can do a relaxed load followed by an
+//! acquire fence instead.
+//!
 //! # Examples
 //!
 //! A simple spinlock:
