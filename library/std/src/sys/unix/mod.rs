@@ -241,6 +241,7 @@ pub unsafe fn cleanup() {
 
 #[cfg(target_os = "android")]
 pub use crate::sys::android::signal;
+#[allow(unused_imports)]
 #[cfg(not(target_os = "android"))]
 pub use libc::signal;
 

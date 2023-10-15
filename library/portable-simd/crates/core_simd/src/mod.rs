@@ -35,6 +35,5 @@ pub mod simd {
     pub use crate::core_simd::masks::*;
     pub use crate::core_simd::ord::*;
     pub use crate::core_simd::swizzle::*;
-    pub use crate::core_simd::swizzle_dyn::*;
     pub use crate::core_simd::vector::*;
 }

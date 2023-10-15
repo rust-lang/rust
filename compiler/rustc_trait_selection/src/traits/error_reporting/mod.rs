@@ -20,7 +20,6 @@ use std::ops::ControlFlow;
 
 pub use self::infer_ctxt_ext::*;
 pub use self::type_err_ctxt_ext::*;
-pub use rustc_infer::traits::error_reporting::*;
 
 // When outputting impl candidates, prefer showing those that are more similar.
 //

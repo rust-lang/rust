@@ -12,7 +12,9 @@ mod m3 {
 
 #[deny(unused_imports)]
 mod m4 {
-    pub use ::E::*; //~ ERROR glob import doesn't reexport anything
+    pub use ::E::*;
+    //~^ ERROR glob import doesn't reexport anything
+    //~| ERROR unused import: `::E::*`
 }
 
 enum E { V }

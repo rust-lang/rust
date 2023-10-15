@@ -8,8 +8,6 @@ use core::num::flt2dec::{
 };
 use core::num::fmt::{Formatted, Part};
 
-pub use test::Bencher;
-
 mod estimator;
 mod strategy {
     mod dragon;
