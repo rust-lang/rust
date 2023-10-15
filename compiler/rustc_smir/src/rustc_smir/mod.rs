@@ -117,6 +117,10 @@ impl<'tcx> Context for Tables<'tcx> {
         impl_trait.stable(self)
     }
 
+    fn type_of(&mut self, def_id: stable_mir::DefId) -> TyKind {
+        self.tcx.type_of(self.def_ids[def_id]).instantiate_identity().stable(self)
+    }
+
     fn mir_body(&mut self, item: stable_mir::DefId) -> stable_mir::mir::Body {
         let def_id = self[item];
         let mir = self.tcx.instance_mir(ty::InstanceDef::Item(def_id));

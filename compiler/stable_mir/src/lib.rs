@@ -177,6 +177,10 @@ pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
     with(|cx| cx.trait_impl(trait_impl))
 }
 
+pub fn type_of(def_id: DefId) -> TyKind {
+    with(|cx| cx.type_of(def_id))
+}
+
 pub trait Context {
     fn entry_fn(&mut self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
@@ -220,6 +224,9 @@ pub trait Context {
 
     /// Create a new `Ty` from scratch without information from rustc.
     fn mk_ty(&mut self, kind: TyKind) -> Ty;
+
+    /// Get `TyKind` from `DefId`.
+    fn type_of(&mut self, def_id: DefId) -> TyKind;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
