@@ -847,6 +847,7 @@ impl ::core::clone::Clone for ADDRINFOA {
 }
 pub const AF_INET: ADDRESS_FAMILY = 2u16;
 pub const AF_INET6: ADDRESS_FAMILY = 23u16;
+pub const AF_UNIX: u16 = 1u16;
 pub const AF_UNSPEC: ADDRESS_FAMILY = 0u16;
 pub const ALL_PROCESSOR_GROUPS: u32 = 65535u32;
 #[repr(C)]
@@ -3809,6 +3810,17 @@ pub struct SOCKADDR {
 }
 impl ::core::marker::Copy for SOCKADDR {}
 impl ::core::clone::Clone for SOCKADDR {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+#[repr(C)]
+pub struct SOCKADDR_UN {
+    pub sun_family: ADDRESS_FAMILY,
+    pub sun_path: [u8; 108],
+}
+impl ::core::marker::Copy for SOCKADDR_UN {}
+impl ::core::clone::Clone for SOCKADDR_UN {
     fn clone(&self) -> Self {
         *self
     }
