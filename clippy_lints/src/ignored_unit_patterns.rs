@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for IgnoredUnitPatterns {
             },
             _ => {},
         }
-        if matches!(pat.kind, PatKind::Wild) && cx.typeck_results().pat_ty(pat).is_unit() {
+        if matches!(pat.kind, PatKind::Wild) && cx.typeck_results().pat_ty(pat).peel_refs().is_unit() {
             span_lint_and_sugg(
                 cx,
                 IGNORED_UNIT_PATTERNS,
