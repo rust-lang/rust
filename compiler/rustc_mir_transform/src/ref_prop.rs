@@ -210,14 +210,17 @@ fn compute_replacement<'tcx>(
             // have been visited before.
             Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
             | Rvalue::CopyForDeref(place) => {
-                if let Some(rhs) = place.as_local() && ssa.is_ssa(rhs) {
+                if let Some(rhs) = place.as_local()
+                    && ssa.is_ssa(rhs)
+                {
                     let target = targets[rhs];
                     // Only see through immutable reference and pointers, as we do not know yet if
                     // mutable references are fully replaced.
                     if !needs_unique && matches!(target, Value::Pointer(..)) {
                         targets[local] = target;
                     } else {
-                        targets[local] = Value::Pointer(tcx.mk_place_deref(rhs.into()), needs_unique);
+                        targets[local] =
+                            Value::Pointer(tcx.mk_place_deref(rhs.into()), needs_unique);
                     }
                 }
             }
@@ -365,7 +368,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
                 *place = Place::from(target.local).project_deeper(rest, self.tcx);
                 self.any_replacement = true;
             } else {
-                break
+                break;
             }
         }
 

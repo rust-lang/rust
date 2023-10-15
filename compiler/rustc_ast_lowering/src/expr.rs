@@ -673,12 +673,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
             && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
         {
-            let unstable_span =
-                self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+            let unstable_span = self.mark_span_with_reason(
+                DesugaringKind::Async,
+                span,
+                self.allow_gen_future.clone(),
+            );
             self.lower_attrs(
                 inner_hir_id,
                 &[Attribute {
-                    kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(sym::track_caller, span)))),
+                    kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
+                        sym::track_caller,
+                        span,
+                    )))),
                     id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
                     style: AttrStyle::Outer,
                     span: unstable_span,
@@ -1102,7 +1108,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if let Some(res) = partial_res.full_res() && !res.expected_in_tuple_struct_pat() {
+                if let Some(res) = partial_res.full_res()
+                    && !res.expected_in_tuple_struct_pat()
+                {
                     return None;
                 }
             }
@@ -1122,7 +1130,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if let Some(res) = partial_res.full_res() && !res.expected_in_unit_struct_pat() {
+                if let Some(res) = partial_res.full_res()
+                    && !res.expected_in_unit_struct_pat()
+                {
                     return None;
                 }
             }

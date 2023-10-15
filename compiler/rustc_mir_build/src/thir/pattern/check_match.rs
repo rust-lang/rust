@@ -168,7 +168,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for MatchVisitor<'a, '_, 'tcx> {
                     self.lint_level = lint_level;
                 }
 
-                if let Some(initializer) = initializer && else_block.is_some() {
+                if let Some(initializer) = initializer
+                    && else_block.is_some()
+                {
                     self.check_let(pattern, initializer, LetSource::LetElse, span);
                 }
 
@@ -411,7 +413,10 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             return;
         }
 
-        if let Some(until) = chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false)))) && until > 0 {
+        if let Some(until) =
+            chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false))))
+            && until > 0
+        {
             // The chain has a non-zero prefix of irrefutable `let` statements.
 
             // Check if the let source is while, for there is no alternative place to put a prefix,
@@ -427,18 +432,31 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 let span_end = prefix.last().unwrap().unwrap().0;
                 let span = span_start.to(span_end);
                 let count = prefix.len();
-                self.tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, self.lint_level, span, LeadingIrrefutableLetPatterns { count });
+                self.tcx.emit_spanned_lint(
+                    IRREFUTABLE_LET_PATTERNS,
+                    self.lint_level,
+                    span,
+                    LeadingIrrefutableLetPatterns { count },
+                );
             }
         }
 
-        if let Some(from) = chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false)))) && from != (chain_refutabilities.len() - 1) {
+        if let Some(from) =
+            chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false))))
+            && from != (chain_refutabilities.len() - 1)
+        {
             // The chain has a non-empty suffix of irrefutable `let` statements
             let suffix = &chain_refutabilities[from + 1..];
             let span_start = suffix[0].unwrap().0;
             let span_end = suffix.last().unwrap().unwrap().0;
             let span = span_start.to(span_end);
             let count = suffix.len();
-            self.tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, self.lint_level, span, TrailingIrrefutableLetPatterns { count });
+            self.tcx.emit_spanned_lint(
+                IRREFUTABLE_LET_PATTERNS,
+                self.lint_level,
+                span,
+                TrailingIrrefutableLetPatterns { count },
+            );
         }
     }
 
@@ -472,23 +490,21 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let mut interpreted_as_const = None;
 
         if let PatKind::Constant { .. }
-            | PatKind::AscribeUserType {
-                subpattern: box Pat { kind: PatKind::Constant { .. }, .. },
-                ..
-              } = pat.kind
+        | PatKind::AscribeUserType {
+            subpattern: box Pat { kind: PatKind::Constant { .. }, .. },
+            ..
+        } = pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
             // If the pattern to match is an integer literal:
             if snippet.chars().all(|c| c.is_digit(10)) {
                 // Then give a suggestion, the user might've meant to create a binding instead.
                 misc_suggestion = Some(MiscPatternSuggestion::AttemptedIntegerLiteral {
-                    start_span: pat.span.shrink_to_lo()
+                    start_span: pat.span.shrink_to_lo(),
                 });
             } else if snippet.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                interpreted_as_const = Some(InterpretedAsConst {
-                    span: pat.span,
-                    variable: snippet,
-                });
+                interpreted_as_const =
+                    Some(InterpretedAsConst { span: pat.span, variable: snippet });
             }
         }
 
@@ -525,20 +541,19 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
         // Emit an extra note if the first uncovered witness would be uninhabited
         // if we disregard visibility.
-        let witness_1_is_privately_uninhabited =
-            if cx.tcx.features().exhaustive_patterns
-                && let Some(witness_1) = witnesses.get(0)
-                && let ty::Adt(adt, args) = witness_1.ty().kind()
-                && adt.is_enum()
-                && let Constructor::Variant(variant_index) = witness_1.ctor()
-            {
-                let variant = adt.variant(*variant_index);
-                let inhabited = variant.inhabited_predicate(cx.tcx, *adt).instantiate(cx.tcx, args);
-                assert!(inhabited.apply(cx.tcx, cx.param_env, cx.module));
-                !inhabited.apply_ignore_module(cx.tcx, cx.param_env)
-            } else {
-                false
-            };
+        let witness_1_is_privately_uninhabited = if cx.tcx.features().exhaustive_patterns
+            && let Some(witness_1) = witnesses.get(0)
+            && let ty::Adt(adt, args) = witness_1.ty().kind()
+            && adt.is_enum()
+            && let Constructor::Variant(variant_index) = witness_1.ctor()
+        {
+            let variant = adt.variant(*variant_index);
+            let inhabited = variant.inhabited_predicate(cx.tcx, *adt).instantiate(cx.tcx, args);
+            assert!(inhabited.apply(cx.tcx, cx.param_env, cx.module));
+            !inhabited.apply_ignore_module(cx.tcx, cx.param_env)
+        } else {
+            false
+        };
 
         self.error = Err(self.tcx.sess.emit_err(PatternNotCovered {
             span: pat.span,
@@ -563,23 +578,22 @@ fn check_for_bindings_named_same_as_variants(
 ) {
     pat.walk_always(|p| {
         if let PatKind::Binding {
-                name,
-                mode: BindingMode::ByValue,
-                mutability: Mutability::Not,
-                subpattern: None,
-                ty,
-                ..
-            } = p.kind
+            name,
+            mode: BindingMode::ByValue,
+            mutability: Mutability::Not,
+            subpattern: None,
+            ty,
+            ..
+        } = p.kind
             && let ty::Adt(edef, _) = ty.peel_refs().kind()
             && edef.is_enum()
-            && edef.variants().iter().any(|variant| {
-                variant.name == name && variant.ctor_kind() == Some(CtorKind::Const)
-            })
+            && edef
+                .variants()
+                .iter()
+                .any(|variant| variant.name == name && variant.ctor_kind() == Some(CtorKind::Const))
         {
             let variant_count = edef.variants().len();
-            let ty_path = with_no_trimmed_paths!({
-                cx.tcx.def_path_str(edef.did())
-            });
+            let ty_path = with_no_trimmed_paths!(cx.tcx.def_path_str(edef.did()));
             cx.tcx.emit_spanned_lint(
                 BINDINGS_WITH_VARIANT_NAME,
                 cx.lint_level,
@@ -590,7 +604,9 @@ fn check_for_bindings_named_same_as_variants(
                     // suggestion would produce code that breaks on `check_irrefutable`.
                     suggestion: if rf == Refutable || variant_count == 1 {
                         Some(p.span)
-                    } else { None },
+                    } else {
+                        None
+                    },
                     ty_path,
                     name,
                 },
@@ -794,8 +810,10 @@ fn non_exhaustive_match<'p, 'tcx>(
         }
         [only] => {
             let only = &thir[*only];
-            let (pre_indentation, is_multiline) = if let Some(snippet) = sm.indentation_before(only.span)
-                && let Ok(with_trailing) = sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
+            let (pre_indentation, is_multiline) = if let Some(snippet) =
+                sm.indentation_before(only.span)
+                && let Ok(with_trailing) =
+                    sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
                 && sm.is_multiline(with_trailing)
             {
                 (format!("\n{snippet}"), true)
@@ -946,7 +964,9 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
     let mut covered = vec![];
     for pattern in patterns {
         if let Variant(variant_index) = pattern.ctor() {
-            if let ty::Adt(this_def, _) = pattern.ty().kind() && this_def.did() != def.did() {
+            if let ty::Adt(this_def, _) = pattern.ty().kind()
+                && this_def.did() != def.did()
+            {
                 continue;
             }
             let sp = def.variant(*variant_index).ident(cx.tcx).span;

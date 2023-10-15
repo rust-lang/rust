@@ -326,7 +326,8 @@ pub fn check_args_compatible<'tcx>(
 
         if let Some(parent) = generics.parent
             && let parent_generics = tcx.generics_of(parent)
-            && !check_args_compatible_inner(tcx, parent_generics, parent_args) {
+            && !check_args_compatible_inner(tcx, parent_generics, parent_args)
+        {
             return false;
         }
 

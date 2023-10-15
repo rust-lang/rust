@@ -244,7 +244,9 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
                 if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
                     && level != l)
                 {
-                    calculated_effective_vis = if let Some(max_vis) = max_vis && !max_vis.is_at_least(inherited_effective_vis_at_level, tcx) {
+                    calculated_effective_vis = if let Some(max_vis) = max_vis
+                        && !max_vis.is_at_least(inherited_effective_vis_at_level, tcx)
+                    {
                         max_vis
                     } else {
                         inherited_effective_vis_at_level

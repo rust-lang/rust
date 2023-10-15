@@ -764,7 +764,8 @@ impl<'a> Parser<'a> {
                     if let ast::TyKind::Slice(inner_ty) | ast::TyKind::Array(inner_ty, _) = &ty.kind
                         && let ast::TyKind::Err = inner_ty.kind
                         && let Some(snapshot) = snapshot
-                        && let Some(expr) = self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
+                        && let Some(expr) =
+                            self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
                     {
                         return Ok(Some(self.dummy_const_arg_needs_braces(
                             self.struct_span_err(expr.span, "invalid const generic expression"),
@@ -776,12 +777,10 @@ impl<'a> Parser<'a> {
                 }
                 Err(err) => {
                     if let Some(snapshot) = snapshot
-                        && let Some(expr) = self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
+                        && let Some(expr) =
+                            self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
                     {
-                        return Ok(Some(self.dummy_const_arg_needs_braces(
-                            err,
-                            expr.span,
-                        )));
+                        return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
                     }
                     // Try to recover from possible `const` arg without braces.
                     return self.recover_const_arg(start, err).map(Some);

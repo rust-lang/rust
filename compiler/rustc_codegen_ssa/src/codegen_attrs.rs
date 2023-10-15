@@ -238,8 +238,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().abi() != abi::Abi::Rust
                 {
-                    struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
-                        .emit();
+                    struct_span_err!(
+                        tcx.sess,
+                        attr.span,
+                        E0737,
+                        "`#[track_caller]` requires Rust ABI"
+                    )
+                    .emit();
                 }
                 if is_closure
                     && !tcx.features().closure_track_caller
@@ -435,17 +440,18 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let [item] = items.as_slice()
                     && let Some((sym::align, literal)) = item.name_value_literal()
                 {
-                    rustc_attr::parse_alignment(&literal.kind).map_err(|msg| {
-                        struct_span_err!(
-                            tcx.sess.diagnostic(),
-                            attr.span,
-                            E0589,
-                            "invalid `repr(align)` attribute: {}",
-                            msg
-                        )
-                        .emit();
-                    })
-                    .ok()
+                    rustc_attr::parse_alignment(&literal.kind)
+                        .map_err(|msg| {
+                            struct_span_err!(
+                                tcx.sess.diagnostic(),
+                                attr.span,
+                                E0589,
+                                "invalid `repr(align)` attribute: {}",
+                                msg
+                            )
+                            .emit();
+                        })
+                        .ok()
                 } else {
                     None
                 };
@@ -626,10 +632,7 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         && let ty::AssocItemContainer::ImplContainer = impl_item.container
         && let Some(trait_item) = impl_item.trait_item_def_id
     {
-        return tcx
-            .codegen_fn_attrs(trait_item)
-            .flags
-            .intersects(CodegenFnAttrFlags::TRACK_CALLER);
+        return tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER);
     }
 
     false

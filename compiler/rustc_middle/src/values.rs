@@ -217,7 +217,8 @@ fn find_item_ty_spans(
     match ty.kind {
         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
             if let Res::Def(kind, def_id) = path.res
-                && !matches!(kind, DefKind::TyAlias) {
+                && !matches!(kind, DefKind::TyAlias)
+            {
                 let check_params = def_id.as_local().map_or(true, |def_id| {
                     if def_id == needle {
                         spans.push(ty.span);
@@ -227,8 +228,11 @@ fn find_item_ty_spans(
                 if check_params && let Some(args) = path.segments.last().unwrap().args {
                     let params_in_repr = tcx.params_in_repr(def_id);
                     // the domain size check is needed because the HIR may not be well-formed at this point
-                    for (i, arg) in args.args.iter().enumerate().take(params_in_repr.domain_size()) {
-                        if let hir::GenericArg::Type(ty) = arg && params_in_repr.contains(i as u32) {
+                    for (i, arg) in args.args.iter().enumerate().take(params_in_repr.domain_size())
+                    {
+                        if let hir::GenericArg::Type(ty) = arg
+                            && params_in_repr.contains(i as u32)
+                        {
                             find_item_ty_spans(tcx, ty, needle, spans, seen_representable);
                         }
                     }

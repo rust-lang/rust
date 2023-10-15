@@ -159,11 +159,12 @@ impl CoverageSpan {
     /// If the span is part of a macro, and the macro is visible (expands directly to the given
     /// body_span), returns the macro name symbol.
     pub fn visible_macro(&self, body_span: Span) -> Option<Symbol> {
-        if let Some(current_macro) = self.current_macro() && self
-            .expn_span
-            .parent_callsite()
-            .unwrap_or_else(|| bug!("macro must have a parent"))
-            .eq_ctxt(body_span)
+        if let Some(current_macro) = self.current_macro()
+            && self
+                .expn_span
+                .parent_callsite()
+                .unwrap_or_else(|| bug!("macro must have a parent"))
+                .eq_ctxt(body_span)
         {
             return Some(current_macro);
         }
@@ -460,7 +461,9 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// In either case, no more spans will match the span of `pending_dups`, so
     /// add the `pending_dups` if they don't overlap `curr`, and clear the list.
     fn check_pending_dups(&mut self) {
-        if let Some(dup) = self.pending_dups.last() && dup.span != self.prev().span {
+        if let Some(dup) = self.pending_dups.last()
+            && dup.span != self.prev().span
+        {
             debug!(
                 "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
                 previous iteration, or prev started a new disjoint span"

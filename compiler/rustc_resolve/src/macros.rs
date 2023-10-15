@@ -748,33 +748,45 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label, module) = if let PathResult::Failed { span, label, module, .. } = path_res {
-                        // try to suggest if it's not a macro, maybe a function
-                        if let PathResult::NonModule(partial_res) = self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
-                            && partial_res.unresolved_segments() == 0 {
-                            let sm = self.tcx.sess.source_map();
-                            let exclamation_span = sm.next_point(span);
-                            suggestion = Some((
-                                vec![(exclamation_span, "".to_string())],
-                                    format!("{} is not a macro, but a {}, try to remove `!`", Segment::names_to_string(&path), partial_res.base_res().descr()),
-                                    Applicability::MaybeIncorrect
+                    let (span, label, module) =
+                        if let PathResult::Failed { span, label, module, .. } = path_res {
+                            // try to suggest if it's not a macro, maybe a function
+                            if let PathResult::NonModule(partial_res) =
+                                self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
+                                && partial_res.unresolved_segments() == 0
+                            {
+                                let sm = self.tcx.sess.source_map();
+                                let exclamation_span = sm.next_point(span);
+                                suggestion = Some((
+                                    vec![(exclamation_span, "".to_string())],
+                                    format!(
+                                        "{} is not a macro, but a {}, try to remove `!`",
+                                        Segment::names_to_string(&path),
+                                        partial_res.base_res().descr()
+                                    ),
+                                    Applicability::MaybeIncorrect,
                                 ));
-                        }
-                        (span, label, module)
-                    } else {
-                        (
-                            path_span,
-                            format!(
-                                "partially resolved path in {} {}",
-                                kind.article(),
-                                kind.descr()
-                            ),
-                            None,
-                        )
-                    };
+                            }
+                            (span, label, module)
+                        } else {
+                            (
+                                path_span,
+                                format!(
+                                    "partially resolved path in {} {}",
+                                    kind.article(),
+                                    kind.descr()
+                                ),
+                                None,
+                            )
+                        };
                     self.report_error(
                         span,
-                        ResolutionError::FailedToResolve { last_segment: path.last().map(|segment| segment.ident.name), label, suggestion, module },
+                        ResolutionError::FailedToResolve {
+                            last_segment: path.last().map(|segment| segment.ident.name),
+                            label,
+                            suggestion,
+                            module,
+                        },
                     );
                 }
                 PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),

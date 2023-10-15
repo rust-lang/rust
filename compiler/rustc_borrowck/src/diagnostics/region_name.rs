@@ -942,9 +942,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         ty::ClauseKind::Projection(data) if data.projection_ty.self_ty() == ty => {}
                         _ => return false,
                     }
-                    tcx.any_free_region_meets(pred, |r| {
-                        *r == ty::ReEarlyBound(region)
-                    })
+                    tcx.any_free_region_meets(pred, |r| *r == ty::ReEarlyBound(region))
                 })
             } else {
                 false

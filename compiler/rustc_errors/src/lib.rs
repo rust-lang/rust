@@ -1673,7 +1673,11 @@ impl HandlerInner {
                 let _ = write!(
                     &mut out,
                     "delayed span bug: {}\n{}\n",
-                    bug.inner.styled_message().iter().filter_map(|(msg, _)| msg.as_str()).collect::<String>(),
+                    bug.inner
+                        .styled_message()
+                        .iter()
+                        .filter_map(|(msg, _)| msg.as_str())
+                        .collect::<String>(),
                     &bug.note
                 );
             }

@@ -161,7 +161,9 @@ pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
 
 pub(crate) fn is_ascii_ident(string: &str) -> bool {
     let mut chars = string.chars();
-    if let Some(start) = chars.next() && (start.is_ascii_alphabetic() || start == '_') {
+    if let Some(start) = chars.next()
+        && (start.is_ascii_alphabetic() || start == '_')
+    {
         chars.all(|char| char.is_ascii_alphanumeric() || char == '_')
     } else {
         false

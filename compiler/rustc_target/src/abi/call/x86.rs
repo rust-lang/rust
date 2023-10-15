@@ -72,7 +72,8 @@ where
             // - For backwards compatibility, arguments with natural alignment > 4 are still passed
             //   on stack (via `byval`). For example, this includes `double`, `int64_t`,
             //   and structs containing them, provided they lack an explicit alignment attribute.
-            assert!(arg.layout.align.abi >= max_repr_align,
+            assert!(
+                arg.layout.align.abi >= max_repr_align,
                 "abi alignment {:?} less than requested alignment {max_repr_align:?}",
                 arg.layout.align.abi,
             );

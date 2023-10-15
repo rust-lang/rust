@@ -1512,13 +1512,15 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 Some(body),
                 |spans, hir_id, ln, var| {
                     if !self.live_on_entry(ln, var)
-                        && let Some(name) = self.should_warn(var) {
-                            self.ir.tcx.emit_spanned_lint(
-                                lint::builtin::UNUSED_ASSIGNMENTS,
-                                hir_id,
-                                spans,
-                                errors::UnusedAssignPassed { name },
-                            );                    }
+                        && let Some(name) = self.should_warn(var)
+                    {
+                        self.ir.tcx.emit_spanned_lint(
+                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            hir_id,
+                            spans,
+                            errors::UnusedAssignPassed { name },
+                        );
+                    }
                 },
             );
         }
@@ -1707,13 +1709,14 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn warn_about_dead_assign(&self, spans: Vec<Span>, hir_id: HirId, ln: LiveNode, var: Variable) {
         if !self.live_on_exit(ln, var)
-            && let Some(name) = self.should_warn(var) {
-                self.ir.tcx.emit_spanned_lint(
-                    lint::builtin::UNUSED_ASSIGNMENTS,
-                    hir_id,
-                    spans,
-                    errors::UnusedAssign { name },
-                );
-            }
+            && let Some(name) = self.should_warn(var)
+        {
+            self.ir.tcx.emit_spanned_lint(
+                lint::builtin::UNUSED_ASSIGNMENTS,
+                hir_id,
+                spans,
+                errors::UnusedAssign { name },
+            );
+        }
     }
 }

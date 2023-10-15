@@ -18,18 +18,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let hir::Node::Item(hir::Item {
             kind:
                 hir::ItemKind::Impl(hir::Impl {
-                    self_ty: impl_self_ty, of_trait: Some(of_trait_ref), generics, ..
+                    self_ty: impl_self_ty,
+                    of_trait: Some(of_trait_ref),
+                    generics,
+                    ..
                 }),
             ..
-        }) = tcx.hir().get_by_def_id(parent_id) && self_ty.hir_id == impl_self_ty.hir_id
+        }) = tcx.hir().get_by_def_id(parent_id)
+            && self_ty.hir_id == impl_self_ty.hir_id
         {
             if !of_trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {
                 return;
             }
             let of_trait_span = of_trait_ref.path.span;
             // make sure that we are not calling unwrap to abort during the compilation
-            let Ok(impl_trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else { return; };
-            let Ok(of_trait_name) = tcx.sess.source_map().span_to_snippet(of_trait_span) else { return; };
+            let Ok(impl_trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
+                return;
+            };
+            let Ok(of_trait_name) = tcx.sess.source_map().span_to_snippet(of_trait_span) else {
+                return;
+            };
             // check if the trait has generics, to make a correct suggestion
             let param_name = generics.params.next_type_param_name(None);
 
@@ -39,13 +47,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (generics.span, format!("<{param_name}: {impl_trait_name}>"))
             };
             diag.multipart_suggestion(
-            format!("alternatively use a blanket \
+                format!(
+                    "alternatively use a blanket \
                      implementation to implement `{of_trait_name}` for \
-                     all types that also implement `{impl_trait_name}`"),
-                vec![
-                    (self_ty.span, param_name),
-                    add_generic_sugg,
-                ],
+                     all types that also implement `{impl_trait_name}`"
+                ),
+                vec![(self_ty.span, param_name), add_generic_sugg],
                 Applicability::MaybeIncorrect,
             );
         }

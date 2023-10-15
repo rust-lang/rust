@@ -550,7 +550,9 @@ impl TokenStream {
 
         let stream_iter = stream.0.iter().cloned();
 
-        if let Some(first) = stream.0.first() && Self::try_glue_to_last(vec_mut, first) {
+        if let Some(first) = stream.0.first()
+            && Self::try_glue_to_last(vec_mut, first)
+        {
             // Now skip the first token tree from `stream`.
             vec_mut.extend(stream_iter.skip(1));
         } else {

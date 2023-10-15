@@ -550,9 +550,11 @@ fn infringing_fields_error(
                                 .entry((ty.clone(), predicate.clone()))
                                 .or_default()
                                 .push(origin.span());
-                            if let ty::RegionKind::ReEarlyBound(ebr) = *b && ebr.has_name() {
-                                        bounds.push((b.to_string(), a.to_string(), None));
-                                    }
+                            if let ty::RegionKind::ReEarlyBound(ebr) = *b
+                                && ebr.has_name()
+                            {
+                                bounds.push((b.to_string(), a.to_string(), None));
+                            }
                         }
                         RegionResolutionError::GenericBoundFailure(origin, a, b) => {
                             let predicate = format!("{a}: {b}");

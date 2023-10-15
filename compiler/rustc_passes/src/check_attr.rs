@@ -1076,7 +1076,9 @@ impl CheckAttrVisitor<'_> {
     ) -> bool {
         let mut is_valid = true;
 
-        if let Some(mi) = attr.meta() && let Some(list) = mi.meta_item_list() {
+        if let Some(mi) = attr.meta()
+            && let Some(list) = mi.meta_item_list()
+        {
             for meta in list {
                 if let Some(i_meta) = meta.meta_item() {
                     match i_meta.name_or_empty() {
@@ -1133,14 +1135,7 @@ impl CheckAttrVisitor<'_> {
                             is_valid = false;
                         }
 
-                        sym::masked
-                            if !self.check_doc_masked(
-                                attr,
-                                meta,
-                                hir_id,
-                                target,
-                            ) =>
-                        {
+                        sym::masked if !self.check_doc_masked(attr, meta, hir_id, target) => {
                             is_valid = false;
                         }
 
@@ -1192,13 +1187,11 @@ impl CheckAttrVisitor<'_> {
                                     INVALID_DOC_ATTRIBUTES,
                                     hir_id,
                                     i_meta.span,
-                                    errors::DocTestUnknownSpotlight {
-                                        path,
-                                        span: i_meta.span
-                                    }
+                                    errors::DocTestUnknownSpotlight { path, span: i_meta.span },
                                 );
-                            } else if i_meta.has_name(sym::include) &&
-                                    let Some(value) = i_meta.value_str() {
+                            } else if i_meta.has_name(sym::include)
+                                && let Some(value) = i_meta.value_str()
+                            {
                                 let applicability = if list.len() == 1 {
                                     Applicability::MachineApplicable
                                 } else {
@@ -1213,16 +1206,19 @@ impl CheckAttrVisitor<'_> {
                                     errors::DocTestUnknownInclude {
                                         path,
                                         value: value.to_string(),
-                                        inner: match attr.style { AttrStyle::Inner=>  "!" , AttrStyle::Outer => "" },
+                                        inner: match attr.style {
+                                            AttrStyle::Inner => "!",
+                                            AttrStyle::Outer => "",
+                                        },
                                         sugg: (attr.meta().unwrap().span, applicability),
-                                    }
+                                    },
                                 );
                             } else {
                                 self.tcx.emit_spanned_lint(
                                     INVALID_DOC_ATTRIBUTES,
                                     hir_id,
                                     i_meta.span,
-                                    errors::DocTestUnknownAny { path }
+                                    errors::DocTestUnknownAny { path },
                                 );
                             }
                             is_valid = false;
@@ -2195,8 +2191,9 @@ impl CheckAttrVisitor<'_> {
                 attr.span,
                 errors::MacroExport::Normal,
             );
-        } else if let Some(meta_item_list) = attr.meta_item_list() &&
-        !meta_item_list.is_empty() {
+        } else if let Some(meta_item_list) = attr.meta_item_list()
+            && !meta_item_list.is_empty()
+        {
             if meta_item_list.len() > 1 {
                 self.tcx.emit_spanned_lint(
                     INVALID_MACRO_EXPORT_ARGUMENTS,
@@ -2261,9 +2258,9 @@ impl CheckAttrVisitor<'_> {
         {
             errors::UnusedNote::EmptyList { name: attr.name_or_empty() }
         } else if matches!(
-                attr.name_or_empty(),
-                sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
-            ) && let Some(meta) = attr.meta_item_list()
+            attr.name_or_empty(),
+            sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
+        ) && let Some(meta) = attr.meta_item_list()
             && meta.len() == 1
             && let Some(item) = meta[0].meta_item()
             && let MetaItemKind::NameValue(_) = &item.kind

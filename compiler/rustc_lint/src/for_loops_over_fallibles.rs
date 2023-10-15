@@ -59,13 +59,20 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             _ => return,
         };
 
-        let sub =  if let Some(recv) = extract_iterator_next_call(cx, arg)
+        let sub = if let Some(recv) = extract_iterator_next_call(cx, arg)
             && let Ok(recv_snip) = cx.sess().source_map().span_to_snippet(recv.span)
-            {
-                ForLoopsOverFalliblesLoopSub::RemoveNext { suggestion: recv.span.between(arg.span.shrink_to_hi()), recv_snip }
-            } else {
-                ForLoopsOverFalliblesLoopSub::UseWhileLet { start_span: expr.span.with_hi(pat.span.lo()), end_span: pat.span.between(arg.span), var }
-            } ;
+        {
+            ForLoopsOverFalliblesLoopSub::RemoveNext {
+                suggestion: recv.span.between(arg.span.shrink_to_hi()),
+                recv_snip,
+            }
+        } else {
+            ForLoopsOverFalliblesLoopSub::UseWhileLet {
+                start_span: expr.span.with_hi(pat.span.lo()),
+                end_span: pat.span.between(arg.span),
+                var,
+            }
+        };
         let question_mark = suggest_question_mark(cx, adt, args, expr.span)
             .then(|| ForLoopsOverFalliblesQuestionMark { suggestion: arg.span.shrink_to_hi() });
         let suggestion = ForLoopsOverFalliblesSuggestion {
@@ -84,13 +91,13 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
 
 fn extract_for_loop<'tcx>(expr: &Expr<'tcx>) -> Option<(&'tcx Pat<'tcx>, &'tcx Expr<'tcx>)> {
     if let hir::ExprKind::DropTemps(e) = expr.kind
-    && let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind
-    && let hir::ExprKind::Call(_, [arg]) = iterexpr.kind
-    && let hir::ExprKind::Loop(block, ..) = arm.body.kind
-    && let [stmt] = block.stmts
-    && let hir::StmtKind::Expr(e) = stmt.kind
-    && let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind
-    && let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind
+        && let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind
+        && let hir::ExprKind::Call(_, [arg]) = iterexpr.kind
+        && let hir::ExprKind::Loop(block, ..) = arm.body.kind
+        && let [stmt] = block.stmts
+        && let hir::StmtKind::Expr(e) = stmt.kind
+        && let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind
+        && let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind
     {
         Some((field.pat, arg))
     } else {
@@ -104,11 +111,11 @@ fn extract_iterator_next_call<'tcx>(
 ) -> Option<&'tcx Expr<'tcx>> {
     // This won't work for `Iterator::next(iter)`, is this an issue?
     if let hir::ExprKind::MethodCall(_, recv, _, _) = expr.kind
-    && cx.typeck_results().type_dependent_def_id(expr.hir_id) == cx.tcx.lang_items().next_fn()
+        && cx.typeck_results().type_dependent_def_id(expr.hir_id) == cx.tcx.lang_items().next_fn()
     {
         Some(recv)
     } else {
-        return None
+        return None;
     }
 }
 

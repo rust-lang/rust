@@ -106,7 +106,9 @@ fn cs_clone_simple(
             // This basic redundancy checking only prevents duplication of
             // assertions like `AssertParamIsClone<Foo>` where the type is a
             // simple name. That's enough to get a lot of cases, though.
-            if let Some(name) = field.ty.kind.is_simple_path() && !seen_type_names.insert(name) {
+            if let Some(name) = field.ty.kind.is_simple_path()
+                && !seen_type_names.insert(name)
+            {
                 // Already produced an assertion for this type.
             } else {
                 // let _: AssertParamIsClone<FieldTy>;

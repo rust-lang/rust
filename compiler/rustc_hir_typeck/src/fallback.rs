@@ -142,7 +142,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // type, `?T` is not considered unsolved, but `?I` is. The
         // same is true for float variables.)
         let fallback = match ty.kind() {
-            _ if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx,e),
+            _ if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
             ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
             ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
             _ => match diverging_fallback.get(&ty) {

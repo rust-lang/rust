@@ -567,9 +567,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         if let ty::BoundConstness::ConstIfConst = constness
-            && generics.has_self && !tcx.has_attr(def_id, sym::const_trait)
+            && generics.has_self
+            && !tcx.has_attr(def_id, sym::const_trait)
         {
-            tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span } );
+            tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span });
         }
 
         (args, arg_count)
@@ -1919,9 +1920,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     } else {
                         Some((
                             match segment.res {
-                                Res::PrimTy(ty) => format!("{} `{}`", segment.res.descr(), ty.name()),
+                                Res::PrimTy(ty) => {
+                                    format!("{} `{}`", segment.res.descr(), ty.name())
+                                }
                                 Res::Def(_, def_id)
-                                if let Some(name) = self.tcx().opt_item_name(def_id) => {
+                                    if let Some(name) = self.tcx().opt_item_name(def_id) =>
+                                {
                                     format!("{} `{name}`", segment.res.descr())
                                 }
                                 Res::Err => "this type".to_string(),
@@ -2251,7 +2255,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err.note(msg);
                     }
                     for segment in path.segments {
-                        if let Some(args) = segment.args && segment.ident.name == kw::SelfUpper {
+                        if let Some(args) = segment.args
+                            && segment.ident.name == kw::SelfUpper
+                        {
                             if generics == 0 {
                                 // FIXME(estebank): we could also verify that the arguments being
                                 // work for the `enum`, instead of just looking if it takes *any*.
@@ -2633,7 +2639,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .iter()
             .enumerate()
             .map(|(i, a)| {
-                if let hir::TyKind::Infer = a.kind && !self.allow_ty_infer() {
+                if let hir::TyKind::Infer = a.kind
+                    && !self.allow_ty_infer()
+                {
                     if let Some(suggested_ty) =
                         self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
                     {
@@ -2662,7 +2670,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_ty_to_ty(output)
                 }
             }
-            hir::FnRetTy::DefaultReturn(..) => Ty::new_unit(tcx,),
+            hir::FnRetTy::DefaultReturn(..) => Ty::new_unit(tcx),
         };
 
         debug!(?output_ty);

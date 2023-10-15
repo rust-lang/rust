@@ -126,7 +126,10 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             && let ty = place_for_ty.ty(self.local_decls, self.tcx).ty
             && self.known_to_be_zst(ty)
             && self.tcx.consider_optimizing(|| {
-                format!("RemoveZsts - Place: {:?} SourceInfo: {:?}", place_for_ty, statement.source_info)
+                format!(
+                    "RemoveZsts - Place: {:?} SourceInfo: {:?}",
+                    place_for_ty, statement.source_info
+                )
             })
         {
             statement.make_nop();

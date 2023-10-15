@@ -319,7 +319,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         if let Some(local) = self.try_as_local(value, location)
-            && local != place.local // in case we had no projection to begin with.
+            && local != place.local
+        // in case we had no projection to begin with.
         {
             *place = local.into();
             self.reused_locals.insert(local);

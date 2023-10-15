@@ -1290,7 +1290,9 @@ fn ice_path() -> &'static Option<PathBuf> {
         if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
             return None;
         }
-        if let Some(s) = std::env::var_os("RUST_BACKTRACE") && s == "0" {
+        if let Some(s) = std::env::var_os("RUST_BACKTRACE")
+            && s == "0"
+        {
             return None;
         }
         let mut path = match std::env::var_os("RUSTC_ICE") {
@@ -1357,8 +1359,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
                 eprintln!();
 
                 if let Some(ice_path) = ice_path()
-                    && let Ok(mut out) =
-                        File::options().create(true).append(true).open(&ice_path)
+                    && let Ok(mut out) = File::options().create(true).append(true).open(&ice_path)
                 {
                     // The current implementation always returns `Some`.
                     let location = info.location().unwrap();

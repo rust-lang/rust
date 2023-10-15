@@ -238,18 +238,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestKind::Eq { value, ty } => {
                 let tcx = self.tcx;
-                if let ty::Adt(def, _) = ty.kind() && Some(def.did()) == tcx.lang_items().string() {
+                if let ty::Adt(def, _) = ty.kind()
+                    && Some(def.did()) == tcx.lang_items().string()
+                {
                     if !tcx.features().string_deref_patterns {
-                        bug!("matching on `String` went through without enabling string_deref_patterns");
+                        bug!(
+                            "matching on `String` went through without enabling string_deref_patterns"
+                        );
                     }
                     let re_erased = tcx.lifetimes.re_erased;
-                    let ref_string = self.temp(Ty::new_imm_ref(tcx,re_erased, ty), test.span);
-                    let ref_str_ty = Ty::new_imm_ref(tcx,re_erased, tcx.types.str_);
+                    let ref_string = self.temp(Ty::new_imm_ref(tcx, re_erased, ty), test.span);
+                    let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
                     let deref = tcx.require_lang_item(LangItem::Deref, None);
                     let method = trait_method(tcx, deref, sym::deref, [ty]);
                     let eq_block = self.cfg.start_new_block();
-                    self.cfg.push_assign(block, source_info, ref_string, Rvalue::Ref(re_erased, BorrowKind::Shared, place));
+                    self.cfg.push_assign(
+                        block,
+                        source_info,
+                        ref_string,
+                        Rvalue::Ref(re_erased, BorrowKind::Shared, place),
+                    );
                     self.cfg.terminate(
                         block,
                         source_info,
@@ -264,10 +273,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             target: Some(eq_block),
                             unwind: UnwindAction::Continue,
                             call_source: CallSource::Misc,
-                            fn_span: source_info.span
-                        }
+                            fn_span: source_info.span,
+                        },
                     );
-                    self.non_scalar_compare(eq_block, make_target_blocks, source_info, value, ref_str, ref_str_ty);
+                    self.non_scalar_compare(
+                        eq_block,
+                        make_target_blocks,
+                        source_info,
+                        value,
+                        ref_str,
+                        ref_str_ty,
+                    );
                     return;
                 }
                 if !ty.is_scalar() {

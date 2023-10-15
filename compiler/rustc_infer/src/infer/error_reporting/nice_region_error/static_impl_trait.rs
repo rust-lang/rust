@@ -214,7 +214,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
                 _ => cause.code(),
             }
-            && let (&ObligationCauseCode::ItemObligation(item_def_id) | &ObligationCauseCode::ExprItemObligation(item_def_id, ..), None) = (code, override_error_code)
+            && let (
+                &ObligationCauseCode::ItemObligation(item_def_id)
+                | &ObligationCauseCode::ExprItemObligation(item_def_id, ..),
+                None,
+            ) = (code, override_error_code)
         {
             // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
             // lifetime as above, but called using a fully-qualified path to the method:
@@ -322,13 +326,27 @@ pub fn suggest_new_region_bound(
                     let existing_lt_name = if let Some(id) = scope_def_id
                         && let Some(generics) = tcx.hir().get_generics(id)
                         && let named_lifetimes = generics
-                        .params
-                        .iter()
-                        .filter(|p| matches!(p.kind, GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }))
-                        .map(|p| { if let hir::ParamName::Plain(name) = p.name {Some(name.to_string())} else {None}})
-                        .filter(|n| ! matches!(n, None))
-                        .collect::<Vec<_>>()
-                        && named_lifetimes.len() > 0 {
+                            .params
+                            .iter()
+                            .filter(|p| {
+                                matches!(
+                                    p.kind,
+                                    GenericParamKind::Lifetime {
+                                        kind: hir::LifetimeParamKind::Explicit
+                                    }
+                                )
+                            })
+                            .map(|p| {
+                                if let hir::ParamName::Plain(name) = p.name {
+                                    Some(name.to_string())
+                                } else {
+                                    None
+                                }
+                            })
+                            .filter(|n| !matches!(n, None))
+                            .collect::<Vec<_>>()
+                        && named_lifetimes.len() > 0
+                    {
                         named_lifetimes[0].clone()
                     } else {
                         None
@@ -342,30 +360,28 @@ pub fn suggest_new_region_bound(
                             .params
                             .iter()
                             .filter(|p| p.is_elided_lifetime())
-                            .map(|p|
-                                  if p.span.hi() - p.span.lo() == rustc_span::BytePos(1) { // Ampersand (elided without '_)
-                                      (p.span.shrink_to_hi(),format!("{name} "))
-                                  } else { // Underscore (elided with '_)
-                                      (p.span, name.to_string())
-                                  }
-                            )
+                            .map(|p| {
+                                if p.span.hi() - p.span.lo() == rustc_span::BytePos(1) {
+                                    // Ampersand (elided without '_)
+                                    (p.span.shrink_to_hi(), format!("{name} "))
+                                } else {
+                                    // Underscore (elided with '_)
+                                    (p.span, name.to_string())
+                                }
+                            })
                             .collect::<Vec<_>>()
                         && spans_suggs.len() > 1
                     {
-                        let use_lt =
-                        if existing_lt_name == None {
+                        let use_lt = if existing_lt_name == None {
                             spans_suggs.push((generics.span.shrink_to_hi(), format!("<{name}>")));
                             format!("you can introduce a named lifetime parameter `{name}`")
                         } else {
                             // make use the existing named lifetime
                             format!("you can use the named lifetime parameter `{name}`")
                         };
-                        spans_suggs
-                            .push((fn_return.span.shrink_to_hi(), format!(" + {name} ")));
+                        spans_suggs.push((fn_return.span.shrink_to_hi(), format!(" + {name} ")));
                         err.multipart_suggestion_verbose(
-                            format!(
-                                "{declare} `{ty}` {captures}, {use_lt}",
-                            ),
+                            format!("{declare} `{ty}` {captures}, {use_lt}",),
                             spans_suggs,
                             Applicability::MaybeIncorrect,
                         );
@@ -443,8 +459,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 let trait_did = trait_id.to_def_id();
                 tcx.hir().trait_impls(trait_did).iter().find_map(|&impl_did| {
                     if let Node::Item(Item {
-                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                        ..
+                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }), ..
                     }) = tcx.hir().find_by_def_id(impl_did)?
                         && trait_objects.iter().all(|did| {
                             // FIXME: we should check `self_ty` against the receiver

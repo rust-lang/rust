@@ -166,12 +166,16 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         let [arg] = args.as_slice() else {
                             span_bug!(terminator.source_info.span, "Wrong number of arguments");
                         };
-                        let derefed_place =
-                            if let Some(place) = arg.place() && let Some(local) = place.as_local() {
-                                tcx.mk_place_deref(local.into())
-                            } else {
-                                span_bug!(terminator.source_info.span, "Only passing a local is supported");
-                            };
+                        let derefed_place = if let Some(place) = arg.place()
+                            && let Some(local) = place.as_local()
+                        {
+                            tcx.mk_place_deref(local.into())
+                        } else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Only passing a local is supported"
+                            );
+                        };
                         // Add new statement at the end of the block that does the read, and patch
                         // up the terminator.
                         block.statements.push(Statement {
@@ -198,12 +202,16 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 "Wrong number of arguments for write_via_move intrinsic",
                             );
                         };
-                        let derefed_place =
-                            if let Some(place) = ptr.place() && let Some(local) = place.as_local() {
-                                tcx.mk_place_deref(local.into())
-                            } else {
-                                span_bug!(terminator.source_info.span, "Only passing a local is supported");
-                            };
+                        let derefed_place = if let Some(place) = ptr.place()
+                            && let Some(local) = place.as_local()
+                        {
+                            tcx.mk_place_deref(local.into())
+                        } else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Only passing a local is supported"
+                            );
+                        };
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
                             kind: StatementKind::Assign(Box::new((

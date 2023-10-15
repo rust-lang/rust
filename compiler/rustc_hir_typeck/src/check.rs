@@ -55,18 +55,22 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fn_maybe_err(tcx, span, fn_sig.abi);
 
-    if let Some(kind) = body.generator_kind && can_be_generator.is_some() {
+    if let Some(kind) = body.generator_kind
+        && can_be_generator.is_some()
+    {
         let yield_ty = if kind == hir::GeneratorKind::Gen {
-            let yield_ty = fcx
-                .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
+            let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span,
+            });
             fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
             yield_ty
         } else {
-            Ty::new_unit(tcx,)
+            Ty::new_unit(tcx)
         };
 
         // Resume type defaults to `()` if the generator has no argument.
-        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| Ty::new_unit(tcx,));
+        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| Ty::new_unit(tcx));
 
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
@@ -173,7 +177,9 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig);
     }
 
-    if let Some(lang_start_defid) = tcx.lang_items().start_fn() && lang_start_defid == fn_def_id.to_def_id() {
+    if let Some(lang_start_defid) = tcx.lang_items().start_fn()
+        && lang_start_defid == fn_def_id.to_def_id()
+    {
         check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 

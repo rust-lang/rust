@@ -464,7 +464,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Generator(def_id, ..) = kind.as_ref()
-                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) = self.tcx.generator_kind(def_id)
+                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) =
+                        self.tcx.generator_kind(def_id)
                 {
                     self.check_op(ops::Generator(generator_kind));
                 }
@@ -579,8 +580,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs))
-            | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -588,18 +588,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // Int, bool, and char operations are fine.
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
                     assert_eq!(lhs_ty, rhs_ty);
-                    assert!(
-                        matches!(
-                            op,
-                            BinOp::Eq
+                    assert!(matches!(
+                        op,
+                        BinOp::Eq
                             | BinOp::Ne
                             | BinOp::Le
                             | BinOp::Lt
                             | BinOp::Ge
                             | BinOp::Gt
                             | BinOp::Offset
-                        )
-                    );
+                    ));
 
                     self.check_op(ops::RawPtrComparison);
                 } else if lhs_ty.is_floating_point() || rhs_ty.is_floating_point() {
@@ -947,7 +945,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     if self.span.allows_unstable(gate) {
                         return;
                     }
-                    if let Some(implied_by_gate) = implied_by && self.span.allows_unstable(implied_by_gate) {
+                    if let Some(implied_by_gate) = implied_by
+                        && self.span.allows_unstable(implied_by_gate)
+                    {
                         return;
                     }
 

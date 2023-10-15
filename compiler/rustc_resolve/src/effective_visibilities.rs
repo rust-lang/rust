@@ -147,7 +147,8 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
                     warn_ambiguity |= nested_binding.warn_ambiguity;
                 }
                 if !is_ambiguity(binding, warn_ambiguity)
-                    && let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) {
+                    && let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local())
+                {
                     self.update_def(def_id, binding.vis.expect_local(), parent_id);
                 }
             }

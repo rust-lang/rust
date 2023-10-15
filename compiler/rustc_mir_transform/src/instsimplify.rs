@@ -93,7 +93,9 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     _ => None,
                 };
 
-                if let Some(new) = new && self.should_simplify(source_info, rvalue) {
+                if let Some(new) = new
+                    && self.should_simplify(source_info, rvalue)
+                {
                     *rvalue = new;
                 }
             }
@@ -150,7 +152,8 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                 *rvalue = Rvalue::Use(operand.clone());
             } else if *kind == CastKind::Transmute {
                 // Transmuting an integer to another integer is just a signedness cast
-                if let (ty::Int(int), ty::Uint(uint)) | (ty::Uint(uint), ty::Int(int)) = (operand_ty.kind(), cast_ty.kind())
+                if let (ty::Int(int), ty::Uint(uint)) | (ty::Uint(uint), ty::Int(int)) =
+                    (operand_ty.kind(), cast_ty.kind())
                     && int.bit_width() == uint.bit_width()
                 {
                     // The width check isn't strictly necessary, as different widths
@@ -172,8 +175,15 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     for (i, field) in variant.fields.iter().enumerate() {
                         let field_ty = field.ty(self.tcx, args);
                         if field_ty == *cast_ty {
-                            let place = place.project_deeper(&[ProjectionElem::Field(FieldIdx::from_usize(i), *cast_ty)], self.tcx);
-                            let operand = if operand.is_move() { Operand::Move(place) } else { Operand::Copy(place) };
+                            let place = place.project_deeper(
+                                &[ProjectionElem::Field(FieldIdx::from_usize(i), *cast_ty)],
+                                self.tcx,
+                            );
+                            let operand = if operand.is_move() {
+                                Operand::Move(place)
+                            } else {
+                                Operand::Copy(place)
+                            };
                             *rvalue = Rvalue::Use(operand);
                             return;
                         }

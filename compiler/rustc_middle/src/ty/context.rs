@@ -1126,7 +1126,11 @@ impl<'tcx> TyCtxt<'tcx> {
         {
             v.visit_ty(alias_ty);
             if !v.0.is_empty() {
-                return Some((v.0, alias_generics.span, alias_generics.span_for_lifetime_suggestion()));
+                return Some((
+                    v.0,
+                    alias_generics.span,
+                    alias_generics.span_for_lifetime_suggestion(),
+                ));
             }
         }
         return None;

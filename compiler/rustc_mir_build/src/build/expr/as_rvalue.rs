@@ -213,7 +213,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Casting an enum to an integer is equivalent to computing the discriminant and casting the
                 // discriminant. Previously every backend had to repeat the logic for this operation. Now we
                 // create all the steps directly in MIR with operations all backends need to support anyway.
-                let (source, ty) = if let ty::Adt(adt_def, ..) = source.ty.kind() && adt_def.is_enum() {
+                let (source, ty) = if let ty::Adt(adt_def, ..) = source.ty.kind()
+                    && adt_def.is_enum()
+                {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
                     let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
                     let layout = this.tcx.layout_of(this.param_env.and(source.ty));
@@ -224,7 +226,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         discr,
                         Rvalue::Discriminant(temp.into()),
                     );
-                    let (op,ty) = (Operand::Move(discr), discr_ty);
+                    let (op, ty) = (Operand::Move(discr), discr_ty);
 
                     if let Abi::Scalar(scalar) = layout.unwrap().abi
                         && !scalar.is_always_valid(&this.tcx)
@@ -236,27 +238,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             source_info,
                             unsigned_place,
-                            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(discr), unsigned_ty));
+                            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(discr), unsigned_ty),
+                        );
 
                         let bool_ty = this.tcx.types.bool;
                         let range = scalar.valid_range(&this.tcx);
                         let merge_op =
-                            if range.start <= range.end {
-                                BinOp::BitAnd
-                            } else {
-                                BinOp::BitOr
-                            };
+                            if range.start <= range.end { BinOp::BitAnd } else { BinOp::BitOr };
 
                         let mut comparer = |range: u128, bin_op: BinOp| -> Place<'tcx> {
-                            let range_val =
-                                Const::from_bits(this.tcx, range, ty::ParamEnv::empty().and(unsigned_ty));
+                            let range_val = Const::from_bits(
+                                this.tcx,
+                                range,
+                                ty::ParamEnv::empty().and(unsigned_ty),
+                            );
                             let lit_op = this.literal_operand(expr.span, range_val);
                             let is_bin_op = this.temp(bool_ty, expr_span);
                             this.cfg.push_assign(
                                 block,
                                 source_info,
                                 is_bin_op,
-                                Rvalue::BinaryOp(bin_op, Box::new((Operand::Copy(unsigned_place), lit_op))),
+                                Rvalue::BinaryOp(
+                                    bin_op,
+                                    Box::new((Operand::Copy(unsigned_place), lit_op)),
+                                ),
                             );
                             is_bin_op
                         };
@@ -270,7 +275,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 source_info,
                                 merge_place,
-                                Rvalue::BinaryOp(merge_op, Box::new((Operand::Move(start_place), Operand::Move(end_place)))),
+                                Rvalue::BinaryOp(
+                                    merge_op,
+                                    Box::new((
+                                        Operand::Move(start_place),
+                                        Operand::Move(end_place),
+                                    )),
+                                ),
                             );
                             merge_place
                         };
@@ -278,19 +289,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block,
                             Statement {
                                 source_info,
-                                kind: StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
-                                    Operand::Move(assert_place),
-                                ))),
+                                kind: StatementKind::Intrinsic(Box::new(
+                                    NonDivergingIntrinsic::Assume(Operand::Move(assert_place)),
+                                )),
                             },
                         );
                     }
 
-                    (op,ty)
-
+                    (op, ty)
                 } else {
                     let ty = source.ty;
                     let source = unpack!(
-                        block = this.as_operand(block, scope, source, LocalInfo::Boring, NeedsTemporary::No)
+                        block = this.as_operand(
+                            block,
+                            scope,
+                            source,
+                            LocalInfo::Boring,
+                            NeedsTemporary::No
+                        )
                     );
                     (source, ty)
                 };

@@ -684,7 +684,9 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
 impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
-        if let Some(place) = operand.place() && let Some(value) = self.replace_with_const(place) {
+        if let Some(place) = operand.place()
+            && let Some(value) = self.replace_with_const(place)
+        {
             self.patch.before_effect.insert((location, place), value);
         }
     }
@@ -718,7 +720,10 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     if let Rvalue::Use(Operand::Constant(c)) = rvalue
                         && let Const::Val(..) = c.const_
                     {
-                        trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
+                        trace!(
+                            "skipping replace of Rvalue::Use({:?} because it is already a const",
+                            c
+                        );
                     } else if let Some(operand) = self.replace_with_const(*place) {
                         self.patch.assignments.insert(location, operand);
                     }

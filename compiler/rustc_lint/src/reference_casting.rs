@@ -93,7 +93,10 @@ fn is_operation_we_care_about<'tcx>(
         if let ExprKind::Call(path, [arg_ptr, _arg_val]) = e.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::ptr_write | sym::ptr_write_volatile | sym::ptr_write_unaligned))
+            && matches!(
+                cx.tcx.get_diagnostic_name(def_id),
+                Some(sym::ptr_write | sym::ptr_write_volatile | sym::ptr_write_unaligned)
+            )
         {
             Some((true, arg_ptr))
         } else {

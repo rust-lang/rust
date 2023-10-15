@@ -47,7 +47,9 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
     }
 
     fn feature_list(attr: &Attribute) -> ThinVec<ast::NestedMetaItem> {
-        if attr.has_name(sym::feature) && let Some(list) = attr.meta_item_list() {
+        if attr.has_name(sym::feature)
+            && let Some(list) = attr.meta_item_list()
+        {
             list
         } else {
             ThinVec::new()
@@ -69,7 +71,9 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             if mi.is_word() {
                 let name = mi.name_or_empty();
                 let edition = ALL_EDITIONS.iter().find(|e| name == e.feature_name()).copied();
-                if let Some(edition) = edition && edition > features_edition {
+                if let Some(edition) = edition
+                    && edition > features_edition
+                {
                     features_edition = edition;
                 }
             }
@@ -248,7 +252,8 @@ impl<'a> StripUnconfigured<'a> {
         let trees: Vec<_> = stream
             .0
             .iter()
-            .flat_map(|tree| match tree.clone() {
+            .flat_map(|tree| {
+                match tree.clone() {
                 AttrTokenTree::Attributes(mut data) => {
                     data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
@@ -263,18 +268,17 @@ impl<'a> StripUnconfigured<'a> {
                 }
                 AttrTokenTree::Delimited(sp, delim, mut inner) => {
                     inner = self.configure_tokens(&inner);
-                    Some(AttrTokenTree::Delimited(sp, delim, inner))
-                        .into_iter()
+                    Some(AttrTokenTree::Delimited(sp, delim, inner)).into_iter()
                 }
-                AttrTokenTree::Token(ref token, _) if let TokenKind::Interpolated(nt) = &token.kind => {
-                    panic!(
-                        "Nonterminal should have been flattened at {:?}: {:?}",
-                        token.span, nt
-                    );
+                AttrTokenTree::Token(ref token, _)
+                    if let TokenKind::Interpolated(nt) = &token.kind =>
+                {
+                    panic!("Nonterminal should have been flattened at {:?}: {:?}", token.span, nt);
                 }
                 AttrTokenTree::Token(token, spacing) => {
                     Some(AttrTokenTree::Token(token, spacing)).into_iter()
                 }
+            }
             })
             .collect();
         AttrTokenStream::new(trees)

@@ -780,19 +780,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind
-            && let AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) = **kind
+            && let AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) =
+                **kind
         {
             debug!("move_spans: def_id={:?} places={:?}", def_id, places);
             let def_id = def_id.expect_local();
             if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                 self.closure_span(def_id, moved_place, places)
             {
-                return ClosureUse {
-                    generator_kind,
-                    args_span,
-                    capture_kind_span,
-                    path_span,
-                };
+                return ClosureUse { generator_kind, args_span, capture_kind_span, path_span };
             }
         }
 
@@ -1123,7 +1119,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 &self.infcx.tcx.sess.parse_sess.span_diagnostic,
                                 CaptureReasonSuggest::FreshReborrow {
                                     span: move_span.shrink_to_hi(),
-                                });
+                                },
+                            );
                         }
                         if let Some(clone_trait) = tcx.lang_items().clone_trait()
                             && let trait_ref = ty::TraitRef::new(tcx, clone_trait, [ty])

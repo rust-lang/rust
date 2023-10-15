@@ -685,8 +685,10 @@ impl Map {
         // `elem1` is either `Some(Variant(i))` or `None`.
         while let Some((mut place, elem1, elem2, ty)) = worklist.pop_front() {
             // The user requires a bound on the number of created values.
-            if let Some(value_limit) = value_limit && self.value_count >= value_limit {
-                break
+            if let Some(value_limit) = value_limit
+                && self.value_count >= value_limit
+            {
+                break;
             }
 
             // Create a place for this projection.
@@ -717,7 +719,9 @@ impl Map {
 
         // Trim useless places.
         for opt_place in self.locals.iter_mut() {
-            if let Some(place) = *opt_place && self.inner_values[place].is_empty() {
+            if let Some(place) = *opt_place
+                && self.inner_values[place].is_empty()
+            {
                 *opt_place = None;
             }
         }
@@ -772,7 +776,7 @@ impl Map {
             assert!(old.is_none());
 
             // Allocate a value slot since it doesn't have one.
-            assert!( self.places[len].value_index.is_none() );
+            assert!(self.places[len].value_index.is_none());
             self.places[len].value_index = Some(self.value_count.into());
             self.value_count += 1;
         }

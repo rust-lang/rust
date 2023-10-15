@@ -860,7 +860,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     subobligations,
                                 );
                                 if let Ok(eval_rslt) = res
-                                    && (eval_rslt == EvaluatedToOk || eval_rslt == EvaluatedToOkModuloRegions)
+                                    && (eval_rslt == EvaluatedToOk
+                                        || eval_rslt == EvaluatedToOkModuloRegions)
                                     && let Some(key) =
                                         ProjectionCacheKey::from_poly_projection_predicate(
                                             self, data,

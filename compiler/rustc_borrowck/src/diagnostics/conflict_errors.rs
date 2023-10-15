@@ -351,7 +351,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                     // Check if we are in a situation of `ident @ ident` where we want to suggest
                     // `ref ident @ ref ident` or `ref ident @ Struct { ref ident }`.
-                    if let Some(subpat) = sub && self.pat.is_none() {
+                    if let Some(subpat) = sub
+                        && self.pat.is_none()
+                    {
                         self.visit_pat(subpat);
                         if self.pat.is_some() {
                             self.parent_pat = Some(p);
@@ -370,7 +372,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let mut finder =
                 ExpressionFinder { expr_span: move_span, expr: None, pat: None, parent_pat: None };
             finder.visit_expr(expr);
-            if let Some(span) = span && let Some(expr) = finder.expr {
+            if let Some(span) = span
+                && let Some(expr) = finder.expr
+            {
                 for (_, expr) in hir.parent_iter(expr.hir_id) {
                     if let hir::Node::Expr(expr) = expr {
                         if expr.span.contains(span) {
@@ -425,10 +429,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Some(hir::intravisit::FnKind::Method(..)) => "method",
                             Some(hir::intravisit::FnKind::Closure) => "closure",
                         };
-                        span.push_span_label(
-                            ident.span,
-                            format!("in this {descr}"),
-                        );
+                        span.push_span_label(ident.span, format!("in this {descr}"));
                         err.span_note(
                             span,
                             format!(
@@ -441,15 +442,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let ty = place.ty(self.body, self.infcx.tcx).ty;
                     if let hir::Node::Expr(parent_expr) = parent
                         && let hir::ExprKind::Call(call_expr, _) = parent_expr.kind
-                        && let hir::ExprKind::Path(
-                            hir::QPath::LangItem(LangItem::IntoIterIntoIter, _, _)
-                        ) = call_expr.kind
+                        && let hir::ExprKind::Path(hir::QPath::LangItem(
+                            LangItem::IntoIterIntoIter,
+                            _,
+                            _,
+                        )) = call_expr.kind
                     {
                         // Do not suggest `.clone()` in a `for` loop, we already suggest borrowing.
-                    } else if let UseSpans::FnSelfUse {
-                        kind: CallKind::Normal { .. },
-                        ..
-                    } = move_spans {
+                    } else if let UseSpans::FnSelfUse { kind: CallKind::Normal { .. }, .. } =
+                        move_spans
+                    {
                         // We already suggest cloning for these cases in `explain_captures`.
                     } else {
                         self.suggest_cloning(err, ty, expr, move_span);
@@ -602,10 +604,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if self.sugg_span.is_some() {
                         return;
                     }
-                    if let hir::StmtKind::Local(hir::Local {
-                            span, ty, init: None, ..
-                        }) = &ex.kind && span.contains(self.decl_span) {
-                            self.sugg_span = ty.map_or(Some(self.decl_span), |ty| Some(ty.span));
+                    if let hir::StmtKind::Local(hir::Local { span, ty, init: None, .. }) = &ex.kind
+                        && span.contains(self.decl_span)
+                    {
+                        self.sugg_span = ty.map_or(Some(self.decl_span), |ty| Some(ty.span));
                     }
                     hir::intravisit::walk_stmt(self, ex);
                 }
@@ -743,19 +745,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ".clone()".to_owned()
             };
         if let Some(clone_trait_def) = tcx.lang_items().clone_trait()
-            && self.infcx
-                .type_implements_trait(
-                    clone_trait_def,
-                    [ty],
-                    self.param_env,
-                )
+            && self
+                .infcx
+                .type_implements_trait(clone_trait_def, [ty], self.param_env)
                 .must_apply_modulo_regions()
         {
             let msg = if let ty::Adt(def, _) = ty.kind()
-                && [
-                    tcx.get_diagnostic_item(sym::Arc),
-                    tcx.get_diagnostic_item(sym::Rc),
-                ].contains(&Some(def.did()))
+                && [tcx.get_diagnostic_item(sym::Arc), tcx.get_diagnostic_item(sym::Rc)]
+                    .contains(&Some(def.did()))
             {
                 "clone the value to increment its reference count"
             } else {
@@ -1350,9 +1347,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // };
                 // corresponding to the desugaring of a for loop `for <pat> in <head> { <body> }`.
                 if let hir::ExprKind::Call(path, [arg]) = ex.kind
-                    && let hir::ExprKind::Path(
-                        hir::QPath::LangItem(LangItem::IntoIterIntoIter, _, _),
-                    ) = path.kind
+                    && let hir::ExprKind::Path(hir::QPath::LangItem(
+                        LangItem::IntoIterIntoIter,
+                        _,
+                        _,
+                    )) = path.kind
                     && arg.span.contains(self.issue_span)
                 {
                     // Find `IntoIterator::into_iter(<head>)`
@@ -1370,18 +1369,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         ..
                     }) = stmt.kind
                     && let hir::ExprKind::Call(path, _args) = call.kind
-                    && let hir::ExprKind::Path(
-                        hir::QPath::LangItem(LangItem::IteratorNext, _, _),
-                    ) = path.kind
+                    && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IteratorNext, _, _)) =
+                        path.kind
                     && let hir::PatKind::Struct(path, [field, ..], _) = bind.pat.kind
                     && let hir::QPath::LangItem(LangItem::OptionSome, pat_span, _) = path
                     && call.span.contains(self.issue_span)
                 {
                     // Find `<pat>` and the span for the whole `for` loop.
-                    if let PatField { pat: hir::Pat {
-                        kind: hir::PatKind::Binding(_, _, ident, ..),
+                    if let PatField {
+                        pat: hir::Pat { kind: hir::PatKind::Binding(_, _, ident, ..), .. },
                         ..
-                    }, ..} = field {
+                    } = field
+                    {
                         self.loop_bind = Some(ident);
                     }
                     self.head_span = Some(*head_span);
@@ -1441,18 +1440,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // A bare path doesn't need a `let` assignment, it's already a simple
                     // binding access.
                     // As a new binding wasn't added, we don't need to modify the advancing call.
-                    sugg.push((
-                        loop_span.with_hi(pat_span.lo()),
-                        format!("while let Some("),
-                    ));
+                    sugg.push((loop_span.with_hi(pat_span.lo()), format!("while let Some(")));
                     sugg.push((
                         pat_span.shrink_to_hi().with_hi(head.span.lo()),
                         ") = ".to_string(),
                     ));
-                    sugg.push((
-                        head.span.shrink_to_hi(),
-                        ".next()".to_string(),
-                    ));
+                    sugg.push((head.span.shrink_to_hi(), ".next()".to_string()));
                 } else {
                     // Needs a new a `let` binding.
                     let indent = if let Some(indent) = sm.indentation_before(loop_span) {
@@ -1483,11 +1476,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         sugg.push((recv.span, "iter".to_string()));
                     }
                 }
-                err.multipart_suggestion(
-                    msg,
-                    sugg,
-                    Applicability::MaybeIncorrect,
-                );
+                err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
             } else {
                 err.help(msg);
             }
@@ -1666,69 +1655,80 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
                 if e.span.contains(self.capture_span) {
                     if let hir::ExprKind::Closure(&hir::Closure {
-                            movability: None,
-                            body,
-                            fn_arg_span,
-                            fn_decl: hir::FnDecl{ inputs, .. },
-                            ..
-                        }) = e.kind &&
-                        let Some(hir::Node::Expr(body )) = self.hir.find(body.hir_id) {
-                            self.suggest_arg = "this: &Self".to_string();
-                            if inputs.len() > 0 {
-                                self.suggest_arg.push_str(", ");
-                            }
-                            self.in_closure = true;
-                            self.closure_arg_span = fn_arg_span;
-                            self.visit_expr(body);
-                            self.in_closure = false;
+                        movability: None,
+                        body,
+                        fn_arg_span,
+                        fn_decl: hir::FnDecl { inputs, .. },
+                        ..
+                    }) = e.kind
+                        && let Some(hir::Node::Expr(body)) = self.hir.find(body.hir_id)
+                    {
+                        self.suggest_arg = "this: &Self".to_string();
+                        if inputs.len() > 0 {
+                            self.suggest_arg.push_str(", ");
+                        }
+                        self.in_closure = true;
+                        self.closure_arg_span = fn_arg_span;
+                        self.visit_expr(body);
+                        self.in_closure = false;
                     }
                 }
                 if let hir::Expr { kind: hir::ExprKind::Path(path), .. } = e {
-                    if let hir::QPath::Resolved(_, hir::Path { segments: [seg], ..}) = path &&
-                        seg.ident.name == kw::SelfLower && self.in_closure {
-                            self.closure_change_spans.push(e.span);
+                    if let hir::QPath::Resolved(_, hir::Path { segments: [seg], .. }) = path
+                        && seg.ident.name == kw::SelfLower
+                        && self.in_closure
+                    {
+                        self.closure_change_spans.push(e.span);
                     }
                 }
                 hir::intravisit::walk_expr(self, e);
             }
 
             fn visit_local(&mut self, local: &'hir hir::Local<'hir>) {
-                if let hir::Pat { kind: hir::PatKind::Binding(_, hir_id, _ident, _), .. } = local.pat &&
-                    let Some(init) = local.init
+                if let hir::Pat { kind: hir::PatKind::Binding(_, hir_id, _ident, _), .. } =
+                    local.pat
+                    && let Some(init) = local.init
                 {
-                    if let hir::Expr { kind: hir::ExprKind::Closure(&hir::Closure {
-                            movability: None,
-                            ..
-                        }), .. } = init &&
-                        init.span.contains(self.capture_span) {
-                            self.closure_local_id = Some(*hir_id);
+                    if let hir::Expr {
+                        kind: hir::ExprKind::Closure(&hir::Closure { movability: None, .. }),
+                        ..
+                    } = init
+                        && init.span.contains(self.capture_span)
+                    {
+                        self.closure_local_id = Some(*hir_id);
                     }
                 }
                 hir::intravisit::walk_local(self, local);
             }
 
             fn visit_stmt(&mut self, s: &'hir hir::Stmt<'hir>) {
-                if let hir::StmtKind::Semi(e) = s.kind &&
-                    let hir::ExprKind::Call(hir::Expr { kind: hir::ExprKind::Path(path), ..}, args) = e.kind &&
-                    let hir::QPath::Resolved(_, hir::Path { segments: [seg], ..}) = path &&
-                    let Res::Local(hir_id) = seg.res &&
-                        Some(hir_id) == self.closure_local_id {
-                        let (span, arg_str) = if args.len() > 0 {
-                            (args[0].span.shrink_to_lo(), "self, ".to_string())
-                        } else {
-                            let span = e.span.trim_start(seg.ident.span).unwrap_or(e.span);
-                            (span, "(self)".to_string())
-                        };
-                        self.closure_call_changes.push((span, arg_str));
+                if let hir::StmtKind::Semi(e) = s.kind
+                    && let hir::ExprKind::Call(
+                        hir::Expr { kind: hir::ExprKind::Path(path), .. },
+                        args,
+                    ) = e.kind
+                    && let hir::QPath::Resolved(_, hir::Path { segments: [seg], .. }) = path
+                    && let Res::Local(hir_id) = seg.res
+                    && Some(hir_id) == self.closure_local_id
+                {
+                    let (span, arg_str) = if args.len() > 0 {
+                        (args[0].span.shrink_to_lo(), "self, ".to_string())
+                    } else {
+                        let span = e.span.trim_start(seg.ident.span).unwrap_or(e.span);
+                        (span, "(self)".to_string())
+                    };
+                    self.closure_call_changes.push((span, arg_str));
                 }
                 hir::intravisit::walk_stmt(self, s);
             }
         }
 
-        if let Some(hir::Node::ImplItem(
-                    hir::ImplItem { kind: hir::ImplItemKind::Fn(_fn_sig, body_id), .. }
-                )) = hir.find(self.mir_hir_id()) &&
-            let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id) {
+        if let Some(hir::Node::ImplItem(hir::ImplItem {
+            kind: hir::ImplItemKind::Fn(_fn_sig, body_id),
+            ..
+        })) = hir.find(self.mir_hir_id())
+            && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
+        {
             let mut finder = ExpressionFinder {
                 capture_span: *capture_kind_span,
                 closure_change_spans: vec![],
@@ -2299,15 +2299,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         visitor.visit_stmt(stmt);
 
                         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
-                        let expr_ty: Option<Ty<'_>> = visitor.prop_expr.map(|expr| typeck_results.expr_ty(expr).peel_refs());
+                        let expr_ty: Option<Ty<'_>> =
+                            visitor.prop_expr.map(|expr| typeck_results.expr_ty(expr).peel_refs());
 
-                        let is_format_arguments_item =
-                            if let Some(expr_ty) = expr_ty
-                               && let ty::Adt(adt, _) = expr_ty.kind() {
-                                    self.infcx.tcx.lang_items().get(LangItem::FormatArguments) == Some(adt.did())
-                               } else {
-                                   false
-                               };
+                        let is_format_arguments_item = if let Some(expr_ty) = expr_ty
+                            && let ty::Adt(adt, _) = expr_ty.kind()
+                        {
+                            self.infcx.tcx.lang_items().get(LangItem::FormatArguments)
+                                == Some(adt.did())
+                        } else {
+                            false
+                        };
 
                         if visitor.found == 0
                             && stmt.span.contains(proper_span)

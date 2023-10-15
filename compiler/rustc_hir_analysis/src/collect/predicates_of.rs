@@ -389,7 +389,9 @@ fn const_evaluatable_predicates_of(
     let node = tcx.hir().get(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
-    if let hir::Node::Item(item) = node && let hir::ItemKind::Impl(impl_) = item.kind {
+    if let hir::Node::Item(item) = node
+        && let hir::ItemKind::Impl(impl_) = item.kind
+    {
         if let Some(of_trait) = &impl_.of_trait {
             debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
             collector.visit_trait_ref(of_trait);

@@ -60,9 +60,7 @@ impl<'a> DescriptionCtx<'a> {
                             let span = Some(tcx.def_span(scope));
                             (span, "defined_here", String::new())
                         }
-                        _ => {
-                            (Some(tcx.def_span(scope)), "defined_here_reg", region.to_string())
-                        }
+                        _ => (Some(tcx.def_span(scope)), "defined_here_reg", region.to_string()),
                     }
                 }
             }

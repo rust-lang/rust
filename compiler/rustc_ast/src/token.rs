@@ -107,13 +107,11 @@ impl Lit {
     /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
-            Ident(name, false) if name.is_bool_lit() => {
-                Some(Lit::new(Bool, name, None))
-            }
+            Ident(name, false) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
             Literal(token_lit) => Some(token_lit),
             Interpolated(ref nt)
                 if let NtExpr(expr) | NtLiteral(expr) = &**nt
-                && let ast::ExprKind::Lit(token_lit) = expr.kind =>
+                    && let ast::ExprKind::Lit(token_lit) = expr.kind =>
             {
                 Some(token_lit)
             }
@@ -655,7 +653,9 @@ impl Token {
 
     /// Returns `true` if the token is an interpolated path.
     fn is_path(&self) -> bool {
-        if let Interpolated(nt) = &self.kind && let NtPath(..) = **nt {
+        if let Interpolated(nt) = &self.kind
+            && let NtPath(..) = **nt
+        {
             return true;
         }
 
@@ -677,7 +677,9 @@ impl Token {
 
     /// Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
-        if let Interpolated(nt) = &self.kind && let NtBlock(..) = **nt {
+        if let Interpolated(nt) = &self.kind
+            && let NtBlock(..) = **nt
+        {
             return true;
         }
 

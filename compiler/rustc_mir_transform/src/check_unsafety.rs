@@ -540,8 +540,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                         && let BlockCheckMode::UnsafeBlock(_) = block.rules
                     {
                         true
-                    }
-                    else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
+                    } else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
                         && sig.header.is_unsafe()
                     {
                         true

@@ -652,7 +652,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
             {
                 // Wrap up the N provided arguments starting at this position in a tuple.
-                let provided_as_tuple = Ty::new_tup_from_iter(tcx,
+                let provided_as_tuple = Ty::new_tup_from_iter(
+                    tcx,
                     provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx).take(tys.len()),
                 );
 
@@ -884,8 +885,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && self.tcx.def_kind(fn_def_id).is_fn_like()
                 && let self_implicit =
                     matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
-                && let Some(arg) = self.tcx.fn_arg_names(fn_def_id)
-                    .get(expected_idx.as_usize() + self_implicit)
+                && let Some(arg) =
+                    self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
                 && arg.name != kw::SelfLower
             {
                 format!("/* {} */", arg.name)
@@ -946,9 +947,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && error_span.can_be_used_for_suggestions()
                     {
                         if arg_idx.index() > 0
-                        && let Some((_, prev)) = provided_arg_tys
-                            .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
-                        ) {
+                            && let Some((_, prev)) =
+                                provided_arg_tys.get(ProvidedIdx::from_usize(arg_idx.index() - 1))
+                        {
                             // Include previous comma
                             span = prev.shrink_to_hi().to(span);
                         }
@@ -1291,7 +1292,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut rustc_errors::DiagnosticBuilder<'tcx, ErrorGuaranteed>,
     ) {
         if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
-            && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) = provided_ty.kind()
+            && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =
+                provided_ty.kind()
             && let hir::ExprKind::Call(callee, _) = arg.kind
             && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = callee.kind
             && let Res::Def(_, def_id) = path.res
@@ -1299,9 +1301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // The user provided `ptr::null()`, but the function expects
             // `ptr::null_mut()`.
-            err.subdiagnostic(SuggestPtrNullMut {
-                span: arg.span
-            });
+            err.subdiagnostic(SuggestPtrNullMut { span: arg.span });
         }
     }
 
@@ -1928,8 +1928,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let callee_ty = callee_ty.peel_refs();
             match *callee_ty.kind() {
                 ty::Param(param) => {
-                    let param =
-                        self.tcx.generics_of(self.body_id).type_param(&param, self.tcx);
+                    let param = self.tcx.generics_of(self.body_id).type_param(&param, self.tcx);
                     if param.kind.is_synthetic() {
                         // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
                         def_id = param.def_id;
@@ -1943,8 +1942,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // FIXME(compiler-errors): This could be problematic if something has two
                         // fn-like predicates with different args, but callable types really never
                         // do that, so it's OK.
-                        for (predicate, span) in instantiated
-                        {
+                        for (predicate, span) in instantiated {
                             if let ty::ClauseKind::Trait(pred) = predicate.kind().skip_binder()
                                 && pred.self_ty().peel_refs() == callee_ty
                                 && self.tcx.is_fn_trait(pred.def_id())
@@ -1963,7 +1961,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Look for a user-provided impl of a `Fn` trait, and point to it.
                     let new_def_id = self.probe(|_| {
-                        let trait_ref = ty::TraitRef::new(self.tcx,
+                        let trait_ref = ty::TraitRef::new(
+                            self.tcx,
                             call_kind.to_def_id(self.tcx),
                             [
                                 callee_ty,
@@ -1995,7 +1994,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if let Some(def_span) = self.tcx.def_ident_span(def_id) && !def_span.is_dummy() {
+        if let Some(def_span) = self.tcx.def_ident_span(def_id)
+            && !def_span.is_dummy()
+        {
             let mut spans: MultiSpan = def_span.into();
 
             let params = self
@@ -2025,7 +2026,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
                 let mut call_finder = FindClosureArg { tcx: self.tcx, calls: vec![] };
-                let node = self.tcx
+                let node = self
+                    .tcx
                     .opt_local_def_id_to_hir_id(self.tcx.hir().get_parent_item(call_expr.hir_id))
                     .and_then(|hir_id| self.tcx.hir().find(hir_id));
                 match node {

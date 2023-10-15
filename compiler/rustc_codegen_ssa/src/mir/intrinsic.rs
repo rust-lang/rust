@@ -117,9 +117,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::vtable_size => {
                         let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
                         bx.range_metadata(value, WrappingRange { start: 0, end: size_bound });
-                    },
+                    }
                     // Alignment is always nonzero.
-                    sym::vtable_align => bx.range_metadata(value, WrappingRange { start: 1, end: !0 }),
+                    sym::vtable_align => {
+                        bx.range_metadata(value, WrappingRange { start: 1, end: !0 })
+                    }
                     _ => {}
                 }
                 value
@@ -220,9 +222,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         } else {
                             bx.exactudiv(args[0].immediate(), args[1].immediate())
                         }
-                    },
+                    }
                     None => {
-                        bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
+                        bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType {
+                            span,
+                            name,
+                            ty,
+                        });
                         return;
                     }
                 }
@@ -238,7 +244,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         _ => bug!(),
                     },
                     None => {
-                        bx.tcx().sess.emit_err(InvalidMonomorphization::BasicFloatType { span, name, ty: arg_tys[0] });
+                        bx.tcx().sess.emit_err(InvalidMonomorphization::BasicFloatType {
+                            span,
+                            name,
+                            ty: arg_tys[0],
+                        });
                         return;
                     }
                 }
@@ -246,11 +256,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::float_to_int_unchecked => {
                 if float_type_width(arg_tys[0]).is_none() {
-                    bx.tcx().sess.emit_err(InvalidMonomorphization::FloatToIntUnchecked { span, ty: arg_tys[0] });
+                    bx.tcx().sess.emit_err(InvalidMonomorphization::FloatToIntUnchecked {
+                        span,
+                        ty: arg_tys[0],
+                    });
                     return;
                 }
                 let Some((_width, signed)) = int_type_width_signed(ret_ty, bx.tcx()) else {
-                    bx.tcx().sess.emit_err(InvalidMonomorphization::FloatToIntUnchecked { span, ty: ret_ty });
+                    bx.tcx().sess.emit_err(InvalidMonomorphization::FloatToIntUnchecked {
+                        span,
+                        ty: ret_ty,
+                    });
                     return;
                 };
                 if signed {
@@ -299,7 +315,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
 
                 let invalid_monomorphization = |ty| {
-                    bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
+                    bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType {
+                        span,
+                        name,
+                        ty,
+                    });
                 };
 
                 match instruction {
@@ -319,7 +339,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 cmp = bx.ptrtoint(cmp, bx.type_isize());
                                 src = bx.ptrtoint(src, bx.type_isize());
                             }
-                            let pair = bx.atomic_cmpxchg(dst, cmp, src, parse_ordering(bx, success), parse_ordering(bx, failure), weak);
+                            let pair = bx.atomic_cmpxchg(
+                                dst,
+                                cmp,
+                                src,
+                                parse_ordering(bx, success),
+                                parse_ordering(bx, failure),
+                                weak,
+                            );
                             let val = bx.extract_value(pair, 0);
                             let success = bx.extract_value(pair, 1);
                             let val = bx.from_immediate(val);
@@ -345,11 +372,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first...
                                 let llty = bx.type_isize();
-                                let result = bx.atomic_load(llty, source, parse_ordering(bx, ordering), size);
+                                let result = bx.atomic_load(
+                                    llty,
+                                    source,
+                                    parse_ordering(bx, ordering),
+                                    size,
+                                );
                                 // ... and then cast the result back to a pointer
                                 bx.inttoptr(result, bx.backend_type(layout))
                             } else {
-                                bx.atomic_load(bx.backend_type(layout), source, parse_ordering(bx, ordering), size)
+                                bx.atomic_load(
+                                    bx.backend_type(layout),
+                                    source,
+                                    parse_ordering(bx, ordering),
+                                    size,
+                                )
                             }
                         } else {
                             return invalid_monomorphization(ty);
@@ -375,12 +412,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     "fence" => {
-                        bx.atomic_fence(parse_ordering(bx, ordering), SynchronizationScope::CrossThread);
+                        bx.atomic_fence(
+                            parse_ordering(bx, ordering),
+                            SynchronizationScope::CrossThread,
+                        );
                         return;
                     }
 
                     "singlethreadfence" => {
-                        bx.atomic_fence(parse_ordering(bx, ordering), SynchronizationScope::SingleThread);
+                        bx.atomic_fence(
+                            parse_ordering(bx, ordering),
+                            SynchronizationScope::SingleThread,
+                        );
                         return;
                     }
 

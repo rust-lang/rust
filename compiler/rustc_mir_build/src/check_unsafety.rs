@@ -412,7 +412,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
             ExprKind::Field { lhs, .. } => {
                 let lhs = &self.thir[lhs];
-                if let ty::Adt(adt_def, _) = lhs.ty.kind() && adt_def.is_union() {
+                if let ty::Adt(adt_def, _) = lhs.ty.kind()
+                    && adt_def.is_union()
+                {
                     if let Some((assigned_ty, assignment_span)) = self.assignment_info {
                         if assigned_ty.needs_drop(self.tcx, self.param_env) {
                             // This would be unsafe, but should be outright impossible since we reject such unions.
@@ -461,7 +463,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
             ExprKind::Let { expr: expr_id, .. } => {
                 let let_expr = &self.thir[expr_id];
-                if let ty::Adt(adt_def, _) = let_expr.ty.kind() && adt_def.is_union() {
+                if let ty::Adt(adt_def, _) = let_expr.ty.kind()
+                    && adt_def.is_union()
+                {
                     self.requires_unsafe(expr.span, AccessToUnionField);
                 }
             }
@@ -617,8 +621,7 @@ impl UnsafeOpKind {
                 && let hir::BlockCheckMode::UnsafeBlock(_) = block.rules
             {
                 true
-            }
-            else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
+            } else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
                 && sig.header.is_unsafe()
             {
                 true
