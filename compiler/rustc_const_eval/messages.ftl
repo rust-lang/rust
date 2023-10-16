@@ -406,12 +406,18 @@ const_eval_upcast_mismatch =
 const_eval_validation_box_to_mut = {$front_matter}: encountered a box pointing to mutable memory in a constant
 const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
-const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
-const_eval_validation_dangling_box_out_of_bounds = {$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)
-const_eval_validation_dangling_box_use_after_free = {$front_matter}: encountered a dangling box (use-after-free)
-const_eval_validation_dangling_ref_no_provenance = {$front_matter}: encountered a dangling reference ({$pointer} has no provenance)
-const_eval_validation_dangling_ref_out_of_bounds = {$front_matter}: encountered a dangling reference (going beyond the bounds of its allocation)
-const_eval_validation_dangling_ref_use_after_free = {$front_matter}: encountered a dangling reference (use-after-free)
+const_eval_validation_dangling_no_provenance = {$front_matter}: encountered a dangling {$ptr_kind ->
+    [box] box
+   *[ref] reference
+} ({$pointer} has no provenance)
+const_eval_validation_dangling_out_of_bounds = {$front_matter}: encountered a dangling {$ptr_kind ->
+    [box] box
+   *[ref] reference
+} (going beyond the bounds of its allocation)
+const_eval_validation_dangling_use_after_free = {$front_matter}: encountered a dangling {$ptr_kind ->
+    [box] box
+   *[ref] reference
+} (use-after-free)
 
 const_eval_validation_expected_bool = expected a boolean
 const_eval_validation_expected_box = expected a box
@@ -429,14 +435,10 @@ const_eval_validation_front_matter_invalid_value = constructing invalid value
 const_eval_validation_front_matter_invalid_value_with_path = constructing invalid value at {$path}
 
 const_eval_validation_invalid_bool = {$front_matter}: encountered {$value}, but expected a boolean
-const_eval_validation_invalid_box_meta = {$front_matter}: encountered invalid box metadata: total size is bigger than largest supported object
-const_eval_validation_invalid_box_slice_meta = {$front_matter}: encountered invalid box metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_char = {$front_matter}: encountered {$value}, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
 
 const_eval_validation_invalid_enum_tag = {$front_matter}: encountered {$value}, but expected a valid enum tag
 const_eval_validation_invalid_fn_ptr = {$front_matter}: encountered {$value}, but expected a function pointer
-const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
-const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
 const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in a `const`
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
@@ -448,11 +450,30 @@ const_eval_validation_out_of_range = {$front_matter}: encountered {$value}, but 
 const_eval_validation_partial_pointer = {$front_matter}: encountered a partial pointer or a mix of pointers
 const_eval_validation_pointer_as_int = {$front_matter}: encountered a pointer, but {$expected}
 const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer, but expected something that cannot possibly fail to be {$in_range}
-const_eval_validation_ref_to_mut = {$front_matter}: encountered a reference pointing to mutable memory in a constant
-const_eval_validation_ref_to_static = {$front_matter}: encountered a reference pointing to a static variable in a constant
-const_eval_validation_ref_to_uninhabited = {$front_matter}: encountered a reference pointing to uninhabited type {$ty}
-const_eval_validation_unaligned_box = {$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})
-const_eval_validation_unaligned_ref = {$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})
+const_eval_validation_ptr_to_mut = {$front_matter}: encountered a {$ptr_kind ->
+    [box] box
+   *[ref] reference
+} pointing to mutable memory in a constant
+const_eval_validation_ptr_to_static = {$front_matter}: encountered a {$ptr_kind ->
+    [box] box
+   *[ref] reference
+} pointing to a static variable in a constant
+const_eval_validation_ptr_to_uninhabited = {$front_matter}: encountered a {$ptr_kind ->
+    [box] box
+   *[ref] reference
+} pointing to uninhabited type {$ty}
+const_eval_validation_too_big_meta = {$front_matter}: encountered invalid {$ptr_kind ->
+    [box] box
+   *[ref] reference
+} metadata: total size is bigger than largest supported object
+const_eval_validation_too_big_slice_meta = {$front_matter}: {$ptr_kind ->
+    [box] encountered invalid box metadata: slice is bigger than largest supported object
+   *[ref] encountered invalid reference metadata: slice is bigger than largest supported object
+}
+const_eval_validation_unaligned = {$front_matter}: encountered an unaligned {$ptr_kind ->
+    [box] box
+   *[ref] reference
+} (required {$required_bytes} byte alignment but found {$found_bytes})
 const_eval_validation_uninhabited_enum_variant = {$front_matter}: encountered an uninhabited enum variant
 const_eval_validation_uninhabited_val = {$front_matter}: encountered a value of uninhabited type `{$ty}`
 const_eval_validation_uninit = {$front_matter}: encountered uninitialized memory, but {$expected}

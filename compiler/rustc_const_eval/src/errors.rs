@@ -610,19 +610,9 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         use crate::fluent_generated::*;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
         match self.kind {
-            PtrToUninhabited { ptr_kind: PointerKind::Box, .. } => {
-                const_eval_validation_box_to_uninhabited
-            }
-            PtrToUninhabited { ptr_kind: PointerKind::Ref, .. } => {
-                const_eval_validation_ref_to_uninhabited
-            }
-
-            PtrToStatic { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_static,
-            PtrToStatic { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_static,
-
-            PtrToMut { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_mut,
-            PtrToMut { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_mut,
-
+            PtrToUninhabited { .. } => const_eval_validation_ptr_to_uninhabited,
+            PtrToStatic { .. } => const_eval_validation_ptr_to_static,
+            PtrToMut { .. } => const_eval_validation_ptr_to_mut,
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
             MutableRefInConst => const_eval_validation_mutable_ref_in_const,
@@ -637,42 +627,14 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             UninhabitedEnumVariant => const_eval_validation_uninhabited_enum_variant,
             Uninit { .. } => const_eval_validation_uninit,
             InvalidVTablePtr { .. } => const_eval_validation_invalid_vtable_ptr,
-            InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_invalid_box_slice_meta
-            }
-            InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Ref } => {
-                const_eval_validation_invalid_ref_slice_meta
-            }
-
-            InvalidMetaTooLarge { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_invalid_box_meta
-            }
-            InvalidMetaTooLarge { ptr_kind: PointerKind::Ref } => {
-                const_eval_validation_invalid_ref_meta
-            }
-            UnalignedPtr { ptr_kind: PointerKind::Ref, .. } => const_eval_validation_unaligned_ref,
-            UnalignedPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_unaligned_box,
-
+            InvalidMetaSliceTooLarge { .. } => const_eval_validation_too_big_slice_meta,
+            InvalidMetaTooLarge { .. } => const_eval_validation_too_big_meta,
+            UnalignedPtr { .. } => const_eval_validation_unaligned,
             NullPtr { ptr_kind: PointerKind::Box } => const_eval_validation_null_box,
             NullPtr { ptr_kind: PointerKind::Ref } => const_eval_validation_null_ref,
-            DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
-                const_eval_validation_dangling_box_no_provenance
-            }
-            DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref, .. } => {
-                const_eval_validation_dangling_ref_no_provenance
-            }
-            DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_dangling_box_out_of_bounds
-            }
-            DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref } => {
-                const_eval_validation_dangling_ref_out_of_bounds
-            }
-            DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_dangling_box_use_after_free
-            }
-            DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref } => {
-                const_eval_validation_dangling_ref_use_after_free
-            }
+            DanglingPtrNoProvenance { .. } => const_eval_validation_dangling_no_provenance,
+            DanglingPtrOutOfBounds { .. } => const_eval_validation_dangling_out_of_bounds,
+            DanglingPtrUseAfterFree { .. } => const_eval_validation_dangling_use_after_free,
             InvalidBool { .. } => const_eval_validation_invalid_bool,
             InvalidChar { .. } => const_eval_validation_invalid_char,
             InvalidFnPtr { .. } => const_eval_validation_invalid_fn_ptr,
@@ -734,7 +696,11 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
 
         match self.kind {
-            PtrToUninhabited { ty, .. } | UninhabitedVal { ty } => {
+            UninhabitedVal { ty } => {
+                err.set_arg("ty", ty);
+            }
+            PtrToUninhabited { ty, ptr_kind, .. } => {
+                err.set_arg("ptr_kind", ptr_kind);
                 err.set_arg("ty", ty);
             }
             PointerAsInt { expected } | Uninit { expected } => {
@@ -768,24 +734,28 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.set_arg("value", value);
                 add_range_arg(range, max_value, handler, err);
             }
-            UnalignedPtr { required_bytes, found_bytes, .. } => {
-                err.set_arg("required_bytes", required_bytes);
+            UnalignedPtr { required_bytes, found_bytes, ptr_kind } => {
                 err.set_arg("found_bytes", found_bytes);
+                err.set_arg("ptr_kind", ptr_kind);
+                err.set_arg("required_bytes", required_bytes);
             }
-            DanglingPtrNoProvenance { pointer, .. } => {
+            DanglingPtrNoProvenance { pointer, ptr_kind } => {
                 err.set_arg("pointer", pointer);
+                err.set_arg("ptr_kind", ptr_kind);
+            }
+            DanglingPtrUseAfterFree { ptr_kind }
+            | DanglingPtrOutOfBounds { ptr_kind }
+            | InvalidMetaSliceTooLarge { ptr_kind }
+            | InvalidMetaTooLarge { ptr_kind }
+            | PtrToStatic { ptr_kind }
+            | PtrToMut { ptr_kind } => {
+                err.set_arg("ptr_kind", ptr_kind);
             }
             NullPtr { .. }
-            | PtrToStatic { .. }
-            | PtrToMut { .. }
             | MutableRefInConst
             | NullFnPtr
             | NeverVal
             | UnsafeCell
-            | InvalidMetaSliceTooLarge { .. }
-            | InvalidMetaTooLarge { .. }
-            | DanglingPtrUseAfterFree { .. }
-            | DanglingPtrOutOfBounds { .. }
             | UninhabitedEnumVariant
             | PartialPointer => {}
         }
