@@ -4258,7 +4258,9 @@ impl<'test> TestCx<'test> {
                 V0_BACK_REF_RE.replace_all(&normalized, V0_BACK_REF_PLACEHOLDER).into_owned();
         }
 
-        // Normalize AllocId counter
+        // AllocId are numbered globally in a compilation session. This can lead to changes
+        // depending on the exact compilation flags and host architecture. Meanwhile, we want
+        // to keep them numbered, to see if the same id appears multiple times.
         {
             use std::fmt::Write;
 
@@ -4276,8 +4278,9 @@ impl<'test> TestCx<'test> {
                     // Complete with filler `─` to preserve the pretty-print.
                     if let Some(tail) = caps.get(3) {
                         ret.push_str(tail.as_str());
-                        let diff = caps.get(0).unwrap().as_str().len() - ret.len();
-                        for _ in 0..diff {
+                        let orig_len = caps.get(0).unwrap().as_str().len();
+                        let ret_len = ret.len();
+                        for _ in orig_len..ret_len {
                             ret.push('─');
                         }
                     }
