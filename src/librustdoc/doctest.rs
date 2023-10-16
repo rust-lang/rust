@@ -104,6 +104,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps,
         parse_sess_created: None,
+        hash_untracked_state: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
         override_queries: None,
         make_codegen_backend: None,

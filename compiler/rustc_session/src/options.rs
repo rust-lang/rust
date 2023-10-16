@@ -4,6 +4,7 @@ use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use crate::{lint, EarlyErrorHandler};
 use rustc_data_structures::profiling::TimePassesFormat;
+use rustc_data_structures::stable_hasher::Hash64;
 use rustc_errors::ColorConfig;
 use rustc_errors::{LanguageIdentifier, TerminalUrl};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
@@ -158,6 +159,10 @@ top_level_options!(
         /// directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
         assert_incr_state: Option<IncrementalStateAssertion> [UNTRACKED],
+        /// Set by the `Config::hash_untracked_state` callback for custom
+        /// drivers to invalidate the incremental cache
+        #[rustc_lint_opt_deny_field_access("should only be used via `Config::hash_untracked_state`")]
+        untracked_state_hash: Hash64 [TRACKED_NO_CRATE_HASH],
 
         unstable_opts: UnstableOptions [SUBSTRUCT],
         prints: Vec<PrintRequest> [UNTRACKED],
