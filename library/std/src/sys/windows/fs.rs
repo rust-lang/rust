@@ -19,7 +19,7 @@ use crate::thread;
 use core::ffi::c_void;
 
 use super::path::maybe_verbatim;
-use super::to_u16s;
+use super::{api, to_u16s, IoResult};
 
 pub struct File {
     handle: Handle,
@@ -123,7 +123,7 @@ impl Iterator for ReadDir {
             let mut wfd = mem::zeroed();
             loop {
                 if c::FindNextFileW(self.handle.0, &mut wfd) == 0 {
-                    if c::GetLastError() == c::ERROR_NO_MORE_FILES {
+                    if api::get_last_error().code == c::ERROR_NO_MORE_FILES {
                         return None;
                     } else {
                         return Some(Err(Error::last_os_error()));
@@ -318,17 +318,8 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        let mut info = c::FILE_END_OF_FILE_INFO { EndOfFile: size as c::LARGE_INTEGER };
-        let size = mem::size_of_val(&info);
-        cvt(unsafe {
-            c::SetFileInformationByHandle(
-                self.handle.as_raw_handle(),
-                c::FileEndOfFileInfo,
-                &mut info as *mut _ as *mut _,
-                size as c::DWORD,
-            )
-        })?;
-        Ok(())
+        let info = c::FILE_END_OF_FILE_INFO { EndOfFile: size as i64 };
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     #[cfg(not(target_vendor = "uwp"))]
@@ -565,23 +556,14 @@ impl File {
     }
 
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
-        let mut info = c::FILE_BASIC_INFO {
+        let info = c::FILE_BASIC_INFO {
             CreationTime: 0,
             LastAccessTime: 0,
             LastWriteTime: 0,
             ChangeTime: 0,
             FileAttributes: perm.attrs,
         };
-        let size = mem::size_of_val(&info);
-        cvt(unsafe {
-            c::SetFileInformationByHandle(
-                self.handle.as_raw_handle(),
-                c::FileBasicInfo,
-                &mut info as *mut _ as *mut _,
-                size as c::DWORD,
-            )
-        })?;
-        Ok(())
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
@@ -641,38 +623,20 @@ impl File {
     /// If the operation is not supported for this filesystem or OS version
     /// then errors will be `ERROR_NOT_SUPPORTED` or `ERROR_INVALID_PARAMETER`.
     fn posix_delete(&self) -> io::Result<()> {
-        let mut info = c::FILE_DISPOSITION_INFO_EX {
+        let info = c::FILE_DISPOSITION_INFO_EX {
             Flags: c::FILE_DISPOSITION_FLAG_DELETE
                 | c::FILE_DISPOSITION_FLAG_POSIX_SEMANTICS
                 | c::FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE,
         };
-        let size = mem::size_of_val(&info);
-        cvt(unsafe {
-            c::SetFileInformationByHandle(
-                self.handle.as_raw_handle(),
-                c::FileDispositionInfoEx,
-                &mut info as *mut _ as *mut _,
-                size as c::DWORD,
-            )
-        })?;
-        Ok(())
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     /// Delete a file using win32 semantics. The file won't actually be deleted
     /// until all file handles are closed. However, marking a file for deletion
     /// will prevent anyone from opening a new handle to the file.
     fn win32_delete(&self) -> io::Result<()> {
-        let mut info = c::FILE_DISPOSITION_INFO { DeleteFile: c::TRUE as _ };
-        let size = mem::size_of_val(&info);
-        cvt(unsafe {
-            c::SetFileInformationByHandle(
-                self.handle.as_raw_handle(),
-                c::FileDispositionInfo,
-                &mut info as *mut _ as *mut _,
-                size as c::DWORD,
-            )
-        })?;
-        Ok(())
+        let info = c::FILE_DISPOSITION_INFO { DeleteFile: c::TRUE as _ };
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     /// Fill the given buffer with as many directory entries as will fit.

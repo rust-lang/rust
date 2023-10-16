@@ -44,6 +44,18 @@ cfg_if::cfg_if! {
     }
 }
 
+mod api;
+
+/// Map a Result<T, WinError> to io::Result<T>.
+trait IoResult<T> {
+    fn io_result(self) -> crate::io::Result<T>;
+}
+impl<T> IoResult<T> for Result<T, api::WinError> {
+    fn io_result(self) -> crate::io::Result<T> {
+        self.map_err(|e| crate::io::Error::from_raw_os_error(e.code as i32))
+    }
+}
+
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
@@ -241,11 +253,11 @@ where
             // not an actual error.
             c::SetLastError(0);
             let k = match f1(buf.as_mut_ptr().cast::<u16>(), n as c::DWORD) {
-                0 if c::GetLastError() == 0 => 0,
+                0 if api::get_last_error().code == 0 => 0,
                 0 => return Err(crate::io::Error::last_os_error()),
                 n => n,
             } as usize;
-            if k == n && c::GetLastError() == c::ERROR_INSUFFICIENT_BUFFER {
+            if k == n && api::get_last_error().code == c::ERROR_INSUFFICIENT_BUFFER {
                 n = n.saturating_mul(2).min(c::DWORD::MAX as usize);
             } else if k > n {
                 n = k;

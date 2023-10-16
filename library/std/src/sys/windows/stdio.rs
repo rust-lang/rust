@@ -9,6 +9,7 @@ use crate::str;
 use crate::sys::c;
 use crate::sys::cvt;
 use crate::sys::handle::Handle;
+use crate::sys::windows::api;
 use core::str::utf8_char_width;
 
 #[cfg(test)]
@@ -369,7 +370,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
 
         // ReadConsoleW returns success with ERROR_OPERATION_ABORTED for Ctrl-C or Ctrl-Break.
         // Explicitly check for that case here and try again.
-        if amount == 0 && unsafe { c::GetLastError() } == c::ERROR_OPERATION_ABORTED {
+        if amount == 0 && api::get_last_error().code == c::ERROR_OPERATION_ABORTED {
             continue;
         }
         break;
