@@ -5,12 +5,12 @@
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::{ConstKind, FloatTy, InferTy, IntTy, Interner, UintTy, UniverseIndex};
-use rustc_data_structures::functor::IdFunctor;
 use rustc_data_structures::sync::Lrc;
 use rustc_index::{Idx, IndexVec};
 
 use core::fmt;
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::ControlFlow;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -108,8 +108,39 @@ impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Lrc<T> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|value| value.try_fold_with(folder))
+    fn try_fold_with<F: FallibleTypeFolder<I>>(mut self, folder: &mut F) -> Result<Self, F::Error> {
+        // We merely want to replace the contained `T`, if at all possible,
+        // so that we don't needlessly allocate a new `Lrc` or indeed clone
+        // the contained type.
+        unsafe {
+            // First step is to ensure that we have a unique reference to
+            // the contained type, which `Lrc::make_mut` will accomplish (by
+            // allocating a new `Lrc` and cloning the `T` only if required).
+            // This is done *before* casting to `Lrc<ManuallyDrop<T>>` so that
+            // panicking during `make_mut` does not leak the `T`.
+            Lrc::make_mut(&mut self);
+
+            // Casting to `Lrc<ManuallyDrop<T>>` is safe because `ManuallyDrop`
+            // is `repr(transparent)`.
+            let ptr = Lrc::into_raw(self).cast::<mem::ManuallyDrop<T>>();
+            let mut unique = Lrc::from_raw(ptr);
+
+            // Call to `Lrc::make_mut` above guarantees that `unique` is the
+            // sole reference to the contained value, so we can avoid doing
+            // a checked `get_mut` here.
+            let slot = Lrc::get_mut_unchecked(&mut unique);
+
+            // Semantically move the contained type out from `unique`, fold
+            // it, then move the folded value back into `unique`. Should
+            // folding fail, `ManuallyDrop` ensures that the "moved-out"
+            // value is not re-dropped.
+            let owned = mem::ManuallyDrop::take(slot);
+            let folded = owned.try_fold_with(folder)?;
+            *slot = mem::ManuallyDrop::new(folded);
+
+            // Cast back to `Lrc<T>`.
+            Ok(Lrc::from_raw(Lrc::into_raw(unique).cast()))
+        }
     }
 }
 
@@ -121,7 +152,16 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Lrc<T> {
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|value| value.try_fold_with(folder))
+        let raw = Box::into_raw(self);
+        Ok(unsafe {
+            // SAFETY: The raw pointer points to a valid value of type `T`.
+            let value = raw.read();
+            // SAFETY: Converts `Box<T>` to `Box<MaybeUninit<T>>` which is the
+            // inverse of `Box::assume_init()` and should be safe.
+            let raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
+            // SAFETY: Write the mapped value back into the `Box`.
+            Box::write(raw, value.try_fold_with(folder)?)
+        })
     }
 }
 
@@ -133,7 +173,7 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<T> {
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Vec<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|t| t.try_fold_with(folder))
+        self.into_iter().map(|t| t.try_fold_with(folder)).collect()
     }
 }
 
@@ -161,7 +201,7 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
 
 impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|x| x.try_fold_with(folder))
+        self.raw.try_fold_with(folder).map(IndexVec::from_raw)
     }
 }
 

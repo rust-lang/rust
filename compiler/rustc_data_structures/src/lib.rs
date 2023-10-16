@@ -18,14 +18,12 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]
-#![feature(new_uninit)]
 #![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(negative_impls)]
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(allocator_api)]
-#![feature(get_mut_unchecked)]
 #![feature(lint_reasons)]
 #![feature(unwrap_infallible)]
 #![feature(strict_provenance)]
@@ -61,7 +59,6 @@ pub mod binary_search_util;
 pub mod captures;
 pub mod flat_map_in_place;
 pub mod flock;
-pub mod functor;
 pub mod fx;
 pub mod graph;
 pub mod intern;
