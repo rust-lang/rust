@@ -17,7 +17,7 @@ use crate::traits::{
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan, Style,
+    MultiSpan, StashKey, Style,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
@@ -2049,14 +2049,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
                     if let None = self.tainted_by_errors() {
-                        self.emit_inference_failure_err(
+                        let err = self.emit_inference_failure_err(
                             obligation.cause.body_id,
                             span,
                             trait_ref.self_ty().skip_binder().into(),
                             ErrorCode::E0282,
                             false,
-                        )
-                        .emit();
+                        );
+                        err.stash(span, StashKey::MaybeForgetReturn);
                     }
                     return;
                 }

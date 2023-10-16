@@ -11,7 +11,7 @@ use crate::{
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticId, ErrorGuaranteed, MultiSpan,
+    pluralize, Applicability, Diagnostic, DiagnosticId, ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -27,6 +27,7 @@ use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_middle::traits::ObligationCauseCode::ExprBindingObligation;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
@@ -1375,7 +1376,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => bug!("unexpected type: {:?}", ty.normalized),
             },
-            Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
+            Res::Def(
+                DefKind::Struct | DefKind::Union | DefKind::TyAlias { .. } | DefKind::AssocTy,
+                _,
+            )
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. } => match ty.normalized.ty_adt_def() {
                 Some(adt) if !adt.is_enum() => {
@@ -1842,6 +1846,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id, id);
                 (res, self.handle_raw_ty(path_span, ty))
             }
+        }
+    }
+
+    pub(super) fn collect_unused_stmts_for_coerce_return_ty(
+        &self,
+        errors_causecode: Vec<(Span, ObligationCauseCode<'tcx>)>,
+    ) {
+        for (span, code) in errors_causecode {
+            let Some(mut diag) =
+                self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::MaybeForgetReturn)
+            else {
+                continue;
+            };
+
+            if let Some(fn_sig) = self.body_fn_sig()
+                && let ExprBindingObligation(_, _, hir_id, ..) = code
+                && !fn_sig.output().is_unit()
+            {
+                    let mut block_num = 0;
+                    let mut found_semi = false;
+                    for (_, node) in self.tcx.hir().parent_iter(hir_id) {
+                        match node {
+                            hir::Node::Stmt(stmt) => if let hir::StmtKind::Semi(ref expr) = stmt.kind {
+                                let expr_ty = self.typeck_results.borrow().expr_ty(expr);
+                                let return_ty = fn_sig.output();
+                                if !matches!(expr.kind, hir::ExprKind::Ret(..)) &&
+                                    self.can_coerce(expr_ty, return_ty) {
+                                    found_semi = true;
+                                }
+                            },
+                            hir::Node::Block(_block) => if found_semi {
+                                block_num += 1;
+                            }
+                            hir::Node::Item(item) => if let hir::ItemKind::Fn(..) = item.kind {
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                    if block_num > 1 && found_semi {
+                        diag.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            "you might have meant to return this to infer its type parameters",
+                            "return ",
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+            }
+            diag.emit();
         }
     }
 

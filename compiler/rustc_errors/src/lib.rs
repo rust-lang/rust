@@ -507,6 +507,7 @@ pub enum StashKey {
     CallAssocMethod,
     TraitMissingMethod,
     OpaqueHiddenTypeMismatch,
+    MaybeForgetReturn,
 }
 
 fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
