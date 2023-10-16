@@ -23,12 +23,10 @@ fn main() {
     let s = S;
     S::foo(&s); //~ ERROR multiple applicable items in scope
     //~^ NOTE multiple `foo` found
-    //~| HELP disambiguate
-    //~| HELP disambiguate
+    //~| HELP use fully-qualified syntax
     let _ = S::CONST; //~ ERROR multiple applicable items in scope
     //~^ NOTE multiple `CONST` found
-    //~| HELP disambiguate
-    //~| HELP disambiguate
+    //~| HELP use fully-qualified syntax
     let _: S::Type; //~ ERROR ambiguous associated type
-    //~^ HELP use the fully-qualified path
+    //~^ HELP use fully-qualified syntax
 }

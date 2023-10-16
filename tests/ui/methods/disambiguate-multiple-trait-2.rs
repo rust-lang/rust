@@ -19,12 +19,11 @@ fn a<T: C>(t: T) {
     //~| HELP disambiguate the method
     let _ = T::CONST; //~ ERROR multiple applicable items in scope
     //~^ NOTE multiple `CONST` found
-    //~| HELP disambiguate
-    //~| HELP disambiguate
+    //~| HELP use fully-qualified syntax
     let _: T::Type; //~ ERROR ambiguous associated type
     //~^ NOTE ambiguous associated type `Type`
-    //~| HELP use fully qualified syntax
-    //~| HELP use fully qualified syntax
+    //~| HELP use fully-qualified syntax
+    //~| HELP use fully-qualified syntax
 }
 
 #[derive(Debug)]
@@ -46,12 +45,10 @@ fn main() {
     let s = S;
     S::foo(&s); //~ ERROR multiple applicable items in scope
     //~^ NOTE multiple `foo` found
-    //~| HELP disambiguate
-    //~| HELP disambiguate
+    //~| HELP use fully-qualified syntax
     let _ = S::CONST; //~ ERROR multiple applicable items in scope
     //~^ NOTE multiple `CONST` found
-    //~| HELP disambiguate
-    //~| HELP disambiguate
+    //~| HELP use fully-qualified syntax
     let _: S::Type; //~ ERROR ambiguous associated type
-    //~^ HELP use the fully-qualified path
+    //~^ HELP use fully-qualified syntax
 }

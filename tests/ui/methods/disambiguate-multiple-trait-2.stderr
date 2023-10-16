@@ -1,5 +1,5 @@
 error[E0221]: ambiguous associated type `Type` in bounds of `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:24:12
+  --> $DIR/disambiguate-multiple-trait-2.rs:23:12
    |
 LL |     type Type;
    |     --------- ambiguous `Type` from `A`
@@ -10,11 +10,11 @@ LL |     type Type;
 LL |     let _: T::Type;
    |            ^^^^^^^ ambiguous associated type `Type`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |     let _: <T as A>::Type;
    |            ~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |     let _: <T as B>::Type;
    |            ~~~~~~~~~~
@@ -60,22 +60,20 @@ note: candidate #2 is defined in the trait `B`
    |
 LL |     const CONST: usize;
    |     ^^^^^^^^^^^^^^^^^^
-help: disambiguate the associated constant for candidate #1
+help: use fully-qualified syntax to disambiguate
    |
 LL |     let _ = A::CONST;
    |             ~~~
-help: disambiguate the associated constant for candidate #2
-   |
 LL |     let _ = B::CONST;
    |             ~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/disambiguate-multiple-trait-2.rs:55:12
+  --> $DIR/disambiguate-multiple-trait-2.rs:52:12
    |
 LL |     let _: S::Type;
    |            ^^^^^^^
    |
-help: use the fully-qualified path
+help: use fully-qualified syntax
    |
 LL |     let _: <S as A>::Type;
    |            ~~~~~~~~~~~~~~
@@ -83,52 +81,48 @@ LL |     let _: <S as B>::Type;
    |            ~~~~~~~~~~~~~~
 
 error[E0034]: multiple applicable items in scope
-  --> $DIR/disambiguate-multiple-trait-2.rs:47:8
+  --> $DIR/disambiguate-multiple-trait-2.rs:46:8
    |
 LL |     S::foo(&s);
    |        ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:36:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:35:5
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:42:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:41:5
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
-help: disambiguate the method for candidate #1
+help: use fully-qualified syntax to disambiguate
    |
 LL |     <T as A>::foo(&s);
    |     ~~~~~~~~~~
-help: disambiguate the method for candidate #2
-   |
 LL |     <T as B>::foo(&s);
    |     ~~~~~~~~~~
 
 error[E0034]: multiple applicable items in scope
-  --> $DIR/disambiguate-multiple-trait-2.rs:51:16
+  --> $DIR/disambiguate-multiple-trait-2.rs:49:16
    |
 LL |     let _ = S::CONST;
    |                ^^^^^ multiple `CONST` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:35:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:34:5
    |
 LL |     const CONST: usize = 1;
    |     ^^^^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/disambiguate-multiple-trait-2.rs:41:5
+  --> $DIR/disambiguate-multiple-trait-2.rs:40:5
    |
 LL |     const CONST: usize = 1;
    |     ^^^^^^^^^^^^^^^^^^
-help: disambiguate the associated constant for candidate #1
+help: use fully-qualified syntax to disambiguate
    |
 LL |     let _ = <T as A>::CONST;
    |             ~~~~~~~~~~
-help: disambiguate the associated constant for candidate #2
-   |
 LL |     let _ = <T as B>::CONST;
    |             ~~~~~~~~~~
 
