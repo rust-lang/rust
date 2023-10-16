@@ -274,7 +274,7 @@ impl<'a> Converter<'a> {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
                     let i = text.rfind('\'').unwrap();
                     let text = &text[..i];
-                    if let Err(e) = rustc_lexer::unescape::unescape_char(text) {
+                    if let Err(e) = rustc_lexer::unescape::unescape_byte(text) {
                         err = error_to_diagnostic_message(e, Mode::Byte);
                     }
                 }
@@ -284,18 +284,33 @@ impl<'a> Converter<'a> {
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 1..][..len - 1];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    err = unescape_string_error_message(text, Mode::Str);
                 }
                 STRING
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the byte string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 2..][..len - 2];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    err = unescape_string_error_message(text, Mode::ByteStr);
                 }
                 BYTE_STRING
             }
             rustc_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 2..][..len - 2];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    err = unescape_string_error_message(text, Mode::CStr);
                 }
                 C_STRING
             }
@@ -359,4 +374,28 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
         EscapeError::UnskippedWhitespaceWarning => "",
         EscapeError::MultipleSkippedLinesWarning => "",
     }
+}
+
+fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
+    let mut error_message = "";
+    match mode {
+        Mode::CStr => {
+            rustc_lexer::unescape::unescape_c_string(text, mode, &mut |_, res| {
+                if let Err(e) = res {
+                    error_message = error_to_diagnostic_message(e, mode);
+                }
+            });
+        }
+        Mode::ByteStr | Mode::Str => {
+            rustc_lexer::unescape::unescape_literal(text, mode, &mut |_, res| {
+                if let Err(e) = res {
+                    error_message = error_to_diagnostic_message(e, mode);
+                }
+            });
+        }
+        _ => {
+            // Other Modes are not supported yet or do not apply
+        }
+    }
+    error_message
 }
