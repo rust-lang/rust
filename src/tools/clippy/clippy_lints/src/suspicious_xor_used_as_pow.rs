@@ -33,7 +33,7 @@ impl LateLintPass<'_> for ConfusingXorAndPow {
         if !in_external_macro(cx.sess(), expr.span)
             && let ExprKind::Binary(op, left, right) = &expr.kind
             && op.node == BinOpKind::BitXor
-            && left.span.ctxt() == right.span.ctxt()
+            && left.span.eq_ctxt(right.span)
             && let ExprKind::Lit(lit_left) = &left.kind
             && let ExprKind::Lit(lit_right) = &right.kind
             && matches!(lit_right.node, LitKind::Int(..) | LitKind::Float(..))
