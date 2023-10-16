@@ -684,8 +684,8 @@ pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> St
     for piece in pieces {
         match piece {
             FormatArgsPiece::Literal(s) => {
-                for c in s.as_str().escape_debug() {
-                    template.push(c);
+                for c in s.as_str().chars() {
+                    template.extend(c.escape_debug());
                     if let '{' | '}' = c {
                         template.push(c);
                     }
