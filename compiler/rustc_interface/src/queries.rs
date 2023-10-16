@@ -181,9 +181,11 @@ impl<'tcx> Queries<'tcx> {
                 feed.crate_name(crate_name);
 
                 let feed = tcx.feed_unit_query();
-                feed.features_query(
-                    tcx.arena.alloc(rustc_expand::config::features(sess, &pre_configured_attrs)),
-                );
+                feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
+                    sess,
+                    &pre_configured_attrs,
+                    crate_name,
+                )));
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             });
             Ok(qcx)

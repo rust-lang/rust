@@ -44,7 +44,7 @@ use std::fmt;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{atomic::AtomicBool, Arc};
 use std::time::Duration;
 
 pub struct OptimizationFuel {
@@ -200,6 +200,12 @@ pub struct Session {
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
+
+    /// The inner atomic value is set to true when a feature marked as `internal` is
+    /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
+    /// internal features are wontfix, and they are usually the cause of the ICEs.
+    /// None signifies that this is not tracked.
+    pub using_internal_features: Arc<AtomicBool>,
 
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows
@@ -1333,6 +1339,7 @@ pub fn build_session(
     target_override: Option<Target>,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
+    using_internal_features: Arc<AtomicBool>,
     expanded_args: Vec<String>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
@@ -1469,6 +1476,7 @@ pub fn build_session(
         target_features: Default::default(),
         unstable_target_features: Default::default(),
         cfg_version,
+        using_internal_features,
         expanded_args,
     };
 

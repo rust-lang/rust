@@ -35,6 +35,7 @@ use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtecto
 use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
 
@@ -69,6 +70,7 @@ fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Se
         None,
         "",
         None,
+        Arc::default(),
         Default::default(),
     );
     (sess, cfg)
