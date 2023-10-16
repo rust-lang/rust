@@ -130,7 +130,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             locations,
             category,
-            param_env.and(type_op::prove_predicate::ProvePredicate::new(predicate)),
+            ty::ClassicInput::new(
+                param_env,
+                self.infcx.defining_use_anchor,
+                type_op::prove_predicate::ProvePredicate::new(predicate),
+            ),
         );
     }
 
@@ -155,7 +159,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             location.to_locations(),
             category,
-            param_env.and(type_op::normalize::Normalize::new(value)),
+            ty::ClassicInput::new(
+                param_env,
+                self.infcx.defining_use_anchor,
+                type_op::normalize::Normalize::new(value),
+            ),
         );
         result.unwrap_or(value)
     }
@@ -170,7 +178,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             Locations::All(span),
             ConstraintCategory::Boring,
-            self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(mir_ty, user_ty)),
+            ty::ClassicInput::new(
+                self.param_env,
+                self.infcx.defining_use_anchor,
+                type_op::ascribe_user_type::AscribeUserType::new(mir_ty, user_ty),
+            ),
         );
     }
 

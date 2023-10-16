@@ -1,4 +1,5 @@
 use rustc_infer::traits::{TraitEngine, TraitEngineExt};
+use rustc_middle::ty;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
@@ -88,7 +89,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         } else {
             assert!(!self.intercrate);
             let c_pred = self.canonicalize_query_keep_static(
-                param_env.and(obligation.predicate),
+                ty::ClassicInput::new(param_env, self.defining_use_anchor, obligation.predicate),
                 &mut _orig_values,
             );
             self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)

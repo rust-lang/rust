@@ -96,7 +96,7 @@ impl<'tcx> ToUniverseInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tc
 }
 
 impl<'tcx> ToUniverseInfo<'tcx>
-    for Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::prove_predicate::ProvePredicate<'tcx>>>
+    for Canonical<'tcx, ty::ClassicInput<'tcx, type_op::prove_predicate::ProvePredicate<'tcx>>>
 {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(PredicateQuery {
@@ -107,7 +107,7 @@ impl<'tcx> ToUniverseInfo<'tcx>
 }
 
 impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx> ToUniverseInfo<'tcx>
-    for Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>
+    for Canonical<'tcx, ty::ClassicInput<'tcx, type_op::Normalize<T>>>
 {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(NormalizeQuery {
@@ -118,7 +118,7 @@ impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx> ToUnivers
 }
 
 impl<'tcx> ToUniverseInfo<'tcx>
-    for Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>
+    for Canonical<'tcx, ty::ClassicInput<'tcx, type_op::AscribeUserType<'tcx>>>
 {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(AscribeUserTypeQuery {
@@ -215,7 +215,7 @@ trait TypeOpInfo<'tcx> {
 
 struct PredicateQuery<'tcx> {
     canonical_query:
-        Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::prove_predicate::ProvePredicate<'tcx>>>,
+        Canonical<'tcx, ty::ClassicInput<'tcx, type_op::prove_predicate::ProvePredicate<'tcx>>>,
     base_universe: ty::UniverseIndex,
 }
 
@@ -253,7 +253,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
 }
 
 struct NormalizeQuery<'tcx, T> {
-    canonical_query: Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>,
+    canonical_query: Canonical<'tcx, ty::ClassicInput<'tcx, type_op::Normalize<T>>>,
     base_universe: ty::UniverseIndex,
 }
 
@@ -303,7 +303,7 @@ where
 }
 
 struct AscribeUserTypeQuery<'tcx> {
-    canonical_query: Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>,
+    canonical_query: Canonical<'tcx, ty::ClassicInput<'tcx, type_op::AscribeUserType<'tcx>>>,
     base_universe: ty::UniverseIndex,
 }
 

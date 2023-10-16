@@ -936,7 +936,8 @@ pub enum CodegenObligationError {
     FulfillmentError,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, TyDecodable, TyEncodable)]
 pub enum DefiningAnchor {
     /// `DefId` of the item.
     Bind(LocalDefId),

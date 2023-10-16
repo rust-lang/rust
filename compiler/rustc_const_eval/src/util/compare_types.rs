@@ -47,7 +47,7 @@ pub fn relate_types<'tcx>(
         return true;
     }
 
-    let mut builder =
+    let builder =
         tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(DefiningAnchor::Bubble);
     let infcx = builder.build();
     let ocx = ObligationCtxt::new(&infcx);

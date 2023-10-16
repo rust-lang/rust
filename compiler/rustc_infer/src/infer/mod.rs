@@ -655,19 +655,33 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
     pub fn build_with_canonical<T>(
-        &mut self,
+        self,
+        span: Span,
+        canonical: &Canonical<'tcx, ty::ClassicInput<'tcx, T>>,
+    ) -> (InferCtxt<'tcx>, ty::ParamEnvAnd<'tcx, T>, CanonicalVarValues<'tcx>)
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let infcx = self.with_opaque_type_inference(canonical.value.anchor).build();
+        let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
+        (infcx, value.param_env.and(value.value), subst)
+    }
+
+    pub fn build_with_canonical_inner<T>(
+        self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
+        anchor: DefiningAnchor,
     ) -> (InferCtxt<'tcx>, T, CanonicalVarValues<'tcx>)
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let infcx = self.build();
+        let infcx = self.with_opaque_type_inference(anchor).build();
         let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
         (infcx, value, subst)
     }
 
-    pub fn build(&mut self) -> InferCtxt<'tcx> {
+    pub fn build(self) -> InferCtxt<'tcx> {
         let InferCtxtBuilder {
             tcx,
             defining_use_anchor,
@@ -675,7 +689,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             skip_leak_check,
             intercrate,
             next_trait_solver,
-        } = *self;
+        } = self;
         InferCtxt {
             tcx,
             defining_use_anchor,
@@ -1299,7 +1313,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .expect("regions already resolved")
             .with_log(&mut inner.undo_log)
             .into_infos_and_data();
-        assert!(data.is_empty());
+        assert!(data.is_empty(), "non-empty regiion constraint data: {data:#?}");
         var_infos
     }
 
