@@ -119,6 +119,31 @@ unsafe fn test_sse41() {
         let r = _mm_round_sd::<_MM_FROUND_TO_NEAREST_INT>(a, b);
         let e = _mm_setr_pd(-2.0, 3.5);
         assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(1.5, 3.5);
+        let b = _mm_setr_pd(-2.5, -4.5);
+        let r = _mm_round_sd::<_MM_FROUND_TO_NEG_INF>(a, b);
+        let e = _mm_setr_pd(-3.0, 3.5);
+        assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(1.5, 3.5);
+        let b = _mm_setr_pd(-2.5, -4.5);
+        let r = _mm_round_sd::<_MM_FROUND_TO_POS_INF>(a, b);
+        let e = _mm_setr_pd(-2.0, 3.5);
+        assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(1.5, 3.5);
+        let b = _mm_setr_pd(-2.5, -4.5);
+        let r = _mm_round_sd::<_MM_FROUND_TO_ZERO>(a, b);
+        let e = _mm_setr_pd(-2.0, 3.5);
+        assert_eq_m128d(r, e);
+
+        // Assume round-to-nearest by default
+        let a = _mm_setr_pd(1.5, 3.5);
+        let b = _mm_setr_pd(-2.5, -4.5);
+        let r = _mm_round_sd::<_MM_FROUND_CUR_DIRECTION>(a, b);
+        let e = _mm_setr_pd(-2.0, 3.5);
+        assert_eq_m128d(r, e);
     }
     test_mm_round_sd();
 
@@ -127,6 +152,31 @@ unsafe fn test_sse41() {
         let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
         let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
         let r = _mm_round_ss::<_MM_FROUND_TO_NEAREST_INT>(a, b);
+        let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
+        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
+        let r = _mm_round_ss::<_MM_FROUND_TO_NEG_INF>(a, b);
+        let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
+        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
+        let r = _mm_round_ss::<_MM_FROUND_TO_POS_INF>(a, b);
+        let e = _mm_setr_ps(-1.0, 3.5, 7.5, 15.5);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
+        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
+        let r = _mm_round_ss::<_MM_FROUND_TO_ZERO>(a, b);
+        let e = _mm_setr_ps(-1.0, 3.5, 7.5, 15.5);
+        assert_eq_m128(r, e);
+
+        // Assume round-to-nearest by default
+        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
+        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
+        let r = _mm_round_ss::<_MM_FROUND_CUR_DIRECTION>(a, b);
         let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
         assert_eq_m128(r, e);
     }
