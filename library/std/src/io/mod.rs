@@ -556,6 +556,10 @@ where
 /// therefore, using something that implements [`BufRead`], such as
 /// [`BufReader`], will be more efficient.
 ///
+/// Repeated calls to the reader use the same cursor, so for example
+/// calling `read_to_end` twice on a [`File`] will only return the file's
+/// contents once. It's recommended to first call `rewind()` in that case.
+///
 /// # Examples
 ///
 /// [`File`]s implement `Read`:
