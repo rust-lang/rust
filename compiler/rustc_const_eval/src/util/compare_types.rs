@@ -15,6 +15,7 @@ use rustc_trait_selection::traits::ObligationCtxt;
 pub fn is_equal_up_to_subtyping<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
+    anchor: DefiningAnchor,
     src: Ty<'tcx>,
     dest: Ty<'tcx>,
 ) -> bool {
@@ -24,8 +25,8 @@ pub fn is_equal_up_to_subtyping<'tcx>(
     }
 
     // Check for subtyping in either direction.
-    relate_types(tcx, param_env, Variance::Covariant, src, dest)
-        || relate_types(tcx, param_env, Variance::Covariant, dest, src)
+    relate_types(tcx, param_env, anchor, Variance::Covariant, src, dest)
+        || relate_types(tcx, param_env, anchor, Variance::Covariant, dest, src)
 }
 
 /// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
@@ -39,6 +40,7 @@ pub fn is_equal_up_to_subtyping<'tcx>(
 pub fn relate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
+    anchor: DefiningAnchor,
     variance: Variance,
     src: Ty<'tcx>,
     dest: Ty<'tcx>,
@@ -47,8 +49,7 @@ pub fn relate_types<'tcx>(
         return true;
     }
 
-    let mut builder =
-        tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(DefiningAnchor::Bubble);
+    let mut builder = tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(anchor);
     let infcx = builder.build();
     let ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
@@ -59,19 +60,23 @@ pub fn relate_types<'tcx>(
         Err(_) => return false,
     };
     let errors = ocx.select_all_or_error();
-    // With `Reveal::All`, opaque types get normalized away, with `Reveal::UserFacing`
-    // we would get unification errors because we're unable to look into opaque types,
-    // even if they're constrained in our current function.
-    for (key, ty) in infcx.take_opaque_types() {
-        let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
-        if hidden_ty != ty.hidden_type.ty {
-            span_bug!(
-                ty.hidden_type.span,
-                "{}, {}",
-                tcx.type_of(key.def_id).instantiate(tcx, key.args),
-                ty.hidden_type.ty
-            );
+
+    if anchor != DefiningAnchor::Error {
+        // With `Reveal::All`, opaque types get normalized away, with `Reveal::UserFacing`
+        // we would get unification errors because we're unable to look into opaque types,
+        // even if they're constrained in our current function.
+        for (key, ty) in infcx.take_opaque_types() {
+            let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
+            if hidden_ty != ty.hidden_type.ty {
+                span_bug!(
+                    ty.hidden_type.span,
+                    "{}, {}",
+                    tcx.type_of(key.def_id).instantiate(tcx, key.args),
+                    ty.hidden_type.ty
+                );
+            }
         }
     }
+
     errors.is_empty()
 }

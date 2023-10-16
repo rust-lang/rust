@@ -9,6 +9,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
@@ -384,7 +385,14 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
     // differences.
-    if util::relate_types(tcx, param_env, Variance::Covariant, src.ty, dest.ty) {
+    if util::relate_types(
+        tcx,
+        param_env,
+        DefiningAnchor::Error,
+        Variance::Covariant,
+        src.ty,
+        dest.ty,
+    ) {
         // Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when

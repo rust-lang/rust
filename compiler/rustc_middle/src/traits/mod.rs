@@ -945,3 +945,14 @@ pub enum DefiningAnchor {
     /// Used to catch type mismatch errors when handling opaque types.
     Error,
 }
+
+impl DefiningAnchor {
+    /// Mostly for use in the MIR validator, which only needs to pass a `Bind`
+    /// anchor if the reveal is not yet `All` and we're validating a local body.
+    pub fn from_def_id_and_reveal(body_def_id: DefId, reveal: Reveal) -> DefiningAnchor {
+        body_def_id
+            .as_local()
+            .filter(|_| reveal == Reveal::UserFacing)
+            .map_or(DefiningAnchor::Error, |def_id| DefiningAnchor::Bind(def_id))
+    }
+}

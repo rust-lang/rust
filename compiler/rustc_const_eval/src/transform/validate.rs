@@ -7,6 +7,7 @@ use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt, Variance};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
@@ -612,7 +613,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Variance::Covariant
         };
 
-        crate::util::relate_types(self.tcx, self.param_env, variance, src, dest)
+        crate::util::relate_types(
+            self.tcx,
+            self.param_env,
+            DefiningAnchor::from_def_id_and_reveal(
+                self.body.source.def_id(),
+                self.param_env.reveal(),
+            ),
+            variance,
+            src,
+            dest,
+        )
     }
 }
 
@@ -767,6 +778,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if !relate_types(
                     self.tcx,
                     self.param_env,
+                    DefiningAnchor::from_def_id_and_reveal(
+                        self.body.source.def_id(),
+                        self.param_env.reveal(),
+                    ),
                     Variance::Covariant,
                     ty,
                     place_ref.ty(&self.body.local_decls, self.tcx).ty,

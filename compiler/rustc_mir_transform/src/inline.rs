@@ -8,6 +8,7 @@ use rustc_index::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
@@ -221,6 +222,7 @@ impl<'tcx> Inliner<'tcx> {
         if !util::relate_types(
             self.tcx,
             self.param_env,
+            DefiningAnchor::Error,
             ty::Variance::Covariant,
             output_type,
             destination_ty,
@@ -257,6 +259,7 @@ impl<'tcx> Inliner<'tcx> {
                 if !util::relate_types(
                     self.tcx,
                     self.param_env,
+                    DefiningAnchor::Error,
                     ty::Variance::Covariant,
                     input_type,
                     arg_ty,
@@ -272,6 +275,7 @@ impl<'tcx> Inliner<'tcx> {
                 if !util::relate_types(
                     self.tcx,
                     self.param_env,
+                    DefiningAnchor::Error,
                     ty::Variance::Covariant,
                     input_type,
                     arg_ty,
