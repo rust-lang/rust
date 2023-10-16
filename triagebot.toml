@@ -556,7 +556,7 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_smir"]
 message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval", "@spastorino"]
+cc = ["@oli-obk", "@celinval", "@spastorino", "@ouz-a"]
 
 [mentions."compiler/stable_mir"]
 message = "This PR changes Stable MIR"
