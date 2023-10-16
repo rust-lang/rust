@@ -456,22 +456,23 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// In either case, no more spans will match the span of `pending_dups`, so
     /// add the `pending_dups` if they don't overlap `curr`, and clear the list.
     fn maybe_flush_pending_dups(&mut self) {
-        if let Some(dup) = self.pending_dups.last()
-            && dup.span != self.prev().span
-        {
-            debug!(
-                "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
-                previous iteration, or prev started a new disjoint span"
-            );
-            if dup.span.hi() <= self.curr().span.lo() {
-                let pending_dups = self.pending_dups.split_off(0);
-                for dup in pending_dups.into_iter() {
-                    debug!("    ...adding at least one pending={:?}", dup);
-                    self.push_refined_span(dup);
-                }
-            } else {
-                self.pending_dups.clear();
+        let Some(last_dup) = self.pending_dups.last() else { return };
+        if last_dup.span == self.prev().span {
+            return;
+        }
+
+        debug!(
+            "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
+            previous iteration, or prev started a new disjoint span"
+        );
+        if last_dup.span.hi() <= self.curr().span.lo() {
+            let pending_dups = self.pending_dups.split_off(0);
+            for dup in pending_dups.into_iter() {
+                debug!("    ...adding at least one pending={:?}", dup);
+                self.push_refined_span(dup);
             }
+        } else {
+            self.pending_dups.clear();
         }
     }
 
