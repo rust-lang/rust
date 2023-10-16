@@ -16,21 +16,15 @@ struct AbsolutePathPrinter<'tcx> {
 impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     type Error = std::fmt::Error;
 
-    type Path = Self;
-    type Region = Self;
-    type Type = Self;
-    type DynExistential = Self;
-    type Const = Self;
-
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn print_region(self, _region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
+    fn print_region(self, _region: ty::Region<'_>) -> Result<Self, Self::Error> {
         Ok(self)
     }
 
-    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
+    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self, Self::Error> {
         match *ty.kind() {
             // Types without identity.
             ty::Bool
@@ -68,18 +62,18 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         }
     }
 
-    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self, Self::Error> {
         self.pretty_print_const(ct, false)
     }
 
     fn print_dyn_existential(
         self,
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> Result<Self::DynExistential, Self::Error> {
+    ) -> Result<Self, Self::Error> {
         self.pretty_print_dyn_existential(predicates)
     }
 
-    fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
+    fn path_crate(mut self, cnum: CrateNum) -> Result<Self, Self::Error> {
         self.path.push_str(self.tcx.crate_name(cnum).as_str());
         Ok(self)
     }
@@ -88,17 +82,17 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, Self::Error> {
         self.pretty_path_qualified(self_ty, trait_ref)
     }
 
     fn path_append_impl(
         self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
         _disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, Self::Error> {
         self.pretty_path_append_impl(
             |mut cx| {
                 cx = print_prefix(cx)?;
@@ -114,9 +108,9 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
     fn path_append(
         mut self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
         disambiguated_data: &DisambiguatedDefPathData,
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, Self::Error> {
         self = print_prefix(self)?;
 
         write!(self.path, "::{}", disambiguated_data.data).unwrap();
@@ -126,9 +120,9 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
     fn path_generic_args(
         mut self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
         args: &[GenericArg<'tcx>],
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, Self::Error> {
         self = print_prefix(self)?;
         let args =
             args.iter().cloned().filter(|arg| !matches!(arg.unpack(), GenericArgKind::Lifetime(_)));

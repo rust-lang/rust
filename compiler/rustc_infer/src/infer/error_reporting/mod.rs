@@ -580,6 +580,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         struct AbsolutePathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
+            segments: Vec<String>,
         }
 
         struct NonTrivialPath;
@@ -587,69 +588,64 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             type Error = NonTrivialPath;
 
-            type Path = Vec<String>;
-            type Region = !;
-            type Type = !;
-            type DynExistential = !;
-            type Const = !;
-
             fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
-            fn print_region(self, _region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
+            fn print_region(self, _region: ty::Region<'_>) -> Result<Self, Self::Error> {
                 Err(NonTrivialPath)
             }
 
-            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
+            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self, Self::Error> {
                 Err(NonTrivialPath)
             }
 
             fn print_dyn_existential(
                 self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-            ) -> Result<Self::DynExistential, Self::Error> {
+            ) -> Result<Self, Self::Error> {
                 Err(NonTrivialPath)
             }
 
-            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self, Self::Error> {
                 Err(NonTrivialPath)
             }
 
-            fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-                Ok(vec![self.tcx.crate_name(cnum).to_string()])
+            fn path_crate(mut self, cnum: CrateNum) -> Result<Self, Self::Error> {
+                self.segments = vec![self.tcx.crate_name(cnum).to_string()];
+                Ok(self)
             }
             fn path_qualified(
                 self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self::Path, Self::Error> {
+            ) -> Result<Self, Self::Error> {
                 Err(NonTrivialPath)
             }
 
             fn path_append_impl(
                 self,
-                _print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                _print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
                 _disambiguated_data: &DisambiguatedDefPathData,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self::Path, Self::Error> {
+            ) -> Result<Self, Self::Error> {
                 Err(NonTrivialPath)
             }
             fn path_append(
-                self,
-                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                mut self,
+                print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
                 disambiguated_data: &DisambiguatedDefPathData,
-            ) -> Result<Self::Path, Self::Error> {
-                let mut path = print_prefix(self)?;
-                path.push(disambiguated_data.to_string());
-                Ok(path)
+            ) -> Result<Self, Self::Error> {
+                self = print_prefix(self)?;
+                self.segments.push(disambiguated_data.to_string());
+                Ok(self)
             }
             fn path_generic_args(
                 self,
-                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
                 _args: &[GenericArg<'tcx>],
-            ) -> Result<Self::Path, Self::Error> {
+            ) -> Result<Self, Self::Error> {
                 print_prefix(self)
             }
         }
@@ -659,8 +655,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // are from a local module we could have false positives, e.g.
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
-                let abs_path =
-                    |def_id| AbsolutePathPrinter { tcx: self.tcx }.print_def_path(def_id, &[]);
+                let abs_path = |def_id| {
+                    AbsolutePathPrinter { tcx: self.tcx, segments: vec![] }
+                        .print_def_path(def_id, &[])
+                        .map(|p| p.segments)
+                };
 
                 // We compare strings because DefPath can be different
                 // for imported and non-imported crates
