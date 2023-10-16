@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/31899
 #![crate_name="issue_31899"]
 
 // @has issue_31899/index.html

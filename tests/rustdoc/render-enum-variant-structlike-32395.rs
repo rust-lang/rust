@@ -2,6 +2,7 @@
 // build-aux-docs
 // ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/32395
 #![crate_name="issue_32395"]
 
 // @has variant_struct/enum.Foo.html

@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/33069
 #![crate_name="issue_33069"]
 
 pub trait Bar {}

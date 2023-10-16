@@ -2,6 +2,7 @@
 // build-aux-docs
 // ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/34274
 #![crate_name = "foo"]
 
 extern crate issue_34274;

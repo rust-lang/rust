@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/33302
 #![crate_name="issue_33302"]
 
 // Ensure constant and array length values are not taken from source

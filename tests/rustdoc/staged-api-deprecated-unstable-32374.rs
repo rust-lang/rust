@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/32374
 #![feature(staged_api)]
 #![doc(issue_tracker_base_url = "https://issue_url/")]
 #![unstable(feature = "test", issue = "32374")]

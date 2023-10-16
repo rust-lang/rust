@@ -2,6 +2,7 @@
 // aux-build:issue-30109-1.rs
 // ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/30109
 #![crate_name="issue_30109"]
 
 pub mod quux {

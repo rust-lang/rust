@@ -1,5 +1,6 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/32077>.
 
+// https://github.com/rust-lang/rust/issues/32077
 #![crate_name = "foo"]
 
 pub struct GenericStruct<T>(T);
