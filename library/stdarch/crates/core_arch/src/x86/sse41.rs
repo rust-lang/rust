@@ -1294,6 +1294,13 @@ mod tests {
         let r = _mm_insert_ps::<0b11_00_1100>(a, b);
         let e = _mm_setr_ps(4.0, 1.0, 0.0, 0.0);
         assert_eq_m128(r, e);
+
+        // Zeroing takes precedence over copied value
+        let a = _mm_set1_ps(1.0);
+        let b = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let r = _mm_insert_ps::<0b11_00_0001>(a, b);
+        let e = _mm_setr_ps(0.0, 1.0, 1.0, 1.0);
+        assert_eq_m128(r, e);
     }
 
     #[simd_test(enable = "sse4.1")]
