@@ -53,6 +53,7 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 rustc_mir_transform = { path = "../rustc_mir_transform" }
+stable_mir = {path = "../stable_mir"}
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

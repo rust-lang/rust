@@ -3346,8 +3346,6 @@ dependencies = [
  "rustc_codegen_ssa",
  "rustc_driver",
  "rustc_driver_impl",
- "rustc_smir",
- "stable_mir",
 ]
 
 [[package]]
@@ -3770,6 +3768,7 @@ dependencies = [
  "rustc_trait_selection",
  "rustc_ty_utils",
  "serde_json",
+ "stable_mir",
  "time",
  "tracing",
  "windows",
@@ -4498,21 +4497,6 @@ dependencies = [
  "termize",
  "tracing",
  "windows",
-]
-
-[[package]]
-name = "rustc_smir"
-version = "0.0.0"
-dependencies = [
- "rustc_data_structures",
- "rustc_driver",
- "rustc_hir",
- "rustc_interface",
- "rustc_middle",
- "rustc_span",
- "rustc_target",
- "stable_mir",
- "tracing",
 ]
 
 [[package]]

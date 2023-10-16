@@ -1,3 +1,11 @@
+//! The WIP stable interface to rustc internals.
+//!
+//! For more information see <https://github.com/rust-lang/project-stable-mir>
+//!
+//! # Note
+//!
+//! This API is still completely unstable and subject to change.
+
 //! Module that implements what will become the rustc side of Stable MIR.
 
 //! This module is responsible for building Stable MIR components from internal components.

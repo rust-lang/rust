@@ -5,8 +5,8 @@
 
 use crate::rustc_internal;
 use crate::rustc_smir::Tables;
+use crate::{catch_fatal_errors, Callbacks, Compilation, RunCompiler};
 use rustc_data_structures::fx;
-use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::TyCtxt;
@@ -150,7 +150,7 @@ where
     /// Runs the compiler against given target and tests it with `test_function`
     pub fn run(&mut self) -> Result<C, CompilerError<B>> {
         let compiler_result =
-            rustc_driver::catch_fatal_errors(|| RunCompiler::new(&self.args.clone(), self).run());
+            catch_fatal_errors(|| RunCompiler::new(&self.args.clone(), self).run());
         match (compiler_result, self.result.take()) {
             (Ok(Ok(())), Some(ControlFlow::Continue(value))) => Ok(value),
             (Ok(Ok(())), Some(ControlFlow::Break(value))) => Err(CompilerError::Interrupted(value)),

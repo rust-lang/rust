@@ -85,6 +85,8 @@ use {do_not_use_print as print, do_not_use_print as println};
 
 pub mod args;
 pub mod pretty;
+pub mod rustc_internal;
+pub mod rustc_smir;
 #[macro_use]
 mod print;
 mod session_diagnostics;

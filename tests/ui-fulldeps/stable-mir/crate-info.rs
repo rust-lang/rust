@@ -12,12 +12,12 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
-extern crate rustc_smir;
+extern crate rustc_driver;
 extern crate stable_mir;
 
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::rustc_internal;
+use rustc_driver::rustc_internal;
 
 use stable_mir::fold::Foldable;
 use std::assert_matches::assert_matches;
