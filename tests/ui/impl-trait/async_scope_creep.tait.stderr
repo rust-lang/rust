@@ -1,9 +1,0 @@
-error[E0284]: type annotations needed: cannot satisfy `impl AsyncRead + 'a == PendingReader<'a>`
-  --> $DIR/async_scope_creep.rs:26:9
-   |
-LL |         self.read()
-   |         ^^^^^^^^^^^ cannot satisfy `impl AsyncRead + 'a == PendingReader<'a>`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0284`.
