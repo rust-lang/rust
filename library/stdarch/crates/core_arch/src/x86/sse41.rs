@@ -1689,29 +1689,57 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[allow(deprecated)] // FIXME: This test uses deprecated CSR access functions
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_round_sd() {
         let a = _mm_setr_pd(1.5, 3.5);
         let b = _mm_setr_pd(-2.5, -4.5);
-        let old_mode = _MM_GET_ROUNDING_MODE();
-        _MM_SET_ROUNDING_MODE(_MM_ROUND_TOWARD_ZERO);
-        let r = _mm_round_sd::<_MM_FROUND_CUR_DIRECTION>(a, b);
-        _MM_SET_ROUNDING_MODE(old_mode);
+        let r = _mm_round_sd::<_MM_FROUND_TO_NEAREST_INT>(a, b);
+        let e = _mm_setr_pd(-2.0, 3.5);
+        assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(1.5, 3.5);
+        let b = _mm_setr_pd(-2.5, -4.5);
+        let r = _mm_round_sd::<_MM_FROUND_TO_NEG_INF>(a, b);
+        let e = _mm_setr_pd(-3.0, 3.5);
+        assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(1.5, 3.5);
+        let b = _mm_setr_pd(-2.5, -4.5);
+        let r = _mm_round_sd::<_MM_FROUND_TO_POS_INF>(a, b);
+        let e = _mm_setr_pd(-2.0, 3.5);
+        assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(1.5, 3.5);
+        let b = _mm_setr_pd(-2.5, -4.5);
+        let r = _mm_round_sd::<_MM_FROUND_TO_ZERO>(a, b);
         let e = _mm_setr_pd(-2.0, 3.5);
         assert_eq_m128d(r, e);
     }
 
-    #[allow(deprecated)] // FIXME: This test uses deprecated CSR access functions
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_round_ss() {
         let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
         let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
-        let old_mode = _MM_GET_ROUNDING_MODE();
-        _MM_SET_ROUNDING_MODE(_MM_ROUND_NEAREST);
-        let r = _mm_round_ss::<_MM_FROUND_CUR_DIRECTION>(a, b);
-        _MM_SET_ROUNDING_MODE(old_mode);
+        let r = _mm_round_ss::<_MM_FROUND_TO_NEAREST_INT>(a, b);
         let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
+        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
+        let r = _mm_round_ss::<_MM_FROUND_TO_NEG_INF>(a, b);
+        let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
+        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
+        let r = _mm_round_ss::<_MM_FROUND_TO_POS_INF>(a, b);
+        let e = _mm_setr_ps(-1.0, 3.5, 7.5, 15.5);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
+        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
+        let r = _mm_round_ss::<_MM_FROUND_TO_ZERO>(a, b);
+        let e = _mm_setr_ps(-1.0, 3.5, 7.5, 15.5);
         assert_eq_m128(r, e);
     }
 
