@@ -426,6 +426,22 @@ mod tests {
         let expected = _mm_setr_epi16(3, 7, 11, 15, 132, 7, 36, 25);
         let r = _mm_hadd_epi16(a, b);
         assert_eq_m128i(r, expected);
+
+        // Test wrapping on overflow
+        let a = _mm_setr_epi16(i16::MAX, 1, i16::MAX, 2, i16::MAX, 3, i16::MAX, 4);
+        let b = _mm_setr_epi16(i16::MIN, -1, i16::MIN, -2, i16::MIN, -3, i16::MIN, -4);
+        let expected = _mm_setr_epi16(
+            i16::MIN,
+            i16::MIN + 1,
+            i16::MIN + 2,
+            i16::MIN + 3,
+            i16::MAX,
+            i16::MAX - 1,
+            i16::MAX - 2,
+            i16::MAX - 3,
+        );
+        let r = _mm_hadd_epi16(a, b);
+        assert_eq_m128i(r, expected);
     }
 
     #[simd_test(enable = "ssse3")]
@@ -433,6 +449,22 @@ mod tests {
         let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
         let b = _mm_setr_epi16(4, 128, 4, 3, 32767, 1, -32768, -1);
         let expected = _mm_setr_epi16(3, 7, 11, 15, 132, 7, 32767, -32768);
+        let r = _mm_hadds_epi16(a, b);
+        assert_eq_m128i(r, expected);
+
+        // Test saturating on overflow
+        let a = _mm_setr_epi16(i16::MAX, 1, i16::MAX, 2, i16::MAX, 3, i16::MAX, 4);
+        let b = _mm_setr_epi16(i16::MIN, -1, i16::MIN, -2, i16::MIN, -3, i16::MIN, -4);
+        let expected = _mm_setr_epi16(
+            i16::MAX,
+            i16::MAX,
+            i16::MAX,
+            i16::MAX,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        );
         let r = _mm_hadds_epi16(a, b);
         assert_eq_m128i(r, expected);
     }
@@ -444,6 +476,13 @@ mod tests {
         let expected = _mm_setr_epi32(3, 7, 132, 7);
         let r = _mm_hadd_epi32(a, b);
         assert_eq_m128i(r, expected);
+
+        // Test wrapping on overflow
+        let a = _mm_setr_epi32(i32::MAX, 1, i32::MAX, 2);
+        let b = _mm_setr_epi32(i32::MIN, -1, i32::MIN, -2);
+        let expected = _mm_setr_epi32(i32::MIN, i32::MIN + 1, i32::MAX, i32::MAX - 1);
+        let r = _mm_hadd_epi32(a, b);
+        assert_eq_m128i(r, expected);
     }
 
     #[simd_test(enable = "ssse3")]
@@ -451,6 +490,22 @@ mod tests {
         let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
         let b = _mm_setr_epi16(4, 128, 4, 3, 24, 12, 6, 19);
         let expected = _mm_setr_epi16(-1, -1, -1, -1, -124, 1, 12, -13);
+        let r = _mm_hsub_epi16(a, b);
+        assert_eq_m128i(r, expected);
+
+        // Test wrapping on overflow
+        let a = _mm_setr_epi16(i16::MAX, -1, i16::MAX, -2, i16::MAX, -3, i16::MAX, -4);
+        let b = _mm_setr_epi16(i16::MIN, 1, i16::MIN, 2, i16::MIN, 3, i16::MIN, 4);
+        let expected = _mm_setr_epi16(
+            i16::MIN,
+            i16::MIN + 1,
+            i16::MIN + 2,
+            i16::MIN + 3,
+            i16::MAX,
+            i16::MAX - 1,
+            i16::MAX - 2,
+            i16::MAX - 3,
+        );
         let r = _mm_hsub_epi16(a, b);
         assert_eq_m128i(r, expected);
     }
@@ -462,6 +517,22 @@ mod tests {
         let expected = _mm_setr_epi16(-1, -1, -1, -1, -124, 1, 32767, -32768);
         let r = _mm_hsubs_epi16(a, b);
         assert_eq_m128i(r, expected);
+
+        // Test saturating on overflow
+        let a = _mm_setr_epi16(i16::MAX, -1, i16::MAX, -2, i16::MAX, -3, i16::MAX, -4);
+        let b = _mm_setr_epi16(i16::MIN, 1, i16::MIN, 2, i16::MIN, 3, i16::MIN, 4);
+        let expected = _mm_setr_epi16(
+            i16::MAX,
+            i16::MAX,
+            i16::MAX,
+            i16::MAX,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+        );
+        let r = _mm_hsubs_epi16(a, b);
+        assert_eq_m128i(r, expected);
     }
 
     #[simd_test(enable = "ssse3")]
@@ -469,6 +540,13 @@ mod tests {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let b = _mm_setr_epi32(4, 128, 4, 3);
         let expected = _mm_setr_epi32(-1, -1, -124, 1);
+        let r = _mm_hsub_epi32(a, b);
+        assert_eq_m128i(r, expected);
+
+        // Test wrapping on overflow
+        let a = _mm_setr_epi32(i32::MAX, -1, i32::MAX, -2);
+        let b = _mm_setr_epi32(i32::MIN, 1, i32::MIN, 2);
+        let expected = _mm_setr_epi32(i32::MIN, i32::MIN + 1, i32::MAX, i32::MAX - 1);
         let r = _mm_hsub_epi32(a, b);
         assert_eq_m128i(r, expected);
     }
