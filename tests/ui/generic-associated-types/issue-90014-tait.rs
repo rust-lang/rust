@@ -1,8 +1,14 @@
 //! This test is reporting the wrong error. We need
 //! more inherent associated type tests that use opaque types
 //! in general. Some variant of this test should compile successfully.
+
 // known-bug: unknown
 // edition:2018
+// failure-status: 101
+// normalize-stderr-test "note: .*\n\n" -> ""
+// normalize-stderr-test "thread 'rustc' panicked.*\n.*\n" -> ""
+// normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
+// rustc-env:RUST_BACKTRACE=0
 
 #![feature(impl_trait_in_assoc_type, inherent_associated_types)]
 #![allow(incomplete_features)]

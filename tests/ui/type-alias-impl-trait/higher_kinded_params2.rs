@@ -1,5 +1,4 @@
-//! This test checks the behaviour of walking into binders
-//! and normalizing something behind them actually works.
+// check-pass
 
 // edition: 2021
 
@@ -24,7 +23,6 @@ type Successors<'a> = impl std::fmt::Debug + 'a;
 impl Terminator {
     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
         f = g;
-        //~^ ERROR item constrains opaque type that is not in its signature
     }
 }
 

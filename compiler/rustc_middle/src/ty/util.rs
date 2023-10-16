@@ -468,8 +468,20 @@ impl<'tcx> TyCtxt<'tcx> {
         for arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
-                    (CheckRegions::Bound, ty::ReLateBound(di, reg)) => {
-                        if !seen_late.insert((di, reg)) {
+                    (
+                        CheckRegions::Bound,
+                        ty::ReFree(ty::FreeRegion {
+                            bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                            ..
+                        })
+                        | ty::ReLateBound(
+                            _,
+                            ty::BoundRegion {
+                                kind: ty::BoundRegionKind::BrNamed(def_id, _), ..
+                            },
+                        ),
+                    ) => {
+                        if !seen_late.insert(def_id) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }

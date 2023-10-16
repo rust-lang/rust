@@ -2,19 +2,27 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
 use rustc_hir::{intravisit, CRATE_HIR_ID};
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{InferOk, TyCtxtInferExt};
+use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
 use rustc_middle::query::Providers;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::Span;
-use rustc_trait_selection::traits::check_args_compatible;
+use rustc_middle::ty::{TypeFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_span::{ErrorGuaranteed, Span};
+use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
+use rustc_trait_selection::traits::project::with_replaced_escaping_bound_vars;
+use rustc_trait_selection::traits::{NormalizeExt, TraitEngineExt as _};
 use std::ops::ControlFlow;
 
 use crate::errors::{DuplicateArg, NotParam};
 
 struct OpaqueTypeCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
+
     opaques: Vec<LocalDefId>,
+
     /// The `DefId` of the item which we are collecting opaque types for.
     item: LocalDefId,
 
@@ -22,11 +30,20 @@ struct OpaqueTypeCollector<'tcx> {
     seen: FxHashSet<LocalDefId>,
 
     span: Option<Span>,
+
+    binder: ty::DebruijnIndex,
 }
 
 impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
-        Self { tcx, opaques: Vec::new(), item, seen: Default::default(), span: None }
+        Self {
+            tcx,
+            opaques: Vec::new(),
+            item,
+            seen: Default::default(),
+            span: None,
+            binder: ty::INNERMOST,
+        }
     }
 
     fn span(&self) -> Span {
@@ -35,33 +52,91 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         })
     }
 
-    fn visit_spanned(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) {
+    fn visit_spanned_after_normalizing(
+        &mut self,
+        span: Span,
+        value: impl TypeFoldable<TyCtxt<'tcx>>,
+    ) {
         let old = self.span;
         self.span = Some(span);
-        value.visit_with(self);
+
+        if let Ok(value) = self.normalize_if_possible(span, value) {
+            value.visit_with(self);
+        }
+
         self.span = old;
     }
 
-    fn parent_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
-        let parent = self.parent()?;
-        if matches!(self.tcx.def_kind(parent), DefKind::Impl { .. }) {
-            Some(self.tcx.impl_trait_ref(parent)?.instantiate_identity())
-        } else {
-            None
+    fn normalize_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        span: Span,
+        value: T,
+    ) -> Result<T, ErrorGuaranteed> {
+        if !value.has_projections() {
+            return Ok(value);
         }
-    }
 
-    fn parent(&self) -> Option<LocalDefId> {
-        match self.tcx.def_kind(self.item) {
-            DefKind::AnonConst | DefKind::InlineConst | DefKind::Fn | DefKind::TyAlias => None,
-            DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
-                Some(self.tcx.local_parent(self.item))
-            }
-            other => span_bug!(
-                self.tcx.def_span(self.item),
-                "unhandled item with opaque types: {other:?}"
-            ),
-        }
+        let infcx = self.tcx.infer_ctxt().build();
+        let param_env = self.tcx.param_env(self.item);
+
+        with_replaced_escaping_bound_vars(
+            &infcx,
+            &mut vec![None; self.binder.as_usize()],
+            value,
+            |value| {
+                let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&infcx);
+
+                let normalized_value = match infcx
+                    .at(&ObligationCause::misc(span, self.item), param_env)
+                    .deeply_normalize(value, &mut *fulfill_cx)
+                {
+                    Ok(t) => t,
+                    Err(errors) => {
+                        return Err(self
+                            .tcx
+                            .sess
+                            .delay_span_bug(span, format!("{errors:#?} in {:?}", self.item)));
+                    }
+                };
+
+                let InferOk { value: implied_wf_types, obligations } =
+                    infcx.at(&ObligationCause::misc(span, self.item), param_env).normalize(
+                        self.tcx
+                            .assumed_wf_types(self.item)
+                            .iter()
+                            .map(|(ty, _span)| *ty)
+                            .collect::<Vec<_>>(),
+                    );
+                fulfill_cx.register_predicate_obligations(&infcx, obligations);
+
+                let errors = fulfill_cx.select_all_or_error(&infcx);
+                if !errors.is_empty() {
+                    return Err(self.tcx.sess.delay_span_bug(span, format!("{errors:#?}")));
+                }
+
+                let outlives_env = OutlivesEnvironment::with_bounds(
+                    param_env,
+                    infcx.implied_bounds_tys(
+                        param_env,
+                        self.item,
+                        implied_wf_types.into_iter().collect(),
+                    ),
+                );
+                let errors = infcx.resolve_regions(&outlives_env);
+                if !errors.is_empty() {
+                    return Err(self.tcx.sess.delay_span_bug(span, format!("{errors:#?}")));
+                }
+
+                let resolved_value = match infcx.fully_resolve(normalized_value) {
+                    Ok(resolved_value) => resolved_value,
+                    Err(f) => {
+                        return Err(self.tcx.sess.delay_span_bug(span, format!("{f:?}")));
+                    }
+                };
+
+                Ok(resolved_value)
+            },
+        )
     }
 
     /// Returns `true` if `opaque_hir_id` is a sibling or a child of a sibling of `self.item`.
@@ -100,7 +175,9 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     fn collect_body_and_predicate_taits(&mut self) {
         // Look at all where bounds.
-        self.tcx.predicates_of(self.item).instantiate_identity(self.tcx).visit_with(self);
+        for (pred, span) in self.tcx.predicates_of(self.item).instantiate_identity(self.tcx) {
+            self.visit_spanned_after_normalizing(span, pred);
+        }
         // An item is allowed to constrain opaques declared within its own body (but not nested within
         // nested functions).
         self.collect_taits_declared_in_body();
@@ -133,6 +210,16 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
+    fn visit_binder<T: ty::TypeVisitable<TyCtxt<'tcx>>>(
+        &mut self,
+        t: &ty::Binder<'tcx, T>,
+    ) -> ControlFlow<!> {
+        self.binder.shift_in(1);
+        t.super_visit_with(self);
+        self.binder.shift_out(1);
+        ControlFlow::Continue(())
+    }
+
     #[instrument(skip(self), ret, level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
         t.super_visit_with(self)?;
@@ -149,7 +236,23 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     rustc_hir::OpaqueTyOrigin::FnReturn(_)
                     | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {}
                     rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
-                        if !in_assoc_ty {
+                        if in_assoc_ty {
+                            // Make sure that the TAIT comes from an associated item
+                            // in the same implementation.
+                            let Some(assoc_item) =
+                                self.tcx.opt_associated_item(self.item.to_def_id())
+                            else {
+                                return ControlFlow::Continue(());
+                            };
+                            let mut tait_parent = self.tcx.parent(alias_ty.def_id);
+                            while self.tcx.def_kind(tait_parent) == DefKind::OpaqueTy {
+                                tait_parent = self.tcx.parent(tait_parent);
+                            }
+                            if self.tcx.parent(tait_parent) != assoc_item.container_id(self.tcx) {
+                                return ControlFlow::Continue(());
+                            }
+                        } else {
+                            // Otherwise, the TAIT must be a sibling of the item.
                             if !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
                                 return ControlFlow::Continue(());
                             }
@@ -166,15 +269,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         // start seeing the error below.
 
                         // Collect opaque types nested within the associated type bounds of this opaque type.
-                        // We use identity args here, because we already know that the opaque type uses
-                        // only generic parameters, and thus substituting would not give us more information.
                         for (pred, span) in self
                             .tcx
                             .explicit_item_bounds(alias_ty.def_id)
-                            .instantiate_identity_iter_copied()
+                            .iter_instantiated_copied(self.tcx, alias_ty.args)
                         {
                             trace!(?pred);
-                            self.visit_spanned(span, pred);
+                            self.visit_spanned_after_normalizing(span, pred);
                         }
                     }
                     Err(NotUniqueParam::NotParam(arg)) => {
@@ -193,61 +294,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     }
                 }
             }
-            ty::Alias(ty::Weak, alias_ty) if alias_ty.def_id.is_local() => {
-                self.tcx
-                    .type_of(alias_ty.def_id)
-                    .instantiate(self.tcx, alias_ty.args)
-                    .visit_with(self)?;
-            }
-            ty::Alias(ty::Projection, alias_ty) => {
-                // This avoids having to do normalization of `Self::AssocTy` by only
-                // supporting the case of a method defining opaque types from assoc types
-                // in the same impl block.
-                if let Some(parent_trait_ref) = self.parent_trait_ref() {
-                    // If the trait ref of the associated item and the impl differs,
-                    // then we can't use the impl's identity substitutions below, so
-                    // just skip.
-                    if alias_ty.trait_ref(self.tcx) == parent_trait_ref {
-                        let parent = self.parent().expect("we should have a parent here");
-
-                        for &assoc in self.tcx.associated_items(parent).in_definition_order() {
-                            trace!(?assoc);
-                            if assoc.trait_item_def_id != Some(alias_ty.def_id) {
-                                continue;
-                            }
-
-                            // If the type is further specializable, then the type_of
-                            // is not actually correct below.
-                            if !assoc.defaultness(self.tcx).is_final() {
-                                continue;
-                            }
-
-                            let impl_args = alias_ty.args.rebase_onto(
-                                self.tcx,
-                                parent_trait_ref.def_id,
-                                ty::GenericArgs::identity_for_item(self.tcx, parent),
-                            );
-
-                            if check_args_compatible(self.tcx, assoc, impl_args) {
-                                return self
-                                    .tcx
-                                    .type_of(assoc.def_id)
-                                    .instantiate(self.tcx, impl_args)
-                                    .visit_with(self);
-                            } else {
-                                self.tcx.sess.delay_span_bug(
-                                    self.tcx.def_span(assoc.def_id),
-                                    "item had incorrect args",
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-            ty::Adt(def, _) if def.did().is_local() => {
-                if !self.seen.insert(def.did().expect_local()) {
-                    return ControlFlow::Continue(());
-                }
+            ty::Adt(def, args) if def.did().is_local() => {
                 for variant in def.variants().iter() {
                     for field in variant.fields.iter() {
                         // Don't use the `ty::Adt` args, we either
@@ -258,8 +305,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         // not found. While we could substitute and walk those, that would mean we
                         // would have to walk all substitutions of an Adt, which can quickly
                         // degenerate into looking at an exponential number of types.
-                        let ty = self.tcx.type_of(field.did).instantiate_identity();
-                        self.visit_spanned(self.tcx.def_span(field.did), ty);
+                        let ty = self.tcx.type_of(field.did).instantiate(self.tcx, args);
+                        self.visit_spanned_after_normalizing(self.tcx.def_span(field.did), ty);
                     }
                 }
             }
@@ -276,12 +323,15 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
     match kind {
         // Walk over the signature of the function-like to find the opaques.
         DefKind::AssocFn | DefKind::Fn => {
-            let ty_sig = tcx.fn_sig(item).instantiate_identity();
+            let ty_sig = tcx.liberate_late_bound_regions(
+                item.to_def_id(),
+                tcx.fn_sig(item).instantiate_identity(),
+            );
             let hir_sig = tcx.hir().get_by_def_id(item).fn_sig().unwrap();
             // Walk over the inputs and outputs manually in order to get good spans for them.
-            collector.visit_spanned(hir_sig.decl.output.span(), ty_sig.output());
+            collector.visit_spanned_after_normalizing(hir_sig.decl.output.span(), ty_sig.output());
             for (hir, ty) in hir_sig.decl.inputs.iter().zip(ty_sig.inputs().iter()) {
-                collector.visit_spanned(hir.span, ty.map_bound(|x| *x));
+                collector.visit_spanned_after_normalizing(hir.span, *ty);
             }
             collector.collect_body_and_predicate_taits();
         }
@@ -291,16 +341,22 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
                 Some(ty) => ty.span,
                 _ => tcx.def_span(item),
             };
-            collector.visit_spanned(span, tcx.type_of(item).instantiate_identity());
+            collector
+                .visit_spanned_after_normalizing(span, tcx.type_of(item).instantiate_identity());
             collector.collect_body_and_predicate_taits();
         }
         // We're also doing this for `AssocTy` for the wf checks in `check_opaque_meets_bounds`
         DefKind::TyAlias | DefKind::AssocTy => {
-            tcx.type_of(item).instantiate_identity().visit_with(&mut collector);
+            let span = match tcx.hir().get_by_def_id(item).ty() {
+                Some(ty) => ty.span,
+                _ => tcx.def_span(item),
+            };
+            collector
+                .visit_spanned_after_normalizing(span, tcx.type_of(item).instantiate_identity());
         }
         DefKind::OpaqueTy => {
             for (pred, span) in tcx.explicit_item_bounds(item).instantiate_identity_iter_copied() {
-                collector.visit_spanned(span, pred);
+                collector.visit_spanned_after_normalizing(span, pred);
             }
         }
         DefKind::Mod
