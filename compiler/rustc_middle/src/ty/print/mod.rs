@@ -15,8 +15,6 @@ pub type PrintError = std::fmt::Error;
 // FIXME(eddyb) false positive, the lifetime parameters are used with `P:  Printer<...>`.
 #[allow(unused_lifetimes)]
 pub trait Print<'tcx, P> {
-    type Error;
-
     fn print(&self, cx: P) -> Result<P, PrintError>;
 }
 
@@ -288,29 +286,24 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'tcx> {
-    type Error = PrintError;
     fn print(&self, cx: P) -> Result<P, PrintError> {
         cx.print_region(*self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
-    type Error = PrintError;
-
     fn print(&self, cx: P) -> Result<P, PrintError> {
         cx.print_type(*self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
-    type Error = PrintError;
     fn print(&self, cx: P) -> Result<P, PrintError> {
         cx.print_dyn_existential(self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
-    type Error = PrintError;
     fn print(&self, cx: P) -> Result<P, PrintError> {
         cx.print_const(*self)
     }

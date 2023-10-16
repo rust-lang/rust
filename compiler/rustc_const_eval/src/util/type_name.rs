@@ -138,7 +138,7 @@ impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     }
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, PrintError>
     where
-        T: Print<'tcx, Self, Error = PrintError>,
+        T: Print<'tcx, Self>,
     {
         if let Some(first) = elems.next() {
             self = first.print(self)?;
