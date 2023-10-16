@@ -398,27 +398,24 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// If `curr` is part of a new macro expansion, carve out and push a separate
     /// span that ends just after the macro name and its subsequent `!`.
     fn maybe_push_macro_name_span(&mut self) {
-        if let Some(visible_macro) = self.curr().visible_macro(self.body_span) {
-            if !self
-                .prev_expn_span
-                .is_some_and(|prev_expn_span| self.curr().expn_span.ctxt() == prev_expn_span.ctxt())
-            {
-                let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
-                let after_macro_bang =
-                    merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);
-                let mut macro_name_cov = self.curr().clone();
-                self.curr_mut().span =
-                    self.curr().span.with_lo(self.curr().span.lo() + after_macro_bang);
-                macro_name_cov.span =
-                    macro_name_cov.span.with_hi(macro_name_cov.span.lo() + after_macro_bang);
-                debug!(
-                    "  and curr starts a new macro expansion, so add a new span just for \
-                            the macro `{}!`, new span={:?}",
-                    visible_macro, macro_name_cov
-                );
-                self.push_refined_span(macro_name_cov);
-            }
+        let Some(visible_macro) = self.curr().visible_macro(self.body_span) else { return };
+        if let Some(prev_expn_span) = &self.prev_expn_span
+            && prev_expn_span.ctxt() == self.curr().expn_span.ctxt()
+        {
+            return;
         }
+
+        let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
+        let after_macro_bang = merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);
+        let mut macro_name_cov = self.curr().clone();
+        self.curr_mut().span = self.curr().span.with_lo(self.curr().span.lo() + after_macro_bang);
+        macro_name_cov.span =
+            macro_name_cov.span.with_hi(macro_name_cov.span.lo() + after_macro_bang);
+        debug!(
+            "  and curr starts a new macro expansion, so add a new span just for \
+            the macro `{visible_macro}!`, new span={macro_name_cov:?}",
+        );
+        self.push_refined_span(macro_name_cov);
     }
 
     fn curr(&self) -> &CoverageSpan {
