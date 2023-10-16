@@ -1,15 +1,18 @@
-// skip-filecheck
 // unit-test: InstSimplify
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // EMIT_MIR combine_clone_of_primitives.{impl#0}-clone.InstSimplify.diff
-
 #[derive(Clone)]
 struct MyThing<T> {
     v: T,
     i: u64,
     a: [f32; 3],
 }
+
+// CHECK-LABEL: ::clone(
+// CHECK: <T as Clone>::clone(
+// CHECK-NOT: <u64 as Clone>::clone(
+// CHECK-NOT: <[f32; 3] as Clone>::clone(
 
 fn main() {
     let x = MyThing::<i16> { v: 2, i: 3, a: [0.0; 3] };

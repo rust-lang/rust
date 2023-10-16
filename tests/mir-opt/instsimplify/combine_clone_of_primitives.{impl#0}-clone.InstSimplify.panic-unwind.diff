@@ -1,7 +1,7 @@
-- // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:7:10: 7:15>::clone` before InstSimplify
-+ // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:7:10: 7:15>::clone` after InstSimplify
+- // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:5:10: 5:15>::clone` before InstSimplify
++ // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:5:10: 5:15>::clone` after InstSimplify
   
-  fn <impl at $DIR/combine_clone_of_primitives.rs:7:10: 7:15>::clone(_1: &MyThing<T>) -> MyThing<T> {
+  fn <impl at $DIR/combine_clone_of_primitives.rs:5:10: 5:15>::clone(_1: &MyThing<T>) -> MyThing<T> {
       debug self => _1;
       let mut _0: MyThing<T>;
       let mut _2: T;
