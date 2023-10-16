@@ -655,23 +655,15 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 
             NullPtr { ptr_kind: PointerKind::Box } => const_eval_validation_null_box,
             NullPtr { ptr_kind: PointerKind::Ref } => const_eval_validation_null_ref,
-            DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
-                const_eval_validation_dangling_box_no_provenance
+            DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. }
+            | DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box }
+            | DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
+                const_eval_validation_dangling_ptr_box
             }
-            DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref, .. } => {
-                const_eval_validation_dangling_ref_no_provenance
-            }
-            DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_dangling_box_out_of_bounds
-            }
-            DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref } => {
-                const_eval_validation_dangling_ref_out_of_bounds
-            }
-            DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_dangling_box_use_after_free
-            }
-            DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref } => {
-                const_eval_validation_dangling_ref_use_after_free
+            DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref, .. }
+            | DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref }
+            | DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref } => {
+                const_eval_validation_dangling_ptr_ref
             }
             InvalidBool { .. } => const_eval_validation_invalid_bool,
             InvalidChar { .. } => const_eval_validation_invalid_char,
@@ -773,7 +765,27 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.set_arg("found_bytes", found_bytes);
             }
             DanglingPtrNoProvenance { pointer, .. } => {
-                err.set_arg("pointer", pointer);
+                let subdiagnostic = handler.eagerly_translate_to_string(
+                    fluent::const_eval_validation_dangling_err_no_provenance,
+                    [("pointer".into(), DiagnosticArgValue::Str(pointer.into()))]
+                        .iter()
+                        .map(|(a, b)| (a, b)),
+                );
+                err.set_arg("subdiagnostic", subdiagnostic);
+            }
+            DanglingPtrUseAfterFree { .. } => {
+                let subdiagnostic = handler.eagerly_translate_to_string(
+                    fluent::const_eval_validation_dangling_err_use_after_free,
+                    [].into_iter(),
+                );
+                err.set_arg("subdiagnostic", subdiagnostic);
+            }
+            DanglingPtrOutOfBounds { .. } => {
+                let subdiagnostic = handler.eagerly_translate_to_string(
+                    fluent::const_eval_validation_dangling_err_out_of_bounds,
+                    [].into_iter(),
+                );
+                err.set_arg("subdiagnostic", subdiagnostic);
             }
             NullPtr { .. }
             | PtrToStatic { .. }
@@ -784,8 +796,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             | UnsafeCell
             | InvalidMetaSliceTooLarge { .. }
             | InvalidMetaTooLarge { .. }
-            | DanglingPtrUseAfterFree { .. }
-            | DanglingPtrOutOfBounds { .. }
             | UninhabitedEnumVariant
             | PartialPointer => {}
         }

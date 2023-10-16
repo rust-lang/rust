@@ -406,12 +406,11 @@ const_eval_upcast_mismatch =
 const_eval_validation_box_to_mut = {$front_matter}: encountered a box pointing to mutable memory in a constant
 const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
-const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
-const_eval_validation_dangling_box_out_of_bounds = {$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)
-const_eval_validation_dangling_box_use_after_free = {$front_matter}: encountered a dangling box (use-after-free)
-const_eval_validation_dangling_ref_no_provenance = {$front_matter}: encountered a dangling reference ({$pointer} has no provenance)
-const_eval_validation_dangling_ref_out_of_bounds = {$front_matter}: encountered a dangling reference (going beyond the bounds of its allocation)
-const_eval_validation_dangling_ref_use_after_free = {$front_matter}: encountered a dangling reference (use-after-free)
+const_eval_validation_dangling_err_no_provenance = {$pointer} has no provenance
+const_eval_validation_dangling_err_out_of_bounds = going beyond the bounds of its allocation
+const_eval_validation_dangling_err_use_after_free = use-after-free
+const_eval_validation_dangling_ptr_box = {$front_matter}: encountered a dangling box ({$subdiagnostic})
+const_eval_validation_dangling_ptr_ref = {$front_matter}: encountered a dangling reference ({$subdiagnostic})
 
 const_eval_validation_expected_bool = expected a boolean
 const_eval_validation_expected_box = expected a box
