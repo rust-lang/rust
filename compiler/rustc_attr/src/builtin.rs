@@ -362,12 +362,6 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
         }
     }
 
-    if let Some(s) = since
-        && s.as_str() == VERSION_PLACEHOLDER
-    {
-        since = Some(rust_version_symbol());
-    }
-
     let feature = match feature {
         Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
         Some(_bad_feature) => {
@@ -376,8 +370,17 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
         None => Err(sess.emit_err(session_diagnostics::MissingFeature { span: attr.span })),
     };
 
-    let since =
-        since.ok_or_else(|| sess.emit_err(session_diagnostics::MissingSince { span: attr.span }));
+    let since = if let Some(since) = since {
+        if since.as_str() == VERSION_PLACEHOLDER {
+            Ok(rust_version_symbol())
+        } else if parse_version(since.as_str(), false).is_some() {
+            Ok(since)
+        } else {
+            Err(sess.emit_err(session_diagnostics::InvalidSince { span: attr.span }))
+        }
+    } else {
+        Err(sess.emit_err(session_diagnostics::MissingSince { span: attr.span }))
+    };
 
     match (feature, since) {
         (Ok(feature), Ok(since)) => {
