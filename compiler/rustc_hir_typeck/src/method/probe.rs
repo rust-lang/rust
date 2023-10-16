@@ -371,8 +371,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
+        // FIXME(-Ztrait-solver=next): We should canonicalize using the new solver here,
+        // and actually pass the right anchor.
         let param_env_and_self_ty = self.canonicalize_query(
-            ty::ClassicInput::new(self.param_env, self.defining_use_anchor, self_ty),
+            ty::ClassicInput::new(self.param_env, traits::DefiningAnchor::Bubble, self_ty),
             &mut orig_values,
         );
 
