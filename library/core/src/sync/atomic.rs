@@ -100,12 +100,11 @@
 //! Undefined Behavior. The exact size limit for what makes a load "sufficiently small" varies
 //! depending on the target:
 //!
-//! | Target triple prefix (regular expression) | Size limit |
+//! | `target_arch` | Size limit |
 //! |---------------|---------|
-//! | `i(3|5|6)86-`, `arm`, `thumb`, `mips(|el)-`, `powerpc-`, `riscv32`, `sparc-`    | 4 bytes |
-//! | `x86_64-`, `aarch64-`, `loongarch64-`, `mips64(|el)-`, `powerpc64-`, `riscv64`  | 8 bytes |
-//! | `powerpc64le-` | 16 bytes |
-//! | `s390x-`       | 16 bytes |
+//! | `x86`, `arm`, `mips`, `mips32r6, `powerpc`, `riscv32`, `sparc`, `hexagon` | 4 bytes |
+//! | `x86_64`, `aarch64`, `loongarch64`, `mips64`, `mips64r6`, `powerpc64`, `riscv64`, `sparc64` | 8 bytes |
+//! | `s390x`, `powerpc64` with `target_feature = "quadword-atomics"` | 16 bytes |
 //!
 //! Atomics loads that are larger than this limit as well as atomic loads with ordering other
 //! than `Relaxed`, as well as *all* atomic loads on targets not listed in the table, might still be
