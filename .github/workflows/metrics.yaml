@@ -140,8 +140,10 @@ jobs:
 
       - name: Combine json
         run: |
+          mkdir ~/.ssh
           echo "${{ secrets.METRICS_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          chmod 700 ~/.ssh
 
           git clone --depth 1 git@github.com/rust-analyzer/metrics.git
           jq -s ".[0] * .[1] * .[2] * .[3] * .[4] * .[5]" build.json self.json ripgrep-13.0.0.json webrender-2022.json diesel-1.4.8.json hyper-0.14.18.json -c >> metrics/metrics.json
