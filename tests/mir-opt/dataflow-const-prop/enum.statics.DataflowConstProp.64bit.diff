@@ -113,7 +113,7 @@
   }
   
   ALLOC1 (static: RC, size: 8, align: 8) {
-      ╾───────ALLOC2────────╼                         │ ╾──────╼
+      ╾───────ALLOC2───────╼                         │ ╾──────╼
   }
   
   ALLOC2 (size: 8, align: 4) {

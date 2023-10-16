@@ -17,7 +17,7 @@ LL | const INVALID_VTABLE_SIZE: &dyn Trait =
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─ALLOC3──╼ ╾─ALLOC2──╼                         │ ╾──╼╾──╼
+               ╾─ALLOC3─╼ ╾─ALLOC2─╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -28,7 +28,7 @@ LL | const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─ALLOC5──╼ ╾─ALLOC4──╼                         │ ╾──╼╾──╼
+               ╾─ALLOC5─╼ ╾─ALLOC4─╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -39,7 +39,7 @@ LL | const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─ALLOC7──╼ ╾─ALLOC6──╼                         │ ╾──╼╾──╼
+               ╾─ALLOC7─╼ ╾─ALLOC6─╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -50,7 +50,7 @@ LL | const INVALID_VTABLE_UB: W<&dyn Trait> =
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─ALLOC9──╼ ╾─ALLOC8──╼                         │ ╾──╼╾──╼
+               ╾─ALLOC9─╼ ╾─ALLOC8─╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value

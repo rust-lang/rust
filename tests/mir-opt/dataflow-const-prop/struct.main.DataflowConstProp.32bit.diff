@@ -120,7 +120,7 @@
   }
   
   ALLOC0 (static: STAT, size: 4, align: 4) {
-      ╾─ALLOC1──╼                                     │ ╾──╼
+      ╾─ALLOC1─╼                                     │ ╾──╼
   }
   
   ALLOC1 (size: 16, align: 4) {
