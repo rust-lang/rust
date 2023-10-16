@@ -13,10 +13,9 @@ pub use self::pretty::*;
 // FIXME(eddyb) false positive, the lifetime parameters are used with `P:  Printer<...>`.
 #[allow(unused_lifetimes)]
 pub trait Print<'tcx, P> {
-    type Output;
     type Error;
 
-    fn print(&self, cx: P) -> Result<Self::Output, Self::Error>;
+    fn print(&self, cx: P) -> Result<P, Self::Error>;
 }
 
 /// Interface for outputting user-facing "type-system entities"
@@ -289,34 +288,30 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'tcx> {
-    type Output = P;
     type Error = P::Error;
-    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+    fn print(&self, cx: P) -> Result<P, Self::Error> {
         cx.print_region(*self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
-    type Output = P;
     type Error = P::Error;
 
-    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+    fn print(&self, cx: P) -> Result<P, Self::Error> {
         cx.print_type(*self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
-    type Output = P;
     type Error = P::Error;
-    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+    fn print(&self, cx: P) -> Result<P, Self::Error> {
         cx.print_dyn_existential(self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
-    type Output = P;
     type Error = P::Error;
-    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+    fn print(&self, cx: P) -> Result<P, Self::Error> {
         cx.print_const(*self)
     }
 }

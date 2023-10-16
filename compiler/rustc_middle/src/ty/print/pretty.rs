@@ -217,7 +217,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx, Error = fmt::Error> + fmt::Write {
 
     fn in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
+        T: Print<'tcx, Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         value.as_ref().skip_binder().print(self)
     }
@@ -228,7 +228,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx, Error = fmt::Error> + fmt::Write {
         f: F,
     ) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
+        T: Print<'tcx, Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         f(value.as_ref().skip_binder(), self)
     }
@@ -236,7 +236,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx, Error = fmt::Error> + fmt::Write {
     /// Prints comma-separated elements.
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error>,
+        T: Print<'tcx, Self, Error = Self::Error>,
     {
         if let Some(first) = elems.next() {
             self = first.print(self)?;
@@ -2085,7 +2085,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
+        T: Print<'tcx, Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         self.pretty_in_binder(value)
     }
@@ -2096,7 +2096,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         f: C,
     ) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
+        T: Print<'tcx, Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         self.pretty_wrap_binder(value, f)
     }
@@ -2345,7 +2345,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         value: &ty::Binder<'tcx, T>,
     ) -> Result<(Self, T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
+        T: Print<'tcx, Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         fn name_by_region_index(
             index: usize,
@@ -2515,7 +2515,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
     pub fn pretty_in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, fmt::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
+        T: Print<'tcx, Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         let old_region_index = self.region_index;
         let (new, new_value, _) = self.name_all_regions(value)?;
@@ -2531,7 +2531,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         f: C,
     ) -> Result<Self, fmt::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
+        T: Print<'tcx, Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         let old_region_index = self.region_index;
         let (new, new_value, _) = self.name_all_regions(value)?;
@@ -2596,24 +2596,22 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
 impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::Binder<'tcx, T>
 where
-    T: Print<'tcx, P, Output = P, Error = P::Error> + TypeFoldable<TyCtxt<'tcx>>,
+    T: Print<'tcx, P, Error = P::Error> + TypeFoldable<TyCtxt<'tcx>>,
 {
-    type Output = P;
     type Error = P::Error;
 
-    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+    fn print(&self, cx: P) -> Result<P, Self::Error> {
         cx.in_binder(self)
     }
 }
 
 impl<'tcx, T, U, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::OutlivesPredicate<T, U>
 where
-    T: Print<'tcx, P, Output = P, Error = P::Error>,
-    U: Print<'tcx, P, Output = P, Error = P::Error>,
+    T: Print<'tcx, P, Error = P::Error>,
+    U: Print<'tcx, P, Error = P::Error>,
 {
-    type Output = P;
     type Error = P::Error;
-    fn print(&self, mut cx: P) -> Result<Self::Output, Self::Error> {
+    fn print(&self, mut cx: P) -> Result<P, Self::Error> {
         define_scoped_cx!(cx);
         p!(print(self.0), ": ", print(self.1));
         Ok(cx)
@@ -2640,9 +2638,8 @@ macro_rules! forward_display_to_print {
 macro_rules! define_print_and_forward_display {
     (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
         $(impl<'tcx, P: PrettyPrinter<'tcx>> Print<'tcx, P> for $ty {
-            type Output = P;
             type Error = fmt::Error;
-            fn print(&$self, $cx: P) -> Result<Self::Output, Self::Error> {
+            fn print(&$self, $cx: P) -> Result<P, Self::Error> {
                 #[allow(unused_mut)]
                 let mut $cx = $cx;
                 define_scoped_cx!($cx);
