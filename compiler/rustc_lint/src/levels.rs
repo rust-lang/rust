@@ -1062,7 +1062,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     #[track_caller]
     fn check_gated_lint(&self, lint_id: LintId, span: Span, lint_from_cli: bool) -> bool {
         if let Some(feature) = lint_id.lint.feature_gate {
-            if !self.features.enabled(feature) {
+            if !self.features.active(feature) {
                 let lint = builtin::UNKNOWN_LINTS;
                 let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
                 struct_lint_level(

@@ -1,23 +1,28 @@
 //! List of the removed feature gates.
 
-use super::{to_nonzero, Feature, State};
+use super::{to_nonzero, Feature};
 use rustc_span::symbol::sym;
+
+pub struct RemovedFeature {
+    pub feature: Feature,
+    pub reason: Option<&'static str>,
+}
 
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, None, $reason:expr),
     )+) => {
-        /// Represents unstable features which have since been removed (it was once Active)
-        pub const REMOVED_FEATURES: &[Feature] = &[
-            $(
-                Feature {
-                    state: State::Removed { reason: $reason },
+        /// Formerly unstable features that have now been removed.
+        pub const REMOVED_FEATURES: &[RemovedFeature] = &[
+            $(RemovedFeature {
+                feature: Feature {
                     name: sym::$feature,
                     since: $ver,
                     issue: to_nonzero($issue),
                     edition: None,
-                }
-            ),+
+                },
+                reason: $reason
+            }),+
         ];
     };
 }

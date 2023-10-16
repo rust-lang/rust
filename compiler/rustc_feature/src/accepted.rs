@@ -1,23 +1,20 @@
 //! List of the accepted feature gates.
 
-use super::{to_nonzero, Feature, State};
+use super::{to_nonzero, Feature};
 use rustc_span::symbol::sym;
 
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* (accepted, $feature:ident, $ver:expr, $issue:expr, None),
     )+) => {
-        /// Those language feature has since been Accepted (it was once Active)
+        /// Formerly unstable features that have now been accepted (stabilized).
         pub const ACCEPTED_FEATURES: &[Feature] = &[
-            $(
-                Feature {
-                    state: State::Accepted,
-                    name: sym::$feature,
-                    since: $ver,
-                    issue: to_nonzero($issue),
-                    edition: None,
-                }
-            ),+
+            $(Feature {
+                name: sym::$feature,
+                since: $ver,
+                issue: to_nonzero($issue),
+                edition: None,
+            }),+
         ];
     }
 }

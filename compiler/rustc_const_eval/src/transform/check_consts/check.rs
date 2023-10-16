@@ -323,7 +323,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let gate = match op.status_in_item(self.ccx) {
             Status::Allowed => return,
 
-            Status::Unstable(gate) if self.tcx.features().enabled(gate) => {
+            Status::Unstable(gate) if self.tcx.features().active(gate) => {
                 let unstable_in_stable = self.ccx.is_const_stable_const_fn()
                     && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate);
                 if unstable_in_stable {

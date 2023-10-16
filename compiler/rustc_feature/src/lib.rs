@@ -16,37 +16,18 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 
 mod accepted;
-mod active;
 mod builtin_attrs;
 mod removed;
+mod unstable;
 
 #[cfg(test)]
 mod tests;
 
 use rustc_span::{edition::Edition, symbol::Symbol};
-use std::fmt;
 use std::num::NonZeroU32;
-
-#[derive(Clone, Copy)]
-pub enum State {
-    Accepted,
-    Active { set: fn(&mut Features) },
-    Removed { reason: Option<&'static str> },
-}
-
-impl fmt::Debug for State {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            State::Accepted { .. } => write!(f, "accepted"),
-            State::Active { .. } => write!(f, "active"),
-            State::Removed { .. } => write!(f, "removed"),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Feature {
-    pub state: State,
     pub name: Symbol,
     pub since: &'static str,
     issue: Option<NonZeroU32>,
@@ -63,9 +44,9 @@ pub enum Stability {
 
 #[derive(Clone, Copy, Debug, Hash)]
 pub enum UnstableFeatures {
-    /// Hard errors for unstable features are active, as on beta/stable channels.
+    /// Disallow use of unstable features, as on beta/stable channels.
     Disallow,
-    /// Allow features to be activated, as on nightly.
+    /// Allow use of unstable features, as on nightly.
     Allow,
     /// Errors are bypassed for bootstrapping. This is required any time
     /// during the build that feature-related lints are set to warn or above
@@ -106,17 +87,16 @@ impl UnstableFeatures {
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
     // Search in all the feature lists.
-    let found = []
-        .iter()
-        .chain(ACTIVE_FEATURES)
-        .chain(ACCEPTED_FEATURES)
-        .chain(REMOVED_FEATURES)
-        .find(|t| t.name == feature);
-
-    match found {
-        Some(found) => found.issue,
-        None => panic!("feature `{feature}` is not declared anywhere"),
+    if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| f.feature.name == feature) {
+        return f.feature.issue;
     }
+    if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| f.name == feature) {
+        return f.issue;
+    }
+    if let Some(f) = REMOVED_FEATURES.iter().find(|f| f.feature.name == feature) {
+        return f.feature.issue;
+    }
+    panic!("feature `{feature}` is not declared anywhere");
 }
 
 const fn to_nonzero(n: Option<u32>) -> Option<NonZeroU32> {
@@ -141,7 +121,6 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZeroU3
 }
 
 pub use accepted::ACCEPTED_FEATURES;
-pub use active::{Features, ACTIVE_FEATURES, INCOMPATIBLE_FEATURES};
 pub use builtin_attrs::AttributeDuplicates;
 pub use builtin_attrs::{
     deprecated_attributes, find_gated_cfg, is_builtin_attr_name, is_builtin_only_local,
@@ -149,3 +128,4 @@ pub use builtin_attrs::{
     GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
 pub use removed::REMOVED_FEATURES;
+pub use unstable::{Features, INCOMPATIBLE_FEATURES, UNSTABLE_FEATURES};
