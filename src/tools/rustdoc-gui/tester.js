@@ -249,12 +249,17 @@ async function main(argv) {
         console.log("`--no-headless` option is active, disabling concurrency for running tests.");
     }
 
-    console.log(`Running ${files.length} rustdoc-gui (${opts["jobs"]} concurrently) ...`);
-
     if (opts["jobs"] < 1) {
+        const len = files.length;
+        console.log(
+            `Running ${len} rustdoc-gui (UNBOUNDED concurrency; use "-j#" for a limit) ...`,
+        );
         process.setMaxListeners(files.length + 1);
     } else if (headless) {
+        console.log(`Running ${files.length} rustdoc-gui (${opts["jobs"]} concurrently) ...`);
         process.setMaxListeners(opts["jobs"] + 1);
+    } else {
+        console.log(`Running ${files.length} rustdoc-gui ...`);
     }
 
     // We catch this "event" to display a nicer message in case of unexpected exit (because of a
