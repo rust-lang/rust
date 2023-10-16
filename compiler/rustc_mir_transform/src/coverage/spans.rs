@@ -404,7 +404,7 @@ impl<'a> CoverageSpansGenerator<'a> {
 
         let Some(visible_macro) = curr.visible_macro(self.body_span) else { return };
         if let Some(prev) = &self.some_prev
-            && prev.expn_span.ctxt() == curr.expn_span.ctxt()
+            && prev.expn_span.eq_ctxt(curr.expn_span)
         {
             return;
         }

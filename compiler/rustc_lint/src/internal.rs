@@ -538,13 +538,9 @@ impl LateLintPass<'_> for BadOptAccess {
     }
 }
 
-// some things i'm not sure about:
-//   * is Warn the right level?
-//   * the way i verify that the right method is being called (path + diag item check)
-
 declare_tool_lint! {
     pub rustc::SPAN_USE_EQ_CTXT,
-    Warn, // is this the right level?
+    Allow,
     "Use of `==` with `Span::ctxt` rather than `Span::eq_ctxt`",
     report_in_external_macro: true
 }
@@ -555,11 +551,7 @@ impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if let ExprKind::Binary(BinOp { node: BinOpKind::Eq, .. }, lhs, rhs) = expr.kind {
             if is_span_ctxt_call(cx, lhs) && is_span_ctxt_call(cx, rhs) {
-                cx.emit_spanned_lint(
-                    SPAN_USE_EQ_CTXT,
-                    expr.span,
-                    SpanUseEqCtxtDiag { msg: "fail" },
-                );
+                cx.emit_spanned_lint(SPAN_USE_EQ_CTXT, expr.span, SpanUseEqCtxtDiag);
             }
         }
     }
@@ -567,13 +559,10 @@ impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
 
 fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match &expr.kind {
-        ExprKind::MethodCall(path, receiver, _, _) => {
-            path.ident.name.as_str() == "ctxt"
-                && cx
-                    .typeck_results()
-                    .type_dependent_def_id(receiver.hir_id)
-                    .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::Span, did))
-        }
+        ExprKind::MethodCall(..) => cx
+            .typeck_results()
+            .type_dependent_def_id(expr.hir_id)
+            .is_some_and(|call_did| cx.tcx.is_diagnostic_item(sym::SpanCtxt, call_did)),
 
         _ => false,
     }
