@@ -5,6 +5,7 @@
 #![allow(clippy::map_identity)]
 #![allow(clippy::needless_borrow)]
 #![allow(clippy::unnecessary_literal_unwrap)]
+#![allow(clippy::unit_arg)]
 
 use std::ops::Deref;
 
@@ -76,6 +77,8 @@ fn main() {
     let _ = opt.ok_or(2);
     let _ = nested_tuple_opt.unwrap_or(Some((1, 2)));
     let _ = cond.then_some(astronomers_pi);
+    let _ = true.then_some({});
+    let _ = true.then_some({});
 
     // Should lint - Builtin deref
     let r = &1;
