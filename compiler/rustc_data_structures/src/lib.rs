@@ -8,7 +8,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
-#![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(cell_leak)]
 #![feature(core_intrinsics)]
@@ -25,7 +24,6 @@
 #![feature(negative_impls)]
 #![feature(test)]
 #![feature(thread_id_value)]
-#![feature(vec_into_raw_parts)]
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(lint_reasons)]
