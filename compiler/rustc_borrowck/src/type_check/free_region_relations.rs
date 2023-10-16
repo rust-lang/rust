@@ -240,9 +240,12 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             if let Some(c) = constraints_unnorm {
                 constraints.push(c)
             }
-            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
-                .param_env
-                .and(type_op::normalize::Normalize::new(ty))
+            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } =
+                ty::ClassicInput::new(
+                    param_env,
+                    self.infcx.defining_use_anchor,
+                    type_op::normalize::Normalize::new(ty),
+                )
                 .fully_perform(self.infcx, span)
                 .unwrap_or_else(|guar| TypeOpOutput {
                     output: Ty::new_error(self.infcx.tcx, guar),
@@ -314,12 +317,14 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     /// from this local.
     #[instrument(level = "debug", skip(self))]
     fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
-        let TypeOpOutput { output: bounds, constraints, .. } = self
-            .param_env
-            .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
-            .fully_perform(self.infcx, DUMMY_SP)
-            .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
-            .ok()?;
+        let TypeOpOutput { output: bounds, constraints, .. } = ty::ClassicInput::new(
+            self.param_env,
+            self.infcx.defining_use_anchor,
+            type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty },
+        )
+        .fully_perform(self.infcx, DUMMY_SP)
+        .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
+        .ok()?;
         debug!(?bounds, ?constraints);
         self.add_outlives_bounds(bounds);
         constraints

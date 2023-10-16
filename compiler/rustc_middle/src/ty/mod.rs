@@ -22,7 +22,7 @@ use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
 use crate::query::Providers;
-use crate::traits::{self, Reveal};
+use crate::traits::{self, DefiningAnchor, Reveal};
 use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
@@ -1677,6 +1677,20 @@ pub struct ParamEnvAnd<'tcx, T> {
 impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
         (self.param_env, self.value)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
+#[derive(HashStable)]
+pub struct ClassicInput<'tcx, T> {
+    pub param_env: ParamEnv<'tcx>,
+    pub anchor: DefiningAnchor,
+    pub value: T,
+}
+
+impl<'tcx, T> ClassicInput<'tcx, T> {
+    pub fn new(param_env: ParamEnv<'tcx>, anchor: DefiningAnchor, value: T) -> Self {
+        ClassicInput { param_env, anchor, value }
     }
 }
 

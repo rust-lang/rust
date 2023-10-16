@@ -3,7 +3,7 @@ use crate::traits::ObligationCtxt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::{self, ClassicInput, TyCtxt};
 
 pub use rustc_middle::traits::query::type_op::ProvePredicate;
 
@@ -12,7 +12,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
 
     fn try_fast_path(
         tcx: TyCtxt<'tcx>,
-        key: &ParamEnvAnd<'tcx, Self>,
+        key: &ClassicInput<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         // Proving Sized, very often on "obviously sized" types like
         // `&T`, accounts for about 60% percentage of the predicates
@@ -35,14 +35,14 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: Canonical<'tcx, ClassicInput<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, ()>, NoSolution> {
         tcx.type_op_prove_predicate(canonicalized)
     }
 
     fn perform_locally_in_new_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
+        key: ClassicInput<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {
         ocx.register_obligation(Obligation::new(
             ocx.infcx.tcx,

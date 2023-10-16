@@ -58,7 +58,25 @@ LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    = help: the trait `Into<U>` is implemented for `T`
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
 
-error: aborting due to 7 previous errors
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/nested_impl_trait.rs:29:8
+   |
+LL |     || 5u8
+   |        ^^^ expected `impl Into<u32>`, got `u8`
+   |
+note: previous use here
+  --> $DIR/nested_impl_trait.rs:29:5
+   |
+LL |     || 5u8
+   |     ^^^^^^
 
-Some errors have detailed explanations: E0277, E0562, E0666.
+error[E0720]: cannot resolve opaque type
+  --> $DIR/nested_impl_trait.rs:28:42
+   |
+LL | fn allowed_in_ret_type() -> impl Fn() -> impl Into<u32> {
+   |                                          ^^^^^^^^^^^^^^ cannot resolve opaque type
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0277, E0562, E0666, E0720.
 For more information about an error, try `rustc --explain E0277`.

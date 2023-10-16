@@ -65,8 +65,10 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         assert!(!ty.has_non_region_infer());
 
         let mut canonical_var_values = OriginalQueryValues::default();
-        let canonical_ty =
-            self.canonicalize_query_keep_static(param_env.and(ty), &mut canonical_var_values);
+        let canonical_ty = self.canonicalize_query_keep_static(
+            ty::ClassicInput::new(param_env, self.defining_use_anchor, ty),
+            &mut canonical_var_values,
+        );
         let Ok(canonical_result) = self.tcx.implied_outlives_bounds(canonical_ty) else {
             return vec![];
         };

@@ -8,7 +8,7 @@ use rustc_infer::infer::outlives::components::{push_outlives_components, Compone
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ClassicInput, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
@@ -23,7 +23,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
 
     fn try_fast_path(
         _tcx: TyCtxt<'tcx>,
-        key: &ParamEnvAnd<'tcx, Self>,
+        key: &ClassicInput<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         // Don't go into the query for things that can't possibly have lifetimes.
         match key.value.ty.kind() {
@@ -37,22 +37,23 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: Canonical<'tcx, ClassicInput<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
         // FIXME this `unchecked_map` is only necessary because the
-        // query is defined as taking a `ParamEnvAnd<Ty>`; it should
+        // query is defined as taking a `ClassicInput<Ty>`; it should
         // take an `ImpliedOutlivesBounds` instead
-        let canonicalized = canonicalized.unchecked_map(|ParamEnvAnd { param_env, value }| {
-            let ImpliedOutlivesBounds { ty } = value;
-            param_env.and(ty)
-        });
+        let canonicalized =
+            canonicalized.unchecked_map(|ClassicInput { param_env, anchor, value }| {
+                let ImpliedOutlivesBounds { ty } = value;
+                ClassicInput::new(param_env, anchor, ty)
+            });
 
         tcx.implied_outlives_bounds(canonicalized)
     }
 
     fn perform_locally_in_new_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
+        key: ClassicInput<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {
         compute_implied_outlives_bounds_inner(ocx, key.param_env, key.value.ty)
     }

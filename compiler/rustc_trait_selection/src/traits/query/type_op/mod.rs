@@ -8,7 +8,7 @@ use rustc_infer::infer::canonical::Certainty;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::{ClassicInput, TyCtxt};
 use rustc_span::Span;
 use std::fmt;
 
@@ -55,7 +55,7 @@ pub struct TypeOpOutput<'tcx, Op: TypeOp<'tcx>> {
 /// "Query type ops" are type ops that are implemented using a
 /// [canonical query][c]. The `Self` type here contains the kernel of
 /// information needed to do the operation -- `TypeOp` is actually
-/// implemented for `ParamEnvAnd<Self>`, since we always need to bring
+/// implemented for `ClassicInput<Self>`, since we always need to bring
 /// along a parameter environment as well. For query type-ops, we will
 /// first canonicalize the key and then invoke the query on the tcx,
 /// which produces the resulting query region constraints.
@@ -69,7 +69,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     /// a final result or `None` to do the full path.
     fn try_fast_path(
         tcx: TyCtxt<'tcx>,
-        key: &ParamEnvAnd<'tcx, Self>,
+        key: &ClassicInput<'tcx, Self>,
     ) -> Option<Self::QueryResponse>;
 
     /// Performs the actual query with the canonicalized key -- the
@@ -80,7 +80,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     /// not captured in the return value.
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: Canonical<'tcx, ClassicInput<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution>;
 
     /// In the new trait solver, we already do caching in the solver itself,
@@ -91,17 +91,17 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     /// just perform these ops locally.
     fn perform_locally_in_new_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
+        key: ClassicInput<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution>;
 
     fn fully_perform_into(
-        query_key: ParamEnvAnd<'tcx, Self>,
+        query_key: ClassicInput<'tcx, Self>,
         infcx: &InferCtxt<'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> Result<
         (
             Self::QueryResponse,
-            Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
+            Option<Canonical<'tcx, ClassicInput<'tcx, Self>>>,
             PredicateObligations<'tcx>,
             Certainty,
         ),
@@ -134,12 +134,12 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     }
 }
 
-impl<'tcx, Q> TypeOp<'tcx> for ParamEnvAnd<'tcx, Q>
+impl<'tcx, Q> TypeOp<'tcx> for ClassicInput<'tcx, Q>
 where
     Q: QueryTypeOp<'tcx>,
 {
     type Output = Q::QueryResponse;
-    type ErrorInfo = Canonical<'tcx, ParamEnvAnd<'tcx, Q>>;
+    type ErrorInfo = Canonical<'tcx, ClassicInput<'tcx, Q>>;
 
     fn fully_perform(
         self,
@@ -181,7 +181,11 @@ where
             for obligation in std::mem::take(&mut obligations) {
                 let obligation = infcx.resolve_vars_if_possible(obligation);
                 match ProvePredicate::fully_perform_into(
-                    obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
+                    ClassicInput::new(
+                        obligation.param_env,
+                        infcx.defining_use_anchor,
+                        ProvePredicate::new(obligation.predicate),
+                    ),
                     infcx,
                     &mut region_constraints,
                 ) {

@@ -372,7 +372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let mut orig_values = OriginalQueryValues::default();
         let param_env_and_self_ty = self.canonicalize_query(
-            ParamEnvAnd { param_env: self.param_env, value: self_ty },
+            ty::ClassicInput::new(self.param_env, self.defining_use_anchor, self_ty),
             &mut orig_values,
         );
 
@@ -385,11 +385,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // special handling for this "trivial case" is a good idea.
 
                 let infcx = &self.infcx;
-                let (ParamEnvAnd { param_env: _, value: self_ty }, canonical_inference_vars) =
-                    infcx.instantiate_canonical_with_fresh_inference_vars(
-                        span,
-                        &param_env_and_self_ty,
-                    );
+                let (
+                    ty::ClassicInput { param_env: _, value: self_ty, .. },
+                    canonical_inference_vars,
+                ) = infcx
+                    .instantiate_canonical_with_fresh_inference_vars(span, &param_env_and_self_ty);
                 debug!(
                     "probe_op: Mode::Path, param_env_and_self_ty={:?} self_ty={:?}",
                     param_env_and_self_ty, self_ty

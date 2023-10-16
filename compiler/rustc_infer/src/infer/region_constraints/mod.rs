@@ -442,6 +442,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // cannot add constraints once regions are resolved
         debug!("RegionConstraintCollector: add_constraint({:?})", constraint);
 
+        if format!("{constraint:?}")
+            == "VarSubReg('?25, ReFree(DefId(0:19 ~ implied_bounds_from_types[4e59]::extend_lifetime), BrNamed(DefId(0:20 ~ implied_bounds_from_types[4e59]::extend_lifetime::'a), 'a)))"
+        {
+            bug!();
+        }
+
         // never overwrite an existing (constraint, origin) - only insert one if it isn't
         // present in the map yet. This prevents origins from outside the snapshot being
         // replaced with "less informative" origins e.g., during calls to `can_eq`

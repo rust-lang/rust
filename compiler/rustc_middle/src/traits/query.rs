@@ -67,25 +67,26 @@ pub mod type_op {
     }
 }
 
-pub type CanonicalProjectionGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
+pub type CanonicalProjectionGoal<'tcx> = Canonical<'tcx, ty::ClassicInput<'tcx, ty::AliasTy<'tcx>>>;
 
-pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
+pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ClassicInput<'tcx, Ty<'tcx>>>;
 
-pub type CanonicalPredicateGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
+pub type CanonicalPredicateGoal<'tcx> =
+    Canonical<'tcx, ty::ClassicInput<'tcx, ty::Predicate<'tcx>>>;
 
 pub type CanonicalTypeOpAscribeUserTypeGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>;
+    Canonical<'tcx, ty::ClassicInput<'tcx, type_op::AscribeUserType<'tcx>>>;
 
-pub type CanonicalTypeOpEqGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Eq<'tcx>>>;
+pub type CanonicalTypeOpEqGoal<'tcx> = Canonical<'tcx, ty::ClassicInput<'tcx, type_op::Eq<'tcx>>>;
 
 pub type CanonicalTypeOpSubtypeGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Subtype<'tcx>>>;
+    Canonical<'tcx, ty::ClassicInput<'tcx, type_op::Subtype<'tcx>>>;
 
 pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::ProvePredicate<'tcx>>>;
+    Canonical<'tcx, ty::ClassicInput<'tcx, type_op::ProvePredicate<'tcx>>>;
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
+    Canonical<'tcx, ty::ClassicInput<'tcx, type_op::Normalize<T>>>;
 
 #[derive(Copy, Clone, Debug, Hash, HashStable, PartialEq, Eq)]
 pub struct NoSolution;

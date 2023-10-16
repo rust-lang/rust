@@ -32,6 +32,7 @@ use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVarValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
@@ -171,7 +172,12 @@ impl<'tcx> InferCtxt<'tcx> {
             // two const param's types are able to be equal has to go through a canonical query with the actual logic
             // in `rustc_trait_selection`.
             let canonical = self.canonicalize_query(
-                (relation.param_env(), a.ty(), b.ty()),
+                ty::ClassicInput::new(
+                    relation.param_env(),
+                    // FIXME: is this right?
+                    DefiningAnchor::Error,
+                    (a.ty(), b.ty()),
+                ),
                 &mut OriginalQueryValues::default(),
             );
             self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {

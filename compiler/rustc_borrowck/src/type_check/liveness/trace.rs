@@ -5,7 +5,7 @@ use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
-use rustc_middle::ty::{RegionVid, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{ClassicInput, RegionVid, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -639,10 +639,12 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     ) -> DropData<'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
-        match typeck
-            .param_env
-            .and(DropckOutlives::new(dropped_ty))
-            .fully_perform(typeck.infcx, DUMMY_SP)
+        match ClassicInput::new(
+            typeck.param_env,
+            typeck.infcx.defining_use_anchor,
+            DropckOutlives::new(dropped_ty),
+        )
+        .fully_perform(typeck.infcx, DUMMY_SP)
         {
             Ok(TypeOpOutput { output, constraints, .. }) => {
                 DropData { dropck_result: output, region_constraint_data: constraints }

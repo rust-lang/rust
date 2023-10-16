@@ -4,7 +4,9 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_infer::traits::Obligation;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserType};
+use rustc_middle::ty::{
+    self, ClassicInput, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserType,
+};
 
 pub use rustc_middle::traits::query::type_op::AscribeUserType;
 use rustc_span::{Span, DUMMY_SP};
@@ -14,23 +16,23 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
 
     fn try_fast_path(
         _tcx: TyCtxt<'tcx>,
-        _key: &ParamEnvAnd<'tcx, Self>,
+        _key: &ClassicInput<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         None
     }
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: Canonical<'tcx, ty::ClassicInput<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, ()>, NoSolution> {
         tcx.type_op_ascribe_user_type(canonicalized)
     }
 
     fn perform_locally_in_new_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
+        key: ClassicInput<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {
-        type_op_ascribe_user_type_with_span(ocx, key, None)
+        type_op_ascribe_user_type_with_span(ocx, key.param_env.and(key.value), None)
     }
 }
 
