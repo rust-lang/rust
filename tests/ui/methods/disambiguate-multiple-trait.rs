@@ -1,28 +1,23 @@
+#![feature(associated_type_defaults)]
+
 trait A {
-    type Type;
-    const CONST: usize;
-    fn foo(&self);
-}
-
-trait B {
-    type Type;
-    const CONST: usize;
-    fn foo(&self);
-}
-
-struct S;
-
-impl A for S {
     type Type = ();
     const CONST: usize = 1; //~ NOTE candidate #1
     fn foo(&self) {} //~ NOTE candidate #1
 }
 
-impl B for S {
+trait B {
     type Type = ();
     const CONST: usize = 2; //~ NOTE candidate #2
     fn foo(&self) {} //~ NOTE candidate #2
 }
+
+#[derive(Debug)]
+struct S;
+
+impl<T: std::fmt::Debug> A for T {}
+
+impl<T: std::fmt::Debug> B for T {}
 
 fn main() {
     let s = S;
@@ -30,10 +25,10 @@ fn main() {
     //~^ NOTE multiple `foo` found
     //~| HELP disambiguate
     //~| HELP disambiguate
-    let _: S::Type = (); //~ ERROR ambiguous associated type
-    //~| HELP use the fully-qualified path
     let _ = S::CONST; //~ ERROR multiple applicable items in scope
     //~^ NOTE multiple `CONST` found
     //~| HELP disambiguate
     //~| HELP disambiguate
+    let _: S::Type; //~ ERROR ambiguous associated type
+    //~^ HELP use the fully-qualified path
 }

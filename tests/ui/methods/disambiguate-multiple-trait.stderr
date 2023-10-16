@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/disambiguate-multiple-blanket-impl.rs:38:12
+  --> $DIR/disambiguate-multiple-trait.rs:32:12
    |
 LL |     let _: S::Type;
    |            ^^^^^^^
@@ -12,18 +12,18 @@ LL |     let _: <S as B>::Type;
    |            ~~~~~~~~~~~~~~
 
 error[E0034]: multiple applicable items in scope
-  --> $DIR/disambiguate-multiple-blanket-impl.rs:30:8
+  --> $DIR/disambiguate-multiple-trait.rs:24:8
    |
 LL |     S::foo(&s);
    |        ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/disambiguate-multiple-blanket-impl.rs:19:5
+  --> $DIR/disambiguate-multiple-trait.rs:6:5
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/disambiguate-multiple-blanket-impl.rs:25:5
+  --> $DIR/disambiguate-multiple-trait.rs:12:5
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
@@ -37,29 +37,29 @@ LL |     <T as B>::foo(&s);
    |     ~~~~~~~~~~
 
 error[E0034]: multiple applicable items in scope
-  --> $DIR/disambiguate-multiple-blanket-impl.rs:34:8
+  --> $DIR/disambiguate-multiple-trait.rs:28:16
    |
-LL |     S::CONST;
-   |        ^^^^^ multiple `CONST` found
+LL |     let _ = S::CONST;
+   |                ^^^^^ multiple `CONST` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/disambiguate-multiple-blanket-impl.rs:18:5
+  --> $DIR/disambiguate-multiple-trait.rs:5:5
    |
 LL |     const CONST: usize = 1;
    |     ^^^^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/disambiguate-multiple-blanket-impl.rs:24:5
+  --> $DIR/disambiguate-multiple-trait.rs:11:5
    |
 LL |     const CONST: usize = 2;
    |     ^^^^^^^^^^^^^^^^^^
 help: disambiguate the associated constant for candidate #1
    |
-LL |     <T as A>::CONST;
-   |     ~~~~~~~~~~
+LL |     let _ = <T as A>::CONST;
+   |             ~~~~~~~~~~
 help: disambiguate the associated constant for candidate #2
    |
-LL |     <T as B>::CONST;
-   |     ~~~~~~~~~~
+LL |     let _ = <T as B>::CONST;
+   |             ~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

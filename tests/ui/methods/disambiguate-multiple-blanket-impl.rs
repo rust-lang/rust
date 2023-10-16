@@ -1,8 +1,12 @@
 trait A {
+    type Type;
+    const CONST: usize;
     fn foo(&self);
 }
 
 trait B {
+    type Type;
+    const CONST: usize;
     fn foo(&self);
 }
 
@@ -10,10 +14,14 @@ trait B {
 struct S;
 
 impl<T: std::fmt::Debug> A for T {
+    type Type = ();
+    const CONST: usize = 1; //~ NOTE candidate #1
     fn foo(&self) {} //~ NOTE candidate #1
 }
 
 impl<T: std::fmt::Debug> B for T {
+    type Type = ();
+    const CONST: usize = 2; //~ NOTE candidate #2
     fn foo(&self) {} //~ NOTE candidate #2
 }
 
@@ -23,5 +31,10 @@ fn main() {
     //~^ NOTE multiple `foo` found
     //~| HELP disambiguate
     //~| HELP disambiguate
+    S::CONST; //~ ERROR multiple applicable items in scope
+    //~^ NOTE multiple `CONST` found
+    //~| HELP disambiguate
+    //~| HELP disambiguate
+    let _: S::Type; //~ ERROR ambiguous associated type
+    //~^ HELP use the fully-qualified path
 }
-

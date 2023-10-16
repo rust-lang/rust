@@ -1340,7 +1340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err,
                             path,
                             ty,
-                            impl_ty,
+                            Some(impl_ty),
                             item.kind,
                             self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
@@ -1377,7 +1377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err,
                             path,
                             rcvr_ty,
-                            rcvr_ty,
+                            None,
                             item.kind,
                             self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
@@ -3148,7 +3148,7 @@ fn print_disambiguation_help<'tcx>(
     err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
-    self_ty: Ty<'_>,
+    impl_self_ty: Option<Ty<'_>>,
     kind: ty::AssocKind,
     def_kind_descr: &'static str,
     span: Span,
@@ -3174,20 +3174,21 @@ fn print_disambiguation_help<'tcx>(
                 .collect::<Vec<_>>()
                 .join(", "),
         );
-        let trait_name = if !fn_has_self_parameter {
-            format!("<{self_ty} as {trait_name}>")
+        let trait_name = if !fn_has_self_parameter && let Some(impl_self_ty) = impl_self_ty {
+            format!("<{impl_self_ty} as {trait_name}>")
         } else {
             trait_name
         };
         (span, format!("{trait_name}::{item_name}{args}"))
+    } else if let Some(impl_self_ty) = impl_self_ty {
+        (span.with_hi(item_name.span.lo()), format!("<{impl_self_ty} as {trait_name}>::"))
     } else {
-        (span.with_hi(item_name.span.lo()), format!("<{self_ty} as {trait_name}>::"))
+        (span.with_hi(item_name.span.lo()), format!("{trait_name}::"))
     };
     err.span_suggestion_verbose(
         span,
         format!(
-            "disambiguate the {} for {}",
-            def_kind_descr,
+            "disambiguate the {def_kind_descr} for {}",
             if let Some(candidate) = candidate {
                 format!("candidate #{candidate}")
             } else {
