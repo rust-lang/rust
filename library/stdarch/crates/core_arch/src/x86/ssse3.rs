@@ -568,6 +568,27 @@ mod tests {
         let expected = _mm_setr_epi16(130, 24, 192, 194, 158, 175, 66, 120);
         let r = _mm_maddubs_epi16(a, b);
         assert_eq_m128i(r, expected);
+
+        // Test widening and saturation
+        #[rustfmt::skip]
+        let a = _mm_setr_epi8(
+            u8::MAX as i8, u8::MAX as i8,
+            u8::MAX as i8, u8::MAX as i8,
+            u8::MAX as i8, u8::MAX as i8,
+            100, 100, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        );
+        #[rustfmt::skip]
+        let b = _mm_setr_epi8(
+            i8::MAX, i8::MAX,
+            i8::MAX, i8::MIN,
+            i8::MIN, i8::MIN,
+            50, 15, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        );
+        let expected = _mm_setr_epi16(i16::MAX, -255, i16::MIN, 6500, 0, 0, 0, 0);
+        let r = _mm_maddubs_epi16(a, b);
+        assert_eq_m128i(r, expected);
     }
 
     #[simd_test(enable = "ssse3")]
