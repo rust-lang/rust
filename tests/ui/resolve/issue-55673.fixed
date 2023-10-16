@@ -6,14 +6,14 @@ trait Foo {
 
 fn foo<T: Foo>()
 where
-    T::Baa: std::fmt::Debug,
+    T::Bar: std::fmt::Debug,
     //~^ ERROR associated type `Baa` not found for `T`
 {
 }
 
 fn bar<T>()
 where
-    T::Baa: std::fmt::Debug,
+    T::Bar: std::fmt::Debug, T: Foo
     //~^ ERROR associated type `Baa` not found for `T`
 {
 }

@@ -8,7 +8,7 @@ trait TraitWithAssoc {
     type Assoc;
 }
 
-type Foo<V> = impl Trait<V::Assoc>; //~ associated type `Assoc` not found for `V`
+type Foo<V: TraitWithAssoc> = impl Trait<V::Assoc>; //~ associated type `Assoc` not found for `V`
 
 trait Trait<U> {}
 

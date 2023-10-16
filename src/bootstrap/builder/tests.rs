@@ -22,7 +22,6 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
         ..Config::parse(&["check".to_owned()])
     });
     submodule_build.update_submodule(Path::new("src/doc/book"));
-    submodule_build.update_submodule(Path::new("src/tools/rust-analyzer"));
     config.submodules = Some(false);
 
     config.ninja_in_file = false;

@@ -284,6 +284,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             self.one_bound_for_assoc_type(
                 || traits::supertraits(tcx, trait_ref),
                 trait_ref.skip_binder().print_only_trait_name(),
+                None,
                 binding.item_name,
                 path_span,
                 match binding.kind {
