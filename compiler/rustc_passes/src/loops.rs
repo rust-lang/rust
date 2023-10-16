@@ -231,7 +231,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             AsyncClosure(closure_span) => {
                 self.sess.emit_err(BreakInsideAsyncBlock { span, closure_span, name });
             }
-            UnlabeledBlock(block_span) if is_break && block_span.ctxt() == break_span.ctxt() => {
+            UnlabeledBlock(block_span) if is_break && block_span.eq_ctxt(break_span) => {
                 let suggestion = Some(OutsideLoopSuggestion { block_span, break_span });
                 self.sess.emit_err(OutsideLoop { span, name, is_break, suggestion });
             }

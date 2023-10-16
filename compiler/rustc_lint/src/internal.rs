@@ -541,7 +541,7 @@ impl LateLintPass<'_> for BadOptAccess {
 declare_tool_lint! {
     pub rustc::SPAN_USE_EQ_CTXT,
     Allow,
-    "Use of `==` with `Span::ctxt` rather than `Span::eq_ctxt`",
+    "forbid uses of `==` with `Span::ctxt`, suggest `Span::eq_ctxt` instead",
     report_in_external_macro: true
 }
 
