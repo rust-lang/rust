@@ -1,13 +1,13 @@
 #![feature(staged_api, never_type, rust_cold_cc)]
 //~^ ERROR module has missing stability attribute
 
-#[stable(feature = "a", since = "1")]
+#[stable(feature = "a", since = "3.3.3")]
 struct StableType;
 
 #[unstable(feature = "b", issue = "none")]
 struct UnstableType;
 
-#[stable(feature = "c", since = "1")]
+#[stable(feature = "c", since = "3.3.3")]
 trait StableTrait {}
 
 #[unstable(feature = "d", issue = "none")]
