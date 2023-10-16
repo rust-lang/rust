@@ -11,11 +11,11 @@ If parsing the output with Rust, the
 [`cargo_metadata`](https://crates.io/crates/cargo_metadata) crate provides
 some support for parsing the messages.
 
-Each type of message has a `type` field which can be used to distinguish the
-different formats. When parsing, care should be taken to be forwards-compatible
-with future changes to the format. Optional values may be `null`. New fields may
-be added. Enumerated fields like "level" or "suggestion_applicability" may add
-new values.
+Each type of message has a `$message_type` field which can be used to
+distinguish the different formats. When parsing, care should be taken
+to be forwards-compatible with future changes to the format. Optional
+values may be `null`. New fields may be added. Enumerated fields like
+"level" or "suggestion_applicability" may add new values.
 
 ## Diagnostics
 
@@ -32,7 +32,7 @@ Diagnostics have the following format:
 ```javascript
 {
     /* Type of this message */
-    "type": "diagnostic",
+    "$message_type": "diagnostic",
     /* The primary message. */
     "message": "unused variable: `x`",
     /* The diagnostic code.
