@@ -1,3 +1,4 @@
+// skip-filecheck
 // this tests move up progration, which is not yet implemented
 
 fn foo() -> [u8; 1024] {

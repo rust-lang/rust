@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // unit-test: InstSimplify
 // EMIT_MIR combine_array_len.norm2.InstSimplify.diff

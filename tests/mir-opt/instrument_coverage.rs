@@ -1,3 +1,4 @@
+// skip-filecheck
 // Test that `-C instrument-coverage` injects Coverage statements. The Coverage Counter statements
 // are later converted into LLVM instrprof.increment intrinsics, during codegen.
 

@@ -1,3 +1,4 @@
+// skip-filecheck
 //! Tests that generators that cannot return or unwind don't have unnecessary
 //! panic branches.
 

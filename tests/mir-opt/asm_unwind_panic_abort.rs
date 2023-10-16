@@ -1,3 +1,4 @@
+// skip-filecheck
 //! Tests that unwinding from an asm block is caught and forced to abort
 //! when `-C panic=abort`.
 

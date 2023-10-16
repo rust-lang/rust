@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: -Z span_free_formats
 
 // Tests that MIR inliner can handle closure captures.

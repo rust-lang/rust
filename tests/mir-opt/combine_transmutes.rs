@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: InstSimplify
 // compile-flags: -C panic=abort
 

@@ -1,3 +1,4 @@
+// skip-filecheck
 #![feature(never_type)]
 
 pub enum Void {}

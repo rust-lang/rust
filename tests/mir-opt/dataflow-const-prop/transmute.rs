@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: DataflowConstProp
 // compile-flags: -O --crate-type=lib
 // ignore-endian-big

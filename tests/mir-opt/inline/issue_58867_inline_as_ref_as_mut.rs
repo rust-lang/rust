@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR issue_58867_inline_as_ref_as_mut.a.Inline.after.mir
 pub fn a<T>(x: &mut [T]) -> &mut [T] {
     x.as_mut()

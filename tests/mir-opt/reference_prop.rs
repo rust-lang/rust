@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ReferencePropagation
 // needs-unwind
 

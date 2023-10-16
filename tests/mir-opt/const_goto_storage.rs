@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstGoto
 
 // EMIT_MIR const_goto_storage.match_nested_if.ConstGoto.diff

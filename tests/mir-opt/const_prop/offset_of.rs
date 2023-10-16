@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 

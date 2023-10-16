@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: --crate-type=lib
 // unit-test: InstSimplify
 

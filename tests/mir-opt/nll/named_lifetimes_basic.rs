@@ -1,3 +1,4 @@
+// skip-filecheck
 // Basic test for named lifetime translation. Check that we
 // instantiate the types that appear in function arguments with
 // suitable variables and that we setup the outlives relationship

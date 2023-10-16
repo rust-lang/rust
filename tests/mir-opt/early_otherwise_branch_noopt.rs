@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: EarlyOtherwiseBranch
 
 // must not optimize as it does not follow the pattern of

@@ -1,3 +1,4 @@
+// skip-filecheck
 // Checks that only functions with the compatible instruction_set attributes are inlined.
 //
 // A function is "compatible" when the *callee* has the same attribute or no attribute.

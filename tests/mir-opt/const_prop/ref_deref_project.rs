@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 // EMIT_MIR ref_deref_project.main.ConstProp.diff
 

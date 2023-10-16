@@ -1,3 +1,4 @@
+// skip-filecheck
 #![crate_type = "lib"]
 
 // EMIT_MIR casts.redundant.InstSimplify.diff

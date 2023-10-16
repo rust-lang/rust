@@ -1,3 +1,4 @@
+// skip-filecheck
 // This example is interesting because the non-transitive version of `MaybeLiveLocals` would
 // report that *all* of these stores are live.
 //
