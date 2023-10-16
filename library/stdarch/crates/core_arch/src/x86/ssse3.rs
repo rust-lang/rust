@@ -372,6 +372,11 @@ mod tests {
         let expected = _mm_setr_epi8(5, 0, 5, 4, 9, 13, 7, 4, 13, 6, 6, 11, 5, 2, 9, 1);
         let r = _mm_shuffle_epi8(a, b);
         assert_eq_m128i(r, expected);
+
+        // Test indices greater than 15 wrapping around
+        let b = _mm_add_epi8(b, _mm_set1_epi8(32));
+        let r = _mm_shuffle_epi8(a, b);
+        assert_eq_m128i(r, expected);
     }
 
     #[simd_test(enable = "ssse3")]
