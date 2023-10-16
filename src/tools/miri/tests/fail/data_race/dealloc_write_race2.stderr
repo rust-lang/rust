@@ -1,8 +1,8 @@
-error: Undefined Behavior: dereferencing pointer failed: ALLOC has been freed, so this pointer is dangling
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
   --> $DIR/dealloc_write_race2.rs:LL:CC
    |
 LL |             *ptr.0 = 2;
-   |             ^^^^^^^^^^ dereferencing pointer failed: ALLOC has been freed, so this pointer is dangling
+   |             ^^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

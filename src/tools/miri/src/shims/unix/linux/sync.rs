@@ -34,7 +34,7 @@ pub fn futex<'tcx>(
 
     let thread = this.get_active_thread();
     // This is a vararg function so we have to bring our own type for this pointer.
-    let addr = MPlaceTy::from_aligned_ptr(addr, this.machine.layouts.i32);
+    let addr = this.ptr_to_mplace(addr, this.machine.layouts.i32);
     let addr_usize = addr.ptr().addr().bytes();
 
     let futex_private = this.eval_libc_i32("FUTEX_PRIVATE_FLAG");
@@ -85,9 +85,8 @@ pub fn futex<'tcx>(
                 return Ok(());
             }
 
-            // `read_timespec` will check the place when it is not null.
-            let timeout = this.deref_pointer_unchecked(
-                &this.read_immediate(&args[3])?,
+            let timeout = this.deref_pointer_as(
+                &args[3],
                 this.libc_ty_layout("timespec"),
             )?;
             let timeout_time = if this.ptr_is_null(timeout.ptr())? {

@@ -13,7 +13,7 @@ struct PartialDrop {
     b: u8,
 }
 
-//@error-in-other-file: /alignment 2 is required/
+//@error-in-other-file: /required 2 byte alignment/
 fn main() {
     unsafe {
         // Create an unaligned pointer

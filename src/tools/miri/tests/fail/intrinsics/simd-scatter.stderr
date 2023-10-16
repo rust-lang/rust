@@ -1,4 +1,4 @@
-error: Undefined Behavior: dereferencing pointer failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
+error: Undefined Behavior: memory access failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
   --> $DIR/simd-scatter.rs:LL:CC
    |
 LL | /         Simd::from_array([-27, 82, -41, 124]).scatter_select_unchecked(
@@ -7,7 +7,7 @@ LL | |             &mut vec,
 LL | |             Mask::splat(true),
 LL | |             idxs,
 LL | |         );
-   | |_________^ dereferencing pointer failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
+   | |_________^ memory access failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

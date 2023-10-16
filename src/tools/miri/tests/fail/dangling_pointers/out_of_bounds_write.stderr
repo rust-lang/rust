@@ -1,18 +1,18 @@
-error: Undefined Behavior: dereferencing pointer failed: ALLOC has size 2, so pointer to 1 byte starting at offset 5 is out-of-bounds
-  --> $DIR/out_of_bounds_read1.rs:LL:CC
+error: Undefined Behavior: memory access failed: ALLOC has size 4, so pointer to 2 bytes starting at offset 5 is out-of-bounds
+  --> $DIR/out_of_bounds_write.rs:LL:CC
    |
-LL |     let x = unsafe { *v.as_ptr().wrapping_offset(5) };
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: ALLOC has size 2, so pointer to 1 byte starting at offset 5 is out-of-bounds
+LL |     unsafe { *v.as_mut_ptr().wrapping_byte_add(5) = 0 };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC has size 4, so pointer to 2 bytes starting at offset 5 is out-of-bounds
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/out_of_bounds_read1.rs:LL:CC
+  --> $DIR/out_of_bounds_write.rs:LL:CC
    |
-LL |     let v: Vec<u8> = vec![1, 2];
-   |                      ^^^^^^^^^^
+LL |     let mut v: Vec<u16> = vec![1, 2];
+   |                           ^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/out_of_bounds_read1.rs:LL:CC
+   = note: inside `main` at $DIR/out_of_bounds_write.rs:LL:CC
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

@@ -52,6 +52,12 @@ LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error: aborting due to 7 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/detect-extra-ub.rs:97:16
+   |
+LL |     let _val = &*slice;
+   |                ^^^^^^^ constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

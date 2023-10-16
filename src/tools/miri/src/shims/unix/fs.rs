@@ -13,7 +13,7 @@ use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_target::abi::{Align, Size};
+use rustc_target::abi::Size;
 
 use crate::shims::os_str::bytes_to_os_str;
 use crate::*;
@@ -756,10 +756,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         trace!("Reading from FD {}, size {}", fd, count);
 
         // Check that the *entire* buffer is actually valid memory.
-        this.check_ptr_access_align(
+        this.check_ptr_access(
             buf,
             Size::from_bytes(count),
-            Align::ONE,
             CheckInAllocMsg::MemoryAccessTest,
         )?;
 
@@ -810,10 +809,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Isolation check is done via `FileDescriptor` trait.
 
         // Check that the *entire* buffer is actually valid memory.
-        this.check_ptr_access_align(
+        this.check_ptr_access(
             buf,
             Size::from_bytes(count),
-            Align::ONE,
             CheckInAllocMsg::MemoryAccessTest,
         )?;
 
@@ -1370,7 +1368,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         ("d_reclen", size.into()),
                         ("d_type", file_type.into()),
                     ],
-                    &MPlaceTy::from_aligned_ptr(entry, dirent64_layout),
+                    &this.ptr_to_mplace(entry, dirent64_layout),
                 )?;
 
                 let name_ptr = entry.offset(Size::from_bytes(d_name_offset), this)?;

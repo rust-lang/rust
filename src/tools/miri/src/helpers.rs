@@ -697,27 +697,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
         let ptr = this.read_pointer(op)?;
-
-        let mplace = MPlaceTy::from_aligned_ptr(ptr, layout);
-
-        this.check_mplace(&mplace)?;
-
-        Ok(mplace)
-    }
-
-    /// Deref' a pointer *without* checking that the place is dereferenceable.
-    fn deref_pointer_unchecked(
-        &self,
-        val: &ImmTy<'tcx, Provenance>,
-        layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
-        let this = self.eval_context_ref();
-        let mut mplace = this.ref_to_mplace(val)?;
-
-        mplace.layout = layout;
-        mplace.align = layout.align.abi;
-
-        Ok(mplace)
+        Ok(this.ptr_to_mplace(ptr, layout))
     }
 
     /// Calculates the MPlaceTy given the offset and layout of an access on an operand
@@ -805,7 +785,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.get_ptr_alloc(ptr.offset(len, this)?, size1, Align::ONE)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = this.get_ptr_alloc(ptr.offset(len, this)?, size1)?.unwrap(); // not a ZST, so we will get a result
             let byte = alloc.read_integer(alloc_range(Size::ZERO, size1))?.to_u8()?;
             if byte == 0 {
                 break;
@@ -845,13 +825,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn read_wide_str(&self, mut ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, Vec<u16>> {
         let this = self.eval_context_ref();
         let size2 = Size::from_bytes(2);
-        let align2 = Align::from_bytes(2).unwrap();
+        this.check_ptr_align(ptr, Align::from_bytes(2).unwrap())?;
 
         let mut wchars = Vec::new();
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.get_ptr_alloc(ptr, size2, align2)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = this.get_ptr_alloc(ptr, size2)?.unwrap(); // not a ZST, so we will get a result
             let wchar = alloc.read_integer(alloc_range(Size::ZERO, size2))?.to_u16()?;
             if wchar == 0 {
                 break;
@@ -887,8 +867,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Store the UTF-16 string.
         let size2 = Size::from_bytes(2);
         let this = self.eval_context_mut();
+        this.check_ptr_align(ptr, Align::from_bytes(2).unwrap())?;
         let mut alloc = this
-            .get_ptr_alloc_mut(ptr, size2 * string_length, Align::from_bytes(2).unwrap())?
+            .get_ptr_alloc_mut(ptr, size2 * string_length)?
             .unwrap(); // not a ZST, so we will get a result
         for (offset, wchar) in wide_str.iter().copied().chain(iter::once(0x0000)).enumerate() {
             let offset = u64::try_from(offset).unwrap();

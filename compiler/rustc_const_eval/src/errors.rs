@@ -5,8 +5,9 @@ use rustc_errors::{
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::interpret::{
-    CheckInAllocMsg, ExpectedKind, InterpError, InvalidMetaKind, InvalidProgramInfo, PointerKind,
-    ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
+    CheckInAllocMsg, ExpectedKind, InterpError, InvalidMetaKind, InvalidProgramInfo, Misalignment,
+    PointerKind, ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
+    ValidationErrorInfo,
 };
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -389,15 +390,6 @@ pub struct LiveDrop<'tcx> {
     pub dropped_at: Option<Span>,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(const_eval_align_check_failed)]
-pub struct AlignmentCheckFailed {
-    pub has: u64,
-    pub required: u64,
-    #[subdiagnostic]
-    pub frames: Vec<FrameNote>,
-}
-
 #[derive(Diagnostic)]
 #[diag(const_eval_error, code = "E0080")]
 pub struct ConstEvalError {
@@ -459,7 +451,6 @@ fn bad_pointer_message(msg: CheckInAllocMsg, handler: &Handler) -> String {
     use crate::fluent_generated::*;
 
     let msg = match msg {
-        CheckInAllocMsg::DerefTest => const_eval_deref_test,
         CheckInAllocMsg::MemoryAccessTest => const_eval_memory_access_test,
         CheckInAllocMsg::PointerArithmeticTest => const_eval_pointer_arithmetic_test,
         CheckInAllocMsg::OffsetFromTest => const_eval_offset_from_test,
@@ -568,9 +559,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
 
                 builder.set_arg("bad_pointer_message", bad_pointer_message(msg, handler));
             }
-            AlignmentCheckFailed { required, has } => {
+            AlignmentCheckFailed(Misalignment { required, has }, msg) => {
                 builder.set_arg("required", required.bytes());
                 builder.set_arg("has", has.bytes());
+                builder.set_arg("msg", format!("{msg:?}"));
             }
             WriteToReadOnly(alloc) | DerefFunctionPointer(alloc) | DerefVTablePointer(alloc) => {
                 builder.set_arg("allocation", alloc);

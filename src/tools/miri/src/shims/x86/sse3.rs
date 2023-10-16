@@ -1,6 +1,5 @@
 use rustc_middle::mir;
 use rustc_span::Symbol;
-use rustc_target::abi::Align;
 use rustc_target::spec::abi::Abi;
 
 use super::horizontal_bin_op;
@@ -76,9 +75,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 this.mem_copy(
                     src_ptr,
-                    Align::ONE,
                     dest.ptr(),
-                    Align::ONE,
                     dest.layout.size,
                     /*nonoverlapping*/ true,
                 )?;

@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/E0396-fixed.rs:5:28
    |
 LL | const VALUE: u8 = unsafe { *REG_ADDR };
-   |                            ^^^^^^^^^ dereferencing pointer failed: 0x5f3759df[noalloc] is a dangling pointer (it has no provenance)
+   |                            ^^^^^^^^^ memory access failed: 0x5f3759df[noalloc] is a dangling pointer (it has no provenance)
 
 error: aborting due to previous error
 

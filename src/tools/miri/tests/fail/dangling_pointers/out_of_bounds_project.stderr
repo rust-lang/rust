@@ -1,0 +1,21 @@
+error: Undefined Behavior: out-of-bounds pointer arithmetic: ALLOC has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
+  --> $DIR/out_of_bounds_project.rs:LL:CC
+   |
+LL |         let _field = addr_of!((*ptr).2);
+   |                      ^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: ALLOC has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> $DIR/out_of_bounds_project.rs:LL:CC
+   |
+LL |     let v = 0u32;
+   |         ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: this error originates in the macro `addr_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

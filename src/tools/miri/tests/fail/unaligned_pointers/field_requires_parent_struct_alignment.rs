@@ -8,7 +8,7 @@ pub struct S {
 }
 
 unsafe fn foo(x: *const S) -> u8 {
-    unsafe { (*x).x } //~ERROR: accessing memory with alignment 1, but alignment 4 is required
+    unsafe { (*x).x } //~ERROR: based on pointer with alignment 1, but alignment 4 is required
 }
 
 fn main() {
