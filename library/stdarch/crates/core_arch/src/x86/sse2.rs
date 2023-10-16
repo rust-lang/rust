@@ -3139,6 +3139,32 @@ mod tests {
         let r = _mm_madd_epi16(a, b);
         let e = _mm_setr_epi32(29, 81, 149, 233);
         assert_eq_m128i(r, e);
+
+        // Test large values.
+        // MIN*MIN+MIN*MIN will overflow into i32::MIN.
+        let a = _mm_setr_epi16(
+            i16::MAX,
+            i16::MAX,
+            i16::MIN,
+            i16::MIN,
+            i16::MIN,
+            i16::MAX,
+            0,
+            0,
+        );
+        let b = _mm_setr_epi16(
+            i16::MAX,
+            i16::MAX,
+            i16::MIN,
+            i16::MIN,
+            i16::MAX,
+            i16::MIN,
+            0,
+            0,
+        );
+        let r = _mm_madd_epi16(a, b);
+        let e = _mm_setr_epi32(0x7FFE0002, i32::MIN, -0x7FFF0000, 0);
+        assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "sse2")]
