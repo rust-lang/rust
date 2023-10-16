@@ -677,6 +677,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if !mir_assign_valid_types(
                 *self.tcx,
                 self.param_env,
+                self.defining_anchor_for_body(),
                 self.layout_of(normalized_place_ty)?,
                 op.layout,
             ) {
@@ -733,7 +734,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Scalar::Int(int) => Scalar::Int(int),
             })
         };
-        let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
+        let layout = from_known_layout(
+            self.tcx,
+            self.param_env,
+            self.defining_anchor_for_body(),
+            layout,
+            || self.layout_of(ty),
+        )?;
         let op = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
                 // We rely on mutability being set correctly in that allocation to prevent writes

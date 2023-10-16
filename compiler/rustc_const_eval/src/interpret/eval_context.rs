@@ -378,6 +378,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> FnAbiOfHelpers<'tcx> for InterpCx
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
+    anchor: DefiningAnchor,
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
 ) -> bool {
@@ -385,14 +386,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
     // differences.
-    if util::relate_types(
-        tcx,
-        param_env,
-        DefiningAnchor::Error,
-        Variance::Covariant,
-        src.ty,
-        dest.ty,
-    ) {
+    if util::relate_types(tcx, param_env, anchor, Variance::Covariant, src.ty, dest.ty) {
         // Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when
@@ -413,6 +407,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
 pub(super) fn from_known_layout<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     param_env: ParamEnv<'tcx>,
+    anchor: DefiningAnchor,
     known_layout: Option<TyAndLayout<'tcx>>,
     compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
 ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
@@ -421,7 +416,7 @@ pub(super) fn from_known_layout<'tcx>(
         Some(known_layout) => {
             if cfg!(debug_assertions) {
                 let check_layout = compute()?;
-                if !mir_assign_valid_types(tcx.tcx, param_env, check_layout, known_layout) {
+                if !mir_assign_valid_types(tcx.tcx, param_env, anchor, check_layout, known_layout) {
                     span_bug!(
                         tcx.span,
                         "expected type differs from actual type.\nexpected: {}\nactual: {}",
@@ -523,6 +518,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
+    pub fn defining_anchor_for_body(&self) -> DefiningAnchor {
+        if self.stack().is_empty() {
+            DefiningAnchor::Error
+        } else {
+            DefiningAnchor::from_def_id_and_reveal(
+                self.body().source.def_id(),
+                self.param_env.reveal(),
+            )
+        }
+    }
+
+    #[inline(always)]
     pub fn sign_extend(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
         assert!(ty.abi.is_signed());
         ty.size.sign_extend(value)
@@ -615,11 +622,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(layout);
         }
 
-        let layout = from_known_layout(self.tcx, self.param_env, layout, || {
-            let local_ty = frame.body.local_decls[local].ty;
-            let local_ty = self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
-            self.layout_of(local_ty)
-        })?;
+        let layout = from_known_layout(
+            self.tcx,
+            self.param_env,
+            DefiningAnchor::from_def_id_and_reveal(
+                frame.body.source.def_id(),
+                self.param_env.reveal(),
+            ),
+            layout,
+            || {
+                let local_ty = frame.body.local_decls[local].ty;
+                let local_ty =
+                    self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
+                self.layout_of(local_ty)
+            },
+        )?;
 
         // Layouts of locals are requested a lot, so we cache them.
         state.layout.set(Some(layout));
