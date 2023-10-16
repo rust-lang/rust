@@ -314,9 +314,10 @@ fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
 ///     fn into_iter<'a>(&'a self) -> Self::Iter<'a>;
 /// }
 /// ```
-fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRef]) {
+fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
     // Associates every GAT's def_id to a list of possibly missing bounds detected by this lint.
     let mut required_bounds_by_item = FxHashMap::default();
+    let associated_items = tcx.associated_items(trait_def_id);
 
     // Loop over all GATs together, because if this lint suggests adding a where-clause bound
     // to one GAT, it might then require us to an additional bound on another GAT.
@@ -325,8 +326,8 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
     // those GATs.
     loop {
         let mut should_continue = false;
-        for gat_item in associated_items {
-            let gat_def_id = gat_item.id.owner_id;
+        for gat_item in associated_items.in_definition_order() {
+            let gat_def_id = gat_item.def_id.expect_local();
             let gat_item = tcx.associated_item(gat_def_id);
             // If this item is not an assoc ty, or has no args, then it's not a GAT
             if gat_item.kind != ty::AssocKind::Type {
@@ -342,8 +343,8 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             // This is calculated by taking the intersection of the bounds that each item
             // constrains the GAT with individually.
             let mut new_required_bounds: Option<FxHashSet<ty::Clause<'_>>> = None;
-            for item in associated_items {
-                let item_def_id = item.id.owner_id;
+            for item in associated_items.in_definition_order() {
+                let item_def_id = item.def_id.expect_local();
                 // Skip our own GAT, since it does not constrain itself at all.
                 if item_def_id == gat_def_id {
                     continue;
@@ -351,9 +352,9 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
 
                 let param_env = tcx.param_env(item_def_id);
 
-                let item_required_bounds = match item.kind {
+                let item_required_bounds = match tcx.associated_item(item_def_id).kind {
                     // In our example, this corresponds to `into_iter` method
-                    hir::AssocItemKind::Fn { .. } => {
+                    ty::AssocKind::Fn => {
                         // For methods, we check the function signature's return type for any GATs
                         // to constrain. In the `into_iter` case, we see that the return type
                         // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds from.
@@ -369,12 +370,12 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             // We also assume that all of the function signature's parameter types
                             // are well formed.
                             &sig.inputs().iter().copied().collect(),
-                            gat_def_id.def_id,
+                            gat_def_id,
                             gat_generics,
                         )
                     }
                     // In our example, this corresponds to the `Iter` and `Item` associated types
-                    hir::AssocItemKind::Type => {
+                    ty::AssocKind::Type => {
                         // If our associated item is a GAT with missing bounds, add them to
                         // the param-env here. This allows this GAT to propagate missing bounds
                         // to other GATs.
@@ -391,11 +392,11 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                                 .instantiate_identity_iter_copied()
                                 .collect::<Vec<_>>(),
                             &FxIndexSet::default(),
-                            gat_def_id.def_id,
+                            gat_def_id,
                             gat_generics,
                         )
                     }
-                    hir::AssocItemKind::Const => None,
+                    ty::AssocKind::Const => None,
                 };
 
                 if let Some(item_required_bounds) = item_required_bounds {
@@ -431,7 +432,12 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
     }
 
     for (gat_def_id, required_bounds) in required_bounds_by_item {
-        let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id.def_id);
+        // Don't suggest adding `Self: 'a` to a GAT that can't be named
+        if tcx.is_impl_trait_in_trait(gat_def_id.to_def_id()) {
+            continue;
+        }
+
+        let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id);
         debug!(?required_bounds);
         let param_env = tcx.param_env(gat_def_id);
 
@@ -441,21 +447,16 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
                     !region_known_to_outlive(
                         tcx,
-                        gat_def_id.def_id,
+                        gat_def_id,
                         param_env,
                         &FxIndexSet::default(),
                         a,
                         b,
                     )
                 }
-                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => !ty_known_to_outlive(
-                    tcx,
-                    gat_def_id.def_id,
-                    param_env,
-                    &FxIndexSet::default(),
-                    a,
-                    b,
-                ),
+                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+                    !ty_known_to_outlive(tcx, gat_def_id, param_env, &FxIndexSet::default(), a, b)
+                }
                 _ => bug!("Unexpected ClauseKind"),
             })
             .map(|clause| clause.to_string())
@@ -534,7 +535,7 @@ fn augment_param_env<'tcx>(
 fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    item_def_id: hir::OwnerId,
+    item_def_id: LocalDefId,
     to_check: T,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
     gat_def_id: LocalDefId,
@@ -567,7 +568,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         // reflected in a where clause on the GAT itself.
         for (ty, ty_idx) in &types {
             // In our example, requires that `Self: 'a`
-            if ty_known_to_outlive(tcx, item_def_id.def_id, param_env, &wf_tys, *ty, *region_a) {
+            if ty_known_to_outlive(tcx, item_def_id, param_env, &wf_tys, *ty, *region_a) {
                 debug!(?ty_idx, ?region_a_idx);
                 debug!("required clause: {ty} must outlive {region_a}");
                 // Translate into the generic parameters of the GAT. In
@@ -606,14 +607,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
             if matches!(**region_b, ty::ReStatic | ty::ReError(_)) || region_a == region_b {
                 continue;
             }
-            if region_known_to_outlive(
-                tcx,
-                item_def_id.def_id,
-                param_env,
-                &wf_tys,
-                *region_a,
-                *region_b,
-            ) {
+            if region_known_to_outlive(tcx, item_def_id, param_env, &wf_tys, *region_a, *region_b) {
                 debug!(?region_a_idx, ?region_b_idx);
                 debug!("required clause: {region_a} must outlive {region_b}");
                 // Translate into the generic parameters of the GAT.
@@ -1114,8 +1108,8 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     });
 
     // Only check traits, don't check trait aliases
-    if let hir::ItemKind::Trait(_, _, _, _, items) = item.kind {
-        check_gat_where_clauses(tcx, items);
+    if let hir::ItemKind::Trait(..) = item.kind {
+        check_gat_where_clauses(tcx, item.owner_id.def_id);
     }
 }
 
