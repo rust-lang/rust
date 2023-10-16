@@ -83,6 +83,7 @@ impl<'tcx> InferCtxt<'tcx> {
             universe: self.universe.clone(),
             intercrate: self.intercrate,
             next_trait_solver: self.next_trait_solver,
+            in_query: self.in_query,
         }
     }
 }
