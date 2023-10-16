@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
             let Some(body_expr) = desugar_async_block(cx, expr) &&
             let Some(expr) = desugar_await(peel_blocks(body_expr)) &&
             // The await prefix must not come from a macro as its content could change in the future.
-            expr.span.ctxt() == body_expr.span.ctxt() &&
+            expr.span.eq_ctxt(body_expr.span) &&
             // An async block does not have immediate side-effects from a `.await` point-of-view.
             (!expr.can_have_side_effects() || desugar_async_block(cx, expr).is_some()) &&
             let Some(shortened_span) = walk_span_to_context(expr.span, span.ctxt())

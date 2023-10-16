@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
         // lint, with note if neither arg is > 1 line and both map() and
         // unwrap_or_else() have the same span
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
-        let same_span = map_arg.span.ctxt() == unwrap_arg.span.ctxt();
+        let same_span = map_arg.span.eq_ctxt(unwrap_arg.span);
         if same_span && !multiline {
             let var_snippet = snippet(cx, recv.span, "..");
             span_lint_and_sugg(
