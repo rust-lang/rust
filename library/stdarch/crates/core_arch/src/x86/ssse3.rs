@@ -598,6 +598,13 @@ mod tests {
         let expected = _mm_setr_epi16(0, 0, 0, 0, 5, 0, -7, 0);
         let r = _mm_mulhrs_epi16(a, b);
         assert_eq_m128i(r, expected);
+
+        // Test extreme values
+        let a = _mm_setr_epi16(i16::MAX, i16::MIN, i16::MIN, 0, 0, 0, 0, 0);
+        let b = _mm_setr_epi16(i16::MAX, i16::MIN, i16::MAX, 0, 0, 0, 0, 0);
+        let expected = _mm_setr_epi16(i16::MAX - 1, i16::MIN, -i16::MAX, 0, 0, 0, 0, 0);
+        let r = _mm_mulhrs_epi16(a, b);
+        assert_eq_m128i(r, expected);
     }
 
     #[simd_test(enable = "ssse3")]
