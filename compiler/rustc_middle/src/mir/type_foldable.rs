@@ -24,7 +24,7 @@ TrivialTypeTraversalImpls! {
 }
 
 TrivialTypeTraversalImpls! {
-    ConstValue<'tcx>,
+    ConstValue,
     NullOp<'tcx>,
 }
 

@@ -1468,19 +1468,15 @@ fn collect_used_items<'tcx>(
 #[instrument(skip(tcx, output), level = "debug")]
 fn collect_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
-    value: mir::ConstValue<'tcx>,
+    value: mir::ConstValue,
     output: &mut MonoItems<'tcx>,
 ) {
     match value {
         mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
             collect_alloc(tcx, ptr.provenance, output)
         }
-        mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
-        mir::ConstValue::Slice { data, meta: _ } => {
-            for &id in data.inner().provenance().ptrs().values() {
-                collect_alloc(tcx, id, output);
-            }
-        }
+        mir::ConstValue::Slice { alloc_id, meta: _ }
+        | mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
         _ => {}
     }
 }

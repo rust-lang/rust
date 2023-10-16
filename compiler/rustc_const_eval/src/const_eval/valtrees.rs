@@ -207,7 +207,7 @@ pub fn valtree_to_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
     valtree: ty::ValTree<'tcx>,
-) -> mir::ConstValue<'tcx> {
+) -> mir::ConstValue {
     // Basic idea: We directly construct `Scalar` values from trivial `ValTree`s
     // (those for constants with type bool, int, uint, float or char).
     // For all other types we create an `MPlace` and fill that by walking

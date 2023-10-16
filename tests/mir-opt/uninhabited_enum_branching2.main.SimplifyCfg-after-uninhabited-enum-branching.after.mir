@@ -83,3 +83,19 @@ fn main() -> () {
         return;
     }
 }
+
+alloc8 (size: 1, align: 1) {
+    44                                              │ D
+}
+
+alloc7 (size: 1, align: 1) {
+    43                                              │ C
+}
+
+alloc4 (size: 1, align: 1) {
+    44                                              │ D
+}
+
+alloc3 (size: 1, align: 1) {
+    43                                              │ C
+}

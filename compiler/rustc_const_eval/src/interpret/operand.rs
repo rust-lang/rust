@@ -722,7 +722,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(crate) fn const_val_to_op(
         &self,
-        val_val: mir::ConstValue<'tcx>,
+        val_val: mir::ConstValue,
         ty: Ty<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
@@ -743,10 +743,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             mir::ConstValue::Scalar(x) => Operand::Immediate(adjust_scalar(x)?.into()),
             mir::ConstValue::ZeroSized => Operand::Immediate(Immediate::Uninit),
-            mir::ConstValue::Slice { data, meta } => {
+            mir::ConstValue::Slice { alloc_id, meta } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
-                let ptr = Pointer::new(self.tcx.reserve_and_set_memory_alloc(data), Size::ZERO);
+                let ptr = Pointer::new(alloc_id, Size::ZERO);
                 Operand::Immediate(Immediate::new_slice(
                     self.global_base_pointer(ptr)?.into(),
                     meta,

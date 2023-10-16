@@ -273,3 +273,8 @@
       }
   }
   
+  alloc2 (size: 18, align: 1) {
+      0x00 │ 6d 79 20 66 61 76 6f 75 72 69 74 65 20 73 6c 69 │ my favourite sli
+      0x10 │ 63 65                                           │ ce
+  }
+  

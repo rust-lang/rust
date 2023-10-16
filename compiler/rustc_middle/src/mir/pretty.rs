@@ -1230,7 +1230,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.push(&format!("+ user_ty: {user_ty:?}"));
             }
 
-            let fmt_val = |val: ConstValue<'tcx>, ty: Ty<'tcx>| {
+            let fmt_val = |val: ConstValue, ty: Ty<'tcx>| {
                 let tcx = self.tcx;
                 rustc_data_structures::make_display(move |fmt| {
                     pretty_print_const_value_tcx(tcx, val, ty, fmt)
@@ -1325,18 +1325,14 @@ pub fn write_allocations<'tcx>(
         alloc.inner().provenance().ptrs().values().map(|id| *id)
     }
 
-    fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
+    fn alloc_ids_from_const_val(val: ConstValue) -> impl Iterator<Item = AllocId> {
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
                 Either::Left(std::iter::once(ptr.provenance))
             }
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => Either::Right(std::iter::empty()),
             ConstValue::ZeroSized => Either::Right(std::iter::empty()),
-            ConstValue::Slice { .. } => {
-                // `u8`/`str` slices, shouldn't contain pointers that we want to print.
-                Either::Right(std::iter::empty())
-            }
-            ConstValue::Indirect { alloc_id, .. } => {
+            ConstValue::Slice { alloc_id, .. } | ConstValue::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
                 // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
                 Either::Left(std::iter::once(alloc_id))
@@ -1637,7 +1633,7 @@ fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Resul
 fn comma_sep<'tcx>(
     tcx: TyCtxt<'tcx>,
     fmt: &mut Formatter<'_>,
-    elems: Vec<(ConstValue<'tcx>, Ty<'tcx>)>,
+    elems: Vec<(ConstValue, Ty<'tcx>)>,
 ) -> fmt::Result {
     let mut first = true;
     for (ct, ty) in elems {
@@ -1652,7 +1648,7 @@ fn comma_sep<'tcx>(
 
 fn pretty_print_const_value_tcx<'tcx>(
     tcx: TyCtxt<'tcx>,
-    ct: ConstValue<'tcx>,
+    ct: ConstValue,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
 ) -> fmt::Result {
@@ -1696,10 +1692,9 @@ fn pretty_print_const_value_tcx<'tcx>(
         // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
         // to be able to destructure the tuple into `(0u8, *mut T)`
         (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
-            let ct = tcx.lift(ct).unwrap();
             let ty = tcx.lift(ty).unwrap();
             if let Some(contents) = tcx.try_destructure_mir_constant_for_diagnostics(ct, ty) {
-                let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
+                let fields: Vec<(ConstValue, Ty<'_>)> = contents.fields.to_vec();
                 match *ty.kind() {
                     ty::Array(..) => {
                         fmt.write_str("[")?;
@@ -1780,12 +1775,11 @@ fn pretty_print_const_value_tcx<'tcx>(
 }
 
 pub(crate) fn pretty_print_const_value<'tcx>(
-    ct: ConstValue<'tcx>,
+    ct: ConstValue,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
-        let ct = tcx.lift(ct).unwrap();
         let ty = tcx.lift(ty).unwrap();
         pretty_print_const_value_tcx(tcx, ct, ty, fmt)
     })

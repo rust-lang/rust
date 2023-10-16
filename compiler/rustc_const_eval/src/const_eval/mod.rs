@@ -23,7 +23,7 @@ pub(crate) use valtrees::{const_to_valtree_inner, valtree_to_const_value};
 pub(crate) fn const_caller_location(
     tcx: TyCtxt<'_>,
     (file, line, col): (Symbol, u32, u32),
-) -> mir::ConstValue<'_> {
+) -> mir::ConstValue {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
 
@@ -88,7 +88,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
     tcx: TyCtxtAt<'tcx>,
-    val: mir::ConstValue<'tcx>,
+    val: mir::ConstValue,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
     let param_env = ty::ParamEnv::reveal_all();

@@ -1,8 +1,8 @@
-error: Undefined Behavior: writing to ALLOC which is read-only
+error: Undefined Behavior: writing to STATIC which is read-only
   --> $DIR/static_memory_modification1.rs:LL:CC
    |
 LL |         *std::mem::transmute::<&usize, &mut usize>(&X) = 6;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to ALLOC which is read-only
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to STATIC which is read-only
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

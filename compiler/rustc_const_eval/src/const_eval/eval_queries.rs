@@ -108,7 +108,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
-) -> ConstValue<'tcx> {
+) -> ConstValue {
     // Handle ZST consistently and early.
     if op.layout.is_zst() {
         return ConstValue::ZeroSized;
@@ -166,10 +166,9 @@ pub(super) fn op_to_const<'tcx>(
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
                 let (alloc_id, offset) = a.to_pointer(ecx).expect(msg).into_parts();
                 let alloc_id = alloc_id.expect(msg);
-                let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
                 assert!(offset == abi::Size::ZERO, "{}", msg);
                 let meta = b.to_target_usize(ecx).expect(msg);
-                ConstValue::Slice { data, meta }
+                ConstValue::Slice { alloc_id, meta }
             }
             Immediate::Uninit => bug!("`Uninit` is not a valid value for {}", op.layout.ty),
         },
@@ -181,7 +180,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ConstValue<'tcx> {
+) -> ConstValue {
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
@@ -210,7 +209,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
 pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
+) -> ::rustc_middle::mir::interpret::EvalToConstValueResult {
     // see comment in eval_to_allocation_raw_provider for what we're doing here
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;

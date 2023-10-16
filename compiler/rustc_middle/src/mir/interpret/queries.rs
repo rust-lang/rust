@@ -15,7 +15,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// that can't take any generic arguments like statics, const items or enum discriminants. If a
     /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
-    pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult<'tcx> {
+    pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult {
         // In some situations def_id will have substitutions within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
         // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
@@ -41,7 +41,7 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         ct: mir::UnevaluatedConst<'tcx>,
         span: Option<Span>,
-    ) -> EvalToConstValueResult<'tcx> {
+    ) -> EvalToConstValueResult {
         // Cannot resolve `Unevaluated` constants that contain inference
         // variables. We reject those here since `resolve`
         // would fail otherwise.
@@ -131,7 +131,7 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         instance: ty::Instance<'tcx>,
         span: Option<Span>,
-    ) -> EvalToConstValueResult<'tcx> {
+    ) -> EvalToConstValueResult {
         self.const_eval_global_id(param_env, GlobalId { instance, promoted: None }, span)
     }
 
@@ -142,7 +142,7 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cid: GlobalId<'tcx>,
         span: Option<Span>,
-    ) -> EvalToConstValueResult<'tcx> {
+    ) -> EvalToConstValueResult {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_regions(param_env.and(cid));

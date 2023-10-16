@@ -5,7 +5,7 @@
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{Allocation, ConstAllocation, GlobalId, InterpResult, PointerArithmetic, Scalar},
+    interpret::{AllocId, GlobalId, InterpResult, PointerArithmetic, Scalar},
     BinOp, ConstValue, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
@@ -42,10 +42,11 @@ fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
+pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (AllocId, u64) {
     let path = crate::util::type_name(tcx, ty);
-    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes());
-    tcx.mk_const_alloc(alloc)
+    let bytes = path.into_bytes();
+    let len = bytes.len().try_into().unwrap();
+    (tcx.allocate_bytes(bytes), len)
 }
 
 /// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
@@ -55,14 +56,14 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     def_id: DefId,
     args: GenericArgsRef<'tcx>,
-) -> InterpResult<'tcx, ConstValue<'tcx>> {
+) -> InterpResult<'tcx, ConstValue> {
     let tp_ty = args.type_at(0);
     let name = tcx.item_name(def_id);
     Ok(match name {
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            let alloc = alloc_type_name(tcx, tp_ty);
-            ConstValue::Slice { data: alloc, meta: alloc.inner().size().bytes() }
+            let (alloc_id, len) = alloc_type_name(tcx, tp_ty);
+            ConstValue::Slice { alloc_id, meta: len }
         }
         sym::needs_drop => {
             ensure_monomorphic_enough(tcx, tp_ty)?;

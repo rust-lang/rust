@@ -6,7 +6,7 @@ use rustc_hir::{self as hir};
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::mir::interpret::{alloc_range, AllocId, ConstAllocation, ErrorHandled, Scalar};
+use crate::mir::interpret::{alloc_range, AllocId, ErrorHandled, Scalar};
 use crate::mir::{pretty_print_const_value, Promoted};
 use crate::ty::ScalarInt;
 use crate::ty::{self, print::pretty_print_const, List, Ty, TyCtxt};
@@ -29,8 +29,8 @@ pub struct ConstAlloc<'tcx> {
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable, Lift)]
-pub enum ConstValue<'tcx> {
+#[derive(HashStable)]
+pub enum ConstValue {
     /// Used for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
@@ -48,7 +48,7 @@ pub enum ConstValue<'tcx> {
     Slice {
         /// The allocation storing the slice contents.
         /// This always points to the beginning of the allocation.
-        data: ConstAllocation<'tcx>,
+        alloc_id: AllocId,
         /// The metadata field of the reference.
         /// This is a "target usize", so we use `u64` as in the interpreter.
         meta: u64,
@@ -71,9 +71,9 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstValue<'_>, 24);
+static_assert_size!(ConstValue, 24);
 
-impl<'tcx> ConstValue<'tcx> {
+impl ConstValue {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
@@ -94,11 +94,11 @@ impl<'tcx> ConstValue<'tcx> {
         self.try_to_scalar_int()?.try_into().ok()
     }
 
-    pub fn try_to_target_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+    pub fn try_to_target_usize(&self, tcx: TyCtxt<'_>) -> Option<u64> {
         self.try_to_scalar_int()?.try_to_target_usize(tcx).ok()
     }
 
-    pub fn try_to_bits_for_ty(
+    pub fn try_to_bits_for_ty<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -125,12 +125,15 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     /// Must only be called on constants of type `&str` or `&[u8]`!
-    pub fn try_get_slice_bytes_for_diagnostics(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
-        let (data, start, end) = match self {
+    pub fn try_get_slice_bytes_for_diagnostics<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<&'tcx [u8]> {
+        let (alloc_id, start, len) = match self {
             ConstValue::Scalar(_) | ConstValue::ZeroSized => {
                 bug!("`try_get_slice_bytes` on non-slice constant")
             }
-            &ConstValue::Slice { data, meta } => (data, 0, meta),
+            &ConstValue::Slice { alloc_id, meta } => (alloc_id, 0, meta),
             &ConstValue::Indirect { alloc_id, offset } => {
                 // The reference itself is stored behind an indirection.
                 // Load the reference, and then load the actual slice contents.
@@ -162,14 +165,15 @@ impl<'tcx> ConstValue<'tcx> {
                 }
                 // Non-empty slice, must have memory. We know this is a relative pointer.
                 let (inner_alloc_id, offset) = ptr.into_parts();
-                let data = tcx.global_alloc(inner_alloc_id?).unwrap_memory();
-                (data, offset.bytes(), offset.bytes() + len)
+                (inner_alloc_id?, offset.bytes(), len)
             }
         };
 
+        let data = tcx.global_alloc(alloc_id).unwrap_memory();
+
         // This is for diagnostics only, so we are okay to use `inspect_with_uninit_and_ptr_outside_interpreter`.
         let start = start.try_into().unwrap();
-        let end = end.try_into().unwrap();
+        let end = start + usize::try_from(len).unwrap();
         Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
     }
 }
@@ -197,7 +201,7 @@ pub enum Const<'tcx> {
 
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
-    Val(ConstValue<'tcx>, Ty<'tcx>),
+    Val(ConstValue, Ty<'tcx>),
 }
 
 impl<'tcx> Const<'tcx> {
@@ -245,7 +249,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         span: Option<Span>,
-    ) -> Result<ConstValue<'tcx>, ErrorHandled> {
+    ) -> Result<ConstValue, ErrorHandled> {
         match self {
             Const::Ty(c) => {
                 // We want to consistently have a "clean" value for type system constants (i.e., no
@@ -337,7 +341,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn from_value(val: ConstValue<'tcx>, ty: Ty<'tcx>) -> Self {
+    pub fn from_value(val: ConstValue, ty: Ty<'tcx>) -> Self {
         Self::Val(val, ty)
     }
 
