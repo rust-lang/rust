@@ -4261,6 +4261,8 @@ impl<'test> TestCx<'test> {
         // AllocId are numbered globally in a compilation session. This can lead to changes
         // depending on the exact compilation flags and host architecture. Meanwhile, we want
         // to keep them numbered, to see if the same id appears multiple times.
+        // So we remap to deterministic numbers that only depend on the subset of allocations
+        // that actually appear in the output.
         {
             use std::fmt::Write;
 
