@@ -462,7 +462,7 @@ impl<'a> CoverageSpansGenerator<'a> {
     ///     `pending_dups` could have as few as one span)
     /// In either case, no more spans will match the span of `pending_dups`, so
     /// add the `pending_dups` if they don't overlap `curr`, and clear the list.
-    fn check_pending_dups(&mut self) {
+    fn maybe_flush_pending_dups(&mut self) {
         if let Some(dup) = self.pending_dups.last()
             && dup.span != self.prev().span
         {
@@ -502,7 +502,7 @@ impl<'a> CoverageSpansGenerator<'a> {
                 // by `self.curr_mut().merge_from(prev)`.
                 self.curr_original_span = curr.span;
                 self.some_curr.replace(curr);
-                self.check_pending_dups();
+                self.maybe_flush_pending_dups();
                 return true;
             }
         }
