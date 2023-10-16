@@ -4263,30 +4263,30 @@ impl<'test> TestCx<'test> {
         // to keep them numbered, to see if the same id appears multiple times.
         // So we remap to deterministic numbers that only depend on the subset of allocations
         // that actually appear in the output.
+        // We use uppercase ALLOC to distinguish from the non-normalized version.
         {
-            use std::fmt::Write;
-
-            let re = Regex::new(r"(╾a|─a|\balloc)([0-9]+)\b(─|\+0x[0-9]+─)?").unwrap();
             let mut seen_allocs = indexmap::IndexSet::new();
+
+            // The alloc-id appears in pretty-printed allocations.
+            let re = Regex::new(r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?─*╼").unwrap();
             normalized = re
                 .replace_all(&normalized, |caps: &Captures<'_>| {
-                    // Use uppercase to distinguish with the non-normalized version.
-                    let mut ret = caps.get(1).unwrap().as_str().to_uppercase();
                     // Renumber the captured index.
                     let index = caps.get(2).unwrap().as_str().to_string();
                     let (index, _) = seen_allocs.insert_full(index);
-                    write!(&mut ret, "{index}").unwrap();
-                    // If we have a tail finishing with `─`, this means pretty-printing.
-                    // Complete with filler `─` to preserve the pretty-print.
-                    if let Some(tail) = caps.get(3) {
-                        ret.push_str(tail.as_str());
-                        let orig_len = caps.get(0).unwrap().as_str().len();
-                        let ret_len = ret.len();
-                        for _ in orig_len..ret_len {
-                            ret.push('─');
-                        }
-                    }
-                    ret
+                    let offset = caps.get(3).map_or("", |c| c.as_str());
+                    // Do not bother keeping it pretty, just make it deterministic.
+                    format!("╾ALLOC{index}{offset}╼")
+                })
+                .into_owned();
+
+            // The alloc-id appears in a sentence.
+            let re = Regex::new(r"\balloc([0-9]+)\b").unwrap();
+            normalized = re
+                .replace_all(&normalized, |caps: &Captures<'_>| {
+                    let index = caps.get(1).unwrap().as_str().to_string();
+                    let (index, _) = seen_allocs.insert_full(index);
+                    format!("ALLOC{index}")
                 })
                 .into_owned();
         }
