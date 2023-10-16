@@ -1,5 +1,8 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+#![allow(internal_features)]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
@@ -11,7 +14,6 @@
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
-#![allow(internal_features)]
 
 #[macro_use]
 extern crate rustc_middle;
