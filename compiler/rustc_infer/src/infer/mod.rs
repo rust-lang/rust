@@ -340,6 +340,8 @@ pub struct InferCtxt<'tcx> {
     pub intercrate: bool,
 
     next_trait_solver: bool,
+
+    in_query: bool,
 }
 
 impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
@@ -596,6 +598,7 @@ pub struct InferCtxtBuilder<'tcx> {
     /// Whether we should use the new trait solver in the local inference context,
     /// which affects things like which solver is used in `predicate_may_hold`.
     next_trait_solver: bool,
+    in_query: bool,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -611,6 +614,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             skip_leak_check: false,
             intercrate: false,
             next_trait_solver: self.next_trait_solver_globally(),
+            in_query: false,
         }
     }
 }
@@ -647,6 +651,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         self
     }
 
+    pub fn in_query(mut self) -> Self {
+        self.in_query = true;
+        self
+    }
+
     /// Given a canonical value `C` as a starting point, create an
     /// inference context that contains each of the bound values
     /// within instantiated as a fresh variable. The `f` closure is
@@ -662,8 +671,8 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let infcx = self.with_opaque_type_inference(canonical.value.anchor).build();
-        let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
+        let (infcx, value, subst) =
+            self.build_with_canonical_inner(span, canonical, canonical.value.anchor);
         (infcx, value.param_env.and(value.value), subst)
     }
 
@@ -676,7 +685,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let infcx = self.with_opaque_type_inference(anchor).build();
+        let infcx = self.with_opaque_type_inference(anchor).in_query().build();
         let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
         (infcx, value, subst)
     }
@@ -689,6 +698,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             skip_leak_check,
             intercrate,
             next_trait_solver,
+            in_query,
         } = self;
         InferCtxt {
             tcx,
@@ -706,6 +716,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             next_trait_solver,
+            in_query,
         }
     }
 }

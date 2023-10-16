@@ -45,8 +45,8 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
-        // We handle opaque types differently in the new solver.
-        if self.next_trait_solver() {
+        // We handle opaque types differently in the new solver and in canonical queries.
+        if self.next_trait_solver() || self.in_query {
             return InferOk { value, obligations: vec![] };
         }
 
