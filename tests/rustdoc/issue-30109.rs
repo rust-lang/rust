@@ -2,6 +2,8 @@
 // aux-build:issue-30109-1.rs
 // ignore-cross-compile
 
+#![crate_name="issue_30109"]
+
 pub mod quux {
     extern crate issue_30109_1 as bar;
     use self::bar::Bar;

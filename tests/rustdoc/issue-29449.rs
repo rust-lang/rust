@@ -1,3 +1,5 @@
+#![crate_name="issue_29449"]
+
 // @has issue_29449/struct.Foo.html
 pub struct Foo;
 

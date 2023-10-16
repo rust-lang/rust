@@ -1,3 +1,5 @@
+#![crate_name="issue_33069"]
+
 pub trait Bar {}
 
 #[doc(hidden)]

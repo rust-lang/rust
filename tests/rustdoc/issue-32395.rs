@@ -2,6 +2,8 @@
 // build-aux-docs
 // ignore-cross-compile
 
+#![crate_name="issue_32395"]
+
 // @has variant_struct/enum.Foo.html
 // @!hasraw - 'pub qux'
 // @!hasraw - 'pub(crate) qux'

@@ -1,3 +1,5 @@
+#![crate_name="issue_33302"]
+
 // Ensure constant and array length values are not taken from source
 // code, which wreaks havoc with macros.
 

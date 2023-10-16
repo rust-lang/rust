@@ -1,3 +1,5 @@
+#![crate_name="issue_31899"]
+
 // @has issue_31899/index.html
 // @hasraw - 'Make this line a bit longer.'
 // @!hasraw - 'rust rust-example-rendered'

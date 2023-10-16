@@ -3,6 +3,8 @@
 // build-aux-docs
 // ignore-cross-compile
 
+#![crate_name="issue_33178"]
+
 // @has issue_33178/index.html
 // @has - '//a[@title="mod empty"][@href="../empty/index.html"]' empty
 pub extern crate empty;
