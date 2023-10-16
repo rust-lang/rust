@@ -67,7 +67,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError};
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
     self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
@@ -583,35 +583,31 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             segments: Vec<String>,
         }
 
-        struct NonTrivialPath;
-
         impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
-            type Error = NonTrivialPath;
-
             fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
-            fn print_region(self, _region: ty::Region<'_>) -> Result<Self, Self::Error> {
-                Err(NonTrivialPath)
+            fn print_region(self, _region: ty::Region<'_>) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
-            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self, Self::Error> {
-                Err(NonTrivialPath)
+            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
             fn print_dyn_existential(
                 self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-            ) -> Result<Self, Self::Error> {
-                Err(NonTrivialPath)
+            ) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
-            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self, Self::Error> {
-                Err(NonTrivialPath)
+            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
-            fn path_crate(mut self, cnum: CrateNum) -> Result<Self, Self::Error> {
+            fn path_crate(mut self, cnum: CrateNum) -> Result<Self, PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum).to_string()];
                 Ok(self)
             }
@@ -619,33 +615,33 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self, Self::Error> {
-                Err(NonTrivialPath)
+            ) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
             fn path_append_impl(
                 self,
-                _print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+                _print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 _disambiguated_data: &DisambiguatedDefPathData,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self, Self::Error> {
-                Err(NonTrivialPath)
+            ) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
             fn path_append(
                 mut self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
-            ) -> Result<Self, Self::Error> {
+            ) -> Result<Self, PrintError> {
                 self = print_prefix(self)?;
                 self.segments.push(disambiguated_data.to_string());
                 Ok(self)
             }
             fn path_generic_args(
                 self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 _args: &[GenericArg<'tcx>],
-            ) -> Result<Self, Self::Error> {
+            ) -> Result<Self, PrintError> {
                 print_prefix(self)
             }
         }
@@ -663,7 +659,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 // We compare strings because DefPath can be different
                 // for imported and non-imported crates
-                let same_path = || -> Result<_, NonTrivialPath> {
+                let same_path = || -> Result<_, PrintError> {
                     Ok(self.tcx.def_path_str(did1) == self.tcx.def_path_str(did2)
                         || abs_path(did1)? == abs_path(did2)?)
                 };

@@ -10,12 +10,14 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 mod pretty;
 pub use self::pretty::*;
 
+pub type PrintError = std::fmt::Error;
+
 // FIXME(eddyb) false positive, the lifetime parameters are used with `P:  Printer<...>`.
 #[allow(unused_lifetimes)]
 pub trait Print<'tcx, P> {
     type Error;
 
-    fn print(&self, cx: P) -> Result<P, Self::Error>;
+    fn print(&self, cx: P) -> Result<P, PrintError>;
 }
 
 /// Interface for outputting user-facing "type-system entities"
@@ -28,15 +30,13 @@ pub trait Print<'tcx, P> {
 //
 // FIXME(eddyb) find a better name; this is more general than "printing".
 pub trait Printer<'tcx>: Sized {
-    type Error;
-
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
     fn print_def_path(
         self,
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
-    ) -> Result<Self, Self::Error> {
+    ) -> Result<Self, PrintError> {
         self.default_print_def_path(def_id, args)
     }
 
@@ -46,48 +46,48 @@ pub trait Printer<'tcx>: Sized {
         args: &'tcx [GenericArg<'tcx>],
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self, Self::Error> {
+    ) -> Result<Self, PrintError> {
         self.default_print_impl_path(impl_def_id, args, self_ty, trait_ref)
     }
 
-    fn print_region(self, region: ty::Region<'tcx>) -> Result<Self, Self::Error>;
+    fn print_region(self, region: ty::Region<'tcx>) -> Result<Self, PrintError>;
 
-    fn print_type(self, ty: Ty<'tcx>) -> Result<Self, Self::Error>;
+    fn print_type(self, ty: Ty<'tcx>) -> Result<Self, PrintError>;
 
     fn print_dyn_existential(
         self,
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> Result<Self, Self::Error>;
+    ) -> Result<Self, PrintError>;
 
-    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self, Self::Error>;
+    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self, PrintError>;
 
-    fn path_crate(self, cnum: CrateNum) -> Result<Self, Self::Error>;
+    fn path_crate(self, cnum: CrateNum) -> Result<Self, PrintError>;
 
     fn path_qualified(
         self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self, Self::Error>;
+    ) -> Result<Self, PrintError>;
 
     fn path_append_impl(
         self,
-        print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self, Self::Error>;
+    ) -> Result<Self, PrintError>;
 
     fn path_append(
         self,
-        print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
-    ) -> Result<Self, Self::Error>;
+    ) -> Result<Self, PrintError>;
 
     fn path_generic_args(
         self,
-        print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
         args: &[GenericArg<'tcx>],
-    ) -> Result<Self, Self::Error>;
+    ) -> Result<Self, PrintError>;
 
     // Defaults (should not be overridden):
 
@@ -96,7 +96,7 @@ pub trait Printer<'tcx>: Sized {
         self,
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
-    ) -> Result<Self, Self::Error> {
+    ) -> Result<Self, PrintError> {
         let key = self.tcx().def_key(def_id);
         debug!(?key);
 
@@ -187,7 +187,7 @@ pub trait Printer<'tcx>: Sized {
         _args: &'tcx [GenericArg<'tcx>],
         self_ty: Ty<'tcx>,
         impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self, Self::Error> {
+    ) -> Result<Self, PrintError> {
         debug!(
             "default_print_impl_path: impl_def_id={:?}, self_ty={}, impl_trait_ref={:?}",
             impl_def_id, self_ty, impl_trait_ref
@@ -288,30 +288,30 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'tcx> {
-    type Error = P::Error;
-    fn print(&self, cx: P) -> Result<P, Self::Error> {
+    type Error = PrintError;
+    fn print(&self, cx: P) -> Result<P, PrintError> {
         cx.print_region(*self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
-    type Error = P::Error;
+    type Error = PrintError;
 
-    fn print(&self, cx: P) -> Result<P, Self::Error> {
+    fn print(&self, cx: P) -> Result<P, PrintError> {
         cx.print_type(*self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
-    type Error = P::Error;
-    fn print(&self, cx: P) -> Result<P, Self::Error> {
+    type Error = PrintError;
+    fn print(&self, cx: P) -> Result<P, PrintError> {
         cx.print_dyn_existential(self)
     }
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
-    type Error = P::Error;
-    fn print(&self, cx: P) -> Result<P, Self::Error> {
+    type Error = PrintError;
+    fn print(&self, cx: P) -> Result<P, PrintError> {
         cx.print_const(*self)
     }
 }

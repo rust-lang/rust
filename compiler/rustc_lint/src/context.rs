@@ -31,7 +31,7 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError};
 use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
@@ -1206,32 +1206,30 @@ impl<'tcx> LateContext<'tcx> {
         }
 
         impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
-            type Error = !;
-
             fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
-            fn print_region(self, _region: ty::Region<'_>) -> Result<Self, Self::Error> {
+            fn print_region(self, _region: ty::Region<'_>) -> Result<Self, PrintError> {
                 Ok(self)
             }
 
-            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self, Self::Error> {
+            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self, PrintError> {
                 Ok(self)
             }
 
             fn print_dyn_existential(
                 self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-            ) -> Result<Self, Self::Error> {
+            ) -> Result<Self, PrintError> {
                 Ok(self)
             }
 
-            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self, Self::Error> {
+            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self, PrintError> {
                 Ok(self)
             }
 
-            fn path_crate(mut self, cnum: CrateNum) -> Result<Self, Self::Error> {
+            fn path_crate(mut self, cnum: CrateNum) -> Result<Self, PrintError> {
                 self.path = vec![self.tcx.crate_name(cnum)];
                 Ok(self)
             }
@@ -1240,7 +1238,7 @@ impl<'tcx> LateContext<'tcx> {
                 mut self,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self, Self::Error> {
+            ) -> Result<Self, PrintError> {
                 if trait_ref.is_none() {
                     if let ty::Adt(def, args) = self_ty.kind() {
                         return self.print_def_path(def.did(), args);
@@ -1259,11 +1257,11 @@ impl<'tcx> LateContext<'tcx> {
 
             fn path_append_impl(
                 self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 _disambiguated_data: &DisambiguatedDefPathData,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self, Self::Error> {
+            ) -> Result<Self, PrintError> {
                 let mut path = print_prefix(self)?;
 
                 // This shouldn't ever be needed, but just in case:
@@ -1285,9 +1283,9 @@ impl<'tcx> LateContext<'tcx> {
 
             fn path_append(
                 self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
-            ) -> Result<Self, Self::Error> {
+            ) -> Result<Self, PrintError> {
                 let mut path = print_prefix(self)?;
 
                 // Skip `::{{extern}}` blocks and `::{{constructor}}` on tuple/unit structs.
@@ -1301,9 +1299,9 @@ impl<'tcx> LateContext<'tcx> {
 
             fn path_generic_args(
                 self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, Self::Error>,
+                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 _args: &[GenericArg<'tcx>],
-            ) -> Result<Self, Self::Error> {
+            ) -> Result<Self, PrintError> {
                 print_prefix(self)
             }
         }
