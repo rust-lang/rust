@@ -290,12 +290,12 @@ impl<'a> CoverageSpansGenerator<'a> {
         while self.next_coverage_span() {
             if self.some_prev.is_none() {
                 debug!("  initial span");
-                self.check_invoked_macro_name_span();
+                self.maybe_push_macro_name_span();
             } else if self.curr().is_mergeable(self.prev()) {
                 debug!("  same bcb (and neither is a closure), merge with prev={:?}", self.prev());
                 let prev = self.take_prev();
                 self.curr_mut().merge_from(prev);
-                self.check_invoked_macro_name_span();
+                self.maybe_push_macro_name_span();
             // Note that curr.span may now differ from curr_original_span
             } else if self.prev_ends_before_curr() {
                 debug!(
@@ -305,7 +305,7 @@ impl<'a> CoverageSpansGenerator<'a> {
                 );
                 let prev = self.take_prev();
                 self.push_refined_span(prev);
-                self.check_invoked_macro_name_span();
+                self.maybe_push_macro_name_span();
             } else if self.prev().is_closure {
                 // drop any equal or overlapping span (`curr`) and keep `prev` to test again in the
                 // next iter
@@ -347,7 +347,7 @@ impl<'a> CoverageSpansGenerator<'a> {
                 }
             } else {
                 self.cutoff_prev_at_overlapping_curr();
-                self.check_invoked_macro_name_span();
+                self.maybe_push_macro_name_span();
             }
         }
 
@@ -399,7 +399,9 @@ impl<'a> CoverageSpansGenerator<'a> {
         self.refined_spans.push(covspan)
     }
 
-    fn check_invoked_macro_name_span(&mut self) {
+    /// If `curr` is part of a new macro expansion, carve out and push a separate
+    /// span that ends just after the macro name and its subsequent `!`.
+    fn maybe_push_macro_name_span(&mut self) {
         if let Some(visible_macro) = self.curr().visible_macro(self.body_span) {
             if !self
                 .prev_expn_span
