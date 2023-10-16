@@ -1,3 +1,4 @@
+// skip-filecheck
 // Checks that `SimplifyArmIdentity` is not applied if enums have incompatible layouts.
 // Regression test for issue #66856.
 //

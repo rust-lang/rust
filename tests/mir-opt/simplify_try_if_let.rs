@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: -Zmir-opt-level=1 -Zunsound-mir-opts
 // ignore-test
 // FIXME: the pass is unsound and causes ICEs in the MIR validator

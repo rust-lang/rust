@@ -1,3 +1,4 @@
+// skip-filecheck
 // Test spanview block output
 // compile-flags: -Z dump-mir-spanview=block
 

@@ -1,3 +1,4 @@
+// skip-filecheck
 #![feature(stmt_expr_attributes, rustc_attrs)]
 
 // EMIT_MIR uniform_array_move_out.move_out_from_end.built.after.mir

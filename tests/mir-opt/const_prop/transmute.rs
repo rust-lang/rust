@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 // compile-flags: -O --crate-type=lib
 // ignore-endian-big

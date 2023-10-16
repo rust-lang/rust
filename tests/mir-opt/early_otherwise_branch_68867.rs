@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: EarlyOtherwiseBranch
 
 // FIXME: This test was broken by the derefer change.

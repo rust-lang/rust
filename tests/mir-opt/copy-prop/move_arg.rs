@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Test that we do not move multiple times from the same local.
 // unit-test: CopyProp

@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 
 static mut STATIC: u32 = 0x42424242;

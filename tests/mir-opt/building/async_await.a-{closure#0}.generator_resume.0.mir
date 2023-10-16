@@ -9,7 +9,7 @@
     storage_conflicts: BitMatrix(0x0) {},
 } */
 
-fn a::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:11:14: 11:16}>, _2: &mut Context<'_>) -> Poll<()> {
+fn a::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:12:14: 12:16}>, _2: &mut Context<'_>) -> Poll<()> {
     debug _task_context => _4;
     let mut _0: std::task::Poll<()>;
     let mut _3: ();
@@ -17,7 +17,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:11:14: 11:16}>
     let mut _5: u32;
 
     bb0: {
-        _5 = discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:11:14: 11:16})));
+        _5 = discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:12:14: 12:16})));
         switchInt(move _5) -> [0: bb1, 1: bb4, otherwise: bb5];
     }
 
@@ -29,7 +29,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:11:14: 11:16}>
 
     bb2: {
         _0 = Poll::<()>::Ready(move _3);
-        discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:11:14: 11:16}))) = 1;
+        discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:12:14: 12:16}))) = 1;
         return;
     }
 

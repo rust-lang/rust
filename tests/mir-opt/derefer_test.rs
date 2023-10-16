@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: Derefer
 // EMIT_MIR derefer_test.main.Derefer.diff
 fn main() {

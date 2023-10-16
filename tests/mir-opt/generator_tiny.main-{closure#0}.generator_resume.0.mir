@@ -4,7 +4,7 @@
         _0: GeneratorSavedTy {
             ty: HasDrop,
             source_info: SourceInfo {
-                span: $DIR/generator_tiny.rs:20:13: 20:15 (#0),
+                span: $DIR/generator_tiny.rs:21:13: 21:15 (#0),
                 scope: scope[0],
             },
             ignore_for_traits: false,
@@ -21,7 +21,7 @@
     },
 } */
 
-fn main::{closure#0}(_1: Pin<&mut {generator@$DIR/generator_tiny.rs:19:16: 19:24}>, _2: u8) -> GeneratorState<(), ()> {
+fn main::{closure#0}(_1: Pin<&mut {generator@$DIR/generator_tiny.rs:20:16: 20:24}>, _2: u8) -> GeneratorState<(), ()> {
     debug _x => _10;
     let mut _0: std::ops::GeneratorState<(), ()>;
     let _3: HasDrop;
@@ -34,18 +34,18 @@ fn main::{closure#0}(_1: Pin<&mut {generator@$DIR/generator_tiny.rs:19:16: 19:24
     let _10: u8;
     let mut _11: u32;
     scope 1 {
-        debug _d => (((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:19:16: 19:24})) as variant#3).0: HasDrop);
+        debug _d => (((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:20:16: 20:24})) as variant#3).0: HasDrop);
     }
 
     bb0: {
-        _11 = discriminant((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:19:16: 19:24})));
+        _11 = discriminant((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:20:16: 20:24})));
         switchInt(move _11) -> [0: bb1, 3: bb5, otherwise: bb6];
     }
 
     bb1: {
         _10 = move _2;
         nop;
-        (((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:19:16: 19:24})) as variant#3).0: HasDrop) = HasDrop;
+        (((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:20:16: 20:24})) as variant#3).0: HasDrop) = HasDrop;
         StorageLive(_4);
         goto -> bb2;
     }
@@ -55,7 +55,7 @@ fn main::{closure#0}(_1: Pin<&mut {generator@$DIR/generator_tiny.rs:19:16: 19:24
         StorageLive(_7);
         _7 = ();
         _0 = GeneratorState::<(), ()>::Yielded(move _7);
-        discriminant((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:19:16: 19:24}))) = 3;
+        discriminant((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:20:16: 20:24}))) = 3;
         return;
     }
 

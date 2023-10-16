@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: InstSimplify
 // EMIT_MIR not_equal_false.opt.InstSimplify.diff
 

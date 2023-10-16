@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR receiver_ptr_mutability.main.built.after.mir
 
 #![feature(arbitrary_self_types)]

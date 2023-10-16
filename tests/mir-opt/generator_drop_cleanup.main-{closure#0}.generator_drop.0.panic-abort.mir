@@ -4,7 +4,7 @@
         _0: GeneratorSavedTy {
             ty: std::string::String,
             source_info: SourceInfo {
-                span: $DIR/generator_drop_cleanup.rs:11:13: 11:15 (#0),
+                span: $DIR/generator_drop_cleanup.rs:12:13: 12:15 (#0),
                 scope: scope[0],
             },
             ignore_for_traits: false,
@@ -21,7 +21,7 @@
     },
 } */
 
-fn main::{closure#0}(_1: *mut {generator@$DIR/generator_drop_cleanup.rs:10:15: 10:17}) -> () {
+fn main::{closure#0}(_1: *mut {generator@$DIR/generator_drop_cleanup.rs:11:15: 11:17}) -> () {
     let mut _0: ();
     let mut _2: ();
     let _3: std::string::String;
