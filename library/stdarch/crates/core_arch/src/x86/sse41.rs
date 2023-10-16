@@ -1732,6 +1732,15 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.1")]
+    unsafe fn test_mm_minpos_epu16_3() {
+        // Case where the minimum value is repeated
+        let a = _mm_setr_epi16(23, 18, 44, 97, 50, 13, 67, 13);
+        let r = _mm_minpos_epu16(a);
+        let e = _mm_setr_epi16(13, 5, 0, 0, 0, 0, 0, 0);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_mul_epi32() {
         {
             let a = _mm_setr_epi32(1, 1, 1, 1);
