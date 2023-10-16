@@ -67,7 +67,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::print::{
+    with_forced_trimmed_paths, with_no_trimmed_paths, with_no_visible_paths,
+};
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
     self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
@@ -573,102 +575,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     /// Adds a note if the types come from similarly named crates
     fn check_and_note_conflicting_crates(&self, err: &mut Diagnostic, terr: TypeError<'tcx>) {
-        use hir::def_id::CrateNum;
-        use rustc_hir::definitions::DisambiguatedDefPathData;
-        use ty::print::Printer;
-        use ty::GenericArg;
-
-        struct AbsolutePathPrinter<'tcx> {
-            tcx: TyCtxt<'tcx>,
-        }
-
-        struct NonTrivialPath;
-
-        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
-            type Error = NonTrivialPath;
-
-            type Path = Vec<String>;
-            type Region = !;
-            type Type = !;
-            type DynExistential = !;
-            type Const = !;
-
-            fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
-                self.tcx
-            }
-
-            fn print_region(self, _region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
-                Err(NonTrivialPath)
-            }
-
-            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-                Err(NonTrivialPath)
-            }
-
-            fn print_dyn_existential(
-                self,
-                _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-            ) -> Result<Self::DynExistential, Self::Error> {
-                Err(NonTrivialPath)
-            }
-
-            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-                Err(NonTrivialPath)
-            }
-
-            fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-                Ok(vec![self.tcx.crate_name(cnum).to_string()])
-            }
-            fn path_qualified(
-                self,
-                _self_ty: Ty<'tcx>,
-                _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self::Path, Self::Error> {
-                Err(NonTrivialPath)
-            }
-
-            fn path_append_impl(
-                self,
-                _print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-                _disambiguated_data: &DisambiguatedDefPathData,
-                _self_ty: Ty<'tcx>,
-                _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self::Path, Self::Error> {
-                Err(NonTrivialPath)
-            }
-            fn path_append(
-                self,
-                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-                disambiguated_data: &DisambiguatedDefPathData,
-            ) -> Result<Self::Path, Self::Error> {
-                let mut path = print_prefix(self)?;
-                path.push(disambiguated_data.to_string());
-                Ok(path)
-            }
-            fn path_generic_args(
-                self,
-                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-                _args: &[GenericArg<'tcx>],
-            ) -> Result<Self::Path, Self::Error> {
-                print_prefix(self)
-            }
-        }
-
         let report_path_match = |err: &mut Diagnostic, did1: DefId, did2: DefId| {
             // Only report definitions from different crates. If both definitions
             // are from a local module we could have false positives, e.g.
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
-                let abs_path =
-                    |def_id| AbsolutePathPrinter { tcx: self.tcx }.print_def_path(def_id, &[]);
+                // We check for both equality of their definition paths (when the crates have the same name) anbd equality
+                // of their import paths (then the crates have been imported using the same name).
+                // Either of these should cause the note to be emitted.
+                let equals = || self.tcx.def_path_str(did1) == self.tcx.def_path_str(did2);
 
-                // We compare strings because DefPath can be different
-                // for imported and non-imported crates
-                let same_path = || -> Result<_, NonTrivialPath> {
-                    Ok(self.tcx.def_path_str(did1) == self.tcx.def_path_str(did2)
-                        || abs_path(did1)? == abs_path(did2)?)
-                };
-                if same_path().unwrap_or(false) {
+                if equals() || with_no_trimmed_paths!(with_no_visible_paths!(equals())) {
                     let crate_name = self.tcx.crate_name(did1.krate);
                     let msg = if did1.is_local() || did2.is_local() {
                         format!(
