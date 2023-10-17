@@ -35,6 +35,7 @@ pub mod wtf8;
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "windows")] {
+        #[cfg(not(target_thread_local))]
         pub use crate::sys::thread_local_key;
     } else {
         pub mod thread_local_key;

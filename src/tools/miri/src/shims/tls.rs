@@ -298,7 +298,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(());
         }
         let thread_callback =
-            this.eval_windows("thread_local_key", "p_thread_callback").to_pointer(this)?;
+            this.eval_windows("thread_local_guard", "p_thread_callback").to_pointer(this)?;
         let thread_callback = this.get_ptr_fn(thread_callback)?.as_instance()?;
 
         // FIXME: Technically, the reason should be `DLL_PROCESS_DETACH` when the main thread exits
