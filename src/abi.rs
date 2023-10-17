@@ -96,14 +96,22 @@ impl GccType for Reg {
     }
 }
 
+pub struct FnAbiGcc<'gcc> {
+    pub return_type: Type<'gcc>,
+    pub arguments_type: Vec<Type<'gcc>>,
+    pub is_c_variadic: bool,
+    pub on_stack_param_indices: FxHashSet<usize>,
+    pub fn_attributes: Vec<FnAttribute<'gcc>>,
+}
+
 pub trait FnAbiGccExt<'gcc, 'tcx> {
     // TODO(antoyo): return a function pointer type instead?
-    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool, FxHashSet<usize>, Vec<FnAttribute<'gcc>>);
+    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc>;
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
 }
 
 impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool, FxHashSet<usize>, Vec<FnAttribute<'gcc>>) {
+    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc> {
         let mut on_stack_param_indices = FxHashSet::default();
 
         // This capacity calculation is approximate.
@@ -111,7 +119,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 }
         );
 
-        let return_ty =
+        let return_type =
             match self.ret.mode {
                 PassMode::Ignore => cx.type_void(),
                 PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
@@ -185,13 +193,25 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         #[cfg(not(feature = "master"))]
         let fn_attrs = Vec::new();
 
-        (return_ty, argument_tys, self.c_variadic, on_stack_param_indices, fn_attrs)
+        FnAbiGcc {
+            return_type,
+            arguments_type: argument_tys,
+            is_c_variadic: self.c_variadic,
+            on_stack_param_indices,
+            fn_attributes: fn_attrs,
+        }
     }
 
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
-        // FIXME: Should we do something with `fn_attrs`?
-        let (return_type, params, variadic, on_stack_param_indices, _fn_attrs) = self.gcc_type(cx);
-        let pointer_type = cx.context.new_function_pointer_type(None, return_type, &params, variadic);
+        // FIXME(antoyo): Should we do something with `FnAbiGcc::fn_attributes`?
+        let FnAbiGcc {
+            return_type,
+            arguments_type,
+            is_c_variadic,
+            on_stack_param_indices,
+            ..
+        } = self.gcc_type(cx);
+        let pointer_type = cx.context.new_function_pointer_type(None, return_type, &arguments_type, is_c_variadic);
         cx.on_stack_params.borrow_mut().insert(pointer_type.dyncast_function_ptr_type().expect("function ptr type"), on_stack_param_indices);
         pointer_type
     }
