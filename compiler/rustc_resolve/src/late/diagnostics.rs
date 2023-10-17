@@ -1570,7 +1570,26 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         err.set_primary_message(
                             "cannot initialize a tuple struct which contains private fields",
                         );
-
+                        if !def_id.is_local()
+                            && self
+                                .r
+                                .tcx
+                                .inherent_impls(def_id)
+                                .iter()
+                                .flat_map(|impl_def_id| {
+                                    self.r.tcx.provided_trait_methods(*impl_def_id)
+                                })
+                                .any(|assoc| !assoc.fn_has_self_parameter && assoc.name == sym::new)
+                        {
+                            // FIXME: look for associated functions with Self return type,
+                            // instead of relying only on the name and lack of self receiver.
+                            err.span_suggestion_verbose(
+                                span.shrink_to_hi(),
+                                "you might have meant to use the `new` associated function",
+                                "::new".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                         // Use spans of the tuple struct definition.
                         self.r.field_def_ids(def_id).map(|field_ids| {
                             field_ids
