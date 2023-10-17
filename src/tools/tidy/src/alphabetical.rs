@@ -30,8 +30,8 @@ fn is_close_bracket(c: char) -> bool {
 }
 
 // Don't let tidy check this here :D
-const START_COMMENT: &str = concat!("// tidy-alphabetical", "-start");
-const END_COMMENT: &str = "// tidy-alphabetical-end";
+const START_COMMENT: &str = concat!("tidy-alphabetical", "-start");
+const END_COMMENT: &str = "tidy-alphabetical-end";
 
 fn check_section<'a>(
     file: impl Display,
