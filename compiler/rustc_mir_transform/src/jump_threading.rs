@@ -273,6 +273,18 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
     }
 
     /// Extract the mutated place from a statement.
+    ///
+    /// This method returns the `Place` so we can flood the state in case of a partial assignment.
+    ///     (_1 as Ok).0 = _5;
+    ///     (_1 as Err).0 = _6;
+    /// We want to ensure that a `SwitchInt((_1 as Ok).0)` does not see the first assignment, as
+    /// the value may have been mangled by the second assignment.
+    ///
+    /// In case we assign to a discriminant, we return `Some(TrackElem::Discriminant)`, so we can
+    /// stop at flooding the discriminant, and preserve the variant fields.
+    ///     (_1 as Some).0 = _6;
+    ///     SetDiscriminant(_1, 1);
+    ///     switchInt((_1 as Some).0)
     #[instrument(level = "trace", skip(self), ret)]
     fn mutated_statement(
         &self,
@@ -280,9 +292,6 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
     ) -> Option<(Place<'tcx>, Option<TrackElem>)> {
         match stmt.kind {
             StatementKind::Assign(box (place, _))
-            | StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(
-                Operand::Copy(place) | Operand::Move(place),
-            ))
             | StatementKind::Deinit(box place) => Some((place, None)),
             StatementKind::SetDiscriminant { box place, variant_index: _ } => {
                 Some((place, Some(TrackElem::Discriminant)))
@@ -291,7 +300,9 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 Some((Place::from(local), None))
             }
             StatementKind::Retag(..)
-            | StatementKind::Intrinsic(..)
+            | StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(..))
+            // copy_nonoverlapping takes pointers and mutated the pointed-to value.
+            | StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(..))
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
