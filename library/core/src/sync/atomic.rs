@@ -103,8 +103,7 @@
 //! | `target_arch` | Size limit |
 //! |---------------|---------|
 //! | `x86`, `arm`, `mips`, `mips32r6, `powerpc`, `riscv32`, `sparc`, `hexagon` | 4 bytes |
-//! | `x86_64`, `aarch64`, `loongarch64`, `mips64`, `mips64r6`, `powerpc64`, `riscv64`, `sparc64` | 8 bytes |
-//! | `s390x`, `powerpc64` with `target_feature = "quadword-atomics"` | 16 bytes |
+//! | `x86_64`, `aarch64`, `loongarch64`, `mips64`, `mips64r6`, `powerpc64`, `riscv64`, `sparc64`, `s390x` | 8 bytes |
 //!
 //! Atomics loads that are larger than this limit as well as atomic loads with ordering other
 //! than `Relaxed`, as well as *all* atomic loads on targets not listed in the table, might still be
