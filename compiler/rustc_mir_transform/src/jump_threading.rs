@@ -11,9 +11,9 @@
 //! looking for assignments that will turn the `SwitchInt` into a simple `Goto`.
 //!
 //! The algorithm maintains a set of replacement conditions:
-//! - `conditions[place]` contains `Condition { value, polarity: true, target }`
+//! - `conditions[place]` contains `Condition { value, polarity: Eq, target }`
 //!   if assigning `value` to `place` turns the `SwitchInt` into `Goto { target }`.
-//! - `conditions[place]` contains `Condition { value, polarity: false, target }`
+//! - `conditions[place]` contains `Condition { value, polarity: Ne, target }`
 //!   if assigning anything different from `value` to `place` turns the `SwitchInt`
 //!   into `Goto { target }`.
 //!
@@ -98,13 +98,13 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
                     continue;
                 };
                 arena.alloc_from_iter([
-                    Condition { value, polarity: true, target: then },
-                    Condition { value, polarity: false, target: else_ },
+                    Condition { value, polarity: Polarity::Eq, target: then },
+                    Condition { value, polarity: Polarity::Ne, target: else_ },
                 ])
             } else {
                 arena.alloc_from_iter(targets.iter().filter_map(|(value, target)| {
                     let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
-                    Some(Condition { value, polarity: true, target })
+                    Some(Condition { value, polarity: Polarity::Eq, target })
                 }))
             };
             let conds = ConditionSet(conds);
@@ -149,18 +149,26 @@ struct TOFinder<'tcx, 'a> {
 #[derive(Copy, Clone, Debug)]
 struct Condition {
     value: ScalarInt,
-    /// `true` means `==`, `false` means `!=`
-    polarity: bool,
+    polarity: Polarity,
     target: BasicBlock,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum Polarity {
+    Ne,
+    Eq,
 }
 
 impl Condition {
     fn matches(&self, value: ScalarInt) -> bool {
-        (self.value == value) == self.polarity
+        (self.value == value) == (self.polarity == Polarity::Eq)
     }
 
     fn inv(mut self) -> Self {
-        self.polarity = !self.polarity;
+        self.polarity = match self.polarity {
+            Polarity::Eq => Polarity::Ne,
+            Polarity::Ne => Polarity::Eq,
+        };
         self
     }
 }
@@ -455,7 +463,11 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                                 .try_to_scalar_int()?;
                             let conds = conditions.map(self.arena, |c| Condition {
                                 value,
-                                polarity: c.matches(equals),
+                                polarity: if c.matches(equals) {
+                                    Polarity::Eq
+                                } else {
+                                    Polarity::Ne
+                                },
                                 ..c
                             });
                             state.insert_value_idx(place, conds, self.map);
@@ -560,7 +572,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             // Likewise, we know that `discr != value`. That's a must weaker information,
             // so we can only match the exact same condition.
             for c in conditions.iter() {
-                if c.value == value && c.polarity == false {
+                if c.value == value && c.polarity == Polarity::Ne {
                     debug!(?target_bb, ?c.target, "register");
                     self.opportunities
                         .push(ThreadingOpportunity { chain: vec![], target: c.target });
