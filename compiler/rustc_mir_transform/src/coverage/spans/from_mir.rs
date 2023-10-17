@@ -1,3 +1,4 @@
+use rustc_data_structures::captures::Captures;
 use rustc_middle::mir::{
     self, FakeReadCause, Statement, StatementKind, Terminator, TerminatorKind,
 };
@@ -12,7 +13,7 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     body_span: Span,
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<CoverageSpan> {
-    let mut initial_spans = Vec::<CoverageSpan>::with_capacity(mir_body.basic_blocks.len() * 2);
+    let mut initial_spans = Vec::with_capacity(mir_body.basic_blocks.len() * 2);
     for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
         initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
     }
@@ -50,34 +51,30 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
 // for each `Statement` and `Terminator`. (Note that subsequent stages of coverage analysis will
 // merge some `CoverageSpan`s, at which point a `CoverageSpan` may represent multiple
 // `Statement`s and/or `Terminator`s.)
-fn bcb_to_initial_coverage_spans(
-    mir_body: &mir::Body<'_>,
+fn bcb_to_initial_coverage_spans<'a, 'tcx>(
+    mir_body: &'a mir::Body<'tcx>,
     body_span: Span,
     bcb: BasicCoverageBlock,
-    bcb_data: &BasicCoverageBlockData,
-) -> Vec<CoverageSpan> {
-    bcb_data
-        .basic_blocks
-        .iter()
-        .flat_map(|&bb| {
-            let data = &mir_body[bb];
-            data.statements
-                .iter()
-                .filter_map(move |statement| {
-                    filtered_statement_span(statement).map(|span| {
-                        CoverageSpan::for_statement(
-                            statement,
-                            function_source_span(span, body_span),
-                            span,
-                            bcb,
-                        )
-                    })
+    bcb_data: &'a BasicCoverageBlockData,
+) -> impl Iterator<Item = CoverageSpan> + Captures<'a> + Captures<'tcx> {
+    bcb_data.basic_blocks.iter().flat_map(move |&bb| {
+        let data = &mir_body[bb];
+        data.statements
+            .iter()
+            .filter_map(move |statement| {
+                filtered_statement_span(statement).map(|span| {
+                    CoverageSpan::for_statement(
+                        statement,
+                        function_source_span(span, body_span),
+                        span,
+                        bcb,
+                    )
                 })
-                .chain(filtered_terminator_span(data.terminator()).map(|span| {
-                    CoverageSpan::for_terminator(function_source_span(span, body_span), span, bcb)
-                }))
-        })
-        .collect()
+            })
+            .chain(filtered_terminator_span(data.terminator()).map(|span| {
+                CoverageSpan::for_terminator(function_source_span(span, body_span), span, bcb)
+            }))
+    })
 }
 
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
