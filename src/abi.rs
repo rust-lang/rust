@@ -1,4 +1,6 @@
-use gccjit::{FnAttribute, ToLValue, ToRValue, Type};
+#[cfg(feature = "master")]
+use gccjit::FnAttribute;
+use gccjit::{ToLValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
@@ -101,6 +103,7 @@ pub struct FnAbiGcc<'gcc> {
     pub arguments_type: Vec<Type<'gcc>>,
     pub is_c_variadic: bool,
     pub on_stack_param_indices: FxHashSet<usize>,
+    #[cfg(feature = "master")]
     pub fn_attributes: Vec<FnAttribute<'gcc>>,
 }
 
@@ -129,6 +132,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     cx.type_void()
                 }
             };
+        #[cfg(feature = "master")]
         let mut non_null_args = Vec::new();
 
         #[cfg(feature = "master")]
@@ -190,14 +194,13 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         } else {
             vec![FnAttribute::NonNull(non_null_args)]
         };
-        #[cfg(not(feature = "master"))]
-        let fn_attrs = Vec::new();
 
         FnAbiGcc {
             return_type,
             arguments_type: argument_tys,
             is_c_variadic: self.c_variadic,
             on_stack_param_indices,
+            #[cfg(feature = "master")]
             fn_attributes: fn_attrs,
         }
     }

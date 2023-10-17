@@ -132,7 +132,21 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let create_type = |ctype, rust_type| {
             let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
             let align = layout.align.abi.bytes();
-            context.new_c_type(ctype).get_aligned(align)
+            #[cfg(feature="master")]
+            {
+                context.new_c_type(ctype).get_aligned(align)
+            }
+            #[cfg(not(feature="master"))]
+            {
+                // Since libgccjit 12 doesn't contain the fix to compare aligned integer types,
+                // only align u128 and i128.
+                if layout.ty.int_size_and_signed(tcx).0.bytes() == 16 {
+                    context.new_c_type(ctype).get_aligned(align)
+                }
+                else {
+                    context.new_c_type(ctype)
+                }
+            }
         };
 
         let i8_type = create_type(CType::Int8t, tcx.types.i8);
@@ -271,16 +285,15 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn is_native_int_type(&self, typ: Type<'gcc>) -> bool {
-        // TODO: cache those types to not query libgccjit everytime this is called.
         let types = [
-            self.context.new_c_type(CType::UInt8t),
-            self.context.new_c_type(CType::UInt16t),
-            self.context.new_c_type(CType::UInt32t),
-            self.context.new_c_type(CType::UInt64t),
-            self.context.new_c_type(CType::Int8t),
-            self.context.new_c_type(CType::Int16t),
-            self.context.new_c_type(CType::Int32t),
-            self.context.new_c_type(CType::Int64t),
+            self.u8_type,
+            self.u16_type,
+            self.u32_type,
+            self.u64_type,
+            self.i8_type,
+            self.i16_type,
+            self.i32_type,
+            self.i64_type,
         ];
 
         for native_type in types {
