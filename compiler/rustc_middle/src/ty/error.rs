@@ -315,26 +315,25 @@ impl<'tcx> Ty<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     pub fn ty_string_with_limit(self, ty: Ty<'tcx>, length_limit: usize) -> String {
         let mut type_limit = 50;
-        let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
-            .pretty_print_type(ty)
-            .expect("could not write to `String`")
-            .into_buffer();
+        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
+            cx.pretty_print_type(ty)
+        })
+        .expect("could not write to `String`");
         if regular.len() <= length_limit {
             return regular;
         }
         let mut short;
         loop {
             // Look for the longest properly trimmed path that still fits in length_limit.
-            short = with_forced_trimmed_paths!(
-                FmtPrinter::new_with_limit(
+            short = with_forced_trimmed_paths!({
+                let mut cx = FmtPrinter::new_with_limit(
                     self,
                     hir::def::Namespace::TypeNS,
                     rustc_session::Limit(type_limit),
-                )
-                .pretty_print_type(ty)
-                .expect("could not write to `String`")
-                .into_buffer()
-            );
+                );
+                cx.pretty_print_type(ty).expect("could not write to `String`");
+                cx.into_buffer()
+            });
             if short.len() <= length_limit || type_limit == 0 {
                 break;
             }
@@ -344,10 +343,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
-        let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
-            .pretty_print_type(ty)
-            .expect("could not write to `String`")
-            .into_buffer();
+        let regular = FmtPrinter::print_string(self, hir::def::Namespace::TypeNS, |cx| {
+            cx.pretty_print_type(ty)
+        })
+        .expect("could not write to `String`");
 
         if !self.sess.opts.unstable_opts.write_long_types_to_disk {
             return (regular, None);
