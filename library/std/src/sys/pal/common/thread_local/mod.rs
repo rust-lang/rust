@@ -15,7 +15,7 @@ cfg_if::cfg_if! {
         #[doc(hidden)]
         mod fast_local;
         #[doc(hidden)]
-        pub use fast_local::{Key, thread_local_inner};
+        pub use fast_local::{Key, thread_local_inner, run_dtors};
     } else {
         #[doc(hidden)]
         mod os_local;
@@ -98,27 +98,6 @@ mod lazy {
         pub unsafe fn take(&mut self) -> Option<T> {
             // SAFETY: See doc comment for this method.
             unsafe { (*self.inner.get()).take() }
-        }
-    }
-}
-
-/// Run a callback in a scenario which must not unwind (such as a `extern "C"
-/// fn` declared in a user crate). If the callback unwinds anyway, then
-/// `rtabort` with a message about thread local panicking on drop.
-#[inline]
-pub fn abort_on_dtor_unwind(f: impl FnOnce()) {
-    // Using a guard like this is lower cost.
-    let guard = DtorUnwindGuard;
-    f();
-    core::mem::forget(guard);
-
-    struct DtorUnwindGuard;
-    impl Drop for DtorUnwindGuard {
-        #[inline]
-        fn drop(&mut self) {
-            // This is not terribly descriptive, but it doesn't need to be as we'll
-            // already have printed a panic message at this point.
-            rtabort!("thread local panicked on drop");
         }
     }
 }

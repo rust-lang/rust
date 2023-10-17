@@ -1,6 +1,5 @@
 use super::lazy::LazyKeyInner;
-use crate::cell::Cell;
-use crate::sys::thread_local_dtor::register_dtor;
+use crate::cell::{Cell, RefCell};
 use crate::{fmt, mem, panic};
 
 #[doc(hidden)]
@@ -39,13 +38,11 @@ pub macro thread_local_inner {
 
             // Safety: Performs `drop_in_place(ptr as *mut $t)`, and requires
             // all that comes with it.
-            unsafe extern "C" fn destroy(ptr: *mut $crate::primitive::u8) {
-                $crate::thread::local_impl::abort_on_dtor_unwind(|| {
-                    let old_state = STATE.replace(2);
-                    $crate::debug_assert_eq!(old_state, 1);
-                    // Safety: safety requirement is passed on to caller.
-                    unsafe { $crate::ptr::drop_in_place(ptr.cast::<$t>()); }
-                });
+            unsafe fn destroy(ptr: *mut $crate::primitive::u8) {
+                let old_state = STATE.replace(2);
+                $crate::debug_assert_eq!(old_state, 1);
+                // Safety: safety requirement is passed on to caller.
+                unsafe { $crate::ptr::drop_in_place(ptr.cast::<$t>()); }
             }
 
             unsafe {
@@ -155,8 +152,8 @@ impl<T> Key<T> {
 
     // note that this is just a publicly-callable function only for the
     // const-initialized form of thread locals, basically a way to call the
-    // free `register_dtor` function defined elsewhere in std.
-    pub unsafe fn register_dtor(a: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+    // free `register_dtor` function.
+    pub unsafe fn register_dtor(a: *mut u8, dtor: unsafe fn(*mut u8)) {
         unsafe {
             register_dtor(a, dtor);
         }
@@ -220,7 +217,7 @@ impl<T> Key<T> {
     }
 }
 
-unsafe extern "C" fn destroy_value<T>(ptr: *mut u8) {
+unsafe fn destroy_value<T>(ptr: *mut u8) {
     let ptr = ptr as *mut Key<T>;
 
     // SAFETY:
@@ -233,14 +230,66 @@ unsafe extern "C" fn destroy_value<T>(ptr: *mut u8) {
     // `Option<T>` to `None`, and `dtor_state` to `RunningOrHasRun`. This
     // causes future calls to `get` to run `try_initialize_drop` again,
     // which will now fail, and return `None`.
-    //
-    // Wrap the call in a catch to ensure unwinding is caught in the event
-    // a panic takes place in a destructor.
-    if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
+    unsafe {
         let value = (*ptr).inner.take();
         (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
         drop(value);
-    })) {
-        rtabort!("thread local panicked on drop");
+    }
+}
+
+#[thread_local]
+static DTORS: RefCell<Vec<(*mut u8, unsafe fn(*mut u8))>> = RefCell::new(Vec::new());
+
+// Ensure this can never be inlined on Windows because otherwise this may break
+// in dylibs. See #44391.
+#[cfg_attr(windows, inline(never))]
+unsafe fn register_dtor(t: *mut u8, dtor: unsafe fn(*mut u8)) {
+    // Ensure that destructors are run on thread exit.
+    crate::sys::thread_local_guard::activate();
+
+    let mut dtors = match DTORS.try_borrow_mut() {
+        Ok(dtors) => dtors,
+        // The only place this function can be called reentrantly is inside the
+        // heap allocator. This is currently forbidden.
+        Err(_) => rtabort!("the global allocator may not register TLS destructors"),
+    };
+    dtors.push((t, dtor));
+}
+
+/// Called by the platform on thread exit to run all registered destructors.
+/// The signature was chosen so that this function may be passed as a callback
+/// to platform functions. The argument is ignored.
+///
+/// # Safety
+/// May only be called on thread exit. In particular, no thread locals may
+/// currently be referenced.
+pub unsafe extern "C" fn run_dtors(_unused: *mut u8) {
+    // This function must not unwind. This is ensured by the `extern "C"` ABI,
+    // but by catching the unwind, we can print a more helpful message.
+
+    match panic::catch_unwind(|| {
+        let dtors = &DTORS;
+
+        loop {
+            // Ensure that the `RefMut` guard is not held while the destructor is
+            // executed to allow initializing TLS variables in destructors.
+            let (t, dtor) = {
+                let mut dtors = dtors.borrow_mut();
+                match dtors.pop() {
+                    Some(entry) => entry,
+                    None => break,
+                }
+            };
+
+            unsafe {
+                (dtor)(t);
+            }
+        }
+
+        // All destructors were run, deallocate the list.
+        drop(dtors.replace(Vec::new()));
+    }) {
+        Ok(()) => {}
+        Err(_) => rtabort!("thread local panicked on drop"),
     }
 }
