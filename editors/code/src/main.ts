@@ -9,8 +9,12 @@ import { setContextValue } from "./util";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
+// This API is not stable and may break in between minor releases.
 export interface RustAnalyzerExtensionApi {
     readonly client?: lc.LanguageClient;
+
+    setWorkspaces(workspaces: JsonProject[]): void;
+    notifyRustAnalyzer(): Promise<void>;
 }
 
 export async function deactivate() {
@@ -152,7 +156,6 @@ function createCommands(): Record<string, CommandFactory> {
         shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
         reloadWorkspace: { enabled: commands.reloadWorkspace },
         rebuildProcMacros: { enabled: commands.rebuildProcMacros },
-        addProject: { enabled: commands.addProject },
         matchingBrace: { enabled: commands.matchingBrace },
         joinLines: { enabled: commands.joinLines },
         parentModule: { enabled: commands.parentModule },
