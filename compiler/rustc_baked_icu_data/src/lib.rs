@@ -19,6 +19,10 @@
 //! -k list/and@1 fallback/likelysubtags@1 fallback/parents@1 fallback/supplement/co@1 \
 //! --cldr-tag latest --icuexport-tag latest -o src/data
 //! ```
+
+#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![allow(elided_lifetimes_in_paths)]
 
 mod data {
