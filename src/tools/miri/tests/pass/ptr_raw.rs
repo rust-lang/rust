@@ -1,6 +1,6 @@
 #![feature(strict_provenance)]
-use std::ptr::{self, addr_of};
 use std::mem;
+use std::ptr::{self, addr_of};
 
 fn basic_raw() {
     let mut x = 12;

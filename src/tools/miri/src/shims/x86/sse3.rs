@@ -73,12 +73,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let src_ptr = this.read_pointer(src_ptr)?;
                 let dest = dest.force_mplace(this)?;
 
-                this.mem_copy(
-                    src_ptr,
-                    dest.ptr(),
-                    dest.layout.size,
-                    /*nonoverlapping*/ true,
-                )?;
+                this.mem_copy(src_ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
             }
             _ => return Ok(EmulateForeignItemResult::NotSupported),
         }

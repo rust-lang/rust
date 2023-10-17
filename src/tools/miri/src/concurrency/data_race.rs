@@ -1017,10 +1017,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.check_ptr_align(
-            place.ptr(),
-            align,
-        )?;
+        this.check_ptr_align(place.ptr(), align)?;
         // Ensure the allocation is mutable. Even failing (read-only) compare_exchange need mutable
         // memory on many targets (i.e., they segfault if taht memory is mapped read-only), and
         // atomic loads can be implemented via compare_exchange on some targets. There could

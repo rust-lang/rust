@@ -85,10 +85,7 @@ pub fn futex<'tcx>(
                 return Ok(());
             }
 
-            let timeout = this.deref_pointer_as(
-                &args[3],
-                this.libc_ty_layout("timespec"),
-            )?;
+            let timeout = this.deref_pointer_as(&args[3], this.libc_ty_layout("timespec"))?;
             let timeout_time = if this.ptr_is_null(timeout.ptr())? {
                 None
             } else {
