@@ -1964,6 +1964,7 @@ Windows.Win32.Networking.WinSock.ADDRESS_FAMILY
 Windows.Win32.Networking.WinSock.ADDRINFOA
 Windows.Win32.Networking.WinSock.AF_INET
 Windows.Win32.Networking.WinSock.AF_INET6
+Windows.Win32.Networking.WinSock.AF_UNIX
 Windows.Win32.Networking.WinSock.AF_UNSPEC
 Windows.Win32.Networking.WinSock.bind
 Windows.Win32.Networking.WinSock.closesocket
@@ -2058,6 +2059,7 @@ Windows.Win32.Networking.WinSock.SOCK_RDM
 Windows.Win32.Networking.WinSock.SOCK_SEQPACKET
 Windows.Win32.Networking.WinSock.SOCK_STREAM
 Windows.Win32.Networking.WinSock.SOCKADDR
+Windows.Win32.Networking.WinSock.SOCKADDR_UN
 Windows.Win32.Networking.WinSock.SOCKET
 Windows.Win32.Networking.WinSock.SOCKET_ERROR
 Windows.Win32.Networking.WinSock.SOL_SOCKET

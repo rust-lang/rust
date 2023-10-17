@@ -111,8 +111,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(no_coverage))] // rust-lang/rust#84605
-#![cfg_attr(not(bootstrap), feature(coverage_attribute))] // rust-lang/rust#84605
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
@@ -174,6 +172,7 @@
 #![feature(const_unsafecell_get_mut)]
 #![feature(const_waker)]
 #![feature(core_panic)]
+#![feature(coverage_attribute)]
 #![feature(duration_consts_float)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
@@ -197,7 +196,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(not(bootstrap), feature(effects))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -221,6 +219,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
+#![feature(effects)]
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![feature(fundamental)]
@@ -414,13 +413,13 @@ pub mod primitive;
     dead_code,
     unused_imports,
     unsafe_op_in_unsafe_fn,
-    ambiguous_glob_reexports
+    ambiguous_glob_reexports,
+    deprecated_in_future
 )]
 #[allow(rustdoc::bare_urls)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[allow(clashing_extern_declarations)]
-#[cfg_attr(bootstrap, allow(deprecated_in_future))]
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 

@@ -32,23 +32,16 @@ pub use init_mask::{InitChunk, InitChunkIter};
 pub trait AllocBytes:
     Clone + fmt::Debug + Eq + PartialEq + Hash + Deref<Target = [u8]> + DerefMut<Target = [u8]>
 {
-    /// Adjust the bytes to the specified alignment -- by default, this is a no-op.
-    fn adjust_to_align(self, _align: Align) -> Self;
-
     /// Create an `AllocBytes` from a slice of `u8`.
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
 
-    /// Create a zeroed `AllocBytes` of the specified size and alignment;
-    /// call the callback error handler if there is an error in allocating the memory.
+    /// Create a zeroed `AllocBytes` of the specified size and alignment.
+    /// Returns `None` if we ran out of memory on the host.
     fn zeroed(size: Size, _align: Align) -> Option<Self>;
 }
 
 // Default `bytes` for `Allocation` is a `Box<[u8]>`.
 impl AllocBytes for Box<[u8]> {
-    fn adjust_to_align(self, _align: Align) -> Self {
-        self
-    }
-
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self {
         Box::<[u8]>::from(slice.into())
     }
@@ -299,6 +292,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     }
 
     fn uninit_inner<R>(size: Size, align: Align, fail: impl FnOnce() -> R) -> Result<Self, R> {
+        // We raise an error if we cannot create the allocation on the host.
         // This results in an error that can happen non-deterministically, since the memory
         // available to the compiler can change between runs. Normally queries are always
         // deterministic. However, we can be non-deterministic here because all uses of const
@@ -351,10 +345,8 @@ impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
         extra: Extra,
         mut adjust_ptr: impl FnMut(Pointer<AllocId>) -> Result<Pointer<Prov>, Err>,
     ) -> Result<Allocation<Prov, Extra, Bytes>, Err> {
-        // Compute new pointer provenance, which also adjusts the bytes, and realign the pointer if
-        // necessary.
-        let mut bytes = self.bytes.adjust_to_align(self.align);
-
+        let mut bytes = self.bytes;
+        // Adjust provenance of pointers stored in this allocation.
         let mut new_provenance = Vec::with_capacity(self.provenance.ptrs().len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
         let endian = cx.data_layout().endian;

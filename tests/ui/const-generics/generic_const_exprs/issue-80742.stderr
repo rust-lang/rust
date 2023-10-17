@@ -1,9 +1,9 @@
-error: internal compiler error: compiler/rustc_const_eval/src/interpret/step.rs:272:21: SizeOf MIR operator called for unsized type dyn Debug
+error: internal compiler error: compiler/rustc_const_eval/src/interpret/step.rs:LL:CC: SizeOf MIR operator called for unsized type dyn Debug
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 Box<dyn Any>
 query stack during panic:
-#0 [eval_to_allocation_raw] const-evaluating + checking `<impl at $DIR/issue-80742.rs:25:1: 27:32>::{constant#0}`
+#0 [eval_to_allocation_raw] const-evaluating + checking `<impl at $DIR/issue-80742.rs:26:1: 28:32>::{constant#0}`
 #1 [eval_to_valtree] evaluating type-level constant
 end of query stack
 error: aborting due to previous error

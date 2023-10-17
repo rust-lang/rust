@@ -1521,8 +1521,13 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
     ) {
         let is_indirect_call = unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) };
-        if self.tcx.sess.is_sanitizer_cfi_enabled() && let Some(fn_abi) = fn_abi && is_indirect_call {
-            if let Some(fn_attrs) = fn_attrs && fn_attrs.no_sanitize.contains(SanitizerSet::CFI) {
+        if self.tcx.sess.is_sanitizer_cfi_enabled()
+            && let Some(fn_abi) = fn_abi
+            && is_indirect_call
+        {
+            if let Some(fn_attrs) = fn_attrs
+                && fn_attrs.no_sanitize.contains(SanitizerSet::CFI)
+            {
                 return;
             }
 
@@ -1559,25 +1564,29 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
     ) -> Option<llvm::OperandBundleDef<'ll>> {
         let is_indirect_call = unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) };
-        let kcfi_bundle =
-            if self.tcx.sess.is_sanitizer_kcfi_enabled() && let Some(fn_abi) = fn_abi && is_indirect_call {
-                if let Some(fn_attrs) = fn_attrs && fn_attrs.no_sanitize.contains(SanitizerSet::KCFI) {
-                    return None;
-                }
+        let kcfi_bundle = if self.tcx.sess.is_sanitizer_kcfi_enabled()
+            && let Some(fn_abi) = fn_abi
+            && is_indirect_call
+        {
+            if let Some(fn_attrs) = fn_attrs
+                && fn_attrs.no_sanitize.contains(SanitizerSet::KCFI)
+            {
+                return None;
+            }
 
-                let mut options = TypeIdOptions::empty();
-                if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                    options.insert(TypeIdOptions::GENERALIZE_POINTERS);
-                }
-                if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                    options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
-                }
+            let mut options = TypeIdOptions::empty();
+            if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+                options.insert(TypeIdOptions::GENERALIZE_POINTERS);
+            }
+            if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
+                options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
+            }
 
-                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi, options);
-                Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
-            } else {
-                None
-            };
+            let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi, options);
+            Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+        } else {
+            None
+        };
         kcfi_bundle
     }
 }

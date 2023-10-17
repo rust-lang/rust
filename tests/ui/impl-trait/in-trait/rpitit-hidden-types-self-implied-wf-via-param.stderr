@@ -1,12 +1,12 @@
 error[E0491]: in type `&'static &'a ()`, reference has a longer lifetime than the data it references
-  --> $DIR/rpitit-hidden-types-self-implied-wf-via-param.rs:8:38
+  --> $DIR/rpitit-hidden-types-self-implied-wf-via-param.rs:6:38
    |
 LL |     fn extend<'a: 'a>(s: &'a str) -> (Option<&'static &'a ()>, &'static str)
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the pointer is valid for the static lifetime
 note: but the referenced data is only valid for the lifetime `'a` as defined here
-  --> $DIR/rpitit-hidden-types-self-implied-wf-via-param.rs:8:15
+  --> $DIR/rpitit-hidden-types-self-implied-wf-via-param.rs:6:15
    |
 LL |     fn extend<'a: 'a>(s: &'a str) -> (Option<&'static &'a ()>, &'static str)
    |               ^^

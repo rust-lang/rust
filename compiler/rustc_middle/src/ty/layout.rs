@@ -868,7 +868,7 @@ where
                     {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.param_env(),
-                            Ty::new_projection(tcx,metadata_def_id, [pointee]),
+                            Ty::new_projection(tcx, metadata_def_id, [pointee]),
                         );
 
                         // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it

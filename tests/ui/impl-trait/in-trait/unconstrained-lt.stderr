@@ -1,5 +1,5 @@
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained-lt.rs:7:6
+  --> $DIR/unconstrained-lt.rs:5:6
    |
 LL | impl<'a, T> Foo for T {
    |      ^^ unconstrained lifetime parameter

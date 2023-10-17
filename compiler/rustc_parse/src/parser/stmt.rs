@@ -52,7 +52,9 @@ impl<'a> Parser<'a> {
 
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind && let token::NtStmt(stmt) = &**nt {
+        if let token::Interpolated(nt) = &self.token.kind
+            && let token::NtStmt(stmt) = &**nt
+        {
             let mut stmt = stmt.clone();
             self.bump();
             stmt.visit_attrs(|stmt_attrs| {
@@ -227,8 +229,9 @@ impl<'a> Parser<'a> {
     /// Also error if the previous token was a doc comment.
     fn error_outer_attrs(&self, attrs: AttrWrapper) {
         if !attrs.is_empty()
-        && let attrs = attrs.take_for_recovery(self.sess)
-        && let attrs @ [.., last] = &*attrs {
+            && let attrs = attrs.take_for_recovery(self.sess)
+            && let attrs @ [.., last] = &*attrs
+        {
             if last.is_doc_comment() {
                 self.sess.emit_err(errors::DocCommentDoesNotDocumentAnything {
                     span: last.span,
@@ -616,15 +619,17 @@ impl<'a> Parser<'a> {
         match &mut stmt.kind {
             // Expression without semicolon.
             StmtKind::Expr(expr)
-                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) => {
+                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
+            {
                 // Just check for errors and recover; do not eat semicolon yet.
                 // `expect_one_of` returns PResult<'a, bool /* recovered */>
 
-                let expect_result = self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)]);
+                let expect_result =
+                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)]);
 
                 let replace_with_err = 'break_recover: {
                     match expect_result {
-                    // Recover from parser, skip type error to avoid extra errors.
+                        // Recover from parser, skip type error to avoid extra errors.
                         Ok(true) => true,
                         Err(mut e) => {
                             if let TokenKind::DocComment(..) = self.token.kind
@@ -654,14 +659,19 @@ impl<'a> Parser<'a> {
                             }
 
                             match &expr.kind {
-                                ExprKind::Path(None, ast::Path { segments, .. }) if segments.len() == 1 => {
+                                ExprKind::Path(None, ast::Path { segments, .. })
+                                    if segments.len() == 1 =>
+                                {
                                     if self.token == token::Colon
                                         && self.look_ahead(1, |token| {
-                                            token.is_whole_block() || matches!(
-                                                token.kind,
-                                                token::Ident(kw::For | kw::Loop | kw::While, false)
-                                                    | token::OpenDelim(Delimiter::Brace)
-                                            )
+                                            token.is_whole_block()
+                                                || matches!(
+                                                    token.kind,
+                                                    token::Ident(
+                                                        kw::For | kw::Loop | kw::While,
+                                                        false
+                                                    ) | token::OpenDelim(Delimiter::Brace)
+                                                )
                                         })
                                     {
                                         let snapshot = self.create_snapshot_for_diagnostic();
@@ -702,9 +712,8 @@ impl<'a> Parser<'a> {
                             }
 
                             true
-
                         }
-                        Ok(false) => false
+                        Ok(false) => false,
                     }
                 };
 
@@ -727,7 +736,9 @@ impl<'a> Parser<'a> {
                 }
                 eat_semi = false;
             }
-            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Local(_) | StmtKind::Semi(_) => eat_semi = false,
+            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Local(_) | StmtKind::Semi(_) => {
+                eat_semi = false
+            }
         }
 
         if add_semi_to_stmt || (eat_semi && self.eat(&token::Semi)) {

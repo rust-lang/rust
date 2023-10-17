@@ -1,0 +1,20 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:17:1
+   |
+LL | const A: Option<&mut i32> = helper();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Some)>.0: encountered mutable reference in a `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               2a 00 00 00 00 00 00 00                         │ *.......
+           }
+
+error: encountered dangling pointer in final constant
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:24:1
+   |
+LL | const B: Option<&mut i32> = helper2();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

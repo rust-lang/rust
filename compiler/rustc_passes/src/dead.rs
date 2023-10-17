@@ -193,15 +193,15 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
         if let hir::ExprKind::Assign(lhs, rhs, _) = assign.kind
             && check_for_self_assign_helper(self.typeck_results(), lhs, rhs)
-                && !assign.span.from_expansion()
+            && !assign.span.from_expansion()
         {
-                let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
-                self.tcx.emit_spanned_lint(
-                    lint::builtin::DEAD_CODE,
-                    assign.hir_id,
-                    assign.span,
-                    UselessAssignment { is_field_assign, ty: self.typeck_results().expr_ty(lhs) }
-                )
+            let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
+            self.tcx.emit_spanned_lint(
+                lint::builtin::DEAD_CODE,
+                assign.hir_id,
+                assign.span,
+                UselessAssignment { is_field_assign, ty: self.typeck_results().expr_ty(lhs) },
+            )
         }
     }
 
@@ -671,7 +671,8 @@ fn check_trait_item(
     if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir().trait_item(id);
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
-            && let Some(comes_from_allow) = has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
+            && let Some(comes_from_allow) =
+                has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
         {
             worklist.push((trait_item.owner_id.def_id, comes_from_allow));
         }

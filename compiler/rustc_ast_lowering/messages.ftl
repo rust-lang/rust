@@ -136,12 +136,6 @@ ast_lowering_template_modifier = template modifier
 
 ast_lowering_this_not_async = this is not `async`
 
-ast_lowering_trait_fn_async =
-    functions in traits cannot be declared `async`
-    .label = `async` because of this
-    .note = `async` trait functions are not currently supported
-    .note2 = consider using the `async-trait` crate: https://crates.io/crates/async-trait
-
 ast_lowering_underscore_expr_lhs_assign =
     in expressions, `_` can only be used on the left-hand side of an assignment
     .label = `_` not allowed here

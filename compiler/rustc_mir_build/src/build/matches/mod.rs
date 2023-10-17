@@ -736,7 +736,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
         // Although there is almost always scope for given variable in corner cases
         // like #92893 we might get variable with no scope.
-        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) && schedule_drop {
+        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id)
+            && schedule_drop
+        {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
         }
         Place::from(local_id)
@@ -814,7 +816,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatKind::Constant { .. } | PatKind::Range { .. } | PatKind::Wild => {}
+            PatKind::Constant { .. }
+            | PatKind::Range { .. }
+            | PatKind::Wild
+            | PatKind::Error(_) => {}
 
             PatKind::Deref { ref subpattern } => {
                 self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);

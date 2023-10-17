@@ -1,11 +1,15 @@
 const_eval_address_space_full =
     there are no more free addresses in the address space
-const_eval_align_check_failed = accessing memory with alignment {$has}, but alignment {$required} is required
+
 const_eval_align_offset_invalid_align =
     `align_offset` called with non-power-of-two align: {$target_align}
 
 const_eval_alignment_check_failed =
-    accessing memory with alignment {$has}, but alignment {$required} is required
+    {$msg ->
+     [AccessedPtr] accessing memory
+     *[other] accessing memory based on pointer
+    } with alignment {$has}, but alignment {$required} is required
+
 const_eval_already_reported =
     an error has already been reported elsewhere (this should not usually be printed)
 const_eval_assume_false =
@@ -61,7 +65,6 @@ const_eval_deref_coercion_non_const =
     .target_note = deref defined here
 const_eval_deref_function_pointer =
     accessing {$allocation} which contains a function
-const_eval_deref_test = dereferencing pointer failed
 const_eval_deref_vtable_pointer =
     accessing {$allocation} which contains a vtable
 const_eval_different_allocations =

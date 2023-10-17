@@ -1,7 +1,6 @@
 // edition: 2021
 // revisions: mismatch mismatch_async too_many too_few lt
 
-#![feature(return_position_impl_trait_in_trait, async_fn_in_trait)]
 #![allow(incomplete_features)]
 
 #[cfg(mismatch)]

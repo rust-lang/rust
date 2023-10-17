@@ -151,7 +151,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let [segment] = path.segments
                 && segment.ident.name.as_str() == name
                 && let Res::Local(hir_id) = path.res
-                && let Some((_, hir::Node::Expr(match_expr))) = self.tcx.hir().parent_iter(hir_id).nth(2)
+                && let Some((_, hir::Node::Expr(match_expr))) =
+                    self.tcx.hir().parent_iter(hir_id).nth(2)
                 && let hir::ExprKind::Match(scrutinee, _, _) = match_expr.kind
                 && let hir::ExprKind::Tup(exprs) = scrutinee.kind
                 && let hir::ExprKind::AddrOf(_, _, macro_arg) = exprs[idx].kind
@@ -450,20 +451,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If our binding became incompatible while it was a receiver
                 // to a method call, we may be able to make a better guess to
                 // the source of a type mismatch.
-                let Some(rcvr_ty) = self.node_ty_opt(rcvr.hir_id) else { continue; };
+                let Some(rcvr_ty) = self.node_ty_opt(rcvr.hir_id) else {
+                    continue;
+                };
                 let rcvr_ty = rcvr_ty.fold_with(&mut fudger);
-                let Ok(method) =
-                    self.lookup_method_for_diagnostic(rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr)
-                else {
+                let Ok(method) = self.lookup_method_for_diagnostic(
+                    rcvr_ty,
+                    segment,
+                    DUMMY_SP,
+                    parent_expr,
+                    rcvr,
+                ) else {
                     continue;
                 };
 
                 let ideal_rcvr_ty = rcvr_ty.fold_with(&mut fudger);
                 let ideal_method = self
-                    .lookup_method_for_diagnostic(ideal_rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr)
+                    .lookup_method_for_diagnostic(
+                        ideal_rcvr_ty,
+                        segment,
+                        DUMMY_SP,
+                        parent_expr,
+                        rcvr,
+                    )
                     .ok()
                     .and_then(|method| {
-                        let _ = self.at(&ObligationCause::dummy(), self.param_env)
+                        let _ = self
+                            .at(&ObligationCause::dummy(), self.param_env)
                             .eq(DefineOpaqueTypes::No, ideal_rcvr_ty, expected_ty)
                             .ok()?;
                         Some(method)
@@ -474,15 +488,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for (idx, (expected_arg_ty, arg_expr)) in
                     std::iter::zip(&method.sig.inputs()[1..], args).enumerate()
                 {
-                    let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else { continue; };
+                    let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else {
+                        continue;
+                    };
                     let arg_ty = arg_ty.fold_with(&mut fudger);
-                    let _ = self.coerce(
-                        arg_expr,
-                        arg_ty,
-                        *expected_arg_ty,
-                        AllowTwoPhase::No,
-                        None,
-                    );
+                    let _ =
+                        self.coerce(arg_expr, arg_ty, *expected_arg_ty, AllowTwoPhase::No, None);
                     self.select_obligations_where_possible(|errs| {
                         // Yeet the errors, we're already reporting errors.
                         errs.clear();
@@ -648,10 +659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 None => self.tcx.types.unit,
                             };
                             if self.can_eq(self.param_env, ty, expected) {
-                                err.span_label(
-                                    ex.span,
-                                    "expected because of this `break`",
-                                );
+                                err.span_label(ex.span, "expected because of this `break`");
                                 exit = true;
                             }
                         }
@@ -1410,10 +1418,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let bind = self.tcx.hir().find(*bind_hir_id);
             let parent = self.tcx.hir().find(self.tcx.hir().parent_id(*bind_hir_id));
-            if let Some(hir::Node::Pat(hir::Pat { kind: hir::PatKind::Binding(_, _hir_id, _, _), .. })) = bind &&
-                let Some(hir::Node::Pat(hir::Pat { default_binding_modes: false, .. })) = parent {
-                    return true;
-                }
+            if let Some(hir::Node::Pat(hir::Pat {
+                kind: hir::PatKind::Binding(_, _hir_id, _, _),
+                ..
+            })) = bind
+                && let Some(hir::Node::Pat(hir::Pat { default_binding_modes: false, .. })) = parent
+            {
+                return true;
+            }
         }
         return false;
     }
@@ -1507,10 +1519,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ```
                 let ref_ty = match mutability {
                     hir::Mutability::Mut => {
-                        Ty::new_mut_ref(self.tcx,self.tcx.lifetimes.re_static, checked_ty)
+                        Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_static, checked_ty)
                     }
                     hir::Mutability::Not => {
-                        Ty::new_imm_ref(self.tcx,self.tcx.lifetimes.re_static, checked_ty)
+                        Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, checked_ty)
                     }
                 };
                 if self.can_coerce(ref_ty, expected) {
@@ -1566,7 +1578,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
                     }
 
-                    let prefix = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                    let prefix = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr)
+                    {
                         Some(ident) => format!("{ident}: "),
                         None => String::new(),
                     };
@@ -1611,8 +1624,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let make_sugg = |start: Span, end: BytePos| {
                     // skip `(` for tuples such as `(c) = (&123)`.
                     // make sure we won't suggest like `(c) = 123)` which is incorrect.
-                    let sp = sm.span_extend_while(start.shrink_to_lo(), |c| c == '(' || c.is_whitespace())
-                                .map_or(start, |s| s.shrink_to_hi());
+                    let sp = sm
+                        .span_extend_while(start.shrink_to_lo(), |c| c == '(' || c.is_whitespace())
+                        .map_or(start, |s| s.shrink_to_hi());
                     Some((
                         vec![(sp.with_hi(end), String::new())],
                         "consider removing the borrow".to_string(),
@@ -1635,12 +1649,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .find(|&s| sp.contains(s))
                         && sm.is_span_accessible(call_span)
                     {
-                        return make_sugg(sp, call_span.lo())
+                        return make_sugg(sp, call_span.lo());
                     }
                     return None;
                 }
                 if sp.contains(expr.span) && sm.is_span_accessible(expr.span) {
-                    return make_sugg(sp, expr.span.lo())
+                    return make_sugg(sp, expr.span.lo());
                 }
             }
             (
@@ -1760,10 +1774,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             )
                         };
 
-                        let prefix = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
-                            Some(ident) => format!("{ident}: "),
-                            None => String::new(),
-                        };
+                        let prefix =
+                            match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                                Some(ident) => format!("{ident}: "),
+                                None => String::new(),
+                            };
 
                         let (span, suggestion) = if self.is_else_if_block(expr) {
                             // Don't suggest nonsense like `else *if`

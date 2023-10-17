@@ -212,7 +212,9 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
         let mut is_fn = false;
         let mut is_const_or_static = false;
 
-        if let Some(hir_ty) = hir_ty && let hir::TyKind::BareFn(_) = hir_ty.kind {
+        if let Some(hir_ty) = hir_ty
+            && let hir::TyKind::BareFn(_) = hir_ty.kind
+        {
             is_fn = true;
 
             // Check if parent is const or static
@@ -224,10 +226,8 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
                 Node::Item(&hir::Item {
                     kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
                     ..
-                }) | Node::TraitItem(&hir::TraitItem {
-                    kind: hir::TraitItemKind::Const(..),
-                    ..
-                }) | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
+                }) | Node::TraitItem(&hir::TraitItem { kind: hir::TraitItemKind::Const(..), .. })
+                    | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
             );
         }
 
@@ -1004,10 +1004,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 && let Some(lit) = meta.name_value_literal()
             {
                 if seen_attr {
-                    tcx.sess.span_err(
-                        meta.span,
-                        "duplicated `implement_via_object` meta item",
-                    );
+                    tcx.sess.span_err(meta.span, "duplicated `implement_via_object` meta item");
                 }
                 seen_attr = true;
 
@@ -1021,7 +1018,10 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                     _ => {
                         tcx.sess.span_err(
                             meta.span,
-                            format!("unknown literal passed to `implement_via_object` attribute: {}", lit.symbol),
+                            format!(
+                                "unknown literal passed to `implement_via_object` attribute: {}",
+                                lit.symbol
+                            ),
                         );
                     }
                 }
@@ -1115,8 +1115,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
 
         ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
             // Do not try to infer the return type for a impl method coming from a trait
-            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) =
-                tcx.hir().get_parent(hir_id)
+            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) = tcx.hir().get_parent(hir_id)
                 && i.of_trait.is_some()
             {
                 icx.astconv().ty_of_fn(
@@ -1343,7 +1342,13 @@ fn suggest_impl_trait<'tcx>(
         if ocx.select_where_possible().is_empty()
             && let item_ty = infcx.resolve_vars_if_possible(item_ty)
             && let Some(item_ty) = item_ty.make_suggestable(tcx, false)
-            && let Some(sugg) = formatter(tcx, infcx.resolve_vars_if_possible(args), trait_def_id, assoc_item_def_id, item_ty)
+            && let Some(sugg) = formatter(
+                tcx,
+                infcx.resolve_vars_if_possible(args),
+                trait_def_id,
+                assoc_item_def_id,
+                item_ty,
+            )
         {
             return Some(sugg);
         }

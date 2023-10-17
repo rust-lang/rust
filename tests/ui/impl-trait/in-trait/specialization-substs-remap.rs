@@ -1,7 +1,7 @@
 // check-pass
 
 #![feature(specialization)]
-#![feature(return_position_impl_trait_in_trait, lint_reasons)]
+#![feature(lint_reasons)]
 #![allow(incomplete_features)]
 
 pub trait Foo {

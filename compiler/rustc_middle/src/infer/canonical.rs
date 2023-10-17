@@ -104,7 +104,7 @@ impl CanonicalVarValues<'_> {
                     } else {
                         // It's ok if this region var isn't unique
                     }
-                },
+                }
                 ty::GenericArgKind::Type(ty) => {
                     if let ty::Bound(ty::INNERMOST, bt) = *ty.kind()
                         && var == bt.var

@@ -511,7 +511,9 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, ii: &hir::ImplItem<'_>) {
-        if let hir::ImplItemKind::Const(..) = ii.kind && !assoc_item_in_trait_impl(cx, ii) {
+        if let hir::ImplItemKind::Const(..) = ii.kind
+            && !assoc_item_in_trait_impl(cx, ii)
+        {
             NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ii.ident);
         }
     }

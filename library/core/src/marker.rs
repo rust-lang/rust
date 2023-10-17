@@ -573,59 +573,59 @@ impl<T: ?Sized> Copy for &T {}
 #[lang = "sync"]
 #[rustc_on_unimplemented(
     on(
-        any(_Self = "core::cell:OnceCell<T>", _Self = "std::cell::OnceCell<T>"),
+        _Self = "core::cell::once::OnceCell<T>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::OnceLock` instead"
     ),
     on(
-        any(_Self = "core::cell::Cell<u8>", _Self = "std::cell::Cell<u8>"),
+        _Self = "core::cell::Cell<u8>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU8` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<u16>", _Self = "std::cell::Cell<u16>"),
+        _Self = "core::cell::Cell<u16>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU16` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<u32>", _Self = "std::cell::Cell<u32>"),
+        _Self = "core::cell::Cell<u32>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU32` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<u64>", _Self = "std::cell::Cell<u64>"),
+        _Self = "core::cell::Cell<u64>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU64` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<usize>", _Self = "std::cell::Cell<usize>"),
+        _Self = "core::cell::Cell<usize>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicUsize` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<i8>", _Self = "std::cell::Cell<i8>"),
+        _Self = "core::cell::Cell<i8>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI8` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<i16>", _Self = "std::cell::Cell<i16>"),
+        _Self = "core::cell::Cell<i16>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI16` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<i32>", _Self = "std::cell::Cell<i32>"),
+        _Self = "core::cell::Cell<i32>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<i64>", _Self = "std::cell::Cell<i64>"),
+        _Self = "core::cell::Cell<i64>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI64` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<isize>", _Self = "std::cell::Cell<isize>"),
+        _Self = "core::cell::Cell<isize>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicIsize` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<bool>", _Self = "std::cell::Cell<bool>"),
+        _Self = "core::cell::Cell<bool>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicBool` instead",
     ),
     on(
-        any(_Self = "core::cell::Cell<T>", _Self = "std::cell::Cell<T>"),
+        _Self = "core::cell::Cell<T>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock`",
     ),
     on(
-        any(_Self = "core::cell::RefCell<T>", _Self = "std::cell::RefCell<T>"),
+        _Self = "core::cell::RefCell<T>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead",
     ),
     message = "`{Self}` cannot be shared between threads safely",

@@ -17,7 +17,7 @@ use crate::traits::{
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan, Style,
+    MultiSpan, StashKey, Style,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
@@ -2049,14 +2049,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
                     if let None = self.tainted_by_errors() {
-                        self.emit_inference_failure_err(
+                        let err = self.emit_inference_failure_err(
                             obligation.cause.body_id,
                             span,
                             trait_ref.self_ty().skip_binder().into(),
                             ErrorCode::E0282,
                             false,
-                        )
-                        .emit();
+                        );
+                        err.stash(span, StashKey::MaybeForgetReturn);
                     }
                     return;
                 }
@@ -2153,14 +2153,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
 
                 if let Some(ty::GenericArgKind::Type(_)) = subst.map(|subst| subst.unpack())
-                    && let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
+                    && let Some(body_id) =
+                        self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span);
                     expr_finder.visit_expr(&self.tcx.hir().body(body_id).value);
 
                     if let Some(hir::Expr {
-                        kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)), .. }
-                    ) = expr_finder.result
+                        kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
+                        ..
+                    }) = expr_finder.result
                         && let [
                             ..,
                             trait_path_segment @ hir::PathSegment {
@@ -2171,7 +2173,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 ident: assoc_item_name,
                                 res: Res::Def(_, item_id),
                                 ..
-                            }
+                            },
                         ] = path.segments
                         && data.trait_ref.def_id == *trait_id
                         && self.tcx.trait_of_item(*item_id) == Some(*trait_id)
@@ -2239,23 +2241,26 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     "/* self type */".to_string(),
                                 )
                             };
-                            let mut suggestions = vec![(
-                                path.span.shrink_to_lo(),
-                                format!("<{self_type} as "),
-                            )];
+                            let mut suggestions =
+                                vec![(path.span.shrink_to_lo(), format!("<{self_type} as "))];
                             if let Some(generic_arg) = trait_path_segment.args {
-                                let between_span = trait_path_segment.ident.span.between(generic_arg.span_ext);
+                                let between_span =
+                                    trait_path_segment.ident.span.between(generic_arg.span_ext);
                                 // get rid of :: between Trait and <type>
                                 // must be '::' between them, otherwise the parser won't accept the code
-                                suggestions.push((between_span, "".to_string(),));
-                                suggestions.push((generic_arg.span_ext.shrink_to_hi(), ">".to_string()));
+                                suggestions.push((between_span, "".to_string()));
+                                suggestions
+                                    .push((generic_arg.span_ext.shrink_to_hi(), ">".to_string()));
                             } else {
-                                suggestions.push((trait_path_segment.ident.span.shrink_to_hi(), ">".to_string()));
+                                suggestions.push((
+                                    trait_path_segment.ident.span.shrink_to_hi(),
+                                    ">".to_string(),
+                                ));
                             }
                             err.multipart_suggestion(
                                 message,
                                 suggestions,
-                                Applicability::MaybeIncorrect
+                                Applicability::MaybeIncorrect,
                             );
                         }
                     }
@@ -2965,8 +2970,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 );
             } else if !self.same_type_modulo_infer(given_ty, expected_ty) {
                 // Print type mismatch
-                let (expected_args, given_args) =
-                    self.cmp(given_ty, expected_ty);
+                let (expected_args, given_args) = self.cmp(given_ty, expected_ty);
                 err.note_expected_found(
                     &"a closure with arguments",
                     expected_args,

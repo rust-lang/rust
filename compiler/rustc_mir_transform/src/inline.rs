@@ -503,7 +503,9 @@ impl<'tcx> Inliner<'tcx> {
                     self.tcx,
                     ty::EarlyBinder::bind(&place.ty(callee_body, tcx).ty),
                 );
-                if ty.needs_drop(tcx, self.param_env) && let UnwindAction::Cleanup(unwind) = unwind {
+                if ty.needs_drop(tcx, self.param_env)
+                    && let UnwindAction::Cleanup(unwind) = unwind
+                {
                     work_list.push(unwind);
                 }
             } else if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
@@ -842,7 +844,9 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             TerminatorKind::Call { func: Operand::Constant(ref f), unwind, .. } => {
                 let fn_ty =
                     self.instance.instantiate_mir(tcx, ty::EarlyBinder::bind(&f.const_.ty()));
-                self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind() && tcx.is_intrinsic(def_id) {
+                self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind()
+                    && tcx.is_intrinsic(def_id)
+                {
                     // Don't give intrinsics the extra penalty for calls
                     INSTR_COST
                 } else {

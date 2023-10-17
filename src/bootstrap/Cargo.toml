@@ -5,6 +5,9 @@ edition = "2021"
 build = "build.rs"
 default-run = "bootstrap"
 
+[features]
+build-metrics = ["sysinfo"]
+
 [lib]
 path = "lib.rs"
 doctest = false
@@ -31,12 +34,18 @@ test = false
 
 [dependencies]
 build_helper = { path = "../tools/build_helper" }
+cc = "1.0.69"
+clap = { version = "4.2.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
+clap_complete = "4.4.3"
 cmake = "0.1.38"
 filetime = "0.2"
-cc = "1.0.69"
-libc = "0.2"
 hex = "0.4"
+ignore = "0.4.10"
+libc = "0.2"
 object = { version = "0.32.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
+once_cell = "1.7.2"
+opener = "0.5"
+semver = "1.0.17"
 serde = "1.0.137"
 # Directly use serde_derive rather than through the derive feature of serde to allow building both
 # in parallel and to allow serde_json and toml to start building as soon as serde has been built.
@@ -46,17 +55,11 @@ sha2 = "0.10"
 tar = "0.4"
 termcolor = "1.2.0"
 toml = "0.5"
-ignore = "0.4.10"
-opener = "0.5"
-once_cell = "1.7.2"
-xz2 = "0.1"
 walkdir = "2"
+xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.26.0", optional = true }
-clap = { version = "4.2.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
-clap_complete = "4.2.2"
-semver = "1.0.17"
 
 # Solaris doesn't support flock() and thus fd-lock is not option now
 [target.'cfg(not(target_os = "solaris"))'.dependencies]
@@ -79,9 +82,6 @@ features = [
 
 [dev-dependencies]
 pretty_assertions = "1.4"
-
-[features]
-build-metrics = ["sysinfo"]
 
 # We care a lot about bootstrap's compile times, so don't include debuginfo for
 # dependencies, only bootstrap itself.

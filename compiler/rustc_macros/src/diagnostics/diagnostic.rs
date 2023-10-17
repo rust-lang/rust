@@ -42,19 +42,20 @@ impl<'a> DiagnosticDerive<'a> {
             let init = match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
-                        .help("specify the slug as the first argument to the `#[diag(...)]` \
-                            attribute, such as `#[diag(hir_analysis_example_error)]`")
+                        .help(
+                            "specify the slug as the first argument to the `#[diag(...)]` \
+                            attribute, such as `#[diag(hir_analysis_example_error)]`",
+                        )
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
-                Some(slug) if let Some( Mismatch { slug_name, crate_name, slug_prefix }) = Mismatch::check(slug) => {
+                Some(slug)
+                    if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
+                        Mismatch::check(slug) =>
+                {
                     span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
-                        .note(format!(
-                            "slug is `{slug_name}` but the crate name is `{crate_name}`"
-                        ))
-                        .help(format!(
-                            "expected a slug starting with `{slug_prefix}_...`"
-                        ))
+                        .note(format!("slug is `{slug_name}` but the crate name is `{crate_name}`"))
+                        .help(format!("expected a slug starting with `{slug_prefix}_...`"))
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
@@ -141,19 +142,20 @@ impl<'a> LintDiagnosticDerive<'a> {
             match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
-                        .help("specify the slug as the first argument to the attribute, such as \
-                            `#[diag(compiletest_example)]`")
+                        .help(
+                            "specify the slug as the first argument to the attribute, such as \
+                            `#[diag(compiletest_example)]`",
+                        )
                         .emit();
                     DiagnosticDeriveError::ErrorHandled.to_compile_error()
                 }
-                Some(slug) if let Some( Mismatch { slug_name, crate_name, slug_prefix }) = Mismatch::check(slug) => {
+                Some(slug)
+                    if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
+                        Mismatch::check(slug) =>
+                {
                     span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
-                        .note(format!(
-                            "slug is `{slug_name}` but the crate name is `{crate_name}`"
-                        ))
-                        .help(format!(
-                            "expected a slug starting with `{slug_prefix}_...`"
-                        ))
+                        .note(format!("slug is `{slug_name}` but the crate name is `{crate_name}`"))
+                        .help(format!("expected a slug starting with `{slug_prefix}_...`"))
                         .emit();
                     DiagnosticDeriveError::ErrorHandled.to_compile_error()
                 }

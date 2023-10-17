@@ -1007,8 +1007,9 @@ impl<'a> Parser<'a> {
         let span = self.token.span;
         let sm = self.sess.source_map();
         let (span, actual) = match (&self.token.kind, self.subparser_name) {
-            (token::Eof, Some(_)) if let Ok(actual) = sm.span_to_snippet(sm.next_point(span)) =>
-                (span.shrink_to_hi(), actual.into()),
+            (token::Eof, Some(_)) if let Ok(actual) = sm.span_to_snippet(sm.next_point(span)) => {
+                (span.shrink_to_hi(), actual.into())
+            }
             _ => (span, actual),
         };
         self.sess.emit_err(errors::UnexpectedTokenAfterDot { span, actual });
@@ -1550,10 +1551,7 @@ impl<'a> Parser<'a> {
                 self.sess.emit_err(errors::MacroInvocationWithQualifiedPath(path.span));
             }
             let lo = path.span;
-            let mac = P(MacCall {
-                path,
-                args: self.parse_delim_args()?,
-            });
+            let mac = P(MacCall { path, args: self.parse_delim_args()? });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(Delimiter::Brace))
             && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
@@ -1771,7 +1769,9 @@ impl<'a> Parser<'a> {
     fn parse_expr_break(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
         let mut label = self.eat_label();
-        let kind = if self.token == token::Colon && let Some(label) = label.take() {
+        let kind = if self.token == token::Colon
+            && let Some(label) = label.take()
+        {
             // The value expression can be a labeled loop, see issue #86948, e.g.:
             // `loop { break 'label: loop { break 'label 42; }; }`
             let lexpr = self.parse_expr_labeled(label, true)?;
@@ -2377,16 +2377,18 @@ impl<'a> Parser<'a> {
         let mut recover_block_from_condition = |this: &mut Self| {
             let block = match &mut cond.kind {
                 ExprKind::Binary(Spanned { span: binop_span, .. }, _, right)
-                    if let ExprKind::Block(_, None) = right.kind => {
-                        self.sess.emit_err(errors::IfExpressionMissingThenBlock {
-                            if_span: lo,
-                            missing_then_block_sub:
-                                errors::IfExpressionMissingThenBlockSub::UnfinishedCondition(cond_span.shrink_to_lo().to(*binop_span)),
-                                let_else_sub: None,
-
-                        });
-                        std::mem::replace(right, this.mk_expr_err(binop_span.shrink_to_hi()))
-                    },
+                    if let ExprKind::Block(_, None) = right.kind =>
+                {
+                    self.sess.emit_err(errors::IfExpressionMissingThenBlock {
+                        if_span: lo,
+                        missing_then_block_sub:
+                            errors::IfExpressionMissingThenBlockSub::UnfinishedCondition(
+                                cond_span.shrink_to_lo().to(*binop_span),
+                            ),
+                        let_else_sub: None,
+                    });
+                    std::mem::replace(right, this.mk_expr_err(binop_span.shrink_to_hi()))
+                }
                 ExprKind::Block(_, None) => {
                     self.sess.emit_err(errors::IfExpressionMissingCondition {
                         if_span: lo.shrink_to_hi(),
@@ -2569,13 +2571,16 @@ impl<'a> Parser<'a> {
     }
 
     fn error_on_extra_if(&mut self, cond: &P<Expr>) -> PResult<'a, ()> {
-        if let ExprKind::Binary(Spanned { span: binop_span, node: binop}, _, right) = &cond.kind &&
-            let BinOpKind::And = binop &&
-            let ExprKind::If(cond, ..) = &right.kind {
-                    Err(self.sess.create_err(errors::UnexpectedIfWithIf(binop_span.shrink_to_hi().to(cond.span.shrink_to_lo()))))
-            } else {
-                Ok(())
-            }
+        if let ExprKind::Binary(Spanned { span: binop_span, node: binop }, _, right) = &cond.kind
+            && let BinOpKind::And = binop
+            && let ExprKind::If(cond, ..) = &right.kind
+        {
+            Err(self.sess.create_err(errors::UnexpectedIfWithIf(
+                binop_span.shrink_to_hi().to(cond.span.shrink_to_lo()),
+            )))
+        } else {
+            Ok(())
+        }
     }
 
     /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
@@ -2923,9 +2928,9 @@ impl<'a> Parser<'a> {
                     .or_else(|mut err| {
                         if this.token == token::FatArrow {
                             if let Ok(expr_lines) = sm.span_to_lines(expr.span)
-                            && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
-                            && arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
-                            && expr_lines.lines.len() == 2
+                                && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
+                                && arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
+                                && expr_lines.lines.len() == 2
                             {
                                 // We check whether there's any trailing code in the parse span,
                                 // if there isn't, we very likely have the following:
@@ -3181,7 +3186,7 @@ impl<'a> Parser<'a> {
                         e.span_suggestion_verbose(
                             self.token.span.shrink_to_lo(),
                             "try naming a field",
-                            &format!("{ident}: ", ),
+                            &format!("{ident}: ",),
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -3574,8 +3579,7 @@ impl MutVisitor for CondChecker<'_> {
                 noop_visit_expr(e, self);
                 self.forbid_let_reason = forbid_let_reason;
             }
-            ExprKind::Cast(ref mut op, _)
-            | ExprKind::Type(ref mut op, _) => {
+            ExprKind::Cast(ref mut op, _) | ExprKind::Type(ref mut op, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason = Some(OtherForbidden);
                 self.visit_expr(op);

@@ -1190,7 +1190,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Root { opt_parent_item } => {
                     if let Some(parent_item) = opt_parent_item
                         && let parent_generics = self.tcx.generics_of(parent_item)
-                        && parent_generics.param_def_id_to_index(self.tcx, region_def_id.to_def_id()).is_some()
+                        && parent_generics
+                            .param_def_id_to_index(self.tcx, region_def_id.to_def_id())
+                            .is_some()
                     {
                         break Some(ResolvedArg::EarlyBound(region_def_id.to_def_id()));
                     }
@@ -1209,13 +1211,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     // regular fns.
                     if let Some(hir::PredicateOrigin::ImplTrait) = where_bound_origin
                         && let hir::LifetimeName::Param(param_id) = lifetime_ref.res
-                        && let Some(generics) = self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
+                        && let Some(generics) =
+                            self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
                         && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
                         && param.is_elided_lifetime()
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
-                        let mut diag =  rustc_session::parse::feature_err(
+                        let mut diag = rustc_session::parse::feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::anonymous_lifetime_in_impl_trait,
                             lifetime_ref.ident.span,
@@ -1225,25 +1228,31 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         if let Some(generics) =
                             self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id)
                         {
-                            let new_param_sugg = if let Some(span) =
-                                generics.span_for_lifetime_suggestion()
-                            {
-                                (span, "'a, ".to_owned())
-                            } else {
-                                (generics.span, "<'a>".to_owned())
-                            };
+                            let new_param_sugg =
+                                if let Some(span) = generics.span_for_lifetime_suggestion() {
+                                    (span, "'a, ".to_owned())
+                                } else {
+                                    (generics.span, "<'a>".to_owned())
+                                };
 
                             let lifetime_sugg = match lifetime_ref.suggestion_position() {
-                                (hir::LifetimeSuggestionPosition::Normal, span) => (span, "'a".to_owned()),
-                                (hir::LifetimeSuggestionPosition::Ampersand, span) => (span, "'a ".to_owned()),
-                                (hir::LifetimeSuggestionPosition::ElidedPath, span) => (span, "<'a>".to_owned()),
-                                (hir::LifetimeSuggestionPosition::ElidedPathArgument, span) => (span, "'a, ".to_owned()),
-                                (hir::LifetimeSuggestionPosition::ObjectDefault, span) => (span, "+ 'a".to_owned()),
+                                (hir::LifetimeSuggestionPosition::Normal, span) => {
+                                    (span, "'a".to_owned())
+                                }
+                                (hir::LifetimeSuggestionPosition::Ampersand, span) => {
+                                    (span, "'a ".to_owned())
+                                }
+                                (hir::LifetimeSuggestionPosition::ElidedPath, span) => {
+                                    (span, "<'a>".to_owned())
+                                }
+                                (hir::LifetimeSuggestionPosition::ElidedPathArgument, span) => {
+                                    (span, "'a, ".to_owned())
+                                }
+                                (hir::LifetimeSuggestionPosition::ObjectDefault, span) => {
+                                    (span, "+ 'a".to_owned())
+                                }
                             };
-                            let suggestions = vec![
-                                lifetime_sugg,
-                                new_param_sugg,
-                            ];
+                            let suggestions = vec![lifetime_sugg, new_param_sugg];
 
                             diag.span_label(
                                 lifetime_ref.ident.span,
@@ -1378,7 +1387,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Root { opt_parent_item } => {
                     if let Some(parent_item) = opt_parent_item
                         && let parent_generics = self.tcx.generics_of(parent_item)
-                        && parent_generics.param_def_id_to_index(self.tcx, param_def_id.to_def_id()).is_some()
+                        && parent_generics
+                            .param_def_id_to_index(self.tcx, param_def_id.to_def_id())
+                            .is_some()
                     {
                         break Some(ResolvedArg::EarlyBound(param_def_id.to_def_id()));
                     }
@@ -1689,14 +1700,12 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if binding.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation {
                 let bound_vars = if let Some(type_def_id) = type_def_id
                     && self.tcx.def_kind(type_def_id) == DefKind::Trait
-                    && let Some((mut bound_vars, assoc_fn)) =
-                        BoundVarContext::supertrait_hrtb_vars(
-                            self.tcx,
-                            type_def_id,
-                            binding.ident,
-                            ty::AssocKind::Fn,
-                        )
-                {
+                    && let Some((mut bound_vars, assoc_fn)) = BoundVarContext::supertrait_hrtb_vars(
+                        self.tcx,
+                        type_def_id,
+                        binding.ident,
+                        ty::AssocKind::Fn,
+                    ) {
                     bound_vars.extend(self.tcx.generics_of(assoc_fn.def_id).params.iter().map(
                         |param| match param.kind {
                             ty::GenericParamDefKind::Lifetime => ty::BoundVariableKind::Region(
@@ -1708,14 +1717,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
                         },
                     ));
-                    bound_vars
-                        .extend(self.tcx.fn_sig(assoc_fn.def_id).instantiate_identity().bound_vars());
+                    bound_vars.extend(
+                        self.tcx.fn_sig(assoc_fn.def_id).instantiate_identity().bound_vars(),
+                    );
                     bound_vars
                 } else {
-                    self.tcx.sess.delay_span_bug(
-                        binding.ident.span,
-                        "bad return type notation here",
-                    );
+                    self.tcx
+                        .sess
+                        .delay_span_bug(binding.ident.span, "bad return type notation here");
                     vec![]
                 };
                 self.with(scope, |this| {

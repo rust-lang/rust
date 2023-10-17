@@ -1,8 +1,8 @@
 warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/super-method-bound-ambig.rs:3:31
+  --> $DIR/super-method-bound-ambig.rs:3:12
    |
-LL | #![feature(async_fn_in_trait, return_type_notation)]
-   |                               ^^^^^^^^^^^^^^^^^^^^
+LL | #![feature(return_type_notation)]
+   |            ^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
    = note: `#[warn(incomplete_features)]` on by default

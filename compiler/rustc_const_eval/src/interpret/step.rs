@@ -206,15 +206,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let elem_size = first.layout.size;
                     let first_ptr = first.ptr();
                     let rest_ptr = first_ptr.offset(elem_size, self)?;
-                    // For the alignment of `rest_ptr`, we crucially do *not* use `first.align` as
-                    // that place might be more aligned than its type mandates (a `u8` array could
-                    // be 4-aligned if it sits at the right spot in a struct). We have to also factor
-                    // in element size.
+                    // No alignment requirement since `copy_op` above already checked it.
                     self.mem_copy_repeatedly(
                         first_ptr,
-                        dest.align,
                         rest_ptr,
-                        dest.align.restrict_for_offset(elem_size),
                         elem_size,
                         length - 1,
                         /*nonoverlapping:*/ true,
@@ -268,7 +263,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             NullaryOp(ref null_op, ty) => {
                 let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty)?;
                 let layout = self.layout_of(ty)?;
-                if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op && layout.is_unsized() {
+                if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op
+                    && layout.is_unsized()
+                {
                     span_bug!(
                         self.frame().current_span(),
                         "{null_op:?} MIR operator called for unsized type {ty}",

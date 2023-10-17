@@ -2777,6 +2777,7 @@ pub struct Bytes<R> {
 impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
+    #[inline]
     fn next(&mut self) -> Option<Result<u8>> {
         let mut byte = 0;
         loop {
@@ -2789,6 +2790,7 @@ impl<R: Read> Iterator for Bytes<R> {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         SizeHint::size_hint(&self.inner)
     }

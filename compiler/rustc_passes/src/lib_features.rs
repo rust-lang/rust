@@ -56,7 +56,9 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                     }
                 }
 
-                if let Some(s) = since && s.as_str() == VERSION_PLACEHOLDER {
+                if let Some(s) = since
+                    && s.as_str() == VERSION_PLACEHOLDER
+                {
                     since = Some(rust_version_symbol());
                 }
 

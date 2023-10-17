@@ -161,7 +161,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 
     #[inline(always)]
     fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
-        &self.ecx
+        self.ecx
     }
 
     fn visit_value(&mut self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
@@ -259,7 +259,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                 // to avoid could be expensive: on the potentially larger types, arrays and slices,
                 // rather than on all aggregates unconditionally.
                 if matches!(mplace.layout.ty.kind(), ty::Array(..) | ty::Slice(..)) {
-                    let Some((size, align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
+                    let Some((size, _align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
                         // We do the walk if we can't determine the size of the mplace: we may be
                         // dealing with extern types here in the future.
                         return Ok(true);
@@ -267,7 +267,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 
                     // If there is no provenance in this allocation, it does not contain references
                     // that point to another allocation, and we can avoid the interning walk.
-                    if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr(), size, align)? {
+                    if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr(), size)? {
                         if !alloc.has_provenance() {
                             return Ok(false);
                         }

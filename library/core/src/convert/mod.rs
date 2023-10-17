@@ -573,7 +573,7 @@ pub trait Into<T>: Sized {
 #[rustc_diagnostic_item = "From"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
-    all(_Self = "&str", any(T = "alloc::string::String", T = "std::string::String")),
+    all(_Self = "&str", T = "alloc::string::String"),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
 pub trait From<T>: Sized {
@@ -618,12 +618,11 @@ pub trait TryInto<T>: Sized {
 /// For example, there is no way to convert an [`i64`] into an [`i32`]
 /// using the [`From`] trait, because an [`i64`] may contain a value
 /// that an [`i32`] cannot represent and so the conversion would lose data.
-/// This might be handled by truncating the [`i64`] to an [`i32`] (essentially
-/// giving the [`i64`]'s value modulo [`i32::MAX`]) or by simply returning
-/// [`i32::MAX`], or by some other method.  The [`From`] trait is intended
-/// for perfect conversions, so the `TryFrom` trait informs the
-/// programmer when a type conversion could go bad and lets them
-/// decide how to handle it.
+/// This might be handled by truncating the [`i64`] to an [`i32`] or by
+/// simply returning [`i32::MAX`], or by some other method.  The [`From`]
+/// trait is intended for perfect conversions, so the `TryFrom` trait
+/// informs the programmer when a type conversion could go bad and lets
+/// them decide how to handle it.
 ///
 /// # Generic Implementations
 ///

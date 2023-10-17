@@ -492,7 +492,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // this trait and type.
                 }
                 ty::Param(..)
-                | ty::Alias(ty::Projection | ty::Inherent, ..)
+                | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
                 | ty::Placeholder(..)
                 | ty::Bound(..) => {
                     // In these cases, we don't know what the actual
@@ -536,20 +536,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
                 }
 
-                ty::Alias(_, _)
-                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(..))) =>
-                {
-                    // We do not generate an auto impl candidate for `impl Trait`s which already
-                    // reference our auto trait.
-                    //
-                    // For example during candidate assembly for `impl Send: Send`, we don't have
-                    // to look at the constituent types for this opaque types to figure out that this
-                    // trivially holds.
-                    //
-                    // Note that this is only sound as projection candidates of opaque types
-                    // are always applicable for auto traits.
+                ty::Alias(ty::Opaque, _) => {
+                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(..))) {
+                        // We do not generate an auto impl candidate for `impl Trait`s which already
+                        // reference our auto trait.
+                        //
+                        // For example during candidate assembly for `impl Send: Send`, we don't have
+                        // to look at the constituent types for this opaque types to figure out that this
+                        // trivially holds.
+                        //
+                        // Note that this is only sound as projection candidates of opaque types
+                        // are always applicable for auto traits.
+                    } else if self.infcx.intercrate {
+                        // We do not emit auto trait candidates for opaque types in coherence.
+                        // Doing so can result in weird dependency cycles.
+                        candidates.ambiguous = true;
+                    } else {
+                        candidates.vec.push(AutoImplCandidate)
+                    }
                 }
-                ty::Alias(_, _) => candidates.vec.push(AutoImplCandidate),
 
                 ty::Bool
                 | ty::Char

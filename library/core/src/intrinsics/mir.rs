@@ -12,8 +12,7 @@
 //!
 //! Typical usage will look like this:
 //!
-#![cfg_attr(bootstrap, doc = "```rust,ignore")]
-#![cfg_attr(not(bootstrap), doc = "```rust")]
+//! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //! #![allow(internal_features)]
 //!
@@ -63,8 +62,7 @@
 //!
 //! # Examples
 //!
-#![cfg_attr(bootstrap, doc = "```rust,ignore")]
-#![cfg_attr(not(bootstrap), doc = "```rust")]
+//! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //! #![allow(internal_features)]
 //!
@@ -106,7 +104,6 @@
 //! }
 //!
 //! #[custom_mir(dialect = "runtime", phase = "optimized")]
-#![cfg_attr(bootstrap, doc = "#[cfg(any())]")] // disable the following function in doctests when `bootstrap` is set
 //! fn push_and_pop<T>(v: &mut Vec<T>, value: T) {
 //!     mir!(
 //!         let _unused;
@@ -319,8 +316,7 @@ define!(
     ///
     /// # Examples
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// ```rust
     /// #![allow(internal_features)]
     /// #![feature(custom_mir, core_intrinsics)]
     ///

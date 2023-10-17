@@ -1,5 +1,5 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/bad-item-bound-within-rpitit.rs:16:13
+  --> $DIR/bad-item-bound-within-rpitit.rs:15:13
    |
 LL |     type Item<'a>
    |     ------------- definition of `Item` from trait
@@ -13,7 +13,7 @@ LL |     where Self: 'b;
    |     ~~~~~~~~~~~~~~
 
 warning: impl trait in impl method signature does not match trait method signature
-  --> $DIR/bad-item-bound-within-rpitit.rs:19:28
+  --> $DIR/bad-item-bound-within-rpitit.rs:18:28
    |
 LL |     fn iter(&self) -> impl '_ + Iterator<Item = Self::Item<'_>>;
    |                       ----------------------------------------- return type from trait method defined here

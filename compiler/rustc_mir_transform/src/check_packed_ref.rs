@@ -46,9 +46,14 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                     // If we ever reach here it means that the generated derive
                     // code is somehow doing an unaligned reference, which it
                     // shouldn't do.
-                    span_bug!(self.source_info.span, "builtin derive created an unaligned reference");
+                    span_bug!(
+                        self.source_info.span,
+                        "builtin derive created an unaligned reference"
+                    );
                 } else {
-                    self.tcx.sess.emit_err(errors::UnalignedPackedRef { span: self.source_info.span });
+                    self.tcx
+                        .sess
+                        .emit_err(errors::UnalignedPackedRef { span: self.source_info.span });
                 }
             }
         }

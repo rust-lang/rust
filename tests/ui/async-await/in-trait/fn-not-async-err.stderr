@@ -1,5 +1,5 @@
 error: method `foo` should be async because the method from the trait is async
-  --> $DIR/fn-not-async-err.rs:11:5
+  --> $DIR/fn-not-async-err.rs:10:5
    |
 LL |     async fn foo(&self) -> i32;
    |     --------------------------- required because the trait method is async

@@ -11,10 +11,13 @@ set -eu
 sh -n "$0"
 
 realpath() {
-    if [ -d "$1" ]; then
-        CDPATH='' command cd "$1" && pwd -P
+    local path="$1"
+    if [ -L "$path" ]; then
+        readlink -f "$path"
+    elif [ -d "$path" ]; then
+        (cd -P "$path" && pwd)
     else
-        echo "$(realpath "$(dirname "$1")")/$(basename "$1")"
+        echo "$(realpath "$(dirname "$path")")/$(basename "$path")"
     fi
 }
 

@@ -633,8 +633,6 @@ fn compare_asyncness<'tcx>(
 /// For example, given the sample code:
 ///
 /// ```
-/// #![feature(return_position_impl_trait_in_trait)]
-///
 /// use std::ops::Deref;
 ///
 /// trait Foo {
@@ -1011,7 +1009,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
             });
             self.types.insert(proj.def_id, (infer_ty, proj.args));
             // Recurse into bounds
-            for (pred, pred_span) in self.interner().explicit_item_bounds(proj.def_id).iter_instantiated_copied(self.interner(), proj.args) {
+            for (pred, pred_span) in self
+                .interner()
+                .explicit_item_bounds(proj.def_id)
+                .iter_instantiated_copied(self.interner(), proj.args)
+            {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -1182,7 +1184,8 @@ fn report_trait_method_mismatch<'tcx>(
             if trait_sig.inputs().len() == *i {
                 // Suggestion to change output type. We do not suggest in `async` functions
                 // to avoid complex logic or incorrect output.
-                if let ImplItemKind::Fn(sig, _) = &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind
+                if let ImplItemKind::Fn(sig, _) =
+                    &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind
                     && !sig.header.asyncness.is_async()
                 {
                     let msg = "change the output type to match the trait";

@@ -234,6 +234,7 @@ pub struct Config {
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
+    pub enable_bolt_settings: bool,
 
     pub reproducible_artifacts: Vec<String>,
 
@@ -1128,6 +1129,7 @@ impl Config {
         config.free_args = std::mem::take(&mut flags.free_args);
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
+        config.enable_bolt_settings = flags.enable_bolt_settings;
 
         // Infer the rest of the configuration.
 

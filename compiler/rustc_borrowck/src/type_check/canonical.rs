@@ -49,7 +49,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // If the query has created new universes and errors are going to be emitted, register the
         // cause of these new universes for improved diagnostics.
         let universe = self.infcx.universe();
-        if old_universe != universe && let Some(error_info) = error_info {
+        if old_universe != universe
+            && let Some(error_info) = error_info
+        {
             let universe_info = error_info.to_universe_info(old_universe);
             for u in (old_universe + 1)..=universe {
                 self.borrowck_context.constraints.universe_causes.insert(u, universe_info.clone());

@@ -520,9 +520,7 @@ impl NestedMetaItem {
         I: Iterator<Item = &'a TokenTree>,
     {
         match tokens.peek() {
-            Some(TokenTree::Token(token, _))
-                if let Some(lit) = MetaItemLit::from_token(token) =>
-            {
+            Some(TokenTree::Token(token, _)) if let Some(lit) = MetaItemLit::from_token(token) => {
                 tokens.next();
                 return Some(NestedMetaItem::Lit(lit));
             }

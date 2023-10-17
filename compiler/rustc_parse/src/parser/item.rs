@@ -122,7 +122,9 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Option<Item>> {
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind && let token::NtItem(item) = &**nt {
+        if let token::Interpolated(nt) = &self.token.kind
+            && let token::NtItem(item) = &**nt
+        {
             let mut item = item.clone();
             self.bump();
 
@@ -623,11 +625,10 @@ impl<'a> Parser<'a> {
                             // `impl<T: Default> impl Default for Wrapper<T>`
                             //                   ^^^^^
                             let extra_impl_kw = ty_first.span.until(bound.span());
-                            self.sess
-                                .emit_err(errors::ExtraImplKeywordInTraitImpl {
-                                    extra_impl_kw,
-                                    impl_trait_span: ty_first.span
-                                });
+                            self.sess.emit_err(errors::ExtraImplKeywordInTraitImpl {
+                                extra_impl_kw,
+                                impl_trait_span: ty_first.span,
+                            });
                         } else {
                             self.sess.emit_err(errors::ExpectedTraitInTraitImplFoundType {
                                 span: ty_first.span,
@@ -1306,7 +1307,9 @@ impl<'a> Parser<'a> {
         // Provide a nice error message if the user placed a where-clause before the item body.
         // Users may be tempted to write such code if they are still used to the deprecated
         // where-clause location on type aliases and associated types. See also #89122.
-        if before_where_clause.has_where_token && let Some(expr) = &expr {
+        if before_where_clause.has_where_token
+            && let Some(expr) = &expr
+        {
             self.sess.emit_err(errors::WhereClauseBeforeConstBody {
                 span: before_where_clause.span,
                 name: ident.span,
@@ -1949,7 +1952,8 @@ impl<'a> Parser<'a> {
                 let mut err = self.expected_ident_found_err();
                 if self.eat_keyword_noexpect(kw::Let)
                     && let removal_span = self.prev_token.span.until(self.token.span)
-                    && let Ok(ident) = self.parse_ident_common(false)
+                    && let Ok(ident) = self
+                        .parse_ident_common(false)
                         // Cancel this error, we don't need it.
                         .map_err(|err| err.cancel())
                     && self.token.kind == TokenKind::Colon

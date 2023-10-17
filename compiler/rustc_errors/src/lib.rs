@@ -507,6 +507,7 @@ pub enum StashKey {
     CallAssocMethod,
     TraitMissingMethod,
     OpaqueHiddenTypeMismatch,
+    MaybeForgetReturn,
 }
 
 fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
@@ -1673,7 +1674,11 @@ impl HandlerInner {
                 let _ = write!(
                     &mut out,
                     "delayed span bug: {}\n{}\n",
-                    bug.inner.styled_message().iter().filter_map(|(msg, _)| msg.as_str()).collect::<String>(),
+                    bug.inner
+                        .styled_message()
+                        .iter()
+                        .filter_map(|(msg, _)| msg.as_str())
+                        .collect::<String>(),
                     &bug.note
                 );
             }

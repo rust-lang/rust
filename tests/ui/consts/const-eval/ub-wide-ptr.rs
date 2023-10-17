@@ -122,14 +122,14 @@ const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4u
 //~^ ERROR it is undefined behavior to use this value
 //~| expected a vtable
 const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
-//~^ ERROR evaluation of constant value failed
-//~| does not point to a vtable
+//~^ ERROR it is undefined behavior to use this value
+//~| expected a vtable
 const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
-//~^ ERROR evaluation of constant value failed
-//~| does not point to a vtable
+//~^ ERROR it is undefined behavior to use this value
+//~| expected a vtable
 const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
-//~^ ERROR evaluation of constant value failed
-//~| does not point to a vtable
+//~^ ERROR it is undefined behavior to use this value
+//~| expected a vtable
 const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
 //~^ ERROR it is undefined behavior to use this value
 //~| expected a vtable
@@ -148,12 +148,12 @@ const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = unsafe { mem::transmute:
 
 // Const eval fails for these, so they need to be statics to error.
 static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
+//~^ ERROR it is undefined behavior to use this value
     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
-    //~^ ERROR could not evaluate static initializer
 };
 static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
+//~^ ERROR it is undefined behavior to use this value
     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
-    //~^ ERROR could not evaluate static initializer
 };
 
 fn main() {}

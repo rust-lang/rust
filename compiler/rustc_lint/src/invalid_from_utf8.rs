@@ -64,8 +64,13 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
             && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
-            && [sym::str_from_utf8, sym::str_from_utf8_mut,
-                sym::str_from_utf8_unchecked, sym::str_from_utf8_unchecked_mut].contains(&diag_item)
+            && [
+                sym::str_from_utf8,
+                sym::str_from_utf8_mut,
+                sym::str_from_utf8_unchecked,
+                sym::str_from_utf8_unchecked_mut,
+            ]
+            .contains(&diag_item)
         {
             let lint = |label, utf8_error: Utf8Error| {
                 let method = diag_item.as_str().strip_prefix("str_").unwrap();
@@ -74,13 +79,17 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
                 let is_unchecked_variant = diag_item.as_str().contains("unchecked");
 
                 cx.emit_spanned_lint(
-                    if is_unchecked_variant { INVALID_FROM_UTF8_UNCHECKED } else { INVALID_FROM_UTF8 },
+                    if is_unchecked_variant {
+                        INVALID_FROM_UTF8_UNCHECKED
+                    } else {
+                        INVALID_FROM_UTF8
+                    },
                     expr.span,
                     if is_unchecked_variant {
                         InvalidFromUtf8Diag::Unchecked { method, valid_up_to, label }
                     } else {
                         InvalidFromUtf8Diag::Checked { method, valid_up_to, label }
-                    }
+                    },
                 )
             };
 
@@ -95,18 +104,19 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
                     {
                         lint(init.span, utf8_error);
                     }
-                },
+                }
                 ExprKind::Array(args) => {
-                    let elements = args.iter().map(|e|{
-                        match &e.kind {
+                    let elements = args
+                        .iter()
+                        .map(|e| match &e.kind {
                             ExprKind::Lit(Spanned { node: lit, .. }) => match lit {
                                 LitKind::Byte(b) => Some(*b),
                                 LitKind::Int(b, _) => Some(*b as u8),
-                                _ => None
-                            }
-                            _ => None
-                        }
-                    }).collect::<Option<Vec<_>>>();
+                                _ => None,
+                            },
+                            _ => None,
+                        })
+                        .collect::<Option<Vec<_>>>();
 
                     if let Some(elements) = elements
                         && let Err(utf8_error) = std::str::from_utf8(&elements)

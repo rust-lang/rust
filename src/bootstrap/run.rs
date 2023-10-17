@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use clap_complete::shells;
-
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
 use crate::dist::distdir;
@@ -268,23 +266,29 @@ impl Step for GenerateWindowsSys {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenerateCompletions;
 
+macro_rules! generate_completions {
+    ( $( ( $shell:ident, $filename:expr ) ),* ) => {
+        $(
+            if let Some(comp) = get_completion($shell, &$filename) {
+                std::fs::write(&$filename, comp).expect(&format!("writing {} completion", stringify!($shell)));
+            }
+        )*
+    };
+}
+
 impl Step for GenerateCompletions {
     type Output = ();
 
     /// Uses `clap_complete` to generate shell completions.
     fn run(self, builder: &Builder<'_>) {
-        // FIXME(clubby789): enable zsh when clap#4898 is fixed
-        let [bash, fish, powershell] = ["x.py.sh", "x.py.fish", "x.py.ps1"]
-            .map(|filename| builder.src.join("src/etc/completions").join(filename));
-        if let Some(comp) = get_completion(shells::Bash, &bash) {
-            std::fs::write(&bash, comp).expect("writing bash completion");
-        }
-        if let Some(comp) = get_completion(shells::Fish, &fish) {
-            std::fs::write(&fish, comp).expect("writing fish completion");
-        }
-        if let Some(comp) = get_completion(shells::PowerShell, &powershell) {
-            std::fs::write(&powershell, comp).expect("writing powershell completion");
-        }
+        use clap_complete::shells::{Bash, Fish, PowerShell, Zsh};
+
+        generate_completions!(
+            (Bash, builder.src.join("src/etc/completions/x.py.sh")),
+            (Zsh, builder.src.join("src/etc/completions/x.py.zsh")),
+            (Fish, builder.src.join("src/etc/completions/x.py.fish")),
+            (PowerShell, builder.src.join("src/etc/completions/x.py.ps1"))
+        );
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

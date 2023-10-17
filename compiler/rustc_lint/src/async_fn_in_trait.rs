@@ -11,7 +11,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// # #![feature(async_fn_in_trait)]
     /// pub trait Trait {
     ///     async fn method(&self);
     /// }
@@ -33,7 +32,6 @@ declare_lint! {
     /// For example, this code is invalid:
     ///
     /// ```rust,compile_fail
-    /// # #![feature(async_fn_in_trait)]
     /// pub trait Trait {
     ///     async fn method(&self) {}
     /// }
@@ -51,7 +49,6 @@ declare_lint! {
     /// For example, instead of:
     ///
     /// ```rust
-    /// # #![feature(async_fn_in_trait)]
     /// pub trait Trait {
     ///     async fn method(&self) {}
     /// }
@@ -120,9 +117,12 @@ impl<'tcx> LateLintPass<'tcx> for AsyncFnInTrait {
                 def.owner_id.def_id,
                 " + Send",
             );
-            cx.tcx.emit_spanned_lint(ASYNC_FN_IN_TRAIT, item.hir_id(), async_span, AsyncFnInTraitDiag {
-                sugg
-            });
+            cx.tcx.emit_spanned_lint(
+                ASYNC_FN_IN_TRAIT,
+                item.hir_id(),
+                async_span,
+                AsyncFnInTraitDiag { sugg },
+            );
         }
     }
 }

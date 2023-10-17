@@ -567,9 +567,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         if let ty::BoundConstness::ConstIfConst = constness
-            && generics.has_self && !tcx.has_attr(def_id, sym::const_trait)
+            && generics.has_self
+            && !tcx.has_attr(def_id, sym::const_trait)
         {
-            tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span } );
+            tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span });
         }
 
         (args, arg_count)
@@ -1061,6 +1062,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 )
             },
             param_name,
+            Some(ty_param_def_id),
             assoc_name,
             span,
             None,
@@ -1074,6 +1076,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: impl Display,
+        ty_param_def_id: Option<LocalDefId>,
         assoc_name: Ident,
         span: Span,
         is_equality: Option<ty::Term<'tcx>>,
@@ -1095,6 +1098,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let reported = self.complain_about_assoc_type_not_found(
                     all_candidates,
                     &ty_param_name.to_string(),
+                    ty_param_def_id,
                     assoc_name,
                     span,
                 );
@@ -1142,30 +1146,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     err.span_label(
                         bound_span,
                         format!(
-                            "ambiguous `{}` from `{}`",
-                            assoc_name,
+                            "ambiguous `{assoc_name}` from `{}`",
                             bound.print_only_trait_path(),
                         ),
                     );
                     if let Some(constraint) = &is_equality {
                         where_bounds.push(format!(
-                            "        T: {trait}::{assoc} = {constraint}",
+                            "        T: {trait}::{assoc_name} = {constraint}",
                             trait=bound.print_only_trait_path(),
-                            assoc=assoc_name,
-                            constraint=constraint,
                         ));
                     } else {
                         err.span_suggestion_verbose(
                             span.with_hi(assoc_name.span.lo()),
                             "use fully qualified syntax to disambiguate",
-                            format!("<{} as {}>::", ty_param_name, bound.print_only_trait_path()),
+                            format!("<{ty_param_name} as {}>::", bound.print_only_trait_path()),
                             Applicability::MaybeIncorrect,
                         );
                     }
                 } else {
                     err.note(format!(
-                        "associated type `{}` could derive from `{}`",
-                        ty_param_name,
+                        "associated type `{ty_param_name}` could derive from `{}`",
                         bound.print_only_trait_path(),
                     ));
                 }
@@ -1173,8 +1173,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if !where_bounds.is_empty() {
                 err.help(format!(
                     "consider introducing a new type parameter `T` and adding `where` constraints:\
-                     \n    where\n        T: {},\n{}",
-                    ty_param_name,
+                     \n    where\n        T: {ty_param_name},\n{}",
                     where_bounds.join(",\n"),
                 ));
             }
@@ -1396,6 +1395,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         )
                     },
                     kw::SelfUpper,
+                    None,
                     assoc_ident,
                     span,
                     None,
@@ -1919,9 +1919,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     } else {
                         Some((
                             match segment.res {
-                                Res::PrimTy(ty) => format!("{} `{}`", segment.res.descr(), ty.name()),
+                                Res::PrimTy(ty) => {
+                                    format!("{} `{}`", segment.res.descr(), ty.name())
+                                }
                                 Res::Def(_, def_id)
-                                if let Some(name) = self.tcx().opt_item_name(def_id) => {
+                                    if let Some(name) = self.tcx().opt_item_name(def_id) =>
+                                {
                                     format!("{} `{name}`", segment.res.descr())
                                 }
                                 Res::Err => "this type".to_string(),
@@ -2251,7 +2254,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err.note(msg);
                     }
                     for segment in path.segments {
-                        if let Some(args) = segment.args && segment.ident.name == kw::SelfUpper {
+                        if let Some(args) = segment.args
+                            && segment.ident.name == kw::SelfUpper
+                        {
                             if generics == 0 {
                                 // FIXME(estebank): we could also verify that the arguments being
                                 // work for the `enum`, instead of just looking if it takes *any*.
@@ -2633,7 +2638,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .iter()
             .enumerate()
             .map(|(i, a)| {
-                if let hir::TyKind::Infer = a.kind && !self.allow_ty_infer() {
+                if let hir::TyKind::Infer = a.kind
+                    && !self.allow_ty_infer()
+                {
                     if let Some(suggested_ty) =
                         self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
                     {
@@ -2662,7 +2669,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_ty_to_ty(output)
                 }
             }
-            hir::FnRetTy::DefaultReturn(..) => Ty::new_unit(tcx,),
+            hir::FnRetTy::DefaultReturn(..) => Ty::new_unit(tcx),
         };
 
         debug!(?output_ty);

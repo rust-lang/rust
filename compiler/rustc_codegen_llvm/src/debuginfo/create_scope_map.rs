@@ -75,7 +75,10 @@ fn make_mir_scope<'ll, 'tcx>(
         return;
     };
 
-    if let Some(vars) = variables && !vars.contains(scope) && scope_data.inlined.is_none() {
+    if let Some(vars) = variables
+        && !vars.contains(scope)
+        && scope_data.inlined.is_none()
+    {
         // Do not create a DIScope if there are no variables defined in this
         // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
         debug_context.scopes[scope] = parent_scope;

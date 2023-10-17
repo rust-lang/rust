@@ -131,7 +131,9 @@ fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node
 }
 
 fn check_has_items(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, span: Span) {
-    if let Node::Impl(impl2_id) = impl2_node && tcx.associated_item_def_ids(impl1_def_id).is_empty() {
+    if let Node::Impl(impl2_id) = impl2_node
+        && tcx.associated_item_def_ids(impl1_def_id).is_empty()
+    {
         let base_impl_span = tcx.def_span(impl2_id);
         tcx.sess.emit_err(errors::EmptySpecialization { span, base_impl_span });
     }

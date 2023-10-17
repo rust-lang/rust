@@ -713,12 +713,16 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, keep_as_is: bool) -> Vec<String> {
+    pub(crate) fn attributes(
+        &self,
+        tcx: TyCtxt<'_>,
+        cache: &Cache,
+        keep_as_is: bool,
+    ) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
-            &[sym::export_name, sym::link_section, sym::no_mangle, sym::repr, sym::non_exhaustive];
+            &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
 
         use rustc_abi::IntegerType;
-        use rustc_middle::ty::ReprFlags;
 
         let mut attrs: Vec<String> = self
             .attrs
@@ -739,20 +743,38 @@ impl Item {
                 }
             })
             .collect();
-        if let Some(def_id) = self.def_id() &&
-            !def_id.is_local() &&
-            // This check is needed because `adt_def` will panic if not a compatible type otherwise...
-            matches!(self.type_(), ItemType::Struct | ItemType::Enum | ItemType::Union)
+        if !keep_as_is
+            && let Some(def_id) = self.def_id()
+            && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
         {
-            let repr = tcx.adt_def(def_id).repr();
+            let adt = tcx.adt_def(def_id);
+            let repr = adt.repr();
             let mut out = Vec::new();
-            if repr.flags.contains(ReprFlags::IS_C) {
+            if repr.c() {
                 out.push("C");
             }
-            if repr.flags.contains(ReprFlags::IS_TRANSPARENT) {
-                out.push("transparent");
+            if repr.transparent() {
+                // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
+                // field is public in case all fields are 1-ZST fields.
+                let render_transparent = cache.document_private
+                    || adt
+                        .all_fields()
+                        .find(|field| {
+                            let ty =
+                                field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
+                            tcx.layout_of(tcx.param_env(field.did).and(ty))
+                                .is_ok_and(|layout| !layout.is_1zst())
+                        })
+                        .map_or_else(
+                            || adt.all_fields().any(|field| field.vis.is_public()),
+                            |field| field.vis.is_public(),
+                        );
+
+                if render_transparent {
+                    out.push("transparent");
+                }
             }
-            if repr.flags.contains(ReprFlags::IS_SIMD) {
+            if repr.simd() {
                 out.push("simd");
             }
             let pack_s;
@@ -777,10 +799,9 @@ impl Item {
                 };
                 out.push(&int_s);
             }
-            if out.is_empty() {
-                return Vec::new();
+            if !out.is_empty() {
+                attrs.push(format!("#[repr({})]", out.join(", ")));
             }
-            attrs.push(format!("#[repr({})]", out.join(", ")));
         }
         attrs
     }

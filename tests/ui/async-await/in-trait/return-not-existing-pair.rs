@@ -1,6 +1,5 @@
 // edition:2021
 
-#![feature(async_fn_in_trait)]
 
 trait MyTrait<'a, 'b, T> {
     async fn foo(&'a self, key: &'b T) -> (&'a ConnImpl, &'b T);

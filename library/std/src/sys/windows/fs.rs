@@ -1515,6 +1515,13 @@ pub fn try_exists(path: &Path) -> io::Result<bool> {
             // as the file existing.
             _ if e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as i32) => Ok(true),
 
+            // `ERROR_CANT_ACCESS_FILE` means that a file exists but that the
+            // reparse point could not be handled by `CreateFile`.
+            // This can happen for special files such as:
+            // * Unix domain sockets which you need to `connect` to
+            // * App exec links which require using `CreateProcess`
+            _ if e.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => Ok(true),
+
             // Other errors such as `ERROR_ACCESS_DENIED` may indicate that the
             // file exists. However, these types of errors are usually more
             // permanent so we report them here.

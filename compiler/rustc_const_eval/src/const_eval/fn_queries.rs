@@ -39,8 +39,13 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
         hir::Node::Ctor(_)
         | hir::Node::AnonConst(_)
         | hir::Node::ConstBlock(_)
-        | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => hir::Constness::Const,
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }) => tcx.generics_of(def_id).host_effect_index.map_or(hir::Constness::NotConst, |_| hir::Constness::Const),
+        | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => {
+            hir::Constness::Const
+        }
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }) => tcx
+            .generics_of(def_id)
+            .host_effect_index
+            .map_or(hir::Constness::NotConst, |_| hir::Constness::Const),
         hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) => {
             // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
             // foreign items cannot be evaluated at compile-time.

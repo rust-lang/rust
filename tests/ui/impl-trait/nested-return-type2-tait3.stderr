@@ -1,18 +1,17 @@
-error[E0277]: the trait bound `impl Send: Duh` is not satisfied
-  --> $DIR/nested-return-type2-tait3.rs:26:5
+warning: opaque type `Traitable` does not satisfy its associated type bounds
+  --> $DIR/nested-return-type2-tait3.rs:20:29
    |
-LL |     || 42
-   |     ^^^^^ the trait `Duh` is not implemented for `impl Send`
+LL |     type Assoc: Duh;
+   |                 --- this associated type bound is unsatisfied for `impl Send`
+...
+LL | type Traitable = impl Trait<Assoc = impl Send>;
+   |                             ^^^^^^^^^^^^^^^^^
    |
-   = help: the trait `Duh` is implemented for `i32`
-note: required for `{closure@$DIR/nested-return-type2-tait3.rs:26:5: 26:7}` to implement `Trait`
-  --> $DIR/nested-return-type2-tait3.rs:14:31
+   = note: `#[warn(opaque_hidden_inferred_bound)]` on by default
+help: add this bound
    |
-LL | impl<R: Duh, F: FnMut() -> R> Trait for F {
-   |         ---                   ^^^^^     ^
-   |         |
-   |         unsatisfied trait bound introduced here
+LL | type Traitable = impl Trait<Assoc = impl Send + Duh>;
+   |                                               +++++
 
-error: aborting due to previous error
+warning: 1 warning emitted
 
-For more information about this error, try `rustc --explain E0277`.

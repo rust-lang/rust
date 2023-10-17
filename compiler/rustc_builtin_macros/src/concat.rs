@@ -33,7 +33,7 @@ pub fn expand_concat(
                     accumulator.push_str(&b.to_string());
                 }
                 Ok(ast::LitKind::CStr(..)) => {
-                    cx.emit_err(errors::ConcatCStrLit{ span: e.span});
+                    cx.emit_err(errors::ConcatCStrLit { span: e.span });
                     has_errors = true;
                 }
                 Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
@@ -49,7 +49,9 @@ pub fn expand_concat(
                 }
             },
             // We also want to allow negative numeric literals.
-            ast::ExprKind::Unary(ast::UnOp::Neg, ref expr) if let ast::ExprKind::Lit(token_lit) = expr.kind => {
+            ast::ExprKind::Unary(ast::UnOp::Neg, ref expr)
+                if let ast::ExprKind::Lit(token_lit) = expr.kind =>
+            {
                 match ast::LitKind::from_token_lit(token_lit) {
                     Ok(ast::LitKind::Int(i, _)) => accumulator.push_str(&format!("-{i}")),
                     Ok(ast::LitKind::Float(f, _)) => accumulator.push_str(&format!("-{f}")),

@@ -1,15 +1,8 @@
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
-   |
-   = note: dereferencing pointer failed: 0x1[noalloc] is a dangling pointer (it has no provenance)
-   |
-note: inside `NonNull::<u8>::as_ref::<'_>`
-  --> $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
-note: inside `_`
-  --> $DIR/nonnull_as_ref_ub.rs:4:39
+  --> $DIR/nonnull_as_ref_ub.rs:4:29
    |
 LL | const _: () = assert!(42 == *unsafe { NON_NULL.as_ref() });
-   |                                       ^^^^^^^^^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: 0x1[noalloc] is a dangling pointer (it has no provenance)
 
 error: aborting due to previous error
 

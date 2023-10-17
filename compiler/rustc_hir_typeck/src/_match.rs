@@ -373,7 +373,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 6 | |     };
             //   | |_____^ expected integer, found `()`
             // ```
-            if block.expr.is_none() && block.stmts.is_empty()
+            if block.expr.is_none()
+                && block.stmts.is_empty()
                 && let Some(outer_span) = &mut outer_span
                 && let Some(cond_span) = cond_span.find_ancestor_inside(*outer_span)
             {

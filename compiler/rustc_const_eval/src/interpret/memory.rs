@@ -21,9 +21,9 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use crate::fluent_generated as fluent;
 
 use super::{
-    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg,
-    GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance,
-    Scalar,
+    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg,
+    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
+    PointerArithmetic, Provenance, Scalar,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -258,14 +258,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => self.get_alloc_raw(alloc_id)?.size(),
         };
         // This will also call the access hooks.
-        self.mem_copy(
-            ptr,
-            Align::ONE,
-            new_ptr.into(),
-            Align::ONE,
-            old_size.min(new_size),
-            /*nonoverlapping*/ true,
-        )?;
+        self.mem_copy(ptr, new_ptr.into(), old_size.min(new_size), /*nonoverlapping*/ true)?;
         self.deallocate_ptr(ptr, old_size_and_align, kind)?;
 
         Ok(new_ptr)
@@ -367,12 +360,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
-        align: Align,
     ) -> InterpResult<'tcx, Option<(AllocId, Size, M::ProvenanceExtra)>> {
         self.check_and_deref_ptr(
             ptr,
             size,
-            M::enforce_alignment(self).then_some(align),
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
                 let (size, align) = self
@@ -382,18 +373,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )
     }
 
-    /// Check if the given pointer points to live memory of given `size` and `align`
-    /// (ignoring `M::enforce_alignment`). The caller can control the error message for the
-    /// out-of-bounds case.
+    /// Check if the given pointer points to live memory of the given `size`.
+    /// The caller can control the error message for the out-of-bounds case.
     #[inline(always)]
-    pub fn check_ptr_access_align(
+    pub fn check_ptr_access(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
-        align: Align,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
-        self.check_and_deref_ptr(ptr, size, Some(align), msg, |alloc_id, _, _| {
+        self.check_and_deref_ptr(ptr, size, msg, |alloc_id, _, _| {
             let (size, align) = self.get_live_alloc_size_and_align(alloc_id, msg)?;
             Ok((size, align, ()))
         })?;
@@ -402,15 +391,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Low-level helper function to check if a ptr is in-bounds and potentially return a reference
     /// to the allocation it points to. Supports both shared and mutable references, as the actual
-    /// checking is offloaded to a helper closure. `align` defines whether and which alignment check
-    /// is done.
+    /// checking is offloaded to a helper closure.
     ///
     /// If this returns `None`, the size is 0; it can however return `Some` even for size 0.
     fn check_and_deref_ptr<T>(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
-        align: Option<Align>,
         msg: CheckInAllocMsg,
         alloc_size: impl FnOnce(
             AllocId,
@@ -425,14 +412,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if size.bytes() > 0 || addr == 0 {
                     throw_ub!(DanglingIntPointer(addr, msg));
                 }
-                // Must be aligned.
-                if let Some(align) = align {
-                    self.check_offset_align(addr, align)?;
-                }
                 None
             }
             Ok((alloc_id, offset, prov)) => {
-                let (alloc_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, prov)?;
+                let (alloc_size, _alloc_align, ret_val) = alloc_size(alloc_id, offset, prov)?;
                 // Test bounds. This also ensures non-null.
                 // It is sufficient to check this for the end pointer. Also check for overflow!
                 if offset.checked_add(size, &self.tcx).map_or(true, |end| end > alloc_size) {
@@ -448,20 +431,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if M::Provenance::OFFSET_IS_ADDR {
                     assert_ne!(ptr.addr(), Size::ZERO);
                 }
-                // Test align. Check this last; if both bounds and alignment are violated
-                // we want the error to be about the bounds.
-                if let Some(align) = align {
-                    if M::use_addr_for_alignment_check(self) {
-                        // `use_addr_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
-                        self.check_offset_align(ptr.addr().bytes(), align)?;
-                    } else {
-                        // Check allocation alignment and offset alignment.
-                        if alloc_align.bytes() < align.bytes() {
-                            throw_ub!(AlignmentCheckFailed { has: alloc_align, required: align });
-                        }
-                        self.check_offset_align(offset.bytes(), align)?;
-                    }
-                }
 
                 // We can still be zero-sized in this branch, in which case we have to
                 // return `None`.
@@ -470,17 +439,65 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })
     }
 
-    fn check_offset_align(&self, offset: u64, align: Align) -> InterpResult<'tcx> {
-        if offset % align.bytes() == 0 {
-            Ok(())
-        } else {
-            // The biggest power of two through which `offset` is divisible.
-            let offset_pow2 = 1 << offset.trailing_zeros();
-            throw_ub!(AlignmentCheckFailed {
-                has: Align::from_bytes(offset_pow2).unwrap(),
-                required: align
-            });
+    pub(super) fn check_misalign(
+        &self,
+        misaligned: Option<Misalignment>,
+        msg: CheckAlignMsg,
+    ) -> InterpResult<'tcx> {
+        if let Some(misaligned) = misaligned {
+            throw_ub!(AlignmentCheckFailed(misaligned, msg))
         }
+        Ok(())
+    }
+
+    pub(super) fn is_ptr_misaligned(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+        align: Align,
+    ) -> Option<Misalignment> {
+        if !M::enforce_alignment(self) || align.bytes() == 1 {
+            return None;
+        }
+
+        #[inline]
+        fn offset_misalignment(offset: u64, align: Align) -> Option<Misalignment> {
+            if offset % align.bytes() == 0 {
+                None
+            } else {
+                // The biggest power of two through which `offset` is divisible.
+                let offset_pow2 = 1 << offset.trailing_zeros();
+                Some(Misalignment { has: Align::from_bytes(offset_pow2).unwrap(), required: align })
+            }
+        }
+
+        match self.ptr_try_get_alloc_id(ptr) {
+            Err(addr) => offset_misalignment(addr, align),
+            Ok((alloc_id, offset, _prov)) => {
+                let (_size, alloc_align, _kind) = self.get_alloc_info(alloc_id);
+                if M::use_addr_for_alignment_check(self) {
+                    // `use_addr_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
+                    offset_misalignment(ptr.addr().bytes(), align)
+                } else {
+                    // Check allocation alignment and offset alignment.
+                    if alloc_align.bytes() < align.bytes() {
+                        Some(Misalignment { has: alloc_align, required: align })
+                    } else {
+                        offset_misalignment(offset.bytes(), align)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Checks a pointer for misalignment.
+    ///
+    /// The error assumes this is checking the pointer used directly for an access.
+    pub fn check_ptr_align(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+        align: Align,
+    ) -> InterpResult<'tcx> {
+        self.check_misalign(self.is_ptr_misaligned(ptr, align), CheckAlignMsg::AccessedPtr)
     }
 }
 
@@ -538,17 +555,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )
     }
 
-    /// Get the base address for the bytes in an `Allocation` specified by the
-    /// `AllocID` passed in; error if no such allocation exists.
-    ///
-    /// It is up to the caller to take sufficient care when using this address:
-    /// there could be provenance or uninit memory in there, and other memory
-    /// accesses could invalidate the exposed pointer.
-    pub fn alloc_base_addr(&self, id: AllocId) -> InterpResult<'tcx, *const u8> {
-        let alloc = self.get_alloc_raw(id)?;
-        Ok(alloc.base_addr())
-    }
-
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
     /// The caller is responsible for calling the access hooks!
     ///
@@ -586,18 +592,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// "Safe" (bounds and align-checked) allocation access.
+    /// Bounds-checked *but not align-checked* allocation access.
     pub fn get_ptr_alloc<'a>(
         &'a self,
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
-        align: Align,
     ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let ptr_and_alloc = self.check_and_deref_ptr(
             ptr,
             size,
-            M::enforce_alignment(self).then_some(align),
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
                 let alloc = self.get_alloc_raw(alloc_id)?;
@@ -658,15 +662,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok((alloc, &mut self.machine))
     }
 
-    /// "Safe" (bounds and align-checked) allocation access.
+    /// Bounds-checked *but not align-checked* allocation access.
     pub fn get_ptr_alloc_mut<'a>(
         &'a mut self,
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
-        align: Align,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
-        let parts = self.get_ptr_access(ptr, size, align)?;
+        let parts = self.get_ptr_access(ptr, size)?;
         if let Some((alloc_id, offset, prov)) = parts {
             let tcx = *self.tcx;
             // FIXME: can we somehow avoid looking up the allocation twice here?
@@ -1023,7 +1026,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
     ) -> InterpResult<'tcx, &[u8]> {
-        let Some(alloc_ref) = self.get_ptr_alloc(ptr, size, Align::ONE)? else {
+        let Some(alloc_ref) = self.get_ptr_alloc(ptr, size)? else {
             // zero-sized access
             return Ok(&[]);
         };
@@ -1049,7 +1052,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_eq!(lower, len, "can only write iterators with a precise length");
 
         let size = Size::from_bytes(len);
-        let Some(alloc_ref) = self.get_ptr_alloc_mut(ptr, size, Align::ONE)? else {
+        let Some(alloc_ref) = self.get_ptr_alloc_mut(ptr, size)? else {
             // zero-sized access
             assert_matches!(src.next(), None, "iterator said it was empty but returned an element");
             return Ok(());
@@ -1074,29 +1077,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn mem_copy(
         &mut self,
         src: Pointer<Option<M::Provenance>>,
-        src_align: Align,
         dest: Pointer<Option<M::Provenance>>,
-        dest_align: Align,
         size: Size,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
-        self.mem_copy_repeatedly(src, src_align, dest, dest_align, size, 1, nonoverlapping)
+        self.mem_copy_repeatedly(src, dest, size, 1, nonoverlapping)
     }
 
     pub fn mem_copy_repeatedly(
         &mut self,
         src: Pointer<Option<M::Provenance>>,
-        src_align: Align,
         dest: Pointer<Option<M::Provenance>>,
-        dest_align: Align,
         size: Size,
         num_copies: u64,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
         let tcx = self.tcx;
         // We need to do our own bounds-checks.
-        let src_parts = self.get_ptr_access(src, size, src_align)?;
-        let dest_parts = self.get_ptr_access(dest, size * num_copies, dest_align)?; // `Size` multiplication
+        let src_parts = self.get_ptr_access(src, size)?;
+        let dest_parts = self.get_ptr_access(dest, size * num_copies)?; // `Size` multiplication
 
         // FIXME: we look up both allocations twice here, once before for the `check_ptr_access`
         // and once below to get the underlying `&[mut] Allocation`.

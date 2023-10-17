@@ -1135,13 +1135,14 @@ help: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         builder.ensure(ExpandYamlAnchors);
 
         builder.info("x.py completions check");
-        let [bash, fish, powershell] = ["x.py.sh", "x.py.fish", "x.py.ps1"]
+        let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
             .map(|filename| builder.src.join("src/etc/completions").join(filename));
         if builder.config.cmd.bless() {
             builder.ensure(crate::run::GenerateCompletions);
         } else if crate::flags::get_completion(shells::Bash, &bash).is_some()
             || crate::flags::get_completion(shells::Fish, &fish).is_some()
             || crate::flags::get_completion(shells::PowerShell, &powershell).is_some()
+            || crate::flags::get_completion(shells::Zsh, &zsh).is_some()
         {
             eprintln!(
                 "x.py completions were changed; run `x.py run generate-completions` to update them"
@@ -2940,10 +2941,6 @@ impl Step for TestHelpers {
         let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
-        // FIXME: Workaround for https://github.com/emscripten-core/emscripten/issues/9013
-        if target.contains("emscripten") {
-            cfg.pic(false);
-        }
 
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform cc of these compilers. Note, though, that

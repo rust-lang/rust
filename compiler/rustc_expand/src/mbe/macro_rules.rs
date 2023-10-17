@@ -716,18 +716,18 @@ fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
     match rhs {
         mbe::TokenTree::Delimited(_sp, d) => {
             let has_compile_error = d.tts.array_windows::<3>().any(|[ident, bang, args]| {
-                if let mbe::TokenTree::Token(ident) = ident &&
-                        let TokenKind::Ident(ident, _) = ident.kind &&
-                        ident == sym::compile_error &&
-                        let mbe::TokenTree::Token(bang) = bang &&
-                        let TokenKind::Not = bang.kind &&
-                        let mbe::TokenTree::Delimited(_, del) = args &&
-                        del.delim != Delimiter::Invisible
-                    {
-                        true
-                    } else {
-                        false
-                    }
+                if let mbe::TokenTree::Token(ident) = ident
+                    && let TokenKind::Ident(ident, _) = ident.kind
+                    && ident == sym::compile_error
+                    && let mbe::TokenTree::Token(bang) = bang
+                    && let TokenKind::Not = bang.kind
+                    && let mbe::TokenTree::Delimited(_, del) = args
+                    && del.delim != Delimiter::Invisible
+                {
+                    true
+                } else {
+                    false
+                }
             });
             if has_compile_error { true } else { d.tts.iter().any(has_compile_error_macro) }
         }

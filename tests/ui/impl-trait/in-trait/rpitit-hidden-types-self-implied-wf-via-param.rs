@@ -1,5 +1,3 @@
-#![feature(return_position_impl_trait_in_trait)]
-
 trait Extend {
     fn extend<'a: 'a>(_: &'a str) -> (impl Sized + 'a, &'static str);
 }

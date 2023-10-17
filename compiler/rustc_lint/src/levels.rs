@@ -634,7 +634,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// diagnostic with no change to `specs`.
     fn insert_spec(&mut self, id: LintId, (mut level, src): LevelAndSource) {
         let (old_level, old_src) = self.provider.get_lint_level(id.lint, &self.sess);
-        if let Level::Expect(id) = &mut level && let LintExpectationId::Stable { .. } = id {
+        if let Level::Expect(id) = &mut level
+            && let LintExpectationId::Stable { .. } = id
+        {
             *id = id.normalize();
         }
         // Setting to a non-forbid level is an error if the lint previously had
@@ -706,7 +708,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         // The lint `unfulfilled_lint_expectations` can't be expected, as it would suppress itself.
         // Handling expectations of this lint would add additional complexity with little to no
         // benefit. The expect level for this lint will therefore be ignored.
-        if let Level::Expect(_) = level && id == LintId::of(UNFULFILLED_LINT_EXPECTATIONS) {
+        if let Level::Expect(_) = level
+            && id == LintId::of(UNFULFILLED_LINT_EXPECTATIONS)
+        {
             return;
         }
 
@@ -747,8 +751,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 None => continue,
                 // This is the only lint level with a `LintExpectationId` that can be created from an attribute
                 Some(Level::Expect(unstable_id)) if let Some(hir_id) = source_hir_id => {
-                    let LintExpectationId::Unstable { attr_id, lint_index } = unstable_id
-                        else { bug!("stable id Level::from_attr") };
+                    let LintExpectationId::Unstable { attr_id, lint_index } = unstable_id else {
+                        bug!("stable id Level::from_attr")
+                    };
 
                     let stable_id = LintExpectationId::Stable {
                         hir_id,
@@ -1057,7 +1062,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     #[track_caller]
     fn check_gated_lint(&self, lint_id: LintId, span: Span, lint_from_cli: bool) -> bool {
         if let Some(feature) = lint_id.lint.feature_gate {
-            if !self.features.enabled(feature) {
+            if !self.features.active(feature) {
                 let lint = builtin::UNKNOWN_LINTS;
                 let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
                 struct_lint_level(

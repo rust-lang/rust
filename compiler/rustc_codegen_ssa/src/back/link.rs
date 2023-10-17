@@ -368,17 +368,25 @@ fn link_rlib<'a>(
         let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
-        if flavor == RlibFlavor::Normal && let Some(filename) = lib.filename {
+        if flavor == RlibFlavor::Normal
+            && let Some(filename) = lib.filename
+        {
             let path = find_native_static_library(filename.as_str(), true, &lib_search_paths, sess);
-            let src = read(path).map_err(|e| sess.emit_fatal(errors::ReadFileError {message: e }))?;
+            let src =
+                read(path).map_err(|e| sess.emit_fatal(errors::ReadFileError { message: e }))?;
             let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
             packed_bundled_libs.push(wrapper_file);
         } else {
-            let path =
-                find_native_static_library(lib.name.as_str(), lib.verbatim, &lib_search_paths, sess);
+            let path = find_native_static_library(
+                lib.name.as_str(),
+                lib.verbatim,
+                &lib_search_paths,
+                sess,
+            );
             ab.add_archive(&path, Box::new(|_| false)).unwrap_or_else(|error| {
-                sess.emit_fatal(errors::AddNativeLibrary { library_path: path, error })});
+                sess.emit_fatal(errors::AddNativeLibrary { library_path: path, error })
+            });
         }
     }
 

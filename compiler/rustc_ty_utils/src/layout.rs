@@ -170,29 +170,27 @@ fn layout_of_uncached<'tcx>(
                 // fall back to structurally deducing metadata.
                 && !pointee.references_error()
             {
-                let pointee_metadata = Ty::new_projection(tcx,metadata_def_id, [pointee]);
-                let metadata_ty = match tcx.try_normalize_erasing_regions(
-                    param_env,
-                    pointee_metadata,
-                ) {
-                    Ok(metadata_ty) => metadata_ty,
-                    Err(mut err) => {
-                        // Usually `<Ty as Pointee>::Metadata` can't be normalized because
-                        // its struct tail cannot be normalized either, so try to get a
-                        // more descriptive layout error here, which will lead to less confusing
-                        // diagnostics.
-                        match tcx.try_normalize_erasing_regions(
-                            param_env,
-                            tcx.struct_tail_without_normalization(pointee),
-                        ) {
-                            Ok(_) => {},
-                            Err(better_err) => {
-                                err = better_err;
+                let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
+                let metadata_ty =
+                    match tcx.try_normalize_erasing_regions(param_env, pointee_metadata) {
+                        Ok(metadata_ty) => metadata_ty,
+                        Err(mut err) => {
+                            // Usually `<Ty as Pointee>::Metadata` can't be normalized because
+                            // its struct tail cannot be normalized either, so try to get a
+                            // more descriptive layout error here, which will lead to less confusing
+                            // diagnostics.
+                            match tcx.try_normalize_erasing_regions(
+                                param_env,
+                                tcx.struct_tail_without_normalization(pointee),
+                            ) {
+                                Ok(_) => {}
+                                Err(better_err) => {
+                                    err = better_err;
+                                }
                             }
+                            return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
                         }
-                        return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
-                    },
-                };
+                    };
 
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.

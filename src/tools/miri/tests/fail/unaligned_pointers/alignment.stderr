@@ -1,8 +1,8 @@
-error: Undefined Behavior: accessing memory with alignment ALIGN, but alignment ALIGN is required
+error: Undefined Behavior: accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
   --> $DIR/alignment.rs:LL:CC
    |
 LL |         *(x_ptr as *mut u32) = 42; *(x_ptr.add(1) as *mut u32) = 42;
-   | ^ accessing memory with alignment ALIGN, but alignment ALIGN is required
+   | ^ accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

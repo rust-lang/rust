@@ -55,7 +55,9 @@ fn find_optimization_opportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Const
 
     let mut locals_to_debuginfo = BitSet::new_empty(body.local_decls.len());
     for debuginfo in &body.var_debug_info {
-        if let VarDebugInfoContents::Place(p) = debuginfo.value && let Some(l) = p.as_local() {
+        if let VarDebugInfoContents::Place(p) = debuginfo.value
+            && let Some(l) = p.as_local()
+        {
             locals_to_debuginfo.insert(l);
         }
     }

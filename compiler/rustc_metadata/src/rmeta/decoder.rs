@@ -1692,17 +1692,22 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 // `try_to_translate_virtual_to_real` don't have to worry about how the
                 // compiler is bootstrapped.
                 if let Some(virtual_dir) = &sess.opts.unstable_opts.simulate_remapped_rust_src_base
-                && let Some(real_dir) = &sess.opts.real_rust_source_base_dir
-                && let rustc_span::FileName::Real(ref mut old_name) = name {
+                    && let Some(real_dir) = &sess.opts.real_rust_source_base_dir
+                    && let rustc_span::FileName::Real(ref mut old_name) = name
+                {
                     let relative_path = match old_name {
-                        rustc_span::RealFileName::LocalPath(local) => local.strip_prefix(real_dir).ok(),
+                        rustc_span::RealFileName::LocalPath(local) => {
+                            local.strip_prefix(real_dir).ok()
+                        }
                         rustc_span::RealFileName::Remapped { virtual_name, .. } => {
-                            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").and_then(|virtual_dir| virtual_name.strip_prefix(virtual_dir).ok())
+                            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR")
+                                .and_then(|virtual_dir| virtual_name.strip_prefix(virtual_dir).ok())
                         }
                     };
                     debug!(?relative_path, ?virtual_dir, "simulate_remapped_rust_src_base");
                     for subdir in ["library", "compiler"] {
-                        if let Some(rest) = relative_path.and_then(|p| p.strip_prefix(subdir).ok()) {
+                        if let Some(rest) = relative_path.and_then(|p| p.strip_prefix(subdir).ok())
+                        {
                             *old_name = rustc_span::RealFileName::Remapped {
                                 local_path: None, // FIXME: maybe we should preserve this?
                                 virtual_name: virtual_dir.join(subdir).join(rest),

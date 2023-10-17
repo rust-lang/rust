@@ -383,7 +383,9 @@ impl<'tcx> Collector<'tcx> {
         // First, check for errors
         let mut renames = FxHashSet::default();
         for lib in &self.tcx.sess.opts.libs {
-            if let NativeLibKind::Framework { .. } = lib.kind && !self.tcx.sess.target.is_like_osx {
+            if let NativeLibKind::Framework { .. } = lib.kind
+                && !self.tcx.sess.target.is_like_osx
+            {
                 // Cannot check this when parsing options because the target is not yet available.
                 self.tcx.sess.emit_err(errors::LibFrameworkApple);
             }

@@ -1387,10 +1387,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Desugar `~const` bound in generics into an additional `const host: bool` param
         // if the effects feature is enabled. This needs to be done before we lower where
         // clauses since where clauses need to bind to the DefId of the host param
-        let host_param_parts = if let Const::Yes(span) = constness && self.tcx.features().effects {
-            if let Some(param) = generics.params.iter().find(|x| {
-                x.attrs.iter().any(|x| x.has_name(sym::rustc_host))
-            }) {
+        let host_param_parts = if let Const::Yes(span) = constness
+            && self.tcx.features().effects
+        {
+            if let Some(param) =
+                generics.params.iter().find(|x| x.attrs.iter().any(|x| x.has_name(sym::rustc_host)))
+            {
                 // user has manually specified a `rustc_host` param, in this case, we set
                 // the param id so that lowering logic can use that. But we don't create
                 // another host param, so this gives `None`.
@@ -1399,7 +1401,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } else {
                 let param_node_id = self.next_node_id();
                 let hir_id = self.next_id();
-                let def_id = self.create_def(self.local_def_id(parent_node_id), param_node_id, DefPathData::TypeNs(sym::host), span);
+                let def_id = self.create_def(
+                    self.local_def_id(parent_node_id),
+                    param_node_id,
+                    DefPathData::TypeNs(sym::host),
+                    span,
+                );
                 self.host_param_id = Some(def_id);
                 Some((span, hir_id, def_id))
             }

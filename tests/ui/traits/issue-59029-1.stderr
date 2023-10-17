@@ -2,13 +2,13 @@ error[E0220]: associated type `Res` not found for `Self`
   --> $DIR/issue-59029-1.rs:5:52
    |
 LL | trait MkSvc<Target, Req> = Svc<Target> where Self::Res: Svc<Req>;
-   |                                                    ^^^ there is a similarly named associated type `Res` in the trait `Svc`
+   |                                                    ^^^ there is an associated type `Res` in the trait `Svc`
 
 error[E0220]: associated type `Res` not found for `Self`
   --> $DIR/issue-59029-1.rs:5:52
    |
 LL | trait MkSvc<Target, Req> = Svc<Target> where Self::Res: Svc<Req>;
-   |                                                    ^^^ there is a similarly named associated type `Res` in the trait `Svc`
+   |                                                    ^^^ there is an associated type `Res` in the trait `Svc`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

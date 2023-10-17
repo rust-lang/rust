@@ -108,20 +108,20 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let alias_ty_as_ty = alias_ty.to_ty(self.tcx);
 
         // Search the env for where clauses like `P: 'a`.
-        let env_bounds = self
-            .approx_declared_bounds_from_env(alias_ty)
-            .into_iter()
-            .map(|binder| {
-                if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars() && ty == alias_ty_as_ty {
-                    // Micro-optimize if this is an exact match (this
-                    // occurs often when there are no region variables
-                    // involved).
-                    VerifyBound::OutlivedBy(r)
-                } else {
-                    let verify_if_eq_b = binder.map_bound(|ty::OutlivesPredicate(ty, bound)| VerifyIfEq { ty, bound });
-                    VerifyBound::IfEq(verify_if_eq_b)
-                }
-            });
+        let env_bounds = self.approx_declared_bounds_from_env(alias_ty).into_iter().map(|binder| {
+            if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars()
+                && ty == alias_ty_as_ty
+            {
+                // Micro-optimize if this is an exact match (this
+                // occurs often when there are no region variables
+                // involved).
+                VerifyBound::OutlivedBy(r)
+            } else {
+                let verify_if_eq_b =
+                    binder.map_bound(|ty::OutlivesPredicate(ty, bound)| VerifyIfEq { ty, bound });
+                VerifyBound::IfEq(verify_if_eq_b)
+            }
+        });
 
         // Extend with bounds that we can find from the definition.
         let definition_bounds =

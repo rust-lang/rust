@@ -138,18 +138,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Std), "freebsd13", None),
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
-    // #[cfg(bootstrap)]
-    (Some(Mode::Std), "target_vendor", Some(&["unikraft"])),
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
-    // #[cfg(bootstrap)] hurd
-    (Some(Mode::Std), "target_os", Some(&["teeos", "hurd"])),
-    (Some(Mode::Rustc), "target_os", Some(&["hurd"])),
-    // #[cfg(bootstrap)] mips32r6, mips64r6
-    (
-        Some(Mode::Std),
-        "target_arch",
-        Some(&["asmjs", "spirv", "nvptx", "xtensa", "mips32r6", "mips64r6", "csky"]),
-    ),
+    // (Some(Mode::Std), "target_os", Some(&[])),
+    (Some(Mode::Std), "target_arch", Some(&["asmjs", "spirv", "nvptx", "xtensa"])),
     /* Extra names used by dependencies */
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
@@ -368,6 +359,10 @@ impl Build {
         // https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/bootstrap.py#L796-L797
         let is_sudo = match env::var_os("SUDO_USER") {
             Some(_sudo_user) => {
+                // SAFETY: getuid() system call is always successful and no return value is reserved
+                // to indicate an error.
+                //
+                // For more context, see https://man7.org/linux/man-pages/man2/geteuid.2.html
                 let uid = unsafe { libc::getuid() };
                 uid == 0
             }

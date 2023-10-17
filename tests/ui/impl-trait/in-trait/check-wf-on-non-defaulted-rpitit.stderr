@@ -1,12 +1,12 @@
 error[E0277]: `impl Sized` cannot be sent between threads safely
-  --> $DIR/check-wf-on-non-defaulted-rpitit.rs:6:17
+  --> $DIR/check-wf-on-non-defaulted-rpitit.rs:4:17
    |
 LL |     fn bar() -> Wrapper<impl Sized>;
    |                 ^^^^^^^^^^^^^^^^^^^ `impl Sized` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `impl Sized`
 note: required by a bound in `Wrapper`
-  --> $DIR/check-wf-on-non-defaulted-rpitit.rs:3:19
+  --> $DIR/check-wf-on-non-defaulted-rpitit.rs:1:19
    |
 LL | struct Wrapper<G: Send>(G);
    |                   ^^^^ required by this bound in `Wrapper`

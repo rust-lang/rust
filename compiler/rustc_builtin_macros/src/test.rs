@@ -35,11 +35,13 @@ pub fn expand_test_case(
     let sp = ecx.with_def_site_ctxt(attr_sp);
     let (mut item, is_stmt) = match anno_item {
         Annotatable::Item(item) => (item, false),
-        Annotatable::Stmt(stmt) if let ast::StmtKind::Item(_) = stmt.kind => if let ast::StmtKind::Item(i) = stmt.into_inner().kind {
-            (i, true)
-        } else {
-            unreachable!()
-        },
+        Annotatable::Stmt(stmt) if let ast::StmtKind::Item(_) = stmt.kind => {
+            if let ast::StmtKind::Item(i) = stmt.into_inner().kind {
+                (i, true)
+            } else {
+                unreachable!()
+            }
+        }
         _ => {
             ecx.emit_err(errors::TestCaseNonItem { span: anno_item.span() });
             return vec![];

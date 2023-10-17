@@ -188,10 +188,7 @@ fn resolve_associated_item<'tcx>(
                 && trait_item_id != leaf_def.item.def_id
                 && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                tcx.compare_impl_const((
-                    leaf_def_item,
-                    trait_item_id,
-                ))?;
+                tcx.compare_impl_const((leaf_def_item, trait_item_id))?;
             }
 
             Some(ty::Instance::new(leaf_def.item.def_id, args))

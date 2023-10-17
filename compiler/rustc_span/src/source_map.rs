@@ -1124,16 +1124,13 @@ pub struct FilePathMapping {
 
 impl FilePathMapping {
     pub fn empty() -> FilePathMapping {
-        FilePathMapping::new(Vec::new())
+        FilePathMapping::new(Vec::new(), FileNameDisplayPreference::Local)
     }
 
-    pub fn new(mapping: Vec<(PathBuf, PathBuf)>) -> FilePathMapping {
-        let filename_display_for_diagnostics = if mapping.is_empty() {
-            FileNameDisplayPreference::Local
-        } else {
-            FileNameDisplayPreference::Remapped
-        };
-
+    pub fn new(
+        mapping: Vec<(PathBuf, PathBuf)>,
+        filename_display_for_diagnostics: FileNameDisplayPreference,
+    ) -> FilePathMapping {
         FilePathMapping { mapping, filename_display_for_diagnostics }
     }
 
@@ -1285,6 +1282,27 @@ impl FilePathMapping {
                 }
             }
         }
+    }
+
+    /// Expand a relative path to an absolute path **without** remapping taken into account.
+    ///
+    /// The resulting `RealFileName` will have its `virtual_path` portion erased if
+    /// possible (i.e. if there's also a remapped path).
+    pub fn to_local_embeddable_absolute_path(
+        &self,
+        file_path: RealFileName,
+        working_directory: &RealFileName,
+    ) -> RealFileName {
+        let file_path = file_path.local_path_if_available();
+        if file_path.is_absolute() {
+            // No remapping has applied to this path and it is absolute,
+            // so the working directory cannot influence it either, so
+            // we are done.
+            return RealFileName::LocalPath(file_path.to_path_buf());
+        }
+        debug_assert!(file_path.is_relative());
+        let working_directory = working_directory.local_path_if_available();
+        RealFileName::LocalPath(Path::new(working_directory).join(file_path))
     }
 
     /// Attempts to (heuristically) reverse a prefix mapping.

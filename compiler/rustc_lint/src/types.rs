@@ -163,8 +163,10 @@ fn lint_overflowing_range_endpoint<'tcx>(
     ty: &str,
 ) -> bool {
     // Look past casts to support cases like `0..256 as u8`
-    let (expr, lit_span) = if let Node::Expr(par_expr) = cx.tcx.hir().get(cx.tcx.hir().parent_id(expr.hir_id))
-      && let ExprKind::Cast(_, _) = par_expr.kind {
+    let (expr, lit_span) = if let Node::Expr(par_expr) =
+        cx.tcx.hir().get(cx.tcx.hir().parent_id(expr.hir_id))
+        && let ExprKind::Cast(_, _) = par_expr.kind
+    {
         (par_expr, expr.span)
     } else {
         (expr, expr.span)
@@ -580,8 +582,8 @@ fn lint_nan<'tcx>(
     ) -> InvalidNanComparisons {
         // FIXME(#72505): This suggestion can be restored if `f{32,64}::is_nan` is made const.
         let suggestion = (!cx.tcx.hir().is_inside_const_context(e.hir_id)).then(|| {
-            if let Some(l_span) = l.span.find_ancestor_inside(e.span) &&
-                let Some(r_span) = r.span.find_ancestor_inside(e.span)
+            if let Some(l_span) = l.span.find_ancestor_inside(e.span)
+                && let Some(r_span) = r.span.find_ancestor_inside(e.span)
             {
                 f(l_span, r_span)
             } else {
@@ -1293,11 +1295,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             CItemKind::Definition => "fn",
         };
         let span_note = if let ty::Adt(def, _) = ty.kind()
-            && let Some(sp) = self.cx.tcx.hir().span_if_local(def.did()) {
-                Some(sp)
-            } else {
-                None
-            };
+            && let Some(sp) = self.cx.tcx.hir().span_if_local(def.did())
+        {
+            Some(sp)
+        } else {
+            None
+        };
         self.cx.emit_spanned_lint(
             lint,
             sp,
@@ -1460,7 +1463,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             type BreakTy = Ty<'tcx>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let ty::FnPtr(sig) = ty.kind() && !self.visitor.is_internal_abi(sig.abi()) {
+                if let ty::FnPtr(sig) = ty.kind()
+                    && !self.visitor.is_internal_abi(sig.abi())
+                {
                     self.tys.push(ty);
                 }
 
@@ -1734,7 +1739,8 @@ impl InvalidAtomicOrdering {
     }
 
     fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store])
+        if let Some((method, args)) =
+            Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store])
             && let Some((ordering_arg, invalid_ordering)) = match method {
                 sym::load => Some((&args[0], sym::Release)),
                 sym::store => Some((&args[1], sym::Acquire)),
@@ -1744,9 +1750,17 @@ impl InvalidAtomicOrdering {
             && (ordering == invalid_ordering || ordering == sym::AcqRel)
         {
             if method == sym::load {
-                cx.emit_spanned_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, AtomicOrderingLoad);
+                cx.emit_spanned_lint(
+                    INVALID_ATOMIC_ORDERING,
+                    ordering_arg.span,
+                    AtomicOrderingLoad,
+                );
             } else {
-                cx.emit_spanned_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, AtomicOrderingStore);
+                cx.emit_spanned_lint(
+                    INVALID_ATOMIC_ORDERING,
+                    ordering_arg.span,
+                    AtomicOrderingStore,
+                );
             };
         }
     }

@@ -1,11 +1,11 @@
 error: expected identifier, found keyword `self`
-  --> $DIR/bad-signatures.rs:6:23
+  --> $DIR/bad-signatures.rs:5:23
    |
 LL |     async fn bar(&abc self);
    |                       ^^^^ expected identifier, found keyword
 
 error: expected one of `:`, `@`, or `|`, found keyword `self`
-  --> $DIR/bad-signatures.rs:6:23
+  --> $DIR/bad-signatures.rs:5:23
    |
 LL |     async fn bar(&abc self);
    |                  -----^^^^
