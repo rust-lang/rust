@@ -1,0 +1,10 @@
+warning: unexpected `cfg` condition name: `widnows`
+  --> $DIR/unexpected-cfg-name.rs:9:7
+   |
+LL | #[cfg(widnows)]
+   |       ^^^^^^^ help: there is a config with a similar name: `windows`
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

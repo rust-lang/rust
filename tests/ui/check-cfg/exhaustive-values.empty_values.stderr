@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `value`
-  --> $DIR/empty-values.rs:6:7
+  --> $DIR/exhaustive-values.rs:9:7
    |
 LL | #[cfg(test = "value")]
    |       ^^^^----------

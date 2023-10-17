@@ -1,0 +1,17 @@
+warning: unexpected `cfg` condition value: `value`
+  --> $DIR/exhaustive-values.rs:9:7
+   |
+LL | #[cfg(test = "value")]
+   |       ^^^^----------
+   |           |
+   |           help: remove the value
+   |
+   = note: no expected value for `test`
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `empty_cfg` as condition name
+   |
+   = help: was set with `--cfg` but isn't in the `--check-cfg` expected names
+
+warning: 2 warnings emitted
+
