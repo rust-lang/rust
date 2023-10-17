@@ -13,10 +13,12 @@ use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, Region};
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
-use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
+use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
-use stable_mir::mir::{CopyNonOverlapping, Statement, UserTypeProjection, VariantIdx};
+use stable_mir::mir::mono::InstanceDef;
+use stable_mir::mir::{Body, CopyNonOverlapping, Statement, UserTypeProjection, VariantIdx};
 use stable_mir::ty::{
     FloatTy, GenericParamDef, IntTy, LineInfo, Movability, RigidTy, Span, TyKind, UintTy,
 };
@@ -119,29 +121,7 @@ impl<'tcx> Context for Tables<'tcx> {
 
     fn mir_body(&mut self, item: stable_mir::DefId) -> stable_mir::mir::Body {
         let def_id = self[item];
-        let mir = self.tcx.instance_mir(ty::InstanceDef::Item(def_id));
-        stable_mir::mir::Body {
-            blocks: mir
-                .basic_blocks
-                .iter()
-                .map(|block| stable_mir::mir::BasicBlock {
-                    terminator: block.terminator().stable(self),
-                    statements: block
-                        .statements
-                        .iter()
-                        .map(|statement| statement.stable(self))
-                        .collect(),
-                })
-                .collect(),
-            locals: mir
-                .local_decls
-                .iter()
-                .map(|decl| stable_mir::mir::LocalDecl {
-                    ty: self.intern_ty(decl.ty),
-                    span: decl.source_info.span.stable(self),
-                })
-                .collect(),
-        }
+        self.tcx.instance_mir(ty::InstanceDef::Item(def_id)).stable(self)
     }
 
     fn ty_kind(&mut self, ty: stable_mir::ty::Ty) -> TyKind {
@@ -190,6 +170,34 @@ impl<'tcx> Context for Tables<'tcx> {
                 .collect(),
         }
     }
+
+    fn instance_body(&mut self, _def: InstanceDef) -> Body {
+        todo!("Monomorphize the body")
+    }
+
+    fn instance_ty(&mut self, def: InstanceDef) -> stable_mir::ty::Ty {
+        let instance = self.instances[def];
+        let ty = instance.ty(self.tcx, ParamEnv::empty());
+        self.intern_ty(ty)
+    }
+
+    fn instance_def_id(&mut self, def: InstanceDef) -> stable_mir::DefId {
+        let def_id = self.instances[def].def_id();
+        self.create_def_id(def_id)
+    }
+
+    fn mono_instance(&mut self, item: stable_mir::CrateItem) -> stable_mir::mir::mono::Instance {
+        let def_id = self[item.0];
+        Instance::mono(self.tcx, def_id).stable(self)
+    }
+
+    fn requires_monomorphization(&self, def_id: stable_mir::DefId) -> bool {
+        let def_id = self[def_id];
+        let generics = self.tcx.generics_of(def_id);
+        let result = generics.requires_monomorphization(self.tcx);
+        println!("req {result}: {def_id:?}");
+        result
+    }
 }
 
 #[derive(Clone)]
@@ -224,7 +232,8 @@ pub struct Tables<'tcx> {
     pub def_ids: IndexMap<DefId, stable_mir::DefId>,
     pub alloc_ids: IndexMap<AllocId, stable_mir::AllocId>,
     pub spans: IndexMap<rustc_span::Span, Span>,
-    pub types: Vec<MaybeStable<stable_mir::ty::TyKind, Ty<'tcx>>>,
+    pub types: Vec<MaybeStable<TyKind, Ty<'tcx>>>,
+    pub instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
 }
 
 impl<'tcx> Tables<'tcx> {
@@ -252,6 +261,35 @@ pub(crate) trait Stable<'tcx> {
     type T;
     /// Converts an object to the equivalent Stable MIR representation.
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T;
+}
+
+impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
+    type T = stable_mir::mir::Body;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::mir::Body {
+            blocks: self
+                .basic_blocks
+                .iter()
+                .map(|block| stable_mir::mir::BasicBlock {
+                    terminator: block.terminator().stable(tables),
+                    statements: block
+                        .statements
+                        .iter()
+                        .map(|statement| statement.stable(tables))
+                        .collect(),
+                })
+                .collect(),
+            locals: self
+                .local_decls
+                .iter()
+                .map(|decl| stable_mir::mir::LocalDecl {
+                    ty: tables.intern_ty(decl.ty),
+                    span: decl.source_info.span.stable(tables),
+                })
+                .collect(),
+        }
+    }
 }
 
 impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
@@ -1635,5 +1673,40 @@ impl<'tcx> Stable<'tcx> for DefKind {
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         // FIXME: add a real implementation of stable DefKind
         opaque(self)
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
+    type T = stable_mir::mir::mono::Instance;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let def = tables.instance_def(*self);
+        let kind = match self.def {
+            ty::InstanceDef::Item(..) => stable_mir::mir::mono::InstanceKind::Item,
+            ty::InstanceDef::Intrinsic(..) => stable_mir::mir::mono::InstanceKind::Intrinsic,
+            ty::InstanceDef::Virtual(..) => stable_mir::mir::mono::InstanceKind::Virtual,
+            ty::InstanceDef::VTableShim(..)
+            | ty::InstanceDef::ReifyShim(..)
+            | ty::InstanceDef::FnPtrAddrShim(..)
+            | ty::InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::ThreadLocalShim(..)
+            | ty::InstanceDef::DropGlue(..)
+            | ty::InstanceDef::CloneShim(..)
+            | ty::InstanceDef::FnPtrShim(..) => stable_mir::mir::mono::InstanceKind::Shim,
+        };
+        stable_mir::mir::mono::Instance { def, kind }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for MonoItem<'tcx> {
+    type T = stable_mir::mir::mono::MonoItem;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::mir::mono::MonoItem as StableMonoItem;
+        match self {
+            MonoItem::Fn(instance) => StableMonoItem::Fn(instance.stable(tables)),
+            MonoItem::Static(def_id) => StableMonoItem::Static(tables.static_def(*def_id)),
+            MonoItem::GlobalAsm(item_id) => StableMonoItem::GlobalAsm(opaque(item_id)),
+        }
     }
 }
