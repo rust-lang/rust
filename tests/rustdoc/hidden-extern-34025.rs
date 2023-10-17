@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/34025
 #![crate_name = "foo"]
 
 // @!has 'foo/sys/index.html'

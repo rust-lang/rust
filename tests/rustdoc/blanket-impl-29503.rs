@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/29503
+#![crate_name="issue_29503"]
+
 use std::fmt;
 
 // @has issue_29503/trait.MyTrait.html

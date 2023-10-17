@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/33592
 #![crate_name = "foo"]
 
 pub trait Foo<T> {}

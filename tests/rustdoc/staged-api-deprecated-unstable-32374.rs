@@ -1,6 +1,8 @@
+// https://github.com/rust-lang/rust/issues/32374
 #![feature(staged_api)]
 #![doc(issue_tracker_base_url = "https://issue_url/")]
 #![unstable(feature = "test", issue = "32374")]
+#![crate_name="issue_32374"]
 
 // @matches issue_32374/index.html '//*[@class="item-name"]/span[@class="stab deprecated"]' \
 //      'Deprecated'
