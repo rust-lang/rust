@@ -1881,6 +1881,13 @@ impl<'a> Builder<'a> {
         if mode == Mode::Rustc {
             rustflags.arg("-Zunstable-options");
             rustflags.arg("-Wrustc::internal");
+
+            // #[cfg(not(bootstrap))]
+            if stage != 0 {
+                // FIXME(Nilstrieb): Allow this lint for now.
+                // After it's in beta, we can start work on fixing it.
+                rustflags.arg("-Arustc::ty-compare-operator");
+            }
         }
 
         // Throughout the build Cargo can execute a number of build scripts

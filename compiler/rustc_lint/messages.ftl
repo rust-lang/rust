@@ -505,6 +505,13 @@ lint_suspicious_double_ref_deref =
 
 lint_trivial_untranslatable_diag = diagnostic with static strings only
 
+
+lint_ty_compare_operator_used = using the a comparison operator on `Ty`
+    .note = this does probably not what you want as it does not handle inference variables and more
+    .help = for more information, see https://rustc-dev-guide.rust-lang.org/ty.html#comparing-types
+
+lint_ty_no_compare_operator_for_diagnostics = it's also not recommended to use it for diagnostics
+
 lint_ty_qualified = usage of qualified `ty::{$ty}`
     .suggestion = try importing it and using it unqualified
 
