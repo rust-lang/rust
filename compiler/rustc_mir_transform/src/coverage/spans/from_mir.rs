@@ -1,6 +1,7 @@
 use rustc_data_structures::captures::Captures;
 use rustc_middle::mir::{
-    self, FakeReadCause, Statement, StatementKind, Terminator, TerminatorKind,
+    self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
+    TerminatorKind,
 };
 use rustc_span::Span;
 
@@ -59,22 +60,33 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
 ) -> impl Iterator<Item = CoverageSpan> + Captures<'a> + Captures<'tcx> {
     bcb_data.basic_blocks.iter().flat_map(move |&bb| {
         let data = &mir_body[bb];
-        data.statements
-            .iter()
-            .filter_map(move |statement| {
-                filtered_statement_span(statement).map(|span| {
-                    CoverageSpan::for_statement(
-                        statement,
-                        function_source_span(span, body_span),
-                        span,
-                        bcb,
-                    )
-                })
-            })
-            .chain(filtered_terminator_span(data.terminator()).map(|span| {
-                CoverageSpan::for_terminator(function_source_span(span, body_span), span, bcb)
-            }))
+
+        let statement_spans = data.statements.iter().filter_map(move |statement| {
+            let expn_span = filtered_statement_span(statement)?;
+            let span = function_source_span(expn_span, body_span);
+
+            Some(CoverageSpan::new(span, expn_span, bcb, is_closure(statement)))
+        });
+
+        let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
+            let expn_span = filtered_terminator_span(terminator)?;
+            let span = function_source_span(expn_span, body_span);
+
+            Some(CoverageSpan::new(span, expn_span, bcb, false))
+        });
+
+        statement_spans.chain(terminator_span)
     })
+}
+
+fn is_closure(statement: &Statement<'_>) -> bool {
+    match statement.kind {
+        StatementKind::Assign(box (_, Rvalue::Aggregate(box ref agg_kind, _))) => match agg_kind {
+            AggregateKind::Closure(_, _) | AggregateKind::Generator(_, _, _) => true,
+            _ => false,
+        },
+        _ => false,
+    }
 }
 
 /// If the MIR `Statement` has a span contributive to computing coverage spans,

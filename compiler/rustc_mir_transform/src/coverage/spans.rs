@@ -2,7 +2,7 @@ use std::cell::OnceCell;
 
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::IndexVec;
-use rustc_middle::mir::{self, AggregateKind, Rvalue, Statement, StatementKind};
+use rustc_middle::mir;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol, DUMMY_SP};
 
 use super::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
@@ -75,29 +75,15 @@ struct CoverageSpan {
 
 impl CoverageSpan {
     pub fn for_fn_sig(fn_sig_span: Span) -> Self {
-        Self {
-            span: fn_sig_span,
-            expn_span: fn_sig_span,
-            current_macro_or_none: Default::default(),
-            bcb: START_BCB,
-            merged_spans: vec![fn_sig_span],
-            is_closure: false,
-        }
+        Self::new(fn_sig_span, fn_sig_span, START_BCB, false)
     }
 
-    pub fn for_statement(
-        statement: &Statement<'_>,
+    pub(super) fn new(
         span: Span,
         expn_span: Span,
         bcb: BasicCoverageBlock,
+        is_closure: bool,
     ) -> Self {
-        let is_closure = match statement.kind {
-            StatementKind::Assign(box (_, Rvalue::Aggregate(box ref kind, _))) => {
-                matches!(kind, AggregateKind::Closure(_, _) | AggregateKind::Generator(_, _, _))
-            }
-            _ => false,
-        };
-
         Self {
             span,
             expn_span,
@@ -105,17 +91,6 @@ impl CoverageSpan {
             bcb,
             merged_spans: vec![span],
             is_closure,
-        }
-    }
-
-    pub fn for_terminator(span: Span, expn_span: Span, bcb: BasicCoverageBlock) -> Self {
-        Self {
-            span,
-            expn_span,
-            current_macro_or_none: Default::default(),
-            bcb,
-            merged_spans: vec![span],
-            is_closure: false,
         }
     }
 
