@@ -1197,7 +1197,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
 #[cfg(feature="master")]
 fn gen_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, name: &str, rust_fn_sig: ty::PolyFnSig<'tcx>, codegen: &mut dyn FnMut(Builder<'a, 'gcc, 'tcx>)) -> (Type<'gcc>, Function<'gcc>) {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
-    let (typ, _, _, _) = fn_abi.gcc_type(cx);
+    let return_type = fn_abi.gcc_type(cx).return_type;
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
     let func = cx.declare_fn(name, fn_abi);
@@ -1207,5 +1207,5 @@ fn gen_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, name: &str, rust_fn_sig
     let block = Builder::append_block(cx, func_val, "entry-block");
     let bx = Builder::build(cx, block);
     codegen(bx);
-    (typ, func)
+    (return_type, func)
 }
