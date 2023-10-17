@@ -2,7 +2,7 @@
 // values
 //
 // check-pass
-// compile-flags: --check-cfg=values() -Z unstable-options
+// compile-flags: --check-cfg=cfg() -Z unstable-options
 
 #[cfg(target_os = "linuz")]
 //~^ WARNING unexpected `cfg` condition value

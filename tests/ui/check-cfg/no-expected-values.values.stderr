@@ -1,0 +1,23 @@
+warning: unexpected `cfg` condition value: `foo`
+  --> $DIR/no-expected-values.rs:12:7
+   |
+LL | #[cfg(feature = "foo")]
+   |       ^^^^^^^--------
+   |              |
+   |              help: remove the value
+   |
+   = note: no expected value for `feature`
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `foo`
+  --> $DIR/no-expected-values.rs:16:7
+   |
+LL | #[cfg(test = "foo")]
+   |       ^^^^--------
+   |           |
+   |           help: remove the value
+   |
+   = note: no expected value for `test`
+
+warning: 2 warnings emitted
+

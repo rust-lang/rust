@@ -628,10 +628,10 @@ Using this flag looks like this:
 
 ```bash
 $ rustdoc src/lib.rs -Z unstable-options \
-    --check-cfg='names()' --check-cfg='values(feature, "foo", "bar")'
+    --check-cfg='cfg(feature, values("foo", "bar"))'
 ```
 
-The example above check every well known names (`target_os`, `doc`, `test`, ... via `names()`)
+The example above check every well known names and values (`target_os`, `doc`, `test`, ...)
 and check the values of `feature`: `foo` and `bar`.
 
 ### `--generate-link-to-definition`: Generate links on types in source code

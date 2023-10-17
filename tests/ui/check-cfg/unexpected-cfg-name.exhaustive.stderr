@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `widnows`
-  --> $DIR/invalid-cfg-name.rs:7:7
+  --> $DIR/unexpected-cfg-name.rs:9:7
    |
 LL | #[cfg(widnows)]
    |       ^^^^^^^ help: there is a config with a similar name: `windows`

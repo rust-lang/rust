@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `sedre`
-  --> $DIR/invalid-cfg-value.rs:7:7
+  --> $DIR/unexpected-cfg-value.rs:11:7
    |
 LL | #[cfg(feature = "sedre")]
    |       ^^^^^^^^^^-------
@@ -10,7 +10,7 @@ LL | #[cfg(feature = "sedre")]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `rand`
-  --> $DIR/invalid-cfg-value.rs:14:7
+  --> $DIR/unexpected-cfg-value.rs:18:7
    |
 LL | #[cfg(feature = "rand")]
    |       ^^^^^^^^^^^^^^^^

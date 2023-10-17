@@ -701,7 +701,7 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
 
 fn in_postfix_position<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
     if let Some(parent) = get_parent_expr(cx, e)
-        && parent.span.ctxt() == e.span.ctxt()
+        && parent.span.eq_ctxt(e.span)
     {
         match parent.kind {
             ExprKind::Call(child, _) | ExprKind::MethodCall(_, child, _, _) | ExprKind::Index(child, _, _)

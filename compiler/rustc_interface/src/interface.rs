@@ -125,8 +125,13 @@ pub fn parse_cfgspecs(
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
 pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg {
     rustc_span::create_default_session_if_not_set_then(move |_| {
-        let mut check_cfg = CheckCfg::default();
+        // If any --check-cfg is passed then exhaustive_values and exhaustive_names
+        // are enabled by default.
+        let exhaustive_names = !specs.is_empty();
+        let exhaustive_values = !specs.is_empty();
+        let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
+        let mut old_syntax = None;
         for s in specs {
             let sess = ParseSess::with_silent_emitter(Some(format!(
                 "this error occurred on the command line: `--check-cfg={s}`"
@@ -142,18 +147,21 @@ pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> Check
                 };
             }
 
-            let expected_error = || {
-                error!(
-                    "expected `names(name1, name2, ... nameN)` or \
-                        `values(name, \"value1\", \"value2\", ... \"valueN\")`"
-                )
-            };
+            let expected_error =
+                || error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`");
 
             match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
                 Ok(mut parser) => match parser.parse_meta_item() {
                     Ok(meta_item) if parser.token == token::Eof => {
                         if let Some(args) = meta_item.meta_item_list() {
                             if meta_item.has_name(sym::names) {
+                                // defaults are flipped for the old syntax
+                                if old_syntax == None {
+                                    check_cfg.exhaustive_names = false;
+                                    check_cfg.exhaustive_values = false;
+                                }
+                                old_syntax = Some(true);
+
                                 check_cfg.exhaustive_names = true;
                                 for arg in args {
                                     if arg.is_word() && arg.ident().is_some() {
@@ -167,6 +175,13 @@ pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> Check
                                     }
                                 }
                             } else if meta_item.has_name(sym::values) {
+                                // defaults are flipped for the old syntax
+                                if old_syntax == None {
+                                    check_cfg.exhaustive_names = false;
+                                    check_cfg.exhaustive_values = false;
+                                }
+                                old_syntax = Some(true);
+
                                 if let Some((name, values)) = args.split_first() {
                                     if name.is_word() && name.ident().is_some() {
                                         let ident = name.ident().expect("multi-segment cfg key");
@@ -215,6 +230,116 @@ pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> Check
                                     check_cfg.exhaustive_values = true;
                                 } else {
                                     expected_error();
+                                }
+                            } else if meta_item.has_name(sym::cfg) {
+                                old_syntax = Some(false);
+
+                                let mut names = Vec::new();
+                                let mut values: FxHashSet<_> = Default::default();
+
+                                let mut any_specified = false;
+                                let mut values_specified = false;
+                                let mut values_any_specified = false;
+
+                                for arg in args {
+                                    if arg.is_word() && let Some(ident) = arg.ident() {
+                                        if values_specified {
+                                            error!("`cfg()` names cannot be after values");
+                                        }
+                                        names.push(ident);
+                                    } else if arg.has_name(sym::any)
+                                        && let Some(args) = arg.meta_item_list()
+                                    {
+                                        if any_specified {
+                                            error!("`any()` cannot be specified multiple times");
+                                        }
+                                        any_specified = true;
+                                        if !args.is_empty() {
+                                            error!("`any()` must be empty");
+                                        }
+                                    } else if arg.has_name(sym::values)
+                                        && let Some(args) = arg.meta_item_list()
+                                    {
+                                        if names.is_empty() {
+                                            error!(
+                                                "`values()` cannot be specified before the names"
+                                            );
+                                        } else if values_specified {
+                                            error!(
+                                                "`values()` cannot be specified multiple times"
+                                            );
+                                        }
+                                        values_specified = true;
+
+                                        for arg in args {
+                                            if let Some(LitKind::Str(s, _)) =
+                                                arg.lit().map(|lit| &lit.kind)
+                                            {
+                                                values.insert(Some(s.to_string()));
+                                            } else if arg.has_name(sym::any)
+                                                && let Some(args) = arg.meta_item_list()
+                                            {
+                                                if values_any_specified {
+                                                    error!(
+                                                        "`any()` in `values()` cannot be specified multiple times"
+                                                    );
+                                                }
+                                                values_any_specified = true;
+                                                if !args.is_empty() {
+                                                    error!("`any()` must be empty");
+                                                }
+                                            } else {
+                                                error!(
+                                                    "`values()` arguments must be string literals or `any()`"
+                                                );
+                                            }
+                                        }
+                                    } else {
+                                        error!(
+                                            "`cfg()` arguments must be simple identifiers, `any()` or `values(...)`"
+                                        );
+                                    }
+                                }
+
+                                if values.is_empty() && !values_any_specified && !any_specified {
+                                    values.insert(None);
+                                } else if !values.is_empty() && values_any_specified {
+                                    error!(
+                                        "`values()` arguments cannot specify string literals and `any()` at the same time"
+                                    );
+                                }
+
+                                if any_specified {
+                                    if !names.is_empty()
+                                        || !values.is_empty()
+                                        || values_any_specified
+                                    {
+                                        error!("`cfg(any())` can only be provided in isolation");
+                                    }
+
+                                    check_cfg.exhaustive_names = false;
+                                } else {
+                                    for name in names {
+                                        check_cfg
+                                            .expecteds
+                                            .entry(name.to_string())
+                                            .and_modify(|v| match v {
+                                                ExpectedValues::Some(v)
+                                                    if !values_any_specified =>
+                                                {
+                                                    v.extend(values.clone())
+                                                }
+                                                ExpectedValues::Some(_) => *v = ExpectedValues::Any,
+                                                ExpectedValues::Any => {}
+                                            })
+                                            .or_insert_with(|| {
+                                                if values_any_specified {
+                                                    ExpectedValues::Any
+                                                } else {
+                                                    ExpectedValues::Some(values.clone())
+                                                }
+                                            });
+                                    }
                                 }
                             } else {
                                 expected_error();

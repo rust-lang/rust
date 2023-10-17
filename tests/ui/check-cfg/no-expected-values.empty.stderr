@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: `foo`
-  --> $DIR/no-values.rs:6:7
+  --> $DIR/no-expected-values.rs:12:7
    |
 LL | #[cfg(feature = "foo")]
    |       ^^^^^^^--------
@@ -10,7 +10,7 @@ LL | #[cfg(feature = "foo")]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `foo`
-  --> $DIR/no-values.rs:10:7
+  --> $DIR/no-expected-values.rs:16:7
    |
 LL | #[cfg(test = "foo")]
    |       ^^^^--------

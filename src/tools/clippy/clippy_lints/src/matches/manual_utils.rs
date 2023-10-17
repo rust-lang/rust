@@ -119,7 +119,7 @@ where
     // it's being passed by value.
     let scrutinee = peel_hir_expr_refs(scrutinee).0;
     let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
-    let scrutinee_str = if scrutinee.span.ctxt() == expr.span.ctxt() && scrutinee.precedence().order() < PREC_POSTFIX {
+    let scrutinee_str = if scrutinee.span.eq_ctxt(expr.span) && scrutinee.precedence().order() < PREC_POSTFIX {
         format!("({scrutinee_str})")
     } else {
         scrutinee_str.into()
@@ -130,7 +130,7 @@ where
         if_chain! {
             if !some_expr.needs_unsafe_block;
             if let Some(func) = can_pass_as_func(cx, id, some_expr.expr);
-            if func.span.ctxt() == some_expr.expr.span.ctxt();
+            if func.span.eq_ctxt(some_expr.expr.span);
             then {
                 snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
             } else {
