@@ -9,7 +9,6 @@ use crate::infer::InferOk;
 use crate::solve::inspect;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use crate::traits::engine::TraitEngineExt;
-use crate::traits::outlives_bounds::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::{IntercrateAmbiguityCause, TreatInductiveCycleAs};
 use crate::traits::structural_normalize::StructurallyNormalizeExt;
@@ -21,7 +20,7 @@ use crate::traits::{
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::query::NoSolution;
@@ -36,7 +35,6 @@ use rustc_session::lint::builtin::COINDUCTIVE_OVERLAP_IN_COHERENCE;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
-use std::iter;
 use std::ops::ControlFlow;
 
 /// Whether we do the orphan check relative to this crate or
@@ -417,41 +415,8 @@ fn impl_intersection_has_negative_obligation(
 
     plug_infer_with_placeholders(infcx, universe, (impl1_header.impl_args, impl2_header.impl_args));
 
-    for (predicate, _) in util::elaborate(
-        tcx,
-        tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args),
-    ) {
-        let Some(negative_predicate) = predicate.as_predicate().flip_polarity(tcx) else {
-            continue;
-        };
-
-        let ref infcx = infcx.fork();
-        let ocx = ObligationCtxt::new(infcx);
-
-        ocx.register_obligation(Obligation::new(
-            tcx,
-            ObligationCause::dummy(),
-            param_env,
-            negative_predicate,
-        ));
-        if !ocx.select_all_or_error().is_empty() {
-            continue;
-        }
-
-        // FIXME: We could use the assumed_wf_types from both impls, I think,
-        // if that wasn't implemented just for LocalDefId, and we'd need to do
-        //the normalization ourselves since this is totally fallible...
-        let outlives_env = OutlivesEnvironment::new(param_env);
-
-        let errors = infcx.resolve_regions(&outlives_env);
-        if !errors.is_empty() {
-            continue;
-        }
-
-        return true;
-    }
-
-    false
+    util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
+        .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
 }
 
 fn plug_infer_with_placeholders<'tcx>(
@@ -566,60 +531,47 @@ fn plug_infer_with_placeholders<'tcx>(
     });
 }
 
-/// Try to prove that a negative impl exist for the obligation or its supertraits.
-///
-/// If such a negative impl exists, then the obligation definitely must not hold
-/// due to coherence, even if it's not necessarily "knowable" in this crate. Any
-/// valid impl downstream would not be able to exist due to the overlapping
-/// negative impl.
-#[instrument(level = "debug", skip(infcx))]
-fn negative_impl_exists<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    o: &PredicateObligation<'tcx>,
-    body_def_id: DefId,
+fn try_prove_negated_where_clause<'tcx>(
+    root_infcx: &InferCtxt<'tcx>,
+    clause: ty::Clause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
-    // Try to prove a negative obligation exists for super predicates
-    for pred in util::elaborate(infcx.tcx, iter::once(o.predicate)) {
-        if prove_negated_obligation(infcx.fork(), &o.with(infcx.tcx, pred), body_def_id) {
-            return true;
-        }
-    }
-
-    false
-}
-
-#[instrument(level = "debug", skip(infcx))]
-fn prove_negated_obligation<'tcx>(
-    infcx: InferCtxt<'tcx>,
-    o: &PredicateObligation<'tcx>,
-    body_def_id: DefId,
-) -> bool {
-    let tcx = infcx.tcx;
-
-    let Some(o) = o.flip_polarity(tcx) else {
+    let Some(negative_predicate) = clause.as_predicate().flip_polarity(root_infcx.tcx) else {
         return false;
     };
 
-    let param_env = o.param_env;
-    let ocx = ObligationCtxt::new(&infcx);
-    ocx.register_obligation(o);
-    let errors = ocx.select_all_or_error();
+    // FIXME(with_negative_coherence): the infcx has region contraints from equating
+    // the impl headers as requirements. Given that the only region constraints we
+    // get are involving inference regions in the root, it shouldn't matter, but
+    // still sus.
+    //
+    // We probably should just throw away the region obligations registered up until
+    // now, or ideally use them as assumptions when proving the region obligations
+    // that we get from proving the negative predicate below.
+    let ref infcx = root_infcx.fork();
+    let ocx = ObligationCtxt::new(infcx);
+
+    ocx.register_obligation(Obligation::new(
+        infcx.tcx,
+        ObligationCause::dummy(),
+        param_env,
+        negative_predicate,
+    ));
+    if !ocx.select_all_or_error().is_empty() {
+        return false;
+    }
+
+    // FIXME: We could use the assumed_wf_types from both impls, I think,
+    // if that wasn't implemented just for LocalDefId, and we'd need to do
+    // the normalization ourselves since this is totally fallible...
+    let outlives_env = OutlivesEnvironment::new(param_env);
+
+    let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
         return false;
     }
 
-    let body_def_id = body_def_id.as_local().unwrap_or(CRATE_DEF_ID);
-
-    let ocx = ObligationCtxt::new(&infcx);
-    let Ok(wf_tys) = ocx.assumed_wf_types(param_env, body_def_id) else {
-        return false;
-    };
-
-    let outlives_env = OutlivesEnvironment::with_bounds(
-        param_env,
-        infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),
-    );
-    infcx.resolve_regions(&outlives_env).is_empty()
+    true
 }
 
 /// Returns whether all impls which would apply to the `trait_ref`
