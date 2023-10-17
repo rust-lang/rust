@@ -10,7 +10,6 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
 #![feature(yeet_expr)]
 #![feature(try_blocks)]
