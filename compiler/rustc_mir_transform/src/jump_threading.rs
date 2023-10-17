@@ -146,6 +146,8 @@ struct TOFinder<'tcx, 'a> {
     opportunities: Vec<ThreadingOpportunity>,
 }
 
+/// Represent the following statement. If we can prove that the current local is equal/not-equal
+/// to `value`, jump to `target`.
 #[derive(Copy, Clone, Debug)]
 struct Condition {
     value: ScalarInt,
