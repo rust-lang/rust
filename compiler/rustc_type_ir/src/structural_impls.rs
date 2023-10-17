@@ -151,17 +151,9 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Lrc<T> {
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<T> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        let raw = Box::into_raw(self);
-        Ok(unsafe {
-            // SAFETY: The raw pointer points to a valid value of type `T`.
-            let value = raw.read();
-            // SAFETY: Converts `Box<T>` to `Box<MaybeUninit<T>>` which is the
-            // inverse of `Box::assume_init()` and should be safe.
-            let raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
-            // SAFETY: Write the mapped value back into the `Box`.
-            Box::write(raw, value.try_fold_with(folder)?)
-        })
+    fn try_fold_with<F: FallibleTypeFolder<I>>(mut self, folder: &mut F) -> Result<Self, F::Error> {
+        *self = (*self).try_fold_with(folder)?;
+        Ok(self)
     }
 }
 
