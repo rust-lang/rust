@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/partial_ptr_overwrite.rs:8:9
    |
 LL |         *(ptr as *mut u8) = 123;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ unable to overwrite parts of a pointer in memory at alloc4
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ unable to overwrite parts of a pointer in memory at ALLOC0
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported

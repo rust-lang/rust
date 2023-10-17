@@ -122,7 +122,7 @@ LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds pointer arithmetic: allocN has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: ALLOC10 has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const u32>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -181,7 +181,7 @@ LL | pub static R7: &[u16] = unsafe {
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds pointer arithmetic: allocN has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: ALLOC11 has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const u64>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

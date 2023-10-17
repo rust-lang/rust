@@ -697,6 +697,7 @@ dependencies = [
  "getopts",
  "glob",
  "home",
+ "indexmap 2.0.0",
  "lazycell",
  "libc",
  "miow",

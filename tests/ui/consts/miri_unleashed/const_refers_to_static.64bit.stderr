@@ -24,7 +24,7 @@ LL | const REF_INTERIOR_MUT: &usize = {
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc4────────╼                         │ ╾──────╼
+               ╾ALLOC0╼                         │ ╾──────╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -35,7 +35,7 @@ LL | const READ_IMMUT: &usize = {
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc5────────╼                         │ ╾──────╼
+               ╾ALLOC1╼                         │ ╾──────╼
            }
 
 warning: skipping const checks

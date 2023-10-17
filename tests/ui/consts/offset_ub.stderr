@@ -14,7 +14,7 @@ LL | pub const BEFORE_START: *const u8 = unsafe { (&0u8 as *const u8).offset(-1)
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds pointer arithmetic: allocN has size 1, so pointer to 2 bytes starting at offset 0 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: ALLOC0 has size 1, so pointer to 2 bytes starting at offset 0 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const u8>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -27,7 +27,7 @@ LL | pub const AFTER_END: *const u8 = unsafe { (&0u8 as *const u8).offset(2) };
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds pointer arithmetic: allocN has size 100, so pointer to 101 bytes starting at offset 0 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: ALLOC1 has size 100, so pointer to 101 bytes starting at offset 0 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const u8>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -92,7 +92,7 @@ LL | pub const UNDERFLOW_ADDRESS_SPACE: *const u8 = unsafe { (1 as *const u8).of
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds pointer arithmetic: allocN has size 1, so pointer to 2 bytes starting at offset -4 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: ALLOC2 has size 1, so pointer to 2 bytes starting at offset -4 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const u8>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -105,7 +105,7 @@ LL | pub const NEGATIVE_OFFSET: *const u8 = unsafe { [0u8; 1].as_ptr().wrapping_
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds pointer arithmetic: allocN has size 0, so pointer to 1 byte starting at offset 0 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: ALLOC3 has size 0, so pointer to 1 byte starting at offset 0 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const u8>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

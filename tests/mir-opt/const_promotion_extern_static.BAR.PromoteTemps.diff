@@ -16,7 +16,7 @@
 -         StorageLive(_3);
 -         StorageLive(_4);
 -         StorageLive(_5);
--         _5 = const {alloc1: &i32};
+-         _5 = const {ALLOC0: &i32};
 -         _4 = &(*_5);
 -         _3 = [move _4];
 -         _2 = &_3;
@@ -40,7 +40,7 @@
       }
 - }
 - 
-- alloc1 (static: Y, size: 4, align: 4) {
+- ALLOC0 (static: Y, size: 4, align: 4) {
 -     2a 00 00 00                                     │ *...
   }
   

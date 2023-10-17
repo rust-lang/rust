@@ -6,7 +6,7 @@ LL | const SLICE_MUT: &[u8; 1] = {
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc1──╼                                     │ ╾──╼
+               ╾ALLOC0╼                                     │ ╾──╼
            }
 
 error: could not evaluate constant pattern
@@ -23,7 +23,7 @@ LL | const U8_MUT: &u8 = {
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc1──╼                                     │ ╾──╼
+               ╾ALLOC0╼                                     │ ╾──╼
            }
 
 error: could not evaluate constant pattern

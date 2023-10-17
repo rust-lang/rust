@@ -23,6 +23,6 @@ fn main() -> () {
     }
 }
 
-alloc1 (size: 3, align: 1) {
+ALLOC0 (size: 3, align: 1) {
     66 6f 6f                                        │ foo
 }

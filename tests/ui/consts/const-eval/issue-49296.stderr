@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/issue-49296.rs:9:16
    |
 LL | const X: u64 = *wat(42);
-   |                ^^^^^^^^ memory access failed: alloc3 has been freed, so this pointer is dangling
+   |                ^^^^^^^^ memory access failed: ALLOC0 has been freed, so this pointer is dangling
 
 error: aborting due to previous error
 
