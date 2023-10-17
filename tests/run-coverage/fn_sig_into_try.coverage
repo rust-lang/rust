@@ -13,15 +13,15 @@
    LL|      1|    Some(0)
    LL|      1|}
    LL|       |
-   LL|       |fn b() -> Option<i32>
-   LL|       |{
+   LL|      1|fn b() -> Option<i32>
+   LL|      1|{
    LL|      1|    Some(7i32)?;
                             ^0
    LL|      1|    Some(0)
    LL|      1|}
    LL|       |
-   LL|       |fn c() -> Option<i32>
-   LL|       |{
+   LL|      1|fn c() -> Option<i32>
+   LL|      1|{
    LL|      1|    let _ = Some(7i32)?;
                                     ^0
    LL|      1|    Some(0)
