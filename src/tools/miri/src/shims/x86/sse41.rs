@@ -283,11 +283,20 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
 
-    let rounding = match this.read_scalar(rounding)?.to_i32()? & !0x80 {
-        0x00 => rustc_apfloat::Round::NearestTiesToEven,
-        0x01 => rustc_apfloat::Round::TowardNegative,
-        0x02 => rustc_apfloat::Round::TowardPositive,
-        0x03 => rustc_apfloat::Round::TowardZero,
+    // The fourth bit of `rounding` only affects the SSE status
+    // register, which cannot be accessed from Miri (or from Rust,
+    // for that matter), so we can ignore it.
+    let rounding = match this.read_scalar(rounding)?.to_i32()? & !0b1000 {
+        // When the third bit is 0, the rounding mode is determined by the
+        // first two bits.
+        0b000 => rustc_apfloat::Round::NearestTiesToEven,
+        0b001 => rustc_apfloat::Round::TowardNegative,
+        0b010 => rustc_apfloat::Round::TowardPositive,
+        0b011 => rustc_apfloat::Round::TowardZero,
+        // When the third bit is 1, the rounding mode is determined by the
+        // SSE status register. Since we do not support modifying it from
+        // Miri (or Rust), we assume it to be at its default mode (round-to-nearest).
+        0b100..=0b111 => rustc_apfloat::Round::NearestTiesToEven,
         rounding => throw_unsup_format!("unsupported rounding mode 0x{rounding:02x}"),
     };
 
