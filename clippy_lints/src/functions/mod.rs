@@ -360,6 +360,7 @@ declare_clippy_lint! {
 }
 
 #[derive(Copy, Clone)]
+#[allow(clippy::struct_field_names)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
     too_many_lines_threshold: u64,

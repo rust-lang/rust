@@ -134,6 +134,7 @@ impl Usage {
 /// The parameters being checked by the lint, indexed by both the parameter's `HirId` and the
 /// `DefId` of the function paired with the parameter's index.
 #[derive(Default)]
+#[allow(clippy::struct_field_names)]
 struct Params {
     params: Vec<Param>,
     by_id: HirIdMap<usize>,

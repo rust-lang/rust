@@ -1,5 +1,6 @@
 //! this is crate
 #![allow(missing_docs)]
+#![allow(clippy::struct_field_names)]
 #![warn(clippy::missing_docs_in_private_items)]
 
 /// this is mod
