@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
+use rustc_hir::def::CtorKind;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
@@ -1386,15 +1387,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             // Empty enums are okay... although sort of useless.
                             return FfiSafe;
                         }
-
-                        if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
-                            return FfiUnsafe {
-                                ty,
-                                reason: fluent::lint_improper_ctypes_non_exhaustive,
-                                help: None,
-                            };
-                        }
-
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
                         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
@@ -1413,8 +1405,25 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
+                        // non_exhaustive suggests it is possible that someone might break ABI
+                        // see: https://github.com/rust-lang/rust/issues/44109#issuecomment-537583344
+                        // so warn on complex enums being used outside their crate
+                        let nonexhaustive_nonlocal_ffi =
+                            def.is_variant_list_non_exhaustive() && !def.did().is_local();
+
                         // Check the contained variants.
                         for variant in def.variants() {
+                            // but only warn about really_tagged_union reprs,
+                            // exempt enums with unit ctors like C's (like rust-bindgen)
+                            if nonexhaustive_nonlocal_ffi
+                                && !matches!(variant.ctor_kind(), Some(CtorKind::Const))
+                            {
+                                return FfiUnsafe {
+                                    ty,
+                                    reason: fluent::lint_improper_ctypes_non_exhaustive,
+                                    help: None,
+                                };
+                            };
                             let is_non_exhaustive = variant.is_field_list_non_exhaustive();
                             if is_non_exhaustive && !variant.def_id.is_local() {
                                 return FfiUnsafe {
