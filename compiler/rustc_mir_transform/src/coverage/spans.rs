@@ -80,7 +80,7 @@ impl CoverageSpan {
             expn_span: fn_sig_span,
             current_macro_or_none: Default::default(),
             bcb: START_BCB,
-            merged_spans: vec![],
+            merged_spans: vec![fn_sig_span],
             is_closure: false,
         }
     }
