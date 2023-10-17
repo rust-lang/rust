@@ -5908,7 +5908,7 @@ dependencies = [
  "num-traits",
  "rustdoc-json-types",
  "serde_json",
- "syn",
+ "syn 1.0.109",
  "tidy",
 ]
 

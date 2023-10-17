@@ -111,9 +111,13 @@ pub fn load_rustdoc_json_metadata(doc_dir: &Path) -> HashMap<String, Vec<(String
                 continue;
             }
             let unstable_feature = item.attrs.iter().find_map(|attr: &String| {
-                let Ok(parseable) = syn::Attribute::parse_outer.parse_str(attr) else {return None;};
+                let Ok(parseable) = syn::Attribute::parse_outer.parse_str(attr) else {
+                    return None;
+                };
                 for parsed in parseable {
-                    let Some(ident) = parsed.path.get_ident() else {continue;};
+                    let Some(ident) = parsed.path.get_ident() else {
+                        continue;
+                    };
                     // Make sure this is an `unstable` attribute.
                     if !is_ident(ident, "unstable") {
                         continue;

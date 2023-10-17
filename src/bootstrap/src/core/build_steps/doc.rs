@@ -967,11 +967,12 @@ impl Step for UnstableBookGen {
         let target = self.target;
         let host = builder.build.build;
 
-        builder.ensure(Std {
-            stage: builder.top_stage,
-            target: host,
-            format: DocumentationFormat::JSON,
-        });
+        builder.ensure(Std::new(
+            builder.top_stage,
+            self.target,
+            builder,
+            DocumentationFormat::JSON,
+        ));
 
         builder.info(&format!("Generating unstable book md files ({target})"));
         let out = builder.md_doc_out(target).join("unstable-book");
