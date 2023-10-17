@@ -68,22 +68,29 @@ pub struct FirstSegmentUnresolved {
 pub enum NameToImport {
     /// Requires items with names that exactly match the given string, bool indicates case-sensitivity.
     Exact(String, bool),
-    /// Requires items with names that case-insensitively contain all letters from the string,
+    /// Requires items with names that match the given string by prefix, bool indicates case-sensitivity.
+    Prefix(String, bool),
+    /// Requires items with names contain all letters from the string,
     /// in the same order, but not necessary adjacent.
-    Fuzzy(String),
+    Fuzzy(String, bool),
 }
 
 impl NameToImport {
     pub fn exact_case_sensitive(s: String) -> NameToImport {
         NameToImport::Exact(s, true)
     }
-}
 
-impl NameToImport {
+    pub fn fuzzy(s: String) -> NameToImport {
+        // unless all chars are lowercase, we do a case sensitive search
+        let case_sensitive = s.chars().any(|c| c.is_uppercase());
+        NameToImport::Fuzzy(s, case_sensitive)
+    }
+
     pub fn text(&self) -> &str {
         match self {
-            NameToImport::Exact(text, _) => text.as_str(),
-            NameToImport::Fuzzy(text) => text.as_str(),
+            NameToImport::Prefix(text, _)
+            | NameToImport::Exact(text, _)
+            | NameToImport::Fuzzy(text, _) => text.as_str(),
         }
     }
 }
@@ -165,7 +172,7 @@ impl ImportAssets {
         Some(Self {
             import_candidate: ImportCandidate::TraitMethod(TraitImportCandidate {
                 receiver_ty,
-                assoc_item_name: NameToImport::Fuzzy(fuzzy_method_name),
+                assoc_item_name: NameToImport::fuzzy(fuzzy_method_name),
             }),
             module_with_candidate: module_with_method_call,
             candidate_node,
@@ -228,12 +235,30 @@ impl ImportAssets {
         self.search_for(sema, None, prefer_no_std)
     }
 
-    pub fn path_fuzzy_name_to_exact(&mut self, case_sensitive: bool) {
+    /// Requires imports to by prefix instead of fuzzily.
+    pub fn path_fuzzy_name_to_prefix(&mut self) {
         if let ImportCandidate::Path(PathImportCandidate { name: to_import, .. }) =
             &mut self.import_candidate
         {
-            let name = match to_import {
-                NameToImport::Fuzzy(name) => std::mem::take(name),
+            let (name, case_sensitive) = match to_import {
+                NameToImport::Fuzzy(name, case_sensitive) => {
+                    (std::mem::take(name), *case_sensitive)
+                }
+                _ => return,
+            };
+            *to_import = NameToImport::Prefix(name, case_sensitive);
+        }
+    }
+
+    /// Requires imports to match exactly instead of fuzzily.
+    pub fn path_fuzzy_name_to_exact(&mut self) {
+        if let ImportCandidate::Path(PathImportCandidate { name: to_import, .. }) =
+            &mut self.import_candidate
+        {
+            let (name, case_sensitive) = match to_import {
+                NameToImport::Fuzzy(name, case_sensitive) => {
+                    (std::mem::take(name), *case_sensitive)
+                }
                 _ => return,
             };
             *to_import = NameToImport::Exact(name, case_sensitive);
@@ -623,7 +648,7 @@ impl ImportCandidate {
         fuzzy_name: String,
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
-        path_import_candidate(sema, qualifier, NameToImport::Fuzzy(fuzzy_name))
+        path_import_candidate(sema, qualifier, NameToImport::fuzzy(fuzzy_name))
     }
 }
 

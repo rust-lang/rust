@@ -98,10 +98,8 @@ fn tail_cb_impl(acc: &mut Vec<ast::Expr>, e: &ast::Expr) {
                 for_each_tail_expr(&break_expr_arg, &mut |e| tail_cb_impl(acc, e))
             }
         }
-        Expr::ReturnExpr(ret_expr) => {
-            if let Some(ret_expr_arg) = &ret_expr.expr() {
-                for_each_tail_expr(ret_expr_arg, &mut |e| tail_cb_impl(acc, e));
-            }
+        Expr::ReturnExpr(_) => {
+            // all return expressions have already been handled by the walk loop
         }
         e => acc.push(e.clone()),
     }
@@ -727,6 +725,24 @@ fn foo() -> Result<i32, ${0:_}> {
         return Ok(24i32);
     }
     Ok(53i32)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn wrap_return_in_tail_position() {
+        check_assist(
+            wrap_return_type_in_result,
+            r#"
+//- minicore: result
+fn foo(num: i32) -> $0i32 {
+    return num
+}
+"#,
+            r#"
+fn foo(num: i32) -> Result<i32, ${0:_}> {
+    return Ok(num)
 }
 "#,
         );

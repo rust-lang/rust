@@ -13,7 +13,7 @@ use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered if created structure does not have field provided in record.
 pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
-    let node = d.field.clone().map(|it| it.either(Into::into, Into::into));
+    let node = d.field.clone().map(Into::into);
     if d.private {
         // FIXME: quickfix to add required visibility
         Diagnostic::new_with_syntax_node_ptr(
@@ -35,15 +35,13 @@ pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) 
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assist>> {
     // FIXME: quickfix for pattern
-    match &d.field.value {
-        Either::Left(ptr) => {
-            let root = ctx.sema.db.parse_or_expand(d.field.file_id);
-            missing_record_expr_field_fixes(
-                &ctx.sema,
-                d.field.file_id.original_file(ctx.sema.db),
-                &ptr.to_node(&root),
-            )
-        }
+    let root = ctx.sema.db.parse_or_expand(d.field.file_id);
+    match &d.field.value.to_node(&root) {
+        Either::Left(node) => missing_record_expr_field_fixes(
+            &ctx.sema,
+            d.field.file_id.original_file(ctx.sema.db),
+            node,
+        ),
         _ => None,
     }
 }

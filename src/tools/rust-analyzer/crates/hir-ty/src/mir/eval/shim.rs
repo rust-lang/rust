@@ -1045,7 +1045,7 @@ impl Evaluator<'_> {
             }
             "transmute" => {
                 let [arg] = args else {
-                    return Err(MirEvalError::TypeError("trasmute arg is not provided"));
+                    return Err(MirEvalError::TypeError("transmute arg is not provided"));
                 };
                 destination.write_from_interval(self, arg.interval)
             }
@@ -1065,7 +1065,7 @@ impl Evaluator<'_> {
             }
             "ctlz" | "ctlz_nonzero" => {
                 let [arg] = args else {
-                    return Err(MirEvalError::TypeError("cttz arg is not provided"));
+                    return Err(MirEvalError::TypeError("ctlz arg is not provided"));
                 };
                 let result =
                     u128::from_le_bytes(pad16(arg.get(self)?, false)).leading_zeros() as usize;

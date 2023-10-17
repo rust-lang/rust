@@ -245,6 +245,30 @@ fn main() {
 }
 
 #[test]
+fn doctest_apply_demorgan_iterator() {
+    check_doc_test(
+        "apply_demorgan_iterator",
+        r#####"
+//- minicore: iterator
+fn main() {
+    let arr = [1, 2, 3];
+    if !arr.into_iter().$0any(|num| num == 4) {
+        println!("foo");
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    let arr = [1, 2, 3];
+    if arr.into_iter().all(|num| num != 4) {
+        println!("foo");
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_auto_import() {
     check_doc_test(
         "auto_import",
@@ -275,6 +299,34 @@ fn some_function(x: i32$0) {}
         r#####"
 fn some_function(x: i32) {
     let _ = x;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_bool_to_enum() {
+    check_doc_test(
+        "bool_to_enum",
+        r#####"
+fn main() {
+    let $0bool = true;
+
+    if bool {
+        println!("foo");
+    }
+}
+"#####,
+        r#####"
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn main() {
+    let bool = Bool::True;
+
+    if bool == Bool::True {
+        println!("foo");
+    }
 }
 "#####,
     )
@@ -553,6 +605,33 @@ fn main() {
     }
     foo();
     bar();
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_convert_tuple_return_type_to_struct() {
+    check_doc_test(
+        "convert_tuple_return_type_to_struct",
+        r#####"
+fn bar() {
+    let (a, b, c) = foo();
+}
+
+fn foo() -> ($0u32, u32, u32) {
+    (1, 2, 3)
+}
+"#####,
+        r#####"
+fn bar() {
+    let FooResult(a, b, c) = foo();
+}
+
+struct FooResult(u32, u32, u32);
+
+fn foo() -> FooResult {
+    FooResult(1, 2, 3)
 }
 "#####,
     )
@@ -2474,6 +2553,25 @@ fn handle(action: Action) {
         Action::Move { distance } => foo(distance),
         _ => bar(),
     }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_is_some_with_if_let_some() {
+    check_doc_test(
+        "replace_is_some_with_if_let_some",
+        r#####"
+fn main() {
+    let x = Some(1);
+    if x.is_som$0e() {}
+}
+"#####,
+        r#####"
+fn main() {
+    let x = Some(1);
+    if let Some(${0:_tmp}) = x {}
 }
 "#####,
     )

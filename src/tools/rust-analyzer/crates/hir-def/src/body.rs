@@ -57,7 +57,7 @@ pub struct Body {
 pub type ExprPtr = AstPtr<ast::Expr>;
 pub type ExprSource = InFile<ExprPtr>;
 
-pub type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
+pub type PatPtr = AstPtr<Either<ast::Pat, ast::SelfParam>>;
 pub type PatSource = InFile<PatPtr>;
 
 pub type LabelPtr = AstPtr<ast::Label>;
@@ -356,12 +356,12 @@ impl BodySourceMap {
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
-        let src = node.map(|it| Either::Left(AstPtr::new(it)));
+        let src = node.map(|it| AstPtr::new(it).wrap_left());
         self.pat_map.get(&src).cloned()
     }
 
     pub fn node_self_param(&self, node: InFile<&ast::SelfParam>) -> Option<PatId> {
-        let src = node.map(|it| Either::Right(AstPtr::new(it)));
+        let src = node.map(|it| AstPtr::new(it).wrap_right());
         self.pat_map.get(&src).cloned()
     }
 

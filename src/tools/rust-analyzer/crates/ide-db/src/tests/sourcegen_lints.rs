@@ -51,41 +51,60 @@ pub struct LintGroup {
 
     let contents = sourcegen::add_preamble("sourcegen_lints", sourcegen::reformat(contents));
 
-    let destination = project_root().join("crates/ide_db/src/generated/lints.rs");
+    let destination = project_root().join("crates/ide-db/src/generated/lints.rs");
     sourcegen::ensure_file_contents(destination.as_path(), &contents);
 }
 
+/// Parses the output of `rustdoc -Whelp` and prints `Lint` and `LintGroup` constants into `buf`.
+///
+/// As of writing, the output of `rustc -Whelp` (not rustdoc) has the following format:
+///
+/// ```text
+/// Lint checks provided by rustc:
+///
+/// name  default  meaning
+/// ----  -------  -------
+///
+/// ...
+///
+/// Lint groups provided by rustc:
+///
+/// name  sub-lints
+/// ----  ---------
+///
+/// ...
+/// ```
+///
+/// `rustdoc -Whelp` (and any other custom `rustc` driver) adds another two
+/// tables after the `rustc` ones, with a different title but the same format.
 fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
-    // FIXME: rustdoc currently requires an input file for -Whelp cc https://github.com/rust-lang/rust/pull/88831
-    let file = project_root().join(file!());
-    let stdout = cmd!(sh, "rustdoc -W help {file}").read().unwrap();
-    let start_lints = stdout.find("----  -------  -------").unwrap();
-    let start_lint_groups = stdout.find("----  ---------").unwrap();
-    let start_lints_rustdoc =
-        stdout.find("Lint checks provided by plugins loaded by this crate:").unwrap();
-    let start_lint_groups_rustdoc =
-        stdout.find("Lint groups provided by plugins loaded by this crate:").unwrap();
+    let stdout = cmd!(sh, "rustdoc -Whelp").read().unwrap();
+    let lints_pat = "----  -------  -------\n";
+    let lint_groups_pat = "----  ---------\n";
+    let lints = find_and_slice(&stdout, lints_pat);
+    let lint_groups = find_and_slice(lints, lint_groups_pat);
+    let lints_rustdoc = find_and_slice(lint_groups, lints_pat);
+    let lint_groups_rustdoc = find_and_slice(lints_rustdoc, lint_groups_pat);
 
     buf.push_str(r#"pub const DEFAULT_LINTS: &[Lint] = &["#);
     buf.push('\n');
 
-    let lints = stdout[start_lints..].lines().skip(1).take_while(|l| !l.is_empty()).map(|line| {
+    let lints = lints.lines().take_while(|l| !l.is_empty()).map(|line| {
         let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
         let (_default_level, description) = rest.trim().split_once(char::is_whitespace).unwrap();
         (name.trim(), Cow::Borrowed(description.trim()), vec![])
     });
-    let lint_groups =
-        stdout[start_lint_groups..].lines().skip(1).take_while(|l| !l.is_empty()).map(|line| {
-            let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
-            (
-                name.trim(),
-                format!("lint group for: {}", lints.trim()).into(),
-                lints
-                    .split_ascii_whitespace()
-                    .map(|s| s.trim().trim_matches(',').replace('-', "_"))
-                    .collect(),
-            )
-        });
+    let lint_groups = lint_groups.lines().take_while(|l| !l.is_empty()).map(|line| {
+        let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
+        (
+            name.trim(),
+            format!("lint group for: {}", lints.trim()).into(),
+            lints
+                .split_ascii_whitespace()
+                .map(|s| s.trim().trim_matches(',').replace('-', "_"))
+                .collect(),
+        )
+    });
 
     let lints = lints
         .chain(lint_groups)
@@ -94,7 +113,8 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     for (name, description, ..) in &lints {
         push_lint_completion(buf, &name.replace('-', "_"), description);
     }
-    buf.push_str("];\n");
+    buf.push_str("];\n\n");
+
     buf.push_str(r#"pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &["#);
     for (name, description, children) in &lints {
         if !children.is_empty() {
@@ -115,27 +135,23 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     buf.push_str(r#"pub const RUSTDOC_LINTS: &[Lint] = &["#);
     buf.push('\n');
 
-    let lints_rustdoc =
-        stdout[start_lints_rustdoc..].lines().skip(2).take_while(|l| !l.is_empty()).map(|line| {
-            let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
-            let (_default_level, description) =
-                rest.trim().split_once(char::is_whitespace).unwrap();
-            (name.trim(), Cow::Borrowed(description.trim()), vec![])
-        });
+    let lints_rustdoc = lints_rustdoc.lines().take_while(|l| !l.is_empty()).map(|line| {
+        let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
+        let (_default_level, description) = rest.trim().split_once(char::is_whitespace).unwrap();
+        (name.trim(), Cow::Borrowed(description.trim()), vec![])
+    });
     let lint_groups_rustdoc =
-        stdout[start_lint_groups_rustdoc..].lines().skip(2).take_while(|l| !l.is_empty()).map(
-            |line| {
-                let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
-                (
-                    name.trim(),
-                    format!("lint group for: {}", lints.trim()).into(),
-                    lints
-                        .split_ascii_whitespace()
-                        .map(|s| s.trim().trim_matches(',').replace('-', "_"))
-                        .collect(),
-                )
-            },
-        );
+        lint_groups_rustdoc.lines().take_while(|l| !l.is_empty()).map(|line| {
+            let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
+            (
+                name.trim(),
+                format!("lint group for: {}", lints.trim()).into(),
+                lints
+                    .split_ascii_whitespace()
+                    .map(|s| s.trim().trim_matches(',').replace('-', "_"))
+                    .collect(),
+            )
+        });
 
     let lints_rustdoc = lints_rustdoc
         .chain(lint_groups_rustdoc)
@@ -145,7 +161,7 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     for (name, description, ..) in &lints_rustdoc {
         push_lint_completion(buf, &name.replace('-', "_"), description)
     }
-    buf.push_str("];\n");
+    buf.push_str("];\n\n");
 
     buf.push_str(r#"pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &["#);
     for (name, description, children) in &lints_rustdoc {
@@ -157,14 +173,24 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     buf.push_str("];\n");
 }
 
+#[track_caller]
+fn find_and_slice<'a>(i: &'a str, p: &str) -> &'a str {
+    let idx = i.find(p).unwrap();
+    &i[idx + p.len()..]
+}
+
+/// Parses the unstable book root directory at `src_dir` and prints a constant
+/// with the list of unstable features into `buf`.
+///
+/// It does this by looking for all `.md` files in the `language-features` and
+/// `library-features` directories, and using the file name as the feature
+/// name, and the file contents as the feature description.
 fn generate_feature_descriptor(buf: &mut String, src_dir: &Path) {
     let mut features = ["language-features", "library-features"]
         .into_iter()
         .flat_map(|it| sourcegen::list_files(&src_dir.join(it)))
-        .filter(|path| {
-            // Get all `.md ` files
-            path.extension().unwrap_or_default().to_str().unwrap_or_default() == "md"
-        })
+        // Get all `.md` files
+        .filter(|path| path.extension() == Some("md".as_ref()))
         .map(|path| {
             let feature_ident = path.file_stem().unwrap().to_str().unwrap().replace('-', "_");
             let doc = fs::read_to_string(path).unwrap();
@@ -196,7 +222,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
     let mut clippy_lints: Vec<ClippyLint> = Vec::new();
     let mut clippy_groups: std::collections::BTreeMap<String, Vec<String>> = Default::default();
 
-    for line in file_content.lines().map(|line| line.trim()) {
+    for line in file_content.lines().map(str::trim) {
         if let Some(line) = line.strip_prefix(r#""id": ""#) {
             let clippy_lint = ClippyLint {
                 id: line.strip_suffix(r#"","#).expect("should be suffixed by comma").into(),
@@ -211,12 +237,19 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
                     .push(clippy_lints.last().unwrap().id.clone());
             }
         } else if let Some(line) = line.strip_prefix(r#""docs": ""#) {
-            let prefix_to_strip = r#" ### What it does"#;
-            let line = match line.strip_prefix(prefix_to_strip) {
-                Some(line) => line,
+            let header = "### What it does";
+            let line = match line.find(header) {
+                Some(idx) => &line[idx + header.len()..],
                 None => {
-                    eprintln!("unexpected clippy prefix for {}", clippy_lints.last().unwrap().id);
-                    continue;
+                    let id = &clippy_lints.last().unwrap().id;
+                    // these just don't have the common header
+                    let allowed = ["allow_attributes", "read_line_without_trim"];
+                    if allowed.contains(&id.as_str()) {
+                        line
+                    } else {
+                        eprintln!("\nunexpected clippy prefix for {id}, line={line:?}\n",);
+                        continue;
+                    }
                 }
             };
             // Only take the description, any more than this is a lot of additional data we would embed into the exe

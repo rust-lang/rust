@@ -8,7 +8,11 @@
 //! Note that these tokens, unlike the tokens we feed into the parser, do
 //! include info about comments and whitespace.
 
+use rustc_dependencies::lexer as rustc_lexer;
+
 use std::ops;
+
+use rustc_lexer::unescape::{EscapeError, Mode};
 
 use crate::{
     SyntaxKind::{self, *},
@@ -253,30 +257,60 @@ impl<'a> Converter<'a> {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
                     err = "Missing trailing `'` symbol to terminate the character literal";
+                } else {
+                    let text = &self.res.text[self.offset + 1..][..len - 1];
+                    let i = text.rfind('\'').unwrap();
+                    let text = &text[..i];
+                    if let Err(e) = rustc_lexer::unescape::unescape_char(text) {
+                        err = error_to_diagnostic_message(e, Mode::Char);
+                    }
                 }
                 CHAR
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
                     err = "Missing trailing `'` symbol to terminate the byte literal";
+                } else {
+                    let text = &self.res.text[self.offset + 2..][..len - 2];
+                    let i = text.rfind('\'').unwrap();
+                    let text = &text[..i];
+                    if let Err(e) = rustc_lexer::unescape::unescape_byte(text) {
+                        err = error_to_diagnostic_message(e, Mode::Byte);
+                    }
                 }
+
                 BYTE
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 1..][..len - 1];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    err = unescape_string_error_message(text, Mode::Str);
                 }
                 STRING
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the byte string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 2..][..len - 2];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    err = unescape_string_error_message(text, Mode::ByteStr);
                 }
                 BYTE_STRING
             }
             rustc_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the string literal";
+                } else {
+                    let text = &self.res.text[self.offset + 2..][..len - 2];
+                    let i = text.rfind('"').unwrap();
+                    let text = &text[..i];
+                    err = unescape_string_error_message(text, Mode::CStr);
                 }
                 C_STRING
             }
@@ -303,4 +337,65 @@ impl<'a> Converter<'a> {
         let err = if err.is_empty() { None } else { Some(err) };
         self.push(syntax_kind, len, err);
     }
+}
+
+fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
+    match error {
+        EscapeError::ZeroChars => "empty character literal",
+        EscapeError::MoreThanOneChar => "character literal may only contain one codepoint",
+        EscapeError::LoneSlash => "",
+        EscapeError::InvalidEscape if mode == Mode::Byte || mode == Mode::ByteStr => {
+            "unknown byte escape"
+        }
+        EscapeError::InvalidEscape => "unknown character escape",
+        EscapeError::BareCarriageReturn => "",
+        EscapeError::BareCarriageReturnInRawString => "",
+        EscapeError::EscapeOnlyChar if mode == Mode::Byte => "byte constant must be escaped",
+        EscapeError::EscapeOnlyChar => "character constant must be escaped",
+        EscapeError::TooShortHexEscape => "numeric character escape is too short",
+        EscapeError::InvalidCharInHexEscape => "invalid character in numeric character escape",
+        EscapeError::OutOfRangeHexEscape => "out of range hex escape",
+        EscapeError::NoBraceInUnicodeEscape => "incorrect unicode escape sequence",
+        EscapeError::InvalidCharInUnicodeEscape => "invalid character in unicode escape",
+        EscapeError::EmptyUnicodeEscape => "empty unicode escape",
+        EscapeError::UnclosedUnicodeEscape => "unterminated unicode escape",
+        EscapeError::LeadingUnderscoreUnicodeEscape => "invalid start of unicode escape",
+        EscapeError::OverlongUnicodeEscape => "overlong unicode escape",
+        EscapeError::LoneSurrogateUnicodeEscape => "invalid unicode character escape",
+        EscapeError::OutOfRangeUnicodeEscape => "invalid unicode character escape",
+        EscapeError::UnicodeEscapeInByte => "unicode escape in byte string",
+        EscapeError::NonAsciiCharInByte if mode == Mode::Byte => {
+            "non-ASCII character in byte literal"
+        }
+        EscapeError::NonAsciiCharInByte if mode == Mode::ByteStr => {
+            "non-ASCII character in byte string literal"
+        }
+        EscapeError::NonAsciiCharInByte => "non-ASCII character in raw byte string literal",
+        EscapeError::UnskippedWhitespaceWarning => "",
+        EscapeError::MultipleSkippedLinesWarning => "",
+    }
+}
+
+fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
+    let mut error_message = "";
+    match mode {
+        Mode::CStr => {
+            rustc_lexer::unescape::unescape_c_string(text, mode, &mut |_, res| {
+                if let Err(e) = res {
+                    error_message = error_to_diagnostic_message(e, mode);
+                }
+            });
+        }
+        Mode::ByteStr | Mode::Str => {
+            rustc_lexer::unescape::unescape_literal(text, mode, &mut |_, res| {
+                if let Err(e) = res {
+                    error_message = error_to_diagnostic_message(e, mode);
+                }
+            });
+        }
+        _ => {
+            // Other Modes are not supported yet or do not apply
+        }
+    }
+    error_message
 }

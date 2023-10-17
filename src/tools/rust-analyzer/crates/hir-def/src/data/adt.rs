@@ -11,7 +11,7 @@ use hir_expand::{
 };
 use intern::Interned;
 use la_arena::{Arena, ArenaMap};
-use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
+use rustc_dependencies::abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use syntax::ast::{self, HasName, HasVisibility};
 use triomphe::Arc;
 
@@ -178,7 +178,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
         }
     }
 
-    Some(ReprOptions { int, align: max_align, pack: min_pack, flags, field_shuffle_seed: 0 })
+    Some(ReprOptions { int, align: max_align, pack: min_pack, flags })
 }
 
 impl StructData {
