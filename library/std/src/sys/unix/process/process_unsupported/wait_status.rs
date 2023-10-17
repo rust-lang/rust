@@ -1,9 +1,12 @@
 //! Emulated wait status for non-Unix #[cfg(unix) platforms
 //!
 //! Separate module to facilitate testing against a real Unix implementation.
+use core::ffi::NonZero_c_int;
 
 use crate::ffi::c_int;
 use crate::fmt;
+
+use super::ExitStatusError;
 
 /// Emulated wait status for use by `process_unsupported.rs`
 ///
@@ -38,6 +41,19 @@ impl ExitStatus {
         // out-of-range values to be WIFEXITED, WIFSTOPPED, etc.
         let w = self.wait_status;
         if (w & 0x7f) == 0 { Some((w & 0xff00) >> 8) } else { None }
+    }
+
+    #[allow(unused)]
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+        // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0. This is
+        // true on all actual versions of Unix, is widely assumed, and is specified in SuS
+        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
+        // true for a platform pretending to be Unix, the tests (our doctests, and also
+        // process_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
+        match NonZero_c_int::try_from(self.wait_status) {
+            /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
+            /* was zero, couldn't convert */ Err(_) => Ok(()),
+        }
     }
 
     pub fn signal(&self) -> Option<i32> {

@@ -311,10 +311,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             ccx.const_kind(),
         ));
 
-        if let Some(feature) = feature && ccx.tcx.sess.is_nightly_build() {
-            err.help(format!(
-                "add `#![feature({feature})]` to the crate attributes to enable",
-            ));
+        if let Some(feature) = feature
+            && ccx.tcx.sess.is_nightly_build()
+        {
+            err.help(format!("add `#![feature({feature})]` to the crate attributes to enable",));
         }
 
         if let ConstContext::Static(_) = ccx.const_kind() {

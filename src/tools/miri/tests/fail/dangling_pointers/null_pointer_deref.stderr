@@ -1,8 +1,8 @@
-error: Undefined Behavior: dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
+error: Undefined Behavior: memory access failed: null pointer is a dangling pointer (it has no provenance)
   --> $DIR/null_pointer_deref.rs:LL:CC
    |
 LL |     let x: i32 = unsafe { *std::ptr::null() };
-   |                           ^^^^^^^^^^^^^^^^^ dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
+   |                           ^^^^^^^^^^^^^^^^^ memory access failed: null pointer is a dangling pointer (it has no provenance)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

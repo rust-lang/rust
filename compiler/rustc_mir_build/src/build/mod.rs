@@ -847,7 +847,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.local_decls.push(LocalDecl::with_source_info(param.ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
-            if let Some(ref pat) = param.pat && let Some(name) = pat.simple_ident() {
+            if let Some(ref pat) = param.pat
+                && let Some(name) = pat.simple_ident()
+            {
                 self.var_debug_info.push(VarDebugInfo {
                     name,
                     source_info,

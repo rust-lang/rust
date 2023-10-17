@@ -459,7 +459,9 @@ where
 
     // Similarly, fingerprint the result to assert that
     // it doesn't have anything not considered hashable.
-    if cfg!(debug_assertions) && let Some(hash_result) = query.hash_result() {
+    if cfg!(debug_assertions)
+        && let Some(hash_result) = query.hash_result()
+    {
         qcx.dep_context().with_stable_hashing_context(|mut hcx| {
             hash_result(&mut hcx, &result);
         });

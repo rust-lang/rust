@@ -5,8 +5,7 @@
 
 pub trait C {
     async fn new() -> [u8; _];
-    //~^ ERROR: functions in traits cannot be declared `async`
-    //~| ERROR: using `_` for array lengths is unstable
+    //~^ ERROR: using `_` for array lengths is unstable
     //~| ERROR: in expressions, `_` can only be used on the left-hand side of an assignment
 }
 

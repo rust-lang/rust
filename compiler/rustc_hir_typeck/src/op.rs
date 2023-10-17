@@ -430,33 +430,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let Some(lhs_new_mutbl) = lhs_new_mutbl
                                 && let Some(rhs_new_mutbl) = rhs_new_mutbl
                                 && lhs_new_mutbl.is_not()
-                                && rhs_new_mutbl.is_not() {
+                                && rhs_new_mutbl.is_not()
+                            {
                                 err.multipart_suggestion_verbose(
                                     "consider reborrowing both sides",
                                     vec![
                                         (lhs_expr.span.shrink_to_lo(), "&*".to_string()),
-                                        (rhs_expr.span.shrink_to_lo(), "&*".to_string())
+                                        (rhs_expr.span.shrink_to_lo(), "&*".to_string()),
                                     ],
                                     rustc_errors::Applicability::MachineApplicable,
                                 );
                             } else {
-                                let mut suggest_new_borrow = |new_mutbl: ast::Mutability, sp: Span| {
-                                    // Can reborrow (&mut -> &)
-                                    if new_mutbl.is_not() {
-                                        err.span_suggestion_verbose(
-                                            sp.shrink_to_lo(),
-                                            "consider reborrowing this side",
-                                            "&*",
-                                            rustc_errors::Applicability::MachineApplicable,
-                                        );
-                                    // Works on &mut but have &
-                                    } else {
-                                        err.span_help(
-                                            sp,
-                                            "consider making this expression a mutable borrow",
-                                        );
-                                    }
-                                };
+                                let mut suggest_new_borrow =
+                                    |new_mutbl: ast::Mutability, sp: Span| {
+                                        // Can reborrow (&mut -> &)
+                                        if new_mutbl.is_not() {
+                                            err.span_suggestion_verbose(
+                                                sp.shrink_to_lo(),
+                                                "consider reborrowing this side",
+                                                "&*",
+                                                rustc_errors::Applicability::MachineApplicable,
+                                            );
+                                        // Works on &mut but have &
+                                        } else {
+                                            err.span_help(
+                                                sp,
+                                                "consider making this expression a mutable borrow",
+                                            );
+                                        }
+                                    };
 
                                 if let Some(lhs_new_mutbl) = lhs_new_mutbl {
                                     suggest_new_borrow(lhs_new_mutbl, lhs_expr.span);
@@ -493,20 +495,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if is_assign == IsAssign::No
                     && let Ref(region, lhs_deref_ty, mutbl) = lhs_ty.kind()
                 {
-                    if self.type_is_copy_modulo_regions(
-                        self.param_env,
-                        *lhs_deref_ty,
-                    ) {
+                    if self.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty) {
                         suggest_deref_binop(&mut err, *lhs_deref_ty);
                     } else {
                         let lhs_inv_mutbl = mutbl.invert();
                         let lhs_inv_mutbl_ty = Ty::new_ref(
                             self.tcx,
                             *region,
-                            ty::TypeAndMut {
-                                ty: *lhs_deref_ty,
-                                mutbl: lhs_inv_mutbl,
-                            },
+                            ty::TypeAndMut { ty: *lhs_deref_ty, mutbl: lhs_inv_mutbl },
                         );
 
                         suggest_different_borrow(
@@ -522,10 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let rhs_inv_mutbl_ty = Ty::new_ref(
                                 self.tcx,
                                 *region,
-                                ty::TypeAndMut {
-                                    ty: *rhs_deref_ty,
-                                    mutbl: rhs_inv_mutbl,
-                                },
+                                ty::TypeAndMut { ty: *rhs_deref_ty, mutbl: rhs_inv_mutbl },
                             );
 
                             suggest_different_borrow(
@@ -599,7 +592,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             if let Some(output_def_id) = output_def_id
                                                 && let Some(trait_def_id) = trait_def_id
                                                 && self.tcx.parent(output_def_id) == trait_def_id
-                                                && let Some(output_ty) = output_ty.make_suggestable(self.tcx, false)
+                                                && let Some(output_ty) =
+                                                    output_ty.make_suggestable(self.tcx, false)
                                             {
                                                 Some(("Output", output_ty))
                                             } else {

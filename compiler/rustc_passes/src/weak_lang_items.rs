@@ -26,7 +26,9 @@ pub fn check_crate(tcx: TyCtxt<'_>, items: &mut lang_items::LanguageItems) {
     for id in crate_items.foreign_items() {
         let attrs = tcx.hir().attrs(id.hir_id());
         if let Some((lang_item, _)) = lang_items::extract(attrs) {
-            if let Some(item) = LangItem::from_name(lang_item) && item.is_weak() {
+            if let Some(item) = LangItem::from_name(lang_item)
+                && item.is_weak()
+            {
                 if items.get(item).is_none() {
                     items.missing.push(item);
                 }

@@ -73,7 +73,9 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
 
     let first_token = &p.token;
 
-    let fmtstr = if let token::Literal(lit) = first_token.kind && matches!(lit.kind, token::Str | token::StrRaw(_)) {
+    let fmtstr = if let token::Literal(lit) = first_token.kind
+        && matches!(lit.kind, token::Str | token::StrRaw(_))
+    {
         // This allows us to properly handle cases when the first comma
         // after the format string is mistakenly replaced with any operator,
         // which cause the expression parser to eat too much tokens.
@@ -176,7 +178,7 @@ fn make_format_args(
                         && block.stmts.len() == 1
                         && let StmtKind::Expr(expr) = &block.stmts[0].kind
                         && let ExprKind::Path(None, path) = &expr.kind
-                            && path.is_potential_trivial_const_arg()
+                        && path.is_potential_trivial_const_arg()
                     {
                         err.multipart_suggestion(
                             "quote your inlined format argument to use as string literal",
@@ -184,7 +186,7 @@ fn make_format_args(
                                 (unexpanded_fmt_span.shrink_to_hi(), "\"".to_string()),
                                 (unexpanded_fmt_span.shrink_to_lo(), "\"".to_string()),
                             ],
-                             Applicability::MaybeIncorrect,
+                            Applicability::MaybeIncorrect,
                         );
                     } else {
                         let sugg_fmt = match args.explicit_args().len() {
@@ -257,8 +259,13 @@ fn make_format_args(
         if let Some(note) = err.note {
             e.note_ = Some(errors::InvalidFormatStringNote { note });
         }
-        if let Some((label, span)) = err.secondary_label && is_source_literal {
-            e.label_ = Some(errors::InvalidFormatStringLabel { span: fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label } );
+        if let Some((label, span)) = err.secondary_label
+            && is_source_literal
+        {
+            e.label_ = Some(errors::InvalidFormatStringLabel {
+                span: fmt_span.from_inner(InnerSpan::new(span.start, span.end)),
+                label,
+            });
         }
         match err.suggestion {
             parse::Suggestion::None => {}

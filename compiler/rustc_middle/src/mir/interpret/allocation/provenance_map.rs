@@ -315,7 +315,9 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             self.ptrs.insert_presorted(dest_ptrs.into());
         }
         if Prov::OFFSET_IS_ADDR {
-            if let Some(dest_bytes) = copy.dest_bytes && !dest_bytes.is_empty() {
+            if let Some(dest_bytes) = copy.dest_bytes
+                && !dest_bytes.is_empty()
+            {
                 self.bytes.get_or_insert_with(Box::default).insert_presorted(dest_bytes.into());
             }
         } else {

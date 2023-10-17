@@ -169,8 +169,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(ty::Projection, projection_ty) = ty.kind()
-            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. })
-                = self.tcx.opt_rpitit_info(projection_ty.def_id)
+            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
+                self.tcx.opt_rpitit_info(projection_ty.def_id)
             && fn_def_id == self.fn_def_id
         {
             self.tcx.type_of(projection_ty.def_id).instantiate(self.tcx, projection_ty.args)

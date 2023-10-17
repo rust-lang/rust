@@ -826,8 +826,10 @@ impl<'a> NameBindingData<'a> {
                 matches!(import.kind, ImportKind::ExternCrate { .. })
             }
             NameBindingKind::Module(module)
-                if let ModuleKind::Def(DefKind::Mod, def_id, _) = module.kind
-                    => def_id.is_crate_root(),
+                if let ModuleKind::Def(DefKind::Mod, def_id, _) = module.kind =>
+            {
+                def_id.is_crate_root()
+            }
             _ => false,
         }
     }

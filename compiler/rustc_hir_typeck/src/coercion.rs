@@ -1619,8 +1619,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                         if let Some(expression) = expression
-                            && let hir::ExprKind::Loop(loop_blk, ..) = expression.kind {
-                              intravisit::walk_block(& mut visitor, loop_blk);
+                            && let hir::ExprKind::Loop(loop_blk, ..) = expression.kind
+                        {
+                            intravisit::walk_block(&mut visitor, loop_blk);
                         }
                     }
                     ObligationCauseCode::ReturnValue(id) => {
@@ -1661,7 +1662,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     );
                 }
 
-                if visitor.ret_exprs.len() > 0 && let Some(expr) = expression {
+                if visitor.ret_exprs.len() > 0
+                    && let Some(expr) = expression
+                {
                     self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
                 }
 
@@ -1723,7 +1726,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().parent_id(id);
         let parent = fcx.tcx.hir().get(parent_id);
         if let Some(expr) = expression
-            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(&hir::Closure { body, .. }), .. }) = parent
+            && let hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),
+                ..
+            }) = parent
             && !matches!(fcx.tcx.hir().body(body).value.kind, hir::ExprKind::Block(..))
         {
             fcx.suggest_missing_semicolon(&mut err, expr, expected, true);
@@ -1798,12 +1804,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             && let Some(fn_sig) = fcx.body_fn_sig()
             && fn_sig.output().is_ty_var()
         {
-            err.span_note(
-                sp,
-                format!(
-                    "return type inferred to be `{expected}` here"
-                ),
-            );
+            err.span_note(sp, format!("return type inferred to be `{expected}` here"));
         }
 
         err

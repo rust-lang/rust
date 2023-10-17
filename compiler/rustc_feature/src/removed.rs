@@ -1,23 +1,28 @@
 //! List of the removed feature gates.
 
-use super::{to_nonzero, Feature, State};
+use super::{to_nonzero, Feature};
 use rustc_span::symbol::sym;
+
+pub struct RemovedFeature {
+    pub feature: Feature,
+    pub reason: Option<&'static str>,
+}
 
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, None, $reason:expr),
     )+) => {
-        /// Represents unstable features which have since been removed (it was once Active)
-        pub const REMOVED_FEATURES: &[Feature] = &[
-            $(
-                Feature {
-                    state: State::Removed { reason: $reason },
+        /// Formerly unstable features that have now been removed.
+        pub const REMOVED_FEATURES: &[RemovedFeature] = &[
+            $(RemovedFeature {
+                feature: Feature {
                     name: sym::$feature,
                     since: $ver,
                     issue: to_nonzero($issue),
                     edition: None,
-                }
-            ),+
+                },
+                reason: $reason
+            }),+
         ];
     };
 }
@@ -121,7 +126,7 @@ declare_features! (
     (removed, negate_unsigned, "1.0.0", Some(29645), None, None),
     /// Allows `#[no_coverage]` on functions.
     /// The feature was renamed to `coverage_attribute` and the attribute to `#[coverage(on|off)]`
-    (removed, no_coverage, "CURRENT_RUSTC_VERSION", Some(84605), None, Some("renamed to `coverage_attribute`")),
+    (removed, no_coverage, "1.74.0", Some(84605), None, Some("renamed to `coverage_attribute`")),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
     /// Note: this feature was previously recorded in a separate

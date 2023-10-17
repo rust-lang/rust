@@ -5,10 +5,10 @@
 use std::intrinsics;
 
 const _X: &'static u8 = unsafe {
+    //~^ error: dangling pointer in final constant
     let ptr = intrinsics::const_allocate(4, 4);
     intrinsics::const_deallocate(ptr, 4, 4);
     &*ptr
-    //~^ error: evaluation of constant value failed
 };
 
 const _Y: u8 = unsafe {

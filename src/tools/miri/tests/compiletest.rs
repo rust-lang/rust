@@ -181,6 +181,7 @@ regexes! {
     r"0x[0-9a-fA-F]+[0-9a-fA-F]{2,2}" => "$$HEX",
     // erase specific alignments
     "alignment [0-9]+"               => "alignment ALIGN",
+    "[0-9]+ byte alignment but found [0-9]+" => "ALIGN byte alignment but found ALIGN",
     // erase thread caller ids
     r"call [0-9]+"                  => "call ID",
     // erase platform module paths

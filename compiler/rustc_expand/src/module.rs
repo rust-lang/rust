@@ -91,7 +91,9 @@ pub(crate) fn mod_dir_path(
     inline: Inline,
 ) -> (PathBuf, DirOwnership) {
     match inline {
-        Inline::Yes if let Some(file_path) = mod_file_path_from_attr(sess, attrs, &module.dir_path) => {
+        Inline::Yes
+            if let Some(file_path) = mod_file_path_from_attr(sess, attrs, &module.dir_path) =>
+        {
             // For inline modules file path from `#[path]` is actually the directory path
             // for historical reasons, so we don't pop the last segment here.
             (file_path, DirOwnership::Owned { relative: None })

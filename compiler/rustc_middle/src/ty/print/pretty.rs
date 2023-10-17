@@ -319,8 +319,7 @@ pub trait PrettyPrinter<'tcx>:
                 && let DefPathData::TypeNs(_) = key.disambiguated_data.data
                 && Some(*visible_parent) != actual_parent
             {
-                this
-                    .tcx()
+                this.tcx()
                     // FIXME(typed_def_id): Further propagate ModDefId
                     .module_children(ModDefId::new_unchecked(*visible_parent))
                     .iter()
@@ -359,8 +358,14 @@ pub trait PrettyPrinter<'tcx>:
                 // the parent type in the path. For example, `Iterator::Item`.
                 self.write_str(get_local_name(&self, symbol, parent, parent_key).as_str())?;
                 self.write_str("::")?;
-            } else if let DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Trait
-                | DefKind::TyAlias | DefKind::Fn | DefKind::Const | DefKind::Static(_) = kind
+            } else if let DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::Fn
+            | DefKind::Const
+            | DefKind::Static(_) = kind
             {
             } else {
                 // If not covered above, like for example items out of `impl` blocks, fallback.
@@ -1119,8 +1124,10 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         if self.tcx().features().return_type_notation
-            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) = self.tcx().opt_rpitit_info(def_id)
-            && let ty::Alias(_, alias_ty) = self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
+            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
+                self.tcx().opt_rpitit_info(def_id)
+            && let ty::Alias(_, alias_ty) =
+                self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
             && alias_ty.def_id == def_id
         {
             let num_args = self.tcx().generics_of(fn_def_id).count();
@@ -1364,20 +1371,22 @@ pub trait PrettyPrinter<'tcx>:
                             // cause printing to enter an infinite recursion if the anon const is in the self type i.e.
                             // `impl<T: Default> Default for [T; 32 - 1 - 1 - 1] {`
                             // where we would try to print `<[T; /* print `constant#0` again */] as Default>::{constant#0}`
-                            p!(write("{}::{}", self.tcx().crate_name(def.krate), self.tcx().def_path(def).to_string_no_crate_verbose()))
+                            p!(write(
+                                "{}::{}",
+                                self.tcx().crate_name(def.krate),
+                                self.tcx().def_path(def).to_string_no_crate_verbose()
+                            ))
                         }
                     }
                     defkind => bug!("`{:?}` has unexpected defkind {:?}", ct, defkind),
                 }
             }
-            ty::ConstKind::Infer(infer_ct) => {
-                match infer_ct {
-                    ty::InferConst::Var(ct_vid)
-                        if let Some(name) = self.const_infer_name(ct_vid) =>
-                            p!(write("{}", name)),
-                    _ => print_underscore!(),
+            ty::ConstKind::Infer(infer_ct) => match infer_ct {
+                ty::InferConst::Var(ct_vid) if let Some(name) = self.const_infer_name(ct_vid) => {
+                    p!(write("{}", name))
                 }
-            }
+                _ => print_underscore!(),
+            },
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             ty::ConstKind::Value(value) => {
                 return self.pretty_print_const_valtree(value, ct.ty(), print_ty);
@@ -2246,7 +2255,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
-                if let ty::BrNamed(_, name) = br && br.is_named() {
+                if let ty::BrNamed(_, name) = br
+                    && br.is_named()
+                {
                     p!(write("{}", name));
                     return Ok(self);
                 }

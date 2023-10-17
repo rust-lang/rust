@@ -736,7 +736,8 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 // Check whether we should interpret this as a bare trait object.
                 if qself.is_none()
                     && let Some(partial_res) = self.r.partial_res_map.get(&ty.id)
-                    && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
+                    && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) =
+                        partial_res.full_res()
                 {
                     // This path is actually a bare trait object. In case of a bare `Fn`-trait
                     // object with anonymous lifetimes, we need this rib to correctly place the
@@ -2046,7 +2047,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 if lifetime_count != 0 {
                     parameter_info.push(ElisionFnParameter {
                         index,
-                        ident: if let Some(pat) = pat && let PatKind::Ident(_, ident, _) = pat.kind {
+                        ident: if let Some(pat) = pat
+                            && let PatKind::Ident(_, ident, _) = pat.kind
+                        {
                             Some(ident)
                         } else {
                             None
@@ -2140,7 +2143,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         impl<'a> Visitor<'a> for SelfVisitor<'_, '_, '_> {
             fn visit_ty(&mut self, ty: &'a Ty) {
                 trace!("SelfVisitor considering ty={:?}", ty);
-                if let TyKind::Ref(lt, ref mt) = ty.kind && self.is_self_ty(&mt.ty) {
+                if let TyKind::Ref(lt, ref mt) = ty.kind
+                    && self.is_self_ty(&mt.ty)
+                {
                     let lt_id = if let Some(lt) = lt {
                         lt.id
                     } else {
@@ -3602,7 +3607,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         sugg.to_string(),
                         Applicability::MaybeIncorrect,
                     ))
-                } else if res.is_none() && let PathSource::Type | PathSource::Expr(_) = source {
+                } else if res.is_none()
+                    && let PathSource::Type | PathSource::Expr(_) = source
+                {
                     this.suggest_adding_generic_parameter(path, source)
                 } else {
                     None
@@ -4004,7 +4011,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     "unnecessary qualification",
                     lint::BuiltinLintDiagnostics::UnusedQualifications {
                         removal_span: finalize.path_span.until(last_segment.ident.span),
-                    }
+                    },
                 )
             }
         }
@@ -4057,13 +4064,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             (block.could_be_bare_literal, &block.stmts[..])
             && let ExprKind::Type(..) = expr.kind
         {
-            self.diagnostic_metadata.current_block_could_be_bare_struct_literal =
-            Some(block.span);
+            self.diagnostic_metadata.current_block_could_be_bare_struct_literal = Some(block.span);
         }
         // Descend into the block.
         for stmt in &block.stmts {
             if let StmtKind::Item(ref item) = stmt.kind
-                && let ItemKind::MacroDef(..) = item.kind {
+                && let ItemKind::MacroDef(..) = item.kind
+            {
                 num_macro_definition_ribs += 1;
                 let res = self.r.local_def_id(item.id).to_def_id();
                 self.ribs[ValueNS].push(Rib::new(RibKind::MacroDefinition(res)));
@@ -4419,7 +4426,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     && let Some(def_id) = res.opt_def_id()
                     && !def_id.is_local()
                     && self.r.tcx.crate_types().contains(&CrateType::ProcMacro)
-                    && matches!(self.r.tcx.sess.opts.resolve_doc_links, ResolveDocLinks::ExportedMetadata) {
+                    && matches!(
+                        self.r.tcx.sess.opts.resolve_doc_links,
+                        ResolveDocLinks::ExportedMetadata
+                    )
+                {
                     // Encoding foreign def ids in proc macro crate metadata will ICE.
                     return None;
                 }

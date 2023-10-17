@@ -19,6 +19,15 @@ use rustc_target::abi::{self, VariantIdx};
 
 use super::{InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Provenance, Scalar};
 
+/// Describes the constraints placed on offset-projections.
+#[derive(Copy, Clone, Debug)]
+pub enum OffsetMode {
+    /// The offset has to be inbounds, like `ptr::offset`.
+    Inbounds,
+    /// No constraints, just wrap around the edge of the address space.
+    Wrapping,
+}
+
 /// A thing that we can project into, and that has a layout.
 pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     /// Get the layout.
@@ -53,12 +62,12 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
+        mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self>;
 
-    #[inline]
     fn offset<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
@@ -66,10 +75,9 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         assert!(layout.is_sized());
-        self.offset_with_meta(offset, MemPlaceMeta::None, layout, ecx)
+        self.offset_with_meta(offset, OffsetMode::Inbounds, MemPlaceMeta::None, layout, ecx)
     }
 
-    #[inline]
     fn transmute<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         layout: TyAndLayout<'tcx>,
@@ -77,7 +85,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     ) -> InterpResult<'tcx, Self> {
         assert!(self.layout().is_sized() && layout.is_sized());
         assert_eq!(self.layout().size, layout.size);
-        self.offset_with_meta(Size::ZERO, MemPlaceMeta::None, layout, ecx)
+        self.offset_with_meta(Size::ZERO, OffsetMode::Wrapping, MemPlaceMeta::None, layout, ecx)
     }
 
     /// Convert this to an `OpTy`. This might be an irreversible transformation, but is useful for
@@ -104,7 +112,17 @@ impl<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'tcx,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Option<(u64, P)>> {
         let Some(idx) = self.range.next() else { return Ok(None) };
-        Ok(Some((idx, self.base.offset(self.stride * idx, self.field_layout, ecx)?)))
+        // We use `Wrapping` here since the offset has already been checked when the iterator was created.
+        Ok(Some((
+            idx,
+            self.base.offset_with_meta(
+                self.stride * idx,
+                OffsetMode::Wrapping,
+                MemPlaceMeta::None,
+                self.field_layout,
+                ecx,
+            )?,
+        )))
     }
 }
 
@@ -159,7 +177,7 @@ where
             (MemPlaceMeta::None, offset)
         };
 
-        base.offset_with_meta(offset, meta, field_layout, self)
+        base.offset_with_meta(offset, OffsetMode::Inbounds, meta, field_layout, self)
     }
 
     /// Downcasting to an enum variant.
@@ -248,6 +266,10 @@ where
         };
         let len = base.len(self)?;
         let field_layout = base.layout().field(self, 0);
+        // Ensure that all the offsets are in-bounds once, up-front.
+        debug!("project_array_fields: {base:?} {len}");
+        base.offset(len * stride, self.layout_of(self.tcx.types.unit).unwrap(), self)?;
+        // Create the iterator.
         Ok(ArrayIterator { base, range: 0..len, stride, field_layout, _phantom: PhantomData })
     }
 
@@ -305,7 +327,7 @@ where
         };
         let layout = self.layout_of(ty)?;
 
-        base.offset_with_meta(from_offset, meta, layout, self)
+        base.offset_with_meta(from_offset, OffsetMode::Inbounds, meta, layout, self)
     }
 
     /// Applying a general projection

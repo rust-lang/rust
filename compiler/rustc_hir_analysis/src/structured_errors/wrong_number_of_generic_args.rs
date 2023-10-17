@@ -316,12 +316,18 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             }
 
             // Suggest `'_` when in function parameter or elided function return.
-            if let Some(fn_decl) = node.fn_decl() && let Some(ty_id) = ty_id {
+            if let Some(fn_decl) = node.fn_decl()
+                && let Some(ty_id) = ty_id
+            {
                 let in_arg = fn_decl.inputs.iter().any(|t| t.hir_id == ty_id);
-                let in_ret = matches!(fn_decl.output, hir::FnRetTy::Return(ty) if ty.hir_id == ty_id);
+                let in_ret =
+                    matches!(fn_decl.output, hir::FnRetTy::Return(ty) if ty.hir_id == ty_id);
 
                 if in_arg || (in_ret && fn_decl.lifetime_elision_allowed) {
-                    return std::iter::repeat("'_".to_owned()).take(num_params_to_take).collect::<Vec<_>>().join(", ");
+                    return std::iter::repeat("'_".to_owned())
+                        .take(num_params_to_take)
+                        .collect::<Vec<_>>()
+                        .join(", ");
                 }
             }
 
@@ -730,28 +736,27 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         );
 
         if let Some(parent_node) = self.tcx.hir().opt_parent_id(self.path_segment.hir_id)
-        && let Some(parent_node) = self.tcx.hir().find(parent_node)
-        && let hir::Node::Expr(expr) = parent_node {
+            && let Some(parent_node) = self.tcx.hir().find(parent_node)
+            && let hir::Node::Expr(expr) = parent_node
+        {
             match &expr.kind {
-                hir::ExprKind::Path(qpath) => {
-                    self.suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
+                hir::ExprKind::Path(qpath) => self
+                    .suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
                         err,
                         qpath,
                         msg,
                         num_assoc_fn_excess_args,
-                        num_trait_generics_except_self
-                    )
-                },
-                hir::ExprKind::MethodCall(..) => {
-                    self.suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
+                        num_trait_generics_except_self,
+                    ),
+                hir::ExprKind::MethodCall(..) => self
+                    .suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
                         err,
                         trait_,
                         expr,
                         msg,
                         num_assoc_fn_excess_args,
-                        num_trait_generics_except_self
-                    )
-                },
+                        num_trait_generics_except_self,
+                    ),
                 _ => return,
             }
         }
@@ -766,23 +771,25 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         num_trait_generics_except_self: usize,
     ) {
         if let hir::QPath::Resolved(_, path) = qpath
-        && let Some(trait_path_segment) = path.segments.get(0) {
+            && let Some(trait_path_segment) = path.segments.get(0)
+        {
             let num_generic_args_supplied_to_trait = trait_path_segment.args().num_generic_params();
 
-            if num_generic_args_supplied_to_trait + num_assoc_fn_excess_args == num_trait_generics_except_self
+            if num_generic_args_supplied_to_trait + num_assoc_fn_excess_args
+                == num_trait_generics_except_self
             {
                 if let Some(span) = self.gen_args.span_ext()
-                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+                {
                     let sugg = vec![
-                        (self.path_segment.ident.span, format!("{}::{}", snippet, self.path_segment.ident)),
-                        (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned())
+                        (
+                            self.path_segment.ident.span,
+                            format!("{}::{}", snippet, self.path_segment.ident),
+                        ),
+                        (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned()),
                     ];
 
-                    err.multipart_suggestion(
-                        msg,
-                        sugg,
-                        Applicability::MaybeIncorrect
-                    );
+                    err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
                 }
             }
         }

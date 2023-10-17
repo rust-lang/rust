@@ -72,32 +72,30 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                              #traits-as-parameters",
                         );
                     }
-                    (ty::Alias(ty::Projection | ty::Inherent, _), ty::Alias(ty::Projection | ty::Inherent, _)) => {
+                    (
+                        ty::Alias(ty::Projection | ty::Inherent, _),
+                        ty::Alias(ty::Projection | ty::Inherent, _),
+                    ) => {
                         diag.note("an associated type was expected, but a different one was found");
                     }
                     // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
-                    (ty::Param(p), ty::Alias(ty::Projection, proj)) | (ty::Alias(ty::Projection, proj), ty::Param(p))
+                    (ty::Param(p), ty::Alias(ty::Projection, proj))
+                    | (ty::Alias(ty::Projection, proj), ty::Param(p))
                         if !tcx.is_impl_trait_in_trait(proj.def_id) =>
                     {
-                        let p_def_id = tcx
-                            .generics_of(body_owner_def_id)
-                            .type_param(p, tcx)
-                            .def_id;
+                        let p_def_id = tcx.generics_of(body_owner_def_id).type_param(p, tcx).def_id;
                         let p_span = tcx.def_span(p_def_id);
                         if !sp.contains(p_span) {
                             diag.span_label(p_span, "this type parameter");
                         }
                         let hir = tcx.hir();
                         let mut note = true;
-                        let parent = p_def_id
-                            .as_local()
-                            .and_then(|id| {
-                                let local_id = hir.local_def_id_to_hir_id(id);
-                                let generics = tcx.hir().find_parent(local_id)?.generics()?;
-                                Some((id, generics))
-                            });
-                        if let Some((local_id, generics)) = parent
-                        {
+                        let parent = p_def_id.as_local().and_then(|id| {
+                            let local_id = hir.local_def_id_to_hir_id(id);
+                            let generics = tcx.hir().find_parent(local_id)?.generics()?;
+                            Some((id, generics))
+                        });
+                        if let Some((local_id, generics)) = parent {
                             // Synthesize the associated type restriction `Add<Output = Expected>`.
                             // FIXME: extract this logic for use in other diagnostics.
                             let (trait_ref, assoc_args) = proj.trait_ref_and_own_args(tcx);
@@ -112,15 +110,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             let mut matching_span = None;
                             let mut matched_end_of_args = false;
                             for bound in generics.bounds_for_param(local_id) {
-                                let potential_spans = bound
-                                    .bounds
-                                    .iter()
-                                    .find_map(|bound| {
-                                        let bound_trait_path = bound.trait_ref()?.path;
-                                        let def_id = bound_trait_path.res.opt_def_id()?;
-                                        let generic_args = bound_trait_path.segments.iter().last().map(|path| path.args());
-                                        (def_id == trait_ref.def_id).then_some((bound_trait_path.span, generic_args))
-                                    });
+                                let potential_spans = bound.bounds.iter().find_map(|bound| {
+                                    let bound_trait_path = bound.trait_ref()?.path;
+                                    let def_id = bound_trait_path.res.opt_def_id()?;
+                                    let generic_args = bound_trait_path
+                                        .segments
+                                        .iter()
+                                        .last()
+                                        .map(|path| path.args());
+                                    (def_id == trait_ref.def_id)
+                                        .then_some((bound_trait_path.span, generic_args))
+                                });
 
                                 if let Some((end_of_trait, end_of_args)) = potential_spans {
                                     let args_span = end_of_args.and_then(|args| args.span());
@@ -223,7 +223,9 @@ impl<T> Trait<T> for X {
                             diag.span_label(p_span, "this type parameter");
                         }
                     }
-                    (ty::Alias(ty::Projection | ty::Inherent, proj_ty), _) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
+                    (ty::Alias(ty::Projection | ty::Inherent, proj_ty), _)
+                        if !tcx.is_impl_trait_in_trait(proj_ty.def_id) =>
+                    {
                         self.expected_projection(
                             diag,
                             proj_ty,
@@ -232,11 +234,15 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
-                    (_, ty::Alias(ty::Projection | ty::Inherent, proj_ty)) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
-                        let msg = || format!(
-                            "consider constraining the associated type `{}` to `{}`",
-                            values.found, values.expected,
-                        );
+                    (_, ty::Alias(ty::Projection | ty::Inherent, proj_ty))
+                        if !tcx.is_impl_trait_in_trait(proj_ty.def_id) =>
+                    {
+                        let msg = || {
+                            format!(
+                                "consider constraining the associated type `{}` to `{}`",
+                                values.found, values.expected,
+                            )
+                        };
                         if !(self.suggest_constraining_opaque_associated_type(
                             diag,
                             msg,
@@ -256,19 +262,40 @@ impl<T> Trait<T> for X {
                             );
                         }
                     }
-                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias)) if alias.def_id.is_local() && matches!(tcx.def_kind(body_owner_def_id), DefKind::Fn | DefKind::Static(_) | DefKind::Const | DefKind::AssocFn | DefKind::AssocConst) => {
+                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias))
+                        if alias.def_id.is_local()
+                            && matches!(
+                                tcx.def_kind(body_owner_def_id),
+                                DefKind::Fn
+                                    | DefKind::Static(_)
+                                    | DefKind::Const
+                                    | DefKind::AssocFn
+                                    | DefKind::AssocConst
+                            ) =>
+                    {
                         if tcx.is_type_alias_impl_trait(alias.def_id) {
-                            if !tcx.opaque_types_defined_by(body_owner_def_id.expect_local()).contains(&alias.def_id.expect_local()) {
-                                let sp = tcx.def_ident_span(body_owner_def_id).unwrap_or_else(|| tcx.def_span(body_owner_def_id));
-                                diag.span_note(sp, "\
+                            if !tcx
+                                .opaque_types_defined_by(body_owner_def_id.expect_local())
+                                .contains(&alias.def_id.expect_local())
+                            {
+                                let sp = tcx
+                                    .def_ident_span(body_owner_def_id)
+                                    .unwrap_or_else(|| tcx.def_span(body_owner_def_id));
+                                diag.span_note(
+                                    sp,
+                                    "\
                                     this item must have the opaque type in its signature \
-                                    in order to be able to register hidden types");
+                                    in order to be able to register hidden types",
+                                );
                             }
                         }
                     }
-                    (ty::FnPtr(sig), ty::FnDef(def_id, _)) | (ty::FnDef(def_id, _), ty::FnPtr(sig)) => {
+                    (ty::FnPtr(sig), ty::FnDef(def_id, _))
+                    | (ty::FnDef(def_id, _), ty::FnPtr(sig)) => {
                         if tcx.fn_sig(*def_id).skip_binder().unsafety() < sig.unsafety() {
-                            diag.note("unsafe functions cannot be coerced into safe function pointers");
+                            diag.note(
+                                "unsafe functions cannot be coerced into safe function pointers",
+                            );
                         }
                     }
                     _ => {}
@@ -616,7 +643,8 @@ fn foo(&self) -> Self::T { String::new() }
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
                         let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-                        if let hir::Defaultness::Default { has_value: true } = tcx.defaultness(item.id.owner_id)
+                        if let hir::Defaultness::Default { has_value: true } =
+                            tcx.defaultness(item.id.owner_id)
                             && self.infcx.can_eq(param_env, assoc_ty, found)
                         {
                             diag.span_label(

@@ -1,6 +1,6 @@
 use log::trace;
 
-use rustc_target::abi::{Abi, Align, Size};
+use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
     AccessKind, GlobalState, GlobalStateInner, ProtectorKind, RetagFields,
@@ -206,10 +206,9 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Make sure the new permission makes sense as the initial permission of a fresh tag.
         assert!(new_perm.initial_state.is_initial());
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access_align(
+        this.check_ptr_access(
             place.ptr(),
             ptr_size,
-            Align::ONE,
             CheckInAllocMsg::InboundsTest,
         )?;
 

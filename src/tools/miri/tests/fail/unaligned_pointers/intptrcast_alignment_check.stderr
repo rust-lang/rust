@@ -1,8 +1,8 @@
-error: Undefined Behavior: accessing memory with alignment ALIGN, but alignment ALIGN is required
+error: Undefined Behavior: accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
   --> $DIR/intptrcast_alignment_check.rs:LL:CC
    |
 LL |     unsafe { *u16_ptr = 2 };
-   |              ^^^^^^^^^^^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
+   |              ^^^^^^^^^^^^ accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
    |
    = help: this usually indicates that your program performed an invalid operation and caused Undefined Behavior
    = help: but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives

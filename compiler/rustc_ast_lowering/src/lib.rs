@@ -30,6 +30,9 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
+#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -40,7 +43,7 @@
 #[macro_use]
 extern crate tracing;
 
-use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait, TraitFnAsync};
+use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit;
@@ -271,8 +274,6 @@ enum ImplTraitPosition {
     ClosureReturn,
     PointerReturn,
     FnTraitReturn,
-    TraitReturn,
-    ImplReturn,
     GenericDefault,
     ConstTy,
     StaticTy,
@@ -302,8 +303,6 @@ impl std::fmt::Display for ImplTraitPosition {
             ImplTraitPosition::ClosureReturn => "closure return types",
             ImplTraitPosition::PointerReturn => "`fn` pointer return types",
             ImplTraitPosition::FnTraitReturn => "`Fn` trait return types",
-            ImplTraitPosition::TraitReturn => "trait method return types",
-            ImplTraitPosition::ImplReturn => "`impl` method return types",
             ImplTraitPosition::GenericDefault => "generic parameter defaults",
             ImplTraitPosition::ConstTy => "const types",
             ImplTraitPosition::StaticTy => "static types",
@@ -334,20 +333,9 @@ impl FnDeclKind {
         matches!(self, FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait)
     }
 
-    fn return_impl_trait_allowed(&self, tcx: TyCtxt<'_>) -> bool {
+    fn return_impl_trait_allowed(&self) -> bool {
         match self {
-            FnDeclKind::Fn | FnDeclKind::Inherent => true,
-            FnDeclKind::Impl if tcx.features().return_position_impl_trait_in_trait => true,
-            FnDeclKind::Trait if tcx.features().return_position_impl_trait_in_trait => true,
-            _ => false,
-        }
-    }
-
-    fn async_fn_allowed(&self, tcx: TyCtxt<'_>) -> bool {
-        match self {
-            FnDeclKind::Fn | FnDeclKind::Inherent => true,
-            FnDeclKind::Impl if tcx.features().async_fn_in_trait => true,
-            FnDeclKind::Trait if tcx.features().async_fn_in_trait => true,
+            FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => true,
             _ => false,
         }
     }
@@ -1271,7 +1259,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &PolyTraitRef {
                         bound_generic_params: ThinVec::new(),
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
-                        span: t.span
+                        span: t.span,
                     },
                     itctx,
                     ast::Const::No,
@@ -1805,53 +1793,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_ty_direct(&param.ty, &itctx)
         }));
 
-        let output = if let Some((ret_id, span)) = make_ret_async {
-            if !kind.async_fn_allowed(self.tcx) {
-                match kind {
-                    FnDeclKind::Trait | FnDeclKind::Impl => {
-                        self.tcx
-                            .sess
-                            .create_feature_err(
-                                TraitFnAsync { fn_span, span },
-                                sym::async_fn_in_trait,
-                            )
-                            .emit();
-                    }
-                    _ => {
-                        self.tcx.sess.emit_err(TraitFnAsync { fn_span, span });
-                    }
-                }
-            }
-
+        let output = if let Some((ret_id, _span)) = make_ret_async {
             let fn_def_id = self.local_def_id(fn_node_id);
             self.lower_async_fn_ret_ty(&decl.output, fn_def_id, ret_id, kind, fn_span)
         } else {
             match &decl.output {
                 FnRetTy::Ty(ty) => {
-                    let context = if kind.return_impl_trait_allowed(self.tcx) {
+                    let context = if kind.return_impl_trait_allowed() {
                         let fn_def_id = self.local_def_id(fn_node_id);
                         ImplTraitContext::ReturnPositionOpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                             fn_kind: kind,
                         }
                     } else {
-                        let position = match kind {
-                            FnDeclKind::Fn | FnDeclKind::Inherent => {
-                                unreachable!("fn should allow in-band lifetimes")
+                        ImplTraitContext::Disallowed(match kind {
+                            FnDeclKind::Fn
+                            | FnDeclKind::Inherent
+                            | FnDeclKind::Trait
+                            | FnDeclKind::Impl => {
+                                unreachable!("fn should allow return-position impl trait in traits")
                             }
                             FnDeclKind::ExternFn => ImplTraitPosition::ExternFnReturn,
                             FnDeclKind::Closure => ImplTraitPosition::ClosureReturn,
                             FnDeclKind::Pointer => ImplTraitPosition::PointerReturn,
-                            FnDeclKind::Trait => ImplTraitPosition::TraitReturn,
-                            FnDeclKind::Impl => ImplTraitPosition::ImplReturn,
-                        };
-                        match kind {
-                            FnDeclKind::Trait | FnDeclKind::Impl => ImplTraitContext::FeatureGated(
-                                position,
-                                sym::return_position_impl_trait_in_trait,
-                            ),
-                            _ => ImplTraitContext::Disallowed(position),
-                        }
+                        })
                     };
                     hir::FnRetTy::Return(self.lower_ty(ty, &context))
                 }
@@ -1924,18 +1889,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let future_bound = this.lower_async_fn_output_type_to_future_bound(
                     output,
                     span,
-                    if let FnDeclKind::Trait = fn_kind
-                        && !this.tcx.features().return_position_impl_trait_in_trait
-                    {
-                        ImplTraitContext::FeatureGated(
-                            ImplTraitPosition::TraitReturn,
-                            sym::return_position_impl_trait_in_trait,
-                        )
-                    } else {
-                        ImplTraitContext::ReturnPositionOpaqueTy {
-                            origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                            fn_kind,
-                        }
+                    ImplTraitContext::ReturnPositionOpaqueTy {
+                        origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                        fn_kind,
                     },
                 );
                 arena_vec![this; future_bound]

@@ -893,13 +893,15 @@ impl<'a> Parser<'a> {
             // to recover from errors, not make more).
             let path = if self.may_recover() {
                 let (span, message, sugg, path, applicability) = match &ty.kind {
-                    TyKind::Ptr(..) | TyKind::Ref(..) if let TyKind::Path(_, path) = &ty.peel_refs().kind => {
+                    TyKind::Ptr(..) | TyKind::Ref(..)
+                        if let TyKind::Path(_, path) = &ty.peel_refs().kind =>
+                    {
                         (
                             ty.span.until(path.span),
                             "consider removing the indirection",
                             "",
                             path,
-                            Applicability::MaybeIncorrect
+                            Applicability::MaybeIncorrect,
                         )
                     }
                     TyKind::ImplTrait(_, bounds)
@@ -910,10 +912,10 @@ impl<'a> Parser<'a> {
                             "use the trait bounds directly",
                             "",
                             &tr.trait_ref.path,
-                            Applicability::MachineApplicable
+                            Applicability::MachineApplicable,
                         )
                     }
-                    _ => return Err(err)
+                    _ => return Err(err),
                 };
 
                 err.span_suggestion_verbose(span, message, sugg, applicability);
@@ -1027,7 +1029,8 @@ impl<'a> Parser<'a> {
                 args.into_iter()
                     .filter_map(|arg| {
                         if let ast::AngleBracketedArg::Arg(generic_arg) = arg
-                            && let ast::GenericArg::Lifetime(lifetime) = generic_arg {
+                            && let ast::GenericArg::Lifetime(lifetime) = generic_arg
+                        {
                             Some(lifetime)
                         } else {
                             None

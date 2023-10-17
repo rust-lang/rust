@@ -13,7 +13,7 @@ use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::{
-    ExpectedKind, InterpError, InvalidMetaKind, PointerKind, ValidationErrorInfo,
+    ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, ValidationErrorInfo,
     ValidationErrorKind, ValidationErrorKind::*,
 };
 use rustc_middle::ty;
@@ -355,7 +355,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         value: &OpTy<'tcx, M::Provenance>,
         ptr_kind: PointerKind,
     ) -> InterpResult<'tcx> {
-        // Not using `deref_pointer` since we do the dereferenceable check ourselves below.
+        // Not using `deref_pointer` since we want to use our `read_immediate` wrapper.
         let place = self.ecx.ref_to_mplace(&self.read_immediate(value, ptr_kind.into())?)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
@@ -378,18 +378,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
         // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
         try_validation!(
-            self.ecx.check_ptr_access_align(
+            self.ecx.check_ptr_access(
                 place.ptr(),
                 size,
-                align,
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            Ub(AlignmentCheckFailed { required, has }) => UnalignedPtr {
-                ptr_kind,
-                required_bytes: required.bytes(),
-                found_bytes: has.bytes()
-            },
             Ub(DanglingIntPointer(0, _)) => NullPtr { ptr_kind },
             Ub(DanglingIntPointer(i, _)) => DanglingPtrNoProvenance {
                 ptr_kind,
@@ -403,6 +397,18 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // dangling pointers), but it can happen in Miri.
             Ub(PointerUseAfterFree(..)) => DanglingPtrUseAfterFree {
                 ptr_kind,
+            },
+        );
+        try_validation!(
+            self.ecx.check_ptr_align(
+                place.ptr(),
+                align,
+            ),
+            self.path,
+            Ub(AlignmentCheckFailed(Misalignment { required, has }, _msg)) => UnalignedPtr {
+                ptr_kind,
+                required_bytes: required.bytes(),
+                found_bytes: has.bytes()
             },
         );
         // Do not allow pointers to uninhabited types.
@@ -645,7 +651,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
     #[inline(always)]
     fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
-        &self.ecx
+        self.ecx
     }
 
     fn read_discriminant(
@@ -781,14 +787,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // Optimization: we just check the entire range at once.
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
-                // In run-time mode, we accept pointers in here. This is actually more
-                // permissive than a per-element check would be, e.g., we accept
-                // a &[u8] that contains a pointer even though bytewise checking would
-                // reject it. However, that's good: We don't inherently want
-                // to reject those pointers, we just do not have the machinery to
-                // talk about parts of a pointer.
-                // We also accept uninit, for consistency with the slow path.
-                let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size, mplace.align)?.expect("we already excluded size 0");
+                // No need for an alignment check here, this is not an actual memory access.
+                let alloc = self.ecx.get_ptr_alloc(mplace.ptr(), size)?.expect("we already excluded size 0");
 
                 match alloc.get_bytes_strip_provenance() {
                     // In the happy case, we needn't check anything else.

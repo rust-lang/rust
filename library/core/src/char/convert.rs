@@ -115,7 +115,7 @@ impl TryFrom<char> for u8 {
 /// failing if the code point is greater than U+FFFF.
 ///
 /// This corresponds to the UCS-2 encoding, as specified in ISO/IEC 10646:2003.
-#[stable(feature = "u16_from_char", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "u16_from_char", since = "1.74.0")]
 impl TryFrom<char> for u16 {
     type Error = TryFromCharError;
 

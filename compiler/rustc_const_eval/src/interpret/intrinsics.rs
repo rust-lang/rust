@@ -13,7 +13,7 @@ use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Align, Primitive, Size};
+use rustc_target::abi::{Abi, Primitive, Size};
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
@@ -349,10 +349,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Check that the range between them is dereferenceable ("in-bounds or one past the
                 // end of the same allocation"). This is like the check in ptr_offset_inbounds.
                 let min_ptr = if dist >= 0 { b } else { a };
-                self.check_ptr_access_align(
+                self.check_ptr_access(
                     min_ptr,
                     Size::from_bytes(dist.unsigned_abs()),
-                    Align::ONE,
                     CheckInAllocMsg::OffsetFromTest,
                 )?;
 
@@ -571,16 +570,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn ptr_offset_inbounds(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
-        pointee_ty: Ty<'tcx>,
-        offset_count: i64,
+        offset_bytes: i64,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        // We cannot overflow i64 as a type's size must be <= isize::MAX.
-        let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
-        // The computed offset, in bytes, must not overflow an isize.
-        // `checked_mul` enforces a too small bound, but no actual allocation can be big enough for
-        // the difference to be noticeable.
-        let offset_bytes =
-            offset_count.checked_mul(pointee_size).ok_or(err_ub!(PointerArithOverflow))?;
         // The offset being in bounds cannot rely on "wrapping around" the address space.
         // So, first rule out overflows in the pointer arithmetic.
         let offset_ptr = ptr.signed_offset(offset_bytes, self)?;
@@ -589,10 +580,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // pointers to be properly aligned (unlike a read/write operation).
         let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
         // This call handles checking for integer/null pointers.
-        self.check_ptr_access_align(
+        self.check_ptr_access(
             min_ptr,
             Size::from_bytes(offset_bytes.unsigned_abs()),
-            Align::ONE,
             CheckInAllocMsg::PointerArithmeticTest,
         )?;
         Ok(offset_ptr)
@@ -621,7 +611,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let src = self.read_pointer(src)?;
         let dst = self.read_pointer(dst)?;
 
-        self.mem_copy(src, align, dst, align, size, nonoverlapping)
+        self.check_ptr_align(src, align)?;
+        self.check_ptr_align(dst, align)?;
+
+        self.mem_copy(src, dst, size, nonoverlapping)
     }
 
     pub(crate) fn write_bytes_intrinsic(
@@ -677,7 +670,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                          size|
          -> InterpResult<'tcx, &[u8]> {
             let ptr = this.read_pointer(op)?;
-            let Some(alloc_ref) = self.get_ptr_alloc(ptr, size, Align::ONE)? else {
+            let Some(alloc_ref) = self.get_ptr_alloc(ptr, size)? else {
                 // zero-sized access
                 return Ok(&[]);
             };

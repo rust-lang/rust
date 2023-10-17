@@ -115,7 +115,7 @@ impl<'a> Parser<'a> {
                 Some(item) => NtItem(item),
                 None => {
                     return Err(UnexpectedNonterminal::Item(self.token.span)
-                               .into_diagnostic(&self.sess.span_diagnostic));
+                        .into_diagnostic(&self.sess.span_diagnostic));
                 }
             },
             NonterminalKind::Block => {
@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
                 Some(s) => NtStmt(P(s)),
                 None => {
                     return Err(UnexpectedNonterminal::Statement(self.token.span)
-                               .into_diagnostic(&self.sess.span_diagnostic));
+                        .into_diagnostic(&self.sess.span_diagnostic));
                 }
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
@@ -146,19 +146,15 @@ impl<'a> Parser<'a> {
             NonterminalKind::Expr => NtExpr(self.parse_expr_force_collect()?),
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes
-                NtLiteral(
-                    self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
-                )
+                NtLiteral(self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?)
             }
 
-            NonterminalKind::Ty => NtTy(
-                self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?,
-            ),
+            NonterminalKind::Ty => {
+                NtTy(self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?)
+            }
 
             // this could be handled like a token, since it is one
-            NonterminalKind::Ident
-                if let Some((ident, is_raw)) = get_macro_ident(&self.token) =>
-            {
+            NonterminalKind::Ident if let Some((ident, is_raw)) = get_macro_ident(&self.token) => {
                 self.bump();
                 NtIdent(ident, is_raw)
             }
@@ -166,15 +162,17 @@ impl<'a> Parser<'a> {
                 return Err(UnexpectedNonterminal::Ident {
                     span: self.token.span,
                     token: self.token.clone(),
-                }.into_diagnostic(&self.sess.span_diagnostic));
+                }
+                .into_diagnostic(&self.sess.span_diagnostic));
             }
-            NonterminalKind::Path => NtPath(
-                P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
-            ),
+            NonterminalKind::Path => {
+                NtPath(P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?))
+            }
             NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(true)?)),
-            NonterminalKind::Vis => NtVis(
-                P(self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?),
-            ),
+            NonterminalKind::Vis => {
+                NtVis(P(self
+                    .collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?))
+            }
             NonterminalKind::Lifetime => {
                 if self.check_lifetime() {
                     NtLifetime(self.expect_lifetime().ident)
@@ -182,7 +180,8 @@ impl<'a> Parser<'a> {
                     return Err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,
                         token: self.token.clone(),
-                    }.into_diagnostic(&self.sess.span_diagnostic));
+                    }
+                    .into_diagnostic(&self.sess.span_diagnostic));
                 }
             }
         };

@@ -432,9 +432,11 @@ pub(crate) fn check_generic_arg_count(
     let infer_lifetimes =
         (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();
 
-    if gen_pos != GenericArgPosition::Type && let Some(b) = gen_args.bindings.first() {
-             prohibit_assoc_ty_binding(tcx, b.span, None);
-        }
+    if gen_pos != GenericArgPosition::Type
+        && let Some(b) = gen_args.bindings.first()
+    {
+        prohibit_assoc_ty_binding(tcx, b.span, None);
+    }
 
     let explicit_late_bound =
         prohibit_explicit_late_bound_lifetimes(tcx, gen_params, gen_args, gen_pos);

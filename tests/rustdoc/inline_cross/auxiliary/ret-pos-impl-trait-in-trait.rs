@@ -1,5 +1,3 @@
-#![feature(return_position_impl_trait_in_trait)]
-
 pub trait Trait {
     fn create() -> impl Iterator<Item = u64> {
         std::iter::empty()

@@ -4,7 +4,6 @@
 //[next] compile-flags: -Ztrait-solver=next
 // edition:2021
 
-#![feature(async_fn_in_trait)]
 #![feature(return_type_notation)]
 //[next]~^ WARN the feature `return_type_notation` is incomplete
 

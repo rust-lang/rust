@@ -11,7 +11,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
-    if !tcx.features().enabled(sym::lint_reasons) {
+    if !tcx.features().active(sym::lint_reasons) {
         return;
     }
 

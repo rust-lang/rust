@@ -151,7 +151,7 @@ LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-   = note: accessing memory with alignment 1, but alignment 4 is required
+   = note: accessing memory based on pointer with alignment 1, but alignment 4 is required
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL

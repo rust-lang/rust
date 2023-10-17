@@ -396,11 +396,14 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                 continue;
             }
 
-            if let Some(found_strategy) = tcx.required_panic_strategy(cnum) && desired_strategy != found_strategy {
+            if let Some(found_strategy) = tcx.required_panic_strategy(cnum)
+                && desired_strategy != found_strategy
+            {
                 sess.emit_err(RequiredPanicStrategy {
                     crate_name: tcx.crate_name(cnum),
                     found_strategy,
-                    desired_strategy});
+                    desired_strategy,
+                });
             }
 
             let found_drop_strategy = tcx.panic_in_drop_strategy(cnum);

@@ -17,13 +17,13 @@ trait Trait {}
 
 const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
-//~^ ERROR evaluation of constant value failed
-//~| does not point to a vtable
+//~^^ ERROR it is undefined behavior to use this value
+//~| expected a vtable pointer
 
 const INVALID_VTABLE_SIZE: &dyn Trait =
     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
-//~^ ERROR evaluation of constant value failed
-//~| does not point to a vtable
+//~^^ ERROR it is undefined behavior to use this value
+//~| expected a vtable pointer
 
 #[repr(transparent)]
 struct W<T>(T);

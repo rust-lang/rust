@@ -53,6 +53,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('build', 'build', [CompletionResultType]::ParameterValue, 'Compile either the compiler or libraries')
@@ -104,6 +105,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -142,15 +144,16 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
         }
         'x.py;clippy' {
-            [CompletionResult]::new('-A', 'A', [CompletionResultType]::ParameterName, 'clippy lints to allow')
-            [CompletionResult]::new('-D', 'D', [CompletionResultType]::ParameterName, 'clippy lints to deny')
-            [CompletionResult]::new('-W', 'W', [CompletionResultType]::ParameterName, 'clippy lints to warn on')
-            [CompletionResult]::new('-F', 'F', [CompletionResultType]::ParameterName, 'clippy lints to forbid')
+            [CompletionResult]::new('-A', 'A ', [CompletionResultType]::ParameterName, 'clippy lints to allow')
+            [CompletionResult]::new('-D', 'D ', [CompletionResultType]::ParameterName, 'clippy lints to deny')
+            [CompletionResult]::new('-W', 'W ', [CompletionResultType]::ParameterName, 'clippy lints to warn on')
+            [CompletionResult]::new('-F', 'F ', [CompletionResultType]::ParameterName, 'clippy lints to forbid')
             [CompletionResult]::new('--config', 'config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', 'build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `config.toml`')
             [CompletionResult]::new('--build', 'build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
@@ -184,6 +187,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -221,6 +225,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -259,6 +264,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -298,6 +304,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -348,6 +355,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -386,6 +394,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help')
             break
@@ -424,6 +433,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help')
             break
@@ -461,6 +471,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help')
             break
@@ -498,6 +509,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help')
             break
@@ -536,6 +548,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -573,6 +586,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -611,6 +625,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--dry-run', 'dry-run', [CompletionResultType]::ParameterName, 'dry run; don''t build anything')
             [CompletionResult]::new('--json-output', 'json-output', [CompletionResultType]::ParameterName, 'use message-format=json')
             [CompletionResult]::new('--llvm-profile-generate', 'llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
+            [CompletionResult]::new('--enable-bolt-settings', 'enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break

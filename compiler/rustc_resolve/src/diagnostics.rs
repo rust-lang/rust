@@ -187,7 +187,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else if let Some((span, msg, sugg, appl)) = suggestion {
                 err.span_suggestion_verbose(span, msg, sugg, appl);
                 err.emit();
-            } else if let [segment] = path.as_slice() && is_call {
+            } else if let [segment] = path.as_slice()
+                && is_call
+            {
                 err.stash(segment.ident.span, rustc_errors::StashKey::CallIntoMethod);
             } else {
                 err.emit();
@@ -1690,7 +1692,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             non_exhaustive = Some(attr.span);
         } else if let Some(span) = ctor_fields_span {
             err.span_label(span, "a constructor is private if any of the fields is private");
-            if let Res::Def(_, d) = res && let Some(fields) = self.field_visibility_spans.get(&d) {
+            if let Res::Def(_, d) = res
+                && let Some(fields) = self.field_visibility_spans.get(&d)
+            {
                 err.multipart_suggestion_verbose(
                     format!(
                         "consider making the field{} publicly accessible",
@@ -1739,7 +1743,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             // Final step in the import chain, point out if the ADT is `non_exhaustive`
             // which is probably why this privacy violation occurred.
-            if next_binding.is_none() && let Some(span) = non_exhaustive {
+            if next_binding.is_none()
+                && let Some(span) = non_exhaustive
+            {
                 note_span.push_span_label(
                     span,
                     "cannot be constructed because it is `#[non_exhaustive]`",
@@ -1846,7 +1852,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         parent_scope,
                         None,
                         ignore_binding,
-                    ).ok()
+                    )
+                    .ok()
                 } else if let Some(ribs) = ribs
                     && let Some(TypeNS | ValueNS) = opt_ns
                 {
@@ -1870,7 +1877,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         None,
                         false,
                         ignore_binding,
-                    ).ok()
+                    )
+                    .ok()
                 };
                 if let Some(binding) = binding {
                     let mut found = |what| {
@@ -2232,7 +2240,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 // Add the import to the start, with a `{` if required.
                 let start_point = source_map.start_point(after_crate_name);
-                if is_definitely_crate && let Ok(start_snippet) = source_map.span_to_snippet(start_point) {
+                if is_definitely_crate
+                    && let Ok(start_snippet) = source_map.span_to_snippet(start_point)
+                {
                     corrections.push((
                         start_point,
                         if has_nested {
@@ -2247,7 +2257,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     // Add a `};` to the end if nested, matching the `{` added at the start.
                     if !has_nested {
-                        corrections.push((source_map.end_point(after_crate_name), "};".to_string()));
+                        corrections
+                            .push((source_map.end_point(after_crate_name), "};".to_string()));
                     }
                 } else {
                     // If the root import is module-relative, add the import separately
@@ -2586,7 +2597,13 @@ fn show_candidates(
             for candidate in &mut accessible_path_strings {
                 // produce an additional newline to separate the new use statement
                 // from the directly following item.
-                let additional_newline = if let FoundUse::No = found_use && let DiagnosticMode::Normal = mode { "\n" } else { "" };
+                let additional_newline = if let FoundUse::No = found_use
+                    && let DiagnosticMode::Normal = mode
+                {
+                    "\n"
+                } else {
+                    ""
+                };
                 candidate.0 =
                     format!("{add_use}{}{append}{trailing}{additional_newline}", &candidate.0);
             }

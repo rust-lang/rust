@@ -1,14 +1,14 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/dealloc_intrinsic_dangling.rs:10:5
+error: encountered dangling pointer in final constant
+  --> $DIR/dealloc_intrinsic_dangling.rs:7:1
    |
-LL |     &*ptr
-   |     ^^^^^ dereferencing pointer failed: alloc2 has been freed, so this pointer is dangling
+LL | const _X: &'static u8 = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/dealloc_intrinsic_dangling.rs:18:5
    |
 LL |     *reference
-   |     ^^^^^^^^^^ dereferencing pointer failed: alloc4 has been freed, so this pointer is dangling
+   |     ^^^^^^^^^^ memory access failed: alloc4 has been freed, so this pointer is dangling
 
 error: aborting due to 2 previous errors
 

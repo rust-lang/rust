@@ -180,8 +180,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             flags.push((sym::cause, Some("MainFunctionType".to_string())));
         }
 
-        // Add all types without trimmed paths.
-        ty::print::with_no_trimmed_paths!({
+        // Add all types without trimmed paths or visible paths, ensuring they end up with
+        // their "canonical" def path.
+        ty::print::with_no_trimmed_paths!(ty::print::with_no_visible_paths!({
             let generics = self.tcx.generics_of(def_id);
             let self_ty = trait_ref.self_ty();
             // This is also included through the generics list as `Self`,
@@ -296,7 +297,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             {
                 flags.push((sym::_Self, Some("&[{integral}]".to_owned())));
             }
-        });
+        }));
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
             command.evaluate(self.tcx, trait_ref, &flags)
@@ -368,7 +369,9 @@ impl<'tcx> OnUnimplementedDirective {
                 .meta_item()
                 .ok_or_else(|| tcx.sess.emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |cfg| {
-                if let Some(value) = cfg.value && let Err(guar) = parse_value(value) {
+                if let Some(value) = cfg.value
+                    && let Err(guar) = parse_value(value)
+                {
                     errored = Some(guar);
                 }
                 true
@@ -569,18 +572,22 @@ impl<'tcx> OnUnimplementedDirective {
             options.iter().filter_map(|(k, v)| v.clone().map(|v| (*k, v))).collect();
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
-            if let Some(ref condition) = command.condition && !attr::eval_condition(
-                condition,
-                &tcx.sess.parse_sess,
-                Some(tcx.features()),
-                &mut |cfg| {
-                    let value = cfg.value.map(|v| {
-                        OnUnimplementedFormatString(v).format(tcx, trait_ref, &options_map)
-                    });
+            if let Some(ref condition) = command.condition
+                && !attr::eval_condition(
+                    condition,
+                    &tcx.sess.parse_sess,
+                    Some(tcx.features()),
+                    &mut |cfg| {
+                        let value = cfg.value.map(|v| {
+                            // `with_no_visible_paths` is also used when generating the options,
+                            // so we need to match it here.
+                            ty::print::with_no_visible_paths!(OnUnimplementedFormatString(v).format(tcx, trait_ref, &options_map))
+                        });
 
-                    options.contains(&(cfg.name, value))
-                },
-            ) {
+                        options.contains(&(cfg.name, value))
+                    },
+                )
+            {
                 debug!("evaluate: skipping {:?} due to condition", command);
                 continue;
             }

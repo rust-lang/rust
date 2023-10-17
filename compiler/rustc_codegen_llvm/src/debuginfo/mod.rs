@@ -537,7 +537,9 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
                     // Only "class" methods are generally understood by LLVM,
                     // so avoid methods on other types (e.g., `<*mut T>::null`).
-                    if let ty::Adt(def, ..) = impl_self_ty.kind() && !def.is_box() {
+                    if let ty::Adt(def, ..) = impl_self_ty.kind()
+                        && !def.is_box()
+                    {
                         // Again, only create type information if full debuginfo is enabled
                         if cx.sess().opts.debuginfo == DebugInfo::Full && !impl_self_ty.has_param()
                         {

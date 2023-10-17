@@ -151,12 +151,14 @@ fn misformed_fluent() {
             primary: box TranslateError::One { kind: TranslateErrorKind::PrimaryBundleMissing, .. },
             fallback: box TranslateError::One { kind: TranslateErrorKind::Fluent { errs }, .. },
         } = &err
-            && let [FluentError::ResolverError(ResolverError::Reference(
-                ReferenceKind::Message { id, .. }
-                    | ReferenceKind::Variable { id, .. },
-            ))] = &**errs
+            && let [
+                FluentError::ResolverError(ResolverError::Reference(
+                    ReferenceKind::Message { id, .. } | ReferenceKind::Variable { id, .. },
+                )),
+            ] = &**errs
             && id == "name"
-        {} else {
+        {
+        } else {
             panic!("{err:#?}")
         };
         assert_eq!(
@@ -176,12 +178,14 @@ fn misformed_fluent() {
             primary: box TranslateError::One { kind: TranslateErrorKind::PrimaryBundleMissing, .. },
             fallback: box TranslateError::One { kind: TranslateErrorKind::Fluent { errs }, .. },
         } = &err
-            && let [FluentError::ResolverError(ResolverError::Reference(
-                ReferenceKind::Message { id, .. }
-                    | ReferenceKind::Variable { id, .. },
-            ))] = &**errs
+            && let [
+                FluentError::ResolverError(ResolverError::Reference(
+                    ReferenceKind::Message { id, .. } | ReferenceKind::Variable { id, .. },
+                )),
+            ] = &**errs
             && id == "oops"
-        {} else {
+        {
+        } else {
             panic!("{err:#?}")
         };
         assert_eq!(

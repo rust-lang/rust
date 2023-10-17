@@ -351,7 +351,10 @@ fn reverse_map_prefix(mapping: &FilePathMapping, p: &str) -> Option<String> {
 fn path_prefix_remapping() {
     // Relative to relative
     {
-        let mapping = &FilePathMapping::new(vec![(path("abc/def"), path("foo"))]);
+        let mapping = &FilePathMapping::new(
+            vec![(path("abc/def"), path("foo"))],
+            FileNameDisplayPreference::Remapped,
+        );
 
         assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), path_str("foo/src/main.rs"));
         assert_eq!(map_path_prefix(mapping, "abc/def"), path_str("foo"));
@@ -359,7 +362,10 @@ fn path_prefix_remapping() {
 
     // Relative to absolute
     {
-        let mapping = &FilePathMapping::new(vec![(path("abc/def"), path("/foo"))]);
+        let mapping = &FilePathMapping::new(
+            vec![(path("abc/def"), path("/foo"))],
+            FileNameDisplayPreference::Remapped,
+        );
 
         assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), path_str("/foo/src/main.rs"));
         assert_eq!(map_path_prefix(mapping, "abc/def"), path_str("/foo"));
@@ -367,7 +373,10 @@ fn path_prefix_remapping() {
 
     // Absolute to relative
     {
-        let mapping = &FilePathMapping::new(vec![(path("/abc/def"), path("foo"))]);
+        let mapping = &FilePathMapping::new(
+            vec![(path("/abc/def"), path("foo"))],
+            FileNameDisplayPreference::Remapped,
+        );
 
         assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), path_str("foo/src/main.rs"));
         assert_eq!(map_path_prefix(mapping, "/abc/def"), path_str("foo"));
@@ -375,7 +384,10 @@ fn path_prefix_remapping() {
 
     // Absolute to absolute
     {
-        let mapping = &FilePathMapping::new(vec![(path("/abc/def"), path("/foo"))]);
+        let mapping = &FilePathMapping::new(
+            vec![(path("/abc/def"), path("/foo"))],
+            FileNameDisplayPreference::Remapped,
+        );
 
         assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), path_str("/foo/src/main.rs"));
         assert_eq!(map_path_prefix(mapping, "/abc/def"), path_str("/foo"));
@@ -385,8 +397,10 @@ fn path_prefix_remapping() {
 #[test]
 fn path_prefix_remapping_expand_to_absolute() {
     // "virtual" working directory is relative path
-    let mapping =
-        &FilePathMapping::new(vec![(path("/foo"), path("FOO")), (path("/bar"), path("BAR"))]);
+    let mapping = &FilePathMapping::new(
+        vec![(path("/foo"), path("FOO")), (path("/bar"), path("BAR"))],
+        FileNameDisplayPreference::Remapped,
+    );
     let working_directory = path("/foo");
     let working_directory = RealFileName::Remapped {
         local_path: Some(working_directory.clone()),
@@ -487,8 +501,10 @@ fn path_prefix_remapping_expand_to_absolute() {
 fn path_prefix_remapping_reverse() {
     // Ignores options without alphanumeric chars.
     {
-        let mapping =
-            &FilePathMapping::new(vec![(path("abc"), path("/")), (path("def"), path("."))]);
+        let mapping = &FilePathMapping::new(
+            vec![(path("abc"), path("/")), (path("def"), path("."))],
+            FileNameDisplayPreference::Remapped,
+        );
 
         assert_eq!(reverse_map_prefix(mapping, "/hello.rs"), None);
         assert_eq!(reverse_map_prefix(mapping, "./hello.rs"), None);
@@ -496,20 +512,20 @@ fn path_prefix_remapping_reverse() {
 
     // Returns `None` if multiple options match.
     {
-        let mapping = &FilePathMapping::new(vec![
-            (path("abc"), path("/redacted")),
-            (path("def"), path("/redacted")),
-        ]);
+        let mapping = &FilePathMapping::new(
+            vec![(path("abc"), path("/redacted")), (path("def"), path("/redacted"))],
+            FileNameDisplayPreference::Remapped,
+        );
 
         assert_eq!(reverse_map_prefix(mapping, "/redacted/hello.rs"), None);
     }
 
     // Distinct reverse mappings.
     {
-        let mapping = &FilePathMapping::new(vec![
-            (path("abc"), path("/redacted")),
-            (path("def/ghi"), path("/fake/dir")),
-        ]);
+        let mapping = &FilePathMapping::new(
+            vec![(path("abc"), path("/redacted")), (path("def/ghi"), path("/fake/dir"))],
+            FileNameDisplayPreference::Remapped,
+        );
 
         assert_eq!(
             reverse_map_prefix(mapping, "/redacted/path/hello.rs"),

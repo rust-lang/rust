@@ -405,7 +405,9 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
         }
     }
 
-    if let Some(s) = since && s.as_str() == VERSION_PLACEHOLDER {
+    if let Some(s) = since
+        && s.as_str() == VERSION_PLACEHOLDER
+    {
         since = Some(rust_version_symbol());
     }
 
@@ -694,13 +696,16 @@ pub fn eval_condition(
                     !eval_condition(mis[0].meta_item().unwrap(), sess, features, eval)
                 }
                 sym::target => {
-                    if let Some(features) = features && !features.cfg_target_compact {
+                    if let Some(features) = features
+                        && !features.cfg_target_compact
+                    {
                         feature_err(
                             sess,
                             sym::cfg_target_compact,
                             cfg.span,
-                            "compact `cfg(target(..))` is experimental and subject to change"
-                        ).emit();
+                            "compact `cfg(target(..))` is experimental and subject to change",
+                        )
+                        .emit();
                     }
 
                     mis.iter().fold(true, |res, mi| {

@@ -475,6 +475,24 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
     }
 }
 
+/// BufRead is implemented for `VecDeque<u8>` by reading bytes from the front of the `VecDeque`.
+#[stable(feature = "vecdeque_buf_read", since = "CURRENT_RUSTC_VERSION")]
+impl<A: Allocator> BufRead for VecDeque<u8, A> {
+    /// Returns the contents of the "front" slice as returned by
+    /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
+    /// discontiguous, multiple calls to `fill_buf` will be needed to read the entire content.
+    #[inline]
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        let (front, _) = self.as_slices();
+        Ok(front)
+    }
+
+    #[inline]
+    fn consume(&mut self, amt: usize) {
+        self.drain(..amt);
+    }
+}
+
 /// Write is implemented for `VecDeque<u8>` by appending to the `VecDeque`, growing it as needed.
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
 impl<A: Allocator> Write for VecDeque<u8, A> {

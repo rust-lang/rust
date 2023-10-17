@@ -2,8 +2,6 @@
 // build-fail
 //~^^ ERROR cycle detected when computing layout of
 
-#![feature(async_fn_in_trait)]
-
 fn main() {
     let _ = async {
         A.first().await.second().await;

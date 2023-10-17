@@ -5,7 +5,6 @@
 // We were not normalizing opaques with escaping bound vars during codegen,
 // leading to later errors during debuginfo computation.
 
-#![feature(async_fn_in_trait)]
 
 #[derive(Clone, Copy)]
 pub struct SharedState {}

@@ -239,17 +239,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 if let OperandValueKind::Immediate(out_scalar) = cast_kind
                     && in_scalar.size(self.cx) == out_scalar.size(self.cx)
-                        {
-                            let operand_bty = bx.backend_type(operand.layout);
-                            let cast_bty = bx.backend_type(cast);
-                            Some(OperandValue::Immediate(self.transmute_immediate(
-                                bx,
-                                imm,
-                                in_scalar,
-                                operand_bty,
-                                out_scalar,
-                                cast_bty,
-                            )))
+                {
+                    let operand_bty = bx.backend_type(operand.layout);
+                    let cast_bty = bx.backend_type(cast);
+                    Some(OperandValue::Immediate(self.transmute_immediate(
+                        bx,
+                        imm,
+                        in_scalar,
+                        operand_bty,
+                        out_scalar,
+                        cast_bty,
+                    )))
                 } else {
                     None
                 }

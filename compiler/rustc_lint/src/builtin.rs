@@ -121,16 +121,14 @@ impl EarlyLintPass for WhileTrue {
         {
             let condition_span = e.span.with_hi(cond.span.hi());
             let replace = format!(
-                            "{}loop",
-                            label.map_or_else(String::new, |label| format!(
-                                "{}: ",
-                                label.ident,
-                            ))
-                        );
-            cx.emit_spanned_lint(WHILE_TRUE, condition_span, BuiltinWhileTrue {
-                suggestion: condition_span,
-                replace,
-            });
+                "{}loop",
+                label.map_or_else(String::new, |label| format!("{}: ", label.ident,))
+            );
+            cx.emit_spanned_lint(
+                WHILE_TRUE,
+                condition_span,
+                BuiltinWhileTrue { suggestion: condition_span, replace },
+            );
         }
     }
 }
@@ -164,7 +162,9 @@ declare_lint_pass!(BoxPointers => [BOX_POINTERS]);
 impl BoxPointers {
     fn check_heap_type(&self, cx: &LateContext<'_>, span: Span, ty: Ty<'_>) {
         for leaf in ty.walk() {
-            if let GenericArgKind::Type(leaf_ty) = leaf.unpack() && leaf_ty.is_box() {
+            if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
+                && leaf_ty.is_box()
+            {
                 cx.emit_spanned_lint(BOX_POINTERS, span, BuiltinBoxPointers { ty });
             }
         }
@@ -681,7 +681,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // We shouldn't recommend implementing `Copy` on stateful things,
         // such as iterators.
         if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
-            && cx.tcx
+            && cx
+                .tcx
                 .infer_ctxt()
                 .build()
                 .type_implements_trait(iter_trait, [ty], param_env)
@@ -1298,10 +1299,14 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
             // Now, check if the function has the `#[track_caller]` attribute
             && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
         {
-            cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
-                label: span,
-                parse_sess: &cx.tcx.sess.parse_sess,
-            });
+            cx.emit_spanned_lint(
+                UNGATED_ASYNC_FN_TRACK_CALLER,
+                attr.span,
+                BuiltinUngatedAsyncFnTrackCaller {
+                    label: span,
+                    parse_sess: &cx.tcx.sess.parse_sess,
+                },
+            );
         }
     }
 }
@@ -2244,7 +2249,7 @@ declare_lint! {
 }
 
 declare_lint_pass!(
-    /// Check for used feature gates in `INCOMPLETE_FEATURES` in `rustc_feature/src/active.rs`.
+    /// Check for used feature gates in `INCOMPLETE_FEATURES` in `rustc_feature/src/unstable.rs`.
     IncompleteInternalFeatures => [INCOMPLETE_FEATURES, INTERNAL_FEATURES]
 );
 

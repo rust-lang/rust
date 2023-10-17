@@ -174,7 +174,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             }
                         }
                         hir::ExprKind::AssignOp(..)
-                            if let Some(a) = self.typeck_results.adjustments_mut().get_mut(lhs.hir_id) =>
+                            if let Some(a) =
+                                self.typeck_results.adjustments_mut().get_mut(lhs.hir_id) =>
                         {
                             a.pop();
                         }
@@ -247,7 +248,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         // Since this is "after" the other adjustment to be
                         // discarded, we do an extra `pop()`
                         if let Some(Adjustment {
-                            kind: Adjust::Pointer(PointerCoercion::Unsize), ..
+                            kind: Adjust::Pointer(PointerCoercion::Unsize),
+                            ..
                         }) = a.pop()
                         {
                             // So the borrow discard actually happens here
@@ -568,10 +570,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             // Here we only detect impl trait definition conflicts when they
             // are equal modulo regions.
-            if let Some(last_opaque_ty) = self
-                .typeck_results
-                .concrete_opaque_types
-                .insert(opaque_type_key, hidden_type)
+            if let Some(last_opaque_ty) =
+                self.typeck_results.concrete_opaque_types.insert(opaque_type_key, hidden_type)
                 && last_opaque_ty.ty != hidden_type.ty
             {
                 assert!(!self.fcx.next_trait_solver());

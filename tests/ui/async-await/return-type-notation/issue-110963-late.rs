@@ -3,7 +3,6 @@
 
 #![feature(return_type_notation)]
 //~^ WARN the feature `return_type_notation` is incomplete
-#![feature(async_fn_in_trait)]
 
 trait HealthCheck {
     async fn check(&mut self) -> bool;

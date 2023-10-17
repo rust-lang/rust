@@ -1,6 +1,5 @@
 // edition:2021
 
-#![feature(async_fn_in_trait)]
 
 trait MyTrait {
     async fn foo<'a>(&self);

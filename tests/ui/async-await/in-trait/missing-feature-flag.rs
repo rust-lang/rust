@@ -1,6 +1,5 @@
 // edition:2018
 
-#![feature(async_fn_in_trait)]
 #![feature(min_specialization)]
 
 struct MyStruct;

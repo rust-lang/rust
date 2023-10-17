@@ -717,7 +717,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ... except when we try to 'break rust;'.
                 // ICE this expression in particular (see #43162).
                 if let ExprKind::Path(QPath::Resolved(_, path)) = e.kind {
-                    if let [segment] = path.segments && segment.ident.name == sym::rust {
+                    if let [segment] = path.segments
+                        && segment.ident.name == sym::rust
+                    {
                         fatally_break_rust(self.tcx);
                     }
                 }
@@ -826,7 +828,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let ExprKind::Block(body, _) = return_expr.kind
             && let Some(last_expr) = body.expr
         {
-                span = last_expr.span;
+            span = last_expr.span;
         }
         ret_coercion.borrow_mut().coerce(
             self,
@@ -841,7 +843,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Point any obligations that were registered due to opaque type
             // inference at the return expression.
             self.select_obligations_where_possible(|errors| {
-                self.point_at_return_for_opaque_ty_error(errors, span, return_expr_ty, return_expr.span);
+                self.point_at_return_for_opaque_ty_error(
+                    errors,
+                    span,
+                    return_expr_ty,
+                    return_expr.span,
+                );
             });
         }
     }
@@ -1402,7 +1409,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
             && let Some(span) = self.tcx.hir().opt_span(hir_id)
         {
-            match self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
+            match self
+                .tcx
+                .sess
+                .diagnostic()
+                .steal_diagnostic(span, StashKey::UnderscoreForArrayLengths)
+            {
                 Some(mut err) => {
                     err.span_suggestion(
                         span,
@@ -1412,7 +1424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     err.emit();
                 }
-                None => ()
+                None => (),
             }
         }
     }
@@ -1931,11 +1943,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
     ) {
         // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
-        if let ExprKind::Struct(
-                QPath::LangItem(LangItem::Range, ..),
-                [range_start, range_end],
-                _,
-            ) = last_expr_field.expr.kind
+        if let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [range_start, range_end], _) =
+            last_expr_field.expr.kind
             && let variant_field =
                 variant.fields.iter().find(|field| field.ident(self.tcx) == last_expr_field.ident)
             && let range_def_id = self.tcx.lang_items().range_struct()
@@ -1970,13 +1979,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .sess
                 .source_map()
                 .span_extend_while(range_start.span, |c| c.is_whitespace())
-                .unwrap_or(range_start.span).shrink_to_hi().to(range_end.span);
+                .unwrap_or(range_start.span)
+                .shrink_to_hi()
+                .to(range_end.span);
 
-            err.subdiagnostic(TypeMismatchFruTypo {
-                expr_span: range_start.span,
-                fru_span,
-                expr,
-            });
+            err.subdiagnostic(TypeMismatchFruTypo { expr_span: range_start.span, fru_span, expr });
         }
     }
 
@@ -2293,7 +2300,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some('e') | Some('E') => {
                         chars.next();
                         if let Some(c) = chars.peek()
-                            && !c.is_numeric() && *c != '-' && *c != '+'
+                            && !c.is_numeric()
+                            && *c != '-'
+                            && *c != '+'
                         {
                             return false;
                         }
@@ -2421,7 +2430,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.suggest_fn_call(&mut err, base, base_ty, |output_ty| {
-            if let ty::Adt(def, _) = output_ty.kind() && !def.is_enum() {
+            if let ty::Adt(def, _) = output_ty.kind()
+                && !def.is_enum()
+            {
                 def.non_enum_variant().fields.iter().any(|field| {
                     field.ident(self.tcx) == ident
                         && field.vis.is_accessible_from(expr.hir_id.owner.def_id, self.tcx)
@@ -2842,9 +2853,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // fixed expression:
                         if let ExprKind::Lit(ref lit) = idx.kind
                             && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
-                            && i < types.len().try_into().expect("expected tuple index to be < usize length")
+                            && i < types
+                                .len()
+                                .try_into()
+                                .expect("expected tuple index to be < usize length")
                         {
-
                             err.span_suggestion(
                                 brackets_span,
                                 "to access tuple elements, use",
@@ -2853,7 +2866,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                             needs_note = false;
                         } else if let ExprKind::Path(..) = idx.peel_borrows().kind {
-                            err.span_label(idx.span, "cannot access tuple elements at a variable index");
+                            err.span_label(
+                                idx.span,
+                                "cannot access tuple elements at a variable index",
+                            );
                         }
                         if needs_note {
                             err.help(

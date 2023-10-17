@@ -1220,7 +1220,12 @@ pub struct AliasTy<'tcx> {
 impl<'tcx> AliasTy<'tcx> {
     pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
         match tcx.def_kind(self.def_id) {
-            DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
+            DefKind::AssocTy
+                if let DefKind::Impl { of_trait: false } =
+                    tcx.def_kind(tcx.parent(self.def_id)) =>
+            {
+                ty::Inherent
+            }
             DefKind::AssocTy => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
             DefKind::TyAlias => ty::Weak,
@@ -2848,7 +2853,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returning true means the type is known to be pure and `Copy+Clone`.
     /// Returning `false` means nothing -- could be `Copy`, might not be.
     ///
-    /// This is mostly useful for optimizations, as there are the types
+    /// This is mostly useful for optimizations, as these are the types
     /// on which we can replace cloning with dereferencing.
     pub fn is_trivially_pure_clone_copy(self) -> bool {
         match self.kind() {

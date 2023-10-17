@@ -1,8 +1,8 @@
-error: Undefined Behavior: dereferencing pointer failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
+error: Undefined Behavior: memory access failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
   --> $DIR/simd-gather.rs:LL:CC
    |
 LL |         let _result = Simd::gather_select_unchecked(&vec, Mask::splat(true), idxs, Simd::splat(0));
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

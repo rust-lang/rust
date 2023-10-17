@@ -868,10 +868,10 @@ fn assoc_method(
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
         let indent_str = "    ";
-        write!(w, "{}", render_attributes_in_pre(meth, indent_str, tcx));
+        write!(w, "{}", render_attributes_in_pre(meth, indent_str, cx));
         (4, indent_str, Ending::NoNewline)
     } else {
-        render_attributes_in_code(w, meth, tcx);
+        render_attributes_in_code(w, meth, cx);
         (0, "", Ending::Newline)
     };
     w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
@@ -1047,13 +1047,13 @@ fn render_assoc_item(
 
 // When an attribute is rendered inside a `<pre>` tag, it is formatted using
 // a whitespace prefix and newline.
-fn render_attributes_in_pre<'a, 'b: 'a>(
+fn render_attributes_in_pre<'a, 'tcx: 'a>(
     it: &'a clean::Item,
     prefix: &'a str,
-    tcx: TyCtxt<'b>,
-) -> impl fmt::Display + Captures<'a> + Captures<'b> {
+    cx: &'a Context<'tcx>,
+) -> impl fmt::Display + Captures<'a> + Captures<'tcx> {
     crate::html::format::display_fn(move |f| {
-        for a in it.attributes(tcx, false) {
+        for a in it.attributes(cx.tcx(), cx.cache(), false) {
             writeln!(f, "{prefix}{a}")?;
         }
         Ok(())
@@ -1062,8 +1062,8 @@ fn render_attributes_in_pre<'a, 'b: 'a>(
 
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
-fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, tcx: TyCtxt<'_>) {
-    for attr in it.attributes(tcx, false) {
+fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
+    for attr in it.attributes(cx.tcx(), cx.cache(), false) {
         write!(w, "<div class=\"code-attribute\">{attr}</div>").unwrap();
     }
 }

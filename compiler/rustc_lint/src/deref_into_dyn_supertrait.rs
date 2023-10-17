@@ -75,14 +75,16 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             && supertraits(cx.tcx, t_principal.with_self_ty(cx.tcx, cx.tcx.types.trait_object_dummy_self))
                 .any(|sup| sup.map_bound(|x| ty::ExistentialTraitRef::erase_self_ty(cx.tcx, x)) == target_principal)
         {
-            let label = impl_.items.iter().find_map(|i| (i.ident.name == sym::Target).then_some(i.span)).map(|label| SupertraitAsDerefTargetLabel {
-                label,
-            });
-            cx.emit_spanned_lint(DEREF_INTO_DYN_SUPERTRAIT, cx.tcx.def_span(item.owner_id.def_id), SupertraitAsDerefTarget {
-                t,
-                target_principal,
-                label,
-            });
+            let label = impl_
+                .items
+                .iter()
+                .find_map(|i| (i.ident.name == sym::Target).then_some(i.span))
+                .map(|label| SupertraitAsDerefTargetLabel { label });
+            cx.emit_spanned_lint(
+                DEREF_INTO_DYN_SUPERTRAIT,
+                cx.tcx.def_span(item.owner_id.def_id),
+                SupertraitAsDerefTarget { t, target_principal, label },
+            );
         }
     }
 }

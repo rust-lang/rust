@@ -1,14 +1,24 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-incorrect-vtable.rs:19:14
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-incorrect-vtable.rs:18:1
    |
-LL |     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using allocN as vtable pointer but it does not point to a vtable
+LL | const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered allocN, but expected a vtable pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾───────allocN────────╼ ╾───────allocN────────╼ │ ╾──────╼╾──────╼
+           }
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-incorrect-vtable.rs:24:14
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-incorrect-vtable.rs:23:1
    |
-LL |     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using allocN as vtable pointer but it does not point to a vtable
+LL | const INVALID_VTABLE_SIZE: &dyn Trait =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered allocN, but expected a vtable pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾───────allocN───────╼ ╾───────allocN───────╼ │ ╾──────╼╾──────╼
+           }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-incorrect-vtable.rs:33:1

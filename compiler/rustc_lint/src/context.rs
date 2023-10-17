@@ -1357,7 +1357,7 @@ impl<'tcx> LateContext<'tcx> {
             && let Some(init) = match parent_node {
                 hir::Node::Expr(expr) => Some(expr),
                 hir::Node::Local(hir::Local { init, .. }) => *init,
-                _ => None
+                _ => None,
             }
         {
             expr = init.peel_blocks();
@@ -1406,9 +1406,9 @@ impl<'tcx> LateContext<'tcx> {
                     hir::ItemKind::Const(.., body_id) | hir::ItemKind::Static(.., body_id) => {
                         Some(self.tcx.hir().body(body_id).value)
                     }
-                    _ => None
-                }
-                _ => None
+                    _ => None,
+                },
+                _ => None,
             }
         {
             expr = init.peel_blocks();

@@ -1,44 +1,38 @@
-error[E0080]: could not evaluate static initializer
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-   = note: dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
-   |
-note: inside `std::slice::from_raw_parts::<'_, u32>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `S0`
-  --> $DIR/forbidden_slices.rs:19:34
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/forbidden_slices.rs:18:1
    |
 LL | pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0080]: could not evaluate static initializer
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a null reference
    |
-   = note: dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
-   |
-note: inside `std::slice::from_raw_parts::<'_, ()>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `S1`
-  --> $DIR/forbidden_slices.rs:20:33
-   |
-LL | pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0080]: could not evaluate static initializer
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-   = note: dereferencing pointer failed: allocN has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
-   |
-note: inside `std::slice::from_raw_parts::<'_, u32>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `S2`
-  --> $DIR/forbidden_slices.rs:23:34
-   |
-LL | pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/forbidden_slices.rs:26:1
+  --> $DIR/forbidden_slices.rs:20:1
+   |
+LL | pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a null reference
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/forbidden_slices.rs:24:1
+   |
+LL | pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
+   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/forbidden_slices.rs:28:1
    |
 LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) };
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
@@ -49,7 +43,7 @@ LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/forbidden_slices.rs:28:1
+  --> $DIR/forbidden_slices.rs:30:1
    |
 LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size_of::<&u32>()) };
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
@@ -62,7 +56,7 @@ LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/forbidden_slices.rs:30:1
+  --> $DIR/forbidden_slices.rs:32:1
    |
 LL | pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) };
    | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered 0x11, but expected a boolean
@@ -73,7 +67,7 @@ LL | pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4)
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/forbidden_slices.rs:33:1
+  --> $DIR/forbidden_slices.rs:35:1
    |
 LL | pub static S7: &[u16] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[1]: encountered uninitialized memory, but expected an integer
@@ -83,18 +77,16 @@ LL | pub static S7: &[u16] = unsafe {
                HEX_DUMP
            }
 
-error[E0080]: could not evaluate static initializer
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/forbidden_slices.rs:43:1
    |
-   = note: dereferencing pointer failed: allocN has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
+LL | pub static S8: &[u64] = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
    |
-note: inside `std::slice::from_raw_parts::<'_, u64>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `S8`
-  --> $DIR/forbidden_slices.rs:44:5
-   |
-LL |     from_raw_parts(ptr, 1)
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
 
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -106,7 +98,7 @@ note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
 note: inside `R0`
-  --> $DIR/forbidden_slices.rs:47:34
+  --> $DIR/forbidden_slices.rs:50:34
    |
 LL | pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +113,7 @@ note: inside `ptr::const_ptr::<impl *const ()>::sub_ptr`
 note: inside `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
 note: inside `R1`
-  --> $DIR/forbidden_slices.rs:48:33
+  --> $DIR/forbidden_slices.rs:51:33
    |
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -135,13 +127,13 @@ error[E0080]: could not evaluate static initializer
 note: inside `ptr::const_ptr::<impl *const u32>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `R2`
-  --> $DIR/forbidden_slices.rs:51:25
+  --> $DIR/forbidden_slices.rs:54:25
    |
 LL |     from_ptr_range(ptr..ptr.add(2))
    |                         ^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/forbidden_slices.rs:53:1
+  --> $DIR/forbidden_slices.rs:56:1
    |
 LL | pub static R4: &[u8] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
@@ -152,7 +144,7 @@ LL | pub static R4: &[u8] = unsafe {
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/forbidden_slices.rs:58:1
+  --> $DIR/forbidden_slices.rs:61:1
    |
 LL | pub static R5: &[u8] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
@@ -165,7 +157,7 @@ LL | pub static R5: &[u8] = unsafe {
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/forbidden_slices.rs:63:1
+  --> $DIR/forbidden_slices.rs:66:1
    |
 LL | pub static R6: &[bool] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered 0x11, but expected a boolean
@@ -175,20 +167,16 @@ LL | pub static R6: &[bool] = unsafe {
                HEX_DUMP
            }
 
-error[E0080]: could not evaluate static initializer
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/forbidden_slices.rs:71:1
    |
-   = note: accessing memory with alignment 1, but alignment 2 is required
+LL | pub static R7: &[u16] = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
    |
-note: inside `std::slice::from_raw_parts::<'_, u16>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `from_ptr_range::<'_, u16>`
-  --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `R7`
-  --> $DIR/forbidden_slices.rs:70:5
-   |
-LL |     from_ptr_range(ptr..ptr.add(4))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
 
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -198,7 +186,7 @@ error[E0080]: could not evaluate static initializer
 note: inside `ptr::const_ptr::<impl *const u64>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `R8`
-  --> $DIR/forbidden_slices.rs:74:25
+  --> $DIR/forbidden_slices.rs:78:25
    |
 LL |     from_ptr_range(ptr..ptr.add(1))
    |                         ^^^^^^^^^^
@@ -213,7 +201,7 @@ note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
 note: inside `R9`
-  --> $DIR/forbidden_slices.rs:79:34
+  --> $DIR/forbidden_slices.rs:83:34
    |
 LL | pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).add(1)) };
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -228,7 +216,7 @@ note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
 note: inside `R10`
-  --> $DIR/forbidden_slices.rs:80:35
+  --> $DIR/forbidden_slices.rs:84:35
    |
 LL | pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^

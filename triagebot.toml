@@ -23,6 +23,18 @@ allow-unauthenticated = [
     "needs-triage",
 ]
 
+[review-submitted] 
+# This label is added when a "request changes" review is submitted. 
+reviewed_label = "S-waiting-on-author" 
+# These labels are removed when a "request changes" review is submitted. 
+review_labels = ["S-waiting-on-review"]
+
+[review-requested]
+# Those labels are removed when PR author requests a review from an assignee
+remove_labels = ["S-waiting-on-author"]
+# Those labels are added when PR author requests a review from an assignee
+add_labels = ["S-waiting-on-review"]
+
 [glacier]
 
 [ping.icebreakers-llvm]
@@ -402,6 +414,10 @@ message_on_add = """\
 Issue #{number} "{title}" has been added.
 """
 
+[no-merges]
+exclude_titles = ["Rollup of", "subtree update"]
+labels = ["has-merge-commits", "S-waiting-on-author"]
+
 [github-releases]
 format = "rustc"
 project-name = "Rust"
@@ -540,7 +556,7 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_smir"]
 message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval", "@spastorino"]
+cc = ["@oli-obk", "@celinval", "@spastorino", "@ouz-a"]
 
 [mentions."compiler/stable_mir"]
 message = "This PR changes Stable MIR"
@@ -722,7 +738,7 @@ style-team = [
 "/compiler/rustc_traits" =                   ["compiler", "types"]
 "/compiler/rustc_type_ir" =                  ["compiler", "types"]
 "/library/alloc" =                           ["libs"]
-"/library/core" =                            ["libs", "@scottmcm"]
+"/library/core" =                            ["libs"]
 "/library/panic_abort" =                     ["libs"]
 "/library/panic_unwind" =                    ["libs"]
 "/library/proc_macro" =                      ["@petrochenkov"]

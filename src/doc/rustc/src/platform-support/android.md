@@ -45,3 +45,19 @@ The riscv64-linux-android target is supported as a Tier 3 target.
 
 A list of all supported targets can be found
 [here](../platform-support.html)
+
+## Architecture Notes
+
+### riscv64-linux-android
+
+Currently the `riscv64-linux-android` target requires the following architecture features/extensions:
+
+* `a` (atomics)
+* `d` (double-precision floating-point)
+* `c` (compressed instruction set)
+* `f` (single-precision floating-point)
+* `m` (multiplication and division)
+* `v` (vector)
+* `Zba` (address calculation instructions)
+* `Zbb` (base instructions)
+* `Zbs` (single-bit instructions)

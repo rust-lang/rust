@@ -558,8 +558,9 @@ impl<'a> Parser<'a> {
         }
 
         if case == Case::Insensitive
-        && let Some((ident, /* is_raw */ false)) = self.token.ident()
-        && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
+            && let Some((ident, /* is_raw */ false)) = self.token.ident()
+            && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
+        {
             true
         } else {
             false
@@ -587,12 +588,10 @@ impl<'a> Parser<'a> {
         }
 
         if case == Case::Insensitive
-        && let Some((ident, /* is_raw */ false)) = self.token.ident()
-        && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
-            self.sess.emit_err(errors::KwBadCase {
-                span: ident.span,
-                kw: kw.as_str()
-            });
+            && let Some((ident, /* is_raw */ false)) = self.token.ident()
+            && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
+        {
+            self.sess.emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });
             self.bump();
             return true;
         }

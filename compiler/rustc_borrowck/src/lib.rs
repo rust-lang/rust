@@ -1,5 +1,8 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+#![allow(internal_features)]
+#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
@@ -11,7 +14,6 @@
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
-#![allow(internal_features)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -173,7 +175,9 @@ fn do_mir_borrowck<'tcx>(
     for var_debug_info in &input_body.var_debug_info {
         if let VarDebugInfoContents::Place(place) = var_debug_info.value {
             if let Some(local) = place.as_local() {
-                if let Some(prev_name) = local_names[local] && var_debug_info.name != prev_name {
+                if let Some(prev_name) = local_names[local]
+                    && var_debug_info.name != prev_name
+                {
                     span_bug!(
                         var_debug_info.source_info.span,
                         "local {:?} has many names (`{}` vs `{}`)",

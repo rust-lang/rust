@@ -130,6 +130,8 @@ impl Layout {
     }
 
     /// The minimum byte alignment for a memory block of this layout.
+    ///
+    /// The returned alignment is guaranteed to be a power of two.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[must_use = "this returns the minimum alignment, \

@@ -4534,7 +4534,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![feature(return_position_impl_trait_in_trait)]
     /// #![deny(refining_impl_trait)]
     ///
     /// use std::fmt::Display;
