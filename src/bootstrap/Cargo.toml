@@ -9,27 +9,27 @@ default-run = "bootstrap"
 build-metrics = ["sysinfo"]
 
 [lib]
-path = "lib.rs"
+path = "src/lib.rs"
 doctest = false
 
 [[bin]]
 name = "bootstrap"
-path = "bin/main.rs"
+path = "src/bin/main.rs"
 test = false
 
 [[bin]]
 name = "rustc"
-path = "bin/rustc.rs"
+path = "src/bin/rustc.rs"
 test = false
 
 [[bin]]
 name = "rustdoc"
-path = "bin/rustdoc.rs"
+path = "src/bin/rustdoc.rs"
 test = false
 
 [[bin]]
 name = "sccache-plus-cl"
-path = "bin/sccache-plus-cl.rs"
+path = "src/bin/sccache-plus-cl.rs"
 test = false
 
 [dependencies]
