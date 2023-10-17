@@ -36,7 +36,7 @@ pub mod process;
 pub mod stdio;
 pub use self::itron::thread;
 pub mod memchr;
-pub mod thread_local_dtor;
+pub mod thread_local_guard;
 pub mod thread_local_key;
 pub use self::itron::thread_parking;
 pub mod time;

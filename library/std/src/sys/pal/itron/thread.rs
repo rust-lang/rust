@@ -12,9 +12,9 @@ use crate::{
     hint, io,
     mem::ManuallyDrop,
     num::NonZero,
-    ptr::NonNull,
+    ptr::{self, NonNull},
     sync::atomic::{AtomicUsize, Ordering},
-    sys::thread_local_dtor::run_dtors,
+    sys::common::thread_local::run_dtors,
     time::Duration,
 };
 
@@ -116,7 +116,7 @@ impl Thread {
 
             // Run TLS destructors now because they are not
             // called automatically for terminated tasks.
-            unsafe { run_dtors() };
+            unsafe { run_dtors(ptr::null_mut()) };
 
             let old_lifecycle = inner
                 .lifecycle
