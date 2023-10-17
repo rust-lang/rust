@@ -40,7 +40,7 @@ impl Impl {
     }
 
     pub(crate) fn is_notable(&self) -> bool {
-        self.impl_item.attrs.has_doc_flag(sym::notable_trait)
+        self.impl_item.attrs.has_doc_flag(sym::notable)
     }
 
     pub(crate) fn trait_did(&self) -> Option<DefId> {

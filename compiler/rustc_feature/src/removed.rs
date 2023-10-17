@@ -81,7 +81,7 @@ declare_features! (
     (removed, doc_primitive, "1.56.0", Some(88070), None,
      Some("merged into `#![feature(rustdoc_internals)]`")),
     /// Allows `#[doc(spotlight)]`.
-    /// The attribute was renamed to `#[doc(notable_trait)]`
+    /// The attribute was renamed to `#[doc(notable)]`
     /// and the feature to `doc_notable_trait`.
     (removed, doc_spotlight, "1.22.0", Some(45040), None,
      Some("renamed to `doc_notable_trait`")),

@@ -5,7 +5,7 @@
 pub mod generic_return {
     pub struct Wrapper<T>(T);
 
-    #[doc(notable_trait)]
+    #[doc(notable)]
     pub trait NotableTrait {}
 
     impl NotableTrait for Wrapper<u8> {}
@@ -22,7 +22,7 @@ pub mod generic_return {
 pub mod generic_impl {
     pub struct Wrapper<T>(T);
 
-    #[doc(notable_trait)]
+    #[doc(notable)]
     pub trait NotableTrait {}
 
     impl<T> NotableTrait for Wrapper<T> {}

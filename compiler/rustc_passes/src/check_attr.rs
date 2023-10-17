@@ -1157,7 +1157,7 @@ impl CheckAttrVisitor<'_> {
                         | sym::masked
                         | sym::no_default_passes
                         | sym::no_inline
-                        | sym::notable_trait
+                        | sym::notable
                         | sym::passes
                         | sym::plugins
                         | sym::fake_variadic => {}
@@ -1188,6 +1188,13 @@ impl CheckAttrVisitor<'_> {
                                     hir_id,
                                     i_meta.span,
                                     errors::DocTestUnknownSpotlight { path, span: i_meta.span },
+                                );
+                            } else if i_meta.has_name(sym::notable_trait) {
+                                self.tcx.emit_spanned_lint(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    i_meta.span,
+                                    errors::DocTestUnknownNotableTrait { path, span: i_meta.span },
                                 );
                             } else if i_meta.has_name(sym::include)
                                 && let Some(value) = i_meta.value_str()

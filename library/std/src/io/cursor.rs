@@ -520,7 +520,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Write for Cursor<&mut [u8]> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -544,7 +544,7 @@ impl Write for Cursor<&mut [u8]> {
 }
 
 #[stable(feature = "cursor_mut_vec", since = "1.25.0")]
-#[doc(notable_trait)]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl<A> Write for Cursor<&mut Vec<u8, A>>
 where
     A: Allocator,
@@ -569,7 +569,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl<A> Write for Cursor<Vec<u8, A>>
 where
     A: Allocator,
@@ -594,7 +594,7 @@ where
 }
 
 #[stable(feature = "cursor_box_slice", since = "1.5.0")]
-#[doc(notable_trait)]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl<A> Write for Cursor<Box<[u8], A>>
 where
     A: Allocator,
@@ -621,7 +621,7 @@ where
 }
 
 #[stable(feature = "cursor_array", since = "1.61.0")]
-#[doc(notable_trait)]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl<const N: usize> Write for Cursor<[u8; N]> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {

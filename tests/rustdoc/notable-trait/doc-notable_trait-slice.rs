@@ -1,6 +1,6 @@
 #![feature(doc_notable_trait)]
 
-#[doc(notable_trait)]
+#[doc(notable)]
 pub trait SomeTrait {}
 
 pub struct SomeStruct;

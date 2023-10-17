@@ -231,7 +231,7 @@ declare_features! (
     (unstable, auto_traits, "1.50.0", Some(13231), None),
     /// Allows using `box` in patterns (RFC 469).
     (unstable, box_patterns, "1.0.0", Some(29641), None),
-    /// Allows `#[doc(notable_trait)]`.
+    /// Allows `#[doc(notable)]`.
     /// Renamed from `doc_spotlight`.
     (unstable, doc_notable_trait, "1.52.0", Some(45040), None),
     /// Allows using the `may_dangle` attribute (RFC 1327).

@@ -204,7 +204,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     cfg => doc_cfg
                     cfg_hide => doc_cfg_hide
                     masked => doc_masked
-                    notable_trait => doc_notable_trait
+                    notable => doc_notable_trait
                 );
 
                 if nested_meta.has_name(sym::keyword) {

@@ -2,7 +2,7 @@
 
 The tracking issue for this feature is: [#45040]
 
-The `doc_notable_trait` feature allows the use of the `#[doc(notable_trait)]`
+The `doc_notable_trait` feature allows the use of the `#[doc(notable)]`
 attribute, which will display the trait in a "Notable traits" dialog for
 functions returning types that implement the trait. For example, this attribute
 is applied to the `Iterator`, `Future`, `io::Read`, and `io::Write` traits in
@@ -13,7 +13,7 @@ You can do this on your own traits like so:
 ```
 #![feature(doc_notable_trait)]
 
-#[doc(notable_trait)]
+#[doc(notable)]
 pub trait MyTrait {}
 
 pub struct MyStruct;

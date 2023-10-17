@@ -1097,6 +1097,7 @@ symbols! {
         noreturn,
         nostack,
         not,
+        notable,
         notable_trait,
         note,
         object_safe_for_dispatch,

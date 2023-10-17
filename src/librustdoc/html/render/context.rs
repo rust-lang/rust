@@ -75,7 +75,7 @@ pub(crate) struct Context<'tcx> {
     /// `true`.
     pub(crate) include_sources: bool,
     /// Collection of all types with notable traits referenced in the current module.
-    pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
+    pub(crate) types_with_notables: FxHashSet<clean::Type>,
     /// Field used during rendering, to know if we're inside an inlined item.
     pub(crate) is_inside_inlined_module: bool,
 }
@@ -613,7 +613,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             deref_id_map: Default::default(),
             shared: Rc::new(scx),
             include_sources,
-            types_with_notable_traits: FxHashSet::default(),
+            types_with_notables: FxHashSet::default(),
             is_inside_inlined_module: false,
         };
 
@@ -643,7 +643,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
-            types_with_notable_traits: FxHashSet::default(),
+            types_with_notables: FxHashSet::default(),
             is_inside_inlined_module: self.is_inside_inlined_module,
         }
     }

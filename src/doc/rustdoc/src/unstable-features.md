@@ -149,10 +149,10 @@ button next to the function, which, when clicked, shows the dialog.
 In the standard library, some of the traits that are part of this list are
 `Iterator`, `Future`, `io::Read`, and `io::Write`. However, rather than being
 implemented as a hard-coded list, these traits have a special marker attribute
-on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
+on them: `#[doc(notable)]`. This means that you can apply this attribute
 to your own trait to include it in the "Notable traits" dialog in documentation.
 
-The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
+The `#[doc(notable)]` attribute currently requires the `#![feature(doc_notable_trait)]`
 feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]
 and [its tracking issue][issue-notable_trait].
 
