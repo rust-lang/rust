@@ -97,14 +97,14 @@ impl BorrowedFd<'_> {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
         // is a POSIX flag that was added to Linux in 2.6.24.
-        #[cfg(not(target_os = "espidf"))]
+        #[cfg(not(any(target_os = "espidf", target_os = "vita")))]
         let cmd = libc::F_DUPFD_CLOEXEC;
 
         // For ESP-IDF, F_DUPFD is used instead, because the CLOEXEC semantics
         // will never be supported, as this is a bare metal framework with
         // no capabilities for multi-process execution. While F_DUPFD is also
         // not supported yet, it might be (currently it returns ENOSYS).
-        #[cfg(target_os = "espidf")]
+        #[cfg(any(target_os = "espidf", target_os = "vita"))]
         let cmd = libc::F_DUPFD;
 
         // Avoid using file descriptors below 3 as they are used for stdio
@@ -119,7 +119,7 @@ impl BorrowedFd<'_> {
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
         Err(crate::io::const_io_error!(
             crate::io::ErrorKind::Unsupported,
-            "operation not supported on WASI yet",
+            "operation not supported on this platform",
         ))
     }
 }
