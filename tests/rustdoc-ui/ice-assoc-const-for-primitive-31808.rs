@@ -1,3 +1,5 @@
+// check-pass
+
 // Test that associated item impls on primitive types don't crash rustdoc
 
 // https://github.com/rust-lang/rust/issues/31808
