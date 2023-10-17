@@ -6,6 +6,7 @@ use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
@@ -1737,5 +1738,84 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && (field.did.is_local() || !self.tcx.is_doc_hidden(field.did))
             // If the field is hygienic it must come from the same syntax context.
             && self.tcx.def_ident_span(field.did).unwrap().normalize_to_macros_2_0().eq_ctxt(span)
+    }
+
+    pub(crate) fn suggest_missing_unwrap_expect(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) -> bool {
+        let ty::Adt(adt, args) = found.kind() else { return false };
+        let ret_ty_matches = |diagnostic_item| {
+            if let Some(ret_ty) = self
+                    .ret_coercion
+                    .as_ref()
+                    .map(|c| self.resolve_vars_if_possible(c.borrow().expected_ty()))
+                    && let ty::Adt(kind, _) = ret_ty.kind()
+                    && self.tcx.get_diagnostic_item(diagnostic_item) == Some(kind.did())
+                {
+                    true
+                } else {
+                    false
+                }
+        };
+
+        // don't suggest anything like `Ok(ok_val).unwrap()` , `Some(some_val).unwrap()`,
+        // `None.unwrap()` etc.
+        let is_ctor = matches!(
+            expr.kind,
+            hir::ExprKind::Call(
+                hir::Expr {
+                    kind: hir::ExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
+                    )),
+                    ..
+                },
+                ..,
+            ) | hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
+            )),
+        );
+
+        let (article, kind, variant, sugg_operator) =
+            if self.tcx.is_diagnostic_item(sym::Result, adt.did()) {
+                ("a", "Result", "Err", ret_ty_matches(sym::Result))
+            } else if self.tcx.is_diagnostic_item(sym::Option, adt.did()) {
+                ("an", "Option", "None", ret_ty_matches(sym::Option))
+            } else {
+                return false;
+            };
+        if is_ctor || !self.can_coerce(args.type_at(0), expected) {
+            return false;
+        }
+
+        let (msg, sugg) = if sugg_operator {
+            (
+                format!(
+                    "use the `?` operator to extract the `{found}` value, propagating \
+                            {article} `{kind}::{variant}` value to the caller"
+                ),
+                "?",
+            )
+        } else {
+            (
+                format!(
+                    "consider using `{kind}::expect` to unwrap the `{found}` value, \
+                                panicking if the value is {article} `{kind}::{variant}`"
+                ),
+                ".expect(\"REASON\")",
+            )
+        };
+        err.span_suggestion_verbose(
+            expr.span.shrink_to_hi(),
+            msg,
+            sugg,
+            Applicability::HasPlaceholders,
+        );
+        return true;
     }
 }
