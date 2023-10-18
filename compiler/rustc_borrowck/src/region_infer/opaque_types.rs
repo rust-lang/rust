@@ -1,10 +1,10 @@
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
-use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
 use rustc_middle::traits::DefiningAnchor;
@@ -95,8 +95,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// For example consider `fn f<'a>(x: &'a i32) -> impl Sized + 'a { x }`.
     /// This is lowered to give HIR something like
     ///
-    /// type f<'a>::_Return<'_a> = impl Sized + '_a;
-    /// fn f<'a>(x: &'a i32) -> f<'static>::_Return<'a> { x }
+    /// type f<'a>::_Return<'_x> = impl Sized + '_x;
+    /// fn f<'a>(x: &'a i32) -> f<'a>::_Return<'a> { x }
     ///
     /// When checking the return type record the type from the return and the
     /// type used in the return value. In this case they might be `_Return<'1>`
@@ -104,30 +104,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Once we to this method, we have completed region inference and want to
     /// call `infer_opaque_definition_from_instantiation` to get the inferred
-    /// type of `_Return<'_a>`. `infer_opaque_definition_from_instantiation`
+    /// type of `_Return<'_x>`. `infer_opaque_definition_from_instantiation`
     /// compares lifetimes directly, so we need to map the inference variables
     /// back to concrete lifetimes: `'static`, `ReEarlyParam` or `ReLateParam`.
     ///
-    /// First we map all the lifetimes in the concrete type to an equal
-    /// universal region that occurs in the concrete type's args, in this case
-    /// this would result in `&'1 i32`. We only consider regions in the args
+    /// First we map the regions in the the generic parameters `_Return<'1>` to
+    /// their `external_name` giving `_Return<'a>`. This step is a bit involved.
+    /// See the [rustc-dev-guide chapter] for more info.
+    ///
+    /// Then we map all the lifetimes in the concrete type to an equal
+    /// universal region that occurs in the opaque type's args, in this case
+    /// this would result in `&'a i32`. We only consider regions in the args
     /// in case there is an equal region that does not. For example, this should
     /// be allowed:
     /// `fn f<'a: 'b, 'b: 'a>(x: *mut &'b i32) -> impl Sized + 'a { x }`
     ///
-    /// Then we map the regions in both the type and the generic parameters to their
-    /// `external_name` giving `concrete_type = &'a i32`,
-    /// `args = ['static, 'a]`. This will then allow
-    /// `infer_opaque_definition_from_instantiation` to determine that
-    /// `_Return<'_a> = &'_a i32`.
+    /// This will then allow `infer_opaque_definition_from_instantiation` to
+    /// determine that `_Return<'_x> = &'_x i32`.
     ///
     /// There's a slight complication around closures. Given
     /// `fn f<'a: 'a>() { || {} }` the closure's type is something like
     /// `f::<'a>::{{closure}}`. The region parameter from f is essentially
     /// ignored by type checking so ends up being inferred to an empty region.
     /// Calling `universal_upper_bound` for such a region gives `fr_fn_body`,
-    /// which has no `external_name` in which case we use `'empty` as the
+    /// which has no `external_name` in which case we use `'{erased}` as the
     /// region to pass to `infer_opaque_definition_from_instantiation`.
+    ///
+    /// [rustc-dev-guide chapter]:
+    /// https://rustc-dev-guide.rust-lang.org/opaque-types-region-infer-restrictions.html
     #[instrument(level = "debug", skip(self, infcx), ret)]
     pub(crate) fn infer_opaque_types(
         &self,
@@ -138,85 +142,59 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
 
-        let member_constraints: FxIndexMap<_, _> = self
-            .member_constraints
-            .all_indices()
-            .map(|ci| (self.member_constraints[ci].key, ci))
-            .collect();
-        debug!(?member_constraints);
-
         for (opaque_type_key, concrete_type) in opaque_ty_decls {
-            let args = opaque_type_key.args;
-            debug!(?concrete_type, ?args);
+            debug!(?opaque_type_key, ?concrete_type);
 
-            let mut arg_regions = vec![self.universal_regions.fr_static];
-
-            let to_universal_region = |vid, arg_regions: &mut Vec<_>| match self.universal_name(vid)
-            {
-                Some(region) => {
-                    let vid = self.universal_regions.to_region_vid(region);
-                    arg_regions.push(vid);
-                    region
-                }
-                None => {
-                    arg_regions.push(vid);
-                    ty::Region::new_error_with_message(
-                        infcx.tcx,
-                        concrete_type.span,
-                        "opaque type with non-universal region args",
-                    )
-                }
-            };
-
-            // Start by inserting universal regions from the member_constraint choice regions.
-            // This will ensure they get precedence when folding the regions in the concrete type.
-            if let Some(&ci) = member_constraints.get(&opaque_type_key) {
-                for &vid in self.member_constraints.choice_regions(ci) {
-                    to_universal_region(vid, &mut arg_regions);
-                }
-            }
-            debug!(?arg_regions);
-
-            // Next, insert universal regions from args, so we can translate regions that appear
-            // in them but are not subject to member constraints, for instance closure args.
-            let universal_key = opaque_type_key.fold_captured_lifetime_args(infcx.tcx, |region| {
-                if let ty::RePlaceholder(..) = region.kind() {
-                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the args.
-                    return region;
-                }
-                let vid = self.to_region_vid(region);
-                to_universal_region(vid, &mut arg_regions)
-            });
-            let universal_args = universal_key.args;
-            debug!(?universal_args);
-            debug!(?arg_regions);
-
-            // Deduplicate the set of regions while keeping the chosen order.
-            let arg_regions = arg_regions.into_iter().collect::<FxIndexSet<_>>();
-            debug!(?arg_regions);
-
-            let universal_concrete_type =
-                infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
-                    ty::ReVar(vid) => arg_regions
-                        .iter()
-                        .find(|ur_vid| self.eval_equal(vid, **ur_vid))
-                        .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
-                        .unwrap_or(infcx.tcx.lifetimes.re_erased),
-                    ty::RePlaceholder(_) => ty::Region::new_error_with_message(
-                        infcx.tcx,
-                        concrete_type.span,
-                        "hidden type contains placeholders, we don't support higher kinded opaques yet",
-                    ),
-                    _ => region,
-                });
-            debug!(?universal_concrete_type);
+            let mut arg_regions: Vec<(ty::RegionVid, ty::Region<'_>)> =
+                vec![(self.universal_regions.fr_static, infcx.tcx.lifetimes.re_static)];
 
             let opaque_type_key =
-                OpaqueTypeKey { def_id: opaque_type_key.def_id, args: universal_args };
-            let ty = infcx.infer_opaque_definition_from_instantiation(
-                opaque_type_key,
-                universal_concrete_type,
-            );
+                opaque_type_key.fold_captured_lifetime_args(infcx.tcx, |region| {
+                    // Use the SCC representative instead of directly using `region`.
+                    // See [rustc-dev-guide chapter] § "Strict lifetime equality".
+                    let scc = self.constraint_sccs.scc(region.as_var());
+                    let vid = self.scc_representatives[scc];
+                    let named = match self.definitions[vid].origin {
+                        // Iterate over all universal regions in a consistent order and find the
+                        // *first* equal region. This makes sure that equal lifetimes will have
+                        // the same name and simplifies subsequent handling.
+                        // See [rustc-dev-guide chapter] § "Semantic lifetime equality".
+                        NllRegionVariableOrigin::FreeRegion => self
+                            .universal_regions
+                            .universal_regions()
+                            .filter(|&ur| self.universal_region_relations.equal(vid, ur))
+                            // FIXME(aliemjay): universal regions with no `external_name`
+                            // are extenal closure regions, which should be rejected eventually.
+                            .find_map(|ur| self.definitions[ur].external_name),
+                        NllRegionVariableOrigin::Placeholder(placeholder) => {
+                            Some(ty::Region::new_placeholder(infcx.tcx, placeholder))
+                        }
+                        NllRegionVariableOrigin::Existential { .. } => None,
+                    }
+                    .unwrap_or_else(|| {
+                        ty::Region::new_error_with_message(
+                            infcx.tcx,
+                            concrete_type.span,
+                            "opaque type with non-universal region args",
+                        )
+                    });
+
+                    arg_regions.push((vid, named));
+                    named
+                });
+            debug!(?opaque_type_key, ?arg_regions);
+
+            let concrete_type = infcx.tcx.fold_regions(concrete_type, |region, _| {
+                arg_regions
+                    .iter()
+                    .find(|&&(arg_vid, _)| self.eval_equal(region.as_var(), arg_vid))
+                    .map(|&(_, arg_named)| arg_named)
+                    .unwrap_or(infcx.tcx.lifetimes.re_erased)
+            });
+            debug!(?concrete_type);
+
+            let ty =
+                infcx.infer_opaque_definition_from_instantiation(opaque_type_key, concrete_type);
             // Sometimes two opaque types are the same only after we remap the generic parameters
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
             // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that

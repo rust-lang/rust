@@ -8,12 +8,24 @@ impl<T> Equate for T { type Proj = T; }
 trait Indirect { type Ty; }
 impl<A, B: Equate<Proj = A>> Indirect for (A, B) { type Ty = (); }
 
-type Opq = impl Sized;
-fn define_1(_: Opq) {
-    let _ = None::<<(Opq, u8) as Indirect>::Ty>;
+mod basic {
+    use super::*;
+    type Opq = impl Sized;
+    fn define_1(_: Opq) {
+        let _ = None::<<(Opq, u8) as Indirect>::Ty>;
+    }
+    fn define_2() -> Opq {
+        0u8
+    }
 }
-fn define_2() -> Opq {
-    0u8
+
+// `Opq<'a> == &'b u8` shouldn't be an error because `'a == 'b`.
+mod lifetime {
+    use super::*;
+    type Opq<'a> = impl Sized + 'a;
+    fn define<'a: 'b, 'b: 'a>(_: Opq<'a>) {
+        let _ = None::<<(Opq<'a>, &'b u8) as Indirect>::Ty>;
+    }
 }
 
 fn main() {}
