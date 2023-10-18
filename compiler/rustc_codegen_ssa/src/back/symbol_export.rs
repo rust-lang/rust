@@ -54,8 +54,8 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
     // export level, however, as they're just implementation details.
     // Down below we'll hardwire all of the symbols to the `Rust` export
     // level instead.
-    let special_runtime_crate =
-        tcx.is_panic_runtime(LOCAL_CRATE) || tcx.is_compiler_builtins(LOCAL_CRATE);
+    let is_compiler_builtins = tcx.is_compiler_builtins(LOCAL_CRATE);
+    let special_runtime_crate = tcx.is_panic_runtime(LOCAL_CRATE) || is_compiler_builtins;
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
         .reachable_set(())
@@ -107,7 +107,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
         .map(|def_id| {
             // We won't link right if this symbol is stripped during LTO.
             let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
-            let used = name == "rust_eh_personality";
+            // We have to preserve the symbols of the built-in functions during LTO.
+            let is_builtin_fn = is_compiler_builtins
+                && symbol_export_level(tcx, def_id.to_def_id())
+                    .is_below_threshold(SymbolExportLevel::C);
+            let used = is_builtin_fn || name == "rust_eh_personality";
 
             let export_level = if special_runtime_crate {
                 SymbolExportLevel::Rust

@@ -1120,102 +1120,6 @@ extern "C" void LLVMRustPrintPasses() {
   PB.printPassNames(outs());
 }
 
-// from https://github.com/llvm/llvm-project/blob/7021182d6b43de9488ab70de626192ce70b3a4a6/llvm/lib/Object/IRSymtab.cpp#L48-L57
-static const char *PreservedLibcallSymbols[] = {
-#define HANDLE_LIBCALL(code, name) name,
-#include "llvm/IR/RuntimeLibcalls.def"
-#undef HANDLE_LIBCALL
-  // RuntimeLibcalls.def missing symbols.
-  "__ctzsi2",
-  "__ctzdi2",
-  "__ctzti2",
-  "__ffssi2",
-  "__ffsdi2",
-  "__ffsti2",
-  "__paritysi2",
-  "__paritydi2",
-  "__parityti2",
-  "__popcountsi2",
-  "__popcountdi2",
-  "__popcountti2",
-  "__bswapsi2",
-  "__bswapdi2",
-  "__negti2",
-  "__udivmoddi4",
-  "__udivmodti4",
-  "__udivmodsi4",
-  "__divmodsi4",
-  "__divmoddi4",
-  "__divmodti4",
-  "__absvsi2",
-  "__absvdi2",
-  "__absvti2",
-  "__negvsi2",
-  "__negvdi2",
-  "__negvti2",
-  "__addvsi3",
-  "__addvdi3",
-  "__addvti3",
-  "__subvsi3",
-  "__subvdi3",
-  "__subvti3",
-  "__mulvsi3",
-  "__mulvdi3",
-  "__mulvti3",
-  "__cmpdi2",
-  "__cmpti2",
-  "__ucmpdi2",
-  "__ucmpti2",
-  "__mulsc3",
-  "__muldc3",
-  "__mulxc3",
-  "__multc3",
-  "__divsc3",
-  "__divdc3",
-  "__divxc3",
-  "__divtc3",
-  "__clear_cache",
-  "__enable_execute_stack",
-  "__gcc_personality_v0",
-  "__eprintf",
-  "__emutls_get_address",
-  "__trampoline_setup",
-  "__addsf3vfp",
-  "__adddf3vfp",
-  "__divsf3vfp",
-  "__divdf3vfp",
-  "__eqsf2vfp",
-  "__eqdf2vfp",
-  "__extendsfdf2vfp",
-  "__fixdfsivfp",
-  "__fixsfsivfp",
-  "__fixunssfsivfp",
-  "__fixunsdfsivfp",
-  "__floatsidfvfp",
-  "__floatsisfvfp",
-  "__floatunssidfvfp",
-  "__floatunssisfvfp",
-  "__gedf2vfp",
-  "__gesf2vfp",
-  "__gtdf2vfp",
-  "__gtsf2vfp",
-  "__ledf2vfp",
-  "__lesf2vfp",
-  "__ltdf2vfp",
-  "__ltsf2vfp",
-  "__muldf3vfp",
-  "__mulsf3vfp",
-  "__nedf2vfp",
-  "__negdf2vfp",
-  "__negsf2vfp",
-  "__negsf2vfp",
-  "__subdf3vfp",
-  "__subsf3vfp",
-  "__truncdfsf2vfp",
-  "__unorddf2vfp",
-  "__unordsf2vfp",
-};
-
 extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
                                            size_t Len) {
   auto PreserveFunctions = [=](const GlobalValue &GV) {
@@ -1231,7 +1135,7 @@ extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
         return true;
       }
     }
-    return llvm::is_contained(PreservedLibcallSymbols, GV.getName());
+    return false;
   };
 
   internalizeModule(*unwrap(M), PreserveFunctions);
@@ -1388,12 +1292,6 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   for (int i = 0; i < num_symbols; i++) {
     auto GUID = GlobalValue::getGUID(preserved_symbols[i]);
     Ret->GUIDPreservedSymbols.insert(GUID);
-  }
-  for (int i = 0; i < sizeof(PreservedLibcallSymbols) / sizeof(PreservedLibcallSymbols[0]); i++) {
-    if (auto *PreservedLibcallSymbol = PreservedLibcallSymbols[i]) {
-      auto GUID = GlobalValue::getGUID(PreservedLibcallSymbol);
-      Ret->GUIDPreservedSymbols.insert(GUID);
-    }
   }
 
   // Collect the import/export lists for all modules from the call-graph in the
