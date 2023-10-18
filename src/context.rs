@@ -129,19 +129,39 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>, supports_128bit_integers: bool) -> Self {
         let check_overflow = tcx.sess.overflow_checks();
 
-        let i8_type = context.new_c_type(CType::Int8t);
-        let i16_type = context.new_c_type(CType::Int16t);
-        let i32_type = context.new_c_type(CType::Int32t);
-        let i64_type = context.new_c_type(CType::Int64t);
-        let u8_type = context.new_c_type(CType::UInt8t);
-        let u16_type = context.new_c_type(CType::UInt16t);
-        let u32_type = context.new_c_type(CType::UInt32t);
-        let u64_type = context.new_c_type(CType::UInt64t);
+        let create_type = |ctype, rust_type| {
+            let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
+            let align = layout.align.abi.bytes();
+            #[cfg(feature="master")]
+            {
+                context.new_c_type(ctype).get_aligned(align)
+            }
+            #[cfg(not(feature="master"))]
+            {
+                // Since libgccjit 12 doesn't contain the fix to compare aligned integer types,
+                // only align u128 and i128.
+                if layout.ty.int_size_and_signed(tcx).0.bytes() == 16 {
+                    context.new_c_type(ctype).get_aligned(align)
+                }
+                else {
+                    context.new_c_type(ctype)
+                }
+            }
+        };
+
+        let i8_type = create_type(CType::Int8t, tcx.types.i8);
+        let i16_type = create_type(CType::Int16t, tcx.types.i16);
+        let i32_type = create_type(CType::Int32t, tcx.types.i32);
+        let i64_type = create_type(CType::Int64t, tcx.types.i64);
+        let u8_type = create_type(CType::UInt8t, tcx.types.u8);
+        let u16_type = create_type(CType::UInt16t, tcx.types.u16);
+        let u32_type = create_type(CType::UInt32t, tcx.types.u32);
+        let u64_type = create_type(CType::UInt64t, tcx.types.u64);
 
         let (i128_type, u128_type) =
             if supports_128bit_integers {
-                let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
-                let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
+                let i128_type = create_type(CType::Int128t, tcx.types.i128);
+                let u128_type = create_type(CType::UInt128t, tcx.types.u128);
                 (i128_type, u128_type)
             }
             else {
