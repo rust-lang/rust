@@ -2,7 +2,7 @@ use smallvec::smallvec;
 
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, PredicateObligation};
-use rustc_data_structures::fx::{FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -423,7 +423,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Iterator for Elaborator<'tcx, O> {
 pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
+) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
     elaborate(tcx, [trait_ref.to_predicate(tcx)]).filter_only_self().filter_to_traits()
 }
 
