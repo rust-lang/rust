@@ -1,5 +1,5 @@
+use super::LinkSelfContainedDefault;
 use super::{cvs, Cc, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
-use crate::spec::LinkSelfContained;
 
 pub fn options() -> TargetOptions {
     macro_rules! args {
@@ -100,7 +100,7 @@ pub fn options() -> TargetOptions {
         // rust-lang/rust#104137: cannot blindly remove this without putting in
         // some other way to compensate for lack of `-nostartfiles` in linker
         // invocation.
-        link_self_contained: LinkSelfContained::True,
+        link_self_contained: LinkSelfContainedDefault::True,
 
         // This has no effect in LLVM 8 or prior, but in LLVM 9 and later when
         // PIC code is implemented this has quite a drastic effect if it stays

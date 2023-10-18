@@ -23,7 +23,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
-use rustc_target::spec::LinkSelfContained;
+use rustc_target::spec::LinkSelfContainedDefault;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
 
@@ -1714,9 +1714,9 @@ fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
     }
 
     match sess.target.link_self_contained {
-        LinkSelfContained::True => true,
-        LinkSelfContained::False => false,
-        LinkSelfContained::WithComponents(components) => {
+        LinkSelfContainedDefault::False => false,
+        LinkSelfContainedDefault::True => true,
+        LinkSelfContainedDefault::WithComponents(components) => {
             if components.is_all() {
                 true
             } else if components.is_empty() {
@@ -1733,8 +1733,8 @@ fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
         // FIXME: Find a better heuristic for "native musl toolchain is available",
         // based on host and linker path, for example.
         // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
-        LinkSelfContained::InferredForMusl => sess.crt_static(Some(crate_type)),
-        LinkSelfContained::InferredForMingw => {
+        LinkSelfContainedDefault::InferredForMusl => sess.crt_static(Some(crate_type)),
+        LinkSelfContainedDefault::InferredForMingw => {
             sess.host == sess.target
                 && sess.target.vendor != "uwp"
                 && detect_self_contained_mingw(&sess)

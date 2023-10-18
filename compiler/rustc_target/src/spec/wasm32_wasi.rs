@@ -73,7 +73,7 @@
 //! you know what you're getting in to!
 
 use super::crt_objects;
-use super::LinkSelfContained;
+use super::LinkSelfContainedDefault;
 use super::{wasm_base, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
@@ -86,7 +86,7 @@ pub fn target() -> Target {
     options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
 
     // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
-    options.link_self_contained = LinkSelfContained::True;
+    options.link_self_contained = LinkSelfContainedDefault::True;
 
     // Right now this is a bit of a workaround but we're currently saying that
     // the target by default has a static crt which we're taking as a signal
