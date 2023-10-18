@@ -9,12 +9,12 @@ pub mod place;
 use crate::query::Providers;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{par_for_each_in, DynSend, DynSync};
+use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_span::{ExpnId, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, ExpnId, DUMMY_SP};
 
 /// Top-level HIR node for current owner. This only contains the node for which
 /// `HirId::local_id == 0`, and excludes bodies.
@@ -78,20 +78,32 @@ impl ModuleItems {
         self.owners().map(|id| id.def_id)
     }
 
-    pub fn par_items(&self, f: impl Fn(ItemId) + DynSend + DynSync) {
-        par_for_each_in(&self.items[..], |&id| f(id))
+    pub fn par_items(
+        &self,
+        f: impl Fn(ItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        try_par_for_each_in(&self.items[..], |&id| f(id))
     }
 
-    pub fn par_trait_items(&self, f: impl Fn(TraitItemId) + DynSend + DynSync) {
-        par_for_each_in(&self.trait_items[..], |&id| f(id))
+    pub fn par_trait_items(
+        &self,
+        f: impl Fn(TraitItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        try_par_for_each_in(&self.trait_items[..], |&id| f(id))
     }
 
-    pub fn par_impl_items(&self, f: impl Fn(ImplItemId) + DynSend + DynSync) {
-        par_for_each_in(&self.impl_items[..], |&id| f(id))
+    pub fn par_impl_items(
+        &self,
+        f: impl Fn(ImplItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        try_par_for_each_in(&self.impl_items[..], |&id| f(id))
     }
 
-    pub fn par_foreign_items(&self, f: impl Fn(ForeignItemId) + DynSend + DynSync) {
-        par_for_each_in(&self.foreign_items[..], |&id| f(id))
+    pub fn par_foreign_items(
+        &self,
+        f: impl Fn(ForeignItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        try_par_for_each_in(&self.foreign_items[..], |&id| f(id))
     }
 }
 

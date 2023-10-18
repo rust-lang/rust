@@ -19,6 +19,21 @@ LL | struct BadInfer<_>;
    = help: consider removing `_`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `_` to be a const parameter, use `const _: usize` instead
 
-error: aborting due to 3 previous errors
+error[E0107]: struct takes 2 generic arguments but 3 generic arguments were supplied
+  --> $DIR/infer-arg-test.rs:18:10
+   |
+LL |   let a: All<_, _, _>;
+   |          ^^^       - help: remove this generic argument
+   |          |
+   |          expected 2 generic arguments
+   |
+note: struct defined here, with 2 generic parameters: `T`, `N`
+  --> $DIR/infer-arg-test.rs:3:8
+   |
+LL | struct All<'a, T, const N: usize> {
+   |        ^^^     -  --------------
 
-For more information about this error, try `rustc --explain E0392`.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0392.
+For more information about an error, try `rustc --explain E0107`.

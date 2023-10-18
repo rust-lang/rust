@@ -54,7 +54,7 @@ pub use worker_local::{Registry, WorkerLocal};
 mod parallel;
 #[cfg(parallel_compiler)]
 pub use parallel::scope;
-pub use parallel::{join, par_for_each_in, par_map, parallel_guard};
+pub use parallel::{join, par_for_each_in, par_map, parallel_guard, try_par_for_each_in};
 
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
