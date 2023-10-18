@@ -10,13 +10,15 @@
 #![feature(assert_matches)]
 
 extern crate rustc_middle;
+#[macro_use]
 extern crate rustc_smir;
+extern crate rustc_driver;
+extern crate rustc_interface;
 extern crate stable_mir;
 
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use std::io::Write;
-use std::ops::ControlFlow;
 
 /// This test will generate and analyze a dummy crate using the stable mir.
 /// For that, it will first write the dummy crate into a file.
@@ -33,28 +35,26 @@ fn main() {
 }
 
 fn test_continue(args: Vec<String>) {
-    let continue_fn = |_: TyCtxt| ControlFlow::Continue::<(), bool>(true);
-    let result = rustc_internal::StableMir::new(args, continue_fn).run();
+    let result = run!(args, ControlFlow::Continue::<(), bool>(true));
     assert_eq!(result, Ok(true));
 }
 
 fn test_break(args: Vec<String>) {
-    let continue_fn = |_: TyCtxt| ControlFlow::Break::<bool, i32>(false);
-    let result = rustc_internal::StableMir::new(args, continue_fn).run();
+    let result = run!(args, ControlFlow::Break::<bool, i32>(false));
     assert_eq!(result, Err(stable_mir::CompilerError::Interrupted(false)));
 }
 
+#[allow(unreachable_code)]
 fn test_skipped(mut args: Vec<String>) {
     args.push("--version".to_string());
-    let unreach_fn = |_: TyCtxt| -> ControlFlow<()> { unreachable!() };
-    let result = rustc_internal::StableMir::new(args, unreach_fn).run();
+    let result = run!(args, unreachable!() as ControlFlow<()>);
     assert_eq!(result, Err(stable_mir::CompilerError::Skipped));
 }
 
+#[allow(unreachable_code)]
 fn test_failed(mut args: Vec<String>) {
     args.push("--cfg=broken".to_string());
-    let unreach_fn = |_: TyCtxt| -> ControlFlow<()> { unreachable!() };
-    let result = rustc_internal::StableMir::new(args, unreach_fn).run();
+    let result = run!(args, unreachable!() as ControlFlow<()>);
     assert_eq!(result, Err(stable_mir::CompilerError::CompilationFailed));
 }
 
