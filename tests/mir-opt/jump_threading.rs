@@ -1,5 +1,5 @@
 // unit-test: JumpThreading
-// compile-flags: -Zmir-enable-passes=+Inline
+// compile-flags: -Zmir-enable-passes=+Inline -Zinline-mir
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(control_flow_enum)]
