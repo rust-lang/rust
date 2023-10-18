@@ -874,14 +874,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         self.super_operand(operand, location);
         self.check_operand_move_size(operand, location);
     }
-
-    fn visit_local(
-        &mut self,
-        _place_local: Local,
-        _context: mir::visit::PlaceContext,
-        _location: Location,
-    ) {
-    }
 }
 
 fn visit_drop_use<'tcx>(
