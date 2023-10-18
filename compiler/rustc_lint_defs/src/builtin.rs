@@ -4449,11 +4449,11 @@ declare_lint! {
     /// on itself), the blanket impl is not considered to hold for `u8`. This will
     /// change in a future release.
     pub COINDUCTIVE_OVERLAP_IN_COHERENCE,
-    Warn,
+    Deny,
     "impls that are not considered to overlap may be considered to \
     overlap in the future",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #114040 <https://github.com/rust-lang/rust/issues/114040>",
     };
 }
