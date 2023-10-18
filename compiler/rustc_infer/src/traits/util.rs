@@ -288,6 +288,22 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                     });
                 debug!(?data, ?obligations, "super_predicates");
                 self.extend_deduped(obligations);
+
+                // Also elaborate `~const Trait` into `Trait`.
+                let generics = tcx.generics_of(data.def_id());
+                if let Some(host_param_idx) = generics.host_effect_index
+                    && data.trait_ref.args.const_at(host_param_idx) != tcx.consts.true_
+                {
+                    let mut trait_predicate_with_host = data;
+                    trait_predicate_with_host.trait_ref.args = tcx.mk_args_from_iter(
+                        data.trait_ref.args.iter().enumerate().map(|(idx, arg)| {
+                            if idx == host_param_idx { tcx.consts.true_.into() } else { arg }
+                        }),
+                    );
+                    self.extend_deduped([
+                        elaboratable.child(trait_predicate_with_host.to_predicate(tcx))
+                    ]);
+                }
             }
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..)) => {
                 // Currently, we do not elaborate WF predicates,

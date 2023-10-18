@@ -79,10 +79,6 @@ impl GenericParamDef {
         }
     }
 
-    pub fn is_host_effect(&self) -> bool {
-        matches!(self.kind, GenericParamDefKind::Const { is_host_effect: true, .. })
-    }
-
     pub fn default_value<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
