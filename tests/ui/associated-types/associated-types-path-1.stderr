@@ -16,11 +16,11 @@ LL |     type A;
 LL | pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
    |                                  ^^^^ ambiguous associated type `A`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | pub fn f2<T: Foo + Bar>(a: T, x: <T as Bar>::A) {}
    |                                  ~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | pub fn f2<T: Foo + Bar>(a: T, x: <T as Foo>::A) {}
    |                                  ~~~~~~~~~~~~

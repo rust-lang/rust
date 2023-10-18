@@ -16,7 +16,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/bare-trait-objects-path.rs:23:12
    |
 LL |     let _: Dyn::Ty;
-   |            ^^^^^^^ help: use the fully-qualified path: `<dyn Dyn as Assoc>::Ty`
+   |            ^^^^^^^ help: use fully-qualified syntax: `<dyn Dyn as Assoc>::Ty`
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/bare-trait-objects-path.rs:14:5

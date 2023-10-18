@@ -2,13 +2,13 @@ error[E0223]: ambiguous associated type
   --> $DIR/self-impl.rs:23:16
    |
 LL |         let _: <Self>::Baz = true;
-   |                ^^^^^^^^^^^ help: use the fully-qualified path: `<Bar as Foo>::Baz`
+   |                ^^^^^^^^^^^ help: use fully-qualified syntax: `<Bar as Foo>::Baz`
 
 error[E0223]: ambiguous associated type
   --> $DIR/self-impl.rs:25:16
    |
 LL |         let _: Self::Baz = true;
-   |                ^^^^^^^^^ help: use the fully-qualified path: `<Bar as Foo>::Baz`
+   |                ^^^^^^^^^ help: use fully-qualified syntax: `<Bar as Foo>::Baz`
 
 error: aborting due to 2 previous errors
 

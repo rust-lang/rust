@@ -1018,7 +1018,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     err.span_suggestions(
                         span,
-                        "use the fully-qualified path",
+                        "use fully-qualified syntax",
                         suggestions,
                         Applicability::MachineApplicable,
                     );
@@ -1190,7 +1190,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     } else {
                         err.span_suggestion_verbose(
                             span.with_hi(assoc_name.span.lo()),
-                            "use fully qualified syntax to disambiguate",
+                            "use fully-qualified syntax to disambiguate",
                             format!("<{ty_param_name} as {}>::", bound.print_only_trait_path()),
                             Applicability::MaybeIncorrect,
                         );
