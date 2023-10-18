@@ -95,9 +95,11 @@ pub struct RegionInferenceContext<'tcx> {
     /// visible from this index.
     scc_universes: IndexVec<ConstraintSccIndex, ty::UniverseIndex>,
 
-    /// Contains a "representative" from each SCC. This will be the
-    /// minimal RegionVid belonging to that universe. It is used as a
-    /// kind of hacky way to manage checking outlives relationships,
+    /// Contains the "representative" region of each SCC.
+    /// It is defined as the one with the minimal RegionVid, favoring
+    /// free regions, then placeholders, then existential regions.
+    ///
+    /// It is a hacky way to manage checking regions for equality,
     /// since we can 'canonicalize' each region to the representative
     /// of its SCC and be sure that -- if they have the same repr --
     /// they *must* be equal (though not having the same repr does not
@@ -481,8 +483,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         scc_universes
     }
 
-    /// For each SCC, we compute a unique `RegionVid` (in fact, the
-    /// minimal one that belongs to the SCC). See
+    /// For each SCC, we compute a unique `RegionVid`. See the
     /// `scc_representatives` field of `RegionInferenceContext` for
     /// more details.
     fn compute_scc_representatives(
@@ -490,13 +491,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         definitions: &IndexSlice<RegionVid, RegionDefinition<'tcx>>,
     ) -> IndexVec<ConstraintSccIndex, ty::RegionVid> {
         let num_sccs = constraints_scc.num_sccs();
-        let next_region_vid = definitions.next_index();
-        let mut scc_representatives = IndexVec::from_elem_n(next_region_vid, num_sccs);
+        let mut scc_representatives = IndexVec::from_elem_n(RegionVid::MAX, num_sccs);
 
-        for region_vid in definitions.indices() {
-            let scc = constraints_scc.scc(region_vid);
-            let prev_min = scc_representatives[scc];
-            scc_representatives[scc] = region_vid.min(prev_min);
+        // Iterate over all RegionVids *in-order* and pick the least RegionVid as the
+        // representative of its SCC. This naturally prefers free regions over others.
+        for (vid, def) in definitions.iter_enumerated() {
+            let repr = &mut scc_representatives[constraints_scc.scc(vid)];
+            if *repr == ty::RegionVid::MAX {
+                *repr = vid;
+            } else if matches!(def.origin, NllRegionVariableOrigin::Placeholder(_))
+                && matches!(definitions[*repr].origin, NllRegionVariableOrigin::Existential { .. })
+            {
+                // Pick placeholders over existentials even if they have a greater RegionVid.
+                *repr = vid;
+            }
         }
 
         scc_representatives
