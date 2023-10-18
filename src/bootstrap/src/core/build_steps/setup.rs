@@ -147,6 +147,15 @@ impl Step for Profile {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        // During ./x.py setup once you select the codegen profile.
+        // The submodule will be downloaded. It does not work in the
+        // tarball case since they don't include Git and submodules
+        // are already included.
+        if !builder.rust_info().is_from_tarball() {
+            if self == Profile::Codegen {
+                builder.update_submodule(&Path::new("src/llvm-project"));
+            }
+        }
         setup(&builder.build.config, self)
     }
 }

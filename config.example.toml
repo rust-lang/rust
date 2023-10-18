@@ -30,7 +30,7 @@
 #
 # If `change-id` does not match the version that is currently running,
 # `x.py` will prompt you to update it and check the related PR for more details.
-change-id = 117435
+change-id = 116881
 
 # =============================================================================
 # Tweaking how LLVM is compiled
@@ -42,10 +42,14 @@ change-id = 117435
 # Unless you're developing for a target where Rust CI doesn't build a compiler
 # toolchain or changing LLVM locally, you probably want to leave this enabled.
 #
-# All tier 1 targets are currently supported; set this to `"if-available"` if
-# you are not sure whether you're on a tier 1 target.
+# Set this to `"if-available"` if you are not sure whether you're on a tier 1 
+# target. All tier 1 targets are currently supported;
 #
 # We also currently only support this when building LLVM for the build triple.
+#
+# Set this to `"if-unchanged"` to only download if the llvm-project have not 
+# been modified. (If there are no changes or if built from tarball source, 
+# the logic is the same as "if-available")
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
