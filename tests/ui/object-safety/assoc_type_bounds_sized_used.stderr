@@ -33,6 +33,10 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
 LL - fn bop<T: Bop + ?Sized>() {
 LL + fn bop<T: Bop>() {
    |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Bar: Default + ?Sized
+   |                       ++++++++
 
 error: aborting due to 2 previous errors
 
