@@ -173,6 +173,45 @@ pub fn query_ensure<'tcx, Cache>(
     }
 }
 
+#[inline]
+pub fn query_ensure_error_guaranteed<'tcx, Cache>(
+    tcx: TyCtxt<'tcx>,
+    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
+    query_cache: &Cache,
+    key: Cache::Key,
+    check_cache: bool,
+) -> Result<(), ErrorGuaranteed>
+where
+    Cache: QueryCache<Value = super::erase::Erase<Result<(), ErrorGuaranteed>>>,
+{
+    let key = key.into_query_param();
+    if let Some(res) = try_get_cached(tcx, query_cache, &key) {
+        super::erase::restore(res)
+    } else {
+        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache })
+            .map(super::erase::restore)
+            // Either we actually executed the query, which means we got a full `Result`,
+            // or we can just assume the query succeeded, because it was green in the
+            // incremental cache. If it is green, that means that the previous compilation
+            // that wrote to the incremental cache compiles successfully. That is only
+            // possible if the cache entry was `Ok(())`, so we emit that here, without
+            // actually encoding the `Result` in the cache or loading it from there.
+            .unwrap_or(Ok(()))
+    }
+}
+
+macro_rules! query_ensure {
+    ([]$($args:tt)*) => {
+        query_ensure($($args)*)
+    };
+    ([(ensure_forwards_result_if_red) $($rest:tt)*]$($args:tt)*) => {
+        query_ensure_error_guaranteed($($args)*)
+    };
+    ([$other:tt $($modifiers:tt)*]$($args:tt)*) => {
+        query_ensure!([$($modifiers)*]$($args)*)
+    };
+}
+
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     (LocalDefId) => { impl IntoQueryParam<LocalDefId> };
@@ -217,6 +256,18 @@ macro_rules! separate_provide_extern_decl {
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         separate_provide_extern_decl!([$($modifiers)*][$($args)*])
+    };
+}
+
+macro_rules! ensure_result {
+    ([][$ty:ty]) => {
+        ()
+    };
+    ([(ensure_forwards_result_if_red) $($rest:tt)*][$ty:ty]) => {
+        Result<(), ErrorGuaranteed>
+    };
+    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
+        ensure_result!([$($modifiers)*][$($args)*])
     };
 }
 
@@ -343,14 +394,15 @@ macro_rules! define_callbacks {
         impl<'tcx> TyCtxtEnsure<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                query_ensure(
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> ensure_result!([$($modifiers)*][$V]) {
+                query_ensure!(
+                    [$($modifiers)*]
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
                     &self.tcx.query_system.caches.$name,
                     key.into_query_param(),
                     false,
-                );
+                )
             })*
         }
 

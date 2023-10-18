@@ -114,6 +114,11 @@ struct QueryModifiers {
 
     /// Generate a `feed` method to set the query's value from another query.
     feedable: Option<Ident>,
+
+    /// Forward the result on ensure if the query gets recomputed, and
+    /// return `Ok(())` otherwise. Only applicable to queries returning
+    /// `Result<(), ErrorGuaranteed>`
+    ensure_forwards_result_if_red: Option<Ident>,
 }
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
@@ -128,6 +133,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
     let mut feedable = None;
+    let mut ensure_forwards_result_if_red = None;
 
     while !input.is_empty() {
         let modifier: Ident = input.parse()?;
@@ -187,6 +193,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(separate_provide_extern = modifier);
         } else if modifier == "feedable" {
             try_insert!(feedable = modifier);
+        } else if modifier == "ensure_forwards_result_if_red" {
+            try_insert!(ensure_forwards_result_if_red = modifier);
         } else {
             return Err(Error::new(modifier.span(), "unknown query modifier"));
         }
@@ -206,6 +214,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         depth_limit,
         separate_provide_extern,
         feedable,
+        ensure_forwards_result_if_red,
     })
 }
 
@@ -325,6 +334,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             eval_always,
             depth_limit,
             separate_provide_extern,
+            ensure_forwards_result_if_red,
         );
 
         if modifiers.cache.is_some() {
