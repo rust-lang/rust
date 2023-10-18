@@ -1381,17 +1381,6 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
     }
 }
 
-fn add_assoc_fn<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: Option<DefId>,
-    fn_ident: Ident,
-    skip_move_check_fns: &mut Vec<DefId>,
-) {
-    if let Some(def_id) = def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, fn_ident)) {
-        skip_move_check_fns.push(def_id);
-    }
-}
-
 fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
     for impl_def_id in tcx.inherent_impls(def_id) {
         if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
@@ -1407,26 +1396,16 @@ fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> 
 }
 
 fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
-    let mut skip_move_check_fns = vec![];
-    add_assoc_fn(
-        tcx,
-        tcx.lang_items().owned_box(),
-        Ident::from_str("new"),
-        &mut skip_move_check_fns,
-    );
-    add_assoc_fn(
-        tcx,
-        tcx.get_diagnostic_item(sym::Arc),
-        Ident::from_str("new"),
-        &mut skip_move_check_fns,
-    );
-    add_assoc_fn(
-        tcx,
-        tcx.get_diagnostic_item(sym::Rc),
-        Ident::from_str("new"),
-        &mut skip_move_check_fns,
-    );
-    skip_move_check_fns
+    let fns = [
+        (tcx.lang_items().owned_box(), "new"),
+        (tcx.get_diagnostic_item(sym::Rc), "new"),
+        (tcx.get_diagnostic_item(sym::Arc), "new"),
+    ];
+    fns.into_iter()
+        .filter_map(|(def_id, fn_name)| {
+            def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, Ident::from_str(fn_name)))
+        })
+        .collect::<Vec<_>>()
 }
 
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
