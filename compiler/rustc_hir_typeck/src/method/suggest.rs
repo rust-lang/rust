@@ -674,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
 
                         let quiet_projection_ty =
-                            tcx.mk_alias_ty(projection_ty.def_id, args_with_infer_self);
+                            ty::AliasTy::new(tcx, projection_ty.def_id, args_with_infer_self);
 
                         let term = pred.skip_binder().term;
 

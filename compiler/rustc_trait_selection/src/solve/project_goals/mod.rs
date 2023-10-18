@@ -352,8 +352,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, output)| ty::ProjectionPredicate {
-                projection_ty: tcx
-                    .mk_alias_ty(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs]),
+                projection_ty: ty::AliasTy::new(
+                    tcx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), inputs],
+                ),
                 term: output.into(),
             })
             .to_predicate(tcx);
@@ -472,7 +475,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ecx,
             goal,
             ty::ProjectionPredicate {
-                projection_ty: ecx.tcx().mk_alias_ty(goal.predicate.def_id(), [self_ty]),
+                projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
                 term,
             }
             .to_predicate(tcx),
@@ -512,9 +515,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ecx,
             goal,
             ty::ProjectionPredicate {
-                projection_ty: ecx
-                    .tcx()
-                    .mk_alias_ty(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
+                projection_ty: ty::AliasTy::new(
+                    ecx.tcx(),
+                    goal.predicate.def_id(),
+                    [self_ty, generator.resume_ty()],
+                ),
                 term,
             }
             .to_predicate(tcx),

@@ -1687,7 +1687,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 && let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(_def_id))
             {
                 // If this is an inherent projection.
-
                 generics.params.len() + 1
             } else {
                 generics.count()
@@ -1895,15 +1894,6 @@ impl<'tcx> TyCtxt<'tcx> {
         rest: impl IntoIterator<Item = GenericArg<'tcx>>,
     ) -> GenericArgsRef<'tcx> {
         self.mk_args_from_iter(iter::once(self_ty.into()).chain(rest))
-    }
-
-    pub fn mk_alias_ty(
-        self,
-        def_id: DefId,
-        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-    ) -> ty::AliasTy<'tcx> {
-        let args = self.check_and_mk_args(def_id, args);
-        ty::AliasTy { def_id, args, _use_mk_alias_ty_instead: () }
     }
 
     pub fn mk_bound_variable_kinds_from_iter<I, T>(self, iter: I) -> T::Output

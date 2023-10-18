@@ -448,7 +448,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
                 debug!(?args_trait_ref_and_assoc_item);
 
-                tcx.mk_alias_ty(assoc_item.def_id, args_trait_ref_and_assoc_item)
+                ty::AliasTy::new(tcx, assoc_item.def_id, args_trait_ref_and_assoc_item)
             })
         };
 
