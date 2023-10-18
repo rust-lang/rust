@@ -62,7 +62,6 @@ use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::time::{Instant, SystemTime};
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
 #[allow(unused_macros)]
@@ -1311,7 +1310,13 @@ fn ice_path() -> &'static Option<PathBuf> {
             None => std::env::current_dir().unwrap_or_default(),
         };
         let now: OffsetDateTime = SystemTime::now().into();
-        let file_now = now.format(&Rfc3339).unwrap_or_default();
+        let file_now = now
+            .format(
+                // Don't use a standard datetime format because Windows doesn't support `:` in paths
+                &time::format_description::parse("[year]-[month]-[day]T[hour]_[minute]_[second]")
+                    .unwrap(),
+            )
+            .unwrap_or_default();
         let pid = std::process::id();
         path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
         Some(path)
