@@ -173,7 +173,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Local, Location};
+use rustc_middle::mir::{self, Location};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -1212,7 +1212,7 @@ impl<'v> RootCollector<'_, 'v> {
     }
 
     fn is_root(&self, def_id: LocalDefId) -> bool {
-        !item_requires_monomorphization(self.tcx, def_id)
+        !self.tcx.generics_of(def_id).requires_monomorphization(self.tcx)
             && match self.mode {
                 MonoItemCollectionMode::Eager => true,
                 MonoItemCollectionMode::Lazy => {
@@ -1273,11 +1273,6 @@ impl<'v> RootCollector<'_, 'v> {
 
         self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
     }
-}
-
-fn item_requires_monomorphization(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    let generics = tcx.generics_of(def_id);
-    generics.requires_monomorphization(tcx)
 }
 
 #[instrument(level = "debug", skip(tcx, output))]
