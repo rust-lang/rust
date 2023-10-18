@@ -383,7 +383,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
         // Do not compute the mir call graph without said call graph actually being used.
-        if inline::Inline.is_enabled(&tcx.sess) {
+        if pm::should_run_pass(tcx, &inline::Inline) {
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
         }
     }
