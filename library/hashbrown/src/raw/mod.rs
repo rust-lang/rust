@@ -24,7 +24,12 @@ cfg_if! {
     ))] {
         mod sse2;
         use sse2 as imp;
-    } else if #[cfg(all(target_arch = "aarch64", target_feature = "neon"))] {
+    } else if #[cfg(all(
+        target_arch = "aarch64",
+        target_feature = "neon",
+        // NEON intrinsics are currently broken on big-endian targets.
+        target_endian = "little",
+    ))] {
         mod neon;
         use neon as imp;
     } else {
