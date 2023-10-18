@@ -328,26 +328,19 @@ fn check_opaque_type_well_formed<'tcx>(
 
     // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
     // the bounds that the function supplies.
-    let mut obligations = vec![];
-    infcx
-        .insert_hidden_type(
-            OpaqueTypeKey { def_id, args: identity_args },
-            &ObligationCause::misc(definition_span, def_id),
-            param_env,
-            definition_ty,
-            true,
-            &mut obligations,
-        )
-        .unwrap();
-    infcx.add_item_bounds_for_hidden_type(
-        def_id.to_def_id(),
-        identity_args,
-        ObligationCause::misc(definition_span, def_id),
-        param_env,
-        definition_ty,
-        &mut obligations,
-    );
-    ocx.register_obligations(obligations);
+    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), identity_args);
+    ocx.eq(&ObligationCause::misc(definition_span, def_id), param_env, opaque_ty, definition_ty)
+        .map_err(|err| {
+            infcx
+                .err_ctxt()
+                .report_mismatched_types(
+                    &ObligationCause::misc(definition_span, def_id),
+                    opaque_ty,
+                    definition_ty,
+                    err,
+                )
+                .emit()
+        })?;
 
     // Require the hidden type to be well-formed with only the generics of the opaque type.
     // Defining use functions may have more bounds than the opaque type, which is ok, as long as the

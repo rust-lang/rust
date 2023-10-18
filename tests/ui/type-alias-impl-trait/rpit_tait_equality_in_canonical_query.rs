@@ -12,7 +12,7 @@
 //[current] known-bug: #108498
 //[current] failure-status: 101
 //[current] normalize-stderr-test: "DefId\(.*?\]::" -> "DefId("
-//[current] normalize-stderr-test: "(?m)^note: .*\n" -> ""
+//[current] normalize-stderr-test: "(?m)note: .*$" -> ""
 //[current] normalize-stderr-test: "(?m)^ *\d+: .*\n" -> ""
 //[current] normalize-stderr-test: "(?m)^ *at .*\n" -> ""
 
