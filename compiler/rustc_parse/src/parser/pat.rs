@@ -870,6 +870,7 @@ impl<'a> Parser<'a> {
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
             e.span_label(path.span, "while parsing the fields for this pattern");
             e.emit();
+            self.sess.parse_errors_encountered.set(true);
             self.recover_stmt();
             (ThinVec::new(), true)
         });
@@ -1104,6 +1105,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+            self.sess.parse_errors_encountered.set(true);
             err.emit();
         }
         Ok((fields, etc))

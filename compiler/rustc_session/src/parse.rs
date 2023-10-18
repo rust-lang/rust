@@ -23,6 +23,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{Span, Symbol};
 
 use rustc_ast::attr::AttrIdGenerator;
+use std::cell::Cell;
 use std::str;
 
 /// The set of keys (and, optionally, values) that define the compilation
@@ -222,6 +223,8 @@ pub struct ParseSess {
     pub proc_macro_quoted_spans: AppendOnlyVec<Span>,
     /// Used to generate new `AttrId`s. Every `AttrId` is unique.
     pub attr_id_generator: AttrIdGenerator,
+    /// Whether any parse errors have occurred. Used to silence resolution errors.
+    pub parse_errors_encountered: Cell<bool>,
 }
 
 impl ParseSess {
@@ -252,6 +255,7 @@ impl ParseSess {
             assume_incomplete_release: false,
             proc_macro_quoted_spans: Default::default(),
             attr_id_generator: AttrIdGenerator::new(),
+            parse_errors_encountered: Cell::new(false),
         }
     }
 

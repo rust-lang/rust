@@ -3,7 +3,7 @@ pub trait TraitWAssocConst {
 }
 pub struct Demo {}
 
-impl TraitWAssocConst for impl Demo { //~ ERROR E0404
+impl TraitWAssocConst for impl Demo {
     //~^ ERROR E0562
     pubconst A: str = 32; //~ ERROR expected one of
 }

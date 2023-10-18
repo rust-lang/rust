@@ -9,12 +9,6 @@ LL |     pubconst A: str = 32;
 LL | }
    | - the item list ends here
 
-error[E0404]: expected trait, found struct `Demo`
-  --> $DIR/issue-105330.rs:6:32
-   |
-LL | impl TraitWAssocConst for impl Demo {
-   |                                ^^^^ not a trait
-
 error[E0658]: associated const equality is incomplete
   --> $DIR/issue-105330.rs:11:28
    |
@@ -117,7 +111,7 @@ note: required by a bound in `foo`
 LL | fn foo<A: TraitWAssocConst<A=32>>() {
    |                            ^^^^ required by this bound in `foo`
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0131, E0271, E0277, E0404, E0562, E0618, E0658.
+Some errors have detailed explanations: E0131, E0271, E0277, E0562, E0618, E0658.
 For more information about an error, try `rustc --explain E0131`.

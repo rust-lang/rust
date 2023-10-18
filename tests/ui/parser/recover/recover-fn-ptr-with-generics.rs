@@ -4,8 +4,6 @@ fn main() {
 
     type Identity = fn<T>(T) -> T;
     //~^ ERROR function pointer types may not have generic parameters
-    //~| ERROR cannot find type `T` in this scope
-    //~| ERROR cannot find type `T` in this scope
 
     let _: fn<const N: usize, 'e, Q, 'f>();
     //~^ ERROR function pointer types may not have generic parameters

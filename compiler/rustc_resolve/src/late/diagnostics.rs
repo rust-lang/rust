@@ -430,6 +430,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             base_error.msg.clone(),
             code,
         );
+        if self.r.tcx.sess.parse_sess.parse_errors_encountered.get() {
+            // We've encountered parse errors that can cause resolution errors, so we silence them.
+            err.delay_as_bug();
+        }
 
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 

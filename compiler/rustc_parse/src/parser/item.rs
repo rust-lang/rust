@@ -152,7 +152,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let mut def = self.parse_defaultness();
-        let kind = self.parse_item_kind(
+        let kind = match self.parse_item_kind(
             &mut attrs,
             mac_allowed,
             lo,
@@ -160,7 +160,13 @@ impl<'a> Parser<'a> {
             &mut def,
             fn_parse_mode,
             Case::Sensitive,
-        )?;
+        ) {
+            Ok(kind) => kind,
+            Err(err) => {
+                self.sess.parse_errors_encountered.set(true);
+                return Err(err);
+            }
+        };
         if let Some((ident, kind)) = kind {
             self.error_on_unconsumed_default(def, &kind);
             let span = lo.to(self.prev_token.span);
@@ -726,6 +732,7 @@ impl<'a> Parser<'a> {
                     let is_let = self.token.is_keyword(kw::Let);
 
                     let mut err = self.struct_span_err(non_item_span, "non-item in item list");
+                    self.sess.parse_errors_encountered.set(true);
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
                     if is_let {
                         err.span_suggestion(
@@ -752,6 +759,7 @@ impl<'a> Parser<'a> {
                 }
                 Ok(Some(item)) => items.extend(item),
                 Err(mut err) => {
+                    self.sess.parse_errors_encountered.set(true);
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
                     err.span_label(open_brace_span, "while parsing this item list starting here")
                         .span_label(self.prev_token.span, "the item list ends here")
@@ -1618,6 +1626,7 @@ impl<'a> Parser<'a> {
             while self.token != token::CloseDelim(Delimiter::Brace) {
                 let field = self.parse_field_def(adt_ty).map_err(|e| {
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::No);
+                    self.sess.parse_errors_encountered.set(true);
                     recovered = true;
                     e
                 });

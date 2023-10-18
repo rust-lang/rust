@@ -17,12 +17,5 @@ help: escape `fn` to use it as an identifier
 LL |     inner : dyn r#fn ()
    |                 ++
 
-error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/fn-field-parse-error-ice.rs:4:13
-   |
-LL |     inner : dyn fn ()
-   |             ^^^ not found in this scope
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0412`.

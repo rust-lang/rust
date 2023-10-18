@@ -1,0 +1,18 @@
+error: expected `,`
+  --> $DIR/avoid-resolve-errors-caused-by-parse-error.rs:12:31
+   |
+LL |     if let Website { url, Some(title) } = website {
+   |            -------            ^
+   |            |
+   |            while parsing the fields for this pattern
+
+error: expected one of `!` or `[`, found `,`
+  --> $DIR/avoid-resolve-errors-caused-by-parse-error.rs:15:28
+   |
+LL |     if let Website { url, #, title } = website {
+   |            -------         ^ expected one of `!` or `[`
+   |            |
+   |            while parsing the fields for this pattern
+
+error: aborting due to 2 previous errors
+
