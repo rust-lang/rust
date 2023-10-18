@@ -5,10 +5,11 @@ use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
     DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
-    InliningThreshold, Input, InstrumentCoverage, InstrumentXRay, LinkSelfContained,
-    LinkerPluginLto, LocationDetail, LtoCli, MirSpanview, OomStrategy, Options, OutFileName,
-    OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius, ProcMacroExecutionStrategy, Strip,
-    SwitchWithOptPath, SymbolManglingVersion, TraitSolver, WasiExecModel,
+    FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentXRay,
+    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirSpanview, OomStrategy, Options,
+    OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius,
+    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, TraitSolver,
+    WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -758,6 +759,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(flatten_format_args, false);
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
+    tracked!(function_return, FunctionReturn::ThunkExtern);
     tracked!(function_sections, Some(false));
     tracked!(human_readable_cgu_names, true);
     tracked!(incremental_ignore_spans, true);

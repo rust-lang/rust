@@ -26,6 +26,10 @@ session_file_is_not_writeable = output file {$file} is not writeable -- check it
 
 session_file_write_fail = failed to write `{$path}` due to error `{$err}`
 
+session_function_return_requires_x86_or_x86_64 = `-Zfunction-return` (except `keep`) is only supported on x86 and x86_64
+
+session_function_return_thunk_extern_requires_non_large_code_model = `-Zfunction-return=thunk-extern` is only supported on non-large code models
+
 session_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
 
 session_incompatible_linker_flavor = linker flavor `{$flavor}` is incompatible with the current target
