@@ -60,7 +60,6 @@ pub trait Interner: Sized {
     type Movability: Clone + Debug + Hash + Ord;
     type PolyFnSig: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type ListBinderExistentialPredicate: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type BinderListTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type ListTy: Clone + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
     type AliasTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type ParamTy: Clone + Debug + Hash + Ord;
