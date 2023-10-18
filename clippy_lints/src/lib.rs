@@ -121,7 +121,6 @@ mod empty_structs_with_brackets;
 mod endian_bytes;
 mod entry;
 mod enum_clike;
-mod enum_variants;
 mod equatable_if_let;
 mod error_impl_error;
 mod escape;
@@ -166,6 +165,7 @@ mod inline_fn_without_body;
 mod instant_subtraction;
 mod int_plus_one;
 mod invalid_upcast_comparisons;
+mod item_name_repetitions;
 mod items_after_statements;
 mod items_after_test_module;
 mod iter_not_returning_iterator;
@@ -852,10 +852,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
+    let struct_field_name_threshold = conf.struct_field_name_threshold;
     let allow_private_module_inception = conf.allow_private_module_inception;
     store.register_late_pass(move |_| {
-        Box::new(enum_variants::EnumVariantNames::new(
+        Box::new(item_name_repetitions::ItemNameRepetitions::new(
             enum_variant_name_threshold,
+            struct_field_name_threshold,
             avoid_breaking_exported_api,
             allow_private_module_inception,
         ))

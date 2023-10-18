@@ -273,6 +273,16 @@ The minimum number of enum variants for the lints about variant names to trigger
 * [`enum_variant_names`](https://rust-lang.github.io/rust-clippy/master/index.html#enum_variant_names)
 
 
+## `struct-field-name-threshold`
+The minimum number of struct fields for the lints about field names to trigger
+
+**Default Value:** `3` (`u64`)
+
+---
+**Affected lints:**
+* [`struct_variant_names`](https://rust-lang.github.io/rust-clippy/master/index.html#struct_variant_names)
+
+
 ## `enum-variant-size-threshold`
 The maximum size of an enum's variant to avoid box suggestion
 

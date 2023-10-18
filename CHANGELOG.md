@@ -5463,6 +5463,7 @@ Released 2018-09-13
 [`string_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_to_string
 [`strlen_on_c_strings`]: https://rust-lang.github.io/rust-clippy/master/index.html#strlen_on_c_strings
 [`struct_excessive_bools`]: https://rust-lang.github.io/rust-clippy/master/index.html#struct_excessive_bools
+[`struct_field_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#struct_field_names
 [`stutter`]: https://rust-lang.github.io/rust-clippy/master/index.html#stutter
 [`suboptimal_flops`]: https://rust-lang.github.io/rust-clippy/master/index.html#suboptimal_flops
 [`suspicious_arithmetic_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_arithmetic_impl
@@ -5625,6 +5626,7 @@ Released 2018-09-13
 [`single-char-binding-names-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#single-char-binding-names-threshold
 [`too-large-for-stack`]: https://doc.rust-lang.org/clippy/lint_configuration.html#too-large-for-stack
 [`enum-variant-name-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#enum-variant-name-threshold
+[`struct-field-name-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#struct-field-name-threshold
 [`enum-variant-size-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#enum-variant-size-threshold
 [`verbose-bit-mask-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#verbose-bit-mask-threshold
 [`literal-representation-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#literal-representation-threshold
