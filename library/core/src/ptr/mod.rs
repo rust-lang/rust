@@ -66,10 +66,10 @@
 //! a separate allocated object), and `static` variables.
 //!
 //! It is guaranteed that an allocated object never spans more than `isize::MAX` bytes.
-//! The address "at the end" of an allocated object (i.e., one past the last byte that
-//! is contained inside the allocated object) can always be computed without wrapping
-//! around the address space. Equivalently, the address `usize::MAX` is never contained
-//! in an allocated object.
+//! An allocated object cannot contain the last (`usize::MAX`) byte of the address space.
+//! As a consequence, any address which is either in the allocated object or one byte past
+//! the last address in the allocated object can be computed without wrapping around the
+//! address space.
 //!
 //! # Strict Provenance
 //!
