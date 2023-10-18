@@ -948,27 +948,51 @@ export function openDocs(ctx: CtxInit): Cmd {
         const position = editor.selection.active;
         const textDocument = { uri: editor.document.uri.toString() };
 
-        const doclinks = await client.sendRequest(ra.openDocs, { position, textDocument });
+        const docLinks = await client.sendRequest(ra.openDocs, { position, textDocument });
+        log.debug(docLinks);
 
         let fileType = vscode.FileType.Unknown;
-        if (typeof doclinks.local === "string") {
+        if (docLinks.local !== undefined) {
             try {
-                fileType = (await vscode.workspace.fs.stat(vscode.Uri.parse(doclinks.local))).type;
+                fileType = (await vscode.workspace.fs.stat(vscode.Uri.parse(docLinks.local))).type;
             } catch (e) {
                 log.debug("stat() threw error. Falling back to web version", e);
             }
         }
 
-        let doclink;
-        if (fileType & vscode.FileType.File) {
-            // file does exist locally
-            doclink = doclinks.local;
-        } else {
-            doclink = doclinks.web;
+        let docLink = fileType & vscode.FileType.File ? docLinks.local : docLinks.web;
+        if (docLink) {
+            // instruct vscode to handle the vscode-remote link directly
+            if (docLink.startsWith("vscode-remote://")) {
+                docLink = docLink.replace("vscode-remote://", "vscode://vscode-remote/");
+            }
+            const docUri = vscode.Uri.parse(docLink);
+            await vscode.env.openExternal(docUri);
         }
+    };
+}
 
-        if (doclink != null) {
-            await vscode.env.openExternal(vscode.Uri.parse(doclink));
+export function openExternalDocs(ctx: CtxInit): Cmd {
+    return async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            return;
+        }
+        const client = ctx.client;
+
+        const position = editor.selection.active;
+        const textDocument = { uri: editor.document.uri.toString() };
+
+        const docLinks = await client.sendRequest(ra.openDocs, { position, textDocument });
+
+        let docLink = docLinks.web;
+        if (docLink) {
+            // instruct vscode to handle the vscode-remote link directly
+            if (docLink.startsWith("vscode-remote://")) {
+                docLink = docLink.replace("vscode-remote://", "vscode://vscode-remote/");
+            }
+            const docUri = vscode.Uri.parse(docLink);
+            await vscode.env.openExternal(docUri);
         }
     };
 }

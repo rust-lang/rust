@@ -74,8 +74,8 @@ export interface FetchDependencyListParams {}
 
 export interface FetchDependencyListResult {
     crates: {
-        name: string | undefined;
-        version: string | undefined;
+        name?: string;
+        version?: string;
         path: string;
     }[];
 }
@@ -136,8 +136,8 @@ export const openCargoToml = new lc.RequestType<OpenCargoTomlParams, lc.Location
     "experimental/openCargoToml",
 );
 export interface DocsUrls {
-    local: string | void;
-    web: string | void;
+    local?: string;
+    web?: string;
 }
 export const openDocs = new lc.RequestType<lc.TextDocumentPositionParams, DocsUrls, void>(
     "experimental/externalDocs",

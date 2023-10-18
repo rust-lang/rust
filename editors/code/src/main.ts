@@ -170,6 +170,7 @@ function createCommands(): Record<string, CommandFactory> {
         debug: { enabled: commands.debug },
         newDebugConfig: { enabled: commands.newDebugConfig },
         openDocs: { enabled: commands.openDocs },
+        openExternalDocs: { enabled: commands.openExternalDocs },
         openCargoToml: { enabled: commands.openCargoToml },
         peekTests: { enabled: commands.peekTests },
         moveItemUp: { enabled: commands.moveItemUp },
