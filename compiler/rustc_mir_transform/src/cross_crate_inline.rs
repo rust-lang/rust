@@ -65,10 +65,18 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let mut checker =
         CostChecker { tcx, callee_body: mir, calls: 0, statements: 0, landing_pads: 0, resumes: 0 };
     checker.visit_body(mir);
-    checker.calls == 0
+    let is_leaf = checker.calls == 0
         && checker.resumes == 0
         && checker.landing_pads == 0
-        && checker.statements <= threshold
+        && checker.statements <= threshold;
+
+    let is_wrapper = checker.calls == 1
+        && checker.resumes == 0
+        && checker.landing_pads == 0
+        && checker.statements == 0
+        && mir.basic_blocks.len() == 2;
+
+    is_leaf || is_wrapper
 }
 
 struct CostChecker<'b, 'tcx> {

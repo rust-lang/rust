@@ -48,6 +48,7 @@ impl Div for i32 {
 }
 
 #[allow(unconditional_panic)]
+#[inline(never)]
 pub fn foo() {
     // This implicitly generates a panic call.
     let _ = 1 / 0;

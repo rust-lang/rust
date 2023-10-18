@@ -2,6 +2,7 @@
 #![crate_type = "lib"]
 #![feature(ffi_pure)]
 
+#[inline(never)]
 pub fn bar() { unsafe { foo() } }
 
 extern "C" {

@@ -5,6 +5,7 @@
 
 #![crate_type = "lib"]
 
+#[inline(never)]
 pub fn test() {
     // CHECK: call noundef i8 @some_true(){{( #[0-9]+)?}}, !range [[R0:![0-9]+]]
     // CHECK: [[R0]] = !{i8 0, i8 3}

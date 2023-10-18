@@ -12,9 +12,16 @@ pub fn leaf_outer() -> String {
     leaf::leaf_fn()
 }
 
-// Check that we do not inline a non-leaf cross-crate call
+// Check that we inline a cross-crate call where the callee contains a single call
 #[no_mangle]
 pub fn stem_outer() -> String {
-    // CHECK: call {{.*}}stem_fn
+    // CHECK-NOT: call {{.*}}stem_fn
     leaf::stem_fn()
+}
+
+// Check that we do not inline a cross-crate call where the callee contains multiple calls
+#[no_mangle]
+pub fn multi_stem_outer() -> String {
+    // CHECK: call {{.*}}multi_stem_fn
+    leaf::multi_stem_fn()
 }

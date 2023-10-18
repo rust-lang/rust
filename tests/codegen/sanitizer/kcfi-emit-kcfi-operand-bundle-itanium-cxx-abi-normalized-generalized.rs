@@ -18,6 +18,7 @@ trait Copy { }
 
 impl Copy for i32 {}
 
+#[inline(never)]
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
     // CHECK-LABEL: define{{.*}}foo
     // CHECK-SAME:  {{.*}}!{{<unknown kind #36>|kcfi_type}} ![[TYPE1:[0-9]+]]
@@ -25,6 +26,7 @@ pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
     f(arg)
 }
 
+#[inline(never)]
 pub fn bar(f: fn(i32, i32) -> i32, arg1: i32, arg2: i32) -> i32 {
     // CHECK-LABEL: define{{.*}}bar
     // CHECK-SAME:  {{.*}}!{{<unknown kind #36>|kcfi_type}} ![[TYPE2:[0-9]+]]
@@ -32,6 +34,7 @@ pub fn bar(f: fn(i32, i32) -> i32, arg1: i32, arg2: i32) -> i32 {
     f(arg1, arg2)
 }
 
+#[inline(never)]
 pub fn baz(f: fn(i32, i32, i32) -> i32, arg1: i32, arg2: i32, arg3: i32) -> i32 {
     // CHECK-LABEL: define{{.*}}baz
     // CHECK-SAME:  {{.*}}!{{<unknown kind #36>|kcfi_type}} ![[TYPE3:[0-9]+]]

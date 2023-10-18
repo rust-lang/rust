@@ -14,6 +14,11 @@ pub fn stem_fn() -> String {
     inner()
 }
 
+// This function contains multiple calls.
+pub fn multi_stem_fn() -> String {
+    inner() + &inner()
+}
+
 #[inline(never)]
 fn inner() -> String {
     String::from("test")
