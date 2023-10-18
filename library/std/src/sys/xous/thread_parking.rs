@@ -1,4 +1,4 @@
-use crate::os::xous::ffi::blocking_scalar;
+use crate::os::xous::ffi::{blocking_scalar, scalar};
 use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
 use crate::pin::Pin;
 use crate::ptr;
@@ -84,5 +84,11 @@ impl Parker {
             )
             .expect("failed to send NotifyCondition command");
         }
+    }
+}
+
+impl Drop for Parker {
+    fn drop(&mut self) {
+        scalar(ticktimer_server(), TicktimerScalar::FreeCondition(self.index()).into()).ok();
     }
 }
