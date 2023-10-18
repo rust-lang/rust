@@ -7,13 +7,18 @@ LL |         MyStruct { .., Some(_) } => {},
    |                    | expected `}`
    |                    `..` must be at the end and cannot have a trailing comma
 
-error: expected `,`
-  --> $DIR/issue-54379.rs:9:28
+error: missing field name before pattern
+  --> $DIR/issue-54379.rs:9:24
    |
 LL |         MyStruct { .., Some(_) } => {},
-   |         --------           ^
+   |         --------       ^^^^^^^ this pattern needs to be preceeded by a field name
    |         |
    |         while parsing the fields for this pattern
+   |
+help: you might have meant to add a field
+   |
+LL |         MyStruct { .., field_name: Some(_) } => {},
+   |                        +++++++++++
 
 error: aborting due to 2 previous errors
 

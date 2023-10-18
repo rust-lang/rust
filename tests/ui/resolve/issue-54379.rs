@@ -7,7 +7,7 @@ fn main() {
 
     match thing {
         MyStruct { .., Some(_) } => {},
-        //~^ ERROR expected `,`
+        //~^ ERROR missing field name before pattern
         //~| ERROR expected `}`, found `,`
         _ => {}
     }

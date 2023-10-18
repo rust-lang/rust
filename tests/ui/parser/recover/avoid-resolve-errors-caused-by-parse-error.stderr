@@ -1,10 +1,15 @@
-error: expected `,`
-  --> $DIR/avoid-resolve-errors-caused-by-parse-error.rs:12:31
+error: missing field name before pattern
+  --> $DIR/avoid-resolve-errors-caused-by-parse-error.rs:12:27
    |
 LL |     if let Website { url, Some(title) } = website {
-   |            -------            ^
+   |            -------        ^^^^^^^^^^^ this pattern needs to be preceeded by a field name
    |            |
    |            while parsing the fields for this pattern
+   |
+help: you might have meant to add a field
+   |
+LL |     if let Website { url, field_name: Some(title) } = website {
+   |                           +++++++++++
 
 error: expected one of `!` or `[`, found `,`
   --> $DIR/avoid-resolve-errors-caused-by-parse-error.rs:15:28

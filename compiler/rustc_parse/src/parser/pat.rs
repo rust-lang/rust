@@ -964,12 +964,38 @@ impl<'a> Parser<'a> {
                     return Err(err);
                 }
             };
+            let prev = self.prev_token.span;
             let lo = self.token.span;
 
             // check that a comma comes after every field
             if !ate_comma {
-                let err = ExpectedCommaAfterPatternField { span: self.token.span }
-                    .into_diagnostic(&self.sess.span_diagnostic);
+                let mut snapshot = self.create_snapshot_for_diagnostic();
+                let err = match snapshot.parse_pat_allow_top_alt(
+                    None,
+                    RecoverComma::No,
+                    RecoverColon::No,
+                    CommaRecoveryMode::EitherTupleOrPipe,
+                ) {
+                    Ok(pat) => {
+                        // We've got `Struct { Some(foo) }` where the user forgot the field ident.
+                        let span = prev.to(pat.span);
+                        let mut err =
+                            self.struct_span_err(span, "missing field name before pattern");
+                        err.span_label(span, "this pattern needs to be preceeded by a field name");
+                        err.span_suggestion_verbose(
+                            prev.shrink_to_lo(),
+                            "you might have meant to add a field",
+                            "field_name: ".to_string(),
+                            Applicability::HasPlaceholders,
+                        );
+                        err
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        ExpectedCommaAfterPatternField { span: self.token.span }
+                            .into_diagnostic(&self.sess.span_diagnostic)
+                    }
+                };
                 if let Some(mut delayed) = delayed_err {
                     delayed.emit();
                 }

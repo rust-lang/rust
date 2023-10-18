@@ -9,7 +9,7 @@ fn main() {
         title: Some("Example Domain".into()),
     };
 
-    if let Website { url, Some(title) } = website { //~ ERROR expected `,`
+    if let Website { url, Some(title) } = website { //~ ERROR missing field name before pattern
         println!("[{}]({})", title, url);
     }
     if let Website { url, #, title } = website { //~ ERROR expected one of `!` or `[`, found `,`
