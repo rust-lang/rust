@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/restrict-existing-type-bounds.rs:13:12
    |
 LL | impl<T: TryAdd> TryAdd for Option<T> {
-   |      - this type parameter
+   |      - found this type parameter
 ...
 LL |         Ok(self)
    |         -- ^^^^ expected `Option<<T as TryAdd>::Output>`, found `Option<T>`
@@ -29,7 +29,7 @@ error[E0308]: mismatched types
   --> $DIR/restrict-existing-type-bounds.rs:26:12
    |
 LL | impl<T: TryAdd<Error = X>> TryAdd for Other<T> {
-   |      - this type parameter
+   |      - found this type parameter
 ...
 LL |         Ok(self)
    |         -- ^^^^ expected `Other<<T as TryAdd>::Output>`, found `Other<T>`

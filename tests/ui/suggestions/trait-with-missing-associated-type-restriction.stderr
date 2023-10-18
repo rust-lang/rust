@@ -124,7 +124,7 @@ error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction.rs:31:9
    |
 LL | fn baz<D: std::fmt::Debug, T: Trait<A = D>>(x: T) {
-   |        - this type parameter
+   |        - found this type parameter
 LL |     qux(x.func())
    |     --- ^^^^^^^^ expected `usize`, found type parameter `D`
    |     |

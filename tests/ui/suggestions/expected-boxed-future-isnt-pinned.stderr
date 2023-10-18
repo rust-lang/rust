@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/expected-boxed-future-isnt-pinned.rs:11:5
    |
 LL | fn foo<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
-   |        - this type parameter                            ----------------------- expected `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>` because of return type
+   |        - found this type parameter                      ----------------------- expected `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>` because of return type
 LL |     // We could instead use an `async` block, but this way we have no std spans.
 LL |     x
    |     ^ expected `Pin<Box<...>>`, found type parameter `F`
@@ -30,7 +30,7 @@ error[E0308]: mismatched types
   --> $DIR/expected-boxed-future-isnt-pinned.rs:19:14
    |
 LL | fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
-   |        - this type parameter
+   |        - found this type parameter
 LL |     Pin::new(x)
    |     -------- ^ expected `Box<dyn Future<Output = ...> + Send>`, found type parameter `F`
    |     |

@@ -2,7 +2,7 @@ error[E0271]: type mismatch resolving `<Adapter<I> as Iterator>::Item == Option<
   --> $DIR/associated-types-issue-20346.rs:34:36
    |
 LL | fn test_adapter<T, I: Iterator<Item=Option<T>>>(it: I) {
-   |                 - this type parameter
+   |                 - found this type parameter
 ...
 LL |     is_iterator_of::<Option<T>, _>(&adapter);
    |     ------------------------------ ^^^^^^^^ type mismatch resolving `<Adapter<I> as Iterator>::Item == Option<T>`

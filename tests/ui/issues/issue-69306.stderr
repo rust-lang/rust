@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:5:28
    |
 LL | impl<T> S0<T> {
-   |      - this type parameter
+   |      - expected this type parameter
 LL |     const C: S0<u8> = Self(0);
    |                       ---- ^ expected type parameter `T`, found integer
    |                       |
@@ -20,7 +20,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:5:23
    |
 LL | impl<T> S0<T> {
-   |      - this type parameter
+   |      - found this type parameter
 LL |     const C: S0<u8> = Self(0);
    |                       ^^^^^^^ expected `S0<u8>`, found `S0<T>`
    |
@@ -31,7 +31,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:10:14
    |
 LL | impl<T> S0<T> {
-   |      - this type parameter
+   |      - expected this type parameter
 ...
 LL |         Self(0);
    |         ---- ^ expected type parameter `T`, found integer
@@ -50,7 +50,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:27:14
    |
 LL | impl<T> Foo<T> for <S0<T> as Fun>::Out {
-   |      - this type parameter
+   |      - expected this type parameter
 LL |     fn foo() {
 LL |         Self(0);
    |         ---- ^ expected type parameter `T`, found integer
@@ -69,7 +69,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:33:32
    |
 LL | impl<T> S1<T, u8> {
-   |      - this type parameter
+   |      - expected this type parameter
 LL |     const C: S1<u8, u8> = Self(0, 1);
    |                           ---- ^ expected type parameter `T`, found integer
    |                           |
@@ -87,7 +87,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:33:27
    |
 LL | impl<T> S1<T, u8> {
-   |      - this type parameter
+   |      - found this type parameter
 LL |     const C: S1<u8, u8> = Self(0, 1);
    |                           ^^^^^^^^^^ expected `S1<u8, u8>`, found `S1<T, u8>`
    |

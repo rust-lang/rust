@@ -85,8 +85,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     {
                         let p_def_id = tcx.generics_of(body_owner_def_id).type_param(p, tcx).def_id;
                         let p_span = tcx.def_span(p_def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
                         if !sp.contains(p_span) {
-                            diag.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                         let hir = tcx.hir();
                         let mut note = true;
@@ -168,8 +173,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     | (ty::Dynamic(..) | ty::Alias(ty::Opaque, ..), ty::Param(p)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
                         let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
                         if !sp.contains(p_span) {
-                            diag.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                         diag.help("type parameters must be constrained to match other types");
                         if tcx.sess.teach(&diag.get_code().unwrap()) {
@@ -209,7 +219,7 @@ impl<T> Trait<T> for X {
                         let generics = tcx.generics_of(body_owner_def_id);
                         let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
                         if !sp.contains(p_span) {
-                            diag.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, "expected this type parameter");
                         }
                         diag.help(format!(
                             "every closure has a distinct type and so could not always match the \
@@ -219,8 +229,13 @@ impl<T> Trait<T> for X {
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
                         let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
                         if !sp.contains(p_span) {
-                            diag.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                     }
                     (ty::Alias(ty::Projection | ty::Inherent, proj_ty), _)

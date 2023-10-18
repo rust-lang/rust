@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-35030.rs:9:14
    |
 LL | impl<bool> Parser<bool> for bool {
-   |      ---- this type parameter
+   |      ---- expected this type parameter
 LL |     fn parse(text: &str) -> Option<bool> {
 LL |         Some(true)
    |         ---- ^^^^ expected type parameter `bool`, found `bool`
