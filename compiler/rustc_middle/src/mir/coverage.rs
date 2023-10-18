@@ -9,6 +9,11 @@ use std::fmt::{self, Debug, Formatter};
 rustc_index::newtype_index! {
     /// ID of a coverage counter. Values ascend from 0.
     ///
+    /// Before MIR inlining, counter IDs are local to their enclosing function.
+    /// After MIR inlining, coverage statements may have been inlined into
+    /// another function, so use the statement's source-scope to find which
+    /// function/instance its IDs are meaningful for.
+    ///
     /// Note that LLVM handles counter IDs as `uint32_t`, so there is no need
     /// to use a larger representation on the Rust side.
     #[derive(HashStable)]
@@ -23,6 +28,11 @@ impl CounterId {
 
 rustc_index::newtype_index! {
     /// ID of a coverage-counter expression. Values ascend from 0.
+    ///
+    /// Before MIR inlining, expression IDs are local to their enclosing function.
+    /// After MIR inlining, coverage statements may have been inlined into
+    /// another function, so use the statement's source-scope to find which
+    /// function/instance its IDs are meaningful for.
     ///
     /// Note that LLVM handles expression IDs as `uint32_t`, so there is no need
     /// to use a larger representation on the Rust side.

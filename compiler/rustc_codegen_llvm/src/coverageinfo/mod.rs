@@ -100,6 +100,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn add_coverage(&mut self, instance: Instance<'tcx>, coverage: &Coverage) {
+        // Our caller should have already taken care of inlining subtleties,
+        // so we can assume that counter/expression IDs in this coverage
+        // statement are meaningful for the given instance.
+        //
+        // (Either the statement was not inlined and directly belongs to this
+        // instance, or it was inlined *from* this instance.)
+
         let bx = self;
 
         let Some(function_coverage_info) =
