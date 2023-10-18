@@ -7,13 +7,21 @@
       let mut _2: bool;
       let mut _3: !;
   
++     coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Add, rhs: Counter(1) };
++     coverage ExpressionId(1) => Expression { lhs: Expression(0), op: Subtract, rhs: Counter(1) };
++     coverage Counter(0) => /the/src/instrument_coverage.rs:11:1 - 11:11;
++     coverage Expression(0) => /the/src/instrument_coverage.rs:12:5 - 13:17;
++     coverage Expression(1) => /the/src/instrument_coverage.rs:14:13 - 14:18;
++     coverage Expression(1) => /the/src/instrument_coverage.rs:17:1 - 17:2;
++     coverage Counter(1) => /the/src/instrument_coverage.rs:15:10 - 15:11;
++ 
       bb0: {
-+         Coverage::Counter(0) for [/the/src/instrument_coverage.rs:11:1 - 11:11];
++         Coverage::CounterIncrement(0);
           goto -> bb1;
       }
   
       bb1: {
-+         Coverage::Expression(0) = Counter(0) + Counter(1) for [/the/src/instrument_coverage.rs:12:5 - 13:17];
++         Coverage::ExpressionUsed(0);
           falseUnwind -> [real: bb2, unwind: bb6];
       }
   
@@ -27,14 +35,14 @@
       }
   
       bb4: {
-+         Coverage::Expression(1) = Expression(0) - Counter(1) for [/the/src/instrument_coverage.rs:14:13 - 14:18, /the/src/instrument_coverage.rs:17:1 - 17:2];
++         Coverage::ExpressionUsed(1);
           _0 = const ();
           StorageDead(_2);
           return;
       }
   
       bb5: {
-+         Coverage::Counter(1) for [/the/src/instrument_coverage.rs:15:10 - 15:11];
++         Coverage::CounterIncrement(1);
           _1 = const ();
           StorageDead(_2);
           goto -> bb1;
