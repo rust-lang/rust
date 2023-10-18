@@ -313,16 +313,25 @@ impl Error for VarError {
 /// Sets the environment variable `key` to the value `value` for the currently running
 /// process.
 ///
-/// Note that while concurrent access to environment variables is safe in Rust,
-/// some platforms only expose inherently unsafe non-threadsafe APIs for
-/// inspecting the environment. As a result, extra care needs to be taken when
-/// auditing calls to unsafe external FFI functions to ensure that any external
-/// environment accesses are properly synchronized with accesses in Rust.
+/// Note that while concurrent access to environment variables ought to be safe
+/// in Rust, some platforms only expose inherently unsafe non-threadsafe APIs
+/// for inspecting the environment. As a result, using `set_var` or
+/// `remove_var` in a multi-threaded Rust program can lead to undefined
+/// behavior, for example in combination with DNS lookups from
+/// [`std::net::ToSocketAddrs`]. This is a bug
+/// ([rust#27970](https://github.com/rust-lang/rust/issues/27970)) and will be
+/// fixed in a future version of Rust. Additionally, extra care needs to be
+/// taken when auditing calls to unsafe external FFI functions to ensure that
+/// any external environment accesses are properly synchronized with accesses
+/// in Rust. Since Rust does not expose its environment lock directly, this
+/// means that all accesses to the environment must go through Rust's [`var`].
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
 ///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
+///
+/// [`std::net::ToSocketAddrs`]: crate::net::ToSocketAddrs
 ///
 /// # Panics
 ///
@@ -351,16 +360,25 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 
 /// Removes an environment variable from the environment of the currently running process.
 ///
-/// Note that while concurrent access to environment variables is safe in Rust,
-/// some platforms only expose inherently unsafe non-threadsafe APIs for
-/// inspecting the environment. As a result extra care needs to be taken when
-/// auditing calls to unsafe external FFI functions to ensure that any external
-/// environment accesses are properly synchronized with accesses in Rust.
+/// Note that while concurrent access to environment variables ought to be safe
+/// in Rust, some platforms only expose inherently unsafe non-threadsafe APIs
+/// for inspecting the environment. As a result, using `set_var` or
+/// `remove_var` in a multi-threaded Rust program can lead to undefined
+/// behavior, for example in combination with DNS lookups from
+/// [`std::net::ToSocketAddrs`]. This is a bug
+/// ([rust#27970](https://github.com/rust-lang/rust/issues/27970)) and will be
+/// fixed in a future version of Rust. Additionally, extra care needs to be
+/// taken when auditing calls to unsafe external FFI functions to ensure that
+/// any external environment accesses are properly synchronized with accesses
+/// in Rust. Since Rust does not expose its environment lock directly, this
+/// means that all accesses to the environment must go through Rust's [`var`].
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
 ///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
+///
+/// [`std::net::ToSocketAddrs`]: crate::net::ToSocketAddrs
 ///
 /// # Panics
 ///
