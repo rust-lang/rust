@@ -2286,7 +2286,7 @@ pub(super) fn check_type_bounds<'tcx>(
             _ => predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_ty: tcx.mk_alias_ty(trait_ty.def_id, rebased_args),
+                        projection_ty: ty::AliasTy::new(tcx, trait_ty.def_id, rebased_args),
                         term: normalize_impl_ty.into(),
                     },
                     bound_vars,

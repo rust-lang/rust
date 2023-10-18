@@ -1213,11 +1213,20 @@ pub struct AliasTy<'tcx> {
     pub def_id: DefId,
 
     /// This field exists to prevent the creation of `AliasTy` without using
-    /// [TyCtxt::mk_alias_ty].
-    pub(super) _use_mk_alias_ty_instead: (),
+    /// [AliasTy::new].
+    _use_alias_ty_new_instead: (),
 }
 
 impl<'tcx> AliasTy<'tcx> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    ) -> ty::AliasTy<'tcx> {
+        let args = tcx.check_and_mk_args(def_id, args);
+        ty::AliasTy { def_id, args, _use_alias_ty_new_instead: () }
+    }
+
     pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy
@@ -1245,7 +1254,7 @@ impl<'tcx> AliasTy<'tcx> {
     }
 
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        tcx.mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.args.iter().skip(1)))
+        AliasTy::new(tcx, self.def_id, [self_ty.into()].into_iter().chain(self.args.iter().skip(1)))
     }
 }
 
@@ -1667,8 +1676,11 @@ impl<'tcx> ExistentialProjection<'tcx> {
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::ProjectionPredicate {
-            projection_ty: tcx
-                .mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.args)),
+            projection_ty: AliasTy::new(
+                tcx,
+                self.def_id,
+                [self_ty.into()].into_iter().chain(self.args),
+            ),
             term: self.term,
         }
     }
@@ -1971,7 +1983,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Opaque, tcx.mk_alias_ty(def_id, args))
+        Ty::new_alias(tcx, ty::Opaque, AliasTy::new(tcx, def_id, args))
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
@@ -2135,7 +2147,7 @@ impl<'tcx> Ty<'tcx> {
         item_def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Projection, tcx.mk_alias_ty(item_def_id, args))
+        Ty::new_alias(tcx, ty::Projection, AliasTy::new(tcx, item_def_id, args))
     }
 
     #[inline]

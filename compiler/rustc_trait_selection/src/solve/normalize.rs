@@ -129,7 +129,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             self.at.cause.clone(),
             self.at.param_env,
             ty::ProjectionPredicate {
-                projection_ty: tcx.mk_alias_ty(uv.def, uv.args),
+                projection_ty: AliasTy::new(tcx, uv.def, uv.args),
                 term: new_infer_ct.into(),
             },
         );
