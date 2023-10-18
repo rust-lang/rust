@@ -249,6 +249,11 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.openExternalDocs",
+                "title": "Open External Docs",
+                "category": "rust-analyzer"
+            },
+            {
                 "command": "rust-analyzer.openCargoToml",
                 "title": "Open Cargo.toml",
                 "category": "rust-analyzer"
@@ -260,12 +265,12 @@
             },
             {
                 "command": "rust-analyzer.moveItemUp",
-                "title": "Move item up",
+                "title": "Move Item Up",
                 "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.moveItemDown",
-                "title": "Move item down",
+                "title": "Move Item Down",
                 "category": "rust-analyzer"
             },
             {
