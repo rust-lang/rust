@@ -46,10 +46,11 @@ impl<'tcx> Bounds<'tcx> {
     ) {
         self.push_trait_bound_inner(tcx, trait_ref, span, polarity);
 
-        // if we have a host param, we push an unconst trait bound in addition
-        // to the const one.
-        // FIXME(effects) we should find a better way than name matching
-        if tcx.features().effects && trait_ref.skip_binder().args.host_effect_param().is_some() {
+        // push a non-const (`host = true`) version of the bound if it is `~const`.
+        if tcx.features().effects
+            && let Some(host_effect_idx) = tcx.generics_of(trait_ref.def_id()).host_effect_index
+            && trait_ref.skip_binder().args.const_at(host_effect_idx) != tcx.consts.true_
+        {
             let generics = tcx.generics_of(trait_ref.def_id());
             let Some(host_index) = generics.host_effect_index else { return };
             let trait_ref = trait_ref.map_bound(|mut trait_ref| {

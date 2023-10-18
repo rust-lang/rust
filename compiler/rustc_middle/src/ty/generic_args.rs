@@ -11,7 +11,6 @@ use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
-use rustc_span::sym;
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
@@ -450,10 +449,6 @@ impl<'tcx> GenericArgs<'tcx> {
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> GenericArgsRef<'tcx> {
         tcx.mk_args_from_iter(self.iter().take(generics.count()))
-    }
-
-    pub fn host_effect_param(&'tcx self) -> Option<ty::Const<'tcx>> {
-        self.consts().rfind(|x| matches!(x.kind(), ty::ConstKind::Param(p) if p.name == sym::host))
     }
 
     pub fn print_as_list(&self) -> String {
