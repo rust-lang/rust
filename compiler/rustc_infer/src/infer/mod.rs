@@ -36,7 +36,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtx
 use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
@@ -1422,12 +1422,25 @@ impl<'tcx> InferCtxt<'tcx> {
     /// This method is idempotent, but it not typically not invoked
     /// except during the writeback phase.
     pub fn fully_resolve<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> FixupResult<'tcx, T> {
-        let value = resolve::fully_resolve(self, value);
-        assert!(
-            value.as_ref().map_or(true, |value| !value.has_infer()),
-            "`{value:?}` is not fully resolved"
-        );
-        value
+        match resolve::fully_resolve(self, value) {
+            Ok(value) => {
+                if value.has_non_region_infer() {
+                    bug!("`{value:?}` is not fully resolved");
+                }
+                if value.has_infer_regions() {
+                    let guar = self
+                        .tcx
+                        .sess
+                        .delay_span_bug(DUMMY_SP, format!("`{value:?}` is not fully resolved"));
+                    Ok(self.tcx.fold_regions(value, |re, _| {
+                        if re.is_var() { ty::Region::new_error(self.tcx, guar) } else { re }
+                    }))
+                } else {
+                    Ok(value)
+                }
+            }
+            Err(e) => Err(e),
+        }
     }
 
     // Instantiates the bound variables in a given binder with fresh inference
