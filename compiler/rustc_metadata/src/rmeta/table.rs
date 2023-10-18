@@ -299,6 +299,30 @@ impl FixedSizeEncoding for bool {
     }
 }
 
+impl FixedSizeEncoding for Option<bool> {
+    type ByteArray = [u8; 1];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 1]) -> Self {
+        match b[0] {
+            0 => Some(false),
+            1 => Some(true),
+            2 => None,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 1]) {
+        debug_assert!(!self.is_default());
+        b[0] = match self {
+            Some(false) => 0,
+            Some(true) => 1,
+            None => 2,
+        };
+    }
+}
+
 impl FixedSizeEncoding for UnusedGenericParams {
     type ByteArray = [u8; 4];
 

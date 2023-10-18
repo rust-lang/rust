@@ -169,8 +169,11 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &mut Body<'tcx>,
         callsite: &CallSite<'tcx>,
     ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
+        self.check_mir_is_available(caller_body, &callsite.callee)?;
+
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
-        self.check_codegen_attributes(callsite, callee_attrs)?;
+        let cross_crate_inlinable = self.tcx.cross_crate_inlinable(callsite.callee.def_id());
+        self.check_codegen_attributes(callsite, callee_attrs, cross_crate_inlinable)?;
 
         let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
         let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
@@ -183,9 +186,8 @@ impl<'tcx> Inliner<'tcx> {
             }
         }
 
-        self.check_mir_is_available(caller_body, &callsite.callee)?;
         let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
-        self.check_mir_body(callsite, callee_body, callee_attrs)?;
+        self.check_mir_body(callsite, callee_body, callee_attrs, cross_crate_inlinable)?;
 
         if !self.tcx.consider_optimizing(|| {
             format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
@@ -401,6 +403,7 @@ impl<'tcx> Inliner<'tcx> {
         &self,
         callsite: &CallSite<'tcx>,
         callee_attrs: &CodegenFnAttrs,
+        cross_crate_inlinable: bool,
     ) -> Result<(), &'static str> {
         if let InlineAttr::Never = callee_attrs.inline {
             return Err("never inline hint");
@@ -414,7 +417,7 @@ impl<'tcx> Inliner<'tcx> {
             .non_erasable_generics(self.tcx, callsite.callee.def_id())
             .next()
             .is_some();
-        if !is_generic && !callee_attrs.requests_inline() {
+        if !is_generic && !cross_crate_inlinable {
             return Err("not exported");
         }
 
@@ -456,10 +459,11 @@ impl<'tcx> Inliner<'tcx> {
         callsite: &CallSite<'tcx>,
         callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
+        cross_crate_inlinable: bool,
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
-        let mut threshold = if callee_attrs.requests_inline() {
+        let mut threshold = if cross_crate_inlinable {
             self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
             self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)

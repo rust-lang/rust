@@ -1046,7 +1046,7 @@ fn should_encode_mir(
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
-                        || tcx.codegen_fn_attrs(def_id).requests_inline()));
+                        || tcx.cross_crate_inlinable(def_id)));
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
@@ -1615,6 +1615,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
+                self.tables
+                    .cross_crate_inlinable
+                    .set(def_id.to_def_id().index, Some(self.tcx.cross_crate_inlinable(def_id)));
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 

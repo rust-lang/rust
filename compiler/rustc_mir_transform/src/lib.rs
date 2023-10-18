@@ -62,6 +62,7 @@ mod const_prop;
 mod const_prop_lint;
 mod copy_prop;
 mod coverage;
+mod cross_crate_inline;
 mod ctfe_limit;
 mod dataflow_const_prop;
 mod dead_store_elimination;
@@ -123,6 +124,7 @@ pub fn provide(providers: &mut Providers) {
     coverage::query::provide(providers);
     ffi_unwind_calls::provide(providers);
     shim::provide(providers);
+    cross_crate_inline::provide(providers);
     *providers = Providers {
         mir_keys,
         mir_const,

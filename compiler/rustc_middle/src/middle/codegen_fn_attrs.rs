@@ -126,14 +126,6 @@ impl CodegenFnAttrs {
         }
     }
 
-    /// Returns `true` if `#[inline]` or `#[inline(always)]` is present.
-    pub fn requests_inline(&self) -> bool {
-        match self.inline {
-            InlineAttr::Hint | InlineAttr::Always => true,
-            InlineAttr::None | InlineAttr::Never => false,
-        }
-    }
-
     /// Returns `true` if it looks like this symbol needs to be exported, for example:
     ///
     /// * `#[no_mangle]` is present

@@ -1,6 +1,6 @@
 // Verifies that `-Zsanitizer=kernel-address` emits sanitizer instrumentation.
 
-// compile-flags: -Zsanitizer=kernel-address
+// compile-flags: -Zsanitizer=kernel-address -Copt-level=0
 // revisions: aarch64 riscv64imac riscv64gc x86_64
 //[aarch64] compile-flags: --target aarch64-unknown-none
 //[aarch64] needs-llvm-components: aarch64
