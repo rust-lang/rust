@@ -17,6 +17,10 @@
 //!   if assigning anything different from `value` to `place` turns the `SwitchInt`
 //!   into `Goto { target }`.
 //!
+//! In this file, we denote as `place ?= value` the existence of a replacement condition
+//! on `place` with given `value`, irrespective of the polarity and target of that
+//! replacement condition.
+//!
 //! We then walk the CFG backwards transforming the set of conditions.
 //! When we find a fulfilling assignment, we record a `ThreadingOpportunity`.
 //! All `ThreadingOpportunity`s are applied to the body, by duplicating blocks if required.
