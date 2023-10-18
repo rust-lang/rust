@@ -1,6 +1,6 @@
 use syntax::ast::{self, AstNode};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_is_some_with_if_let_some
 //
@@ -16,7 +16,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn main() {
 //     let x = Some(1);
-//     if let Some(${0:_tmp}) = x {}
+//     if let Some(${0:x}) = x {}
 // }
 // ```
 pub(crate) fn replace_is_method_with_if_let_method(
@@ -35,6 +35,13 @@ pub(crate) fn replace_is_method_with_if_let_method(
     match name_ref.text().as_str() {
         "is_some" | "is_ok" => {
             let receiver = call_expr.receiver()?;
+
+            let var_name = if let ast::Expr::PathExpr(path_expr) = receiver.clone() {
+                path_expr.path()?.to_string()
+            } else {
+                suggest_name::for_variable(&receiver, &ctx.sema)
+            };
+
             let target = call_expr.syntax().text_range();
 
             let (assist_id, message, text) = if name_ref.text() == "is_some" {
@@ -44,7 +51,8 @@ pub(crate) fn replace_is_method_with_if_let_method(
             };
 
             acc.add(AssistId(assist_id, AssistKind::RefactorRewrite), message, target, |edit| {
-                let replacement = format!("let {}({}) = {}", text, "${0:_tmp}", receiver);
+                let var_name = format!("${{0:{}}}", var_name);
+                let replacement = format!("let {}({}) = {}", text, var_name, receiver);
                 edit.replace(target, replacement);
             })
         }
@@ -71,7 +79,27 @@ fn main() {
             r#"
 fn main() {
     let x = Some(1);
-    if let Some(${0:_tmp}) = x {}
+    if let Some(${0:x}) = x {}
+}
+"#,
+        );
+
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn test() -> Option<i32> {
+    Some(1)
+}
+fn main() {
+    if test().is_som$0e() {}
+}
+"#,
+            r#"
+fn test() -> Option<i32> {
+    Some(1)
+}
+fn main() {
+    if let Some(${0:test}) = test() {}
 }
 "#,
         );
@@ -103,7 +131,27 @@ fn main() {
             r#"
 fn main() {
     let x = Ok(1);
-    if let Ok(${0:_tmp}) = x {}
+    if let Ok(${0:x}) = x {}
+}
+"#,
+        );
+
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn test() -> Result<i32> {
+    Ok(1)
+}
+fn main() {
+    if test().is_o$0k() {}
+}
+"#,
+            r#"
+fn test() -> Result<i32> {
+    Ok(1)
+}
+fn main() {
+    if let Ok(${0:test}) = test() {}
 }
 "#,
         );

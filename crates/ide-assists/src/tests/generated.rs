@@ -2571,7 +2571,7 @@ fn main() {
         r#####"
 fn main() {
     let x = Some(1);
-    if let Some(${0:_tmp}) = x {}
+    if let Some(${0:x}) = x {}
 }
 "#####,
     )
