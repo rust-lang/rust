@@ -283,7 +283,7 @@ mod prim_never {}
 /// `char` type. For technical reasons, there is additional, separate
 /// documentation in [the `std::char` module](char/index.html) as well.
 ///
-/// # Validity
+/// # Validity and Layout
 ///
 /// A `char` is a '[Unicode scalar value]', which is any '[Unicode code point]'
 /// other than a [surrogate code point]. This has a fixed numerical definition:
@@ -329,6 +329,9 @@ mod prim_never {}
 /// in the future ("reserved"); some will never be a character
 /// ("noncharacters"); and some may be given different meanings by different
 /// users ("private use").
+///
+/// `char` is guaranteed to have the same size and alignment as `u32` on all
+/// platforms.
 ///
 /// [Unicode code point]: https://www.unicode.org/glossary/#code_point
 /// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
