@@ -686,6 +686,21 @@ impl LinkSelfContainedComponents {
             LinkSelfContainedComponents::MINGW,
         ]
     }
+
+    /// Returns whether at least a component is enabled.
+    pub fn are_any_components_enabled(self) -> bool {
+        !self.is_empty()
+    }
+
+    /// Returns whether `LinkSelfContainedComponents::LINKER` is enabled.
+    pub fn is_linker_enabled(self) -> bool {
+        self.contains(LinkSelfContainedComponents::LINKER)
+    }
+
+    /// Returns whether `LinkSelfContainedComponents::CRT_OBJECTS` is enabled.
+    pub fn is_crt_objects_enabled(self) -> bool {
+        self.contains(LinkSelfContainedComponents::CRT_OBJECTS)
+    }
 }
 
 impl IntoIterator for LinkSelfContainedComponents {

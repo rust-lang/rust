@@ -23,6 +23,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
+use rustc_target::spec::LinkSelfContainedComponents;
 use rustc_target::spec::LinkSelfContainedDefault;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
@@ -721,6 +722,7 @@ fn link_natively<'a>(
 ) -> Result<(), ErrorGuaranteed> {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
+    let self_contained_components = self_contained_components(sess, crate_type);
     let mut cmd = linker_with_args(
         &linker_path,
         flavor,
@@ -730,6 +732,7 @@ fn link_natively<'a>(
         tmpdir,
         out_filename,
         codegen_results,
+        self_contained_components,
     )?;
 
     linker::disable_localization(&mut cmd);
@@ -805,14 +808,14 @@ fn link_natively<'a>(
                 "Linker does not support -static-pie command line option. Retrying with -static instead."
             );
             // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
-            let self_contained = self_contained(sess, crate_type);
+            let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
             let opts = &sess.target;
-            let pre_objects = if self_contained {
+            let pre_objects = if self_contained_crt_objects {
                 &opts.pre_link_objects_self_contained
             } else {
                 &opts.pre_link_objects
             };
-            let post_objects = if self_contained {
+            let post_objects = if self_contained_crt_objects {
                 &opts.post_link_objects_self_contained
             } else {
                 &opts.post_link_objects
@@ -823,7 +826,9 @@ fn link_natively<'a>(
                     .iter()
                     .copied()
                     .flatten()
-                    .map(|obj| get_object_file_path(sess, obj, self_contained).into_os_string())
+                    .map(|obj| {
+                        get_object_file_path(sess, obj, self_contained_crt_objects).into_os_string()
+                    })
                     .collect::<Vec<_>>()
             };
             let pre_objects_static_pie = get_objects(pre_objects, LinkOutputKind::StaticPicExe);
@@ -1703,42 +1708,43 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
 /// Various toolchain components used during linking are used from rustc distribution
 /// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
-fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
-    // Emit an error if the user requested self-contained mode on the CLI but the target explicitly
-    // refuses it.
-    if let Some(self_contained) = sess.opts.cg.link_self_contained.explicitly_set {
-        if sess.target.link_self_contained.is_disabled() {
-            sess.emit_err(errors::UnsupportedLinkSelfContained);
-        }
-        return self_contained;
-    }
-
-    match sess.target.link_self_contained {
-        LinkSelfContainedDefault::False => false,
-        LinkSelfContainedDefault::True => true,
-        LinkSelfContainedDefault::WithComponents(components) => {
-            if components.is_all() {
-                true
-            } else if components.is_empty() {
-                false
-            } else {
-                // FIXME: Currently no target makes use of individual components to mean
-                // self-contained linking is fully enabled, in the sense of what the code downstream
-                // from here expects. Until components are handled a bit more deeply, we can
-                // consider that it's disabled and remain backwards compatible.
-                false
+fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfContainedComponents {
+    // Turn the backwards compatible bool values for `self_contained` into fully inferred
+    // `LinkSelfContainedComponents`.
+    let self_contained =
+        if let Some(self_contained) = sess.opts.cg.link_self_contained.explicitly_set {
+            // Emit an error if the user requested self-contained mode on the CLI but the target
+            // explicitly refuses it.
+            if sess.target.link_self_contained.is_disabled() {
+                sess.emit_err(errors::UnsupportedLinkSelfContained);
             }
-        }
+            self_contained
+        } else {
+            match sess.target.link_self_contained {
+                LinkSelfContainedDefault::False => false,
+                LinkSelfContainedDefault::True => true,
 
-        // FIXME: Find a better heuristic for "native musl toolchain is available",
-        // based on host and linker path, for example.
-        // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
-        LinkSelfContainedDefault::InferredForMusl => sess.crt_static(Some(crate_type)),
-        LinkSelfContainedDefault::InferredForMingw => {
-            sess.host == sess.target
-                && sess.target.vendor != "uwp"
-                && detect_self_contained_mingw(&sess)
-        }
+                LinkSelfContainedDefault::WithComponents(components) => {
+                    // For target specs with explicitly enabled components, we can return them
+                    // directly.
+                    return components;
+                }
+
+                // FIXME: Find a better heuristic for "native musl toolchain is available",
+                // based on host and linker path, for example.
+                // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
+                LinkSelfContainedDefault::InferredForMusl => sess.crt_static(Some(crate_type)),
+                LinkSelfContainedDefault::InferredForMingw => {
+                    sess.host == sess.target
+                        && sess.target.vendor != "uwp"
+                        && detect_self_contained_mingw(&sess)
+                }
+            }
+        };
+    if self_contained {
+        LinkSelfContainedComponents::all()
+    } else {
+        LinkSelfContainedComponents::empty()
     }
 }
 
@@ -2062,13 +2068,14 @@ fn linker_with_args<'a>(
     tmpdir: &Path,
     out_filename: &Path,
     codegen_results: &CodegenResults,
+    self_contained_components: LinkSelfContainedComponents,
 ) -> Result<Command, ErrorGuaranteed> {
-    let self_contained = self_contained(sess, crate_type);
+    let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
         sess,
         path,
         flavor,
-        self_contained,
+        self_contained_components.are_any_components_enabled(),
         &codegen_results.crate_info.target_cpu,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
@@ -2095,7 +2102,7 @@ fn linker_with_args<'a>(
     // ------------ Object code and libraries, order-dependent ------------
 
     // Pre-link CRT objects.
-    add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained);
+    add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained_crt_objects);
 
     add_linked_symbol_object(
         cmd,
@@ -2238,7 +2245,7 @@ fn linker_with_args<'a>(
         cmd,
         sess,
         link_output_kind,
-        self_contained,
+        self_contained_components,
         flavor,
         crate_type,
         codegen_results,
@@ -2254,7 +2261,7 @@ fn linker_with_args<'a>(
     // ------------ Object code and libraries, order-dependent ------------
 
     // Post-link CRT objects.
-    add_post_link_objects(cmd, sess, link_output_kind, self_contained);
+    add_post_link_objects(cmd, sess, link_output_kind, self_contained_crt_objects);
 
     // ------------ Late order-dependent options ------------
 
@@ -2271,7 +2278,7 @@ fn add_order_independent_options(
     cmd: &mut dyn Linker,
     sess: &Session,
     link_output_kind: LinkOutputKind,
-    self_contained: bool,
+    self_contained_components: LinkSelfContainedComponents,
     flavor: LinkerFlavor,
     crate_type: CrateType,
     codegen_results: &CodegenResults,
@@ -2279,7 +2286,7 @@ fn add_order_independent_options(
     tmpdir: &Path,
 ) {
     // Take care of the flavors and CLI options requesting the `lld` linker.
-    add_lld_args(cmd, sess, flavor);
+    add_lld_args(cmd, sess, flavor, self_contained_components);
 
     add_apple_sdk(cmd, sess, flavor);
 
@@ -2304,7 +2311,7 @@ fn add_order_independent_options(
     // Make the binary compatible with data execution prevention schemes.
     cmd.add_no_exec();
 
-    if self_contained {
+    if self_contained_components.is_crt_objects_enabled() {
         cmd.no_crt_objects();
     }
 
@@ -2335,7 +2342,7 @@ fn add_order_independent_options(
 
     cmd.linker_plugin_lto();
 
-    add_library_search_dirs(cmd, sess, self_contained);
+    add_library_search_dirs(cmd, sess, self_contained_components.are_any_components_enabled());
 
     cmd.output_filename(out_filename);
 
@@ -2985,8 +2992,16 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
 /// invoke it:
 /// - when the self-contained linker flag is active: the build of `lld` distributed with rustc,
 /// - or any `lld` available to `cc`.
-fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
-    debug!("add_lld_args requested, flavor: '{flavor:?}'");
+fn add_lld_args(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    flavor: LinkerFlavor,
+    self_contained_components: LinkSelfContainedComponents,
+) {
+    debug!(
+        "add_lld_args requested, flavor: '{:?}', target self-contained components: {:?}",
+        flavor, self_contained_components,
+    );
 
     // If the flavor doesn't use a C/C++ compiler to invoke the linker, or doesn't opt in to `lld`,
     // we don't need to do anything.
@@ -3000,7 +3015,7 @@ fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     // - if the self-contained linker is enabled on the CLI or by the target spec,
     // - and if the self-contained linker is not disabled on the CLI.
     let self_contained_cli = sess.opts.cg.link_self_contained.is_linker_enabled();
-    let self_contained_target = sess.target.options.link_self_contained.is_linker_enabled();
+    let self_contained_target = self_contained_components.is_linker_enabled();
 
     // FIXME: in the future, codegen backends may need to have more control over this process: they
     // don't always support all the features the linker expects here, and vice versa. For example,
