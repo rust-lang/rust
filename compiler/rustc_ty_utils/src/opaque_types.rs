@@ -269,7 +269,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     }
 }
 
-fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [LocalDefId] {
+fn opaque_types_defined_by<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: LocalDefId,
+) -> &'tcx ty::List<LocalDefId> {
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);
@@ -327,7 +330,7 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
             return tcx.opaque_types_defined_by(tcx.local_parent(item));
         }
     }
-    tcx.arena.alloc_from_iter(collector.opaques)
+    tcx.mk_local_def_ids(&collector.opaques)
 }
 
 pub(super) fn provide(providers: &mut Providers) {
