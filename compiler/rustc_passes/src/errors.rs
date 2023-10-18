@@ -856,8 +856,15 @@ pub struct UnknownLangItem {
 
 pub struct InvalidAttrAtCrateLevel {
     pub span: Span,
-    pub snippet: Option<String>,
+    pub sugg_span: Option<Span>,
     pub name: Symbol,
+    pub item: Option<ItemFollowingInnerAttr>,
+}
+
+#[derive(Clone, Copy)]
+pub struct ItemFollowingInnerAttr {
+    pub span: Span,
+    pub kind: &'static str,
 }
 
 impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
@@ -871,14 +878,17 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
         diag.set_arg("name", self.name);
         // Only emit an error with a suggestion if we can create a string out
         // of the attribute span
-        if let Some(src) = self.snippet {
-            let replacement = src.replace("#!", "#");
+        if let Some(span) = self.sugg_span {
             diag.span_suggestion_verbose(
-                self.span,
+                span,
                 fluent::passes_suggestion,
-                replacement,
+                String::new(),
                 rustc_errors::Applicability::MachineApplicable,
             );
+        }
+        if let Some(item) = self.item {
+            diag.set_arg("kind", item.kind);
+            diag.span_label(item.span, fluent::passes_invalid_attr_at_crate_level_item);
         }
         diag
     }

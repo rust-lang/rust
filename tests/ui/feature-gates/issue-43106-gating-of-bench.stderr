@@ -11,10 +11,14 @@ error: `bench` attribute cannot be used at crate level
    |
 LL | #![bench                   = "4100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
    |
 help: perhaps you meant to use an outer attribute
    |
-LL | #[bench                   = "4100"]
+LL - #![bench                   = "4100"]
+LL + #[bench                   = "4100"]
    |
 
 error: aborting due to 2 previous errors
