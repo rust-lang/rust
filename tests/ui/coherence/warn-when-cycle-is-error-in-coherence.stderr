@@ -24,3 +24,28 @@ LL | #![deny(coinductive_overlap_in_coherence)]
 
 error: aborting due to previous error
 
+Future incompatibility report: Future breakage diagnostic:
+error: implementations of `PartialEq<Interval<_>>` for `Interval<_>` will conflict in the future
+  --> $DIR/warn-when-cycle-is-error-in-coherence.rs:13:1
+   |
+LL |   #[derive(PartialEq, Default)]
+   |            --------- the second impl is here
+...
+LL | / impl<T, Q> PartialEq<Q> for Interval<T>
+LL | |
+LL | |
+LL | | where
+LL | |     T: Borrow<Q>,
+LL | |     Q: ?Sized + PartialOrd,
+   | |___________________________^ the first impl is here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114040 <https://github.com/rust-lang/rust/issues/114040>
+   = note: impls that are not considered to overlap may be considered to overlap in the future
+   = note: `Interval<_>: PartialOrd` may be considered to hold in future releases, causing the impls to overlap
+note: the lint level is defined here
+  --> $DIR/warn-when-cycle-is-error-in-coherence.rs:1:9
+   |
+LL | #![deny(coinductive_overlap_in_coherence)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
