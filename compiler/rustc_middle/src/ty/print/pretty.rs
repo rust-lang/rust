@@ -645,8 +645,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(write(
                     "*{} ",
                     match tm.mutbl {
-                        hir::Mutability::Mut => "mut",
-                        hir::Mutability::Not => "const",
+                        ty::Mutability::Mut => "mut",
+                        ty::Mutability::Not => "const",
                     }
                 ));
                 p!(print(tm.ty))

@@ -153,7 +153,7 @@ pub struct CapturedPlace<'tcx> {
     pub info: CaptureInfo,
 
     /// Represents if `place` can be mutated or not.
-    pub mutability: hir::Mutability,
+    pub mutability: ty::Mutability,
 
     /// Region of the resulting reference if the upvar is captured by ref.
     pub region: Option<ty::Region<'tcx>>,
@@ -451,10 +451,17 @@ pub enum BorrowKind {
 }
 
 impl BorrowKind {
-    pub fn from_mutbl(m: hir::Mutability) -> BorrowKind {
+    pub fn from_hir(m: hir::Mutability) -> BorrowKind {
         match m {
             hir::Mutability::Mut => MutBorrow,
             hir::Mutability::Not => ImmBorrow,
+        }
+    }
+
+    pub fn from_ty(m: ty::Mutability) -> BorrowKind {
+        match m {
+            ty::Mutability::Mut => MutBorrow,
+            ty::Mutability::Not => ImmBorrow,
         }
     }
 
@@ -462,15 +469,15 @@ impl BorrowKind {
     /// kind. Because borrow kinds are richer than mutabilities, we sometimes have to pick a
     /// mutability that is stronger than necessary so that it at least *would permit* the borrow in
     /// question.
-    pub fn to_mutbl_lossy(self) -> hir::Mutability {
+    pub fn to_mutbl_lossy(self) -> ty::Mutability {
         match self {
-            MutBorrow => hir::Mutability::Mut,
-            ImmBorrow => hir::Mutability::Not,
+            MutBorrow => ty::Mutability::Mut,
+            ImmBorrow => ty::Mutability::Not,
 
             // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of a `&uniq`
             // and hence is a safe "over approximation".
-            UniqueImmBorrow => hir::Mutability::Mut,
+            UniqueImmBorrow => ty::Mutability::Mut,
         }
     }
 }

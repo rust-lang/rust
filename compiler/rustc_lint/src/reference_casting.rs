@@ -117,7 +117,7 @@ fn is_cast_from_const_to_mut<'tcx>(
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
     // Bail out early if the end type is **not** a mutable pointer.
-    if !matches!(end_ty.kind(), ty::RawPtr(TypeAndMut { ty: _, mutbl: Mutability::Mut })) {
+    if !matches!(end_ty.kind(), ty::RawPtr(TypeAndMut { ty: _, mutbl: ty::Mutability::Mut })) {
         return None;
     }
 
@@ -154,7 +154,7 @@ fn is_cast_from_const_to_mut<'tcx>(
     }
 
     let start_ty = cx.typeck_results().node_type(e.hir_id);
-    if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
+    if let ty::Ref(_, inner_ty, ty::Mutability::Not) = start_ty.kind() {
         // If an UnsafeCell method is involved we need to additionaly check the
         // inner type for the presence of the Freeze trait (ie does NOT contain
         // an UnsafeCell), since in that case we would incorrectly lint on valid casts.

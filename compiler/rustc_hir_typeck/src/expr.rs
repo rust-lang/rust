@@ -437,7 +437,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty =
             self.check_expr_with_expectation_and_needs(&oprnd, hint, Needs::maybe_mut_place(mutbl));
 
-        let tm = ty::TypeAndMut { ty, mutbl };
+        let tm = ty::TypeAndMut {
+            ty,
+            mutbl: match mutbl {
+                hir::Mutability::Mut => ty::Mutability::Mut,
+                hir::Mutability::Not => ty::Mutability::Not,
+            },
+        };
         match kind {
             _ if tm.ty.references_error() => Ty::new_misc_error(self.tcx),
             hir::BorrowKind::Raw => {

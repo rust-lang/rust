@@ -5,10 +5,9 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTempor
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::CanonicalUserTypeAnnotation;
+use rustc_middle::ty::{CanonicalUserTypeAnnotation, Mutability};
 use std::iter;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -299,8 +298,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::AddressOf { mutability, arg } => {
                 let arg = &this.thir[arg];
                 let place = match mutability {
-                    hir::Mutability::Not => this.as_read_only_place(block, arg),
-                    hir::Mutability::Mut => this.as_place(block, arg),
+                    Mutability::Not => this.as_read_only_place(block, arg),
+                    Mutability::Mut => this.as_place(block, arg),
                 };
                 let address_of = Rvalue::AddressOf(mutability, unpack!(block = place));
                 this.cfg.push_assign(block, source_info, destination, address_of);

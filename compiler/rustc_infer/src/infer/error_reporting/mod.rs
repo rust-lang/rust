@@ -1189,7 +1189,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         fn push_ty_ref<'tcx>(
             region: ty::Region<'tcx>,
             ty: Ty<'tcx>,
-            mutbl: hir::Mutability,
+            mutbl: ty::Mutability,
             s: &mut DiagnosticStyledString,
         ) {
             let mut r = region.to_string();

@@ -488,14 +488,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ty::VarianceDiagInfo::Invariant { ty, param_index } => {
                 let (desc, note) = match ty.kind() {
                     ty::RawPtr(ty_mut) => {
-                        assert_eq!(ty_mut.mutbl, rustc_hir::Mutability::Mut);
+                        assert_eq!(ty_mut.mutbl, ty::Mutability::Mut);
                         (
                             format!("a mutable pointer to `{}`", ty_mut.ty),
                             "mutable pointers are invariant over their type parameter".to_string(),
                         )
                     }
                     ty::Ref(_, inner_ty, mutbl) => {
-                        assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
+                        assert_eq!(*mutbl, ty::Mutability::Mut);
                         (
                             format!("a mutable reference to `{inner_ty}`"),
                             "mutable references are invariant over their type parameter"

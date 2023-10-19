@@ -121,7 +121,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 }
 
-const INITIAL_BM: BindingMode = BindingMode::BindByValue(hir::Mutability::Not);
+const INITIAL_BM: BindingMode = BindingMode::BindByValue(ty::Mutability::Not);
 
 /// Mode for adjusting the expected type and binding mode.
 enum AdjustMode {
@@ -200,7 +200,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_tuple(pat.span, elements, ddpos, expected, pat_info)
             }
             PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
-            PatKind::Ref(inner, mutbl) => self.check_pat_ref(pat, inner, mutbl, expected, pat_info),
+            PatKind::Ref(inner, mutbl) => self.check_pat_ref(
+                pat,
+                inner,
+                match mutbl {
+                    hir::Mutability::Mut => ty::Mutability::Mut,
+                    hir::Mutability::Not => ty::Mutability::Not,
+                },
+                expected,
+                pat_info,
+            ),
             PatKind::Slice(before, slice, after) => {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
@@ -362,10 +371,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // (depending on whether we observe `&` or `&mut`).
                 ty::BindByValue(_) |
                 // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                ty::BindByReference(hir::Mutability::Mut) => inner_mutability,
+                ty::BindByReference(ty::Mutability::Mut) => inner_mutability,
                 // Once a `ref`, always a `ref`.
                 // This is because a `& &mut` cannot mutate the underlying value.
-                ty::BindByReference(m @ hir::Mutability::Not) => m,
+                ty::BindByReference(m @ ty::Mutability::Not) => m,
             });
         }
 
@@ -1966,7 +1975,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         inner: &'tcx Pat<'tcx>,
-        mutbl: hir::Mutability,
+        mutbl: ty::Mutability,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
@@ -2017,7 +2026,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Create a reference type with a fresh region variable.
-    fn new_ref_ty(&self, span: Span, mutbl: hir::Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn new_ref_ty(&self, span: Span, mutbl: ty::Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
         let mt = ty::TypeAndMut { ty, mutbl };
         Ty::new_ref(self.tcx, region, mt)

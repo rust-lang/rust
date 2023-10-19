@@ -10,7 +10,6 @@ use either::Either;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
@@ -2047,13 +2046,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
-                        let ty::RawPtr(ty::TypeAndMut { ty: ty_from, mutbl: hir::Mutability::Mut }) =
+                        let ty::RawPtr(ty::TypeAndMut { ty: ty_from, mutbl: Mutability::Mut }) =
                             op.ty(body, tcx).kind()
                         else {
                             span_mirbug!(self, rvalue, "unexpected base type for cast {:?}", ty,);
                             return;
                         };
-                        let ty::RawPtr(ty::TypeAndMut { ty: ty_to, mutbl: hir::Mutability::Not }) =
+                        let ty::RawPtr(ty::TypeAndMut { ty: ty_to, mutbl: Mutability::Not }) =
                             ty.kind()
                         else {
                             span_mirbug!(self, rvalue, "unexpected target type for cast {:?}", ty,);
@@ -2533,13 +2532,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             });
 
                             match mutbl {
-                                hir::Mutability::Not => {
+                                Mutability::Not => {
                                     // Immutable reference. We don't need the base
                                     // to be valid for the entire lifetime of
                                     // the borrow.
                                     break;
                                 }
-                                hir::Mutability::Mut => {
+                                Mutability::Mut => {
                                     // Mutable reference. We *do* need the base
                                     // to be valid, because after the base becomes
                                     // invalid, someone else can use our mutable deref.

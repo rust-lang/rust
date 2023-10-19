@@ -412,9 +412,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let suggest_different_borrow =
                     |err: &mut DiagnosticBuilder<'_, _>,
                      lhs_adjusted_ty,
-                     lhs_new_mutbl: Option<ast::Mutability>,
+                     lhs_new_mutbl: Option<ty::Mutability>,
                      rhs_adjusted_ty,
-                     rhs_new_mutbl: Option<ast::Mutability>| {
+                     rhs_new_mutbl: Option<ty::Mutability>| {
                         if self
                             .lookup_op_method(
                                 lhs_adjusted_ty,
@@ -442,7 +442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             } else {
                                 let mut suggest_new_borrow =
-                                    |new_mutbl: ast::Mutability, sp: Span| {
+                                    |new_mutbl: ty::Mutability, sp: Span| {
                                         // Can reborrow (&mut -> &)
                                         if new_mutbl.is_not() {
                                             err.span_suggestion_verbose(
@@ -1073,7 +1073,7 @@ enum Op {
 /// Dereferences a single level of immutable referencing.
 fn deref_ty_if_possible(ty: Ty<'_>) -> Ty<'_> {
     match ty.kind() {
-        ty::Ref(_, ty, hir::Mutability::Not) => *ty,
+        ty::Ref(_, ty, ty::Mutability::Not) => *ty,
         _ => ty,
     }
 }

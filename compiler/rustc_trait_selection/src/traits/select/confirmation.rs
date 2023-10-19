@@ -6,7 +6,6 @@
 //!
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
-use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
@@ -310,8 +309,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // For example, transmuting bool -> u8 is OK as long as you can't update that u8
                     // to be > 1, because you could later transmute the u8 back to a bool and get UB.
                     match dst.mutability {
-                        Mutability::Not => vec![make_obl(src.ty, dst.ty)],
-                        Mutability::Mut => vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)],
+                        ty::Mutability::Not => vec![make_obl(src.ty, dst.ty)],
+                        ty::Mutability::Mut => {
+                            vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)]
+                        }
                     }
                 }
             }

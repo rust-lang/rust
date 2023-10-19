@@ -1582,7 +1582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         typeck_results: &'a TypeckResults<'tcx>,
         place: &Place<'tcx>,
-    ) -> hir::Mutability {
+    ) -> ty::Mutability {
         let var_hir_id = match place.base {
             PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
             _ => unreachable!(),
@@ -1592,7 +1592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut is_mutbl = match bm {
             ty::BindByValue(mutability) => mutability,
-            ty::BindByReference(_) => hir::Mutability::Not,
+            ty::BindByReference(_) => ty::Mutability::Not,
         };
 
         for pointer_ty in place.deref_tys() {
@@ -1602,10 +1602,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Dereferencing a mut-ref allows us to mut the Place if we don't deref
                 // an immut-ref after on top of this.
-                ty::Ref(.., hir::Mutability::Mut) => is_mutbl = hir::Mutability::Mut,
+                ty::Ref(.., ty::Mutability::Mut) => is_mutbl = ty::Mutability::Mut,
 
                 // The place isn't mutable once we dereference an immutable reference.
-                ty::Ref(.., hir::Mutability::Not) => return hir::Mutability::Not,
+                ty::Ref(.., ty::Mutability::Not) => return ty::Mutability::Not,
 
                 // Dereferencing a box doesn't change mutability
                 ty::Adt(def, ..) if def.is_box() => {}
@@ -2116,7 +2116,7 @@ fn truncate_place_to_len_and_update_capture_kind<'tcx>(
     curr_mode: &mut ty::UpvarCapture,
     len: usize,
 ) {
-    let is_mut_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Mut));
+    let is_mut_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., ty::Mutability::Mut));
 
     // If the truncated part of the place contains `Deref` of a `&mut` then convert MutBorrow ->
     // UniqueImmBorrow
@@ -2211,7 +2211,7 @@ fn truncate_capture_for_optimization(
     mut place: Place<'_>,
     mut curr_mode: ty::UpvarCapture,
 ) -> (Place<'_>, ty::UpvarCapture) {
-    let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not));
+    let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., ty::Mutability::Not));
 
     // Find the right-most deref (if any). All the projections that come after this
     // are fields or other "in-place pointer adjustments"; these refer therefore to

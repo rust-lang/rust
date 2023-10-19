@@ -1366,7 +1366,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if proj == ProjectionElem::Deref {
                     match place_ref.ty(this.body(), this.infcx.tcx).ty.kind() {
                         // We aren't modifying a variable directly
-                        ty::Ref(_, _, hir::Mutability::Mut) => return,
+                        ty::Ref(_, _, Mutability::Mut) => return,
 
                         _ => {}
                     }
@@ -2154,10 +2154,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ty::Ref(_, _, mutbl) => {
                                 match mutbl {
                                     // Shared borrowed data is never mutable
-                                    hir::Mutability::Not => Err(place),
+                                    Mutability::Not => Err(place),
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
-                                    hir::Mutability::Mut => {
+                                    Mutability::Mut => {
                                         let mode = match self.is_upvar_field_projection(place) {
                                             Some(field) if self.upvars[field.index()].by_ref => {
                                                 is_local_mutation_allowed
@@ -2172,10 +2172,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ty::RawPtr(tnm) => {
                                 match tnm.mutbl {
                                     // `*const` raw pointers are not mutable
-                                    hir::Mutability::Not => Err(place),
+                                    Mutability::Not => Err(place),
                                     // `*mut` raw pointers are always mutable, regardless of
                                     // context. The users have to check by themselves.
-                                    hir::Mutability::Mut => Ok(RootPlace {
+                                    Mutability::Mut => Ok(RootPlace {
                                         place_local: place.local,
                                         place_projection: place.projection,
                                         is_local_mutation_allowed,

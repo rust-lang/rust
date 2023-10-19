@@ -641,7 +641,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
     #[inline]
     pub fn is_mutable_static(self, def_id: DefId) -> bool {
-        self.static_mutability(def_id) == Some(hir::Mutability::Mut)
+        self.static_mutability(def_id).is_some_and(|mt| mt.is_mut())
     }
 
     /// Returns `true` if the item pointed to by `def_id` is a thread local which needs a
@@ -1222,8 +1222,8 @@ impl<'tcx> Ty<'tcx> {
 
 pub enum ExplicitSelf<'tcx> {
     ByValue,
-    ByReference(ty::Region<'tcx>, hir::Mutability),
-    ByRawPointer(hir::Mutability),
+    ByReference(ty::Region<'tcx>, ty::Mutability),
+    ByRawPointer(ty::Mutability),
     ByBox,
     Other,
 }

@@ -12,7 +12,6 @@ use std::ptr;
 
 use either::{Left, Right};
 
-use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
@@ -80,7 +79,7 @@ pub struct Allocation<Prov: Provenance = AllocId, Extra = (), Bytes = Box<[u8]>>
     /// `true` if the allocation is mutable.
     /// Also used by codegen to determine if a static should be put into mutable memory,
     /// which happens for `static mut` and `static` with interior mutability.
-    pub mutability: Mutability,
+    pub mutability: ty::Mutability,
     /// Extra state for the machine.
     pub extra: Extra,
 }
@@ -257,7 +256,7 @@ impl AllocRange {
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// Creates an allocation from an existing `Bytes` value - this is needed for miri FFI support
-    pub fn from_raw_bytes(bytes: Bytes, align: Align, mutability: Mutability) -> Self {
+    pub fn from_raw_bytes(bytes: Bytes, align: Align, mutability: ty::Mutability) -> Self {
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
@@ -273,7 +272,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     pub fn from_bytes<'a>(
         slice: impl Into<Cow<'a, [u8]>>,
         align: Align,
-        mutability: Mutability,
+        mutability: ty::Mutability,
     ) -> Self {
         let bytes = Bytes::from_bytes(slice, align);
         let size = Size::from_bytes(bytes.len());
@@ -288,7 +287,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     }
 
     pub fn from_bytes_byte_aligned_immutable<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
-        Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
+        Allocation::from_bytes(slice, Align::ONE, ty::Mutability::Not)
     }
 
     fn uninit_inner<R>(size: Size, align: Align, fail: impl FnOnce() -> R) -> Result<Self, R> {
@@ -305,7 +304,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
             provenance: ProvenanceMap::new(),
             init_mask: InitMask::new(size, false),
             align,
-            mutability: Mutability::Mut,
+            mutability: ty::Mutability::Mut,
             extra: (),
         })
     }
@@ -495,7 +494,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         if range.size.bytes() == 0 {
             return;
         }
-        assert!(self.mutability == Mutability::Mut);
+        assert_eq!(self.mutability, ty::Mutability::Mut);
         self.init_mask.set_range(range, is_init);
     }
 
@@ -579,7 +578,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         range: AllocRange,
         val: Scalar<Prov>,
     ) -> AllocResult {
-        assert!(self.mutability == Mutability::Mut);
+        assert_eq!(self.mutability, ty::Mutability::Mut);
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory. This also double-checks that `val.size()` matches `range.size`.

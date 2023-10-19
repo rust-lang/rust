@@ -56,7 +56,6 @@ pub trait Interner: Sized {
     type Region: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type Predicate;
     type TypeAndMut: Clone + Debug + Hash + Ord;
-    type Mutability: Clone + Debug + Hash + Ord;
     type Movability: Clone + Debug + Hash + Ord;
     type PolyFnSig: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type ListBinderExistentialPredicate: Clone + DebugWithInfcx<Self> + Hash + Ord;
@@ -85,8 +84,7 @@ pub trait Interner: Sized {
     type RegionVid: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderRegion: Clone + Debug + Hash + Ord;
 
-    fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Self::Mutability);
-    fn mutability_is_mut(mutbl: Self::Mutability) -> bool;
+    fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Mutability);
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

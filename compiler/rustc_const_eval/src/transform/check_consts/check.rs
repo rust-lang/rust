@@ -198,7 +198,7 @@ impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'm
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::FnPtr(_) => ControlFlow::Continue(()),
-            ty::Ref(_, _, hir::Mutability::Mut) => {
+            ty::Ref(_, _, Mutability::Mut) => {
                 self.checker.check_op(ops::ty::MutRef(self.kind));
                 t.super_visit_with(self)
             }

@@ -287,8 +287,8 @@ impl<'tcx> Ty<'tcx> {
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "raw pointer".into(),
             ty::Ref(.., mutbl) => match mutbl {
-                hir::Mutability::Mut => "mutable reference",
-                _ => "reference",
+                ty::Mutability::Mut => "mutable reference",
+                ty::Mutability::Not => "reference",
             }
             .into(),
             ty::FnDef(def_id, ..) => match tcx.def_kind(def_id) {

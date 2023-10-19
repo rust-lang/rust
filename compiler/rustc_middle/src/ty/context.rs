@@ -90,7 +90,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Region = Region<'tcx>;
     type Predicate = Predicate<'tcx>;
     type TypeAndMut = TypeAndMut<'tcx>;
-    type Mutability = hir::Mutability;
     type Movability = hir::Movability;
     type PolyFnSig = PolyFnSig<'tcx>;
     type ListBinderExistentialPredicate = &'tcx List<PolyExistentialPredicate<'tcx>>;
@@ -121,12 +120,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn ty_and_mut_to_parts(
         TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
-    ) -> (Self::Ty, Self::Mutability) {
+    ) -> (Self::Ty, ty::Mutability) {
         (ty, mutbl)
-    }
-
-    fn mutability_is_mut(mutbl: Self::Mutability) -> bool {
-        mutbl.is_mut()
     }
 }
 

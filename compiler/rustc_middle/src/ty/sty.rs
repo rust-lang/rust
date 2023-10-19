@@ -53,7 +53,7 @@ pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
-    pub mutbl: hir::Mutability,
+    pub mutbl: ty::Mutability,
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
@@ -2051,12 +2051,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_mut_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: ty::Mutability::Mut })
     }
 
     #[inline]
     pub fn new_imm_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: ty::Mutability::Not })
     }
 
     #[inline]
@@ -2066,12 +2066,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_mut_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: ty::Mutability::Mut })
     }
 
     #[inline]
     pub fn new_imm_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: ty::Mutability::Not })
     }
 
     #[inline]
@@ -2404,14 +2404,13 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_mutable_ptr(self) -> bool {
         matches!(
             self.kind(),
-            RawPtr(TypeAndMut { mutbl: hir::Mutability::Mut, .. })
-                | Ref(_, _, hir::Mutability::Mut)
+            RawPtr(TypeAndMut { mutbl: ty::Mutability::Mut, .. }) | Ref(_, _, ty::Mutability::Mut)
         )
     }
 
     /// Get the mutability of the reference or `None` when not a reference
     #[inline]
-    pub fn ref_mutability(self) -> Option<hir::Mutability> {
+    pub fn ref_mutability(self) -> Option<ty::Mutability> {
         match self.kind() {
             Ref(_, _, mutability) => Some(*mutability),
             _ => None,
@@ -2586,7 +2585,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn builtin_deref(self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
         match self.kind() {
             Adt(def, _) if def.is_box() => {
-                Some(TypeAndMut { ty: self.boxed_ty(), mutbl: hir::Mutability::Not })
+                Some(TypeAndMut { ty: self.boxed_ty(), mutbl: ty::Mutability::Not })
             }
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
             RawPtr(mt) if explicit => Some(*mt),
@@ -2894,11 +2893,11 @@ impl<'tcx> Ty<'tcx> {
             ty::FnPtr(..) => false,
 
             // Definitely absolutely not copy.
-            ty::Ref(_, _, hir::Mutability::Mut) => false,
+            ty::Ref(_, _, ty::Mutability::Mut) => false,
 
             // Thin pointers & thin shared references are pure-clone-copy, but for
             // anything with custom metadata it might be more complicated.
-            ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
+            ty::Ref(_, _, ty::Mutability::Not) | ty::RawPtr(..) => false,
 
             ty::Generator(..) | ty::GeneratorWitness(..) => false,
 

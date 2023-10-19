@@ -1156,8 +1156,8 @@ fn report_trait_method_mismatch<'tcx>(
             let ty = trait_sig.inputs()[0];
             let sugg = match ExplicitSelf::determine(ty, |ty| ty == impl_trait_ref.self_ty()) {
                 ExplicitSelf::ByValue => "self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
+                ExplicitSelf::ByReference(_, ty::Mutability::Not) => "&self".to_owned(),
+                ExplicitSelf::ByReference(_, ty::Mutability::Mut) => "&mut self".to_owned(),
                 _ => format!("self: {ty}"),
             };
 
@@ -1375,8 +1375,8 @@ fn compare_self_type<'tcx>(
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
         match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
             ExplicitSelf::ByValue => "self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
+            ExplicitSelf::ByReference(_, ty::Mutability::Not) => "&self".to_owned(),
+            ExplicitSelf::ByReference(_, ty::Mutability::Mut) => "&mut self".to_owned(),
             _ => format!("self: {self_arg_ty}"),
         }
     };

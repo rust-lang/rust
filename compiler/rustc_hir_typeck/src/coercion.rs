@@ -107,8 +107,8 @@ impl<'tcx> Visitor<'tcx> for CollectRetsVisitor<'tcx> {
 /// Coercing a mutable reference to an immutable works, while
 /// coercing `&T` to `&mut T` should be forbidden.
 fn coerce_mutbls<'tcx>(
-    from_mutbl: hir::Mutability,
-    to_mutbl: hir::Mutability,
+    from_mutbl: ty::Mutability,
+    to_mutbl: ty::Mutability,
 ) -> RelateResult<'tcx, ()> {
     if from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
 }
@@ -325,7 +325,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         a: Ty<'tcx>,
         b: Ty<'tcx>,
         r_b: ty::Region<'tcx>,
-        mutbl_b: hir::Mutability,
+        mutbl_b: ty::Mutability,
     ) -> CoerceResult<'tcx> {
         debug!("coerce_borrowed_pointer(a={:?}, b={:?})", a, b);
 
@@ -969,7 +969,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        mutbl_b: hir::Mutability,
+        mutbl_b: ty::Mutability,
     ) -> CoerceResult<'tcx> {
         debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
 
@@ -1262,7 +1262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ] => {
                     match *self.node_ty(expr.hir_id).kind() {
                         ty::Ref(_, _, mt_orig) => {
-                            let mutbl_adj: hir::Mutability = mutbl_adj.into();
+                            let mutbl_adj: ty::Mutability = mutbl_adj.into();
                             // Reborrow that we can safely ignore, because
                             // the next adjustment can only be a Deref
                             // which will be merged into it.

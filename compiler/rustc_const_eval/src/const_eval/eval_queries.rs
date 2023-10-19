@@ -2,6 +2,7 @@ use std::mem;
 
 use either::{Left, Right};
 
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::pretty::write_allocation_bytes;
@@ -71,7 +72,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         InternKind::Promoted
     } else {
         match tcx.static_mutability(cid.instance.def_id()) {
-            Some(m) => InternKind::Static(m),
+            Some(hir::Mutability::Mut) => InternKind::Static(ty::Mutability::Mut),
+            Some(hir::Mutability::Not) => InternKind::Static(ty::Mutability::Not),
             None => InternKind::Constant,
         }
     };

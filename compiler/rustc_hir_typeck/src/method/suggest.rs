@@ -5,7 +5,6 @@ use crate::errors;
 use crate::errors::{CandidateTraitNote, NoAssociatedItem};
 use crate::Expectation;
 use crate::FnCtxt;
-use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
@@ -2075,8 +2074,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                 } else if tcx.is_diagnostic_item(sym::RefCell, inner_id) {
                     let (suggestion, borrow_kind, panic_if) = match mutable {
-                        Some(Mutability::Not) => (".borrow()", "borrow", "a mutable borrow exists"),
-                        Some(Mutability::Mut) => {
+                        Some(ty::Mutability::Not) => {
+                            (".borrow()", "borrow", "a mutable borrow exists")
+                        }
+                        Some(ty::Mutability::Mut) => {
                             (".borrow_mut()", "mutably borrow", "any borrows exist")
                         }
                         None => return,
@@ -2102,8 +2103,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 } else if tcx.is_diagnostic_item(sym::RwLock, inner_id) {
                     let (suggestion, borrow_kind) = match mutable {
-                        Some(Mutability::Not) => (".read().unwrap()", "borrow"),
-                        Some(Mutability::Mut) => (".write().unwrap()", "mutably borrow"),
+                        Some(ty::Mutability::Not) => (".read().unwrap()", "borrow"),
+                        Some(ty::Mutability::Mut) => (".write().unwrap()", "mutably borrow"),
                         None => return,
                     };
                     err.span_suggestion_verbose(

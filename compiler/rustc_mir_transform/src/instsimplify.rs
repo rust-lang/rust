@@ -2,7 +2,6 @@
 
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::MirPass;
-use rustc_hir::Mutability;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};

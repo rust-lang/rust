@@ -540,7 +540,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     [
                         ..,
                         Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mut_)), target: _ },
-                    ] => hir::Mutability::from(*mut_).ref_prefix_str(),
+                    ] => ty::Mutability::from(*mut_).ref_prefix_str(),
                     _ => "",
                 };
 

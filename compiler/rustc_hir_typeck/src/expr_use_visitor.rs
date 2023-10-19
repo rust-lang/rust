@@ -271,7 +271,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // &base
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
-                let bk = ty::BorrowKind::from_mutbl(m);
+                let bk = ty::BorrowKind::from_hir(m);
                 self.borrow_expr(base, bk);
             }
 
@@ -607,7 +607,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // `x.deref()`. Since `deref()` is declared with `&self`,
                 // this is an autoref of `x`.
                 adjustment::Adjust::Deref(Some(ref deref)) => {
-                    let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
+                    let bk = ty::BorrowKind::from_ty(deref.mutbl);
                     self.delegate.borrow(&place_with_id, place_with_id.hir_id, bk);
                 }
 
@@ -639,14 +639,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.delegate.borrow(
                     base_place,
                     base_place.hir_id,
-                    ty::BorrowKind::from_mutbl(m.into()),
+                    ty::BorrowKind::from_ty(m.into()),
                 );
             }
 
             adjustment::AutoBorrow::RawPtr(m) => {
                 debug!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
 
-                self.delegate.borrow(base_place, base_place.hir_id, ty::BorrowKind::from_mutbl(m));
+                self.delegate.borrow(base_place, base_place.hir_id, ty::BorrowKind::from_ty(m));
             }
         }
     }
@@ -732,7 +732,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     // of the discriminant.
                     match bm {
                         ty::BindByReference(m) => {
-                            let bk = ty::BorrowKind::from_mutbl(m);
+                            let bk = ty::BorrowKind::from_ty(m);
                             delegate.borrow(place, discr_place.hir_id, bk);
                         }
                         ty::BindByValue(..) => {

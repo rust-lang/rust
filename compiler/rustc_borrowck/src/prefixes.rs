@@ -11,7 +11,6 @@
 
 use super::MirBorrowckCtxt;
 
-use rustc_hir as hir;
 use rustc_middle::mir::{Body, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -125,14 +124,14 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
 
                     let ty = cursor_base.ty(self.body, self.tcx).ty;
                     match ty.kind() {
-                        ty::RawPtr(_) | ty::Ref(_ /*rgn*/, _ /*ty*/, hir::Mutability::Not) => {
+                        ty::RawPtr(_) | ty::Ref(_ /*rgn*/, _ /*ty*/, ty::Mutability::Not) => {
                             // don't continue traversing over derefs of raw pointers or shared
                             // borrows.
                             self.next = None;
                             return Some(cursor);
                         }
 
-                        ty::Ref(_ /*rgn*/, _ /*ty*/, hir::Mutability::Mut) => {
+                        ty::Ref(_ /*rgn*/, _ /*ty*/, ty::Mutability::Mut) => {
                             self.next = Some(cursor_base);
                             return Some(cursor);
                         }

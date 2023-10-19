@@ -124,8 +124,8 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
     } else {
         let mutbl = a.mutbl;
         let (variance, info) = match mutbl {
-            hir::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
-            hir::Mutability::Mut => {
+            ty::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
+            ty::Mutability::Mut => {
                 (ty::Invariant, ty::VarianceDiagInfo::Invariant { ty: base_ty, param_index: 0 })
             }
         };

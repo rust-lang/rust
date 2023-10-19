@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
-use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
+use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
@@ -140,14 +140,14 @@ fn push_debuginfo_type_name<'tcx>(
         ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl }) => {
             if cpp_like_debuginfo {
                 match mutbl {
-                    Mutability::Not => output.push_str("ptr_const$<"),
-                    Mutability::Mut => output.push_str("ptr_mut$<"),
+                    ty::Mutability::Not => output.push_str("ptr_const$<"),
+                    ty::Mutability::Mut => output.push_str("ptr_mut$<"),
                 }
             } else {
                 output.push('*');
                 match mutbl {
-                    Mutability::Not => output.push_str("const "),
-                    Mutability::Mut => output.push_str("mut "),
+                    ty::Mutability::Not => output.push_str("const "),
+                    ty::Mutability::Mut => output.push_str("mut "),
                 }
             }
 
@@ -160,8 +160,8 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Ref(_, inner_type, mutbl) => {
             if cpp_like_debuginfo {
                 match mutbl {
-                    Mutability::Not => output.push_str("ref$<"),
-                    Mutability::Mut => output.push_str("ref_mut$<"),
+                    ty::Mutability::Not => output.push_str("ref$<"),
+                    ty::Mutability::Mut => output.push_str("ref_mut$<"),
                 }
             } else {
                 output.push('&');

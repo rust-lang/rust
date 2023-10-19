@@ -12,10 +12,9 @@ use std::collections::VecDeque;
 use std::fmt;
 use std::ptr;
 
-use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::display_allocation;
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Mutability, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use crate::fluent_generated as fluent;

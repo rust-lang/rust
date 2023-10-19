@@ -35,6 +35,58 @@ pub enum DynKind {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum Mutability {
+    /// Immutable (`&T` and `*const T`)
+    Not,
+    /// Mutable (`&mut T` and `*mut T`)
+    Mut,
+}
+
+impl Mutability {
+    pub fn invert(self) -> Self {
+        match self {
+            Mutability::Mut => Mutability::Not,
+            Mutability::Not => Mutability::Mut,
+        }
+    }
+
+    /// Returns `""` (empty string) or `"mut "` depending on the mutability.
+    pub fn prefix_str(self) -> &'static str {
+        match self {
+            Mutability::Mut => "mut ",
+            Mutability::Not => "",
+        }
+    }
+
+    /// Returns `"&"` or `"&mut "` depending on the mutability.
+    pub fn ref_prefix_str(self) -> &'static str {
+        match self {
+            Mutability::Not => "&",
+            Mutability::Mut => "&mut ",
+        }
+    }
+
+    /// Returns `""` (empty string) or `"mutably "` depending on the mutability.
+    pub fn mutably_str(self) -> &'static str {
+        match self {
+            Mutability::Not => "",
+            Mutability::Mut => "mutably ",
+        }
+    }
+
+    /// Return `true` if self is mutable
+    pub fn is_mut(self) -> bool {
+        matches!(self, Self::Mut)
+    }
+
+    /// Return `true` if self is **not** mutable
+    pub fn is_not(self) -> bool {
+        matches!(self, Self::Not)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum AliasKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
@@ -98,7 +150,7 @@ pub enum TyKind<I: Interner> {
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(I::Region, I::Ty, I::Mutability),
+    Ref(I::Region, I::Ty, Mutability),
 
     /// The anonymous type of a function declaration/definition. Each
     /// function has a unique type.
@@ -506,15 +558,15 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
             RawPtr(p) => {
                 let (ty, mutbl) = I::ty_and_mut_to_parts(p.clone());
-                match I::mutability_is_mut(mutbl) {
-                    true => write!(f, "*mut "),
-                    false => write!(f, "*const "),
+                match mutbl {
+                    Mutability::Mut => write!(f, "*mut "),
+                    Mutability::Not => write!(f, "*const "),
                 }?;
                 write!(f, "{:?}", &this.wrap(ty))
             }
-            Ref(r, t, m) => match I::mutability_is_mut(m.clone()) {
-                true => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
-                false => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
+            Ref(r, t, m) => match m {
+                Mutability::Mut => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
+                Mutability::Not => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
             },
             FnDef(d, s) => f.debug_tuple_field2_finish("FnDef", d, &this.wrap(s)),
             FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
@@ -573,7 +625,7 @@ where
     I::Const: Encodable<E>,
     I::Region: Encodable<E>,
     I::TypeAndMut: Encodable<E>,
-    I::Mutability: Encodable<E>,
+    Mutability: Encodable<E>,
     I::Movability: Encodable<E>,
     I::PolyFnSig: Encodable<E>,
     I::ListBinderExistentialPredicate: Encodable<E>,
@@ -688,7 +740,7 @@ where
     I::Const: Decodable<D>,
     I::Region: Decodable<D>,
     I::TypeAndMut: Decodable<D>,
-    I::Mutability: Decodable<D>,
+    Mutability: Decodable<D>,
     I::Movability: Decodable<D>,
     I::PolyFnSig: Decodable<D>,
     I::ListBinderExistentialPredicate: Decodable<D>,
@@ -756,7 +808,7 @@ where
     I::ListBinderExistentialPredicate: HashStable<CTX>,
     I::Region: HashStable<CTX>,
     I::Movability: HashStable<CTX>,
-    I::Mutability: HashStable<CTX>,
+    Mutability: HashStable<CTX>,
     I::BinderListTy: HashStable<CTX>,
     I::ListTy: HashStable<CTX>,
     I::AliasTy: HashStable<CTX>,

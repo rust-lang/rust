@@ -1292,8 +1292,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg: &hir::Expr<'tcx>,
         err: &mut rustc_errors::DiagnosticBuilder<'tcx, ErrorGuaranteed>,
     ) {
-        if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
-            && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =
+        if let ty::RawPtr(ty::TypeAndMut { mutbl: ty::Mutability::Mut, .. }) = expected_ty.kind()
+            && let ty::RawPtr(ty::TypeAndMut { mutbl: ty::Mutability::Not, .. }) =
                 provided_ty.kind()
             && let hir::ExprKind::Call(callee, _) = arg.kind
             && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = callee.kind

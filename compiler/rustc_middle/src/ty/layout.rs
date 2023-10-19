@@ -7,7 +7,6 @@ use rustc_error_messages::DiagnosticMessage;
 use rustc_errors::{
     DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg,
 };
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_session::config::OptLevel;
@@ -1004,10 +1003,10 @@ where
                 // attributes in LLVM have compile-time cost even in unoptimized builds).
                 let optimize = tcx.sess.opts.optimize != OptLevel::No;
                 let kind = match mt {
-                    hir::Mutability::Not => PointerKind::SharedRef {
+                    ty::Mutability::Not => PointerKind::SharedRef {
                         frozen: optimize && ty.is_freeze(tcx, cx.param_env()),
                     },
-                    hir::Mutability::Mut => PointerKind::MutableRef {
+                    ty::Mutability::Mut => PointerKind::MutableRef {
                         unpin: optimize && ty.is_unpin(tcx, cx.param_env()),
                     },
                 };

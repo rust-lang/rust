@@ -854,7 +854,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 let mutability =
                     match self.tcx.fn_sig(m.def_id).skip_binder().input(0).skip_binder().kind() {
-                        ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
+                        ty::Ref(_, _, ty::Mutability::Mut) => "&mut ",
                         ty::Ref(_, _, _) => "&",
                         _ => "",
                     };
@@ -1518,10 +1518,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // bar(&x); // error, expected &mut
                 // ```
                 let ref_ty = match mutability {
-                    hir::Mutability::Mut => {
+                    ty::Mutability::Mut => {
                         Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_static, checked_ty)
                     }
-                    hir::Mutability::Not => {
+                    ty::Mutability::Not => {
                         Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, checked_ty)
                     }
                 };

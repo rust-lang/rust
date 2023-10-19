@@ -2475,14 +2475,31 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let result_ty = match &ast_ty.kind {
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.ast_ty_to_ty(ty)),
-            hir::TyKind::Ptr(mt) => {
-                Ty::new_ptr(tcx, ty::TypeAndMut { ty: self.ast_ty_to_ty(mt.ty), mutbl: mt.mutbl })
-            }
+            hir::TyKind::Ptr(mt) => Ty::new_ptr(
+                tcx,
+                ty::TypeAndMut {
+                    ty: self.ast_ty_to_ty(mt.ty),
+                    mutbl: match mt.mutbl {
+                        hir::Mutability::Mut => ty::Mutability::Mut,
+                        hir::Mutability::Not => ty::Mutability::Not,
+                    },
+                },
+            ),
             hir::TyKind::Ref(region, mt) => {
                 let r = self.ast_region_to_region(region, None);
                 debug!(?r);
                 let t = self.ast_ty_to_ty_inner(mt.ty, true, false);
-                Ty::new_ref(tcx, r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
+                Ty::new_ref(
+                    tcx,
+                    r,
+                    ty::TypeAndMut {
+                        ty: t,
+                        mutbl: match mt.mutbl {
+                            hir::Mutability::Mut => ty::Mutability::Mut,
+                            hir::Mutability::Not => ty::Mutability::Not,
+                        },
+                    },
+                )
             }
             hir::TyKind::Never => tcx.types.never,
             hir::TyKind::Tup(fields) => {

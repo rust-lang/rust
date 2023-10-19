@@ -6,12 +6,11 @@ use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
 
-use rustc_ast::Mutability;
 use rustc_index::IndexSlice;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Mutability, Ty};
 use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{

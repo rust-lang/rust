@@ -1,9 +1,9 @@
 //! See the docs for [`RenameReturnPlace`].
 
-use rustc_hir::Mutability;
 use rustc_index::bit_set::HybridBitSet;
 use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
+use rustc_middle::ty::Mutability;
 use rustc_middle::ty::TyCtxt;
 
 use crate::MirPass;

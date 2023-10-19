@@ -6,13 +6,12 @@ use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, 
 use crate::type_::Type;
 use crate::value::Value;
 
-use rustc_ast::Mutability;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Mutability, TyCtxt};
 use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
 use rustc_target::spec::Target;

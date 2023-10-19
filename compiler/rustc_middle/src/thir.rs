@@ -397,7 +397,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
     AddressOf {
-        mutability: hir::Mutability,
+        mutability: ty::Mutability,
         arg: ExprId,
     },
     /// A `break` expression.

@@ -6,7 +6,6 @@ use super::usefulness::{
 use crate::errors::*;
 
 use rustc_arena::TypedArena;
-use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
@@ -580,7 +579,7 @@ fn check_for_bindings_named_same_as_variants(
         if let PatKind::Binding {
             name,
             mode: BindingMode::ByValue,
-            mutability: Mutability::Not,
+            mutability: ty::Mutability::Not,
             subpattern: None,
             ty,
             ..
@@ -1036,15 +1035,15 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, 
         match mode {
             BindingMode::ByRef(mut_inner) => match (mut_outer, mut_inner.mutability()) {
                 // Both sides are `ref`.
-                (Mutability::Not, Mutability::Not) => {}
+                (ty::Mutability::Not, ty::Mutability::Not) => {}
                 // 2x `ref mut`.
-                (Mutability::Mut, Mutability::Mut) => {
+                (ty::Mutability::Mut, ty::Mutability::Mut) => {
                     conflicts_mut_mut.push(Conflict::Mut { span, name })
                 }
-                (Mutability::Not, Mutability::Mut) => {
+                (ty::Mutability::Not, ty::Mutability::Mut) => {
                     conflicts_mut_ref.push(Conflict::Mut { span, name })
                 }
-                (Mutability::Mut, Mutability::Not) => {
+                (ty::Mutability::Mut, ty::Mutability::Not) => {
                     conflicts_mut_ref.push(Conflict::Ref { span, name })
                 }
             },
@@ -1060,8 +1059,8 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, 
     let report_move_conflict = !conflicts_move.is_empty();
 
     let mut occurrences = match mut_outer {
-        Mutability::Mut => vec![Conflict::Mut { span: pat.span, name }],
-        Mutability::Not => vec![Conflict::Ref { span: pat.span, name }],
+        ty::Mutability::Mut => vec![Conflict::Mut { span: pat.span, name }],
+        ty::Mutability::Not => vec![Conflict::Ref { span: pat.span, name }],
     };
     occurrences.extend(conflicts_mut_mut);
     occurrences.extend(conflicts_mut_ref);
@@ -1074,10 +1073,10 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, 
     } else if report_mut_ref {
         // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
         match mut_outer {
-            Mutability::Mut => {
+            ty::Mutability::Mut => {
                 sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurrences });
             }
-            Mutability::Not => {
+            ty::Mutability::Not => {
                 sess.emit_err(AlreadyBorrowed { span: pat.span, occurrences });
             }
         };

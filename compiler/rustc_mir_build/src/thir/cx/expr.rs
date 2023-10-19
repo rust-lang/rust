@@ -418,7 +418,13 @@ impl<'tcx> Cx<'tcx> {
             }
 
             hir::ExprKind::AddrOf(hir::BorrowKind::Raw, mutability, ref arg) => {
-                ExprKind::AddressOf { mutability, arg: self.mirror_expr(arg) }
+                ExprKind::AddressOf {
+                    mutability: match mutability {
+                        hir::Mutability::Not => ty::Mutability::Not,
+                        hir::Mutability::Mut => ty::Mutability::Mut,
+                    },
+                    arg: self.mirror_expr(arg),
+                }
             }
 
             hir::ExprKind::Block(ref blk, _) => ExprKind::Block { block: self.mirror_block(blk) },
@@ -1166,6 +1172,15 @@ impl ToBorrowKind for hir::Mutability {
         match *self {
             hir::Mutability::Mut => BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
             hir::Mutability::Not => BorrowKind::Shared,
+        }
+    }
+}
+
+impl ToBorrowKind for ty::Mutability {
+    fn to_borrow_kind(&self) -> BorrowKind {
+        match *self {
+            ty::Mutability::Mut => BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
+            ty::Mutability::Not => BorrowKind::Shared,
         }
     }
 }

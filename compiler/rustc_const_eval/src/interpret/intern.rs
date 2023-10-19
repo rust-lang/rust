@@ -17,11 +17,8 @@
 use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
-use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
-
-use rustc_ast::Mutability;
+use rustc_middle::ty::{self, layout::TyAndLayout, Mutability, Ty};
 
 use super::{
     AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, Projectable,
@@ -63,7 +60,7 @@ enum InternMode {
     /// A static and its current mutability. Below shared references inside a `static mut`,
     /// this is *immutable*, and below mutable references inside an `UnsafeCell`, this
     /// is *mutable*.
-    Static(hir::Mutability),
+    Static(Mutability),
     /// A `const`.
     Const,
 }
@@ -312,7 +309,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
 pub enum InternKind {
     /// The `mutability` of the static, ignoring the type which may have interior mutability.
-    Static(hir::Mutability),
+    Static(Mutability),
     /// A `const` item
     Constant,
     Promoted,

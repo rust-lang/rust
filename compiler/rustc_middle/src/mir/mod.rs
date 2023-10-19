@@ -22,8 +22,8 @@ use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
+pub use crate::ty::Mutability;
 use polonius_engine::Atom;
-pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;

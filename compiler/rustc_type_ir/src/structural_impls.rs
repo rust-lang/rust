@@ -28,6 +28,7 @@ TrivialTypeTraversalImpls! {
     u64,
     String,
     crate::DebruijnIndex,
+    crate::Mutability,
 }
 
 ///////////////////////////////////////////////////////////////////////////

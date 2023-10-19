@@ -113,7 +113,7 @@ pub enum Adjust<'tcx> {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct OverloadedDeref<'tcx> {
     pub region: ty::Region<'tcx>,
-    pub mutbl: hir::Mutability,
+    pub mutbl: ty::Mutability,
     /// The `Span` associated with the field access or method call
     /// that triggered this overloaded deref.
     pub span: Span,
@@ -123,8 +123,8 @@ impl<'tcx> OverloadedDeref<'tcx> {
     /// Get the zst function item type for this method call.
     pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> Ty<'tcx> {
         let trait_def_id = match self.mutbl {
-            hir::Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
-            hir::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
+            ty::Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
+            ty::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
         };
         let method_def_id = tcx
             .associated_items(trait_def_id)
@@ -164,19 +164,19 @@ impl AutoBorrowMutability {
     /// Creates an `AutoBorrowMutability` from a mutability and allowance of two phase borrows.
     ///
     /// Note that when `mutbl.is_not()`, `allow_two_phase_borrow` is ignored
-    pub fn new(mutbl: hir::Mutability, allow_two_phase_borrow: AllowTwoPhase) -> Self {
+    pub fn new(mutbl: ty::Mutability, allow_two_phase_borrow: AllowTwoPhase) -> Self {
         match mutbl {
-            hir::Mutability::Not => Self::Not,
-            hir::Mutability::Mut => Self::Mut { allow_two_phase_borrow },
+            ty::Mutability::Not => Self::Not,
+            ty::Mutability::Mut => Self::Mut { allow_two_phase_borrow },
         }
     }
 }
 
-impl From<AutoBorrowMutability> for hir::Mutability {
+impl From<AutoBorrowMutability> for ty::Mutability {
     fn from(m: AutoBorrowMutability) -> Self {
         match m {
-            AutoBorrowMutability::Mut { .. } => hir::Mutability::Mut,
-            AutoBorrowMutability::Not => hir::Mutability::Not,
+            AutoBorrowMutability::Mut { .. } => ty::Mutability::Mut,
+            AutoBorrowMutability::Not => ty::Mutability::Not,
         }
     }
 }
@@ -188,7 +188,7 @@ pub enum AutoBorrow<'tcx> {
     Ref(ty::Region<'tcx>, AutoBorrowMutability),
 
     /// Converts from T to *T.
-    RawPtr(hir::Mutability),
+    RawPtr(ty::Mutability),
 }
 
 /// Information for `CoerceUnsized` impls, storing information we
