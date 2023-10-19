@@ -20,7 +20,7 @@ cfg_if! {
     if #[cfg(all(
         target_feature = "sse2",
         any(target_arch = "x86", target_arch = "x86_64"),
-        not(miri)
+        not(miri),
     ))] {
         mod sse2;
         use sse2 as imp;
@@ -28,7 +28,9 @@ cfg_if! {
         target_arch = "aarch64",
         target_feature = "neon",
         // NEON intrinsics are currently broken on big-endian targets.
+        // See https://github.com/rust-lang/stdarch/issues/1484.
         target_endian = "little",
+        not(miri),
     ))] {
         mod neon;
         use neon as imp;
