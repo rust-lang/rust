@@ -123,6 +123,8 @@ impl<'tcx> ConstToPat<'tcx> {
         });
         debug!(?check_body_for_struct_match_violation, ?mir_structural_match_violation);
 
+        let have_valtree =
+            matches!(cv, mir::Const::Ty(c) if matches!(c.kind(), ty::ConstKind::Value(_)));
         let inlined_const_as_pat = match cv {
             mir::Const::Ty(c) => match c.kind() {
                 ty::ConstKind::Param(_)
@@ -238,7 +240,9 @@ impl<'tcx> ConstToPat<'tcx> {
                 }
             } else if !self.saw_const_match_lint.get() {
                 match cv.ty().kind() {
-                    ty::RawPtr(pointee) if pointee.ty.is_sized(self.tcx(), self.param_env) => {}
+                    ty::RawPtr(..) if have_valtree => {
+                        // This is a good raw pointer, it was accepted by valtree construction.
+                    }
                     ty::FnPtr(..) | ty::RawPtr(..) => {
                         self.tcx().emit_spanned_lint(
                             lint::builtin::POINTER_STRUCTURAL_MATCH,
@@ -389,11 +393,19 @@ impl<'tcx> ConstToPat<'tcx> {
                 subpatterns: self
                     .field_pats(cv.unwrap_branch().iter().copied().zip(fields.iter()))?,
             },
-            ty::Adt(def, args) => PatKind::Leaf {
-                subpatterns: self.field_pats(cv.unwrap_branch().iter().copied().zip(
-                    def.non_enum_variant().fields.iter().map(|field| field.ty(self.tcx(), args)),
-                ))?,
-            },
+            ty::Adt(def, args) => {
+                assert!(!def.is_union()); // Valtree construction would never succeed for unions.
+                PatKind::Leaf {
+                    subpatterns: self.field_pats(
+                        cv.unwrap_branch().iter().copied().zip(
+                            def.non_enum_variant()
+                                .fields
+                                .iter()
+                                .map(|field| field.ty(self.tcx(), args)),
+                        ),
+                    )?,
+                }
+            }
             ty::Slice(elem_ty) => PatKind::Slice {
                 prefix: cv
                     .unwrap_branch()
@@ -480,10 +492,15 @@ impl<'tcx> ConstToPat<'tcx> {
                     }
                 }
             },
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
+                // The raw pointers we see here have been "vetted" by valtree construction to be
+                // just integers, so we simply allow them.
                 PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
             }
-            ty::FnPtr(..) | ty::RawPtr(..) => unreachable!(),
+            ty::FnPtr(..) => {
+                // Valtree construction would never succeed for these, so this is unreachable.
+                unreachable!()
+            }
             _ => {
                 let err = InvalidPattern { span, non_sm_ty: ty };
                 let e = tcx.sess.emit_err(err);
