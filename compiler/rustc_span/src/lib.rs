@@ -13,21 +13,24 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![feature(array_windows)]
-#![feature(if_let_guard)]
-#![feature(negative_impls)]
-#![feature(min_specialization)]
-#![feature(rustc_attrs)]
-#![feature(let_chains)]
-#![feature(round_char_boundary)]
-#![feature(read_buf)]
-#![feature(new_uninit)]
-#![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-#![allow(internal_features)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(array_windows)]
+#![feature(cfg_match)]
+#![feature(if_let_guard)]
+#![feature(let_chains)]
+#![feature(min_specialization)]
+#![feature(negative_impls)]
+#![feature(new_uninit)]
+#![feature(read_buf)]
+#![feature(round_char_boundary)]
+#![feature(rustc_attrs)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate rustc_macros;
