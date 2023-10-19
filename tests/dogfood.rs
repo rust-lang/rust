@@ -28,6 +28,7 @@ fn dogfood_clippy() {
         "clippy_dev",
         "clippy_lints",
         "clippy_utils",
+        "clippy_config",
         "lintcheck",
         "rustc_tools_util",
     ] {

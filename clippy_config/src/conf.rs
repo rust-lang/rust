@@ -4,8 +4,8 @@ use crate::ClippyConfiguration;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_session::Session;
 use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
-use serde::de::{Deserializer, IgnoredAny, IntoDeserializer, MapAccess, Visitor};
-use serde::Deserialize;
+use serde::de::{IgnoredAny, IntoDeserializer, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
 use std::path::PathBuf;
@@ -40,10 +40,10 @@ const DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS: &[&str] = &["i", "j", "x", "y", "z
 
 /// Conf with parse errors
 #[derive(Default)]
-pub struct TryConf {
-    pub conf: Conf,
-    pub errors: Vec<ConfError>,
-    pub warnings: Vec<ConfError>,
+struct TryConf {
+    conf: Conf,
+    errors: Vec<ConfError>,
+    warnings: Vec<ConfError>,
 }
 
 impl TryConf {
@@ -57,9 +57,9 @@ impl TryConf {
 }
 
 #[derive(Debug)]
-pub struct ConfError {
-    pub message: String,
-    pub span: Span,
+struct ConfError {
+    message: String,
+    span: Span,
 }
 
 impl ConfError {
@@ -81,10 +81,31 @@ impl ConfError {
     }
 }
 
+macro_rules! wrap_option {
+    () => {
+        None
+    };
+    ($x:literal) => {
+        Some($x)
+    };
+}
+
+macro_rules! default_text {
+    ($value:expr) => {{
+        let mut text = String::new();
+        $value.serialize(toml::ser::ValueSerializer::new(&mut text)).unwrap();
+        text
+    }};
+    ($value:expr, $override:expr) => {
+        $override.to_string()
+    };
+}
+
 macro_rules! define_Conf {
     ($(
         $(#[doc = $doc:literal])+
         $(#[conf_deprecated($dep:literal, $new_conf:ident)])?
+        $(#[default_text = $default_text:expr])?
         ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
@@ -160,11 +181,6 @@ macro_rules! define_Conf {
             }
         }
 
-        macro_rules! wrap_option {
-            () => (None);
-            ($x:literal) => (Some($x));
-        }
-
         pub fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
             vec![
                 $(
@@ -173,8 +189,7 @@ macro_rules! define_Conf {
 
                         ClippyConfiguration::new(
                             stringify!($name),
-                            stringify!($ty),
-                            format!("{:?}", defaults::$name()),
+                            default_text!(defaults::$name() $(, $default_text)?),
                             concat!($($doc, '\n',)*),
                             deprecation_reason,
                         )
@@ -236,7 +251,8 @@ define_Conf! {
     (avoid_breaking_exported_api: bool = true),
     /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE.
     ///
-    /// The minimum rust version that the project supports
+    /// The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
+    #[default_text = ""]
     (msrv: Msrv = Msrv::empty()),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
@@ -277,8 +293,6 @@ define_Conf! {
     /// default configuration of Clippy. By default, any configuration will replace the default value. For example:
     /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
     /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
-    ///
-    /// Default list:
     (doc_valid_idents: Vec<String> = DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
     /// Lint: TOO_MANY_ARGUMENTS.
     ///
@@ -318,7 +332,9 @@ define_Conf! {
     (literal_representation_threshold: u64 = 16384),
     /// Lint: TRIVIALLY_COPY_PASS_BY_REF.
     ///
-    /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
+    /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
+    /// reference. By default there is no limit
+    #[default_text = ""]
     (trivial_copy_size_limit: Option<u64> = None),
     /// Lint: LARGE_TYPES_PASSED_BY_VALUE.
     ///
@@ -381,7 +397,7 @@ define_Conf! {
     /// Whether the matches should be considered by the lint, and whether there should
     /// be filtering for common types.
     (matches_for_let_else: MatchLintBehaviour = MatchLintBehaviour::WellKnownTypes),
-    /// Lint: _CARGO_COMMON_METADATA.
+    /// Lint: CARGO_COMMON_METADATA.
     ///
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     (cargo_ignore_publish: bool = false),
@@ -742,7 +758,7 @@ mod tests {
 
     #[test]
     fn configs_are_tested() {
-        let mut names: FxHashSet<String> = super::metadata::get_configuration_metadata()
+        let mut names: FxHashSet<String> = crate::get_configuration_metadata()
             .into_iter()
             .map(|meta| meta.name.replace('_', "-"))
             .collect();

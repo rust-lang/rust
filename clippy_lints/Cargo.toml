@@ -35,7 +35,7 @@ walkdir = "2.3"
 [features]
 deny-warnings = ["clippy_utils/deny-warnings"]
 # build clippy with internal lints enabled, off by default
-internal = ["clippy_config/internal", "clippy_utils/internal", "serde_json", "tempfile", "regex"]
+internal = ["clippy_utils/internal", "serde_json", "tempfile", "regex"]
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

@@ -10,9 +10,11 @@ rustc-semver = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.7.3"
 
+[dev-dependencies]
+walkdir = "2.3"
+
 [features]
 deny-warnings = []
-internal = []
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

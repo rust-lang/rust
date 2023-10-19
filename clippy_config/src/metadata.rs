@@ -1,30 +1,27 @@
-use std::fmt;
+use std::fmt::{self, Write};
 
 #[derive(Debug, Clone, Default)]
 pub struct ClippyConfiguration {
     pub name: String,
-    config_type: &'static str,
     pub default: String,
     pub lints: Vec<String>,
     pub doc: String,
-    #[allow(dead_code)]
     pub deprecation_reason: Option<&'static str>,
 }
 
 impl fmt::Display for ClippyConfiguration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "* `{}`: `{}`(defaults to `{}`): {}",
-            self.name, self.config_type, self.default, self.doc
-        )
+        write!(f, "- `{}`: {}", self.name, self.doc)?;
+        if !self.default.is_empty() {
+            write!(f, " (default: `{}`)", self.default)?;
+        }
+        Ok(())
     }
 }
 
 impl ClippyConfiguration {
     pub fn new(
         name: &'static str,
-        config_type: &'static str,
         default: String,
         doc_comment: &'static str,
         deprecation_reason: Option<&'static str>,
@@ -36,24 +33,29 @@ impl ClippyConfiguration {
             name: to_kebab(name),
             lints,
             doc,
-            config_type,
             default,
             deprecation_reason,
         }
     }
 
-    #[cfg(feature = "internal")]
     pub fn to_markdown_paragraph(&self) -> String {
-        format!(
-            "## `{}`\n{}\n\n**Default Value:** `{}` (`{}`)\n\n---\n**Affected lints:**\n{}\n\n",
+        let mut out = format!(
+            "## `{}`\n{}\n\n",
             self.name,
             self.doc
                 .lines()
                 .map(|line| line.strip_prefix("    ").unwrap_or(line))
                 .collect::<Vec<_>>()
                 .join("\n"),
-            self.default,
-            self.config_type,
+        );
+
+        if !self.default.is_empty() {
+            write!(out, "**Default Value:** `{}`\n\n", self.default).unwrap();
+        }
+
+        write!(
+            out,
+            "---\n**Affected lints:**\n{}\n\n",
             self.lints
                 .iter()
                 .map(|name| name.to_string().split_whitespace().next().unwrap().to_string())
@@ -61,9 +63,11 @@ impl ClippyConfiguration {
                 .collect::<Vec<_>>()
                 .join("\n"),
         )
+        .unwrap();
+
+        out
     }
 
-    #[cfg(feature = "internal")]
     pub fn to_markdown_link(&self) -> String {
         const BOOK_CONFIGS_PATH: &str = "https://doc.rust-lang.org/clippy/lint_configuration.html";
         format!("[`{}`]: {BOOK_CONFIGS_PATH}#{}", self.name, self.name)

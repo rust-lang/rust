@@ -357,7 +357,6 @@ mod zero_div_zero;
 mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-use crate::utils::FindAll;
 use clippy_config::{get_configuration_metadata, Conf};
 
 /// Register all pre expansion lints
@@ -460,16 +459,13 @@ pub fn explain(name: &str) -> i32 {
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
         println!("{}", info.explanation);
         // Check if the lint has configuration
-        let mdconf = get_configuration_metadata();
-        if let Some(config_vec_positions) = mdconf
-            .iter()
-            .find_all(|cconf| cconf.lints.contains(&info.lint.name_lower()[8..].to_owned()))
-        {
-            // If it has, print it
+        let mut mdconf = get_configuration_metadata();
+        let name = name.to_ascii_lowercase();
+        mdconf.retain(|cconf| cconf.lints.contains(&name));
+        if !mdconf.is_empty() {
             println!("### Configuration for {}:\n", info.lint.name_lower());
-            for position in config_vec_positions {
-                let conf = &mdconf[position];
-                println!("  - {}: {} (default: {})", conf.name, conf.doc, conf.default);
+            for conf in mdconf {
+                println!("{conf}");
             }
         }
         0

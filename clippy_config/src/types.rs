@@ -1,5 +1,5 @@
 use serde::de::{self, Deserializer, Visitor};
-use serde::Deserialize;
+use serde::{ser, Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -33,7 +33,7 @@ impl DisallowedPath {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum MatchLintBehaviour {
     AllTypes,
     WellKnownTypes,
@@ -116,4 +116,27 @@ impl<'de> Deserialize<'de> for MacroMatcher {
         const FIELDS: &[&str] = &["name", "brace"];
         deser.deserialize_struct("MacroMatcher", FIELDS, MacVisitor)
     }
+}
+
+// these impls are never actually called but are used by the various config options that default to
+// empty lists
+macro_rules! unimplemented_serialize {
+    ($($t:ty,)*) => {
+        $(
+            impl Serialize for $t {
+                fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: ser::Serializer,
+                {
+                    Err(ser::Error::custom("unimplemented"))
+                }
+            }
+        )*
+    }
+}
+
+unimplemented_serialize! {
+    DisallowedPath,
+    Rename,
+    MacroMatcher,
 }

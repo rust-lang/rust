@@ -105,7 +105,7 @@ impl Msrv {
 
         if let Some(msrv_attr) = msrv_attrs.next() {
             if let Some(duplicate) = msrv_attrs.last() {
-                sess.struct_span_err(duplicate.span, format!("`clippy::msrv` is defined multiple times"))
+                sess.struct_span_err(duplicate.span, "`clippy::msrv` is defined multiple times")
                     .span_note(msrv_attr.span, "first definition found here")
                     .emit();
             }
