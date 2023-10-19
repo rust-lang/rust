@@ -208,7 +208,7 @@ impl<I: Interner, T: TypeVisitable<I>, Ix: Idx> TypeVisitable<I> for IndexVec<Ix
 
 pub trait InferCtxtLike<I: Interner> {
     fn universe_of_ty(&self, ty: I::InferTy) -> Option<UniverseIndex>;
-    fn universe_of_lt(&self, lt: I::RegionVid) -> Option<UniverseIndex>;
+    fn universe_of_lt(&self, lt: I::InferRegion) -> Option<UniverseIndex>;
     fn universe_of_ct(&self, ct: I::InferConst) -> Option<UniverseIndex>;
 }
 
@@ -219,7 +219,7 @@ impl<I: Interner> InferCtxtLike<I> for core::convert::Infallible {
     fn universe_of_ct(&self, _ct: <I as Interner>::InferConst) -> Option<UniverseIndex> {
         match *self {}
     }
-    fn universe_of_lt(&self, _lt: <I as Interner>::RegionVid) -> Option<UniverseIndex> {
+    fn universe_of_lt(&self, _lt: <I as Interner>::InferRegion) -> Option<UniverseIndex> {
         match *self {}
     }
 }
