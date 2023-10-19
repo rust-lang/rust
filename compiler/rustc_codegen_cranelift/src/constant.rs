@@ -216,7 +216,7 @@ pub(crate) fn data_id_for_alloc_id(
     cx: &mut ConstantCx,
     module: &mut dyn Module,
     alloc_id: AllocId,
-    mutability: rustc_hir::Mutability,
+    mutability: ty::Mutability,
 ) -> DataId {
     cx.todo.push(TodoItem::Alloc(alloc_id));
     *cx.anon_allocs

@@ -740,7 +740,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (_, element_ty2) = arg_tys[2].simd_size_and_type(bx.tcx());
         let (pointer_count, underlying_ty) = match element_ty1.kind() {
-            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mut => {
+            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == ty::Mutability::Mut => {
                 (ptr_count(element_ty1), non_ptr(element_ty1))
             }
             _ => {
