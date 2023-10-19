@@ -1204,7 +1204,6 @@
 "ui/impl-trait/issue-56445.rs",
 "ui/impl-trait/issue-68532.rs",
 "ui/impl-trait/issue-72911.rs",
-"ui/impl-trait/issue-86465.rs",
 "ui/impl-trait/issue-87450.rs",
 "ui/impl-trait/issue-99073-2.rs",
 "ui/impl-trait/issue-99073.rs",
