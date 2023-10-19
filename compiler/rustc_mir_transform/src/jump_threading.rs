@@ -571,12 +571,14 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 debug!(?target_bb, ?c.target, "register");
                 self.opportunities.push(ThreadingOpportunity { chain: vec![], target: c.target });
             }
-        } else if target_bb == targets.otherwise() {
-            let (value, _, _) = targets.as_static_if()?;
+        } else if let Some((value, _, else_bb)) = targets.as_static_if()
+            && target_bb == else_bb
+        {
             let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
 
-            // Likewise, we know that `discr != value`. That's a must weaker information,
-            // so we can only match the exact same condition.
+            // We only know that `discr != value`. That's much weaker information than
+            // the equality we had in the previous arm. All we can conclude is that
+            // the replacement condition `discr != value` can be threaded, and nothing else.
             for c in conditions.iter() {
                 if c.value == value && c.polarity == Polarity::Ne {
                     debug!(?target_bb, ?c.target, "register");
