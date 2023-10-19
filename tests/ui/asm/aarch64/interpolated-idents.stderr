@@ -33,12 +33,7 @@ LL |               asm!("", $in(x) x, $out(x) x, $lateout(x) x, $inout(x) x, $in
 LL | /     m!(in out lateout inout inlateout const sym
 LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack options);
-   | |                                -
-   | |________________________________|
-   | |________________________________in this macro invocation
-   | |________________________________in this macro invocation
-   | |________________________________in this macro invocation
-   |                                  in this macro invocation
+   | |________________________________- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
