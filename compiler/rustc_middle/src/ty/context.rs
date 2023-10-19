@@ -80,43 +80,40 @@ use std::ops::{Bound, Deref};
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
-    type AdtDef = ty::AdtDef<'tcx>;
-    type GenericArgsRef = ty::GenericArgsRef<'tcx>;
-    type GenericArg = ty::GenericArg<'tcx>;
     type DefId = DefId;
+    type AdtDef = ty::AdtDef<'tcx>;
+    type GenericArgs = ty::GenericArgsRef<'tcx>;
+    type GenericArg = ty::GenericArg<'tcx>;
     type Binder<T> = Binder<'tcx, T>;
-    type Ty = Ty<'tcx>;
-    type Const = ty::Const<'tcx>;
-    type Region = Region<'tcx>;
     type Predicate = Predicate<'tcx>;
+    type PredicateKind = ty::PredicateKind<'tcx>;
     type TypeAndMut = TypeAndMut<'tcx>;
     type Mutability = hir::Mutability;
     type Movability = hir::Movability;
-    type PolyFnSig = PolyFnSig<'tcx>;
-    type ListBinderExistentialPredicate = &'tcx List<PolyExistentialPredicate<'tcx>>;
-    type BinderListTy = Binder<'tcx, &'tcx List<Ty<'tcx>>>;
-    type ListTy = &'tcx List<Ty<'tcx>>;
+    type Ty = Ty<'tcx>;
+    type Tys = &'tcx List<Ty<'tcx>>;
     type AliasTy = ty::AliasTy<'tcx>;
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
-    type PlaceholderType = ty::PlaceholderType;
+    type PlaceholderTy = ty::PlaceholderType;
     type InferTy = InferTy;
     type ErrorGuaranteed = ErrorGuaranteed;
-    type PredicateKind = ty::PredicateKind<'tcx>;
+    type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
+    type PolyFnSig = PolyFnSig<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
-
+    type Const = ty::Const<'tcx>;
     type InferConst = ty::InferConst<'tcx>;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
+    type PlaceholderConst = ty::PlaceholderConst<'tcx>;
     type ParamConst = ty::ParamConst;
     type BoundConst = ty::BoundVar;
-    type PlaceholderConst = ty::PlaceholderConst<'tcx>;
     type ValueConst = ty::ValTree<'tcx>;
     type ExprConst = ty::Expr<'tcx>;
-
+    type Region = Region<'tcx>;
     type EarlyBoundRegion = ty::EarlyBoundRegion;
     type BoundRegion = ty::BoundRegion;
     type FreeRegion = ty::FreeRegion;
-    type RegionVid = ty::RegionVid;
+    type InferRegion = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
 
     fn ty_and_mut_to_parts(

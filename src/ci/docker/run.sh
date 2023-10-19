@@ -235,7 +235,7 @@ else
   args="$args --volume /tmp/toolstate:/tmp/toolstate"
 
   id=$(id -u)
-  if [[ "$id" != 0 && "$(docker -v)" =~ ^podman ]]; then
+  if [[ "$id" != 0 && "$(docker version)" =~ Podman ]]; then
     # Rootless podman creates a separate user namespace, where an inner
     # LOCAL_USER_ID will map to a different subuid range on the host.
     # The "keep-id" mode maps the current UID directly into the container.

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn foo(x: impl Debug) -> String {
    |           ----------     ------ expected `String` because of return type
    |           |
-   |           this type parameter
+   |           found this type parameter
 LL |     x
    |     ^ expected `String`, found type parameter `impl Debug`
    |

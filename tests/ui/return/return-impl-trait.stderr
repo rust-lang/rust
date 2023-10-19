@@ -5,7 +5,7 @@ LL | fn bar<T: Trait + std::marker::Sync>() -> T
    |        -                                  -
    |        |                                  |
    |        |                                  expected `T` because of return type
-   |        this type parameter                help: consider using an impl return type: `impl Trait + std::marker::Sync + Send`
+   |        expected this type parameter       help: consider using an impl return type: `impl Trait + std::marker::Sync + Send`
 ...
 LL |     ()
    |     ^^ expected type parameter `T`, found `()`
@@ -21,7 +21,7 @@ LL | fn other_bounds<T>() -> T
    |                 |       |
    |                 |       expected `T` because of return type
    |                 |       help: consider using an impl return type: `impl Trait`
-   |                 this type parameter
+   |                 expected this type parameter
 ...
 LL |     ()
    |     ^^ expected type parameter `T`, found `()`

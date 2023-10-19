@@ -42,35 +42,43 @@ pub use ty_info::*;
 pub trait HashStableContext {}
 
 pub trait Interner: Sized {
+    type DefId: Clone + Debug + Hash + Ord;
     type AdtDef: Clone + Debug + Hash + Ord;
-    type GenericArgsRef: Clone
+
+    type GenericArgs: Clone
         + DebugWithInfcx<Self>
         + Hash
         + Ord
         + IntoIterator<Item = Self::GenericArg>;
     type GenericArg: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type DefId: Clone + Debug + Hash + Ord;
+
     type Binder<T>;
-    type Ty: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type Const: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type Region: Clone + DebugWithInfcx<Self> + Hash + Ord;
+
+    // Predicates
     type Predicate;
+    type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
+
     type TypeAndMut: Clone + Debug + Hash + Ord;
     type Mutability: Clone + Debug + Hash + Ord;
     type Movability: Clone + Debug + Hash + Ord;
-    type PolyFnSig: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type ListBinderExistentialPredicate: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type BinderListTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type ListTy: Clone + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
+
+    // Kinds of tys
+    type Ty: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type Tys: Clone + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
     type AliasTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type ParamTy: Clone + Debug + Hash + Ord;
     type BoundTy: Clone + Debug + Hash + Ord;
-    type PlaceholderType: Clone + Debug + Hash + Ord;
+    type PlaceholderTy: Clone + Debug + Hash + Ord;
     type InferTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
+
+    // Things stored inside of tys
     type ErrorGuaranteed: Clone + Debug + Hash + Ord;
-    type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
+    type BoundExistentialPredicates: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type PolyFnSig: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type AllocId: Clone + Debug + Hash + Ord;
 
+    // Kinds of consts
+    type Const: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type InferConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type AliasConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderConst: Clone + Debug + Hash + Ord;
@@ -79,10 +87,12 @@ pub trait Interner: Sized {
     type ValueConst: Clone + Debug + Hash + Ord;
     type ExprConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
 
+    // Kinds of regions
+    type Region: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type EarlyBoundRegion: Clone + Debug + Hash + Ord;
     type BoundRegion: Clone + Debug + Hash + Ord;
     type FreeRegion: Clone + Debug + Hash + Ord;
-    type RegionVid: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type InferRegion: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderRegion: Clone + Debug + Hash + Ord;
 
     fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Self::Mutability);
