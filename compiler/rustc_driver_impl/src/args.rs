@@ -14,7 +14,19 @@ fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
             }
             Err(err) => return Err(Error::IOError(path.to_string(), err)),
         };
-        Ok(file.lines().map(ToString::to_string).collect())
+        let mut result = Vec::new();
+        for line in file.lines() {
+            match shlex::split(line) {
+                Some(v) => result.extend(v),
+                None => {
+                    return Err(Error::IOError(
+                        path.to_string(),
+                        io::Error::other("invalid shell syntax"),
+                    ));
+                }
+            }
+        }
+        Ok(result)
     } else {
         Ok(vec![arg])
     }
