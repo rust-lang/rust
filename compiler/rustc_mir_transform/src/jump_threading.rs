@@ -639,7 +639,7 @@ impl OpportunitySet {
         let Some((current, chain)) = op_chain.split_first() else { return };
         let basic_blocks = body.basic_blocks.as_mut();
 
-        // Invariant: we never change the meaning of the program.
+        // Invariant: the control-flow is well-formed at the end of each iteration.
         let mut current = *current;
         for &succ in chain {
             debug!(?current, ?succ);
@@ -697,8 +697,9 @@ impl OpportunitySet {
                     new_involved.push((to_index, in_to_index + 1));
                 }
             }
-            // Following TOs new reference `new_succ`, so we will need to update them if we
-            // duplicate `new_succ` later.
+
+            // The TOs that we just updated now reference `new_succ`. Update `involving_tos`
+            // in case we need to duplicate an edge starting at `new_succ` later.
             let _new_succ = self.involving_tos.push(new_involved);
             debug_assert_eq!(new_succ, _new_succ);
 
