@@ -275,9 +275,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
 impl GlobalStateInner {
     pub fn free_alloc_id(&mut self, dead_id: AllocId) {
-        // We can *not* remove this from `base_addr`, since `addr_from_alloc_id` is called on each
-        // attempt at a memory access to determine the allocation ID and offset -- and there can
-        // still be pointers with `dead_id` that one can attempt to use for a memory access.
+        // We can *not* remove this from `base_addr`, since the interpreter design requires that we
+        // be able to retrieve an AllocId + offset for any memory access *before* we check if the
+        // access is valid. Specifically, `ptr_get_alloc` is called on each attempt at a memory
+        // access to determine the allocation ID and offset -- and there can still be pointers with
+        // `dead_id` that one can attempt to use for a memory access. `ptr_get_alloc` may return
+        // `None` only if the pointer truly has no provenance (this ensures consistent error
+        // messages).
         // However, we *can* remove it from `int_to_ptr_map`, since any wildcard pointers that exist
         // can no longer actually be accessing that address. This ensures `alloc_id_from_addr` never
         // returns a dead allocation.
