@@ -1,22 +1,19 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
+use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::cmp::Ordering;
+use std::mem::discriminant;
 use std::{fmt, hash};
 
-use crate::FloatTy;
 use crate::HashStableContext;
-use crate::IntTy;
 use crate::Interner;
 use crate::TyDecoder;
 use crate::TyEncoder;
-use crate::UintTy;
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, OptWithInfcx};
 
-use self::RegionKind::*;
 use self::TyKind::*;
-
-use rustc_data_structures::stable_hasher::HashStable;
-use rustc_serialize::{Decodable, Decoder, Encodable};
 
 /// The movability of a generator / closure literal:
 /// whether a generator contains self-references, causing it to be `!Unpin`.
@@ -914,620 +911,347 @@ where
     }
 }
 
-/// Represents a constant in Rust.
-// #[derive(derive_more::From)]
-pub enum ConstKind<I: Interner> {
-    /// A const generic parameter.
-    Param(I::ParamConst),
-
-    /// Infer the value of the const.
-    Infer(I::InferConst),
-
-    /// Bound const variable, used only when preparing a trait query.
-    Bound(DebruijnIndex, I::BoundConst),
-
-    /// A placeholder const - universally quantified higher-ranked const.
-    Placeholder(I::PlaceholderConst),
-
-    /// An unnormalized const item such as an anon const or assoc const or free const item.
-    /// Right now anything other than anon consts does not actually work properly but this
-    /// should
-    Unevaluated(I::AliasConst),
-
-    /// Used to hold computed value.
-    Value(I::ValueConst),
-
-    /// A placeholder for a const which could not be computed; this is
-    /// propagated to avoid useless error messages.
-    Error(I::ErrorGuaranteed),
-
-    /// Unevaluated non-const-item, used by `feature(generic_const_exprs)` to represent
-    /// const arguments such as `N + 1` or `foo(N)`
-    Expr(I::ExprConst),
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum IntTy {
+    Isize,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
 }
 
-const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
-    match value {
-        ConstKind::Param(_) => 0,
-        ConstKind::Infer(_) => 1,
-        ConstKind::Bound(_, _) => 2,
-        ConstKind::Placeholder(_) => 3,
-        ConstKind::Unevaluated(_) => 4,
-        ConstKind::Value(_) => 5,
-        ConstKind::Error(_) => 6,
-        ConstKind::Expr(_) => 7,
-    }
-}
-
-impl<I: Interner> hash::Hash for ConstKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        const_kind_discriminant(self).hash(state);
-        match self {
-            ConstKind::Param(p) => p.hash(state),
-            ConstKind::Infer(i) => i.hash(state),
-            ConstKind::Bound(d, b) => {
-                d.hash(state);
-                b.hash(state);
-            }
-            ConstKind::Placeholder(p) => p.hash(state),
-            ConstKind::Unevaluated(u) => u.hash(state),
-            ConstKind::Value(v) => v.hash(state),
-            ConstKind::Error(e) => e.hash(state),
-            ConstKind::Expr(e) => e.hash(state),
+impl IntTy {
+    pub fn name_str(&self) -> &'static str {
+        match *self {
+            IntTy::Isize => "isize",
+            IntTy::I8 => "i8",
+            IntTy::I16 => "i16",
+            IntTy::I32 => "i32",
+            IntTy::I64 => "i64",
+            IntTy::I128 => "i128",
         }
     }
-}
 
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for ConstKind<I>
-where
-    I::ParamConst: HashStable<CTX>,
-    I::InferConst: HashStable<CTX>,
-    I::BoundConst: HashStable<CTX>,
-    I::PlaceholderConst: HashStable<CTX>,
-    I::AliasConst: HashStable<CTX>,
-    I::ValueConst: HashStable<CTX>,
-    I::ErrorGuaranteed: HashStable<CTX>,
-    I::ExprConst: HashStable<CTX>,
-{
-    fn hash_stable(
-        &self,
-        hcx: &mut CTX,
-        hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
-    ) {
-        const_kind_discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            ConstKind::Param(p) => p.hash_stable(hcx, hasher),
-            ConstKind::Infer(i) => i.hash_stable(hcx, hasher),
-            ConstKind::Bound(d, b) => {
-                d.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-            ConstKind::Placeholder(p) => p.hash_stable(hcx, hasher),
-            ConstKind::Unevaluated(u) => u.hash_stable(hcx, hasher),
-            ConstKind::Value(v) => v.hash_stable(hcx, hasher),
-            ConstKind::Error(e) => e.hash_stable(hcx, hasher),
-            ConstKind::Expr(e) => e.hash_stable(hcx, hasher),
-        }
-    }
-}
-
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for ConstKind<I>
-where
-    I::ParamConst: Decodable<D>,
-    I::InferConst: Decodable<D>,
-    I::BoundConst: Decodable<D>,
-    I::PlaceholderConst: Decodable<D>,
-    I::AliasConst: Decodable<D>,
-    I::ValueConst: Decodable<D>,
-    I::ErrorGuaranteed: Decodable<D>,
-    I::ExprConst: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => ConstKind::Param(Decodable::decode(d)),
-            1 => ConstKind::Infer(Decodable::decode(d)),
-            2 => ConstKind::Bound(Decodable::decode(d), Decodable::decode(d)),
-            3 => ConstKind::Placeholder(Decodable::decode(d)),
-            4 => ConstKind::Unevaluated(Decodable::decode(d)),
-            5 => ConstKind::Value(Decodable::decode(d)),
-            6 => ConstKind::Error(Decodable::decode(d)),
-            7 => ConstKind::Expr(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "ConstKind", 8,
-                )
-            ),
-        }
-    }
-}
-
-impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for ConstKind<I>
-where
-    I::ParamConst: Encodable<E>,
-    I::InferConst: Encodable<E>,
-    I::BoundConst: Encodable<E>,
-    I::PlaceholderConst: Encodable<E>,
-    I::AliasConst: Encodable<E>,
-    I::ValueConst: Encodable<E>,
-    I::ErrorGuaranteed: Encodable<E>,
-    I::ExprConst: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        let disc = const_kind_discriminant(self);
-        match self {
-            ConstKind::Param(p) => e.emit_enum_variant(disc, |e| p.encode(e)),
-            ConstKind::Infer(i) => e.emit_enum_variant(disc, |e| i.encode(e)),
-            ConstKind::Bound(d, b) => e.emit_enum_variant(disc, |e| {
-                d.encode(e);
-                b.encode(e);
-            }),
-            ConstKind::Placeholder(p) => e.emit_enum_variant(disc, |e| p.encode(e)),
-            ConstKind::Unevaluated(u) => e.emit_enum_variant(disc, |e| u.encode(e)),
-            ConstKind::Value(v) => e.emit_enum_variant(disc, |e| v.encode(e)),
-            ConstKind::Error(er) => e.emit_enum_variant(disc, |e| er.encode(e)),
-            ConstKind::Expr(ex) => e.emit_enum_variant(disc, |e| ex.encode(e)),
-        }
-    }
-}
-
-impl<I: Interner> PartialOrd for ConstKind<I> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<I: Interner> Ord for ConstKind<I> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        const_kind_discriminant(self)
-            .cmp(&const_kind_discriminant(other))
-            .then_with(|| match (self, other) {
-                (ConstKind::Param(p1), ConstKind::Param(p2)) => p1.cmp(p2),
-                (ConstKind::Infer(i1), ConstKind::Infer(i2)) => i1.cmp(i2),
-                (ConstKind::Bound(d1, b1), ConstKind::Bound(d2, b2)) => d1.cmp(d2).then_with(|| b1.cmp(b2)),
-                (ConstKind::Placeholder(p1), ConstKind::Placeholder(p2)) => p1.cmp(p2),
-                (ConstKind::Unevaluated(u1), ConstKind::Unevaluated(u2)) => u1.cmp(u2),
-                (ConstKind::Value(v1), ConstKind::Value(v2)) => v1.cmp(v2),
-                (ConstKind::Error(e1), ConstKind::Error(e2)) => e1.cmp(e2),
-                (ConstKind::Expr(e1), ConstKind::Expr(e2)) => e1.cmp(e2),
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            })
-    }
-}
-
-impl<I: Interner> PartialEq for ConstKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Param(l0), Self::Param(r0)) => l0 == r0,
-            (Self::Infer(l0), Self::Infer(r0)) => l0 == r0,
-            (Self::Bound(l0, l1), Self::Bound(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::Placeholder(l0), Self::Placeholder(r0)) => l0 == r0,
-            (Self::Unevaluated(l0), Self::Unevaluated(r0)) => l0 == r0,
-            (Self::Value(l0), Self::Value(r0)) => l0 == r0,
-            (Self::Error(l0), Self::Error(r0)) => l0 == r0,
-            (Self::Expr(l0), Self::Expr(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
-}
-
-impl<I: Interner> Eq for ConstKind<I> {}
-
-impl<I: Interner> Clone for ConstKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Param(arg0) => Self::Param(arg0.clone()),
-            Self::Infer(arg0) => Self::Infer(arg0.clone()),
-            Self::Bound(arg0, arg1) => Self::Bound(arg0.clone(), arg1.clone()),
-            Self::Placeholder(arg0) => Self::Placeholder(arg0.clone()),
-            Self::Unevaluated(arg0) => Self::Unevaluated(arg0.clone()),
-            Self::Value(arg0) => Self::Value(arg0.clone()),
-            Self::Error(arg0) => Self::Error(arg0.clone()),
-            Self::Expr(arg0) => Self::Expr(arg0.clone()),
-        }
-    }
-}
-
-/// Representation of regions. Note that the NLL checker uses a distinct
-/// representation of regions. For this reason, it internally replaces all the
-/// regions with inference variables -- the index of the variable is then used
-/// to index into internal NLL data structures. See `rustc_const_eval::borrow_check`
-/// module for more information.
-///
-/// Note: operations are on the wrapper `Region` type, which is interned,
-/// rather than this type.
-///
-/// ## The Region lattice within a given function
-///
-/// In general, the region lattice looks like
-///
-/// ```text
-/// static ----------+-----...------+       (greatest)
-/// |                |              |
-/// early-bound and  |              |
-/// free regions     |              |
-/// |                |              |
-/// |                |              |
-/// empty(root)   placeholder(U1)   |
-/// |            /                  |
-/// |           /         placeholder(Un)
-/// empty(U1) --         /
-/// |                   /
-/// ...                /
-/// |                 /
-/// empty(Un) --------                      (smallest)
-/// ```
-///
-/// Early-bound/free regions are the named lifetimes in scope from the
-/// function declaration. They have relationships to one another
-/// determined based on the declared relationships from the
-/// function.
-///
-/// Note that inference variables and bound regions are not included
-/// in this diagram. In the case of inference variables, they should
-/// be inferred to some other region from the diagram. In the case of
-/// bound regions, they are excluded because they don't make sense to
-/// include -- the diagram indicates the relationship between free
-/// regions.
-///
-/// ## Inference variables
-///
-/// During region inference, we sometimes create inference variables,
-/// represented as `ReVar`. These will be inferred by the code in
-/// `infer::lexical_region_resolve` to some free region from the
-/// lattice above (the minimal region that meets the
-/// constraints).
-///
-/// During NLL checking, where regions are defined differently, we
-/// also use `ReVar` -- in that case, the index is used to index into
-/// the NLL region checker's data structures. The variable may in fact
-/// represent either a free region or an inference variable, in that
-/// case.
-///
-/// ## Bound Regions
-///
-/// These are regions that are stored behind a binder and must be substituted
-/// with some concrete region before being used. There are two kind of
-/// bound regions: early-bound, which are bound in an item's `Generics`,
-/// and are substituted by an `GenericArgs`, and late-bound, which are part of
-/// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are substituted by
-/// the likes of `liberate_late_bound_regions`. The distinction exists
-/// because higher-ranked lifetimes aren't supported in all places. See [1][2].
-///
-/// Unlike `Param`s, bound regions are not supposed to exist "in the wild"
-/// outside their binder, e.g., in types passed to type inference, and
-/// should first be substituted (by placeholder regions, free regions,
-/// or region variables).
-///
-/// ## Placeholder and Free Regions
-///
-/// One often wants to work with bound regions without knowing their precise
-/// identity. For example, when checking a function, the lifetime of a borrow
-/// can end up being assigned to some region parameter. In these cases,
-/// it must be ensured that bounds on the region can't be accidentally
-/// assumed without being checked.
-///
-/// To do this, we replace the bound regions with placeholder markers,
-/// which don't satisfy any relation not explicitly provided.
-///
-/// There are two kinds of placeholder regions in rustc: `ReFree` and
-/// `RePlaceholder`. When checking an item's body, `ReFree` is supposed
-/// to be used. These also support explicit bounds: both the internally-stored
-/// *scope*, which the region is assumed to outlive, as well as other
-/// relations stored in the `FreeRegionMap`. Note that these relations
-/// aren't checked when you `make_subregion` (or `eq_types`), only by
-/// `resolve_regions_and_report_errors`.
-///
-/// When working with higher-ranked types, some region relations aren't
-/// yet known, so you can't just call `resolve_regions_and_report_errors`.
-/// `RePlaceholder` is designed for this purpose. In these contexts,
-/// there's also the risk that some inference variable laying around will
-/// get unified with your placeholder region: if you want to check whether
-/// `for<'a> Foo<'_>: 'a`, and you substitute your bound region `'a`
-/// with a placeholder region `'%a`, the variable `'_` would just be
-/// instantiated to the placeholder region `'%a`, which is wrong because
-/// the inference variable is supposed to satisfy the relation
-/// *for every value of the placeholder region*. To ensure that doesn't
-/// happen, you can use `leak_check`. This is more clearly explained
-/// by the [rustc dev guide].
-///
-/// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
-/// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
-/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-pub enum RegionKind<I: Interner> {
-    /// Region bound in a type or fn declaration which will be
-    /// substituted 'early' -- that is, at the same time when type
-    /// parameters are substituted.
-    ReEarlyBound(I::EarlyBoundRegion),
-
-    /// Region bound in a function scope, which will be substituted when the
-    /// function is called.
-    ReLateBound(DebruijnIndex, I::BoundRegion),
-
-    /// When checking a function body, the types of all arguments and so forth
-    /// that refer to bound region parameters are modified to refer to free
-    /// region parameters.
-    ReFree(I::FreeRegion),
-
-    /// Static data that has an "infinite" lifetime. Top in the region lattice.
-    ReStatic,
-
-    /// A region variable. Should not exist outside of type inference.
-    ReVar(I::InferRegion),
-
-    /// A placeholder region -- basically, the higher-ranked version of `ReFree`.
-    /// Should not exist outside of type inference.
-    RePlaceholder(I::PlaceholderRegion),
-
-    /// Erased region, used by trait selection, in MIR and during codegen.
-    ReErased,
-
-    /// A region that resulted from some other error. Used exclusively for diagnostics.
-    ReError(I::ErrorGuaranteed),
-}
-
-// This is manually implemented for `RegionKind` because `std::mem::discriminant`
-// returns an opaque value that is `PartialEq` but not `PartialOrd`
-#[inline]
-const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
-    match value {
-        ReEarlyBound(_) => 0,
-        ReLateBound(_, _) => 1,
-        ReFree(_) => 2,
-        ReStatic => 3,
-        ReVar(_) => 4,
-        RePlaceholder(_) => 5,
-        ReErased => 6,
-        ReError(_) => 7,
-    }
-}
-
-// This is manually implemented because a derive would require `I: Copy`
-impl<I: Interner> Copy for RegionKind<I>
-where
-    I::EarlyBoundRegion: Copy,
-    I::BoundRegion: Copy,
-    I::FreeRegion: Copy,
-    I::InferRegion: Copy,
-    I::PlaceholderRegion: Copy,
-    I::ErrorGuaranteed: Copy,
-{
-}
-
-// This is manually implemented because a derive would require `I: Clone`
-impl<I: Interner> Clone for RegionKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            ReEarlyBound(r) => ReEarlyBound(r.clone()),
-            ReLateBound(d, r) => ReLateBound(*d, r.clone()),
-            ReFree(r) => ReFree(r.clone()),
-            ReStatic => ReStatic,
-            ReVar(r) => ReVar(r.clone()),
-            RePlaceholder(r) => RePlaceholder(r.clone()),
-            ReErased => ReErased,
-            ReError(r) => ReError(r.clone()),
-        }
-    }
-}
-
-// This is manually implemented because a derive would require `I: PartialEq`
-impl<I: Interner> PartialEq for RegionKind<I> {
-    #[inline]
-    fn eq(&self, other: &RegionKind<I>) -> bool {
-        regionkind_discriminant(self) == regionkind_discriminant(other)
-            && match (self, other) {
-                (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r == b_r,
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
-                (ReFree(a_r), ReFree(b_r)) => a_r == b_r,
-                (ReStatic, ReStatic) => true,
-                (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
-                (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r == b_r,
-                (ReErased, ReErased) => true,
-                (ReError(_), ReError(_)) => true,
-                _ => {
-                    debug_assert!(
-                        false,
-                        "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
-                    );
-                    true
-                }
-            }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Eq`
-impl<I: Interner> Eq for RegionKind<I> {}
-
-// This is manually implemented because a derive would require `I: PartialOrd`
-impl<I: Interner> PartialOrd for RegionKind<I> {
-    #[inline]
-    fn partial_cmp(&self, other: &RegionKind<I>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// This is manually implemented because a derive would require `I: Ord`
-impl<I: Interner> Ord for RegionKind<I> {
-    #[inline]
-    fn cmp(&self, other: &RegionKind<I>) -> Ordering {
-        regionkind_discriminant(self).cmp(&regionkind_discriminant(other)).then_with(|| {
-            match (self, other) {
-                (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r.cmp(b_r),
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => {
-                    a_d.cmp(b_d).then_with(|| a_r.cmp(b_r))
-                }
-                (ReFree(a_r), ReFree(b_r)) => a_r.cmp(b_r),
-                (ReStatic, ReStatic) => Ordering::Equal,
-                (ReVar(a_r), ReVar(b_r)) => a_r.cmp(b_r),
-                (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r.cmp(b_r),
-                (ReErased, ReErased) => Ordering::Equal,
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            }
+    pub fn bit_width(&self) -> Option<u64> {
+        Some(match *self {
+            IntTy::Isize => return None,
+            IntTy::I8 => 8,
+            IntTy::I16 => 16,
+            IntTy::I32 => 32,
+            IntTy::I64 => 64,
+            IntTy::I128 => 128,
         })
     }
-}
 
-// This is manually implemented because a derive would require `I: Hash`
-impl<I: Interner> hash::Hash for RegionKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) -> () {
-        regionkind_discriminant(self).hash(state);
+    pub fn normalize(&self, target_width: u32) -> Self {
         match self {
-            ReEarlyBound(r) => r.hash(state),
-            ReLateBound(d, r) => {
-                d.hash(state);
-                r.hash(state)
-            }
-            ReFree(r) => r.hash(state),
-            ReStatic => (),
-            ReVar(r) => r.hash(state),
-            RePlaceholder(r) => r.hash(state),
-            ReErased => (),
-            ReError(_) => (),
+            IntTy::Isize => match target_width {
+                16 => IntTy::I16,
+                32 => IntTy::I32,
+                64 => IntTy::I64,
+                _ => unreachable!(),
+            },
+            _ => *self,
+        }
+    }
+
+    pub fn to_unsigned(self) -> UintTy {
+        match self {
+            IntTy::Isize => UintTy::Usize,
+            IntTy::I8 => UintTy::U8,
+            IntTy::I16 => UintTy::U16,
+            IntTy::I32 => UintTy::U32,
+            IntTy::I64 => UintTy::U64,
+            IntTy::I128 => UintTy::U128,
         }
     }
 }
 
-impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum UintTy {
+    Usize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+}
+
+impl UintTy {
+    pub fn name_str(&self) -> &'static str {
+        match *self {
+            UintTy::Usize => "usize",
+            UintTy::U8 => "u8",
+            UintTy::U16 => "u16",
+            UintTy::U32 => "u32",
+            UintTy::U64 => "u64",
+            UintTy::U128 => "u128",
+        }
+    }
+
+    pub fn bit_width(&self) -> Option<u64> {
+        Some(match *self {
+            UintTy::Usize => return None,
+            UintTy::U8 => 8,
+            UintTy::U16 => 16,
+            UintTy::U32 => 32,
+            UintTy::U64 => 64,
+            UintTy::U128 => 128,
+        })
+    }
+
+    pub fn normalize(&self, target_width: u32) -> Self {
+        match self {
+            UintTy::Usize => match target_width {
+                16 => UintTy::U16,
+                32 => UintTy::U32,
+                64 => UintTy::U64,
+                _ => unreachable!(),
+            },
+            _ => *self,
+        }
+    }
+
+    pub fn to_signed(self) -> IntTy {
+        match self {
+            UintTy::Usize => IntTy::Isize,
+            UintTy::U8 => IntTy::I8,
+            UintTy::U16 => IntTy::I16,
+            UintTy::U32 => IntTy::I32,
+            UintTy::U64 => IntTy::I64,
+            UintTy::U128 => IntTy::I128,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum FloatTy {
+    F32,
+    F64,
+}
+
+impl FloatTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            FloatTy::F32 => "f32",
+            FloatTy::F64 => "f64",
+        }
+    }
+
+    pub fn bit_width(self) -> u64 {
+        match self {
+            FloatTy::F32 => 32,
+            FloatTy::F64 => 64,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum IntVarValue {
+    IntType(IntTy),
+    UintType(UintTy),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct FloatVarValue(pub FloatTy);
+
+rustc_index::newtype_index! {
+    /// A **ty**pe **v**ariable **ID**.
+    #[debug_format = "?{}t"]
+    pub struct TyVid {}
+}
+
+rustc_index::newtype_index! {
+    /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
+    #[debug_format = "?{}i"]
+    pub struct IntVid {}
+}
+
+rustc_index::newtype_index! {
+    /// A **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
+    #[debug_format = "?{}f"]
+    pub struct FloatVid {}
+}
+
+/// A placeholder for a type that hasn't been inferred yet.
+///
+/// E.g., if we have an empty array (`[]`), then we create a fresh
+/// type variable for the element type since we won't know until it's
+/// used what the element type is supposed to be.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+pub enum InferTy {
+    /// A type variable.
+    TyVar(TyVid),
+    /// An integral type variable (`{integer}`).
+    ///
+    /// These are created when the compiler sees an integer literal like
+    /// `1` that could be several different types (`u8`, `i32`, `u32`, etc.).
+    /// We don't know until it's used what type it's supposed to be, so
+    /// we create a fresh type variable.
+    IntVar(IntVid),
+    /// A floating-point type variable (`{float}`).
+    ///
+    /// These are created when the compiler sees an float literal like
+    /// `1.0` that could be either an `f32` or an `f64`.
+    /// We don't know until it's used what type it's supposed to be, so
+    /// we create a fresh type variable.
+    FloatVar(FloatVid),
+
+    /// A [`FreshTy`][Self::FreshTy] is one that is generated as a replacement
+    /// for an unbound type variable. This is convenient for caching etc. See
+    /// `rustc_infer::infer::freshen` for more details.
+    ///
+    /// Compare with [`TyVar`][Self::TyVar].
+    FreshTy(u32),
+    /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`IntVar`][Self::IntVar].
+    FreshIntTy(u32),
+    /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`FloatVar`][Self::FloatVar].
+    FreshFloatTy(u32),
+}
+
+/// Raw `TyVid` are used as the unification key for `sub_relations`;
+/// they carry no values.
+impl UnifyKey for TyVid {
+    type Value = ();
+    #[inline]
+    fn index(&self) -> u32 {
+        self.as_u32()
+    }
+    #[inline]
+    fn from_index(i: u32) -> TyVid {
+        TyVid::from_u32(i)
+    }
+    fn tag() -> &'static str {
+        "TyVid"
+    }
+}
+
+impl EqUnifyValue for IntVarValue {}
+
+impl UnifyKey for IntVid {
+    type Value = Option<IntVarValue>;
+    #[inline] // make this function eligible for inlining - it is quite hot.
+    fn index(&self) -> u32 {
+        self.as_u32()
+    }
+    #[inline]
+    fn from_index(i: u32) -> IntVid {
+        IntVid::from_u32(i)
+    }
+    fn tag() -> &'static str {
+        "IntVid"
+    }
+}
+
+impl EqUnifyValue for FloatVarValue {}
+
+impl UnifyKey for FloatVid {
+    type Value = Option<FloatVarValue>;
+    #[inline]
+    fn index(&self) -> u32 {
+        self.as_u32()
+    }
+    #[inline]
+    fn from_index(i: u32) -> FloatVid {
+        FloatVid::from_u32(i)
+    }
+    fn tag() -> &'static str {
+        "FloatVid"
+    }
+}
+
+impl<CTX> HashStable<CTX> for InferTy {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        use InferTy::*;
+        discriminant(self).hash_stable(ctx, hasher);
+        match self {
+            TyVar(_) | IntVar(_) | FloatVar(_) => {
+                panic!("type variables should not be hashed: {self:?}")
+            }
+            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
+        }
+    }
+}
+
+impl fmt::Debug for IntVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            IntVarValue::IntType(ref v) => v.fmt(f),
+            IntVarValue::UintType(ref v) => v.fmt(f),
+        }
+    }
+}
+
+impl fmt::Debug for FloatVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl fmt::Display for InferTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use InferTy::*;
+        match *self {
+            TyVar(_) => write!(f, "_"),
+            IntVar(_) => write!(f, "{}", "{integer}"),
+            FloatVar(_) => write!(f, "{}", "{float}"),
+            FreshTy(v) => write!(f, "FreshTy({v})"),
+            FreshIntTy(v) => write!(f, "FreshIntTy({v})"),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({v})"),
+        }
+    }
+}
+
+impl fmt::Debug for IntTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name_str())
+    }
+}
+
+impl fmt::Debug for UintTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name_str())
+    }
+}
+
+impl fmt::Debug for FloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name_str())
+    }
+}
+
+impl fmt::Debug for InferTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use InferTy::*;
+        match *self {
+            TyVar(ref v) => v.fmt(f),
+            IntVar(ref v) => v.fmt(f),
+            FloatVar(ref v) => v.fmt(f),
+            FreshTy(v) => write!(f, "FreshTy({v:?})"),
+            FreshIntTy(v) => write!(f, "FreshIntTy({v:?})"),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({v:?})"),
+        }
+    }
+}
+
+impl<I: Interner<InferTy = InferTy>> DebugWithInfcx<I> for InferTy {
     fn fmt<InfCtx: InferCtxtLike<I>>(
         this: OptWithInfcx<'_, I, InfCtx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        match this.data {
-            ReEarlyBound(data) => write!(f, "ReEarlyBound({data:?})"),
-
-            ReLateBound(binder_id, bound_region) => {
-                write!(f, "ReLateBound({binder_id:?}, {bound_region:?})")
-            }
-
-            ReFree(fr) => write!(f, "{fr:?}"),
-
-            ReStatic => f.write_str("ReStatic"),
-
-            ReVar(vid) => write!(f, "{:?}", &this.wrap(vid)),
-
-            RePlaceholder(placeholder) => write!(f, "RePlaceholder({placeholder:?})"),
-
-            ReErased => f.write_str("ReErased"),
-
-            ReError(_) => f.write_str("ReError"),
-        }
-    }
-}
-impl<I: Interner> fmt::Debug for RegionKind<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        OptWithInfcx::new_no_ctx(self).fmt(f)
-    }
-}
-
-// This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder> Encodable<E> for RegionKind<I>
-where
-    I::EarlyBoundRegion: Encodable<E>,
-    I::BoundRegion: Encodable<E>,
-    I::FreeRegion: Encodable<E>,
-    I::InferRegion: Encodable<E>,
-    I::PlaceholderRegion: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        let disc = regionkind_discriminant(self);
-        match self {
-            ReEarlyBound(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReLateBound(a, b) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-                b.encode(e);
-            }),
-            ReFree(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReStatic => e.emit_enum_variant(disc, |_| {}),
-            ReVar(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            RePlaceholder(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReErased => e.emit_enum_variant(disc, |_| {}),
-            ReError(_) => e.emit_enum_variant(disc, |_| {}),
-        }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Decodable`
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for RegionKind<I>
-where
-    I::EarlyBoundRegion: Decodable<D>,
-    I::BoundRegion: Decodable<D>,
-    I::FreeRegion: Decodable<D>,
-    I::InferRegion: Decodable<D>,
-    I::PlaceholderRegion: Decodable<D>,
-    I::ErrorGuaranteed: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => ReEarlyBound(Decodable::decode(d)),
-            1 => ReLateBound(Decodable::decode(d), Decodable::decode(d)),
-            2 => ReFree(Decodable::decode(d)),
-            3 => ReStatic,
-            4 => ReVar(Decodable::decode(d)),
-            5 => RePlaceholder(Decodable::decode(d)),
-            6 => ReErased,
-            7 => ReError(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "RegionKind", 8,
-                )
-            ),
-        }
-    }
-}
-
-// This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
-where
-    I::EarlyBoundRegion: HashStable<CTX>,
-    I::BoundRegion: HashStable<CTX>,
-    I::FreeRegion: HashStable<CTX>,
-    I::InferRegion: HashStable<CTX>,
-    I::PlaceholderRegion: HashStable<CTX>,
-{
-    #[inline]
-    fn hash_stable(
-        &self,
-        hcx: &mut CTX,
-        hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
-    ) {
-        std::mem::discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            ReErased | ReStatic | ReError(_) => {
-                // No variant fields to hash for these ...
-            }
-            ReLateBound(d, r) => {
-                d.hash_stable(hcx, hasher);
-                r.hash_stable(hcx, hasher);
-            }
-            ReEarlyBound(r) => {
-                r.hash_stable(hcx, hasher);
-            }
-            ReFree(r) => {
-                r.hash_stable(hcx, hasher);
-            }
-            RePlaceholder(r) => {
-                r.hash_stable(hcx, hasher);
-            }
-            ReVar(_) => {
-                panic!("region variables should not be hashed: {self:?}")
-            }
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        use InferTy::*;
+        match this.infcx.and_then(|infcx| infcx.universe_of_ty(*this.data)) {
+            None => write!(f, "{:?}", this.data),
+            Some(universe) => match *this.data {
+                TyVar(ty_vid) => write!(f, "?{}_{}t", ty_vid.index(), universe.index()),
+                IntVar(_) | FloatVar(_) | FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_) => {
+                    unreachable!()
+                }
+            },
         }
     }
 }

@@ -1,13 +1,8 @@
-use std::{
-    cmp::Ordering,
-    hash::{Hash, Hasher},
-    ops::Deref,
-};
-
-use rustc_data_structures::{
-    fingerprint::Fingerprint,
-    stable_hasher::{HashStable, StableHasher},
-};
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 
 use crate::{DebruijnIndex, TypeFlags};
 

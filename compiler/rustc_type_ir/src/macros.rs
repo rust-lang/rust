@@ -33,3 +33,20 @@ macro_rules! TrivialTypeTraversalImpls {
         )+
     };
 }
+
+///////////////////////////////////////////////////////////////////////////
+// Atomic structs
+//
+// For things that don't carry any arena-allocated data (and are
+// copy...), just add them to this list.
+
+TrivialTypeTraversalImpls! {
+    (),
+    bool,
+    usize,
+    u16,
+    u32,
+    u64,
+    String,
+    crate::DebruijnIndex,
+}
