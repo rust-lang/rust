@@ -1593,9 +1593,9 @@ impl From<io::Stderr> for Stdio {
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
 
-/// The default value is one which indicates successful completion.
 #[stable(feature = "process_exitstatus_default", since = "1.73.0")]
 impl Default for ExitStatus {
+    /// The default value is one which indicates successful completion.
     fn default() -> Self {
         // Ideally this would be done by ExitCode::default().into() but that is complicated.
         ExitStatus::from_inner(imp::ExitStatus::default())
