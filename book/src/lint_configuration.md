@@ -100,7 +100,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 ## `msrv`
 The minimum rust version that the project supports
 
-**Default Value:** `None` (`Option<String>`)
+**Default Value:** `Msrv { stack: [] }` (`crate::Msrv`)
 
 ---
 **Affected lints:**
