@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/silenced-binding-typo.rs:4:14
+   |
+LL |     let _y = x;
+   |              ^
+   |
+help: a local variable with a similar name exists, consider changing it
+   |
+LL |     let x = 42;
+   |         ~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.
