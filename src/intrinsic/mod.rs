@@ -4,7 +4,7 @@ mod simd;
 #[cfg(feature="master")]
 use std::iter;
 
-use gccjit::{BinaryOp, ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
+use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -819,7 +819,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 value
             };
 
-        if value_type.is_u128(&self.cx) {
+        // only break apart 128-bit ints if they're not natively supported
+        // TODO(antoyo): remove this if/when native 128-bit integers land in libgccjit
+        if value_type.is_u128(&self.cx) && !self.cx.supports_128bit_integers {
             let sixty_four = self.gcc_int(value_type, 64);
             let right_shift = self.gcc_lshr(value, sixty_four);
             let high = self.gcc_int_cast(right_shift, self.cx.ulonglong_type);
@@ -842,30 +844,33 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let counter_type = self.int_type;
         let counter = self.current_func().new_local(None, counter_type, "popcount_counter");
         let val = self.current_func().new_local(None, value_type, "popcount_value");
-        let zero = self.context.new_rvalue_zero(counter_type);
+        let zero = self.gcc_zero(counter_type);
         self.llbb().add_assignment(None, counter, zero);
         self.llbb().add_assignment(None, val, value);
         self.br(loop_head);
 
         // check if value isn't zero
         self.switch_to_block(loop_head);
-        let zero = self.context.new_rvalue_zero(value_type);
-        let cond = self.context.new_comparison(None, ComparisonOp::NotEquals, val.to_rvalue(), zero);
+        let zero = self.gcc_zero(value_type);
+        let cond = self.gcc_icmp(IntPredicate::IntNE, val.to_rvalue(), zero);
         self.cond_br(cond, loop_body, loop_tail);
 
         // val &= val - 1;
         self.switch_to_block(loop_body);
-        let sub = val.to_rvalue() - self.context.new_rvalue_one(value_type);
-        loop_body.add_assignment_op(None, val, BinaryOp::BitwiseAnd, sub);
+        let one = self.gcc_int(value_type, 1);
+        let sub = self.gcc_sub(val.to_rvalue(), one);
+        let op = self.gcc_and(val.to_rvalue(), sub);
+        loop_body.add_assignment(None, val, op);
 
         // counter += 1
-        let one = self.context.new_rvalue_one(counter_type);
-        loop_body.add_assignment_op(None, counter, BinaryOp::Plus, one);
+        let one = self.gcc_int(counter_type, 1);
+        let op = self.gcc_add(counter.to_rvalue(), one);
+        loop_body.add_assignment(None, counter, op);
         self.br(loop_head);
 
         // end of loop
         self.switch_to_block(loop_tail);
-        self.context.new_cast(None, counter.to_rvalue(), result_type)
+        self.gcc_int_cast(counter.to_rvalue(), result_type)
     }
 
     // Algorithm from: https://blog.regehr.org/archives/1063
