@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: DataflowConstProp
 
 // The struct has scalar ABI, but is not a scalar type.

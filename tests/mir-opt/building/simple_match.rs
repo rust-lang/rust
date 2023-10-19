@@ -1,3 +1,4 @@
+// skip-filecheck
 // Test that we don't generate unnecessarily large MIR for very simple matches
 
 

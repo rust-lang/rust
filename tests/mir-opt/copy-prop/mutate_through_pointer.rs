@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: CopyProp
 //
 // This attempts to mutate `a` via a pointer derived from `addr_of!(a)`. That is UB

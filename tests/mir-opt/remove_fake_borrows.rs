@@ -1,3 +1,4 @@
+// skip-filecheck
 // Test that the fake borrows for matches are removed after borrow checking.
 
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

@@ -1,3 +1,4 @@
+// skip-filecheck
 // This test makes sure that the generator MIR pass eliminates all calls to
 // `get_context`, and that the MIR argument type for an async fn and all locals
 // related to `yield` are `&mut Context`, and its return type is `Poll`.

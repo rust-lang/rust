@@ -1,3 +1,4 @@
+// skip-filecheck
 #![crate_type = "lib"]
 
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

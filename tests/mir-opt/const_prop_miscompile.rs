@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 #![feature(raw_ref_op)]
 

@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 // EMIT_MIR while_let_loops.change_loop_body.ConstProp.diff
 

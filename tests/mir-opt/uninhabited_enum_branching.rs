@@ -1,3 +1,4 @@
+// skip-filecheck
 enum Empty { }
 
 // test matching an enum with uninhabited variants

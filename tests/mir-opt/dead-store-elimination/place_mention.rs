@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: DeadStoreElimination
 // compile-flags: -Zmir-keep-place-mention
 

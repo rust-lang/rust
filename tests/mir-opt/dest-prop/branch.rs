@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //! Tests that assignment in both branches of an `if` are eliminated.
 // unit-test: DestinationPropagation

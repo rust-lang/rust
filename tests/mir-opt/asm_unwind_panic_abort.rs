@@ -9,6 +9,9 @@
 
 // EMIT_MIR asm_unwind_panic_abort.main.AbortUnwindingCalls.after.mir
 fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK: asm!(
+    // CHECK-SAME: unwind terminate(abi)
     unsafe {
         std::arch::asm!("", options(may_unwind));
     }

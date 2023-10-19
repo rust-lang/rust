@@ -1,3 +1,4 @@
+// skip-filecheck
 // Test spanview output (the default value for `-Z dump-mir-spanview` is "statement")
 // compile-flags: -Z dump-mir-spanview
 

@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: EarlyOtherwiseBranch
 
 // EMIT_MIR early_otherwise_branch_3_element_tuple.opt1.EarlyOtherwiseBranch.diff

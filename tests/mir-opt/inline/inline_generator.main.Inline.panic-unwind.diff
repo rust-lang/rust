@@ -4,26 +4,26 @@
   fn main() -> () {
       let mut _0: ();
       let _1: std::ops::GeneratorState<i32, bool>;
-      let mut _2: std::pin::Pin<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>;
-      let mut _3: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8};
-      let mut _4: {generator@$DIR/inline_generator.rs:16:5: 16:8};
+      let mut _2: std::pin::Pin<&mut {generator@$DIR/inline_generator.rs:17:5: 17:8}>;
+      let mut _3: &mut {generator@$DIR/inline_generator.rs:17:5: 17:8};
+      let mut _4: {generator@$DIR/inline_generator.rs:17:5: 17:8};
 +     let mut _5: bool;
       scope 1 {
           debug _r => _1;
       }
 +     scope 2 (inlined g) {
 +     }
-+     scope 3 (inlined Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new) {
++     scope 3 (inlined Pin::<&mut {generator@$DIR/inline_generator.rs:17:5: 17:8}>::new) {
 +         debug pointer => _3;
 +         scope 4 {
-+             scope 5 (inlined Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new_unchecked) {
++             scope 5 (inlined Pin::<&mut {generator@$DIR/inline_generator.rs:17:5: 17:8}>::new_unchecked) {
 +                 debug pointer => _3;
 +             }
 +         }
 +     }
 +     scope 6 (inlined g::{closure#0}) {
 +         debug a => _5;
-+         let mut _6: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8};
++         let mut _6: &mut {generator@$DIR/inline_generator.rs:17:5: 17:8};
 +         let mut _7: u32;
 +         let mut _8: i32;
 +     }
@@ -37,20 +37,20 @@
 -     }
 - 
 -     bb1: {
-+         _4 = {generator@$DIR/inline_generator.rs:16:5: 16:8 (#0)};
++         _4 = {generator@$DIR/inline_generator.rs:17:5: 17:8 (#0)};
           _3 = &mut _4;
--         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}>::new(move _3) -> [return: bb2, unwind: bb5];
+-         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:17:5: 17:8}>::new(move _3) -> [return: bb2, unwind: bb5];
 -     }
 - 
 -     bb2: {
-+         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:16:5: 16:8}> { pointer: move _3 };
++         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:17:5: 17:8}> { pointer: move _3 };
           StorageDead(_3);
--         _1 = <{generator@$DIR/inline_generator.rs:16:5: 16:8} as Generator<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb5];
+-         _1 = <{generator@$DIR/inline_generator.rs:17:5: 17:8} as Generator<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb5];
 +         StorageLive(_5);
 +         _5 = const false;
 +         StorageLive(_6);
 +         StorageLive(_7);
-+         _6 = (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
++         _6 = (_2.0: &mut {generator@$DIR/inline_generator.rs:17:5: 17:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb5, 1: bb9, 3: bb10, otherwise: bb11];
       }
