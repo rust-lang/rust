@@ -259,9 +259,17 @@ pub fn target_machine_factory(
     };
     let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
+    let should_prefer_remapped_for_split_debuginfo_paths =
+        sess.should_prefer_remapped_for_split_debuginfo_paths();
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
-            let path = path_mapping.map_prefix(path.unwrap_or_default()).0;
+            let path = path.unwrap_or_default();
+            let path = if should_prefer_remapped_for_split_debuginfo_paths {
+                path_mapping.map_prefix(path).0
+            } else {
+                path.into()
+            };
             CString::new(path.to_str().unwrap()).unwrap()
         };
 

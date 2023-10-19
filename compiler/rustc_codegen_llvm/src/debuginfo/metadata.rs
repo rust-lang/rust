@@ -547,48 +547,77 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
     ) -> &'ll DIFile {
         debug!(?source_file.name);
 
+        use rustc_session::RemapFileNameExt;
         let (directory, file_name) = match &source_file.name {
             FileName::Real(filename) => {
                 let working_directory = &cx.sess().opts.working_dir;
                 debug!(?working_directory);
 
-                let filename = cx
-                    .sess()
-                    .source_map()
-                    .path_mapping()
-                    .to_embeddable_absolute_path(filename.clone(), working_directory);
+                if cx.sess().should_prefer_remapped_for_codegen() {
+                    let filename = cx
+                        .sess()
+                        .source_map()
+                        .path_mapping()
+                        .to_embeddable_absolute_path(filename.clone(), working_directory);
 
-                // Construct the absolute path of the file
-                let abs_path = filename.remapped_path_if_available();
-                debug!(?abs_path);
+                    // Construct the absolute path of the file
+                    let abs_path = filename.remapped_path_if_available();
+                    debug!(?abs_path);
 
-                if let Ok(rel_path) =
-                    abs_path.strip_prefix(working_directory.remapped_path_if_available())
-                {
-                    // If the compiler's working directory (which also is the DW_AT_comp_dir of
-                    // the compilation unit) is a prefix of the path we are about to emit, then
-                    // only emit the part relative to the working directory.
-                    // Because of path remapping we sometimes see strange things here: `abs_path`
-                    // might actually look like a relative path
-                    // (e.g. `<crate-name-and-version>/src/lib.rs`), so if we emit it without
-                    // taking the working directory into account, downstream tooling will
-                    // interpret it as `<working-directory>/<crate-name-and-version>/src/lib.rs`,
-                    // which makes no sense. Usually in such cases the working directory will also
-                    // be remapped to `<crate-name-and-version>` or some other prefix of the path
-                    // we are remapping, so we end up with
-                    // `<crate-name-and-version>/<crate-name-and-version>/src/lib.rs`.
-                    // By moving the working directory portion into the `directory` part of the
-                    // DIFile, we allow LLVM to emit just the relative path for DWARF, while
-                    // still emitting the correct absolute path for CodeView.
-                    (
-                        working_directory.to_string_lossy(FileNameDisplayPreference::Remapped),
-                        rel_path.to_string_lossy().into_owned(),
-                    )
+                    if let Ok(rel_path) =
+                        abs_path.strip_prefix(working_directory.remapped_path_if_available())
+                    {
+                        // If the compiler's working directory (which also is the DW_AT_comp_dir of
+                        // the compilation unit) is a prefix of the path we are about to emit, then
+                        // only emit the part relative to the working directory.
+                        // Because of path remapping we sometimes see strange things here: `abs_path`
+                        // might actually look like a relative path
+                        // (e.g. `<crate-name-and-version>/src/lib.rs`), so if we emit it without
+                        // taking the working directory into account, downstream tooling will
+                        // interpret it as `<working-directory>/<crate-name-and-version>/src/lib.rs`,
+                        // which makes no sense. Usually in such cases the working directory will also
+                        // be remapped to `<crate-name-and-version>` or some other prefix of the path
+                        // we are remapping, so we end up with
+                        // `<crate-name-and-version>/<crate-name-and-version>/src/lib.rs`.
+                        // By moving the working directory portion into the `directory` part of the
+                        // DIFile, we allow LLVM to emit just the relative path for DWARF, while
+                        // still emitting the correct absolute path for CodeView.
+                        (
+                            working_directory.to_string_lossy(FileNameDisplayPreference::Remapped),
+                            rel_path.to_string_lossy().into_owned(),
+                        )
+                    } else {
+                        ("".into(), abs_path.to_string_lossy().into_owned())
+                    }
                 } else {
-                    ("".into(), abs_path.to_string_lossy().into_owned())
+                    let working_directory = working_directory.local_path_if_available();
+                    let filename = filename.local_path_if_available();
+
+                    debug!(?working_directory, ?filename);
+
+                    let abs_path: Cow<'_, Path> = if filename.is_absolute() {
+                        filename.into()
+                    } else {
+                        let mut p = PathBuf::new();
+                        p.push(working_directory);
+                        p.push(filename);
+                        p.into()
+                    };
+
+                    if let Ok(rel_path) = abs_path.strip_prefix(working_directory) {
+                        (
+                            working_directory.to_string_lossy().into(),
+                            rel_path.to_string_lossy().into_owned(),
+                        )
+                    } else {
+                        ("".into(), abs_path.to_string_lossy().into_owned())
+                    }
                 }
             }
-            other => ("".into(), other.prefer_remapped().to_string_lossy().into_owned()),
+            other => {
+                debug!(?other);
+                ("".into(), other.for_codegen(cx.sess()).to_string_lossy().into_owned())
+            }
         };
 
         let hash_kind = match source_file.src_hash.kind {
@@ -822,8 +851,9 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM ({rustc_producer})");
 
+    use rustc_session::RemapFileNameExt;
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let work_dir = tcx.sess.opts.working_dir.to_string_lossy(FileNameDisplayPreference::Remapped);
+    let work_dir = tcx.sess.opts.working_dir.for_codegen(&tcx.sess).to_string_lossy();
     let flags = "\0";
     let output_filenames = tcx.output_filenames(());
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
@@ -834,7 +864,13 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
                 Some(codegen_unit_name),
             )
             // We get a path relative to the working directory from split_dwarf_path
-            .map(|f| tcx.sess.source_map().path_mapping().map_prefix(f).0)
+            .map(|f| {
+                if tcx.sess.should_prefer_remapped_for_split_debuginfo_paths() {
+                    tcx.sess.source_map().path_mapping().map_prefix(f).0
+                } else {
+                    f.into()
+                }
+            })
     } else {
         None
     }

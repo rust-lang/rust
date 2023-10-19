@@ -212,7 +212,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
-        let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
+
+        use rustc_session::RemapFileNameExt;
+        let file_name =
+            Symbol::intern(&self.source_file.name.for_codegen(self.tcx.sess).to_string_lossy());
 
         for (bcb, spans) in coverage_spans.bcbs_with_coverage_spans() {
             let counter_kind = self.coverage_counters.take_bcb_counter(bcb).unwrap_or_else(|| {

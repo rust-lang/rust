@@ -1454,10 +1454,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let tcx = bx.tcx();
 
         let mut span_to_caller_location = |span: Span| {
+            use rustc_session::RemapFileNameExt;
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = tcx.const_caller_location((
-                Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
+                Symbol::intern(&caller.file.name.for_codegen(self.cx.sess()).to_string_lossy()),
                 caller.line as u32,
                 caller.col_display as u32 + 1,
             ));

@@ -123,9 +123,9 @@ impl GlobalFileTable {
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        let working_dir = Symbol::intern(
-            &tcx.sess.opts.working_dir.remapped_path_if_available().to_string_lossy(),
-        );
+        use rustc_session::RemapFileNameExt;
+        let working_dir =
+            Symbol::intern(&tcx.sess.opts.working_dir.for_codegen(&tcx.sess).to_string_lossy());
         global_file_table.insert(working_dir);
         Self { global_file_table }
     }

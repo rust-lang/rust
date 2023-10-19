@@ -427,6 +427,7 @@ mod desc {
     pub const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
     pub const parse_dump_solver_proof_tree: &str = "one of: `always`, `on-request`, `on-error`";
+    pub const parse_remap_path_scope: &str = "comma separated list of scopes: `macro`, `diagnostics`, `unsplit-debuginfo`, `split-debuginfo`, `split-debuginfo-path`, `object`, `all`";
 }
 
 mod parse {
@@ -1095,6 +1096,30 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_remap_path_scope(
+        slot: &mut RemapPathScopeComponents,
+        v: Option<&str>,
+    ) -> bool {
+        if let Some(v) = v {
+            *slot = RemapPathScopeComponents::empty();
+            for s in v.split(',') {
+                *slot |= match s {
+                    "macro" => RemapPathScopeComponents::MACRO,
+                    "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
+                    "unsplit-debuginfo" => RemapPathScopeComponents::UNSPLIT_DEBUGINFO,
+                    "split-debuginfo" => RemapPathScopeComponents::SPLIT_DEBUGINFO,
+                    "split-debuginfo-path" => RemapPathScopeComponents::SPLIT_DEBUGINFO_PATH,
+                    "object" => RemapPathScopeComponents::OBJECT,
+                    "all" => RemapPathScopeComponents::all(),
+                    _ => return false,
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn parse_relocation_model(slot: &mut Option<RelocModel>, v: Option<&str>) -> bool {
         match v.and_then(|s| RelocModel::from_str(s).ok()) {
             Some(relocation_model) => *slot = Some(relocation_model),
@@ -1733,6 +1758,8 @@ options! {
         "choose which RELRO level to use"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
+    remap_path_scope: RemapPathScopeComponents = (RemapPathScopeComponents::all(), parse_remap_path_scope, [TRACKED],
+        "remap path scope (default: all)"),
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),

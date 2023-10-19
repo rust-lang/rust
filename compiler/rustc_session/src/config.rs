@@ -21,8 +21,8 @@ use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::{FileName, FilePathMapping};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
+use rustc_span::{FileNameDisplayPreference, RealFileName};
 
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
@@ -1018,6 +1018,32 @@ impl OutputFilenames {
     }
 }
 
+bitflags::bitflags! {
+    /// Scopes used to determined if it need to apply to --remap-path-prefix
+    pub struct RemapPathScopeComponents: u8 {
+        /// Apply remappings to the expansion of std::file!() macro
+        const MACRO = 1 << 0;
+        /// Apply remappings to printed compiler diagnostics
+        const DIAGNOSTICS = 1 << 1;
+        /// Apply remappings to debug information only when they are written to
+        /// compiled executables or libraries, but not when they are in split
+        /// debuginfo files
+        const UNSPLIT_DEBUGINFO = 1 << 2;
+        /// Apply remappings to debug information only when they are written to
+        /// split debug information files, but not in compiled executables or
+        /// libraries
+        const SPLIT_DEBUGINFO = 1 << 3;
+        /// Apply remappings to the paths pointing to split debug information
+        /// files. Does nothing when these files are not generated.
+        const SPLIT_DEBUGINFO_PATH = 1 << 4;
+
+        /// An alias for macro,unsplit-debuginfo,split-debuginfo-path. This
+        /// ensures all paths in compiled executables or libraries are remapped
+        /// but not elsewhere.
+        const OBJECT = Self::MACRO.bits | Self::UNSPLIT_DEBUGINFO.bits | Self::SPLIT_DEBUGINFO_PATH.bits;
+    }
+}
+
 pub fn host_triple() -> &'static str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've
@@ -1028,6 +1054,22 @@ pub fn host_triple() -> &'static str {
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
     (option_env!("CFG_COMPILER_HOST_TRIPLE")).expect("CFG_COMPILER_HOST_TRIPLE")
+}
+
+fn file_path_mapping(
+    remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    unstable_opts: &UnstableOptions,
+) -> FilePathMapping {
+    FilePathMapping::new(
+        remap_path_prefix.clone(),
+        if unstable_opts.remap_path_scope.contains(RemapPathScopeComponents::DIAGNOSTICS)
+            && !remap_path_prefix.is_empty()
+        {
+            FileNameDisplayPreference::Remapped
+        } else {
+            FileNameDisplayPreference::Local
+        },
+    )
 }
 
 impl Default for Options {
@@ -1085,7 +1127,7 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        FilePathMapping::new(self.remap_path_prefix.clone())
+        file_path_mapping(self.remap_path_prefix.clone(), &self.unstable_opts)
     }
 
     /// Returns `true` if there will be an output file generated.
@@ -2867,7 +2909,7 @@ pub fn build_session_options(
         handler.early_error(format!("Current directory is invalid: {e}"));
     });
 
-    let remap = FilePathMapping::new(remap_path_prefix.clone());
+    let remap = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
     let (path, remapped) = remap.map_prefix(&working_dir);
     let working_dir = if remapped {
         RealFileName::Remapped { virtual_name: path.into_owned(), local_path: Some(working_dir) }
@@ -3173,8 +3215,8 @@ pub(crate) mod dep_tracking {
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
         ErrorOutputType, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
         LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Polonius,
-        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -3268,6 +3310,7 @@ pub(crate) mod dep_tracking {
         StackProtector,
         SwitchWithOptPath,
         SymbolManglingVersion,
+        RemapPathScopeComponents,
         SourceFileHashAlgorithm,
         TrimmedDefPaths,
         OutFileName,
