@@ -50,7 +50,7 @@ impl EarlyLintPass for DerefAddrOf {
         if_chain! {
             if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.kind;
             if let ExprKind::AddrOf(_, ref mutability, ref addrof_target) = without_parens(deref_target).kind;
-            if deref_target.span.ctxt() == e.span.ctxt();
+            if deref_target.span.eq_ctxt(e.span);
             if !addrof_target.span.from_expansion();
             then {
                 let mut applicability = Applicability::MachineApplicable;

@@ -34,6 +34,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+pub use rustc_type_ir::{Movability, Mutability};
 use std::fmt;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
@@ -800,57 +801,6 @@ pub enum PatKind {
     MacCall(P<MacCall>),
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
-pub enum Mutability {
-    // N.B. Order is deliberate, so that Not < Mut
-    Not,
-    Mut,
-}
-
-impl Mutability {
-    pub fn invert(self) -> Self {
-        match self {
-            Mutability::Mut => Mutability::Not,
-            Mutability::Not => Mutability::Mut,
-        }
-    }
-
-    /// Returns `""` (empty string) or `"mut "` depending on the mutability.
-    pub fn prefix_str(self) -> &'static str {
-        match self {
-            Mutability::Mut => "mut ",
-            Mutability::Not => "",
-        }
-    }
-
-    /// Returns `"&"` or `"&mut "` depending on the mutability.
-    pub fn ref_prefix_str(self) -> &'static str {
-        match self {
-            Mutability::Not => "&",
-            Mutability::Mut => "&mut ",
-        }
-    }
-
-    /// Returns `""` (empty string) or `"mutably "` depending on the mutability.
-    pub fn mutably_str(self) -> &'static str {
-        match self {
-            Mutability::Not => "",
-            Mutability::Mut => "mutably ",
-        }
-    }
-
-    /// Return `true` if self is mutable
-    pub fn is_mut(self) -> bool {
-        matches!(self, Self::Mut)
-    }
-
-    /// Return `true` if self is **not** mutable
-    pub fn is_not(self) -> bool {
-        matches!(self, Self::Not)
-    }
-}
-
 /// The kind of borrow in an `AddrOf` expression,
 /// e.g., `&place` or `&raw const place`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -1577,17 +1527,6 @@ pub enum CaptureBy {
     Value,
     /// `move` keyword was not specified.
     Ref,
-}
-
-/// The movability of a generator / closure literal:
-/// whether a generator contains self-references, causing it to be `!Unpin`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, Debug, Copy)]
-#[derive(HashStable_Generic)]
-pub enum Movability {
-    /// May contain self-references, `!Unpin`.
-    Static,
-    /// Must not contain self-references, `Unpin`.
-    Movable,
 }
 
 /// Closure lifetime binder, `for<'a, 'b>` in `for<'a, 'b> |_: &'a (), _: &'b ()|`.

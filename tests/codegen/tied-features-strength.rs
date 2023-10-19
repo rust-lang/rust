@@ -7,16 +7,16 @@
 // are targeting older LLVM versions. Once the min supported version
 // is LLVM-14 we can remove the optional regex matching for this feature.
 
-// [ENABLE_SVE] compile-flags: -C target-feature=+sve
+// [ENABLE_SVE] compile-flags: -C target-feature=+sve -Copt-level=0
 // ENABLE_SVE: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)?|(\+sve,?)|(\+neon,?))*}}" }
 
-// [DISABLE_SVE] compile-flags: -C target-feature=-sve
+// [DISABLE_SVE] compile-flags: -C target-feature=-sve -Copt-level=0
 // DISABLE_SVE: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)?|(-sve,?)|(\+neon,?))*}}" }
 
-// [DISABLE_NEON] compile-flags: -C target-feature=-neon
+// [DISABLE_NEON] compile-flags: -C target-feature=-neon -Copt-level=0
 // DISABLE_NEON: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)?|(-fp-armv8,?)|(-neon,?))*}}" }
 
-// [ENABLE_NEON] compile-flags: -C target-feature=+neon
+// [ENABLE_NEON] compile-flags: -C target-feature=+neon -Copt-level=0
 // ENABLE_NEON: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)?|(\+fp-armv8,?)|(\+neon,?))*}}" }
 
 

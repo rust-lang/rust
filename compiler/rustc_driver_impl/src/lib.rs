@@ -62,7 +62,6 @@ use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::time::{Instant, SystemTime};
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
 #[allow(unused_macros)]
@@ -1185,7 +1184,11 @@ fn print_flag_list<T>(
 ///
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
-fn handle_options(handler: &EarlyErrorHandler, args: &[String]) -> Option<getopts::Matches> {
+///
+/// This does not need to be `pub` for rustc itself, but @chaosite needs it to
+/// be public when using rustc as a library, see
+/// <https://github.com/rust-lang/rust/commit/2b4c33817a5aaecabf4c6598d41e190080ec119e>
+pub fn handle_options(handler: &EarlyErrorHandler, args: &[String]) -> Option<getopts::Matches> {
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
@@ -1307,7 +1310,13 @@ fn ice_path() -> &'static Option<PathBuf> {
             None => std::env::current_dir().unwrap_or_default(),
         };
         let now: OffsetDateTime = SystemTime::now().into();
-        let file_now = now.format(&Rfc3339).unwrap_or_default();
+        let file_now = now
+            .format(
+                // Don't use a standard datetime format because Windows doesn't support `:` in paths
+                &time::format_description::parse("[year]-[month]-[day]T[hour]_[minute]_[second]")
+                    .unwrap(),
+            )
+            .unwrap_or_default();
         let pid = std::process::id();
         path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
         Some(path)

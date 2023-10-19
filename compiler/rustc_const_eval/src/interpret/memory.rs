@@ -1235,6 +1235,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Turning a "maybe pointer" into a proper pointer (and some information
     /// about where it points), or an absolute address.
+    ///
+    /// The result must be used immediately; it is not allowed to convert
+    /// the returned data back into a `Pointer` and store that in machine state.
+    /// (In fact that's not even possible since `M::ProvenanceExtra` is generic and
+    /// we don't have an operation to turn it back into `M::Provenance`.)
     pub fn ptr_try_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
@@ -1253,6 +1258,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Turning a "maybe pointer" into a proper pointer (and some information about where it points).
+    ///
+    /// The result must be used immediately; it is not allowed to convert
+    /// the returned data back into a `Pointer` and store that in machine state.
+    /// (In fact that's not even possible since `M::ProvenanceExtra` is generic and
+    /// we don't have an operation to turn it back into `M::Provenance`.)
     #[inline(always)]
     pub fn ptr_get_alloc_id(
         &self,

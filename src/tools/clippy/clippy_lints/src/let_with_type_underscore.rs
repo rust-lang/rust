@@ -31,7 +31,7 @@ impl LateLintPass<'_> for UnderscoreTyped {
             if !in_external_macro(cx.tcx.sess, local.span);
             if let Some(ty) = local.ty; // Ensure that it has a type defined
             if let TyKind::Infer = &ty.kind; // that type is '_'
-            if local.span.ctxt() == ty.span.ctxt();
+            if local.span.eq_ctxt(ty.span);
             then {
                 // NOTE: Using `is_from_proc_macro` on `init` will require that it's initialized,
                 // this doesn't. Alternatively, `WithSearchPat` can be implemented for `Ty`

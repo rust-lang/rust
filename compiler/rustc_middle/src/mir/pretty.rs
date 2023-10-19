@@ -493,6 +493,27 @@ pub fn write_mir_intro<'tcx>(
     // Add an empty line before the first block is printed.
     writeln!(w)?;
 
+    if let Some(function_coverage_info) = &body.function_coverage_info {
+        write_function_coverage_info(function_coverage_info, w)?;
+    }
+
+    Ok(())
+}
+
+fn write_function_coverage_info(
+    function_coverage_info: &coverage::FunctionCoverageInfo,
+    w: &mut dyn io::Write,
+) -> io::Result<()> {
+    let coverage::FunctionCoverageInfo { expressions, mappings, .. } = function_coverage_info;
+
+    for (id, expression) in expressions.iter_enumerated() {
+        writeln!(w, "{INDENT}coverage {id:?} => {expression:?};")?;
+    }
+    for coverage::Mapping { term, code_region } in mappings {
+        writeln!(w, "{INDENT}coverage {term:?} => {code_region:?};")?;
+    }
+    writeln!(w)?;
+
     Ok(())
 }
 
@@ -685,13 +706,7 @@ impl Debug for Statement<'_> {
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
-            Coverage(box mir::Coverage { ref kind, ref code_regions }) => {
-                if code_regions.is_empty() {
-                    write!(fmt, "Coverage::{kind:?}")
-                } else {
-                    write!(fmt, "Coverage::{kind:?} for {code_regions:?}")
-                }
-            }
+            Coverage(box mir::Coverage { ref kind }) => write!(fmt, "Coverage::{kind:?}"),
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),

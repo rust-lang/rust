@@ -1,4 +1,4 @@
-// compile-flags: -g -Z src-hash-algorithm=sha256
+// compile-flags: -g -Z src-hash-algorithm=sha256 -Copt-level=0
 
 #![crate_type = "lib"]
 

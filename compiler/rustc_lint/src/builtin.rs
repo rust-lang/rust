@@ -677,6 +677,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if type_implements_negative_copy_modulo_regions(cx.tcx, ty, param_env) {
             return;
         }
+        if def.is_variant_list_non_exhaustive()
+            || def.variants().iter().any(|variant| variant.is_field_list_non_exhaustive())
+        {
+            return;
+        }
 
         // We shouldn't recommend implementing `Copy` on stateful things,
         // such as iterators.

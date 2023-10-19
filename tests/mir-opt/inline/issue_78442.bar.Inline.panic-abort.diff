@@ -8,31 +8,37 @@
       let mut _3: &fn() {foo};
       let _4: fn() {foo};
       let mut _5: ();
++     scope 1 (inlined hide_foo) {
++     }
   
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
-          _4 = hide_foo() -> [return: bb1, unwind unreachable];
-      }
-  
-      bb1: {
+-         _4 = hide_foo() -> [return: bb1, unwind unreachable];
+-     }
+- 
+-     bb1: {
           _3 = &_4;
           StorageLive(_5);
           _5 = ();
-          _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind unreachable];
+-         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind unreachable];
++         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb1, unwind unreachable];
       }
   
-      bb2: {
+-     bb2: {
++     bb1: {
           StorageDead(_5);
           StorageDead(_3);
           StorageDead(_4);
           StorageDead(_2);
           _0 = const ();
-          drop(_1) -> [return: bb3, unwind unreachable];
+-         drop(_1) -> [return: bb3, unwind unreachable];
++         drop(_1) -> [return: bb2, unwind unreachable];
       }
   
-      bb3: {
+-     bb3: {
++     bb2: {
           return;
       }
   }

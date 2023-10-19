@@ -10,11 +10,11 @@ LL |     type Color;
 LL | fn a<C:Vehicle+Box>(_: C::Color) {
    |                        ^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn a<C:Vehicle+Box>(_: <C as Box>::Color) {
    |                        ~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn a<C:Vehicle+Box>(_: <C as Vehicle>::Color) {
    |                        ~~~~~~~~~~~~~~~~
@@ -31,11 +31,11 @@ LL |     type Color;
 LL | fn b<C>(_: C::Color) where C : Vehicle+Box {
    |            ^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn b<C>(_: <C as Box>::Color) where C : Vehicle+Box {
    |            ~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn b<C>(_: <C as Vehicle>::Color) where C : Vehicle+Box {
    |            ~~~~~~~~~~~~~~~~
@@ -52,11 +52,11 @@ LL |     type Color;
 LL | fn c<C>(_: C::Color) where C : Vehicle, C : Box {
    |            ^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn c<C>(_: <C as Box>::Color) where C : Vehicle, C : Box {
    |            ~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn c<C>(_: <C as Vehicle>::Color) where C : Vehicle, C : Box {
    |            ~~~~~~~~~~~~~~~~
@@ -73,11 +73,11 @@ LL |     type Color;
 LL |     fn e(&self, _: X::Color) where X : Box;
    |                    ^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |     fn e(&self, _: <X as Box>::Color) where X : Box;
    |                    ~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |     fn e(&self, _: <X as Vehicle>::Color) where X : Box;
    |                    ~~~~~~~~~~~~~~~~
@@ -94,11 +94,11 @@ LL |     type Color;
 LL |     fn f(&self, _: X::Color) where X : Box { }
    |                    ^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |     fn f(&self, _: <X as Box>::Color) where X : Box { }
    |                    ~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |     fn f(&self, _: <X as Vehicle>::Color) where X : Box { }
    |                    ~~~~~~~~~~~~~~~~
@@ -115,11 +115,11 @@ LL |     type Color;
 LL |     fn d(&self, _: X::Color) where X : Box { }
    |                    ^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |     fn d(&self, _: <X as Box>::Color) where X : Box { }
    |                    ~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |     fn d(&self, _: <X as Vehicle>::Color) where X : Box { }
    |                    ~~~~~~~~~~~~~~~~

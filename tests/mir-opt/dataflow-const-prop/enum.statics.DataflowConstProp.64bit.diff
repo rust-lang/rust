@@ -43,7 +43,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = const {alloc1: &E};
+          _2 = const {ALLOC1: &E};
           _1 = (*_2);
           StorageDead(_2);
           StorageLive(_3);
@@ -78,7 +78,7 @@
       bb4: {
           StorageLive(_7);
           StorageLive(_8);
-          _8 = const {alloc2: &&E};
+          _8 = const {ALLOC2: &&E};
           _7 = (*_8);
           StorageDead(_8);
           StorageLive(_9);
@@ -112,15 +112,15 @@
       }
   }
   
-  alloc2 (static: RC, size: 8, align: 8) {
-      ╾───────alloc14───────╼                         │ ╾──────╼
+  ALLOC2 (static: RC, size: 8, align: 8) {
+      ╾ALLOC0╼                         │ ╾──────╼
   }
   
-  alloc14 (size: 8, align: 4) {
+  ALLOC0 (size: 8, align: 4) {
       01 00 00 00 04 00 00 00                         │ ........
   }
   
-  alloc1 (static: statics::C, size: 8, align: 4) {
+  ALLOC1 (static: statics::C, size: 8, align: 4) {
       00 00 00 00 00 00 00 00                         │ ........
   }
   

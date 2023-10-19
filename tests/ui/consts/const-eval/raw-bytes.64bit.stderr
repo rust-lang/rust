@@ -211,7 +211,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:106:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered allocN, but expected a function pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered ALLOC3, but expected a function pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
@@ -385,7 +385,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:175:1
    |
 LL | const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered ALLOC17, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -396,7 +396,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:179:1
    |
 LL | const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered ALLOC19, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -418,7 +418,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:186:1
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered ALLOC22, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -451,7 +451,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:196:1
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered ALLOC27, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {

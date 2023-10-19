@@ -145,25 +145,7 @@ impl<'tcx> InferCtxt<'tcx> {
                             return None;
                         }
                     }
-                    DefiningAnchor::Bubble => {
-                        if let ty::Alias(ty::Opaque, _) = b.kind() {
-                            // In bubble mode we don't know which of the two opaque types is supposed to have the other
-                            // as a hidden type (both, none or either one of them could be in its defining scope).
-                            let predicate = ty::PredicateKind::AliasRelate(
-                                a.into(),
-                                b.into(),
-                                ty::AliasRelationDirection::Equate,
-                            );
-                            let obligation = traits::Obligation::new(
-                                self.tcx,
-                                cause.clone(),
-                                param_env,
-                                predicate,
-                            );
-                            let obligations = vec![obligation];
-                            return Some(Ok(InferOk { value: (), obligations }));
-                        }
-                    }
+                    DefiningAnchor::Bubble => {}
                     DefiningAnchor::Error => return None,
                 };
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {

@@ -1,4 +1,4 @@
-use rustc_middle::mir::coverage::{CounterId, ExpressionId, Operand};
+use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId};
 
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
@@ -43,11 +43,11 @@ impl Counter {
         Self { kind: CounterKind::Expression, id: expression_id.as_u32() }
     }
 
-    pub(crate) fn from_operand(operand: Operand) -> Self {
-        match operand {
-            Operand::Zero => Self::ZERO,
-            Operand::Counter(id) => Self::counter_value_reference(id),
-            Operand::Expression(id) => Self::expression(id),
+    pub(crate) fn from_term(term: CovTerm) -> Self {
+        match term {
+            CovTerm::Zero => Self::ZERO,
+            CovTerm::Counter(id) => Self::counter_value_reference(id),
+            CovTerm::Expression(id) => Self::expression(id),
         }
     }
 }
@@ -71,17 +71,6 @@ pub struct CounterExpression {
     pub kind: ExprKind,
     pub lhs: Counter,
     pub rhs: Counter,
-}
-
-impl CounterExpression {
-    /// The dummy expression `(0 - 0)` has a representation of all zeroes,
-    /// making it marginally more efficient to initialize than `(0 + 0)`.
-    pub(crate) const DUMMY: Self =
-        Self { lhs: Counter::ZERO, kind: ExprKind::Subtract, rhs: Counter::ZERO };
-
-    pub fn new(lhs: Counter, kind: ExprKind, rhs: Counter) -> Self {
-        Self { kind, lhs, rhs }
-    }
 }
 
 /// Corresponds to enum `llvm::coverage::CounterMappingRegion::RegionKind`.

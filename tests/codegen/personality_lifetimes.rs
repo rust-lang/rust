@@ -9,10 +9,12 @@
 struct S;
 
 impl Drop for S {
+    #[inline(never)]
     fn drop(&mut self) {
     }
 }
 
+#[inline(never)]
 fn might_unwind() {
 }
 

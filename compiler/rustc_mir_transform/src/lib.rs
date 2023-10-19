@@ -62,6 +62,7 @@ mod const_prop;
 mod const_prop_lint;
 mod copy_prop;
 mod coverage;
+mod cross_crate_inline;
 mod ctfe_limit;
 mod dataflow_const_prop;
 mod dead_store_elimination;
@@ -123,6 +124,7 @@ pub fn provide(providers: &mut Providers) {
     coverage::query::provide(providers);
     ffi_unwind_calls::provide(providers);
     shim::provide(providers);
+    cross_crate_inline::provide(providers);
     *providers = Providers {
         mir_keys,
         mir_const,
@@ -381,7 +383,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
         // Do not compute the mir call graph without said call graph actually being used.
-        if inline::Inline.is_enabled(&tcx.sess) {
+        if pm::should_run_pass(tcx, &inline::Inline) {
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
         }
     }

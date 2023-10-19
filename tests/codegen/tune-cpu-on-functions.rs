@@ -3,7 +3,7 @@
 
 // no-prefer-dynamic
 //
-// compile-flags: -C no-prepopulate-passes -C panic=abort -C linker-plugin-lto -Cpasses=name-anon-globals -Z tune-cpu=generic
+// compile-flags: -C no-prepopulate-passes -C panic=abort -C linker-plugin-lto -Cpasses=name-anon-globals -Z tune-cpu=generic -Copt-level=0
 
 #![crate_type = "staticlib"]
 

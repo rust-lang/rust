@@ -2,6 +2,7 @@
 use std::arch::asm;
 
 #[deny(unreachable_code)]
+#[inline(never)]
 pub fn exit(n: usize) -> i32 {
     unsafe {
         // Pretend this asm is an exit() syscall.

@@ -16,7 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{CounterId, CoverageKind};
+use rustc_middle::mir::coverage::{CounterId, CoverageKind, FunctionCoverageInfo};
 use rustc_middle::mir::Coverage;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
@@ -88,44 +88,63 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// For used/called functions, the coverageinfo was already added to the
     /// `function_coverage_map` (keyed by function `Instance`) during codegen.
     /// But in this case, since the unused function was _not_ previously
-    /// codegenned, collect the coverage `CodeRegion`s from the MIR and add
-    /// them. Since the function is never called, all of its `CodeRegion`s can be
-    /// added as `unreachable_region`s.
-    fn define_unused_fn(&self, def_id: DefId) {
+    /// codegenned, collect the function coverage info from MIR and add an
+    /// "unused" entry to the function coverage map.
+    fn define_unused_fn(&self, def_id: DefId, function_coverage_info: &'tcx FunctionCoverageInfo) {
         let instance = declare_unused_fn(self, def_id);
         codegen_unused_fn_and_counter(self, instance);
-        add_unused_function_coverage(self, instance, def_id);
+        add_unused_function_coverage(self, instance, function_coverage_info);
     }
 }
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn add_coverage(&mut self, instance: Instance<'tcx>, coverage: &Coverage) {
+        // Our caller should have already taken care of inlining subtleties,
+        // so we can assume that counter/expression IDs in this coverage
+        // statement are meaningful for the given instance.
+        //
+        // (Either the statement was not inlined and directly belongs to this
+        // instance, or it was inlined *from* this instance.)
+
         let bx = self;
+
+        let Some(function_coverage_info) =
+            bx.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
+        else {
+            debug!("function has a coverage statement but no coverage info");
+            return;
+        };
 
         let Some(coverage_context) = bx.coverage_context() else { return };
         let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
         let func_coverage = coverage_map
             .entry(instance)
-            .or_insert_with(|| FunctionCoverage::new(bx.tcx(), instance));
+            .or_insert_with(|| FunctionCoverage::new(instance, function_coverage_info));
 
-        let Coverage { kind, code_regions } = coverage;
+        let Coverage { kind } = coverage;
         match *kind {
-            CoverageKind::Counter { function_source_hash, id } => {
-                debug!(
-                    "ensuring function source hash is set for instance={:?}; function_source_hash={}",
-                    instance, function_source_hash,
-                );
-                func_coverage.set_function_source_hash(function_source_hash);
-                func_coverage.add_counter(id, code_regions);
+            CoverageKind::CounterIncrement { id } => {
+                func_coverage.mark_counter_id_seen(id);
                 // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
                 // as that needs an exclusive borrow.
                 drop(coverage_map);
 
-                let coverageinfo = bx.tcx().coverageinfo(instance.def);
+                // The number of counters passed to `llvm.instrprof.increment` might
+                // be smaller than the number originally inserted by the instrumentor,
+                // if some high-numbered counters were removed by MIR optimizations.
+                // If so, LLVM's profiler runtime will use fewer physical counters.
+                let num_counters =
+                    bx.tcx().coverage_ids_info(instance.def).max_counter_id.as_u32() + 1;
+                assert!(
+                    num_counters as usize <= function_coverage_info.num_counters,
+                    "num_counters disagreement: query says {num_counters} but function info only has {}",
+                    function_coverage_info.num_counters
+                );
 
                 let fn_name = bx.get_pgo_func_name_var(instance);
-                let hash = bx.const_u64(function_source_hash);
-                let num_counters = bx.const_u32(coverageinfo.num_counters);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
+                let num_counters = bx.const_u32(num_counters);
                 let index = bx.const_u32(id.as_u32());
                 debug!(
                     "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
@@ -133,11 +152,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 );
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
-            CoverageKind::Expression { id, lhs, op, rhs } => {
-                func_coverage.add_counter_expression(id, lhs, op, rhs, code_regions);
-            }
-            CoverageKind::Unreachable => {
-                func_coverage.add_unreachable_regions(code_regions);
+            CoverageKind::ExpressionUsed { id } => {
+                func_coverage.mark_expression_id_seen(id);
             }
         }
     }
@@ -200,15 +216,11 @@ fn codegen_unused_fn_and_counter<'tcx>(cx: &CodegenCx<'_, 'tcx>, instance: Insta
 fn add_unused_function_coverage<'tcx>(
     cx: &CodegenCx<'_, 'tcx>,
     instance: Instance<'tcx>,
-    def_id: DefId,
+    function_coverage_info: &'tcx FunctionCoverageInfo,
 ) {
-    let tcx = cx.tcx;
-
-    let mut function_coverage = FunctionCoverage::unused(tcx, instance);
-    for &code_region in tcx.covered_code_regions(def_id) {
-        let code_region = std::slice::from_ref(code_region);
-        function_coverage.add_unreachable_regions(code_region);
-    }
+    // An unused function's mappings will automatically be rewritten to map to
+    // zero, because none of its counters/expressions are marked as seen.
+    let function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
 
     if let Some(coverage_context) = cx.coverage_context() {
         coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);

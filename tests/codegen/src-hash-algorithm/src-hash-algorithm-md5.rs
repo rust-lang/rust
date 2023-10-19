@@ -1,4 +1,4 @@
-// compile-flags: -g -Z src-hash-algorithm=md5
+// compile-flags: -g -Z src-hash-algorithm=md5 -Copt-level=0
 
 #![crate_type = "lib"]
 

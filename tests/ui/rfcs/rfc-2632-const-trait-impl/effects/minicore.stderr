@@ -1,0 +1,32 @@
+error[E0369]: cannot add `i32` to `i32`
+  --> $DIR/minicore.rs:33:20
+   |
+LL |     let x = 42_i32 + 43_i32;
+   |             ------ ^ ------ i32
+   |             |
+   |             i32
+
+error[E0369]: cannot add `i32` to `i32`
+  --> $DIR/minicore.rs:37:20
+   |
+LL |     let x = 42_i32 + 43_i32;
+   |             ------ ^ ------ i32
+   |             |
+   |             i32
+
+error[E0600]: cannot apply unary operator `!` to type `bool`
+  --> $DIR/minicore.rs:343:9
+   |
+LL |         !self.eq(other)
+   |         ^^^^^^^^^^^^^^^ cannot apply unary operator `!`
+
+error[E0600]: cannot apply unary operator `!` to type `bool`
+  --> $DIR/minicore.rs:365:9
+   |
+LL |         !self
+   |         ^^^^^ cannot apply unary operator `!`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0369, E0600.
+For more information about an error, try `rustc --explain E0369`.

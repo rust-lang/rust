@@ -10,18 +10,185 @@ This feature allows you to enable complete or partial checking of configuration.
 check them. The `--check-cfg` option takes a value, called the _check cfg specification_. The
 check cfg specification is parsed using the Rust metadata syntax, just as the `--cfg` option is.
 
-`--check-cfg` option can take one of two forms:
+`--check-cfg` option take one form:
 
-1. `--check-cfg names(...)` enables checking condition names.
-2. `--check-cfg values(...)` enables checking the values within list-valued conditions.
-
-These two options are independent. `names` checks only the namespace of condition names
-while `values` checks only the namespace of the values of list-valued conditions.
+1. `--check-cfg cfg(...)` enables checking the values within list-valued conditions.
 
 NOTE: No implicit expectation is added when using `--cfg` for both forms. Users are expected to
-pass all expected names and values using `names(...)` and `values(...)`.
+pass all expected names and values using `cfg(...)`.
 
-## The `names(...)` form
+## The `cfg(...)` form
+
+The `cfg(...)` form enables checking the values within list-valued conditions. It has this
+basic form:
+
+```bash
+rustc --check-cfg 'cfg(name1, ..., nameN, values("value1", "value2", ... "valueN"))'
+```
+
+where `name` is a bare identifier (has no quotes) and each `"value"` term is a quoted literal
+string. `name` specifies the name of the condition, such as `feature` or `my_cfg`.
+
+When the `cfg(...)` option is specified, `rustc` will check every `#[cfg(name = "value")]`
+attribute, `#[cfg_attr(name = "value")]` attribute, `#[link(name = "a", cfg(name = "value"))]`
+and `cfg!(name = "value")` call. It will check that the `"value"` specified is present in the
+list of expected values. If `"value"` is not in it, then `rustc` will report an `unexpected_cfgs`
+lint diagnostic. The default diagnostic level for this lint is `Warn`.
+
+To enable checking of values, but to provide an empty set of expected values, use these forms:
+
+```bash
+rustc --check-cfg 'cfg(name1, ..., nameN)'
+rustc --check-cfg 'cfg(name1, ..., nameN, values())'
+```
+
+To enable checking of name but not values (i.e. unknown expected values), use this form:
+
+```bash
+rustc --check-cfg 'cfg(name1, ..., nameN, values(any()))'
+```
+
+The `--check-cfg cfg(...)` option can be repeated, both for the same condition name and for
+different names. If it is repeated for the same condition name, then the sets of values for that
+condition are merged together (presedence is given to `any()`).
+
+## Well known names and values
+
+`rustc` has a internal list of well known names and their corresponding values.
+Those well known names and values follows the same stability as what they refer to.
+
+Well known values checking is always enabled as long as a `--check-cfg` argument is present.
+
+Well known names checking is always enable as long as a `--check-cfg` argument is present
+**unless** any `cfg(any())` argument is passed.
+
+To disable checking of well known names, use this form:
+
+```bash
+rustc --check-cfg 'cfg(any())'
+```
+
+NOTE: If one want to enable values and names checking without having any cfg to declare, one
+can use an empty `cfg()` argument.
+
+## Examples
+
+Consider this command line:
+
+```bash
+rustc --check-cfg 'cfg(feature, values("lion", "zebra"))' \
+      --cfg 'feature="lion"' -Z unstable-options \
+      example.rs
+```
+
+This command line indicates that this crate has two features: `lion` and `zebra`. The `lion`
+feature is enabled, while the `zebra` feature is disabled. Exhaustive checking of names and
+values are enabled by default. Consider compiling this code:
+
+```rust
+// This is expected, and tame_lion() will be compiled
+#[cfg(feature = "lion")]
+fn tame_lion(lion: Lion) {}
+
+// This is expected, and ride_zebra() will NOT be compiled.
+#[cfg(feature = "zebra")]
+fn ride_zebra(zebra: Zebra) {}
+
+// This is UNEXPECTED, and will cause a compiler warning (by default).
+#[cfg(feature = "platypus")]
+fn poke_platypus() {}
+
+// This is UNEXPECTED, because 'feechure' is not a known condition name,
+// and will cause a compiler warning (by default).
+#[cfg(feechure = "lion")]
+fn tame_lion() {}
+
+// This is UNEXPECTED, because 'windows' is a well known condition name,
+// and because 'windows' doens't take any values,
+// and will cause a compiler warning (by default).
+#[cfg(windows = "unix")]
+fn tame_windows() {}
+```
+
+### Example: Checking condition names, but not values
+
+```bash
+# This turns on checking for condition names, but not values, such as 'feature' values.
+rustc --check-cfg 'cfg(is_embedded, has_feathers, values(any()))' \
+      --cfg has_feathers -Z unstable-options
+```
+
+```rust
+#[cfg(is_embedded)]         // This is expected as "is_embedded" was provided in cfg()
+fn do_embedded() {}         // and because names exhaustiveness was not disabled
+
+#[cfg(has_feathers)]        // This is expected as "has_feathers" was provided in cfg()
+fn do_features() {}         // and because names exhaustiveness was not disbaled
+
+#[cfg(has_feathers = "zapping")] // This is expected as "has_feathers" was provided in cfg()
+                                 // and because no value checking was enable for "has_feathers"
+                                 // no warning is emitted for the value "zapping"
+fn do_zapping() {}
+
+#[cfg(has_mumble_frotz)]    // This is UNEXPECTED because names checking is enable and
+                            // "has_mumble_frotz" was not provided in cfg()
+fn do_mumble_frotz() {}
+```
+
+### Example: Checking feature values, but not condition names
+
+```bash
+# This turns on checking for feature values, but not for condition names.
+rustc --check-cfg 'configure(feature, values("zapping", "lasers"))' \
+      --check-cfg 'cfg(any())' \
+      --cfg 'feature="zapping"' -Z unstable-options
+```
+
+```rust
+#[cfg(is_embedded)]         // This is doesn't raise a warning, because names checking was
+                            // disabled by 'cfg(any())'
+fn do_embedded() {}
+
+#[cfg(has_feathers)]        // Same as above, 'cfg(any())' was provided so no name
+                            // checking is performed
+fn do_features() {}
+
+#[cfg(feature = "lasers")]  // This is expected, "lasers" is in the cfg(feature) list
+fn shoot_lasers() {}
+
+#[cfg(feature = "monkeys")] // This is UNEXPECTED, because "monkeys" is not in the
+                            // cfg(feature) list
+fn write_shakespeare() {}
+```
+
+### Example: Checking both condition names and feature values
+
+```bash
+# This turns on checking for feature values and for condition names.
+rustc --check-cfg 'cfg(is_embedded, has_feathers)' \
+      --check-cfg 'cfg(feature, values("zapping", "lasers"))' \
+      --cfg has_feathers --cfg 'feature="zapping"' -Z unstable-options
+```
+
+```rust
+#[cfg(is_embedded)]         // This is expected because "is_embedded" was provided in cfg()
+fn do_embedded() {}         // and doesn't take any value
+
+#[cfg(has_feathers)]        // This is expected because "has_feathers" was provided in cfg()
+fn do_features() {}         // and deosn't take any value
+
+#[cfg(has_mumble_frotz)]    // This is UNEXPECTED, because "has_mumble_frotz" was never provided
+fn do_mumble_frotz() {}
+
+#[cfg(feature = "lasers")]  // This is expected, "lasers" is in the cfg(feature) list
+fn shoot_lasers() {}
+
+#[cfg(feature = "monkeys")] // This is UNEXPECTED, because "monkeys" is not in
+                            // the cfg(feature) list
+fn write_shakespeare() {}
+```
+
+## The deprecated `names(...)` form
 
 The `names(...)` form enables checking the names. This form uses a named list:
 
@@ -56,7 +223,7 @@ The first form enables checking condition names, while specifying that there are
 condition names (outside of the set of well-known names defined by `rustc`). Omitting the
 `--check-cfg 'names(...)'` option does not enable checking condition names.
 
-## The `values(...)` form
+## The deprecated `values(...)` form
 
 The `values(...)` form enables checking the values within list-valued conditions. It has this
 form:
@@ -87,120 +254,3 @@ condition are merged together.
 If `values()` is specified, then `rustc` will enable the checking of well-known values defined
 by itself. Note that it's necessary to specify the `values()` form to enable the checking of
 well known values, specifying the other forms doesn't implicitly enable it.
-
-## Examples
-
-Consider this command line:
-
-```bash
-rustc --check-cfg 'names(feature)' \
-      --check-cfg 'values(feature, "lion", "zebra")' \
-      --cfg 'feature="lion"' -Z unstable-options \
-      example.rs
-```
-
-This command line indicates that this crate has two features: `lion` and `zebra`. The `lion`
-feature is enabled, while the `zebra` feature is disabled. Consider compiling this code:
-
-```rust
-// This is expected, and tame_lion() will be compiled
-#[cfg(feature = "lion")]
-fn tame_lion(lion: Lion) {}
-
-// This is expected, and ride_zebra() will NOT be compiled.
-#[cfg(feature = "zebra")]
-fn ride_zebra(zebra: Zebra) {}
-
-// This is UNEXPECTED, and will cause a compiler warning (by default).
-#[cfg(feature = "platypus")]
-fn poke_platypus() {}
-
-// This is UNEXPECTED, because 'feechure' is not a known condition name,
-// and will cause a compiler warning (by default).
-#[cfg(feechure = "lion")]
-fn tame_lion() {}
-```
-
-> Note: The `--check-cfg names(feature)` option is necessary only to enable checking the condition
-> name, as in the last example. `feature` is a well-known (always-expected) condition name, and so
-> it is not necessary to specify it in a `--check-cfg 'names(...)'` option. That option can be
-> shortened to > `--check-cfg names()` in order to enable checking well-known condition names.
-
-### Example: Checking condition names, but not values
-
-```bash
-# This turns on checking for condition names, but not values, such as 'feature' values.
-rustc --check-cfg 'names(is_embedded, has_feathers)' \
-      --cfg has_feathers -Z unstable-options
-```
-
-```rust
-#[cfg(is_embedded)]         // This is expected as "is_embedded" was provided in names()
-fn do_embedded() {}
-
-#[cfg(has_feathers)]        // This is expected as "has_feathers" was provided in names()
-fn do_features() {}
-
-#[cfg(has_feathers = "zapping")] // This is expected as "has_feathers" was provided in names()
-                                 // and because no value checking was enable for "has_feathers"
-                                 // no warning is emitted for the value "zapping"
-fn do_zapping() {}
-
-#[cfg(has_mumble_frotz)]    // This is UNEXPECTED because names checking is enable and
-                            // "has_mumble_frotz" was not provided in names()
-fn do_mumble_frotz() {}
-```
-
-### Example: Checking feature values, but not condition names
-
-```bash
-# This turns on checking for feature values, but not for condition names.
-rustc --check-cfg 'values(feature, "zapping", "lasers")' \
-      --cfg 'feature="zapping"' -Z unstable-options
-```
-
-```rust
-#[cfg(is_embedded)]         // This is doesn't raise a warning, because names checking was not
-                            // enable (ie not names())
-fn do_embedded() {}
-
-#[cfg(has_feathers)]        // Same as above, --check-cfg names(...) was never used so no name
-                            // checking is performed
-fn do_features() {}
-
-
-#[cfg(feature = "lasers")]  // This is expected, "lasers" is in the values(feature) list
-fn shoot_lasers() {}
-
-#[cfg(feature = "monkeys")] // This is UNEXPECTED, because "monkeys" is not in the
-                            // --check-cfg values(feature) list
-fn write_shakespeare() {}
-```
-
-### Example: Checking both condition names and feature values
-
-```bash
-# This turns on checking for feature values and for condition names.
-rustc --check-cfg 'names(is_embedded, has_feathers)' \
-      --check-cfg 'values(feature, "zapping", "lasers")' \
-      --cfg has_feathers --cfg 'feature="zapping"' -Z unstable-options
-```
-
-```rust
-#[cfg(is_embedded)]         // This is expected because "is_embedded" was provided in names()
-fn do_embedded() {}
-
-#[cfg(has_feathers)]        // This is expected because "has_feathers" was provided in names()
-fn do_features() {}
-
-#[cfg(has_mumble_frotz)]    // This is UNEXPECTED, because has_mumble_frotz is not in the
-                            // --check-cfg names(...) list
-fn do_mumble_frotz() {}
-
-#[cfg(feature = "lasers")]  // This is expected, "lasers" is in the values(feature) list
-fn shoot_lasers() {}
-
-#[cfg(feature = "monkeys")] // This is UNEXPECTED, because "monkeys" is not in
-                            // the values(feature) list
-fn write_shakespeare() {}
-```

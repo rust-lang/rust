@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: --check-cfg=names() --check-cfg=values(feature,"foo") --check-cfg=values(no_values) -Z unstable-options
+// compile-flags: --check-cfg=cfg(feature,values("foo")) --check-cfg=cfg(no_values) -Z unstable-options
 
 #[cfg(featur)]
 //~^ WARNING unexpected `cfg` condition name

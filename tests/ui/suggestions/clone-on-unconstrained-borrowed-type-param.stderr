@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn wat<T>(t: &T) -> T {
    |        -            - expected `T` because of return type
    |        |
-   |        this type parameter
+   |        expected this type parameter
 LL |     t.clone()
    |     ^^^^^^^^^ expected type parameter `T`, found `&T`
    |

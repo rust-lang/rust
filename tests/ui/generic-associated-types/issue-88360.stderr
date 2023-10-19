@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-88360.rs:15:9
    |
 LL | trait SuperTrait<T>
-   |                  - this type parameter
+   |                  - found this type parameter
 ...
 LL |     fn copy(&self) -> Self::Gat<'_> where T: Copy {
    |                       ------------- expected `&T` because of return type

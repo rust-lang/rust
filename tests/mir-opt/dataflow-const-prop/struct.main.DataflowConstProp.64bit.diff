@@ -84,7 +84,7 @@
 +         _10 = const S(13_i32);
           StorageDead(_11);
           StorageLive(_16);
-          _16 = const {alloc1: &&BigStruct};
+          _16 = const {ALLOC1: &&BigStruct};
           _17 = deref_copy (*_16);
           StorageLive(_12);
           _18 = deref_copy (*_16);
@@ -119,11 +119,11 @@
       }
   }
   
-  alloc1 (static: STAT, size: 8, align: 8) {
-      ╾───────alloc15───────╼                         │ ╾──────╼
+  ALLOC1 (static: STAT, size: 8, align: 8) {
+      ╾ALLOC0╼                         │ ╾──────╼
   }
   
-  alloc15 (size: 16, align: 4) {
+  ALLOC0 (size: 16, align: 4) {
       01 00 00 00 00 00 e0 40 0d 00 00 00 05 __ __ __ │ .......@.....░░░
   }
   

@@ -14,6 +14,8 @@ rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
+# depends on Mutability and Movability, which could be uplifted into a common crate.
+rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"
 tracing = "0.1"

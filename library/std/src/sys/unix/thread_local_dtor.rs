@@ -69,15 +69,14 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 // _tlv_atexit.
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
-    use crate::cell::Cell;
-    use crate::mem;
+    use crate::cell::{Cell, RefCell};
     use crate::ptr;
 
     #[thread_local]
     static REGISTERED: Cell<bool> = Cell::new(false);
 
     #[thread_local]
-    static mut DTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
+    static DTORS: RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>> = RefCell::new(Vec::new());
 
     if !REGISTERED.get() {
         _tlv_atexit(run_dtors, ptr::null_mut());
@@ -88,16 +87,18 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
         fn _tlv_atexit(dtor: unsafe extern "C" fn(*mut u8), arg: *mut u8);
     }
 
-    let list = &mut DTORS;
-    list.push((t, dtor));
+    match DTORS.try_borrow_mut() {
+        Ok(mut dtors) => dtors.push((t, dtor)),
+        Err(_) => rtabort!("global allocator may not use TLS"),
+    }
 
     unsafe extern "C" fn run_dtors(_: *mut u8) {
-        let mut list = mem::take(&mut DTORS);
+        let mut list = DTORS.take();
         while !list.is_empty() {
             for (ptr, dtor) in list {
                 dtor(ptr);
             }
-            list = mem::take(&mut DTORS);
+            list = DTORS.take();
         }
     }
 }

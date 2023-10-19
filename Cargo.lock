@@ -697,6 +697,7 @@ dependencies = [
  "getopts",
  "glob",
  "home",
+ "indexmap 2.0.0",
  "lazycell",
  "libc",
  "miow",
@@ -3418,6 +3419,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "rustc_type_ir",
  "smallvec",
  "thin-vec",
  "tracing",
@@ -3838,7 +3840,7 @@ dependencies = [
 
 [[package]]
 name = "rustc_fluent_macro"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "annotate-snippets",
  "fluent-bundle",
@@ -3914,7 +3916,7 @@ dependencies = [
 
 [[package]]
 name = "rustc_hir_typeck"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_attr",
@@ -4042,7 +4044,7 @@ dependencies = [
 
 [[package]]
 name = "rustc_lexer"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "expect-test",
  "unicode-properties",
@@ -4111,7 +4113,7 @@ dependencies = [
 
 [[package]]
 name = "rustc_macros"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4595,7 +4597,7 @@ dependencies = [
 
 [[package]]
 name = "rustc_transmute"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_data_structures",

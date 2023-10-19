@@ -2,7 +2,7 @@
 // applied when enabling the memtag sanitizer.
 //
 // needs-sanitizer-memtag
-// compile-flags: -Zsanitizer=memtag -Ctarget-feature=+mte
+// compile-flags: -Zsanitizer=memtag -Ctarget-feature=+mte -Copt-level=0
 
 #![crate_type = "lib"]
 

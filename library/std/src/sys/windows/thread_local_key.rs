@@ -16,14 +16,19 @@ static HAS_DTORS: AtomicBool = AtomicBool::new(false);
 // Using a per-thread list avoids the problems in synchronizing global state.
 #[thread_local]
 #[cfg(target_thread_local)]
-static mut DESTRUCTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
+static DESTRUCTORS: crate::cell::RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>> =
+    crate::cell::RefCell::new(Vec::new());
 
 // Ensure this can never be inlined because otherwise this may break in dylibs.
 // See #44391.
 #[inline(never)]
 #[cfg(target_thread_local)]
 pub unsafe fn register_keyless_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
-    DESTRUCTORS.push((t, dtor));
+    match DESTRUCTORS.try_borrow_mut() {
+        Ok(mut dtors) => dtors.push((t, dtor)),
+        Err(_) => rtabort!("global allocator may not use TLS"),
+    }
+
     HAS_DTORS.store(true, Relaxed);
 }
 
@@ -37,11 +42,17 @@ unsafe fn run_keyless_dtors() {
     // the case that this loop always terminates because we provide the
     // guarantee that a TLS key cannot be set after it is flagged for
     // destruction.
-    while let Some((ptr, dtor)) = DESTRUCTORS.pop() {
+    loop {
+        // Use a let-else binding to ensure the `RefCell` guard is dropped
+        // immediately. Otherwise, a panic would occur if a TLS destructor
+        // tries to access the list.
+        let Some((ptr, dtor)) = DESTRUCTORS.borrow_mut().pop() else {
+            break;
+        };
         (dtor)(ptr);
     }
     // We're done so free the memory.
-    DESTRUCTORS = Vec::new();
+    DESTRUCTORS.replace(Vec::new());
 }
 
 type Key = c::DWORD;

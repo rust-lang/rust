@@ -1,7 +1,7 @@
 // This test checks that we lint on non well known names and that we don't lint on well known names
 //
 // check-pass
-// compile-flags: --check-cfg=names() -Z unstable-options
+// compile-flags: --check-cfg=cfg() -Z unstable-options
 
 #[cfg(target_oz = "linux")]
 //~^ WARNING unexpected `cfg` condition name

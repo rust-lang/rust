@@ -1,11 +1,10 @@
 Function name: <issue_84561::Foo as core::cmp::PartialEq>::eq
-Raw bytes (14): 0x[01, 01, 00, 02, 01, 04, 0a, 00, 13, 00, 00, 0a, 00, 13]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 04, 0a, 00, 13]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
-Number of file 0 mappings: 2
+Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 4, 10) to (start + 0, 19)
-- Code(Zero) at (prev + 0, 10) to (start + 0, 19)
 
 Function name: <issue_84561::Foo as core::fmt::Debug>::fmt
 Raw bytes (29): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 89, 01, 09, 00, 25, 05, 00, 25, 00, 26, 02, 01, 09, 00, 0f, 07, 01, 05, 00, 06]

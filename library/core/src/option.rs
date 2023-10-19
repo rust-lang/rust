@@ -959,6 +959,7 @@ impl<T> Option<T> {
     /// assert_eq!(None.unwrap_or_else(|| 2 * k), 20);
     /// ```
     #[inline]
+    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap_or_else<F>(self, f: F) -> T
     where

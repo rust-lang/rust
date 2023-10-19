@@ -1088,7 +1088,7 @@ fn create_generator_drop_shim<'tcx>(
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
-    simplify::remove_dead_blocks(tcx, &mut body);
+    simplify::remove_dead_blocks(&mut body);
 
     // Update the body's def to become the drop glue.
     // This needs to be updated before the AbortUnwindingCalls pass.
@@ -1276,7 +1276,7 @@ fn create_generator_resume_function<'tcx>(
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
-    simplify::remove_dead_blocks(tcx, body);
+    simplify::remove_dead_blocks(body);
 
     pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
 

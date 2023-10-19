@@ -6,6 +6,7 @@ use crate::net::{Shutdown, SocketAddr};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::str;
 use crate::sys::fd::FileDesc;
+use crate::sys::unix::IsMinusOne;
 use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::{Duration, Instant};
@@ -103,7 +104,7 @@ impl Socket {
         }
     }
 
-    #[cfg(not(any(target_os = "vxworks", target_os = "vita")))]
+    #[cfg(not(target_os = "vxworks"))]
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
@@ -135,9 +136,25 @@ impl Socket {
         }
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "vita"))]
+    #[cfg(target_os = "vxworks")]
     pub fn new_pair(_fam: c_int, _ty: c_int) -> io::Result<(Socket, Socket)> {
         unimplemented!()
+    }
+
+    pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
+        let (addr, len) = addr.into_inner();
+        loop {
+            let result = unsafe { libc::connect(self.as_raw_fd(), addr.as_ptr(), len) };
+            if result.is_minus_one() {
+                let err = crate::sys::os::errno();
+                match err {
+                    libc::EINTR => continue,
+                    libc::EISCONN => return Ok(()),
+                    _ => return Err(io::Error::from_raw_os_error(err)),
+                }
+            }
+            return Ok(());
+        }
     }
 
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {

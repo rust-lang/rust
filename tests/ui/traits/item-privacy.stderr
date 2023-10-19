@@ -159,13 +159,13 @@ error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:116:12
    |
 LL |     let _: S::B;
-   |            ^^^^ help: use the fully-qualified path: `<S as assoc_ty::B>::B`
+   |            ^^^^ help: use fully-qualified syntax: `<S as assoc_ty::B>::B`
 
 error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:117:12
    |
 LL |     let _: S::C;
-   |            ^^^^ help: use the fully-qualified path: `<S as assoc_ty::C>::C`
+   |            ^^^^ help: use fully-qualified syntax: `<S as assoc_ty::C>::C`
 
 error[E0624]: associated type `A` is private
   --> $DIR/item-privacy.rs:119:12

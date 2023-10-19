@@ -59,7 +59,7 @@ impl<'tcx> QuestionMark {
             let Some(init) = local.init &&
             local.els.is_none() &&
             local.ty.is_none() &&
-            init.span.ctxt() == stmt.span.ctxt() &&
+            init.span.eq_ctxt(stmt.span) &&
             let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
         {
             match if_let_or_match {

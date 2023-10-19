@@ -28,10 +28,8 @@
 //! return.
 
 use crate::MirPass;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_index::bit_set::BitSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -68,7 +66,7 @@ impl SimplifyCfg {
 pub fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     CfgSimplifier::new(body).simplify();
     remove_duplicate_unreachable_blocks(tcx, body);
-    remove_dead_blocks(tcx, body);
+    remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
     body.basic_blocks_mut().raw.shrink_to_fit();
@@ -337,7 +335,7 @@ pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut B
     }
 }
 
-pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+pub fn remove_dead_blocks(body: &mut Body<'_>) {
     let reachable = traversal::reachable_as_bitset(body);
     let num_blocks = body.basic_blocks.len();
     if num_blocks == reachable.count() {
@@ -345,10 +343,6 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     }
 
     let basic_blocks = body.basic_blocks.as_mut();
-    let source_scopes = &body.source_scopes;
-    if tcx.sess.instrument_coverage() {
-        save_unreachable_coverage(basic_blocks, source_scopes, &reachable);
-    }
 
     let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
     let mut orig_index = 0;
@@ -368,99 +362,6 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             *target = replacements[target.index()];
         }
     }
-}
-
-/// Some MIR transforms can determine at compile time that a sequences of
-/// statements will never be executed, so they can be dropped from the MIR.
-/// For example, an `if` or `else` block that is guaranteed to never be executed
-/// because its condition can be evaluated at compile time, such as by const
-/// evaluation: `if false { ... }`.
-///
-/// Those statements are bypassed by redirecting paths in the CFG around the
-/// `dead blocks`; but with `-C instrument-coverage`, the dead blocks usually
-/// include `Coverage` statements representing the Rust source code regions to
-/// be counted at runtime. Without these `Coverage` statements, the regions are
-/// lost, and the Rust source code will show no coverage information.
-///
-/// What we want to show in a coverage report is the dead code with coverage
-/// counts of `0`. To do this, we need to save the code regions, by injecting
-/// `Unreachable` coverage statements. These are non-executable statements whose
-/// code regions are still recorded in the coverage map, representing regions
-/// with `0` executions.
-///
-/// If there are no live `Counter` `Coverage` statements remaining, we remove
-/// `Coverage` statements along with the dead blocks. Since at least one
-/// counter per function is required by LLVM (and necessary, to add the
-/// `function_hash` to the counter's call to the LLVM intrinsic
-/// `instrprof.increment()`).
-///
-/// The `generator::StateTransform` MIR pass and MIR inlining can create
-/// atypical conditions, where all live `Counter`s are dropped from the MIR.
-///
-/// With MIR inlining we can have coverage counters belonging to different
-/// instances in a single body, so the strategy described above is applied to
-/// coverage counters from each instance individually.
-fn save_unreachable_coverage(
-    basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'_>>,
-    source_scopes: &IndexSlice<SourceScope, SourceScopeData<'_>>,
-    reachable: &BitSet<BasicBlock>,
-) {
-    // Identify instances that still have some live coverage counters left.
-    let mut live = FxHashSet::default();
-    for bb in reachable.iter() {
-        let basic_block = &basic_blocks[bb];
-        for statement in &basic_block.statements {
-            let StatementKind::Coverage(coverage) = &statement.kind else { continue };
-            let CoverageKind::Counter { .. } = coverage.kind else { continue };
-            let instance = statement.source_info.scope.inlined_instance(source_scopes);
-            live.insert(instance);
-        }
-    }
-
-    for bb in reachable.iter() {
-        let block = &mut basic_blocks[bb];
-        for statement in &mut block.statements {
-            let StatementKind::Coverage(_) = &statement.kind else { continue };
-            let instance = statement.source_info.scope.inlined_instance(source_scopes);
-            if !live.contains(&instance) {
-                statement.make_nop();
-            }
-        }
-    }
-
-    if live.is_empty() {
-        return;
-    }
-
-    // Retain coverage for instances that still have some live counters left.
-    let mut retained_coverage = Vec::new();
-    for dead_block in basic_blocks.indices() {
-        if reachable.contains(dead_block) {
-            continue;
-        }
-        let dead_block = &basic_blocks[dead_block];
-        for statement in &dead_block.statements {
-            let StatementKind::Coverage(coverage) = &statement.kind else { continue };
-            if coverage.code_regions.is_empty() {
-                continue;
-            };
-            let instance = statement.source_info.scope.inlined_instance(source_scopes);
-            if live.contains(&instance) {
-                retained_coverage.push((statement.source_info, coverage.code_regions.clone()));
-            }
-        }
-    }
-
-    let start_block = &mut basic_blocks[START_BLOCK];
-    start_block.statements.extend(retained_coverage.into_iter().map(
-        |(source_info, code_regions)| Statement {
-            source_info,
-            kind: StatementKind::Coverage(Box::new(Coverage {
-                kind: CoverageKind::Unreachable,
-                code_regions,
-            })),
-        },
-    ));
 }
 
 pub enum SimplifyLocals {

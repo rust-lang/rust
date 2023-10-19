@@ -1,6 +1,6 @@
 use std::ptr;
 
-// normalize-stderr-test "alloc\d+" -> "allocN"
+
 // normalize-stderr-test "0x7f+" -> "0x7f..f"
 
 

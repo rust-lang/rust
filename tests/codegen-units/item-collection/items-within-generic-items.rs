@@ -1,4 +1,4 @@
-// compile-flags:-Zprint-mono-items=eager
+// compile-flags:-Zprint-mono-items=eager -Copt-level=0
 
 #![deny(dead_code)]
 #![feature(start)]

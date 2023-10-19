@@ -1,7 +1,7 @@
 // revisions: all strong basic none missing
 // assembly-output: emit-asm
 // ignore-macos slightly different policy on stack protection of arrays
-// ignore-windows stack check code uses different function names
+// ignore-msvc stack check code uses different function names
 // ignore-nvptx64 stack protector is not supported
 // ignore-wasm32-bare
 // [all] compile-flags: -Z stack-protector=all

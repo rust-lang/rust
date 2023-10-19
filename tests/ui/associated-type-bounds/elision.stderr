@@ -17,7 +17,7 @@ LL | fn f(x: &mut dyn Iterator<Item: Iterator<Item = &'_ ()>>) -> Option<&'_ ()>
    |                           -----------------------------      --------------   ^^^^^^^^ expected `Option<&()>`, found `Option<impl Iterator<Item = &'_ ()>>`
    |                           |                                  |
    |                           |                                  expected `Option<&()>` because of return type
-   |                           this type parameter
+   |                           found this type parameter
    |
    = note: expected enum `Option<&()>`
               found enum `Option<impl Iterator<Item = &'_ ()>>`

@@ -288,7 +288,7 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
                 }
                 def => bug!("unknown alias DefKind: {def:?}"),
             };
-            Ok(relation.tcx().mk_alias_ty(a.def_id, args))
+            Ok(ty::AliasTy::new(relation.tcx(), a.def_id, args))
         }
     }
 }

@@ -6,7 +6,7 @@ LL | const MUH: Meh = Meh {
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc3────────╼                         │ ╾──────╼
+               ╾ALLOC0╼                         │ ╾──────╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -17,7 +17,7 @@ LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾───────alloc7────────╼ ╾───────alloc8────────╼ │ ╾──────╼╾──────╼
+               ╾ALLOC1╼ ╾ALLOC2╼ │ ╾──────╼╾──────╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -28,7 +28,7 @@ LL | const BLUNT: &mut i32 = &mut 42;
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc10───────╼                         │ ╾──────╼
+               ╾ALLOC3╼                         │ ╾──────╼
            }
 
 warning: skipping const checks
