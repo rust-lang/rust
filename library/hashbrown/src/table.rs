@@ -838,6 +838,8 @@ where
     /// or the iteration short-circuits, then the remaining elements will be retained.
     /// Use [`retain()`] with a negated predicate if you do not need the returned iterator.
     ///
+    /// [`retain()`]: HashTable::retain
+    ///
     /// # Examples
     ///
     /// ```
@@ -951,7 +953,7 @@ where
     /// Returns an array of length `N` with the results of each query. `None` will be returned if
     /// any of the keys are missing.
     ///
-    /// For a safe alternative see [`get_many_mut`](`HashMap::get_many_mut`).
+    /// For a safe alternative see [`get_many_mut`](`HashTable::get_many_mut`).
     ///
     /// # Safety
     ///
