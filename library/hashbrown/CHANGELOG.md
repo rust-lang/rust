@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.14.2] - 2023-10-19
+
+### Added
+
+- `HashTable` type which provides a low-level but safe API with explicit hashing. (#466)
+
+### Fixed
+
+- Disabled the use of NEON instructions on big-endian ARM. (#475)
+- Disabled the use of NEON instructions on Miri. (#476)
+
 ## [v0.14.1] - 2023-09-28
 
 ### Added
@@ -450,7 +461,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.14.2...HEAD
+[v0.14.2]: https://github.com/rust-lang/hashbrown/compare/v0.14.1...v0.14.2
 [v0.14.1]: https://github.com/rust-lang/hashbrown/compare/v0.14.0...v0.14.1
 [v0.14.0]: https://github.com/rust-lang/hashbrown/compare/v0.13.2...v0.14.0
 [v0.13.2]: https://github.com/rust-lang/hashbrown/compare/v0.13.1...v0.13.2
