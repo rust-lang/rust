@@ -18,6 +18,7 @@ use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::session_diagnostics::NonGenericOpaqueTypeParam;
+use crate::universal_regions::RegionClassification;
 
 use super::RegionInferenceContext;
 
@@ -162,10 +163,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         NllRegionVariableOrigin::FreeRegion => self
                             .universal_regions
                             .universal_regions()
-                            .filter(|&ur| self.universal_region_relations.equal(vid, ur))
-                            // FIXME(aliemjay): universal regions with no `external_name`
-                            // are extenal closure regions, which should be rejected eventually.
-                            .find_map(|ur| self.definitions[ur].external_name),
+                            .filter(|&ur| {
+                                // See [rustc-dev-guide chapter] § "Closure restrictions".
+                                !matches!(
+                                    self.universal_regions.region_classification(ur),
+                                    Some(RegionClassification::External)
+                                )
+                            })
+                            .find(|&ur| self.universal_region_relations.equal(vid, ur))
+                            .map(|ur| self.definitions[ur].external_name.unwrap()),
                         NllRegionVariableOrigin::Placeholder(placeholder) => {
                             Some(ty::Region::new_placeholder(infcx.tcx, placeholder))
                         }
