@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ScalarReplacementOfAggregates
 // compile-flags: -Cpanic=abort
 // no-prefer-dynamic

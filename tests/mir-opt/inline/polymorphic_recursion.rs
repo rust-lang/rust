@@ -1,3 +1,4 @@
+// skip-filecheck
 // Make sure that the MIR inliner does not loop indefinitely on polymorphic recursion.
 // compile-flags: --crate-type lib
 

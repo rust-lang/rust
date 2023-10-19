@@ -1,5 +1,9 @@
+// Verify that we do not ICE inlining a function which uses _0 as an index.
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+
 pub fn outer() -> usize {
+    // CHECK-LABEL: fn outer(
+    // CHECK: = {{.*}}[_0];
     inner()
 }
 
@@ -10,6 +14,8 @@ fn index() -> usize {
 
 #[inline]
 fn inner() -> usize {
+    // CHECK-LABEL: fn inner(
+    // CHECK: = {{.*}}[_0];
     let buffer = &[true];
     let index = index();
     if buffer[index] {

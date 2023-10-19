@@ -1,3 +1,4 @@
+// skip-filecheck
 // Test spanview terminator output
 // compile-flags: -Z dump-mir-spanview=terminator
 

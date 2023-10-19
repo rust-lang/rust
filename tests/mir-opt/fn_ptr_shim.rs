@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: -Zmir-opt-level=0
 
 // Tests that the `<fn() as Fn>` shim does not create a `Call` terminator with a `Self` callee

@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -Zinline-mir-hint-threshold=1000
 #![feature(generators, generator_trait)]

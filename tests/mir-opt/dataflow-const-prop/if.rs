@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: DataflowConstProp
 
 // EMIT_MIR if.main.DataflowConstProp.diff

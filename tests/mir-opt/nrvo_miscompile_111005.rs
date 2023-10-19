@@ -1,3 +1,4 @@
+// skip-filecheck
 // This is a miscompilation, #111005 to track
 
 // unit-test: RenameReturnPlace

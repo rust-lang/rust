@@ -1,3 +1,4 @@
+// skip-filecheck
 // ignore-endian-big
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // ignore-debug MIR alignment checks in std alter the diff, breaking the test

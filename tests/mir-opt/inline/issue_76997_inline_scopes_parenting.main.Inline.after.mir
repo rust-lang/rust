@@ -2,8 +2,8 @@
 
 fn main() -> () {
     let mut _0: ();
-    let _1: {closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16};
-    let mut _2: &{closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16};
+    let _1: {closure@$DIR/issue_76997_inline_scopes_parenting.rs:6:13: 6:16};
+    let mut _2: &{closure@$DIR/issue_76997_inline_scopes_parenting.rs:6:13: 6:16};
     let mut _3: ((),);
     let mut _4: ();
     let mut _5: ();
@@ -19,7 +19,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = {closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16};
+        _1 = {closure@$DIR/issue_76997_inline_scopes_parenting.rs:6:13: 6:16};
         StorageLive(_2);
         _2 = &_1;
         StorageLive(_3);

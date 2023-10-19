@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: DataflowConstProp
 // compile-flags: -Zmir-enable-passes=+ConstProp,+Inline
 // ignore-debug assertions change the output MIR

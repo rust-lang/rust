@@ -1,3 +1,4 @@
+// skip-filecheck
 union Foo {
     x: (),
     y: u64,

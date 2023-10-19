@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: -Zmir-opt-level=0
 
 

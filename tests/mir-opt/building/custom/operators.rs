@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: --crate-type=lib
 #![feature(custom_mir, core_intrinsics, inline_const)]
 use std::intrinsics::mir::*;

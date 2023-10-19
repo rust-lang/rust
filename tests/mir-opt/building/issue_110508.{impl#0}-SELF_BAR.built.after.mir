@@ -1,6 +1,6 @@
-// MIR for `<impl at $DIR/issue_110508.rs:8:1: 8:9>::SELF_BAR` after built
+// MIR for `<impl at $DIR/issue_110508.rs:9:1: 9:9>::SELF_BAR` after built
 
-const <impl at $DIR/issue_110508.rs:8:1: 8:9>::SELF_BAR: Foo = {
+const <impl at $DIR/issue_110508.rs:9:1: 9:9>::SELF_BAR: Foo = {
     let mut _0: Foo;
     let mut _1: ();
 

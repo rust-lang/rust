@@ -1,3 +1,4 @@
+// skip-filecheck
 // Test that MatchBranchSimplification doesn't ICE on a SwitchInt where
 // one of the targets is the block that the SwitchInt terminates.
 #![crate_type = "lib"]
