@@ -957,6 +957,7 @@ symbols! {
         log_syntax,
         logf32,
         logf64,
+        loongarch_target_feature,
         loop_break_value,
         lt,
         macro_at_most_once_rep,
