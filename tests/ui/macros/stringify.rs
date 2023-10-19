@@ -2,17 +2,20 @@
 // edition:2021
 // compile-flags: --test
 
+#![allow(incomplete_features)]
 #![feature(async_closure)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(coroutines)]
+#![feature(explicit_tail_calls)]
 #![feature(more_qualified_paths)]
 #![feature(raw_ref_op)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(type_ascription)]
+#![feature(yeet_expr)]
 #![deny(unused_macros)]
 
 // These macros force the use of AST pretty-printing by converting the input to
@@ -79,6 +82,9 @@ fn test_expr() {
     c2!(expr, [ [true,] ], "[true]", "[true,]");
     c1!(expr, [ [true, true] ], "[true, true]");
 
+    // ExprKind::ConstBlock
+    // FIXME: todo
+
     // ExprKind::Call
     c1!(expr, [ f() ], "f()");
     c2!(expr, [ f::<u8>() ], "f::<u8>()", "f :: < u8 > ()");
@@ -116,8 +122,10 @@ fn test_expr() {
     c1!(expr, [ expr as T ], "expr as T");
     c2!(expr, [ expr as T<u8> ], "expr as T<u8>", "expr as T < u8 >");
 
-    // ExprKind::Type
-    // There is no syntax for type ascription.
+    // ExprKind::Type: there is no syntax for type ascription.
+
+    // ExprKind::Let
+    c1!(expr, [ if let Some(a) = b { c } else { d } ], "if let Some(a) = b { c } else { d }");
 
     // ExprKind::If
     c1!(expr, [ if true {} ], "if true {}");
@@ -265,6 +273,9 @@ fn test_expr() {
     c2!(expr, [ lo..=hi ], "lo..=hi", "lo ..= hi");
     c2!(expr, [ -2..=-1 ], "-2..=-1", "- 2 ..= - 1");
 
+    // ExprKind::Underscore
+    // FIXME: todo
+
     // ExprKind::Path
     c1!(expr, [ thing ], "thing");
     c2!(expr, [ m::thing ], "m::thing", "m :: thing");
@@ -293,6 +304,10 @@ fn test_expr() {
     // ExprKind::Ret
     c1!(expr, [ return ], "return");
     c1!(expr, [ return true ], "return true");
+
+    // ExprKind::InlineAsm: untestable because this test works pre-expansion.
+
+    // ExprKind::OffsetOf: untestable because this test works pre-expansion.
 
     // ExprKind::MacCall
     c2!(expr, [ mac!(...) ], "mac!(...)", "mac! (...)");
@@ -332,6 +347,20 @@ fn test_expr() {
     // ExprKind::Yield
     c1!(expr, [ yield ], "yield");
     c1!(expr, [ yield true ], "yield true");
+
+    // ExprKind::Yeet
+    c1!(expr, [ do yeet ], "do yeet");
+    c1!(expr, [ do yeet 0 ], "do yeet 0");
+
+    // ExprKind::Become
+    // FIXME: todo
+
+    // ExprKind::IncludedBytes
+    // FIXME: todo
+
+    // ExprKind::FormatArgs: untestable because this test works pre-expansion.
+
+    // ExprKind::Err: untestable.
 }
 
 #[test]
@@ -385,6 +414,8 @@ fn test_item() {
         [ unsafe extern "C++" {} ],
         "unsafe extern \"C++\" {}"
     );
+
+    // ItemKind::GlobalAsm: untestable because this test works pre-expansion.
 
     // ItemKind::TyAlias
     #[rustfmt::skip]
@@ -641,6 +672,7 @@ fn test_stmt() {
 
     // StmtKind::Item
     c2!(stmt, [ struct S; ], "struct S;", "struct S ;");
+    c1!(stmt, [ struct S {} ], "struct S {}");
 
     // StmtKind::Expr
     c1!(stmt, [ loop {} ], "loop {}");
@@ -692,6 +724,10 @@ fn test_ty() {
     c1!(ty, [ (T,) ], "(T,)");
     c1!(ty, [ (T, U) ], "(T, U)");
 
+    // TyKind::AnonStruct: untestable in isolation.
+
+    // TyKind::AnonUnion: untestable in isolation.
+
     // TyKind::Path
     c1!(ty, [ T ], "T");
     c2!(ty, [ Ref<'a> ], "Ref<'a>", "Ref < 'a >");
@@ -720,13 +756,22 @@ fn test_ty() {
     // TyKind::Paren
     c1!(ty, [ (T) ], "(T)");
 
+    // TyKind::Typeof: unused for now.
+
     // TyKind::Infer
     c1!(ty, [ _ ], "_");
+ 
+    // TyKind::ImplicitSelf: there is no syntax for this.
 
     // TyKind::MacCall
     c2!(ty, [ mac!(...) ], "mac!(...)", "mac! (...)");
     c2!(ty, [ mac![...] ], "mac![...]", "mac! [...]");
     c1!(ty, [ mac! { ... } ], "mac! { ... }");
+
+    // TyKind::Err: untestable.
+
+    // TyKind::CVarArgs
+    // FIXME: todo
 }
 
 #[test]
