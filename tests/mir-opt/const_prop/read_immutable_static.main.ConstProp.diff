@@ -16,12 +16,12 @@
           StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
-          _3 = const {alloc1: &u8};
+          _3 = const {ALLOC0: &u8};
 -         _2 = (*_3);
 +         _2 = const 2_u8;
           StorageLive(_4);
           StorageLive(_5);
-          _5 = const {alloc1: &u8};
+          _5 = const {ALLOC0: &u8};
 -         _4 = (*_5);
 -         _1 = Add(move _2, move _4);
 +         _4 = const 2_u8;
@@ -36,7 +36,7 @@
       }
   }
   
-  alloc1 (static: FOO, size: 1, align: 1) {
+  ALLOC0 (static: FOO, size: 1, align: 1) {
       02                                              │ .
   }
   

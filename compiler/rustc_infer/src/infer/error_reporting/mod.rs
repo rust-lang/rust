@@ -67,7 +67,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError};
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
     self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
@@ -580,76 +580,68 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         struct AbsolutePathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
+            segments: Vec<String>,
         }
 
-        struct NonTrivialPath;
-
         impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
-            type Error = NonTrivialPath;
-
-            type Path = Vec<String>;
-            type Region = !;
-            type Type = !;
-            type DynExistential = !;
-            type Const = !;
-
             fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
-            fn print_region(self, _region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
-                Err(NonTrivialPath)
+            fn print_region(self, _region: ty::Region<'_>) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
-            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-                Err(NonTrivialPath)
+            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
             fn print_dyn_existential(
                 self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-            ) -> Result<Self::DynExistential, Self::Error> {
-                Err(NonTrivialPath)
+            ) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
-            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-                Err(NonTrivialPath)
+            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
-            fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-                Ok(vec![self.tcx.crate_name(cnum).to_string()])
+            fn path_crate(mut self, cnum: CrateNum) -> Result<Self, PrintError> {
+                self.segments = vec![self.tcx.crate_name(cnum).to_string()];
+                Ok(self)
             }
             fn path_qualified(
                 self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self::Path, Self::Error> {
-                Err(NonTrivialPath)
+            ) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
 
             fn path_append_impl(
                 self,
-                _print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                _print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 _disambiguated_data: &DisambiguatedDefPathData,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self::Path, Self::Error> {
-                Err(NonTrivialPath)
+            ) -> Result<Self, PrintError> {
+                Err(fmt::Error)
             }
             fn path_append(
-                self,
-                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                mut self,
+                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
-            ) -> Result<Self::Path, Self::Error> {
-                let mut path = print_prefix(self)?;
-                path.push(disambiguated_data.to_string());
-                Ok(path)
+            ) -> Result<Self, PrintError> {
+                self = print_prefix(self)?;
+                self.segments.push(disambiguated_data.to_string());
+                Ok(self)
             }
             fn path_generic_args(
                 self,
-                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
                 _args: &[GenericArg<'tcx>],
-            ) -> Result<Self::Path, Self::Error> {
+            ) -> Result<Self, PrintError> {
                 print_prefix(self)
             }
         }
@@ -659,12 +651,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // are from a local module we could have false positives, e.g.
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
-                let abs_path =
-                    |def_id| AbsolutePathPrinter { tcx: self.tcx }.print_def_path(def_id, &[]);
+                let abs_path = |def_id| {
+                    AbsolutePathPrinter { tcx: self.tcx, segments: vec![] }
+                        .print_def_path(def_id, &[])
+                        .map(|p| p.segments)
+                };
 
                 // We compare strings because DefPath can be different
                 // for imported and non-imported crates
-                let same_path = || -> Result<_, NonTrivialPath> {
+                let same_path = || -> Result<_, PrintError> {
                     Ok(self.tcx.def_path_str(did1) == self.tcx.def_path_str(did2)
                         || abs_path(did1)? == abs_path(did2)?)
                 };

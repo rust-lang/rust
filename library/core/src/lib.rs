@@ -219,7 +219,6 @@
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
-#![feature(effects)]
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![feature(fundamental)]

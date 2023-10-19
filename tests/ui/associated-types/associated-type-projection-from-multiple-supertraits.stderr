@@ -18,11 +18,11 @@ LL |     type Color;
 LL | fn dent<C:BoxCar>(c: C, color: C::Color) {
    |                                ^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn dent<C:BoxCar>(c: C, color: <C as Vehicle>::Color) {
    |                                ~~~~~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn dent<C:BoxCar>(c: C, color: <C as Box>::Color) {
    |                                ~~~~~~~~~~~~
@@ -71,11 +71,11 @@ LL |     type Color;
 LL | fn paint<C:BoxCar>(c: C, d: C::Color) {
    |                             ^^^^^^^^ ambiguous associated type `Color`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn paint<C:BoxCar>(c: C, d: <C as Vehicle>::Color) {
    |                             ~~~~~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL | fn paint<C:BoxCar>(c: C, d: <C as Box>::Color) {
    |                             ~~~~~~~~~~~~

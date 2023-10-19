@@ -10,11 +10,11 @@ LL |     fn do_something() {
 LL |         let _: Self::A;
    |                ^^^^^^^ ambiguous associated type `A`
    |
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |         let _: <Self as Foo>::A;
    |                ~~~~~~~~~~~~~~~
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |         let _: <Self as Bar>::A;
    |                ~~~~~~~~~~~~~~~
@@ -29,7 +29,7 @@ LL |         let _: Self::Err;
    |                ^^^^^^^^^ ambiguous associated type `Err`
    |
    = note: associated type `Self` could derive from `FromStr`
-help: use fully qualified syntax to disambiguate
+help: use fully-qualified syntax to disambiguate
    |
 LL |         let _: <Self as My>::Err;
    |                ~~~~~~~~~~~~~~

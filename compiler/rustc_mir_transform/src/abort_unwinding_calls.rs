@@ -113,6 +113,6 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         }
 
         // We may have invalidated some `cleanup` blocks so clean those up now.
-        super::simplify::remove_dead_blocks(tcx, body);
+        super::simplify::remove_dead_blocks(body);
     }
 }

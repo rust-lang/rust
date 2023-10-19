@@ -58,7 +58,6 @@ declare_lint! {
     ///
     ///
     /// ```rust
-    /// # #![feature(return_position_impl_trait_in_trait)]
     /// use core::future::Future;
     /// pub trait Trait {
     ///     fn method(&self) -> impl Future<Output = ()> + Send { async {} }

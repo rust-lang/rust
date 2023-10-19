@@ -2,7 +2,7 @@ error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/specialization-broken.rs:15:22
    |
 LL | default impl<U> Foo for U
-   |              - this type parameter
+   |              - found this type parameter
 ...
 LL |     fn bar(&self) -> U {
    |                      ^

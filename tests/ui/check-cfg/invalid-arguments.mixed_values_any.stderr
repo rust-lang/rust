@@ -1,0 +1,2 @@
+error: invalid `--check-cfg` argument: `cfg(foo,values("bar",any()))` (`values()` arguments cannot specify string literals and `any()` at the same time)
+

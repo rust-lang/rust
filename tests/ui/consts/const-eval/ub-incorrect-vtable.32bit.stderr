@@ -2,55 +2,55 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-incorrect-vtable.rs:18:1
    |
 LL | const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered ALLOC1, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN──╼ ╾─allocN──╼                         │ ╾──╼╾──╼
+               ╾ALLOC0╼ ╾ALLOC1╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-incorrect-vtable.rs:23:1
    |
 LL | const INVALID_VTABLE_SIZE: &dyn Trait =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered ALLOC3, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾ALLOC2╼ ╾ALLOC3╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-incorrect-vtable.rs:33:1
    |
 LL | const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered ALLOC5, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾ALLOC4╼ ╾ALLOC5╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-incorrect-vtable.rs:38:1
    |
 LL | const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered ALLOC7, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾ALLOC6╼ ╾ALLOC7╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-incorrect-vtable.rs:44:1
    |
 LL | const INVALID_VTABLE_UB: W<&dyn Trait> =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered allocN, but expected a vtable pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered ALLOC9, but expected a vtable pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾ALLOC8╼ ╾ALLOC9╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -61,7 +61,7 @@ LL | const G: Wide = unsafe { Transmute { t: FOO }.u };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾ALLOC10╼ ╾ALLOC11╼                         │ ╾──╼╾──╼
            }
 
 error: aborting due to 6 previous errors

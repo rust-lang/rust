@@ -10,9 +10,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
 /// Generates and exports the Coverage Map.
@@ -60,10 +59,8 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Encode coverage mappings and generate function records
     let mut function_data = Vec::new();
-    for (instance, mut function_coverage) in function_coverage_map {
+    for (instance, function_coverage) in function_coverage_map {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
-        function_coverage.simplify_expressions();
-        let function_coverage = function_coverage;
 
         let mangled_function_name = tcx.symbol_name(instance).name;
         let source_hash = function_coverage.source_hash();
@@ -170,10 +167,11 @@ fn encode_mappings_for_function(
     let mut virtual_file_mapping = IndexVec::<u32, u32>::new();
     let mut mapping_regions = Vec::with_capacity(counter_regions.len());
 
-    // Sort the list of (counter, region) mapping pairs by region, so that they
-    // can be grouped by filename. Prepare file IDs for each filename, and
-    // prepare the mapping data so that we can pass it through FFI to LLVM.
-    counter_regions.sort_by_key(|(_counter, region)| *region);
+    // Sort and group the list of (counter, region) mapping pairs by filename.
+    // (Preserve any further ordering imposed by `FunctionCoverage`.)
+    // Prepare file IDs for each filename, and prepare the mapping data so that
+    // we can pass it through FFI to LLVM.
+    counter_regions.sort_by_key(|(_counter, region)| region.file_name);
     for counter_regions_for_file in
         counter_regions.group_by(|(_, a), (_, b)| a.file_name == b.file_name)
     {
@@ -331,16 +329,14 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     for non_codegenned_def_id in
         eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))
     {
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
-
-        // If a function is marked `#[coverage(off)]`, then skip generating a
-        // dead code stub for it.
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
-            debug!("skipping unused fn marked #[coverage(off)]: {:?}", non_codegenned_def_id);
+        // Skip any function that didn't have coverage data added to it by the
+        // coverage instrumentor.
+        let body = tcx.instance_mir(ty::InstanceDef::Item(non_codegenned_def_id));
+        let Some(function_coverage_info) = body.function_coverage_info.as_deref() else {
             continue;
-        }
+        };
 
         debug!("generating unused fn: {:?}", non_codegenned_def_id);
-        cx.define_unused_fn(non_codegenned_def_id);
+        cx.define_unused_fn(non_codegenned_def_id, function_coverage_info);
     }
 }

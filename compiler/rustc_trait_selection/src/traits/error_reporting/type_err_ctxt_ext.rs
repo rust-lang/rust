@@ -60,10 +60,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         suggest_increasing_limit: bool,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
-        T: fmt::Display
-            + TypeFoldable<TyCtxt<'tcx>>
-            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
-        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
+        T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>;
 
     fn report_overflow_error<T>(
         &self,
@@ -73,10 +70,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         mutate: impl FnOnce(&mut Diagnostic),
     ) -> !
     where
-        T: fmt::Display
-            + TypeFoldable<TyCtxt<'tcx>>
-            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
-        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
+        T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>;
 
     fn report_overflow_no_abort(&self, obligation: PredicateObligation<'tcx>) -> ErrorGuaranteed;
 
@@ -227,10 +221,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         mutate: impl FnOnce(&mut Diagnostic),
     ) -> !
     where
-        T: fmt::Display
-            + TypeFoldable<TyCtxt<'tcx>>
-            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
-        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+        T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>,
     {
         let mut err = self.build_overflow_error(predicate, span, suggest_increasing_limit);
         mutate(&mut err);
@@ -247,10 +238,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         suggest_increasing_limit: bool,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
-        T: fmt::Display
-            + TypeFoldable<TyCtxt<'tcx>>
-            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
-        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+        T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>,
     {
         let predicate = self.resolve_vars_if_possible(predicate.clone());
         let mut pred_str = predicate.to_string();

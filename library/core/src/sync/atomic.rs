@@ -79,6 +79,40 @@
 //!
 //! [lock-free]: https://en.wikipedia.org/wiki/Non-blocking_algorithm
 //!
+//! # Atomic accesses to read-only memory
+//!
+//! In general, *all* atomic accesses on read-only memory are Undefined Behavior. For instance, attempting
+//! to do a `compare_exchange` that will definitely fail (making it conceptually a read-only
+//! operation) can still cause a page fault if the underlying memory page is mapped read-only. Since
+//! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
+//! on read-only memory.
+//!
+//! For the purpose of this section, "read-only memory" is defined as memory that is read-only in
+//! the underlying target, i.e., the pages are mapped with a read-only flag and any attempt to write
+//! will cause a page fault. In particular, an `&u128` reference that points to memory that is
+//! read-write mapped is *not* considered to point to "read-only memory". In Rust, almost all memory
+//! is read-write; the only exceptions are memory created by `const` items or `static` items without
+//! interior mutability, and memory that was specifically marked as read-only by the operating
+//! system via platform-specific APIs.
+//!
+//! As an exception from the general rule stated above, "sufficiently small" atomic loads with
+//! `Ordering::Relaxed` are implemented in a way that works on read-only memory, and are hence not
+//! Undefined Behavior. The exact size limit for what makes a load "sufficiently small" varies
+//! depending on the target:
+//!
+//! | `target_arch` | Size limit |
+//! |---------------|---------|
+//! | `x86`, `arm`, `mips`, `mips32r6, `powerpc`, `riscv32`, `sparc`, `hexagon` | 4 bytes |
+//! | `x86_64`, `aarch64`, `loongarch64`, `mips64`, `mips64r6`, `powerpc64`, `riscv64`, `sparc64`, `s390x` | 8 bytes |
+//!
+//! Atomics loads that are larger than this limit as well as atomic loads with ordering other
+//! than `Relaxed`, as well as *all* atomic loads on targets not listed in the table, might still be
+//! read-only under certain conditions, but that is not a stable guarantee and should not be relied
+//! upon.
+//!
+//! If you need to do an acquire load on read-only memory, you can do a relaxed load followed by an
+//! acquire fence instead.
+//!
 //! # Examples
 //!
 //! A simple spinlock:

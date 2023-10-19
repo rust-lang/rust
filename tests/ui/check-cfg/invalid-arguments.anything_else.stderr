@@ -1,2 +1,2 @@
-error: invalid `--check-cfg` argument: `anything_else(...)` (expected `names(name1, name2, ... nameN)` or `values(name, "value1", "value2", ... "valueN")`)
+error: invalid `--check-cfg` argument: `anything_else(...)` (expected `cfg(name, values("value1", "value2", ... "valueN"))`)
 

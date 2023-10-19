@@ -38,7 +38,6 @@
 
 use super::dwarf::eh::{self, EHAction, EHContext};
 use crate::ffi::c_int;
-use libc::uintptr_t;
 use unwind as uw;
 
 // Register ids were lifted from LLVM's TargetLowering::getExceptionPointerRegister()
@@ -160,9 +159,9 @@ cfg_if::cfg_if! {
                         uw::_Unwind_SetGR(
                             context,
                             UNWIND_DATA_REG.0,
-                            exception_object as uintptr_t,
+                            exception_object as uw::_Unwind_Ptr,
                         );
-                        uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, 0);
+                        uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, core::ptr::null());
                         uw::_Unwind_SetIP(context, lpad);
                         return uw::_URC_INSTALL_CONTEXT;
                     }
@@ -222,9 +221,9 @@ cfg_if::cfg_if! {
                         uw::_Unwind_SetGR(
                             context,
                             UNWIND_DATA_REG.0,
-                            exception_object as uintptr_t,
+                            exception_object.cast(),
                         );
-                        uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, 0);
+                        uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, core::ptr::null());
                         uw::_Unwind_SetIP(context, lpad);
                         uw::_URC_INSTALL_CONTEXT
                     }

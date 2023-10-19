@@ -770,6 +770,7 @@ fn test_unstable_options_tracking_hash() {
     );
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(crate_attr, vec!["abc".to_string()]);
+    tracked!(cross_crate_inline_threshold, Some(200));
     tracked!(debug_info_for_profiling, true);
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);

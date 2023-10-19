@@ -4,29 +4,20 @@
   fn main() -> () {
       let mut _0: ();
       let _1: main::Un;
-      let mut _2: u32;
-      let mut _3: u32;
       scope 1 {
           debug un => _1;
           scope 2 {
           }
-          scope 3 (inlined std::mem::drop::<u32>) {
-              debug _x => _3;
+          scope 4 (inlined std::mem::drop::<u32>) {
+              debug _x => const 1_u32;
           }
+      }
+      scope 3 (inlined val) {
       }
   
       bb0: {
           StorageLive(_1);
-          StorageLive(_2);
-          _2 = val() -> [return: bb1, unwind continue];
-      }
-  
-      bb1: {
-          _1 = Un { us: move _2 };
-          StorageDead(_2);
-          StorageLive(_3);
-          _3 = (_1.0: u32);
-          StorageDead(_3);
+          _1 = Un { us: const 1_u32 };
           StorageDead(_1);
           return;
       }

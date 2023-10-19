@@ -39,7 +39,7 @@
       }
 + }
 + 
-+ alloc3 (size: 2, align: 1) {
++ ALLOC0 (size: 2, align: 1) {
 +     00 01                                           │ ..
   }
   

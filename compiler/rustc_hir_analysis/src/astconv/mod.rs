@@ -916,7 +916,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Type aliases defined in crates that have the
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
-            let alias_ty = tcx.mk_alias_ty(did, args);
+            let alias_ty = ty::AliasTy::new(tcx, did, args);
             Ty::new_alias(tcx, ty::Weak, alias_ty)
         } else {
             tcx.at(span).type_of(did).instantiate(tcx, args)
@@ -1018,7 +1018,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     err.span_suggestions(
                         span,
-                        "use the fully-qualified path",
+                        "use fully-qualified syntax",
                         suggestions,
                         Applicability::MachineApplicable,
                     );
@@ -1091,7 +1091,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self.trait_defines_associated_item_named(r.def_id(), ty::AssocKind::Const, assoc_name)
         });
 
-        let (bound, next_cand) = match (matching_candidates.next(), const_candidates.next()) {
+        let (mut bound, mut next_cand) = match (matching_candidates.next(), const_candidates.next())
+        {
             (Some(bound), _) => (bound, matching_candidates.next()),
             (None, Some(bound)) => (bound, const_candidates.next()),
             (None, None) => {
@@ -1106,6 +1107,37 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         };
         debug!(?bound);
+
+        // look for a candidate that is not the same as our first bound, disregarding
+        // whether the bound is const.
+        while let Some(mut bound2) = next_cand {
+            debug!(?bound2);
+            let tcx = self.tcx();
+            if bound2.bound_vars() != bound.bound_vars() {
+                break;
+            }
+
+            let generics = tcx.generics_of(bound.def_id());
+            let Some(host_index) = generics.host_effect_index else { break };
+
+            // always return the bound that contains the host param.
+            if let ty::ConstKind::Param(_) = bound2.skip_binder().args.const_at(host_index).kind() {
+                (bound, bound2) = (bound2, bound);
+            }
+
+            let unconsted_args = bound
+                .skip_binder()
+                .args
+                .iter()
+                .enumerate()
+                .map(|(n, arg)| if host_index == n { tcx.consts.true_.into() } else { arg });
+
+            if unconsted_args.eq(bound2.skip_binder().args.iter()) {
+                next_cand = matching_candidates.next().or_else(|| const_candidates.next());
+            } else {
+                break;
+            }
+        }
 
         if let Some(bound2) = next_cand {
             debug!(?bound2);
@@ -1158,7 +1190,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     } else {
                         err.span_suggestion_verbose(
                             span.with_hi(assoc_name.span.lo()),
-                            "use fully qualified syntax to disambiguate",
+                            "use fully-qualified syntax to disambiguate",
                             format!("<{ty_param_name} as {}>::", bound.print_only_trait_path()),
                             Applicability::MaybeIncorrect,
                         );
@@ -1686,7 +1718,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .chain(args.into_iter().skip(parent_args.len())),
             );
 
-            let ty = Ty::new_alias(tcx, ty::Inherent, tcx.mk_alias_ty(assoc_item, args));
+            let ty = Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new(tcx, assoc_item, args));
 
             return Ok(Some((ty, assoc_item)));
         }

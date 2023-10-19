@@ -1,8 +1,8 @@
 // stderr-per-bitwidth
 // ignore-endian-big
 // ignore-tidy-linelength
-// normalize-stderr-test "╾─*a(lloc)?[0-9]+(\+[a-z0-9]+)?─*╼" -> "╾ALLOC_ID$2╼"
-// normalize-stderr-test "alloc\d+" -> "allocN"
+// normalize-stderr-test "╾─*ALLOC[0-9]+(\+[a-z0-9]+)?─*╼" -> "╾ALLOC_ID$1╼"
+
 #![feature(never_type, rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 #![allow(invalid_value)]
 

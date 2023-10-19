@@ -22,6 +22,7 @@ pub unsafe fn sse41_blend_nofeature(x: __m128, y: __m128) -> __m128 {
     f(x, y)
 }
 
+#[no_mangle]
 #[target_feature(enable = "sse4.1")]
 pub fn sse41_blend_noinline(x: __m128, y: __m128) -> __m128 {
     let f = {

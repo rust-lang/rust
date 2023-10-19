@@ -2072,7 +2072,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         };
 
         ty::ProjectionPredicate {
-            projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.args),
+            projection_ty: ty::AliasTy::new(tcx, obligation.predicate.def_id, trait_ref.args),
             term: ty.into(),
         }
     });
@@ -2116,7 +2116,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
 
         ty::ProjectionPredicate {
-            projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.args),
+            projection_ty: ty::AliasTy::new(tcx, obligation.predicate.def_id, trait_ref.args),
             term: return_ty.into(),
         }
     });
@@ -2172,7 +2172,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
     };
 
     let predicate =
-        ty::ProjectionPredicate { projection_ty: tcx.mk_alias_ty(item_def_id, args), term };
+        ty::ProjectionPredicate { projection_ty: ty::AliasTy::new(tcx, item_def_id, args), term };
 
     confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
         .with_addl_obligations(obligations)
@@ -2245,7 +2245,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         flag,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
-        projection_ty: tcx.mk_alias_ty(fn_once_output_def_id, trait_ref.args),
+        projection_ty: ty::AliasTy::new(tcx, fn_once_output_def_id, trait_ref.args),
         term: ret_type.into(),
     });
 

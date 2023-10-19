@@ -2,11 +2,13 @@ warning: unexpected `cfg` condition name: `target_oz`
   --> $DIR/well-known-names.rs:6:7
    |
 LL | #[cfg(target_oz = "linux")]
-   |       ---------^^^^^^^^^^
-   |       |
-   |       help: there is a config with a similar name: `target_os`
+   |       ^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unexpected_cfgs)]` on by default
+help: there is a config with a similar name and value
+   |
+LL | #[cfg(target_os = "linux")]
+   |       ~~~~~~~~~
 
 warning: unexpected `cfg` condition name: `features`
   --> $DIR/well-known-names.rs:13:7

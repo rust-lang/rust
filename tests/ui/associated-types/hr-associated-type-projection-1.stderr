@@ -2,7 +2,9 @@ error[E0271]: type mismatch resolving `<T as Deref>::Target == T`
   --> $DIR/hr-associated-type-projection-1.rs:13:33
    |
 LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
-   |      - this type parameter      ^^^^^^^^^^^^^^^^^ expected type parameter `T`, found associated type
+   |      -                          ^^^^^^^^^^^^^^^^^ expected type parameter `T`, found associated type
+   |      |
+   |      expected this type parameter
    |
    = note: expected type parameter `T`
              found associated type `<T as Deref>::Target`

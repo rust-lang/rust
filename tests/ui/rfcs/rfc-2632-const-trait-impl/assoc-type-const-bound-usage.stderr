@@ -1,14 +1,12 @@
-error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/assoc-type-const-bound-usage.rs:12:6
+error[E0308]: mismatched types
+  --> $DIR/assoc-type-const-bound-usage.rs:12:5
    |
 LL |     <T as Foo>::Assoc::foo();
-   |      ^ the trait `Foo` is not implemented for `T`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ expected `host`, found `true`
    |
-help: consider further restricting this bound
-   |
-LL | const fn foo<T: ~const Foo + Foo>() {
-   |                            +++++
+   = note: expected constant `host`
+              found constant `true`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0308`.

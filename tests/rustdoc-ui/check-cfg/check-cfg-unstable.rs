@@ -1,2 +1,2 @@
 // check-fail
-// compile-flags: --check-cfg=names()
+// compile-flags: --check-cfg=cfg()

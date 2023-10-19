@@ -20,11 +20,11 @@
       }
 + }
 + 
-+ alloc8 (size: 2, align: 1) {
++ ALLOC0 (size: 2, align: 1) {
 +     00 00                                           │ ..
 + }
 + 
-+ alloc7 (size: 2, align: 1) {
++ ALLOC1 (size: 2, align: 1) {
 +     00 00                                           │ ..
   }
   

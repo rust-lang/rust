@@ -1,7 +1,7 @@
 // This test checks that there is no ICE with this code
 //
 // check-pass
-// compile-flags:--check-cfg=names() -Z unstable-options
+// compile-flags:--check-cfg=cfg() -Z unstable-options
 
 fn main() {
     #[cfg(crossbeam_loom)]

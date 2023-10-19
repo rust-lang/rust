@@ -313,6 +313,18 @@ pub trait TypeErrCtxtExt<'tcx> {
         predicate: ty::Predicate<'tcx>,
         call_hir_id: HirId,
     );
+
+    fn look_for_iterator_item_mistakes(
+        &self,
+        assocs_in_this_method: &[Option<(Span, (DefId, Ty<'tcx>))>],
+        typeck_results: &TypeckResults<'tcx>,
+        type_diffs: &[TypeError<'tcx>],
+        param_env: ty::ParamEnv<'tcx>,
+        path_segment: &hir::PathSegment<'_>,
+        args: &[hir::Expr<'_>],
+        err: &mut Diagnostic,
+    );
+
     fn point_at_chain(
         &self,
         expr: &hir::Expr<'_>,
@@ -321,6 +333,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         err: &mut Diagnostic,
     );
+
     fn probe_assoc_types_at_expr(
         &self,
         type_diffs: &[TypeError<'tcx>],
@@ -3612,6 +3625,109 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
     }
 
+    fn look_for_iterator_item_mistakes(
+        &self,
+        assocs_in_this_method: &[Option<(Span, (DefId, Ty<'tcx>))>],
+        typeck_results: &TypeckResults<'tcx>,
+        type_diffs: &[TypeError<'tcx>],
+        param_env: ty::ParamEnv<'tcx>,
+        path_segment: &hir::PathSegment<'_>,
+        args: &[hir::Expr<'_>],
+        err: &mut Diagnostic,
+    ) {
+        let tcx = self.tcx;
+        // Special case for iterator chains, we look at potential failures of `Iterator::Item`
+        // not being `: Clone` and `Iterator::map` calls with spurious trailing `;`.
+        for entry in assocs_in_this_method {
+            let Some((_span, (def_id, ty))) = entry else {
+                continue;
+            };
+            for diff in type_diffs {
+                let Sorts(expected_found) = diff else {
+                    continue;
+                };
+                if tcx.is_diagnostic_item(sym::IteratorItem, *def_id)
+                    && path_segment.ident.name == sym::map
+                    && self.can_eq(param_env, expected_found.found, *ty)
+                    && let [arg] = args
+                    && let hir::ExprKind::Closure(closure) = arg.kind
+                {
+                    let body = tcx.hir().body(closure.body);
+                    if let hir::ExprKind::Block(block, None) = body.value.kind
+                        && let None = block.expr
+                        && let [.., stmt] = block.stmts
+                        && let hir::StmtKind::Semi(expr) = stmt.kind
+                        // FIXME: actually check the expected vs found types, but right now
+                        // the expected is a projection that we need to resolve.
+                        // && let Some(tail_ty) = typeck_results.expr_ty_opt(expr)
+                        && expected_found.found.is_unit()
+                    {
+                        err.span_suggestion_verbose(
+                            expr.span.shrink_to_hi().with_hi(stmt.span.hi()),
+                            "consider removing this semicolon",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    let expr = if let hir::ExprKind::Block(block, None) = body.value.kind
+                        && let Some(expr) = block.expr
+                    {
+                        expr
+                    } else {
+                        body.value
+                    };
+                    if let hir::ExprKind::MethodCall(path_segment, rcvr, [], span) = expr.kind
+                        && path_segment.ident.name == sym::clone
+                        && let Some(expr_ty) = typeck_results.expr_ty_opt(expr)
+                        && let Some(rcvr_ty) = typeck_results.expr_ty_opt(rcvr)
+                        && self.can_eq(param_env, expr_ty, rcvr_ty)
+                        && let ty::Ref(_, ty, _) = expr_ty.kind()
+                    {
+                        err.span_label(
+                            span,
+                            format!(
+                                "this method call is cloning the reference `{expr_ty}`, not \
+                                 `{ty}` which doesn't implement `Clone`",
+                            ),
+                        );
+                        let ty::Param(..) = ty.kind() else {
+                            continue;
+                        };
+                        let hir = tcx.hir();
+                        let node = hir.get_by_def_id(hir.get_parent_item(expr.hir_id).def_id);
+
+                        let pred = ty::Binder::dummy(ty::TraitPredicate {
+                            trait_ref: ty::TraitRef::from_lang_item(
+                                tcx,
+                                LangItem::Clone,
+                                span,
+                                [*ty],
+                            ),
+                            polarity: ty::ImplPolarity::Positive,
+                        });
+                        let Some(generics) = node.generics() else {
+                            continue;
+                        };
+                        let Some(body_id) = node.body_id() else {
+                            continue;
+                        };
+                        suggest_restriction(
+                            tcx,
+                            hir.body_owner_def_id(body_id),
+                            &generics,
+                            &format!("type parameter `{ty}`"),
+                            err,
+                            node.fn_sig(),
+                            None,
+                            pred,
+                            None,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     fn point_at_chain(
         &self,
         expr: &hir::Expr<'_>,
@@ -3631,13 +3747,22 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut prev_ty = self.resolve_vars_if_possible(
             typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
         );
-        while let hir::ExprKind::MethodCall(_path_segment, rcvr_expr, _args, span) = expr.kind {
+        while let hir::ExprKind::MethodCall(path_segment, rcvr_expr, args, span) = expr.kind {
             // Point at every method call in the chain with the resulting type.
             // vec![1, 2, 3].iter().map(mapper).sum<i32>()
             //               ^^^^^^ ^^^^^^^^^^^
             expr = rcvr_expr;
             let assocs_in_this_method =
                 self.probe_assoc_types_at_expr(&type_diffs, span, prev_ty, expr.hir_id, param_env);
+            self.look_for_iterator_item_mistakes(
+                &assocs_in_this_method,
+                typeck_results,
+                &type_diffs,
+                param_env,
+                path_segment,
+                args,
+                err,
+            );
             assocs.push(assocs_in_this_method);
             prev_ty = self.resolve_vars_if_possible(
                 typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
@@ -3812,7 +3937,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // This corresponds to `<ExprTy as Iterator>::Item = _`.
             let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
                 ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                    projection_ty: self.tcx.mk_alias_ty(proj.def_id, args),
+                    projection_ty: ty::AliasTy::new(self.tcx, proj.def_id, args),
                     term: ty_var.into(),
                 }),
             ));

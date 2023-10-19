@@ -6,7 +6,6 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::GenericArgsRef;
@@ -626,27 +625,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
-                ty::PredicateKind::AliasRelate(..)
-                    if matches!(self.selcx.infcx.defining_use_anchor, DefiningAnchor::Bubble) =>
-                {
-                    ProcessResult::Unchanged
+                ty::PredicateKind::AliasRelate(..) => {
+                    bug!("AliasRelate is only used for new solver")
                 }
-                ty::PredicateKind::AliasRelate(a, b, relate) => match relate {
-                    ty::AliasRelationDirection::Equate => match self
-                        .selcx
-                        .infcx
-                        .at(&obligation.cause, obligation.param_env)
-                        .eq(DefineOpaqueTypes::Yes, a, b)
-                    {
-                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
-                        Err(_) => ProcessResult::Error(FulfillmentErrorCode::CodeSelectionError(
-                            SelectionError::Unimplemented,
-                        )),
-                    },
-                    ty::AliasRelationDirection::Subtype => {
-                        bug!("AliasRelate with subtyping is only used for new solver")
-                    }
-                },
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
                         DefineOpaqueTypes::No,

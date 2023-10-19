@@ -241,7 +241,7 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
                 },
             ],
             _,
-        ) if key_span.ctxt() == expr.span.ctxt() => {
+        ) if key_span.eq_ctxt(expr.span) => {
             let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
             let expr = ContainsExpr {
                 negated,

@@ -23,7 +23,7 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
-          _4 = const {alloc1: *mut u32};
+          _4 = const {ALLOC0: *mut u32};
           _3 = (*_4);
           _1 = move _3;
           StorageDead(_3);
@@ -39,7 +39,7 @@
       }
   }
   
-  alloc1 (static: STATIC, size: 4, align: 4) {
+  ALLOC0 (static: STATIC, size: 4, align: 4) {
       42 42 42 42                                     │ BBBB
   }
   

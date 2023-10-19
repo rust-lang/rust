@@ -11,6 +11,12 @@ export RUSTC_ICE=$TMPDIR
 $RUSTC src/lib.rs -Z treat-err-as-bug=1 1>$TMPDIR/rust-test-default-set.log 2>&1
 default_set=$(cat $TMPDIR/rustc-ice-*.txt | wc -l)
 content=$(cat $TMPDIR/rustc-ice-*.txt)
+# Ensure that the ICE dump path doesn't contain `:` because they cause problems on Windows
+windows_safe=$(echo rustc-ice-*.txt | grep ':')
+if [ ! -z "$windows_safe" ]; then
+    exit 1
+fi
+
 rm $TMPDIR/rustc-ice-*.txt
 RUST_BACKTRACE=short $RUSTC src/lib.rs -Z treat-err-as-bug=1 1>$TMPDIR/rust-test-short.log 2>&1
 short=$(cat $TMPDIR/rustc-ice-*.txt | wc -l)

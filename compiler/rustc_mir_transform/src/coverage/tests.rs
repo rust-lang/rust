@@ -656,7 +656,7 @@ fn test_make_bcb_counters() {
         coverage_counters
             .make_bcb_counters(&mut basic_coverage_blocks, bcb_has_coverage_spans)
             .expect("should be Ok");
-        assert_eq!(coverage_counters.intermediate_expressions.len(), 0);
+        assert_eq!(coverage_counters.num_expressions(), 0);
 
         let_bcb!(1);
         assert_eq!(

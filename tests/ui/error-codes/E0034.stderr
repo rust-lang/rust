@@ -14,12 +14,10 @@ note: candidate #2 is defined in an impl of the trait `Trait2` for the type `Tes
    |
 LL |     fn foo() {}
    |     ^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: use fully-qualified syntax to disambiguate
    |
 LL |     <Test as Trait1>::foo()
    |     ~~~~~~~~~~~~~~~~~~
-help: disambiguate the associated function for candidate #2
-   |
 LL |     <Test as Trait2>::foo()
    |     ~~~~~~~~~~~~~~~~~~
 

@@ -1,7 +1,7 @@
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-   = note: unable to copy parts of a pointer from memory at ALLOC_ID
+   = note: unable to copy parts of a pointer from memory at ALLOC0
    |
 note: inside `std::ptr::read::<MaybeUninit<MaybeUninit<u8>>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL

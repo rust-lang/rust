@@ -6,7 +6,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::print::{Print, Printer};
+use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
     self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
     UintTy,
@@ -181,11 +181,11 @@ impl<'tcx> SymbolMangler<'tcx> {
 
     fn path_append_ns<'a>(
         mut self: &'a mut Self,
-        print_prefix: impl FnOnce(&'a mut Self) -> Result<&'a mut Self, !>,
+        print_prefix: impl FnOnce(&'a mut Self) -> Result<&'a mut Self, PrintError>,
         ns: char,
         disambiguator: u64,
         name: &str,
-    ) -> Result<&'a mut Self, !> {
+    ) -> Result<&'a mut Self, PrintError> {
         self.push("N");
         self.out.push(ns);
         self = print_prefix(self)?;
@@ -194,7 +194,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_backref(&mut self, i: usize) -> Result<&mut Self, !> {
+    fn print_backref(&mut self, i: usize) -> Result<&mut Self, PrintError> {
         self.push("B");
         self.push_integer_62((i - self.start_offset) as u64);
         Ok(self)
@@ -203,8 +203,8 @@ impl<'tcx> SymbolMangler<'tcx> {
     fn in_binder<'a, T>(
         mut self: &'a mut Self,
         value: &ty::Binder<'tcx, T>,
-        print_value: impl FnOnce(&'a mut Self, &T) -> Result<&'a mut Self, !>,
-    ) -> Result<&'a mut Self, !>
+        print_value: impl FnOnce(&'a mut Self, &T) -> Result<&'a mut Self, PrintError>,
+    ) -> Result<&'a mut Self, PrintError>
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
@@ -230,14 +230,6 @@ impl<'tcx> SymbolMangler<'tcx> {
 }
 
 impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
-    type Error = !;
-
-    type Path = Self;
-    type Region = Self;
-    type Type = Self;
-    type DynExistential = Self;
-    type Const = Self;
-
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -246,7 +238,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         mut self,
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, PrintError> {
         if let Some(&i) = self.paths.get(&(def_id, args)) {
             return self.print_backref(i);
         }
@@ -268,7 +260,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         args: &'tcx [GenericArg<'tcx>],
         mut self_ty: Ty<'tcx>,
         mut impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, PrintError> {
         let key = self.tcx.def_key(impl_def_id);
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
@@ -321,7 +313,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_region(self, region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
+    fn print_region(self, region: ty::Region<'_>) -> Result<Self, PrintError> {
         let i = match *region {
             // Erased lifetimes use the index 0, for a
             // shorter mangling of `L_`.
@@ -343,7 +335,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
+    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self, PrintError> {
         // Basic types, never cached (single-character).
         let basic_type = match ty.kind() {
             ty::Bool => "b",
@@ -498,7 +490,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn print_dyn_existential(
         mut self,
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> Result<Self::DynExistential, Self::Error> {
+    ) -> Result<Self, PrintError> {
         // Okay, so this is a bit tricky. Imagine we have a trait object like
         // `dyn for<'a> Foo<'a, Bar = &'a ()>`. When we mangle this, the
         // output looks really close to the syntax, where the `Bar = &'a ()` bit
@@ -559,7 +551,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_const(mut self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+    fn print_const(mut self, ct: ty::Const<'tcx>) -> Result<Self, PrintError> {
         // We only mangle a typed value if the const can be evaluated.
         let ct = ct.normalize(self.tcx, ty::ParamEnv::reveal_all());
         match ct.kind() {
@@ -731,7 +723,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
+    fn path_crate(self, cnum: CrateNum) -> Result<Self, PrintError> {
         self.push("C");
         let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
         self.push_disambiguator(stable_crate_id.as_u64());
@@ -744,7 +736,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, PrintError> {
         assert!(trait_ref.is_some());
         let trait_ref = trait_ref.unwrap();
 
@@ -755,20 +747,20 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
     fn path_append_impl(
         self,
-        _: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        _: impl FnOnce(Self) -> Result<Self, PrintError>,
         _: &DisambiguatedDefPathData,
         _: Ty<'tcx>,
         _: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, PrintError> {
         // Inlined into `print_impl_path`
         unreachable!()
     }
 
     fn path_append(
         self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, PrintError> {
         let ns = match disambiguated_data.data {
             // Extern block segments can be skipped, names from extern blocks
             // are effectively living in their parent modules.
@@ -806,9 +798,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
     fn path_generic_args(
         mut self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
         args: &[GenericArg<'tcx>],
-    ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self, PrintError> {
         // Don't print any regions if they're all erased.
         let print_regions = args.iter().any(|arg| match arg.unpack() {
             GenericArgKind::Lifetime(r) => !r.is_erased(),

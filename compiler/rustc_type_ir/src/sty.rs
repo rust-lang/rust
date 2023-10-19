@@ -18,6 +18,68 @@ use self::TyKind::*;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_serialize::{Decodable, Decoder, Encodable};
 
+/// The movability of a generator / closure literal:
+/// whether a generator contains self-references, causing it to be `!Unpin`.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, Debug, Copy)]
+#[derive(HashStable_Generic)]
+pub enum Movability {
+    /// May contain self-references, `!Unpin`.
+    Static,
+    /// Must not contain self-references, `Unpin`.
+    Movable,
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
+pub enum Mutability {
+    // N.B. Order is deliberate, so that Not < Mut
+    Not,
+    Mut,
+}
+
+impl Mutability {
+    pub fn invert(self) -> Self {
+        match self {
+            Mutability::Mut => Mutability::Not,
+            Mutability::Not => Mutability::Mut,
+        }
+    }
+
+    /// Returns `""` (empty string) or `"mut "` depending on the mutability.
+    pub fn prefix_str(self) -> &'static str {
+        match self {
+            Mutability::Mut => "mut ",
+            Mutability::Not => "",
+        }
+    }
+
+    /// Returns `"&"` or `"&mut "` depending on the mutability.
+    pub fn ref_prefix_str(self) -> &'static str {
+        match self {
+            Mutability::Not => "&",
+            Mutability::Mut => "&mut ",
+        }
+    }
+
+    /// Returns `""` (empty string) or `"mutably "` depending on the mutability.
+    pub fn mutably_str(self) -> &'static str {
+        match self {
+            Mutability::Not => "",
+            Mutability::Mut => "mutably ",
+        }
+    }
+
+    /// Return `true` if self is mutable
+    pub fn is_mut(self) -> bool {
+        matches!(self, Self::Mut)
+    }
+
+    /// Return `true` if self is **not** mutable
+    pub fn is_not(self) -> bool {
+        matches!(self, Self::Not)
+    }
+}
+
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
@@ -79,7 +141,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// Note that generic parameters in fields only get lazily substituted
     /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, args))`.
-    Adt(I::AdtDef, I::GenericArgsRef),
+    Adt(I::AdtDef, I::GenericArgs),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(I::DefId),
@@ -98,7 +160,7 @@ pub enum TyKind<I: Interner> {
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(I::Region, I::Ty, I::Mutability),
+    Ref(I::Region, I::Ty, Mutability),
 
     /// The anonymous type of a function declaration/definition. Each
     /// function has a unique type.
@@ -111,7 +173,7 @@ pub enum TyKind<I: Interner> {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(I::DefId, I::GenericArgsRef),
+    FnDef(I::DefId, I::GenericArgs),
 
     /// A pointer to a function. Written as `fn() -> i32`.
     ///
@@ -127,21 +189,21 @@ pub enum TyKind<I: Interner> {
     FnPtr(I::PolyFnSig),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(I::ListBinderExistentialPredicate, I::Region, DynKind),
+    Dynamic(I::BoundExistentialPredicates, I::Region, DynKind),
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
     /// Closure args contain both the - potentially substituted - generic parameters
     /// of its parent and some synthetic parameters. See the documentation for
     /// `ClosureArgs` for more details.
-    Closure(I::DefId, I::GenericArgsRef),
+    Closure(I::DefId, I::GenericArgs),
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
     ///
     /// For more info about generator args, visit the documentation for
     /// `GeneratorArgs`.
-    Generator(I::DefId, I::GenericArgsRef, I::Movability),
+    Generator(I::DefId, I::GenericArgs, Movability),
 
     /// A type representing the types stored inside a generator.
     /// This should only appear as part of the `GeneratorArgs`.
@@ -167,13 +229,13 @@ pub enum TyKind<I: Interner> {
     /// }
     /// # ;
     /// ```
-    GeneratorWitness(I::DefId, I::GenericArgsRef),
+    GeneratorWitness(I::DefId, I::GenericArgs),
 
     /// The never type `!`.
     Never,
 
     /// A tuple type. For example, `(i32, bool)`.
-    Tuple(I::ListTy),
+    Tuple(I::Tys),
 
     /// A projection, opaque type, weak type alias, or inherent associated type.
     /// All of these types are represented as pairs of def-id and args, and can
@@ -209,7 +271,7 @@ pub enum TyKind<I: Interner> {
     /// to the bound variable's index from the binder from which it was instantiated),
     /// and `U` is the universe index in which it is instantiated, or totally omitted
     /// if the universe index is zero.
-    Placeholder(I::PlaceholderType),
+    Placeholder(I::PlaceholderTy),
 
     /// A type variable used during type checking.
     ///
@@ -506,15 +568,15 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
             RawPtr(p) => {
                 let (ty, mutbl) = I::ty_and_mut_to_parts(p.clone());
-                match I::mutability_is_mut(mutbl) {
-                    true => write!(f, "*mut "),
-                    false => write!(f, "*const "),
+                match mutbl {
+                    Mutability::Mut => write!(f, "*mut "),
+                    Mutability::Not => write!(f, "*const "),
                 }?;
                 write!(f, "{:?}", &this.wrap(ty))
             }
-            Ref(r, t, m) => match I::mutability_is_mut(m.clone()) {
-                true => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
-                false => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
+            Ref(r, t, m) => match m {
+                Mutability::Mut => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
+                Mutability::Not => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
             },
             FnDef(d, s) => f.debug_tuple_field2_finish("FnDef", d, &this.wrap(s)),
             FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
@@ -567,22 +629,19 @@ impl<I: Interner, E: TyEncoder> Encodable<E> for TyKind<I>
 where
     I::ErrorGuaranteed: Encodable<E>,
     I::AdtDef: Encodable<E>,
-    I::GenericArgsRef: Encodable<E>,
+    I::GenericArgs: Encodable<E>,
     I::DefId: Encodable<E>,
     I::Ty: Encodable<E>,
     I::Const: Encodable<E>,
     I::Region: Encodable<E>,
     I::TypeAndMut: Encodable<E>,
-    I::Mutability: Encodable<E>,
-    I::Movability: Encodable<E>,
     I::PolyFnSig: Encodable<E>,
-    I::ListBinderExistentialPredicate: Encodable<E>,
-    I::BinderListTy: Encodable<E>,
-    I::ListTy: Encodable<E>,
+    I::BoundExistentialPredicates: Encodable<E>,
+    I::Tys: Encodable<E>,
     I::AliasTy: Encodable<E>,
     I::ParamTy: Encodable<E>,
     I::BoundTy: Encodable<E>,
-    I::PlaceholderType: Encodable<E>,
+    I::PlaceholderTy: Encodable<E>,
     I::InferTy: Encodable<E>,
     I::PredicateKind: Encodable<E>,
     I::AllocId: Encodable<E>,
@@ -682,23 +741,20 @@ impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for TyKind<I>
 where
     I::ErrorGuaranteed: Decodable<D>,
     I::AdtDef: Decodable<D>,
-    I::GenericArgsRef: Decodable<D>,
+    I::GenericArgs: Decodable<D>,
     I::DefId: Decodable<D>,
     I::Ty: Decodable<D>,
     I::Const: Decodable<D>,
     I::Region: Decodable<D>,
     I::TypeAndMut: Decodable<D>,
-    I::Mutability: Decodable<D>,
-    I::Movability: Decodable<D>,
     I::PolyFnSig: Decodable<D>,
-    I::ListBinderExistentialPredicate: Decodable<D>,
-    I::BinderListTy: Decodable<D>,
-    I::ListTy: Decodable<D>,
+    I::BoundExistentialPredicates: Decodable<D>,
+    I::Tys: Decodable<D>,
     I::AliasTy: Decodable<D>,
     I::ParamTy: Decodable<D>,
     I::AliasTy: Decodable<D>,
     I::BoundTy: Decodable<D>,
-    I::PlaceholderType: Decodable<D>,
+    I::PlaceholderTy: Decodable<D>,
     I::InferTy: Decodable<D>,
     I::PredicateKind: Decodable<D>,
     I::AllocId: Decodable<D>,
@@ -748,21 +804,18 @@ impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
 where
     I::AdtDef: HashStable<CTX>,
     I::DefId: HashStable<CTX>,
-    I::GenericArgsRef: HashStable<CTX>,
+    I::GenericArgs: HashStable<CTX>,
     I::Ty: HashStable<CTX>,
     I::Const: HashStable<CTX>,
     I::TypeAndMut: HashStable<CTX>,
     I::PolyFnSig: HashStable<CTX>,
-    I::ListBinderExistentialPredicate: HashStable<CTX>,
+    I::BoundExistentialPredicates: HashStable<CTX>,
     I::Region: HashStable<CTX>,
-    I::Movability: HashStable<CTX>,
-    I::Mutability: HashStable<CTX>,
-    I::BinderListTy: HashStable<CTX>,
-    I::ListTy: HashStable<CTX>,
+    I::Tys: HashStable<CTX>,
     I::AliasTy: HashStable<CTX>,
     I::BoundTy: HashStable<CTX>,
     I::ParamTy: HashStable<CTX>,
-    I::PlaceholderType: HashStable<CTX>,
+    I::PlaceholderTy: HashStable<CTX>,
     I::InferTy: HashStable<CTX>,
     I::ErrorGuaranteed: HashStable<CTX>,
 {
@@ -1204,7 +1257,7 @@ pub enum RegionKind<I: Interner> {
     ReStatic,
 
     /// A region variable. Should not exist outside of type inference.
-    ReVar(I::RegionVid),
+    ReVar(I::InferRegion),
 
     /// A placeholder region -- basically, the higher-ranked version of `ReFree`.
     /// Should not exist outside of type inference.
@@ -1239,7 +1292,7 @@ where
     I::EarlyBoundRegion: Copy,
     I::BoundRegion: Copy,
     I::FreeRegion: Copy,
-    I::RegionVid: Copy,
+    I::InferRegion: Copy,
     I::PlaceholderRegion: Copy,
     I::ErrorGuaranteed: Copy,
 {
@@ -1379,7 +1432,7 @@ where
     I::EarlyBoundRegion: Encodable<E>,
     I::BoundRegion: Encodable<E>,
     I::FreeRegion: Encodable<E>,
-    I::RegionVid: Encodable<E>,
+    I::InferRegion: Encodable<E>,
     I::PlaceholderRegion: Encodable<E>,
 {
     fn encode(&self, e: &mut E) {
@@ -1414,7 +1467,7 @@ where
     I::EarlyBoundRegion: Decodable<D>,
     I::BoundRegion: Decodable<D>,
     I::FreeRegion: Decodable<D>,
-    I::RegionVid: Decodable<D>,
+    I::InferRegion: Decodable<D>,
     I::PlaceholderRegion: Decodable<D>,
     I::ErrorGuaranteed: Decodable<D>,
 {
@@ -1445,7 +1498,7 @@ where
     I::EarlyBoundRegion: HashStable<CTX>,
     I::BoundRegion: HashStable<CTX>,
     I::FreeRegion: HashStable<CTX>,
-    I::RegionVid: HashStable<CTX>,
+    I::InferRegion: HashStable<CTX>,
     I::PlaceholderRegion: HashStable<CTX>,
 {
     #[inline]

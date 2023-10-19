@@ -13,7 +13,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:22:17
    |
 LL | trait Foo where Foo::Assoc: Bar {
-   |                 ^^^^^^^^^^ help: use the fully-qualified path: `<Self as Foo>::Assoc`
+   |                 ^^^^^^^^^^ help: use fully-qualified syntax: `<Self as Foo>::Assoc`
 
 error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:27:10
@@ -21,7 +21,7 @@ error[E0223]: ambiguous associated type
 LL | type X = std::ops::Deref::Target;
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use the fully-qualified path
+help: use fully-qualified syntax
    |
 LL | type X = <CString as Deref>::Target;
    |          ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -37,7 +37,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:13:23
    |
 LL |     fn grab(&self) -> Grab::Value;
-   |                       ^^^^^^^^^^^ help: use the fully-qualified path: `<Self as Grab>::Value`
+   |                       ^^^^^^^^^^^ help: use fully-qualified syntax: `<Self as Grab>::Value`
 
 error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:16:22

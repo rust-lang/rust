@@ -674,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
 
                         let quiet_projection_ty =
-                            tcx.mk_alias_ty(projection_ty.def_id, args_with_infer_self);
+                            ty::AliasTy::new(tcx, projection_ty.def_id, args_with_infer_self);
 
                         let term = pred.skip_binder().term;
 
@@ -1260,6 +1260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Dynamic limit to avoid hiding just one candidate, which is silly.
         let limit = if sources.len() == 5 { 5 } else { 4 };
 
+        let mut suggs = vec![];
         for (idx, source) in sources.iter().take(limit).enumerate() {
             match *source {
                 CandidateSource::Impl(impl_did) => {
@@ -1322,7 +1323,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let path = self.tcx.def_path_str(trait_ref.skip_binder().def_id);
 
                         let ty = match item.kind {
-                            ty::AssocKind::Const | ty::AssocKind::Type => rcvr_ty,
+                            ty::AssocKind::Const | ty::AssocKind::Type => impl_ty,
                             ty::AssocKind::Fn => self
                                 .tcx
                                 .fn_sig(item.def_id)
@@ -1334,19 +1335,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .copied()
                                 .unwrap_or(rcvr_ty),
                         };
-                        print_disambiguation_help(
+                        if let Some(sugg) = print_disambiguation_help(
                             item_name,
                             args,
                             err,
                             path,
                             ty,
+                            Some(impl_ty),
                             item.kind,
                             self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
                             item.fn_has_self_parameter,
-                        );
+                        ) {
+                            suggs.push(sugg);
+                        }
                     }
                 }
                 CandidateSource::Trait(trait_did) => {
@@ -1370,22 +1374,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     };
                     if let Some(sugg_span) = sugg_span {
                         let path = self.tcx.def_path_str(trait_did);
-                        print_disambiguation_help(
+                        if let Some(sugg) = print_disambiguation_help(
                             item_name,
                             args,
                             err,
                             path,
                             rcvr_ty,
+                            None,
                             item.kind,
                             self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
                             item.fn_has_self_parameter,
-                        );
+                        ) {
+                            suggs.push(sugg);
+                        }
                     }
                 }
             }
+        }
+        if !suggs.is_empty() && let Some(span) = sugg_span {
+            err.span_suggestions(
+                span.with_hi(item_name.span.lo()),
+                "use fully-qualified syntax to disambiguate",
+                suggs,
+                Applicability::MachineApplicable,
+            );
         }
         if sources.len() > limit {
             err.note(format!("and {} others", sources.len() - limit));
@@ -3146,52 +3161,51 @@ fn print_disambiguation_help<'tcx>(
     err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
+    impl_self_ty: Option<Ty<'_>>,
     kind: ty::AssocKind,
     def_kind_descr: &'static str,
     span: Span,
     candidate: Option<usize>,
     source_map: &source_map::SourceMap,
     fn_has_self_parameter: bool,
-) {
-    let mut applicability = Applicability::MachineApplicable;
-    let (span, sugg) = if let (
-        ty::AssocKind::Fn,
-        Some(MethodCallComponents { receiver, args, .. }),
-    ) = (kind, args)
-    {
-        let args = format!(
-            "({}{})",
-            rcvr_ty.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()),
-            std::iter::once(receiver)
-                .chain(args.iter())
-                .map(|arg| source_map.span_to_snippet(arg.span).unwrap_or_else(|_| {
-                    applicability = Applicability::HasPlaceholders;
-                    "_".to_owned()
-                }))
-                .collect::<Vec<_>>()
-                .join(", "),
-        );
-        let trait_name = if !fn_has_self_parameter {
-            format!("<{rcvr_ty} as {trait_name}>")
+) -> Option<String> {
+    Some(
+        if let (ty::AssocKind::Fn, Some(MethodCallComponents { receiver, args, .. })) = (kind, args)
+        {
+            let args = format!(
+                "({}{})",
+                rcvr_ty.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()),
+                std::iter::once(receiver)
+                    .chain(args.iter())
+                    .map(|arg| source_map
+                        .span_to_snippet(arg.span)
+                        .unwrap_or_else(|_| { "_".to_owned() }))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            );
+            let trait_name = if !fn_has_self_parameter && let Some(impl_self_ty) = impl_self_ty {
+            format!("<{impl_self_ty} as {trait_name}>")
         } else {
             trait_name
         };
-        (span, format!("{trait_name}::{item_name}{args}"))
-    } else {
-        (span.with_hi(item_name.span.lo()), format!("<{rcvr_ty} as {trait_name}>::"))
-    };
-    err.span_suggestion_verbose(
-        span,
-        format!(
-            "disambiguate the {} for {}",
-            def_kind_descr,
-            if let Some(candidate) = candidate {
-                format!("candidate #{candidate}")
-            } else {
-                "the candidate".to_string()
-            },
-        ),
-        sugg,
-        applicability,
-    );
+            err.span_suggestion_verbose(
+                span,
+                format!(
+                    "disambiguate the {def_kind_descr} for {}",
+                    if let Some(candidate) = candidate {
+                        format!("candidate #{candidate}")
+                    } else {
+                        "the candidate".to_string()
+                    },
+                ),
+                format!("{trait_name}::{item_name}{args}"),
+                Applicability::HasPlaceholders,
+            );
+            return None;
+        } else if let Some(impl_self_ty) = impl_self_ty {
+            format!("<{impl_self_ty} as {trait_name}>::")
+        } else {
+            format!("{trait_name}::")
+        },
+    )
 }

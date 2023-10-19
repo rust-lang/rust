@@ -7,7 +7,7 @@ promoted[0] in FOO: &[&i32; 1] = {
     let mut _3: *const i32;
 
     bb0: {
-        _3 = const {alloc3: *const i32};
+        _3 = const {ALLOC0: *const i32};
         _2 = &(*_3);
         _1 = [move _2];
         _0 = &_1;
@@ -15,4 +15,4 @@ promoted[0] in FOO: &[&i32; 1] = {
     }
 }
 
-alloc3 (extern static: X)
+ALLOC0 (extern static: X)

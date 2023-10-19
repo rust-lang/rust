@@ -1133,7 +1133,7 @@ pub fn make_projection<'tcx>(
         #[cfg(debug_assertions)]
         assert_generic_args_match(tcx, assoc_item.def_id, args);
 
-        Some(tcx.mk_alias_ty(assoc_item.def_id, args))
+        Some(ty::AliasTy::new(tcx, assoc_item.def_id, args))
     }
     helper(
         tcx,

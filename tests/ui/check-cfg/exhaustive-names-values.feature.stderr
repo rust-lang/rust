@@ -1,0 +1,33 @@
+warning: unexpected `cfg` condition name: `unknown_key`
+  --> $DIR/exhaustive-names-values.rs:12:7
+   |
+LL | #[cfg(unknown_key = "value")]
+   |       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `value`
+  --> $DIR/exhaustive-names-values.rs:16:7
+   |
+LL | #[cfg(test = "value")]
+   |       ^^^^----------
+   |           |
+   |           help: remove the value
+   |
+   = note: no expected value for `test`
+
+warning: unexpected `cfg` condition value: `unk`
+  --> $DIR/exhaustive-names-values.rs:20:7
+   |
+LL | #[cfg(feature = "unk")]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `std`
+
+warning: unexpected condition value `` for condition name `feature`
+   |
+   = help: was set with `--cfg` but isn't in the `--check-cfg` expected values
+
+warning: 4 warnings emitted
+

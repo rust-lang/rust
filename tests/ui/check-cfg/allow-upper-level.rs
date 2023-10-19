@@ -1,7 +1,7 @@
 // This test check that #[allow(unexpected_cfgs)] work if put on an upper level
 //
 // check-pass
-// compile-flags:--check-cfg=names() -Z unstable-options
+// compile-flags: --check-cfg=cfg() -Z unstable-options
 
 #[allow(unexpected_cfgs)]
 mod aa {

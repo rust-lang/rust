@@ -85,8 +85,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     {
                         let p_def_id = tcx.generics_of(body_owner_def_id).type_param(p, tcx).def_id;
                         let p_span = tcx.def_span(p_def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
                         if !sp.contains(p_span) {
-                            diag.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                         let hir = tcx.hir();
                         let mut note = true;
@@ -168,8 +173,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     | (ty::Dynamic(..) | ty::Alias(ty::Opaque, ..), ty::Param(p)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
                         let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
                         if !sp.contains(p_span) {
-                            diag.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                         diag.help("type parameters must be constrained to match other types");
                         if tcx.sess.teach(&diag.get_code().unwrap()) {
@@ -209,7 +219,7 @@ impl<T> Trait<T> for X {
                         let generics = tcx.generics_of(body_owner_def_id);
                         let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
                         if !sp.contains(p_span) {
-                            diag.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, "expected this type parameter");
                         }
                         diag.help(format!(
                             "every closure has a distinct type and so could not always match the \
@@ -219,8 +229,13 @@ impl<T> Trait<T> for X {
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
                         let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                        let expected = match (values.expected.kind(), values.found.kind()) {
+                            (ty::Param(_), _) => "expected ",
+                            (_, ty::Param(_)) => "found ",
+                            _ => "",
+                        };
                         if !sp.contains(p_span) {
-                            diag.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                     }
                     (ty::Alias(ty::Projection | ty::Inherent, proj_ty), _)
@@ -341,39 +356,48 @@ impl<T> Trait<T> for X {
         let tcx = self.tcx;
         let assoc = tcx.associated_item(proj_ty.def_id);
         let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
-        if let Some(item) = tcx.hir().get_if_local(body_owner_def_id) {
-            if let Some(hir_generics) = item.generics() {
-                // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
-                // This will also work for `impl Trait`.
-                let def_id = if let ty::Param(param_ty) = proj_ty.self_ty().kind() {
-                    let generics = tcx.generics_of(body_owner_def_id);
-                    generics.type_param(param_ty, tcx).def_id
-                } else {
-                    return false;
-                };
-                let Some(def_id) = def_id.as_local() else {
-                    return false;
-                };
+        let Some(item) = tcx.hir().get_if_local(body_owner_def_id) else {
+            return false;
+        };
+        let Some(hir_generics) = item.generics() else {
+            return false;
+        };
+        // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
+        // This will also work for `impl Trait`.
+        let def_id = if let ty::Param(param_ty) = proj_ty.self_ty().kind() {
+            let generics = tcx.generics_of(body_owner_def_id);
+            generics.type_param(param_ty, tcx).def_id
+        } else {
+            return false;
+        };
+        let Some(def_id) = def_id.as_local() else {
+            return false;
+        };
 
-                // First look in the `where` clause, as this might be
-                // `fn foo<T>(x: T) where T: Trait`.
-                for pred in hir_generics.bounds_for_param(def_id) {
-                    if self.constrain_generic_bound_associated_type_structured_suggestion(
-                        diag,
-                        &trait_ref,
-                        pred.bounds,
-                        assoc,
-                        assoc_args,
-                        ty,
-                        &msg,
-                        false,
-                    ) {
-                        return true;
-                    }
-                }
+        // First look in the `where` clause, as this might be
+        // `fn foo<T>(x: T) where T: Trait`.
+        for pred in hir_generics.bounds_for_param(def_id) {
+            if self.constrain_generic_bound_associated_type_structured_suggestion(
+                diag,
+                &trait_ref,
+                pred.bounds,
+                assoc,
+                assoc_args,
+                ty,
+                &msg,
+                false,
+            ) {
+                return true;
             }
         }
-        false
+        // If associated item, look to constrain the params of the trait/impl.
+        let hir_id = match item {
+            hir::Node::ImplItem(item) => item.hir_id(),
+            hir::Node::TraitItem(item) => item.hir_id(),
+            _ => return false,
+        };
+        let parent = tcx.hir().get_parent_item(hir_id).def_id;
+        self.suggest_constraint(diag, msg, parent.into(), proj_ty, ty)
     }
 
     /// An associated type was expected and a different type was found.
@@ -426,21 +450,26 @@ impl<T> Trait<T> for X {
         let impl_comparison =
             matches!(cause_code, ObligationCauseCode::CompareImplItemObligation { .. });
         let assoc = tcx.associated_item(proj_ty.def_id);
-        if !callable_scope || impl_comparison {
+        if impl_comparison {
             // We do not want to suggest calling functions when the reason of the
-            // type error is a comparison of an `impl` with its `trait` or when the
-            // scope is outside of a `Body`.
+            // type error is a comparison of an `impl` with its `trait`.
         } else {
-            // If we find a suitable associated function that returns the expected type, we don't
-            // want the more general suggestion later in this method about "consider constraining
-            // the associated type or calling a method that returns the associated type".
-            let point_at_assoc_fn = self.point_at_methods_that_satisfy_associated_type(
-                diag,
-                assoc.container_id(tcx),
-                current_method_ident,
-                proj_ty.def_id,
-                values.expected,
-            );
+            let point_at_assoc_fn = if callable_scope
+                && self.point_at_methods_that_satisfy_associated_type(
+                    diag,
+                    assoc.container_id(tcx),
+                    current_method_ident,
+                    proj_ty.def_id,
+                    values.expected,
+                ) {
+                // If we find a suitable associated function that returns the expected type, we
+                // don't want the more general suggestion later in this method about "consider
+                // constraining the associated type or calling a method that returns the associated
+                // type".
+                true
+            } else {
+                false
+            };
             // Possibly suggest constraining the associated type to conform to the
             // found type.
             if self.suggest_constraint(diag, &msg, body_owner_def_id, proj_ty, values.found)

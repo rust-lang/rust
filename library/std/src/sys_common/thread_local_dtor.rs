@@ -13,6 +13,7 @@
 #![unstable(feature = "thread_local_internals", issue = "none")]
 #![allow(dead_code)]
 
+use crate::cell::RefCell;
 use crate::ptr;
 use crate::sys_common::thread_local_key::StaticKey;
 
@@ -28,17 +29,23 @@ pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut
     // flagged for destruction.
 
     static DTORS: StaticKey = StaticKey::new(Some(run_dtors));
-    type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
+    // FIXME(joboet): integrate RefCell into pointer to avoid infinite recursion
+    // when the global allocator tries to register a destructor and just panic
+    // instead.
+    type List = RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>>;
     if DTORS.get().is_null() {
-        let v: Box<List> = Box::new(Vec::new());
+        let v: Box<List> = Box::new(RefCell::new(Vec::new()));
         DTORS.set(Box::into_raw(v) as *mut u8);
     }
-    let list: &mut List = &mut *(DTORS.get() as *mut List);
-    list.push((t, dtor));
+    let list = &*(DTORS.get() as *const List);
+    match list.try_borrow_mut() {
+        Ok(mut dtors) => dtors.push((t, dtor)),
+        Err(_) => rtabort!("global allocator may not use TLS"),
+    }
 
     unsafe extern "C" fn run_dtors(mut ptr: *mut u8) {
         while !ptr.is_null() {
-            let list: Box<List> = Box::from_raw(ptr as *mut List);
+            let list = Box::from_raw(ptr as *mut List).into_inner();
             for (ptr, dtor) in list.into_iter() {
                 dtor(ptr);
             }

@@ -8,7 +8,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _2 = const {alloc1: &&[(Option<i32>, &[&u8])]};
+        _2 = const {ALLOC9: &&[(Option<i32>, &[&u8])]};
         _1 = (*_2);
         StorageDead(_2);
         StorageDead(_1);
@@ -17,42 +17,42 @@ fn main() -> () {
     }
 }
 
-alloc1 (static: FOO, size: 8, align: 4) {
-    ╾─alloc23─╼ 03 00 00 00                         │ ╾──╼....
+ALLOC9 (static: FOO, size: 8, align: 4) {
+    ╾ALLOC0╼ 03 00 00 00                         │ ╾──╼....
 }
 
-alloc23 (size: 48, align: 4) {
-    0x00 │ 00 00 00 00 __ __ __ __ ╾─alloc10─╼ 00 00 00 00 │ ....░░░░╾──╼....
-    0x10 │ 00 00 00 00 __ __ __ __ ╾─alloc15─╼ 02 00 00 00 │ ....░░░░╾──╼....
-    0x20 │ 01 00 00 00 2a 00 00 00 ╾─alloc21─╼ 03 00 00 00 │ ....*...╾──╼....
+ALLOC0 (size: 48, align: 4) {
+    0x00 │ 00 00 00 00 __ __ __ __ ╾ALLOC1╼ 00 00 00 00 │ ....░░░░╾──╼....
+    0x10 │ 00 00 00 00 __ __ __ __ ╾ALLOC2╼ 02 00 00 00 │ ....░░░░╾──╼....
+    0x20 │ 01 00 00 00 2a 00 00 00 ╾ALLOC3╼ 03 00 00 00 │ ....*...╾──╼....
 }
 
-alloc10 (size: 0, align: 4) {}
+ALLOC1 (size: 0, align: 4) {}
 
-alloc15 (size: 8, align: 4) {
-    ╾─alloc13─╼ ╾─alloc14─╼                         │ ╾──╼╾──╼
+ALLOC2 (size: 8, align: 4) {
+    ╾ALLOC4╼ ╾ALLOC5╼                         │ ╾──╼╾──╼
 }
 
-alloc13 (size: 1, align: 1) {
+ALLOC4 (size: 1, align: 1) {
     05                                              │ .
 }
 
-alloc14 (size: 1, align: 1) {
+ALLOC5 (size: 1, align: 1) {
     06                                              │ .
 }
 
-alloc21 (size: 12, align: 4) {
-    ╾─a18+0x3─╼ ╾─alloc19─╼ ╾─a20+0x2─╼             │ ╾──╼╾──╼╾──╼
+ALLOC3 (size: 12, align: 4) {
+    ╾ALLOC6+0x3╼ ╾ALLOC7╼ ╾ALLOC8+0x2╼             │ ╾──╼╾──╼╾──╼
 }
 
-alloc18 (size: 4, align: 1) {
+ALLOC6 (size: 4, align: 1) {
     2a 45 15 6f                                     │ *E.o
 }
 
-alloc19 (size: 1, align: 1) {
+ALLOC7 (size: 1, align: 1) {
     2a                                              │ *
 }
 
-alloc20 (size: 4, align: 1) {
+ALLOC8 (size: 4, align: 1) {
     2a 45 15 6f                                     │ *E.o
 }
