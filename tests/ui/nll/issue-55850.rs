@@ -2,15 +2,15 @@
 #![feature(generators, generator_trait)]
 
 use std::marker::Unpin;
-use std::ops::Generator;
-use std::ops::GeneratorState::Yielded;
+use std::ops::Coroutine;
+use std::ops::CoroutineState::Yielded;
 use std::pin::Pin;
 
 pub struct GenIter<G>(G);
 
 impl <G> Iterator for GenIter<G>
 where
-    G: Generator + Unpin,
+    G: Coroutine + Unpin,
 {
     type Item = G::Yield;
 

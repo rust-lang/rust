@@ -63,7 +63,7 @@ pub struct RustCallIncorrectArgs {
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_yield_expr_outside_of_generator, code = "E0627")]
-pub struct YieldExprOutsideOfGenerator {
+pub struct YieldExprOutsideOfCoroutine {
     #[primary_span]
     pub span: Span,
 }

@@ -530,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for &(expr_def_id, body_id, interior, _) in generators.iter() {
             debug!(?expr_def_id);
 
-            // Create the `GeneratorWitness` type that we will unify with `interior`.
+            // Create the `CoroutineWitness` type that we will unify with `interior`.
             let args = ty::GenericArgs::identity_for_item(
                 self.tcx,
                 self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),

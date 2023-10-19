@@ -655,7 +655,7 @@ impl WriteInfo {
                 // `Drop`s create a `&mut` and so are not considered
             }
             TerminatorKind::Yield { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
                 bug!("{:?} not found in this MIR phase", terminator)

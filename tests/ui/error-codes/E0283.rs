@@ -1,10 +1,10 @@
-trait Generator {
+trait Coroutine {
     fn create() -> u32;
 }
 
 struct Impl;
 
-impl Generator for Impl {
+impl Coroutine for Impl {
     fn create() -> u32 { 1 }
 }
 
@@ -22,12 +22,12 @@ fn foo(bar: u32) {}
 
 struct AnotherImpl;
 
-impl Generator for AnotherImpl {
+impl Coroutine for AnotherImpl {
     fn create() -> u32 { 2 }
 }
 
 fn main() {
-    let cont: u32 = Generator::create(); //~ ERROR E0790
+    let cont: u32 = Coroutine::create(); //~ ERROR E0790
 }
 
 fn buzz() {

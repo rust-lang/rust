@@ -12,7 +12,7 @@
 use std::arch::x86_64::*;
 use std::hint::black_box;
 use std::io::Write;
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 fn main() {
     println!("{:?}", std::env::args().collect::<Vec<_>>());

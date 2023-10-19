@@ -1,6 +1,6 @@
 //! Code for type-checking closure expressions.
 
-use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
+use super::{check_fn, CoroutineTypes, Expectation, FnCtxt};
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -105,11 +105,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: self.tcx.def_span(expr_def_id),
         });
 
-        if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
+        if let Some(CoroutineTypes { resume_ty, yield_ty, interior, movability }) = generator_types
         {
-            let generator_args = ty::GeneratorArgs::new(
+            let generator_args = ty::CoroutineArgs::new(
                 self.tcx,
-                ty::GeneratorArgsParts {
+                ty::CoroutineArgsParts {
                     parent_args,
                     resume_ty,
                     yield_ty,
@@ -310,10 +310,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
+        // Check that we deduce the signature from the `<_ as std::ops::Coroutine>::Return`
         // associated item and not yield.
         if is_gen && self.tcx.associated_item(projection.projection_def_id()).name != sym::Return {
-            debug!("not `Return` assoc item of `Generator`");
+            debug!("not `Return` assoc item of `Coroutine`");
             return None;
         }
 
@@ -327,7 +327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => return None,
             }
         } else {
-            // Generators with a `()` resume type may be defined with 0 or 1 explicit arguments,
+            // Coroutines with a `()` resume type may be defined with 0 or 1 explicit arguments,
             // else they must have exactly 1 argument. For now though, just give up in this case.
             return None;
         };
@@ -636,7 +636,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
                 // function.
-                Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn)) => {
+                Some(hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Fn)) => {
                     debug!("closure is async fn body");
                     let def_id = self.tcx.hir().body_owner_def_id(body.id());
                     self.deduce_future_output_from_obligations(expr_def_id, def_id).unwrap_or_else(

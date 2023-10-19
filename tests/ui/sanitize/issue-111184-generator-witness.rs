@@ -1,4 +1,4 @@
-// Regression test for issue 111184, where ty::GeneratorWitness were not expected to occur in
+// Regression test for issue 111184, where ty::CoroutineWitness were not expected to occur in
 // encode_ty and caused the compiler to ICE.
 //
 // needs-sanitizer-cfi

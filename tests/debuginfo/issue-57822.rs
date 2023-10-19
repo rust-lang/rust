@@ -29,7 +29,7 @@
 #![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
 #![omit_gdb_pretty_printer_section]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn main() {

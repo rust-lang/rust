@@ -22,7 +22,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
+use rustc_hir::{AsyncCoroutineKind, CoroutineKind, Node};
 use rustc_hir::{Expr, HirId};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -47,7 +47,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 
 #[derive(Debug)]
-pub enum GeneratorInteriorOrUpvar {
+pub enum CoroutineInteriorOrUpvar {
     // span of interior type
     Interior(Span, Option<(Span, Option<Span>)>),
     // span of upvar
@@ -57,9 +57,9 @@ pub enum GeneratorInteriorOrUpvar {
 // This type provides a uniform interface to retrieve data on generators, whether it originated from
 // the local crate being compiled or from a foreign crate.
 #[derive(Debug)]
-struct GeneratorData<'tcx, 'a>(&'a TypeckResults<'tcx>);
+struct CoroutineData<'tcx, 'a>(&'a TypeckResults<'tcx>);
 
-impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
+impl<'tcx, 'a> CoroutineData<'tcx, 'a> {
     /// Try to get information about variables captured by the generator that matches a type we are
     /// looking for with `ty_matches` function. We uses it to find upvar which causes a failure to
     /// meet an obligation
@@ -68,7 +68,7 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
         infer_context: &InferCtxt<'tcx>,
         generator_did: DefId,
         ty_matches: F,
-    ) -> Option<GeneratorInteriorOrUpvar>
+    ) -> Option<CoroutineInteriorOrUpvar>
     where
         F: Fn(ty::Binder<'tcx, Ty<'tcx>>) -> bool,
     {
@@ -77,7 +77,7 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
                 let upvar_ty = self.0.node_type(*upvar_id);
                 let upvar_ty = infer_context.resolve_vars_if_possible(upvar_ty);
                 ty_matches(ty::Binder::dummy(upvar_ty))
-                    .then(|| GeneratorInteriorOrUpvar::Upvar(upvar.span))
+                    .then(|| CoroutineInteriorOrUpvar::Upvar(upvar.span))
             })
         })
     }
@@ -244,7 +244,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     fn note_obligation_cause_for_async_await(
         &self,
         err: &mut Diagnostic,
-        interior_or_upvar_span: GeneratorInteriorOrUpvar,
+        interior_or_upvar_span: CoroutineInteriorOrUpvar,
         is_async: bool,
         outer_generator: Option<DefId>,
         trait_pred: ty::TraitPredicate<'tcx>,
@@ -1982,7 +1982,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let argument_kind = match expected.skip_binder().self_ty().kind() {
             ty::Closure(..) => "closure",
-            ty::Generator(..) => "generator",
+            ty::Coroutine(..) => "generator",
             _ => "function",
         };
         let mut err = struct_span_err!(
@@ -2190,7 +2190,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Generator(did, ..) | ty::GeneratorWitness(did, _) => {
+                        ty::Coroutine(did, ..) | ty::CoroutineWitness(did, _) => {
                             generator = generator.or(Some(did));
                             outer_generator = Some(did);
                         }
@@ -2219,7 +2219,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Generator(did, ..) | ty::GeneratorWitness(did, ..) => {
+                        ty::Coroutine(did, ..) | ty::CoroutineWitness(did, ..) => {
                             generator = generator.or(Some(did));
                             outer_generator = Some(did);
                         }
@@ -2299,9 +2299,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // cycles. If we can't use resolved types because the generator comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
         let generator_data = match &self.typeck_results {
-            Some(t) if t.hir_owner.to_def_id() == generator_did_root => GeneratorData(&t),
+            Some(t) if t.hir_owner.to_def_id() == generator_did_root => CoroutineData(&t),
             _ if generator_did.is_local() => {
-                GeneratorData(self.tcx.typeck(generator_did.expect_local()))
+                CoroutineData(self.tcx.typeck(generator_did.expect_local()))
             }
             _ => return false,
         };
@@ -2331,7 +2331,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let decl = &generator_info.field_tys[local];
                     debug!(?decl);
                     if ty_matches(ty::Binder::dummy(decl.ty)) && !decl.ignore_for_traits {
-                        interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(
+                        interior_or_upvar_span = Some(CoroutineInteriorOrUpvar::Interior(
                             decl.source_info.span,
                             Some((source_info.span, from_awaited_ty)),
                         ));
@@ -2347,7 +2347,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         if interior_or_upvar_span.is_none() && !generator_did.is_local() {
-            interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(span, None));
+            interior_or_upvar_span = Some(CoroutineInteriorOrUpvar::Interior(span, None));
         }
 
         debug!(?interior_or_upvar_span);
@@ -2375,7 +2375,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn note_obligation_cause_for_async_await(
         &self,
         err: &mut Diagnostic,
-        interior_or_upvar_span: GeneratorInteriorOrUpvar,
+        interior_or_upvar_span: CoroutineInteriorOrUpvar,
         is_async: bool,
         outer_generator: Option<DefId>,
         trait_pred: ty::TraitPredicate<'tcx>,
@@ -2409,8 +2409,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let message = outer_generator
                 .and_then(|generator_did| {
                     Some(match self.tcx.generator_kind(generator_did).unwrap() {
-                        GeneratorKind::Gen => format!("generator is not {trait_name}"),
-                        GeneratorKind::Async(AsyncGeneratorKind::Fn) => self
+                        CoroutineKind::Gen => format!("generator is not {trait_name}"),
+                        CoroutineKind::Async(AsyncCoroutineKind::Fn) => self
                             .tcx
                             .parent(generator_did)
                             .as_local()
@@ -2419,10 +2419,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .map(|name| {
                                 format!("future returned by `{name}` is not {trait_name}")
                             })?,
-                        GeneratorKind::Async(AsyncGeneratorKind::Block) => {
+                        CoroutineKind::Async(AsyncCoroutineKind::Block) => {
                             format!("future created by async block is not {trait_name}")
                         }
-                        GeneratorKind::Async(AsyncGeneratorKind::Closure) => {
+                        CoroutineKind::Async(AsyncCoroutineKind::Closure) => {
                             format!("future created by async closure is not {trait_name}")
                         }
                     })
@@ -2475,7 +2475,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             );
         };
         match interior_or_upvar_span {
-            GeneratorInteriorOrUpvar::Interior(interior_span, interior_extra_info) => {
+            CoroutineInteriorOrUpvar::Interior(interior_span, interior_extra_info) => {
                 if let Some((yield_span, from_awaited_ty)) = interior_extra_info {
                     if let Some(await_span) = from_awaited_ty {
                         // The type causing this obligation is one being awaited at await_span.
@@ -2498,7 +2498,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 }
             }
-            GeneratorInteriorOrUpvar::Upvar(upvar_span) => {
+            CoroutineInteriorOrUpvar::Upvar(upvar_span) => {
                 // `Some((ref_ty, is_mut))` if `target_ty` is `&T` or `&mut T` and fails to impl `Send`
                 let non_send = match target_ty.kind() {
                     ty::Ref(_, ref_ty, mutability) => match self.evaluate_obligation(&obligation) {
@@ -2880,10 +2880,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     err.span_label(span, "this closure captures all values by move");
                 }
             }
-            ObligationCauseCode::SizedGeneratorInterior(generator_def_id) => {
+            ObligationCauseCode::SizedCoroutineInterior(generator_def_id) => {
                 let what = match self.tcx.generator_kind(generator_def_id) {
-                    None | Some(hir::GeneratorKind::Gen) => "yield",
-                    Some(hir::GeneratorKind::Async(..)) => "await",
+                    None | Some(hir::CoroutineKind::Gen) => "yield",
+                    Some(hir::CoroutineKind::Async(..)) => "await",
                 };
                 err.note(format!(
                     "all values live across `{what}` must have a statically known size"
@@ -2905,7 +2905,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     return;
                 }
 
-                // If the obligation for a tuple is set directly by a Generator or Closure,
+                // If the obligation for a tuple is set directly by a Coroutine or Closure,
                 // then the tuple must be the one containing capture types.
                 let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
                     false
@@ -2915,7 +2915,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let parent_trait_ref =
                             self.resolve_vars_if_possible(data.parent_trait_pred);
                         let nested_ty = parent_trait_ref.skip_binder().self_ty();
-                        matches!(nested_ty.kind(), ty::Generator(..))
+                        matches!(nested_ty.kind(), ty::Coroutine(..))
                             || matches!(nested_ty.kind(), ty::Closure(..))
                     } else {
                         false
@@ -2935,7 +2935,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             },
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
                                 // If the previous type is async fn, this is the future generated by the body of an async function.
-                                // Avoid printing it twice (it was already printed in the `ty::Generator` arm below).
+                                // Avoid printing it twice (it was already printed in the `ty::Coroutine` arm below).
                                 let is_future = tcx.ty_is_opaque_future(ty);
                                 debug!(
                                     ?obligated_types,
@@ -2944,7 +2944,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 );
                                 if is_future
                                     && obligated_types.last().is_some_and(|ty| match ty.kind() {
-                                        ty::Generator(last_def_id, ..) => {
+                                        ty::Coroutine(last_def_id, ..) => {
                                             tcx.generator_is_async(*last_def_id)
                                         }
                                         _ => false,
@@ -2954,7 +2954,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                                 err.span_note(self.tcx.def_span(def_id), msg)
                             }
-                            ty::GeneratorWitness(def_id, args) => {
+                            ty::CoroutineWitness(def_id, args) => {
                                 use std::fmt::Write;
 
                                 // FIXME: this is kind of an unusual format for rustc, can we make it more clear?
@@ -2968,7 +2968,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                                 err.note(msg.trim_end_matches(", ").to_string())
                             }
-                            ty::Generator(def_id, _, _) => {
+                            ty::Coroutine(def_id, _, _) => {
                                 let sp = self.tcx.def_span(def_id);
 
                                 // Special-case this to say "async block" instead of `[static generator]`.
@@ -3271,7 +3271,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) {
         if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) {
             let body = self.tcx.hir().body(body_id);
-            if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
+            if let Some(hir::CoroutineKind::Async(_)) = body.generator_kind {
                 let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
 
                 let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());

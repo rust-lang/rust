@@ -36,12 +36,12 @@ LL |     || {
 note: required because it appears within the type `Opaque(DefId(0:35 ~ generator_print_verbose_1[7d1d]::make_gen2::{opaque#0}), [Arc<RefCell<i32>>])`
   --> $DIR/generator-print-verbose-1.rs:41:30
    |
-LL | pub fn make_gen2<T>(t: T) -> impl Generator<Return = T> {
+LL | pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required because it appears within the type `Opaque(DefId(0:36 ~ generator_print_verbose_1[7d1d]::make_non_send_generator2::{opaque#0}), [])`
   --> $DIR/generator-print-verbose-1.rs:47:34
    |
-LL | fn make_non_send_generator2() -> impl Generator<Return = Arc<RefCell<i32>>> {
+LL | fn make_non_send_generator2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: required because it captures the following types: `Opaque(DefId(0:36 ~ generator_print_verbose_1[7d1d]::make_non_send_generator2::{opaque#0}), [])`
 note: required because it's used within this generator

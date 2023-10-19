@@ -3,9 +3,9 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn f<G: Generator>(_: G, _: G::Return) {}
+fn f<G: Coroutine>(_: G, _: G::Return) {}
 
 fn main() {
     f(

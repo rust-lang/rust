@@ -2,7 +2,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn main() {

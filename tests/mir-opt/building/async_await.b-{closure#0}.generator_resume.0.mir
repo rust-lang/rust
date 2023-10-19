@@ -1,14 +1,14 @@
 // MIR for `b::{closure#0}` 0 generator_resume
-/* generator_layout = GeneratorLayout {
+/* generator_layout = CoroutineLayout {
     field_tys: {
-        _0: GeneratorSavedTy {
-            ty: Generator(
+        _0: CoroutineSavedTy {
+            ty: Coroutine(
                 DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
                 [
                 std::future::ResumeTy,
                 (),
                 (),
-                GeneratorWitness(DefId(0:4 ~ async_await[ccf8]::a::{closure#0}), []),
+                CoroutineWitness(DefId(0:4 ~ async_await[ccf8]::a::{closure#0}), []),
                 (),
                 ],
                 Static,
@@ -19,14 +19,14 @@
             },
             ignore_for_traits: false,
         },
-        _1: GeneratorSavedTy {
-            ty: Generator(
+        _1: CoroutineSavedTy {
+            ty: Coroutine(
                 DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
                 [
                 std::future::ResumeTy,
                 (),
                 (),
-                GeneratorWitness(DefId(0:4 ~ async_await[ccf8]::a::{closure#0}), []),
+                CoroutineWitness(DefId(0:4 ~ async_await[ccf8]::a::{closure#0}), []),
                 (),
                 ],
                 Static,

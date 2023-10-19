@@ -763,7 +763,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if the node pointed to by `def_id` is a generator for an async construct.
     pub fn generator_is_async(self, def_id: DefId) -> bool {
-        matches!(self.generator_kind(def_id), Some(hir::GeneratorKind::Async(_)))
+        matches!(self.generator_kind(def_id), Some(hir::CoroutineKind::Async(_)))
     }
 
     pub fn stability(self) -> &'tcx stability::Index {
@@ -1382,8 +1382,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     FnDef,
                     FnPtr,
                     Placeholder,
-                    Generator,
-                    GeneratorWitness,
+                    Coroutine,
+                    CoroutineWitness,
                     Dynamic,
                     Closure,
                     Tuple,

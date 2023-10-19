@@ -392,8 +392,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::FnPtr(..)
                 | ty::Closure(..)
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-                | ty::Generator(..)
-                | ty::GeneratorWitness(..)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
                 | ty::Never
                 | ty::Foreign(..) => tcx.types.unit,
 
@@ -459,11 +459,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Generator(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
-        // Generators are not futures unless they come from `async` desugaring
+        // Coroutines are not futures unless they come from `async` desugaring
         let tcx = ecx.tcx();
         if !tcx.generator_is_async(def_id) {
             return Err(NoSolution);
@@ -490,7 +490,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Generator(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -508,7 +508,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         } else if name == sym::Yield {
             generator.yield_ty().into()
         } else {
-            bug!("unexpected associated item `<{self_ty} as Generator>::{name}`")
+            bug!("unexpected associated item `<{self_ty} as Coroutine>::{name}`")
         };
 
         Self::consider_implied_clause(
@@ -561,8 +561,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             | ty::FnPtr(..)
             | ty::Closure(..)
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Foreign(..)
             | ty::Adt(_, _)

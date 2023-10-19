@@ -521,8 +521,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             }
             ty::Alias(..)
             | ty::Closure(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Dynamic(..)
             | ty::Param(_)
             | ty::Bound(..)
@@ -1918,7 +1918,7 @@ fn resolution_failure(
                             Variant
                             | Field
                             | Closure
-                            | Generator
+                            | Coroutine
                             | AssocTy
                             | AssocConst
                             | AssocFn

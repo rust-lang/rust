@@ -323,7 +323,7 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         | DefKind::GlobalAsm
         | DefKind::Impl { .. } => {}
         // Closures and generators are type checked with their parent, so there is no difference here.
-        DefKind::Closure | DefKind::Generator | DefKind::InlineConst => {
+        DefKind::Closure | DefKind::Coroutine | DefKind::InlineConst => {
             return tcx.opaque_types_defined_by(tcx.local_parent(item));
         }
     }

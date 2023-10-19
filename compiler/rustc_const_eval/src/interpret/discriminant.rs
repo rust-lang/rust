@@ -170,7 +170,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::Adt(adt, _) => {
                         adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
-                    ty::Generator(def_id, args, _) => {
+                    ty::Coroutine(def_id, args, _) => {
                         let args = args.as_generator();
                         args.discriminants(def_id, *self.tcx).find(|(_, var)| var.val == discr_bits)
                     }

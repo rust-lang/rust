@@ -809,7 +809,7 @@ where
                 | ty::FnPtr(_)
                 | ty::Never
                 | ty::FnDef(..)
-                | ty::GeneratorWitness(..)
+                | ty::CoroutineWitness(..)
                 | ty::Foreign(..)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
@@ -905,7 +905,7 @@ where
                     i,
                 ),
 
-                ty::Generator(def_id, ref args, _) => match this.variants {
+                ty::Coroutine(def_id, ref args, _) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_generator()
                             .state_tys(def_id, tcx)

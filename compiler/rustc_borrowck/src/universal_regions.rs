@@ -94,7 +94,7 @@ pub enum DefiningTy<'tcx> {
     /// The MIR is a generator. The signature is that generators take
     /// no parameters and return the result of
     /// `ClosureArgs::generator_return_ty`.
-    Generator(DefId, GenericArgsRef<'tcx>, hir::Movability),
+    Coroutine(DefId, GenericArgsRef<'tcx>, hir::Movability),
 
     /// The MIR is a fn item with the given `DefId` and args. The signature
     /// of the function can be bound then with the `fn_sig` query.
@@ -118,7 +118,7 @@ impl<'tcx> DefiningTy<'tcx> {
     pub fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
         match self {
             DefiningTy::Closure(_, args) => args.as_closure().upvar_tys(),
-            DefiningTy::Generator(_, args, _) => args.as_generator().upvar_tys(),
+            DefiningTy::Coroutine(_, args, _) => args.as_generator().upvar_tys(),
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => {
                 ty::List::empty()
             }
@@ -130,7 +130,7 @@ impl<'tcx> DefiningTy<'tcx> {
     /// user's code.
     pub fn implicit_inputs(self) -> usize {
         match self {
-            DefiningTy::Closure(..) | DefiningTy::Generator(..) => 1,
+            DefiningTy::Closure(..) | DefiningTy::Coroutine(..) => 1,
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => 0,
         }
     }
@@ -146,7 +146,7 @@ impl<'tcx> DefiningTy<'tcx> {
     pub fn def_id(&self) -> DefId {
         match *self {
             DefiningTy::Closure(def_id, ..)
-            | DefiningTy::Generator(def_id, ..)
+            | DefiningTy::Coroutine(def_id, ..)
             | DefiningTy::FnDef(def_id, ..)
             | DefiningTy::Const(def_id, ..)
             | DefiningTy::InlineConst(def_id, ..) => def_id,
@@ -354,7 +354,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                     err.note(format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
-            DefiningTy::Generator(def_id, args, _) => {
+            DefiningTy::Coroutine(def_id, args, _) => {
                 let v = with_no_trimmed_paths!(
                     args[tcx.generics_of(def_id).parent_count..]
                         .iter()
@@ -528,7 +528,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         debug!("build: local regions  = {}..{}", first_local_index, num_universals);
 
         let yield_ty = match defining_ty {
-            DefiningTy::Generator(_, args, _) => Some(args.as_generator().yield_ty()),
+            DefiningTy::Coroutine(_, args, _) => Some(args.as_generator().yield_ty()),
             _ => None,
         };
 
@@ -563,8 +563,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 match *defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
-                    ty::Generator(def_id, args, movability) => {
-                        DefiningTy::Generator(def_id, args, movability)
+                    ty::Coroutine(def_id, args, movability) => {
+                        DefiningTy::Coroutine(def_id, args, movability)
                     }
                     ty::FnDef(def_id, args) => DefiningTy::FnDef(def_id, args),
                     _ => span_bug!(
@@ -621,7 +621,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
         let fr_args = match defining_ty {
             DefiningTy::Closure(_, args)
-            | DefiningTy::Generator(_, args, _)
+            | DefiningTy::Coroutine(_, args, _)
             | DefiningTy::InlineConst(_, args) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureArgs are
@@ -686,7 +686,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 )
             }
 
-            DefiningTy::Generator(def_id, args, movability) => {
+            DefiningTy::Coroutine(def_id, args, movability) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let resume_ty = args.as_generator().resume_ty();
                 let output = args.as_generator().return_ty();

@@ -56,12 +56,12 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::Closure(_, ref args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Generator(_, ref args, _) => {
+        ty::Coroutine(_, ref args, _) => {
             let generator_args = args.as_generator();
             Ok(vec![generator_args.tupled_upvars_ty(), generator_args.witness()])
         }
 
-        ty::GeneratorWitness(def_id, args) => Ok(ecx
+        ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
             .generator_hidden_types(def_id)
             .map(|bty| {
@@ -122,8 +122,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::RawPtr(..)
         | ty::Char
         | ty::Ref(..)
-        | ty::Generator(..)
-        | ty::GeneratorWitness(..)
+        | ty::Coroutine(..)
+        | ty::CoroutineWitness(..)
         | ty::Array(..)
         | ty::Closure(..)
         | ty::Never
@@ -174,7 +174,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::Dynamic(..)
         | ty::Str
         | ty::Slice(_)
-        | ty::Generator(_, _, Movability::Static)
+        | ty::Coroutine(_, _, Movability::Static)
         | ty::Foreign(..)
         | ty::Ref(_, _, Mutability::Mut)
         | ty::Adt(_, _)
@@ -191,7 +191,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Generator(_, args, Movability::Movable) => {
+        ty::Coroutine(_, args, Movability::Movable) => {
             if ecx.tcx().features().generator_clone {
                 let generator = args.as_generator();
                 Ok(vec![generator.tupled_upvars_ty(), generator.witness()])
@@ -200,7 +200,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
             }
         }
 
-        ty::GeneratorWitness(def_id, args) => Ok(ecx
+        ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
             .generator_hidden_types(def_id)
             .map(|bty| {
@@ -275,8 +275,8 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::RawPtr(_)
         | ty::Ref(_, _, _)
         | ty::Dynamic(_, _, _)
-        | ty::Generator(_, _, _)
-        | ty::GeneratorWitness(..)
+        | ty::Coroutine(_, _, _)
+        | ty::CoroutineWitness(..)
         | ty::Never
         | ty::Tuple(_)
         | ty::Alias(_, _)

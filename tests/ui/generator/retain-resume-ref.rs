@@ -4,8 +4,8 @@
 
 use std::marker::Unpin;
 use std::ops::{
-    Generator,
-    GeneratorState::{self, *},
+    Coroutine,
+    CoroutineState::{self, *},
 };
 use std::pin::Pin;
 

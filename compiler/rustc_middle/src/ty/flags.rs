@@ -111,7 +111,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
-            ty::Generator(_, args, _) => {
+            ty::Coroutine(_, args, _) => {
                 let args = args.as_generator();
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
@@ -127,7 +127,7 @@ impl FlagComputation {
                 self.add_ty(args.tupled_upvars_ty());
             }
 
-            ty::GeneratorWitness(_, args) => {
+            ty::CoroutineWitness(_, args) => {
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 self.add_args(args);

@@ -16,7 +16,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 const FOO_SIZE: usize = 1024;
 struct Foo(#[allow(unused_tuple_struct_fields)] [u8; FOO_SIZE]);
@@ -25,7 +25,7 @@ impl Drop for Foo {
     fn drop(&mut self) {}
 }
 
-fn move_before_yield() -> impl Generator<Yield = (), Return = ()> {
+fn move_before_yield() -> impl Coroutine<Yield = (), Return = ()> {
     static || {
         let first = Foo([0; FOO_SIZE]);
         let _second = first;
@@ -36,7 +36,7 @@ fn move_before_yield() -> impl Generator<Yield = (), Return = ()> {
 
 fn noop() {}
 
-fn move_before_yield_with_noop() -> impl Generator<Yield = (), Return = ()> {
+fn move_before_yield_with_noop() -> impl Coroutine<Yield = (), Return = ()> {
     static || {
         let first = Foo([0; FOO_SIZE]);
         noop();
@@ -48,7 +48,7 @@ fn move_before_yield_with_noop() -> impl Generator<Yield = (), Return = ()> {
 
 // Today we don't have NRVO (we allocate space for both `first` and `second`,)
 // but we can overlap `first` with `_third`.
-fn overlap_move_points() -> impl Generator<Yield = (), Return = ()> {
+fn overlap_move_points() -> impl Coroutine<Yield = (), Return = ()> {
     static || {
         let first = Foo([0; FOO_SIZE]);
         yield;
@@ -59,7 +59,7 @@ fn overlap_move_points() -> impl Generator<Yield = (), Return = ()> {
     }
 }
 
-fn overlap_x_and_y() -> impl Generator<Yield = (), Return = ()> {
+fn overlap_x_and_y() -> impl Coroutine<Yield = (), Return = ()> {
     static || {
         let x = Foo([0; FOO_SIZE]);
         yield;

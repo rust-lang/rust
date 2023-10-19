@@ -8,7 +8,7 @@
 #![feature(generators, generator_trait)]
 
 use std::{
-    ops::Generator,
+    ops::Coroutine,
     pin::Pin,
     panic,
 };

@@ -6,7 +6,7 @@
 use std::mem::size_of_val;
 
 fn main() {
-    // Generator taking a `Copy`able resume arg.
+    // Coroutine taking a `Copy`able resume arg.
     let gen_copy = |mut x: usize| {
         loop {
             drop(x);
@@ -14,7 +14,7 @@ fn main() {
         }
     };
 
-    // Generator taking a non-`Copy` resume arg.
+    // Coroutine taking a non-`Copy` resume arg.
     let gen_move = |mut x: Box<usize>| {
         loop {
             drop(x);

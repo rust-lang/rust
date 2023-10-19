@@ -4,9 +4,9 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn generator<const C: usize>(array: [u8; C]) -> impl Generator<Yield = (), Return = ()> {
+fn generator<const C: usize>(array: [u8; C]) -> impl Coroutine<Yield = (), Return = ()> {
     move |()| {
         yield ();
         let _ = array;

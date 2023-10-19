@@ -10,7 +10,7 @@ note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-68112.rs:36:9
    |
 LL |         let _non_send_gen = make_non_send_generator();
-   |             ------------- has type `impl Generator<Return = Arc<RefCell<i32>>>` which is not `Send`
+   |             ------------- has type `impl Coroutine<Return = Arc<RefCell<i32>>>` which is not `Send`
 LL |
 LL |         yield;
    |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
@@ -34,17 +34,17 @@ note: required because it's used within this generator
    |
 LL |     || {
    |     ^^
-note: required because it appears within the type `impl Generator<Return = Arc<RefCell<i32>>>`
+note: required because it appears within the type `impl Coroutine<Return = Arc<RefCell<i32>>>`
   --> $DIR/issue-68112.rs:46:30
    |
-LL | pub fn make_gen2<T>(t: T) -> impl Generator<Return = T> {
+LL | pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required because it appears within the type `impl Generator<Return = Arc<RefCell<i32>>>`
+note: required because it appears within the type `impl Coroutine<Return = Arc<RefCell<i32>>>`
   --> $DIR/issue-68112.rs:54:34
    |
-LL | fn make_non_send_generator2() -> impl Generator<Return = Arc<RefCell<i32>>> {
+LL | fn make_non_send_generator2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: required because it captures the following types: `impl Generator<Return = Arc<RefCell<i32>>>`
+   = note: required because it captures the following types: `impl Coroutine<Return = Arc<RefCell<i32>>>`
 note: required because it's used within this generator
   --> $DIR/issue-68112.rs:60:20
    |

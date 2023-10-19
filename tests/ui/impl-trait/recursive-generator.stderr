@@ -1,7 +1,7 @@
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-generator.rs:5:13
    |
-LL | fn foo() -> impl Generator<Yield = (), Return = ()> {
+LL | fn foo() -> impl Coroutine<Yield = (), Return = ()> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive opaque type
 ...
 LL |         let mut gen = Box::pin(foo());

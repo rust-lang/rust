@@ -83,7 +83,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_closure)
             }
 
-            GeneratorCandidate => {
+            CoroutineCandidate => {
                 let vtable_generator = self.confirm_generator_candidate(obligation)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_generator)
             }
@@ -719,7 +719,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Generator(generator_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(generator_def_id, args, _) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -758,7 +758,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Generator(generator_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(generator_def_id, args, _) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -1234,11 +1234,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::Closure(_, args) => {
                     stack.push(args.as_closure().tupled_upvars_ty());
                 }
-                ty::Generator(_, args, _) => {
+                ty::Coroutine(_, args, _) => {
                     let generator = args.as_generator();
                     stack.extend([generator.tupled_upvars_ty(), generator.witness()]);
                 }
-                ty::GeneratorWitness(def_id, args) => {
+                ty::CoroutineWitness(def_id, args) => {
                     let tcx = self.tcx();
                     stack.extend(tcx.generator_hidden_types(def_id).map(|bty| {
                         let ty = bty.instantiate(tcx, args);

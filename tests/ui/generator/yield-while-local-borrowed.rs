@@ -1,7 +1,7 @@
 #![feature(generators, generator_trait)]
 
-use std::ops::{GeneratorState, Generator};
 use std::cell::Cell;
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn borrow_local_inline() {
@@ -12,7 +12,7 @@ fn borrow_local_inline() {
     let mut b = move || {
         let a = &mut 3;
         //~^ ERROR borrow may still be in use when generator yields
-        yield();
+        yield ();
         println!("{}", a);
     };
     Pin::new(&mut b).resume(());
@@ -24,7 +24,7 @@ fn borrow_local_inline_done() {
         {
             let a = &mut 3;
         }
-        yield();
+        yield ();
     };
     Pin::new(&mut b).resume(());
 }
@@ -39,11 +39,11 @@ fn borrow_local() {
         {
             let b = &a;
             //~^ ERROR borrow may still be in use when generator yields
-            yield();
+            yield ();
             println!("{}", b);
         }
     };
     Pin::new(&mut b).resume(());
 }
 
-fn main() { }
+fn main() {}

@@ -1,5 +1,5 @@
 // MIR for `a::{closure#0}` 0 generator_resume
-/* generator_layout = GeneratorLayout {
+/* generator_layout = CoroutineLayout {
     field_tys: {},
     variant_fields: {
         Unresumed(0): [],

@@ -1,7 +1,7 @@
 // MIR for `main::{closure#0}` 0 generator_resume
-/* generator_layout = GeneratorLayout {
+/* generator_layout = CoroutineLayout {
     field_tys: {
-        _0: GeneratorSavedTy {
+        _0: CoroutineSavedTy {
             ty: HasDrop,
             source_info: SourceInfo {
                 span: $DIR/generator_tiny.rs:21:13: 21:15 (#0),
@@ -21,9 +21,9 @@
     },
 } */
 
-fn main::{closure#0}(_1: Pin<&mut {generator@$DIR/generator_tiny.rs:20:16: 20:24}>, _2: u8) -> GeneratorState<(), ()> {
+fn main::{closure#0}(_1: Pin<&mut {generator@$DIR/generator_tiny.rs:20:16: 20:24}>, _2: u8) -> CoroutineState<(), ()> {
     debug _x => _10;
-    let mut _0: std::ops::GeneratorState<(), ()>;
+    let mut _0: std::ops::CoroutineState<(), ()>;
     let _3: HasDrop;
     let mut _4: !;
     let mut _5: ();
@@ -54,7 +54,7 @@ fn main::{closure#0}(_1: Pin<&mut {generator@$DIR/generator_tiny.rs:20:16: 20:24
         StorageLive(_6);
         StorageLive(_7);
         _7 = ();
-        _0 = GeneratorState::<(), ()>::Yielded(move _7);
+        _0 = CoroutineState::<(), ()>::Yielded(move _7);
         discriminant((*(_1.0: &mut {generator@$DIR/generator_tiny.rs:20:16: 20:24}))) = 3;
         return;
     }

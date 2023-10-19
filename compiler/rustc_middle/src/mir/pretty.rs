@@ -782,7 +782,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Goto { .. } => write!(fmt, "goto"),
             SwitchInt { discr, .. } => write!(fmt, "switchInt({discr:?})"),
             Return => write!(fmt, "return"),
-            GeneratorDrop => write!(fmt, "generator_drop"),
+            CoroutineDrop => write!(fmt, "generator_drop"),
             UnwindResume => write!(fmt, "resume"),
             UnwindTerminate(reason) => {
                 write!(fmt, "abort({})", reason.as_short_str())
@@ -865,7 +865,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
         match *self {
-            Return | UnwindResume | UnwindTerminate(_) | Unreachable | GeneratorDrop => vec![],
+            Return | UnwindResume | UnwindTerminate(_) | Unreachable | CoroutineDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, .. } => targets
                 .values
@@ -1046,7 +1046,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         struct_fmt.finish()
                     }),
 
-                    AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
+                    AggregateKind::Coroutine(def_id, _, _) => ty::tls::with(|tcx| {
                         let name = format!("{{generator@{:?}}}", tcx.def_span(def_id));
                         let mut struct_fmt = fmt.debug_struct(&name);
 
@@ -1301,7 +1301,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     self.push(&format!("+ args: {args:#?}"));
                 }
 
-                AggregateKind::Generator(def_id, args, movability) => {
+                AggregateKind::Coroutine(def_id, args, movability) => {
                     self.push("generator");
                     self.push(&format!("+ def_id: {def_id:?}"));
                     self.push(&format!("+ args: {args:#?}"));

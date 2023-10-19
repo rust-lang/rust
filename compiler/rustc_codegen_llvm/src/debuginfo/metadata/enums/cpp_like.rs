@@ -12,7 +12,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{LayoutOf, TyAndLayout},
-        AdtDef, GeneratorArgs, Ty,
+        AdtDef, CoroutineArgs, Ty,
     },
 };
 use rustc_target::abi::{Align, Endian, Size, TagEncoding, VariantIdx, Variants};
@@ -674,7 +674,7 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
     };
 
     let (generator_def_id, generator_args) = match generator_type_and_layout.ty.kind() {
-        &ty::Generator(def_id, args, _) => (def_id, args.as_generator()),
+        &ty::Coroutine(def_id, args, _) => (def_id, args.as_generator()),
         _ => unreachable!(),
     };
 
@@ -691,7 +691,7 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
         generator_type_di_node,
         variant_range
             .clone()
-            .map(|variant_index| (variant_index, GeneratorArgs::variant_name(variant_index))),
+            .map(|variant_index| (variant_index, CoroutineArgs::variant_name(variant_index))),
     );
 
     let discriminants: IndexVec<VariantIdx, DiscrResult> = {

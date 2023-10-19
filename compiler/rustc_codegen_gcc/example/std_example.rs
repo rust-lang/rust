@@ -3,7 +3,7 @@
 #[cfg(feature="master")]
 use std::arch::x86_64::*;
 use std::io::Write;
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 extern {
     pub fn printf(format: *const i8, ...) -> i32;

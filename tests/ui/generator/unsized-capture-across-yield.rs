@@ -3,9 +3,9 @@
 #![feature(unsized_locals)]
 //~^ WARN the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn capture() -> impl Generator {
+fn capture() -> impl Coroutine {
     let b: [u8] = *(Box::new([]) as Box<[u8]>);
     move || {
         println!("{:?}", &b);

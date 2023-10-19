@@ -1,7 +1,7 @@
 #![feature(generators, generator_trait)]
 #![allow(unused_assignments)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
@@ -11,11 +11,11 @@ fn main() {
     };
 
     match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Yielded(1) => {}
+        CoroutineState::Yielded(1) => {}
         _ => panic!("unexpected value from resume"),
     }
     match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Complete("foo") => {}
+        CoroutineState::Complete("foo") => {}
         _ => panic!("unexpected value from resume"),
     }
 
@@ -27,11 +27,11 @@ fn main() {
     };
 
     match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Yielded(1) => {}
+        CoroutineState::Yielded(1) => {}
         _ => panic!("unexpected value from resume"),
     }
     match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Yielded(2) => {}
+        CoroutineState::Yielded(2) => {}
         _ => panic!("unexpected value from resume"),
     }
 }

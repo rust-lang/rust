@@ -1394,7 +1394,7 @@ fn opaque_type_cycle_error(
                                 self.opaques.push(def);
                                 ControlFlow::Continue(())
                             }
-                            ty::Closure(def_id, ..) | ty::Generator(def_id, ..) => {
+                            ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
                                 self.closures.push(def_id);
                                 t.super_visit_with(self)
                             }
@@ -1447,7 +1447,7 @@ fn opaque_type_cycle_error(
                         label_match(capture.place.ty(), capture.get_path_span(tcx));
                     }
                     // Label any generator locals that capture the opaque
-                    if let DefKind::Generator = tcx.def_kind(closure_def_id)
+                    if let DefKind::Coroutine = tcx.def_kind(closure_def_id)
                         && let Some(generator_layout) = tcx.mir_generator_witnesses(closure_def_id)
                     {
                         for interior_ty in &generator_layout.field_tys {
@@ -1465,7 +1465,7 @@ fn opaque_type_cycle_error(
 }
 
 pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Generator));
+    debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Coroutine));
 
     let typeck = tcx.typeck(def_id);
     let param_env = tcx.param_env(def_id);
@@ -1500,7 +1500,7 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 ObligationCause::new(
                     field_ty.source_info.span,
                     def_id,
-                    ObligationCauseCode::SizedGeneratorInterior(def_id),
+                    ObligationCauseCode::SizedCoroutineInterior(def_id),
                 ),
             );
         }

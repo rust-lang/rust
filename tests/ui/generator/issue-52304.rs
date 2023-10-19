@@ -2,9 +2,9 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-pub fn example() -> impl Generator {
+pub fn example() -> impl Coroutine {
     || yield &1
 }
 

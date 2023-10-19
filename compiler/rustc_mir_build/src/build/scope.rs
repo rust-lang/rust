@@ -108,7 +108,7 @@ pub struct Scopes<'tcx> {
     /// [DropTree] for more details.
     unwind_drops: DropTree,
 
-    /// Drops that need to be done on paths to the `GeneratorDrop` terminator.
+    /// Drops that need to be done on paths to the `CoroutineDrop` terminator.
     generator_drops: DropTree,
 }
 
@@ -1140,7 +1140,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// generator, starting from the given block that ends in
     /// [TerminatorKind::Yield].
     ///
-    /// This path terminates in GeneratorDrop.
+    /// This path terminates in CoroutineDrop.
     pub(crate) fn generator_drop_cleanup(&mut self, yield_block: BasicBlock) {
         debug_assert!(
             matches!(
@@ -1401,12 +1401,12 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let cfg = &mut self.cfg;
         let fn_span = self.fn_span;
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        drops.build_mir::<GeneratorDrop>(cfg, &mut blocks);
+        drops.build_mir::<CoroutineDrop>(cfg, &mut blocks);
         if let Some(root_block) = blocks[ROOT_NODE] {
             cfg.terminate(
                 root_block,
                 SourceInfo::outermost(fn_span),
-                TerminatorKind::GeneratorDrop,
+                TerminatorKind::CoroutineDrop,
             );
         }
 
@@ -1461,9 +1461,9 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
     }
 }
 
-struct GeneratorDrop;
+struct CoroutineDrop;
 
-impl<'tcx> DropTreeBuilder<'tcx> for GeneratorDrop {
+impl<'tcx> DropTreeBuilder<'tcx> for CoroutineDrop {
     fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock {
         cfg.start_new_block()
     }
@@ -1511,7 +1511,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
             }

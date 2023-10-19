@@ -1,8 +1,8 @@
 #![feature(impl_trait_in_assoc_type, generator_trait, generators)]
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 trait Runnable {
-    type Gen: Generator<Yield = (), Return = ()>;
+    type Gen: Coroutine<Yield = (), Return = ()>;
 
     fn run(&mut self) -> Self::Gen;
 }
@@ -10,7 +10,7 @@ trait Runnable {
 struct Implementor {}
 
 impl Runnable for Implementor {
-    type Gen = impl Generator<Yield = (), Return = ()>;
+    type Gen = impl Coroutine<Yield = (), Return = ()>;
 
     fn run(&mut self) -> Self::Gen {
         //~^ ERROR: type mismatch resolving

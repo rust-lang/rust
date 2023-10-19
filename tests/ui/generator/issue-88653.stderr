@@ -1,7 +1,7 @@
 error[E0631]: type mismatch in generator arguments
   --> $DIR/issue-88653.rs:8:22
    |
-LL | fn foo(bar: bool) -> impl Generator<(bool,)> {
+LL | fn foo(bar: bool) -> impl Coroutine<(bool,)> {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^ expected due to this
 ...
 LL |     |bar| {

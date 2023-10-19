@@ -10,9 +10,9 @@
 
 extern crate metadata_sufficient_for_layout;
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-type F = impl Generator<(), Yield = (), Return = ()>;
+type F = impl Coroutine<(), Yield = (), Return = ()>;
 
 // Static queries the layout of the generator.
 static A: Option<F> = None;

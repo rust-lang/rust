@@ -6,7 +6,7 @@
 #![feature(generators, generator_trait, core_intrinsics, discriminant_kind)]
 
 use std::intrinsics::discriminant_value;
-use std::marker::{Unpin, DiscriminantKind};
+use std::marker::{DiscriminantKind, Unpin};
 use std::mem::size_of_val;
 use std::{cmp, ops::*};
 
@@ -66,16 +66,16 @@ macro_rules! yield250 {
 }
 
 fn cycle(
-    gen: impl Generator<()> + Unpin + DiscriminantKind<Discriminant = u32>,
-    expected_max_discr: u32
+    gen: impl Coroutine<()> + Unpin + DiscriminantKind<Discriminant = u32>,
+    expected_max_discr: u32,
 ) {
     let mut gen = Box::pin(gen);
     let mut max_discr = 0;
     loop {
         max_discr = cmp::max(max_discr, discriminant_value(gen.as_mut().get_mut()));
         match gen.as_mut().resume(()) {
-            GeneratorState::Yielded(_) => {}
-            GeneratorState::Complete(_) => {
+            CoroutineState::Yielded(_) => {}
+            CoroutineState::Complete(_) => {
                 assert_eq!(max_discr, expected_max_discr);
                 return;
             }

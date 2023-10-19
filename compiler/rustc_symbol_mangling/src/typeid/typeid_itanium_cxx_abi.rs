@@ -639,7 +639,7 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
-        ty::Generator(def_id, args, ..) => {
+        ty::Coroutine(def_id, args, ..) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
@@ -719,7 +719,7 @@ fn encode_ty<'tcx>(
         ty::Alias(..)
         | ty::Bound(..)
         | ty::Error(..)
-        | ty::GeneratorWitness(..)
+        | ty::CoroutineWitness(..)
         | ty::Infer(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
@@ -778,7 +778,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         | ty::Str
         | ty::Never
         | ty::Foreign(..)
-        | ty::GeneratorWitness(..) => {}
+        | ty::CoroutineWitness(..) => {}
 
         ty::Bool => {
             if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
@@ -892,7 +892,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
         }
 
-        ty::Generator(def_id, args, movability) => {
+        ty::Coroutine(def_id, args, movability) => {
             ty = Ty::new_generator(tcx, *def_id, transform_args(tcx, args, options), *movability);
         }
 

@@ -2,8 +2,8 @@ use std::cell::RefCell;
 
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
+use crate::CoroutineTypes;
 use crate::FnCtxt;
-use crate::GeneratorTypes;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -33,7 +33,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
     params_can_be_unsized: bool,
-) -> Option<GeneratorTypes<'tcx>> {
+) -> Option<CoroutineTypes<'tcx>> {
     let fn_id = fcx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
 
     let tcx = fcx.tcx;
@@ -58,7 +58,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(kind) = body.generator_kind
         && can_be_generator.is_some()
     {
-        let yield_ty = if kind == hir::GeneratorKind::Gen {
+        let yield_ty = if kind == hir::CoroutineKind::Gen {
             let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::TypeInference,
                 span,
@@ -138,7 +138,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         ));
 
         let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
-        Some(GeneratorTypes {
+        Some(CoroutineTypes {
             resume_ty,
             yield_ty,
             interior,

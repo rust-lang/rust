@@ -3,9 +3,9 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn test(a: impl for<'a> Generator<&'a mut bool>) {}
+fn test(a: impl for<'a> Coroutine<&'a mut bool>) {}
 
 fn main() {
     let gen = |arg: &mut bool| {

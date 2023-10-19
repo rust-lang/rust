@@ -2,20 +2,20 @@
 #![feature(generators, generator_trait)]
 
 use std::future::Future;
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 async fn async_fn() {}
 fn returns_async_block() -> impl Future<Output = ()> {
     async {}
 }
-fn returns_generator() -> impl Generator<(), Yield = (), Return = ()> {
+fn returns_generator() -> impl Coroutine<(), Yield = (), Return = ()> {
     || {
         let _: () = yield ();
     }
 }
 
 fn takes_future(_f: impl Future<Output = ()>) {}
-fn takes_generator<ResumeTy>(_g: impl Generator<ResumeTy, Yield = (), Return = ()>) {}
+fn takes_generator<ResumeTy>(_g: impl Coroutine<ResumeTy, Yield = (), Return = ()>) {}
 
 fn main() {
     // okay:

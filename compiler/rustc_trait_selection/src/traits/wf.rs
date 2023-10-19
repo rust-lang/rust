@@ -600,7 +600,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 | ty::Float(..)
                 | ty::Error(_)
                 | ty::Str
-                | ty::GeneratorWitness(..)
+                | ty::CoroutineWitness(..)
                 | ty::Never
                 | ty::Param(_)
                 | ty::Bound(..)
@@ -672,7 +672,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     }
                 }
 
-                ty::Generator(did, args, ..) => {
+                ty::Coroutine(did, args, ..) => {
                     // Walk ALL the types in the generator: this will
                     // include the upvar types as well as the yield
                     // type. Note that this is mildly distinct from

@@ -3,7 +3,7 @@
 #![feature(generator_trait)]
 #![feature(rustc_attrs, stmt_expr_attributes)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn copy<T: Copy>(x: T) -> T {

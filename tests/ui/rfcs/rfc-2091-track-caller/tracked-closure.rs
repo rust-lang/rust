@@ -5,7 +5,7 @@
 #![feature(generator_trait)]
 #![feature(generators)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::panic::Location;
 
@@ -93,21 +93,21 @@ fn test_closure() {
 
 
 #[track_caller]
-fn mono_generator<F: Generator<String, Yield = (&'static str, String, Loc), Return = ()>>(
+fn mono_generator<F: Coroutine<String, Yield = (&'static str, String, Loc), Return = ()>>(
     val: Pin<&mut F>
 ) -> (&'static str, String, Loc) {
     match val.resume("Mono".to_string()) {
-        GeneratorState::Yielded(val) => val,
+        CoroutineState::Yielded(val) => val,
         _ => unreachable!()
     }
 }
 
 #[track_caller]
 fn dyn_generator(
-    val: Pin<&mut dyn Generator<String, Yield = (&'static str, String, Loc), Return = ()>>
+    val: Pin<&mut dyn Coroutine<String, Yield = (&'static str, String, Loc), Return = ()>>
 ) -> (&'static str, String, Loc) {
     match val.resume("Dyn".to_string()) {
-        GeneratorState::Yielded(val) => val,
+        CoroutineState::Yielded(val) => val,
         _ => unreachable!()
     }
 }
@@ -122,7 +122,7 @@ fn test_generator() {
     let (dyn_ret, dyn_arg, dyn_loc) = dyn_generator(pinned.as_mut());
     assert_eq!(dyn_ret, "first");
     assert_eq!(dyn_arg, "Dyn".to_string());
-    // The `Generator` trait does not have `#[track_caller]` on `resume`, so
+    // The `Coroutine` trait does not have `#[track_caller]` on `resume`, so
     // this will not match.
     assert_ne!(dyn_loc.file(), file!());
 
@@ -139,7 +139,7 @@ fn test_generator() {
     let non_tracked_generator = || { yield Location::caller(); };
     let non_tracked_line = line!() - 1; // This is the line of the generator, not its caller
     let non_tracked_loc = match Box::pin(non_tracked_generator).as_mut().resume(()) {
-        GeneratorState::Yielded(val) => val,
+        CoroutineState::Yielded(val) => val,
         _ => unreachable!()
     };
     assert_eq!(non_tracked_loc.file(), file!());

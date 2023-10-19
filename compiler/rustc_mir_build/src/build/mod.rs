@@ -9,7 +9,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{GeneratorKind, Node};
+use rustc_hir::{CoroutineKind, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -173,7 +173,7 @@ struct Builder<'a, 'tcx> {
     check_overflow: bool,
     fn_span: Span,
     arg_count: usize,
-    generator_kind: Option<GeneratorKind>,
+    generator_kind: Option<CoroutineKind>,
 
     /// The current set of scopes, updated as we traverse;
     /// see the `scope` module for more details.
@@ -481,7 +481,7 @@ fn construct_fn<'tcx>(
     let (yield_ty, return_ty) = if generator_kind.is_some() {
         let gen_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
         let gen_sig = match gen_ty.kind() {
-            ty::Generator(_, gen_args, ..) => gen_args.as_generator().sig(),
+            ty::Coroutine(_, gen_args, ..) => gen_args.as_generator().sig(),
             _ => {
                 span_bug!(span, "generator w/o generator type: {:?}", gen_ty)
             }
@@ -629,7 +629,7 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
             let ty = tcx.type_of(def).instantiate_identity();
             match ty.kind() {
                 ty::Closure(_, args) => 1 + args.as_closure().sig().inputs().skip_binder().len(),
-                ty::Generator(..) => 2,
+                ty::Coroutine(..) => 2,
                 _ => bug!("expected closure or generator, found {ty:?}"),
             }
         }
@@ -687,7 +687,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         safety: Safety,
         return_ty: Ty<'tcx>,
         return_span: Span,
-        generator_kind: Option<GeneratorKind>,
+        generator_kind: Option<CoroutineKind>,
     ) -> Builder<'a, 'tcx> {
         let tcx = infcx.tcx;
         let attrs = tcx.hir().attrs(hir_id);
@@ -777,7 +777,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let upvar_args = match closure_ty.kind() {
             ty::Closure(_, args) => ty::UpvarArgs::Closure(args),
-            ty::Generator(_, args, _) => ty::UpvarArgs::Generator(args),
+            ty::Coroutine(_, args, _) => ty::UpvarArgs::Coroutine(args),
             _ => return,
         };
 

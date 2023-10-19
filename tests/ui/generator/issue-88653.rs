@@ -3,9 +3,9 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn foo(bar: bool) -> impl Generator<(bool,)> {
+fn foo(bar: bool) -> impl Coroutine<(bool,)> {
     //~^ ERROR: type mismatch in generator arguments [E0631]
     //~| NOTE: expected due to this
     //~| NOTE: expected generator signature `fn((bool,)) -> _`

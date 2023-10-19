@@ -67,7 +67,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             let body_abi = match body_ty.kind() {
                 ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
                 ty::Closure(..) => Abi::RustCall,
-                ty::Generator(..) => Abi::Rust,
+                ty::Coroutine(..) => Abi::Rust,
                 _ => {
                     span_bug!(body.span, "unexpected body ty: {:?} phase {:?}", body_ty, mir_phase)
                 }
@@ -509,14 +509,14 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::GeneratorDrop => {
+            TerminatorKind::CoroutineDrop => {
                 if self.body.generator.is_none() {
-                    self.fail(location, "`GeneratorDrop` cannot appear outside generator bodies");
+                    self.fail(location, "`CoroutineDrop` cannot appear outside generator bodies");
                 }
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
-                        "`GeneratorDrop` should have been replaced by generator lowering",
+                        "`CoroutineDrop` should have been replaced by generator lowering",
                     );
                 }
             }
@@ -716,7 +716,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    &ty::Generator(def_id, args, _) => {
+                    &ty::Coroutine(def_id, args, _) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             let gen_body = if def_id == self.body.source.def_id() {
                                 self.body
@@ -1211,7 +1211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
                 }
                 let pty = place.ty(&self.body.local_decls, self.tcx).ty.kind();
-                if !matches!(pty, ty::Adt(..) | ty::Generator(..) | ty::Alias(ty::Opaque, ..)) {
+                if !matches!(pty, ty::Adt(..) | ty::Coroutine(..) | ty::Alias(ty::Opaque, ..)) {
                     self.fail(
                         location,
                         format!(
@@ -1295,7 +1295,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::InlineAsm { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return

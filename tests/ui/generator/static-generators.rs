@@ -3,7 +3,7 @@
 #![feature(generators, generator_trait)]
 
 use std::pin::Pin;
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 
 fn main() {
     let mut generator = static || {
@@ -15,6 +15,6 @@ fn main() {
     // SAFETY: We shadow the original generator variable so have no safe API to
     // move it after this point.
     let mut generator = unsafe { Pin::new_unchecked(&mut generator) };
-    assert_eq!(generator.as_mut().resume(()), GeneratorState::Yielded(()));
-    assert_eq!(generator.as_mut().resume(()), GeneratorState::Complete(()));
+    assert_eq!(generator.as_mut().resume(()), CoroutineState::Yielded(()));
+    assert_eq!(generator.as_mut().resume(()), CoroutineState::Complete(()));
 }

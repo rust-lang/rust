@@ -2,9 +2,9 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn assert_generator<G: Generator>(_: G) {
+fn assert_generator<G: Coroutine>(_: G) {
 }
 
 fn main() {

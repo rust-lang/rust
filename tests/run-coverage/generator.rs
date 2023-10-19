@@ -1,6 +1,6 @@
 #![feature(generators, generator_trait)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 // The following implementation of a function called from a `yield` statement
@@ -20,11 +20,11 @@ fn main() {
     };
 
     match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Yielded(Ok(1)) => {}
+        CoroutineState::Yielded(Ok(1)) => {}
         _ => panic!("unexpected return from resume"),
     }
     match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Complete("foo") => {}
+        CoroutineState::Complete("foo") => {}
         _ => panic!("unexpected return from resume"),
     }
 }

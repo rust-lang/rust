@@ -2,11 +2,11 @@
 #![feature(generators, generator_trait)]
 
 use std::{
-    ops::{Generator, GeneratorState},
+    ops::{Coroutine, CoroutineState},
     pin::Pin,
 };
 
-fn firstn() -> impl Generator<Yield = u64, Return = ()> {
+fn firstn() -> impl Coroutine<Yield = u64, Return = ()> {
     static move || {
         let mut num = 0;
         let num = &mut num;
@@ -17,26 +17,26 @@ fn firstn() -> impl Generator<Yield = u64, Return = ()> {
     }
 }
 
-struct GeneratorIteratorAdapter<G>(G);
+struct CoroutineIteratorAdapter<G>(G);
 
-impl<G> Iterator for GeneratorIteratorAdapter<G>
+impl<G> Iterator for CoroutineIteratorAdapter<G>
 where
-    G: Generator<Return = ()>,
+    G: Coroutine<Return = ()>,
 {
     type Item = G::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {
         let me = unsafe { Pin::new_unchecked(&mut self.0) };
         match me.resume(()) {
-            GeneratorState::Yielded(x) => Some(x),
-            GeneratorState::Complete(_) => None,
+            CoroutineState::Yielded(x) => Some(x),
+            CoroutineState::Complete(_) => None,
         }
     }
 }
 
 fn main() {
     let mut generator_iterator_2 = {
-        let mut generator_iterator = Box::new(GeneratorIteratorAdapter(firstn()));
+        let mut generator_iterator = Box::new(CoroutineIteratorAdapter(firstn()));
         generator_iterator.next(); // pin it
 
         Box::new(*generator_iterator) // move it

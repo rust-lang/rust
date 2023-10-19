@@ -34,7 +34,7 @@ where
             match *ty.kind() {
                 ty::Param(_) => ControlFlow::Break(FoundParam),
                 ty::Closure(def_id, args)
-                | ty::Generator(def_id, args, ..)
+                | ty::Coroutine(def_id, args, ..)
                 | ty::FnDef(def_id, args) => {
                     let instance = ty::InstanceDef::Item(def_id);
                     let unused_params = self.tcx.unused_generic_params(instance);

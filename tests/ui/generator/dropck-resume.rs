@@ -1,6 +1,6 @@
 #![feature(generators, generator_trait)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 struct SetToNone<'a: 'b, 'b>(&'b mut Option<&'a i32>);

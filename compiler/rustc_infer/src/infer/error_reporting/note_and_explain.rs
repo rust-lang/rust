@@ -215,7 +215,7 @@ impl<T> Trait<T> for X {
                              #traits-as-parameters",
                         );
                     }
-                    (ty::Param(p), ty::Closure(..) | ty::Generator(..)) => {
+                    (ty::Param(p), ty::Closure(..) | ty::Coroutine(..)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
                         let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
                         if !sp.contains(p_span) {

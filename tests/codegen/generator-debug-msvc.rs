@@ -8,9 +8,9 @@
 // only-msvc
 
 #![feature(generators, generator_trait)]
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn generator_test() -> impl Generator<Yield = i32, Return = ()> {
+fn generator_test() -> impl Coroutine<Yield = i32, Return = ()> {
     || {
         yield 0;
         let s = String::from("foo");

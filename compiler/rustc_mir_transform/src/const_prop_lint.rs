@@ -61,7 +61,7 @@ impl<'tcx> MirLint<'tcx> for ConstPropLint {
 
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
-        if let DefKind::Generator = def_kind {
+        if let DefKind::Coroutine = def_kind {
             trace!("ConstPropLint skipped for generator {:?}", def_id);
             return;
         }
@@ -648,7 +648,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
             | TerminatorKind::Yield { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Call { .. }

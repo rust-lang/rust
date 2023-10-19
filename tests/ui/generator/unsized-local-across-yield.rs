@@ -3,9 +3,9 @@
 #![feature(unsized_locals)]
 //~^ WARN the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn across() -> impl Generator {
+fn across() -> impl Coroutine {
     move || {
         let b: [u8] = *(Box::new([]) as Box<[u8]>);
         //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time

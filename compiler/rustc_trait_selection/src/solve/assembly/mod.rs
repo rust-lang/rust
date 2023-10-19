@@ -200,7 +200,7 @@ pub(super) trait GoalKind<'tcx>:
     ) -> QueryResult<'tcx>;
 
     /// A generator (that doesn't come from an `async` desugaring) is known to
-    /// implement `Generator<R, Yield = Y, Return = O>`, given the resume, yield,
+    /// implement `Coroutine<R, Yield = Y, Return = O>`, given the resume, yield,
     /// and return types of the generator computed during type-checking.
     fn consider_builtin_generator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
@@ -410,7 +410,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Generator(_, _, _)
+            | ty::Coroutine(_, _, _)
             | ty::Never
             | ty::Tuple(_) => {
                 let simp =
@@ -469,7 +469,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // FIXME: These should ideally not exist as a self type. It would be nice for
             // the builtin auto trait impls of generators to instead directly recurse
             // into the witness.
-            ty::GeneratorWitness(..) => (),
+            ty::CoroutineWitness(..) => (),
 
             // These variants should not exist as a self type.
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
@@ -620,8 +620,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(..)
             | ty::Closure(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
@@ -776,8 +776,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Alias(..)
             | ty::Closure(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)

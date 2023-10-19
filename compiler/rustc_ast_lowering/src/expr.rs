@@ -1,8 +1,8 @@
 use super::errors::{
-    AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
-    BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignment,
-    GeneratorTooManyParameters, InclusiveRangeWithNoEnd, NotSupportedForLifetimeBinderAsyncClosure,
-    UnderscoreExprLhsAssign,
+    AsyncCoroutinesNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
+    BaseExpressionDoubleDot, ClosureCannotBeStatic, CoroutineTooManyParameters,
+    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd,
+    NotSupportedForLifetimeBinderAsyncClosure, UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
@@ -188,7 +188,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     e.id,
                     None,
                     e.span,
-                    hir::AsyncGeneratorKind::Block,
+                    hir::AsyncCoroutineKind::Block,
                     |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                 ),
                 ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
@@ -598,7 +598,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure_node_id: NodeId,
         ret_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
-        async_gen_kind: hir::AsyncGeneratorKind,
+        async_gen_kind: hir::AsyncCoroutineKind,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
@@ -637,7 +637,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let params = arena_vec![self; param];
 
         let body = self.lower_body(move |this| {
-            this.generator_kind = Some(hir::GeneratorKind::Async(async_gen_kind));
+            this.generator_kind = Some(hir::CoroutineKind::Async(async_gen_kind));
 
             let old_ctx = this.task_context;
             this.task_context = Some(task_context_hid);
@@ -711,8 +711,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_await(&mut self, await_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
         let full_span = expr.span.to(await_kw_span);
         match self.generator_kind {
-            Some(hir::GeneratorKind::Async(_)) => {}
-            Some(hir::GeneratorKind::Gen) | None => {
+            Some(hir::CoroutineKind::Async(_)) => {}
+            Some(hir::CoroutineKind::Gen) | None => {
                 self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     await_kw_span,
                     item_span: self.current_item,
@@ -926,17 +926,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         decl: &FnDecl,
         fn_decl_span: Span,
-        generator_kind: Option<hir::GeneratorKind>,
+        generator_kind: Option<hir::CoroutineKind>,
         movability: Movability,
     ) -> Option<hir::Movability> {
         match generator_kind {
-            Some(hir::GeneratorKind::Gen) => {
+            Some(hir::CoroutineKind::Gen) => {
                 if decl.inputs.len() > 1 {
-                    self.tcx.sess.emit_err(GeneratorTooManyParameters { fn_decl_span });
+                    self.tcx.sess.emit_err(CoroutineTooManyParameters { fn_decl_span });
                 }
                 Some(movability)
             }
-            Some(hir::GeneratorKind::Async(_)) => {
+            Some(hir::CoroutineKind::Async(_)) => {
                 panic!("non-`async` closure body turned `async` during lowering");
             }
             None => {
@@ -1005,7 +1005,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     inner_closure_id,
                     async_ret_ty,
                     body.span,
-                    hir::AsyncGeneratorKind::Closure,
+                    hir::AsyncCoroutineKind::Closure,
                     |this| this.with_new_scopes(|this| this.lower_expr_mut(body)),
                 );
                 let hir_id = this.lower_node_id(inner_closure_id);
@@ -1445,11 +1445,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         match self.generator_kind {
-            Some(hir::GeneratorKind::Gen) => {}
-            Some(hir::GeneratorKind::Async(_)) => {
-                self.tcx.sess.emit_err(AsyncGeneratorsNotSupported { span });
+            Some(hir::CoroutineKind::Gen) => {}
+            Some(hir::CoroutineKind::Async(_)) => {
+                self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span });
             }
-            None => self.generator_kind = Some(hir::GeneratorKind::Gen),
+            None => self.generator_kind = Some(hir::CoroutineKind::Gen),
         }
 
         let expr =

@@ -132,7 +132,7 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let generator_type = unique_type_id.expect_ty();
-    let &ty::Generator(generator_def_id, _, _) = generator_type.kind() else {
+    let &ty::Coroutine(generator_def_id, _, _) = generator_type.kind() else {
         bug!("build_generator_di_node() called with non-generator type: `{:?}`", generator_type)
     };
 
@@ -175,7 +175,7 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
                 .indices()
                 .map(|variant_index| {
                     // FIXME: This is problematic because just a number is not a valid identifier.
-                    //        GeneratorArgs::variant_name(variant_index), would be consistent
+                    //        CoroutineArgs::variant_name(variant_index), would be consistent
                     //        with enums?
                     let variant_name = format!("{}", variant_index.as_usize()).into();
 
@@ -310,7 +310,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
     enum_or_generator_type_di_node: &'ll DIType,
 ) -> Option<&'ll DIType> {
     let tag_name = match enum_or_generator_type_and_layout.ty.kind() {
-        ty::Generator(..) => "__state",
+        ty::Coroutine(..) => "__state",
         _ => "",
     };
 

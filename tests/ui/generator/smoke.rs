@@ -8,7 +8,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{GeneratorState, Generator};
+use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;
 use std::thread;
 
@@ -21,7 +21,7 @@ fn simple() {
     };
 
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Complete(()) => {}
+        CoroutineState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -37,7 +37,7 @@ fn return_capture() {
     };
 
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Complete(ref s) if *s == "foo" => {}
+        CoroutineState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -49,11 +49,11 @@ fn simple_yield() {
     };
 
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Yielded(()) => {}
+        CoroutineState::Yielded(()) => {}
         s => panic!("bad state: {:?}", s),
     }
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Complete(()) => {}
+        CoroutineState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -66,11 +66,11 @@ fn yield_capture() {
     };
 
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Yielded(ref s) if *s == "foo" => {}
+        CoroutineState::Yielded(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Complete(()) => {}
+        CoroutineState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -83,11 +83,11 @@ fn simple_yield_value() {
     };
 
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Yielded(ref s) if *s == "bar" => {}
+        CoroutineState::Yielded(ref s) if *s == "bar" => {}
         s => panic!("bad state: {:?}", s),
     }
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Complete(ref s) if *s == "foo" => {}
+        CoroutineState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -101,11 +101,11 @@ fn return_after_yield() {
     };
 
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Yielded(()) => {}
+        CoroutineState::Yielded(()) => {}
         s => panic!("bad state: {:?}", s),
     }
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Complete(ref s) if *s == "foo" => {}
+        CoroutineState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -153,11 +153,11 @@ fn send_over_threads() {
     let mut foo = || { yield };
     thread::spawn(move || {
         match Pin::new(&mut foo).resume(()) {
-            GeneratorState::Yielded(()) => {}
+            CoroutineState::Yielded(()) => {}
             s => panic!("bad state: {:?}", s),
         }
         match Pin::new(&mut foo).resume(()) {
-            GeneratorState::Complete(()) => {}
+            CoroutineState::Complete(()) => {}
             s => panic!("bad state: {:?}", s),
         }
     }).join().unwrap();
@@ -166,11 +166,11 @@ fn send_over_threads() {
     let mut foo = || { yield a };
     thread::spawn(move || {
         match Pin::new(&mut foo).resume(()) {
-            GeneratorState::Yielded(ref s) if *s == "a" => {}
+            CoroutineState::Yielded(ref s) if *s == "a" => {}
             s => panic!("bad state: {:?}", s),
         }
         match Pin::new(&mut foo).resume(()) {
-            GeneratorState::Complete(()) => {}
+            CoroutineState::Complete(()) => {}
             s => panic!("bad state: {:?}", s),
         }
     }).join().unwrap();

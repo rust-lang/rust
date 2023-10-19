@@ -6,11 +6,11 @@ use rustc_hir::def::CtorKind;
 use rustc_index::IndexSlice;
 use rustc_middle::{
     bug,
-    mir::GeneratorLayout,
+    mir::CoroutineLayout,
     ty::{
         self,
         layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
-        AdtDef, GeneratorArgs, Ty, VariantDef,
+        AdtDef, CoroutineArgs, Ty, VariantDef,
     },
 };
 use rustc_span::Symbol;
@@ -107,7 +107,7 @@ fn tag_base_type<'ll, 'tcx>(
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> Ty<'tcx> {
     debug_assert!(match enum_type_and_layout.ty.kind() {
-        ty::Generator(..) => true,
+        ty::Coroutine(..) => true,
         ty::Adt(adt_def, _) => adt_def.is_enum(),
         _ => false,
     });
@@ -322,10 +322,10 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     variant_index: VariantIdx,
     generator_type_and_layout: TyAndLayout<'tcx>,
     generator_type_di_node: &'ll DIType,
-    generator_layout: &GeneratorLayout<'tcx>,
+    generator_layout: &CoroutineLayout<'tcx>,
     common_upvar_names: &IndexSlice<FieldIdx, Symbol>,
 ) -> &'ll DIType {
-    let variant_name = GeneratorArgs::variant_name(variant_index);
+    let variant_name = CoroutineArgs::variant_name(variant_index);
     let unique_type_id = UniqueTypeId::for_enum_variant_struct_type(
         cx.tcx,
         generator_type_and_layout.ty,
@@ -335,7 +335,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     let variant_layout = generator_type_and_layout.for_variant(cx, variant_index);
 
     let generator_args = match generator_type_and_layout.ty.kind() {
-        ty::Generator(_, args, _) => args.as_generator(),
+        ty::Coroutine(_, args, _) => args.as_generator(),
         _ => unreachable!(),
     };
 

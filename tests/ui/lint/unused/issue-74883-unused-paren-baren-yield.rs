@@ -2,7 +2,7 @@
 #![feature(generators)]
 #![deny(unused_braces, unused_parens)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn main() {

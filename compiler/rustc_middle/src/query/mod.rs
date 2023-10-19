@@ -554,7 +554,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query mir_generator_witnesses(key: DefId) -> &'tcx Option<mir::GeneratorLayout<'tcx>> {
+    query mir_generator_witnesses(key: DefId) -> &'tcx Option<mir::CoroutineLayout<'tcx>> {
         arena_cache
         desc { |tcx| "generator witness types for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -744,7 +744,7 @@ rustc_queries! {
     }
 
     /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
-    query generator_kind(def_id: DefId) -> Option<hir::GeneratorKind> {
+    query generator_kind(def_id: DefId) -> Option<hir::CoroutineKind> {
         desc { |tcx| "looking up generator kind of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }

@@ -1206,7 +1206,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 closure_id,
                 None,
                 body.span,
-                hir::AsyncGeneratorKind::Fn,
+                hir::AsyncCoroutineKind::Fn,
                 |this| {
                     // Create a block from the user's function body:
                     let user_body = this.lower_block_expr(body);

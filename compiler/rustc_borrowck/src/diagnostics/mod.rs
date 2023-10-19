@@ -8,7 +8,7 @@ use itertools::Itertools;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::GeneratorKind;
+use rustc_hir::CoroutineKind;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::tcx::PlaceTy;
@@ -369,7 +369,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ty::Array(ty, _) | ty::Slice(ty) => {
                     self.describe_field_from_ty(ty, field, variant_index, including_tuple_field)
                 }
-                ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
+                ty::Closure(def_id, _) | ty::Coroutine(def_id, _, _) => {
                     // We won't be borrowck'ing here if the closure came from another crate,
                     // so it's safe to call `expect_local`.
                     //
@@ -502,7 +502,7 @@ pub(super) enum UseSpans<'tcx> {
     /// The access is caused by capturing a variable for a closure.
     ClosureUse {
         /// This is true if the captured variable was from a generator.
-        generator_kind: Option<GeneratorKind>,
+        generator_kind: Option<CoroutineKind>,
         /// The span of the args of the closure, including the `move` keyword if
         /// it's present.
         args_span: Span,
@@ -569,7 +569,7 @@ impl UseSpans<'_> {
         }
     }
 
-    pub(super) fn generator_kind(self) -> Option<GeneratorKind> {
+    pub(super) fn generator_kind(self) -> Option<CoroutineKind> {
         match self {
             UseSpans::ClosureUse { generator_kind, .. } => generator_kind,
             _ => None,
@@ -600,10 +600,10 @@ impl UseSpans<'_> {
             match generator_kind {
                 Some(_) => {
                     err.subdiagnostic(match action {
-                        Borrow => BorrowInGenerator { path_span },
-                        MatchOn | Use => UseInGenerator { path_span },
-                        Assignment => AssignInGenerator { path_span },
-                        PartialAssignment => AssignPartInGenerator { path_span },
+                        Borrow => BorrowInCoroutine { path_span },
+                        MatchOn | Use => UseInCoroutine { path_span },
+                        Assignment => AssignInCoroutine { path_span },
+                        PartialAssignment => AssignPartInCoroutine { path_span },
                     });
                 }
                 None => {
@@ -624,7 +624,7 @@ impl UseSpans<'_> {
         handler: Option<&rustc_errors::Handler>,
         err: &mut Diagnostic,
         kind: Option<rustc_middle::mir::BorrowKind>,
-        f: impl FnOnce(Option<GeneratorKind>, Span) -> CaptureVarCause,
+        f: impl FnOnce(Option<CoroutineKind>, Span) -> CaptureVarCause,
     ) {
         if let UseSpans::ClosureUse { generator_kind, capture_kind_span, path_span, .. } = self {
             if capture_kind_span != path_span {
@@ -780,7 +780,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind
-            && let AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) =
+            && let AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _, _) =
                 **kind
         {
             debug!("move_spans: def_id={:?} places={:?}", def_id, places);
@@ -916,7 +916,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
                 let (&def_id, is_generator) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),
-                    box AggregateKind::Generator(def_id, _, _) => (def_id, true),
+                    box AggregateKind::Coroutine(def_id, _, _) => (def_id, true),
                     _ => continue,
                 };
                 let def_id = def_id.expect_local();
@@ -950,7 +950,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         def_id: LocalDefId,
         target_place: PlaceRef<'tcx>,
         places: &IndexSlice<FieldIdx, Operand<'tcx>>,
-    ) -> Option<(Span, Option<GeneratorKind>, Span, Span)> {
+    ) -> Option<(Span, Option<CoroutineKind>, Span, Span)> {
         debug!(
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
@@ -1188,7 +1188,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // another message for the same span
             if !is_loop_message {
                 move_spans.var_subdiag(None, err, None, |kind, var_span| match kind {
-                    Some(_) => CaptureVarCause::PartialMoveUseInGenerator { var_span, is_partial },
+                    Some(_) => CaptureVarCause::PartialMoveUseInCoroutine { var_span, is_partial },
                     None => CaptureVarCause::PartialMoveUseInClosure { var_span, is_partial },
                 })
             }

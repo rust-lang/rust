@@ -84,7 +84,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
-        let is_generator = def_kind == DefKind::Generator;
+        let is_generator = def_kind == DefKind::Coroutine;
         if is_generator {
             trace!("ConstProp skipped for generator {:?}", def_id);
             return;

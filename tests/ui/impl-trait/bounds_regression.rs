@@ -1,6 +1,6 @@
 // run-pass
 
-pub trait FakeGenerator {
+pub trait FakeCoroutine {
     type Yield;
     type Return;
 }
@@ -10,14 +10,14 @@ pub trait FakeFuture {
 }
 
 pub fn future_from_generator<
-    T: FakeGenerator<Yield = ()>
+    T: FakeCoroutine<Yield = ()>
 >(x: T) -> impl FakeFuture<Output = T::Return> {
     GenFuture(x)
 }
 
-struct GenFuture<T: FakeGenerator<Yield = ()>>(#[allow(unused_tuple_struct_fields)] T);
+struct GenFuture<T: FakeCoroutine<Yield = ()>>(#[allow(unused_tuple_struct_fields)] T);
 
-impl<T: FakeGenerator<Yield = ()>> FakeFuture for GenFuture<T> {
+impl<T: FakeCoroutine<Yield = ()>> FakeFuture for GenFuture<T> {
     type Output = T::Return;
 }
 

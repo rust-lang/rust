@@ -136,7 +136,7 @@ where
             | TerminatorKind::Call { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Goto { .. }
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::UnwindResume

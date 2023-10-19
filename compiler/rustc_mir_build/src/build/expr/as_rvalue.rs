@@ -487,11 +487,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .collect();
 
                 let result = match args {
-                    UpvarArgs::Generator(args) => {
+                    UpvarArgs::Coroutine(args) => {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        Box::new(AggregateKind::Generator(closure_id.to_def_id(), args, movability))
+                        Box::new(AggregateKind::Coroutine(closure_id.to_def_id(), args, movability))
                     }
                     UpvarArgs::Closure(args) => {
                         Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))

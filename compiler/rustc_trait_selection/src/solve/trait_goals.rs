@@ -319,11 +319,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let ty::Generator(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+        let ty::Coroutine(def_id, _, _) = *goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
 
-        // Generators are not futures unless they come from `async` desugaring
+        // Coroutines are not futures unless they come from `async` desugaring
         let tcx = ecx.tcx();
         if !tcx.generator_is_async(def_id) {
             return Err(NoSolution);
@@ -344,7 +344,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         let self_ty = goal.predicate.self_ty();
-        let ty::Generator(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -844,10 +844,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
             ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),
 
-            // Generators have one special built-in candidate, `Unpin`, which
+            // Coroutines have one special built-in candidate, `Unpin`, which
             // takes precedence over the structural auto trait candidate being
             // assembled.
-            ty::Generator(_, _, movability)
+            ty::Coroutine(_, _, movability)
                 if Some(goal.predicate.def_id()) == self.tcx().lang_items().unpin_trait() =>
             {
                 match movability {
@@ -879,8 +879,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Closure(_, _)
-            | ty::Generator(_, _, _)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(_, _, _)
+            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Adt(_, _)

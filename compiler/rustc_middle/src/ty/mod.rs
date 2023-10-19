@@ -20,7 +20,7 @@ pub use self::Variance::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
-use crate::mir::{Body, GeneratorLayout};
+use crate::mir::{Body, CoroutineLayout};
 use crate::query::Providers;
 use crate::traits::{self, Reveal};
 use crate::ty;
@@ -98,8 +98,8 @@ pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
     BoundVariableKind, CanonicalPolyFnSig, ClosureArgs, ClosureArgsParts, ConstKind, ConstVid,
-    EarlyBoundRegion, EffectVid, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef,
-    FnSig, FreeRegion, GenSig, GeneratorArgs, GeneratorArgsParts, InlineConstArgs,
+    CoroutineArgs, CoroutineArgsParts, EarlyBoundRegion, EffectVid, ExistentialPredicate,
+    ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig, InlineConstArgs,
     InlineConstArgsParts, ParamConst, ParamTy, PolyExistentialPredicate, PolyExistentialProjection,
     PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, Region, RegionKind, RegionVid,
     TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
@@ -2423,7 +2423,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns layout of a generator. Layout might be unavailable if the
     /// generator is tainted by errors.
-    pub fn generator_layout(self, def_id: DefId) -> Option<&'tcx GeneratorLayout<'tcx>> {
+    pub fn generator_layout(self, def_id: DefId) -> Option<&'tcx CoroutineLayout<'tcx>> {
         self.optimized_mir(def_id).generator_layout()
     }
 

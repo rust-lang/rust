@@ -6,14 +6,14 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 #[derive(Debug, PartialEq)]
 struct Foo(i32);
 
 impl Drop for Foo {
-    fn drop(&mut self) { }
+    fn drop(&mut self) {}
 }
 
 fn main() {
@@ -38,7 +38,7 @@ fn main() {
 
     loop {
         match Pin::new(&mut a).resume(()) {
-            GeneratorState::Complete(()) => break,
+            CoroutineState::Complete(()) => break,
             _ => (),
         }
     }

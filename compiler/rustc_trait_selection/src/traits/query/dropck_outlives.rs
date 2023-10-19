@@ -35,7 +35,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Char
-        | ty::GeneratorWitness(..)
+        | ty::CoroutineWitness(..)
         | ty::RawPtr(_)
         | ty::Ref(..)
         | ty::Str
@@ -72,7 +72,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Bound(..)
-        | ty::Generator(..) => false,
+        | ty::Coroutine(..) => false,
     }
 }
 
@@ -217,7 +217,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         | ty::Ref(..)
         | ty::FnDef(..)
         | ty::FnPtr(_)
-        | ty::GeneratorWitness(..) => {
+        | ty::CoroutineWitness(..) => {
             // these types never have a destructor
         }
 
@@ -255,7 +255,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             })?
         }
 
-        ty::Generator(_, args, _movability) => {
+        ty::Coroutine(_, args, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when generator yields
             // (and is subsequently dropped).
@@ -266,7 +266,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // its interior).
             //
             // However, the interior's representation uses things like
-            // GeneratorWitness that explicitly assume they are not
+            // CoroutineWitness that explicitly assume they are not
             // traversed in such a manner. So instead, we will
             // simplify things for now by treating all generators as
             // if they were like trait objects, where its upvars must

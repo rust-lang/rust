@@ -2,7 +2,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -27,11 +27,11 @@ fn main() {
 
     assert_eq!(
         g.as_mut().resume(Dropper(String::from("Hello world!"))),
-        GeneratorState::Yielded(())
+        CoroutineState::Yielded(())
     );
     assert_eq!(DROP.load(Ordering::Acquire), 0);
     match g.as_mut().resume(Dropper(String::from("Number Two"))) {
-        GeneratorState::Complete(dropper) => {
+        CoroutineState::Complete(dropper) => {
             assert_eq!(DROP.load(Ordering::Acquire), 1);
             assert_eq!(dropper.0, "Number Two");
             drop(dropper);

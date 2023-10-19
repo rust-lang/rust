@@ -11,7 +11,7 @@
 //! generator in the MIR, since it is used to create the drop glue for the generator. We'd get
 //! infinite recursion otherwise.
 //!
-//! This pass creates the implementation for either the `Generator::resume` or `Future::poll`
+//! This pass creates the implementation for either the `Coroutine::resume` or `Future::poll`
 //! function and the drop shim for the generator based on the MIR input.
 //! It converts the generator argument from Self to &mut Self adding derefs in the MIR as needed.
 //! It computes the final layout of the generator struct which looks like this:
@@ -19,7 +19,7 @@
 //!     It is followed by the generator state field.
 //!     Then finally the MIR locals which are live across a suspension point are stored.
 //!     ```ignore (illustrative)
-//!     struct Generator {
+//!     struct Coroutine {
 //!         upvars...,
 //!         state: u32,
 //!         mir_locals...,
@@ -27,12 +27,12 @@
 //!     ```
 //! This pass computes the meaning of the state field and the MIR locals which are live
 //! across a suspension point. There are however three hardcoded generator states:
-//!     0 - Generator have not been resumed yet
-//!     1 - Generator has returned / is completed
-//!     2 - Generator has been poisoned
+//!     0 - Coroutine have not been resumed yet
+//!     1 - Coroutine has returned / is completed
+//!     2 - Coroutine has been poisoned
 //!
 //! It also rewrites `return x` and `yield y` as setting a new generator state and returning
-//! `GeneratorState::Complete(x)` and `GeneratorState::Yielded(y)`,
+//! `CoroutineState::Complete(x)` and `CoroutineState::Yielded(y)`,
 //! or `Poll::Ready(x)` and `Poll::Pending` respectively.
 //! MIR locals which are live across a suspension point are moved to the generator struct
 //! with references to them being updated with references to the generator struct.
@@ -40,7 +40,7 @@
 //! The pass creates two functions which have a switch on the generator state giving
 //! the action to take.
 //!
-//! One of them is the implementation of `Generator::resume` / `Future::poll`.
+//! One of them is the implementation of `Coroutine::resume` / `Future::poll`.
 //! For generators with state 0 (unresumed) it starts the execution of the generator.
 //! For generators with state 1 (returned) and state 2 (poisoned) it panics.
 //! Otherwise it continues the execution from the last suspension point.
@@ -60,7 +60,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::GeneratorKind;
+use rustc_hir::CoroutineKind;
 use rustc_index::bit_set::{BitMatrix, BitSet, GrowableBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::dump_mir;
@@ -68,7 +68,7 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_middle::ty::{GeneratorArgs, GenericArgsRef};
+use rustc_middle::ty::{CoroutineArgs, GenericArgsRef};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
@@ -196,12 +196,12 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
 
 const SELF_ARG: Local = Local::from_u32(1);
 
-/// Generator has not been resumed yet.
-const UNRESUMED: usize = GeneratorArgs::UNRESUMED;
-/// Generator has returned / is completed.
-const RETURNED: usize = GeneratorArgs::RETURNED;
-/// Generator has panicked and is poisoned.
-const POISONED: usize = GeneratorArgs::POISONED;
+/// Coroutine has not been resumed yet.
+const UNRESUMED: usize = CoroutineArgs::UNRESUMED;
+/// Coroutine has returned / is completed.
+const RETURNED: usize = CoroutineArgs::RETURNED;
+/// Coroutine has panicked and is poisoned.
+const POISONED: usize = CoroutineArgs::POISONED;
 
 /// Number of variants to reserve in generator state. Corresponds to
 /// `UNRESUMED` (beginning of a generator) and `RETURNED`/`POISONED`
@@ -249,9 +249,9 @@ struct TransformVisitor<'tcx> {
 }
 
 impl<'tcx> TransformVisitor<'tcx> {
-    // Make a `GeneratorState` or `Poll` variant assignment.
+    // Make a `CoroutineState` or `Poll` variant assignment.
     //
-    // `core::ops::GeneratorState` only has single element tuple variants,
+    // `core::ops::CoroutineState` only has single element tuple variants,
     // so we can just write to the downcasted first field and then set the
     // discriminant to the appropriate variant.
     fn make_state(
@@ -262,8 +262,8 @@ impl<'tcx> TransformVisitor<'tcx> {
         statements: &mut Vec<Statement<'tcx>>,
     ) {
         let idx = VariantIdx::new(match (is_return, self.is_async_kind) {
-            (true, false) => 1,  // GeneratorState::Complete
-            (false, false) => 0, // GeneratorState::Yielded
+            (true, false) => 1,  // CoroutineState::Complete
+            (false, false) => 0, // CoroutineState::Yielded
             (true, true) => 0,   // Poll::Ready
             (false, true) => 1,  // Poll::Pending
         });
@@ -285,7 +285,7 @@ impl<'tcx> TransformVisitor<'tcx> {
             return;
         }
 
-        // else: `Poll::Ready(x)`, `GeneratorState::Yielded(x)` or `GeneratorState::Complete(x)`
+        // else: `Poll::Ready(x)`, `CoroutineState::Yielded(x)` or `CoroutineState::Complete(x)`
         assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 1);
 
         statements.push(Statement {
@@ -565,10 +565,10 @@ fn replace_resume_ty_local<'tcx>(
 
 struct LivenessInfo {
     /// Which locals are live across any suspension point.
-    saved_locals: GeneratorSavedLocals,
+    saved_locals: CoroutineSavedLocals,
 
     /// The set of saved locals live at each suspension point.
-    live_locals_at_suspension_points: Vec<BitSet<GeneratorSavedLocal>>,
+    live_locals_at_suspension_points: Vec<BitSet<CoroutineSavedLocal>>,
 
     /// Parallel vec to the above with SourceInfo for each yield terminator.
     source_info_at_suspension_points: Vec<SourceInfo>,
@@ -576,7 +576,7 @@ struct LivenessInfo {
     /// For every saved local, the set of other saved locals that are
     /// storage-live at the same time as this local. We cannot overlap locals in
     /// the layout which have conflicting storage.
-    storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
+    storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
 
     /// For every suspending block, the locals which are storage-live across
     /// that suspension point.
@@ -674,7 +674,7 @@ fn locals_live_across_suspend_points<'tcx>(
     }
 
     debug!("live_locals_anywhere = {:?}", live_locals_at_any_suspension_point);
-    let saved_locals = GeneratorSavedLocals(live_locals_at_any_suspension_point);
+    let saved_locals = CoroutineSavedLocals(live_locals_at_any_suspension_point);
 
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
@@ -701,21 +701,21 @@ fn locals_live_across_suspend_points<'tcx>(
 
 /// The set of `Local`s that must be saved across yield points.
 ///
-/// `GeneratorSavedLocal` is indexed in terms of the elements in this set;
-/// i.e. `GeneratorSavedLocal::new(1)` corresponds to the second local
+/// `CoroutineSavedLocal` is indexed in terms of the elements in this set;
+/// i.e. `CoroutineSavedLocal::new(1)` corresponds to the second local
 /// included in this set.
-struct GeneratorSavedLocals(BitSet<Local>);
+struct CoroutineSavedLocals(BitSet<Local>);
 
-impl GeneratorSavedLocals {
-    /// Returns an iterator over each `GeneratorSavedLocal` along with the `Local` it corresponds
+impl CoroutineSavedLocals {
+    /// Returns an iterator over each `CoroutineSavedLocal` along with the `Local` it corresponds
     /// to.
-    fn iter_enumerated(&self) -> impl '_ + Iterator<Item = (GeneratorSavedLocal, Local)> {
-        self.iter().enumerate().map(|(i, l)| (GeneratorSavedLocal::from(i), l))
+    fn iter_enumerated(&self) -> impl '_ + Iterator<Item = (CoroutineSavedLocal, Local)> {
+        self.iter().enumerate().map(|(i, l)| (CoroutineSavedLocal::from(i), l))
     }
 
     /// Transforms a `BitSet<Local>` that contains only locals saved across yield points to the
-    /// equivalent `BitSet<GeneratorSavedLocal>`.
-    fn renumber_bitset(&self, input: &BitSet<Local>) -> BitSet<GeneratorSavedLocal> {
+    /// equivalent `BitSet<CoroutineSavedLocal>`.
+    fn renumber_bitset(&self, input: &BitSet<Local>) -> BitSet<CoroutineSavedLocal> {
         assert!(self.superset(&input), "{:?} not a superset of {:?}", self.0, input);
         let mut out = BitSet::new_empty(self.count());
         for (saved_local, local) in self.iter_enumerated() {
@@ -726,17 +726,17 @@ impl GeneratorSavedLocals {
         out
     }
 
-    fn get(&self, local: Local) -> Option<GeneratorSavedLocal> {
+    fn get(&self, local: Local) -> Option<CoroutineSavedLocal> {
         if !self.contains(local) {
             return None;
         }
 
         let idx = self.iter().take_while(|&l| l < local).count();
-        Some(GeneratorSavedLocal::new(idx))
+        Some(CoroutineSavedLocal::new(idx))
     }
 }
 
-impl ops::Deref for GeneratorSavedLocals {
+impl ops::Deref for CoroutineSavedLocals {
     type Target = BitSet<Local>;
 
     fn deref(&self) -> &Self::Target {
@@ -747,13 +747,13 @@ impl ops::Deref for GeneratorSavedLocals {
 /// For every saved local, looks for which locals are StorageLive at the same
 /// time. Generates a bitset for every local of all the other locals that may be
 /// StorageLive simultaneously with that local. This is used in the layout
-/// computation; see `GeneratorLayout` for more.
+/// computation; see `CoroutineLayout` for more.
 fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
-    saved_locals: &GeneratorSavedLocals,
+    saved_locals: &CoroutineSavedLocals,
     always_live_locals: BitSet<Local>,
     mut requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'_, 'mir, 'tcx>>,
-) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
+) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
     debug!("compute_storage_conflicts({:?})", body.span);
@@ -775,7 +775,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
 
     let local_conflicts = visitor.local_conflicts;
 
-    // Compress the matrix using only stored locals (Local -> GeneratorSavedLocal).
+    // Compress the matrix using only stored locals (Local -> CoroutineSavedLocal).
     //
     // NOTE: Today we store a full conflict bitset for every local. Technically
     // this is twice as many bits as we need, since the relation is symmetric.
@@ -801,7 +801,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
 
 struct StorageConflictVisitor<'mir, 'tcx, 's> {
     body: &'mir Body<'tcx>,
-    saved_locals: &'s GeneratorSavedLocals,
+    saved_locals: &'s CoroutineSavedLocals,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for generators.
     local_conflicts: BitMatrix<Local, Local>,
@@ -858,7 +858,7 @@ fn compute_layout<'tcx>(
     body: &Body<'tcx>,
 ) -> (
     FxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
-    GeneratorLayout<'tcx>,
+    CoroutineLayout<'tcx>,
     IndexVec<BasicBlock, Option<BitSet<Local>>>,
 ) {
     let LivenessInfo {
@@ -870,8 +870,8 @@ fn compute_layout<'tcx>(
     } = liveness;
 
     // Gather live local types and their indices.
-    let mut locals = IndexVec::<GeneratorSavedLocal, _>::new();
-    let mut tys = IndexVec::<GeneratorSavedLocal, _>::new();
+    let mut locals = IndexVec::<CoroutineSavedLocal, _>::new();
+    let mut tys = IndexVec::<CoroutineSavedLocal, _>::new();
     for (saved_local, local) in saved_locals.iter_enumerated() {
         debug!("generator saved local {:?} => {:?}", saved_local, local);
 
@@ -895,7 +895,7 @@ fn compute_layout<'tcx>(
             _ => false,
         };
         let decl =
-            GeneratorSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
+            CoroutineSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
         debug!(?decl);
 
         tys.push(decl);
@@ -916,7 +916,7 @@ fn compute_layout<'tcx>(
 
     // Build the generator variant field list.
     // Create a map from local indices to generator struct indices.
-    let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, GeneratorSavedLocal>> =
+    let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
         iter::repeat(IndexVec::new()).take(RESERVED_VARIANTS).collect();
     let mut remap = FxHashMap::default();
     for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter().enumerate() {
@@ -947,7 +947,7 @@ fn compute_layout<'tcx>(
         field_names.get_or_insert_with(saved_local, || var.name);
     }
 
-    let layout = GeneratorLayout {
+    let layout = CoroutineLayout {
         field_tys: tys,
         field_names,
         variant_fields,
@@ -1070,7 +1070,7 @@ fn create_generator_drop_shim<'tcx>(
 
     for block in body.basic_blocks_mut() {
         let kind = &mut block.terminator_mut().kind;
-        if let TerminatorKind::GeneratorDrop = *kind {
+        if let TerminatorKind::CoroutineDrop = *kind {
             *kind = TerminatorKind::Return;
         }
     }
@@ -1182,7 +1182,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {}
 
@@ -1384,7 +1384,7 @@ fn create_cases<'tcx>(
 pub(crate) fn mir_generator_witnesses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Option<GeneratorLayout<'tcx>> {
+) -> Option<CoroutineLayout<'tcx>> {
     let (body, _) = tcx.mir_promoted(def_id);
     let body = body.borrow();
     let body = &*body;
@@ -1394,7 +1394,7 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
 
     // Get the interior types and args which typeck computed
     let movable = match *gen_ty.kind() {
-        ty::Generator(_, _, movability) => movability == hir::Movability::Movable,
+        ty::Coroutine(_, _, movability) => movability == hir::Movability::Movable,
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected generator type {}", gen_ty),
     };
@@ -1428,7 +1428,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Get the discriminant type and args which typeck computed
         let (discr_ty, movable) = match *gen_ty.kind() {
-            ty::Generator(_, args, movability) => {
+            ty::Coroutine(_, args, movability) => {
                 let args = args.as_generator();
                 (args.discr_ty(tcx), movability == hir::Movability::Movable)
             }
@@ -1438,7 +1438,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             }
         };
 
-        let is_async_kind = matches!(body.generator_kind(), Some(GeneratorKind::Async(_)));
+        let is_async_kind = matches!(body.generator_kind(), Some(CoroutineKind::Async(_)));
         let (state_adt_ref, state_args) = if is_async_kind {
             // Compute Poll<return_ty>
             let poll_did = tcx.require_lang_item(LangItem::Poll, None);
@@ -1446,8 +1446,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             let poll_args = tcx.mk_args(&[body.return_ty().into()]);
             (poll_adt_ref, poll_args)
         } else {
-            // Compute GeneratorState<yield_ty, return_ty>
-            let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
+            // Compute CoroutineState<yield_ty, return_ty>
+            let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
             let state_adt_ref = tcx.adt_def(state_did);
             let state_args = tcx.mk_args(&[yield_ty.into(), body.return_ty().into()]);
             (state_adt_ref, state_args)
@@ -1495,7 +1495,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
 
         if tcx.sess.opts.unstable_opts.validate_mir {
-            let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {
+            let mut vis = EnsureCoroutineFieldAssignmentsNeverAlias {
                 assigned_local: None,
                 saved_locals: &liveness_info.saved_locals,
                 storage_conflicts: &liveness_info.storage_conflicts,
@@ -1514,7 +1514,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Run the transformation which converts Places from Local to generator struct
         // accesses for locals in `remap`.
         // It also rewrites `return x` and `yield y` as writing a new generator state and returning
-        // either GeneratorState::Complete(x) and GeneratorState::Yielded(y),
+        // either CoroutineState::Complete(x) and CoroutineState::Yielded(y),
         // or Poll::Ready(x) and Poll::Pending respectively depending on `is_async_kind`.
         let mut transform = TransformVisitor {
             tcx,
@@ -1563,7 +1563,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         body.generator.as_mut().unwrap().generator_drop = Some(drop_shim);
 
-        // Create the Generator::resume / Future::poll function
+        // Create the Coroutine::resume / Future::poll function
         create_generator_resume_function(tcx, transform, body, can_return);
 
         // Run derefer to fix Derefs that are not in the first place
@@ -1583,14 +1583,14 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 /// sides of an assignment may not alias. This caused a miscompilation in [#73137].
 ///
 /// [#73137]: https://github.com/rust-lang/rust/issues/73137
-struct EnsureGeneratorFieldAssignmentsNeverAlias<'a> {
-    saved_locals: &'a GeneratorSavedLocals,
-    storage_conflicts: &'a BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
-    assigned_local: Option<GeneratorSavedLocal>,
+struct EnsureCoroutineFieldAssignmentsNeverAlias<'a> {
+    saved_locals: &'a CoroutineSavedLocals,
+    storage_conflicts: &'a BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
+    assigned_local: Option<CoroutineSavedLocal>,
 }
 
-impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
-    fn saved_local_for_direct_place(&self, place: Place<'_>) -> Option<GeneratorSavedLocal> {
+impl EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
+    fn saved_local_for_direct_place(&self, place: Place<'_>) -> Option<CoroutineSavedLocal> {
         if place.is_indirect() {
             return None;
         }
@@ -1609,7 +1609,7 @@ impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
+impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         let Some(lhs) = self.assigned_local else {
             // This visitor only invokes `visit_place` for the right-hand side of an assignment
@@ -1691,14 +1691,14 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {}
         }
     }
 }
 
-fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &GeneratorLayout<'tcx>, body: &Body<'tcx>) {
+fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &CoroutineLayout<'tcx>, body: &Body<'tcx>) {
     let mut linted_tys = FxHashSet::default();
 
     // We want a user-facing param-env.

@@ -301,14 +301,14 @@ fn typeck_with_fallback<'tcx>(
 /// When `check_fn` is invoked on a generator (i.e., a body that
 /// includes yield), it returns back some information about the yield
 /// points.
-struct GeneratorTypes<'tcx> {
+struct CoroutineTypes<'tcx> {
     /// Type of generator argument / values returned by `yield`.
     resume_ty: Ty<'tcx>,
 
     /// Type of value that is yielded.
     yield_ty: Ty<'tcx>,
 
-    /// Types that are captured (see `GeneratorInterior` for more).
+    /// Types that are captured (see `CoroutineInterior` for more).
     interior: Ty<'tcx>,
 
     /// Indicates if the generator is movable or static (immovable).

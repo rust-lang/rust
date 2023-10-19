@@ -3,11 +3,11 @@
 #![feature(generators, generator_trait)]
 #![feature(type_alias_impl_trait)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
-type RandGenerator<'a> = impl Generator<Return = (), Yield = u64> + 'a;
-fn rand_generator<'a>(rng: &'a ()) -> RandGenerator<'a> {
+type RandCoroutine<'a> = impl Coroutine<Return = (), Yield = u64> + 'a;
+fn rand_generator<'a>(rng: &'a ()) -> RandCoroutine<'a> {
     move || {
         let _rng = rng;
         loop {
@@ -16,9 +16,9 @@ fn rand_generator<'a>(rng: &'a ()) -> RandGenerator<'a> {
     }
 }
 
-pub type RandGeneratorWithIndirection<'c> = impl Generator<Return = (), Yield = u64> + 'c;
-pub fn rand_generator_with_indirection<'a>(rng: &'a ()) -> RandGeneratorWithIndirection<'a> {
-    fn helper<'b>(rng: &'b ()) -> impl 'b + Generator<Return = (), Yield = u64> {
+pub type RandCoroutineWithIndirection<'c> = impl Coroutine<Return = (), Yield = u64> + 'c;
+pub fn rand_generator_with_indirection<'a>(rng: &'a ()) -> RandCoroutineWithIndirection<'a> {
+    fn helper<'b>(rng: &'b ()) -> impl 'b + Coroutine<Return = (), Yield = u64> {
         move || {
             let _rng = rng;
             loop {
@@ -33,7 +33,7 @@ pub fn rand_generator_with_indirection<'a>(rng: &'a ()) -> RandGeneratorWithIndi
 fn main() {
     let mut gen = rand_generator(&());
     match unsafe { Pin::new_unchecked(&mut gen) }.resume(()) {
-        GeneratorState::Yielded(_) => {}
-        GeneratorState::Complete(_) => {}
+        CoroutineState::Yielded(_) => {}
+        CoroutineState::Complete(_) => {}
     };
 }

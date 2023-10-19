@@ -3,9 +3,9 @@
 // run-pass
 // edition:2018
 #![feature(generators,generator_trait)]
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn with<F>(f: F) -> impl Generator<Yield=(), Return=()>
+fn with<F>(f: F) -> impl Coroutine<Yield=(), Return=()>
 where F: Fn() -> ()
 {
     move || {

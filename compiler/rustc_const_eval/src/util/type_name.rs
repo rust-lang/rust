@@ -51,12 +51,12 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
-            | ty::Generator(def_id, args, _) => self.print_def_path(def_id, args),
+            | ty::Coroutine(def_id, args, _) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
             ty::Alias(ty::Weak, _) => bug!("type_name: unexpected weak projection"),
             ty::Alias(ty::Inherent, _) => bug!("type_name: unexpected inherent projection"),
-            ty::GeneratorWitness(..) => bug!("type_name: unexpected `GeneratorWitness`"),
+            ty::CoroutineWitness(..) => bug!("type_name: unexpected `CoroutineWitness`"),
         }
     }
 

@@ -473,7 +473,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Goto { .. } |
                     TerminatorKind::UnwindResume |
                     TerminatorKind::UnwindTerminate(_) |
-                    TerminatorKind::GeneratorDrop |
+                    TerminatorKind::CoroutineDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdge { .. } |
                     TerminatorKind::FalseUnwind { .. } => {}
@@ -735,7 +735,7 @@ macro_rules! make_mir_visitor {
                             ) => {
                                 self.visit_args(closure_args, location);
                             }
-                            AggregateKind::Generator(
+                            AggregateKind::Coroutine(
                                 _,
                                 generator_args,
                                 _movability,

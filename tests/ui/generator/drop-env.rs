@@ -6,7 +6,7 @@
 #![feature(generators, generator_trait)]
 #![allow(dropping_copy_types)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

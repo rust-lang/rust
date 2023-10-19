@@ -8,15 +8,15 @@
 use std::fmt::Debug;
 use std::marker::Unpin;
 use std::ops::{
-    Generator,
-    GeneratorState::{self, *},
+    Coroutine,
+    CoroutineState::{self, *},
 };
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-fn drain<G: Generator<R, Yield = Y> + Unpin, R, Y>(
+fn drain<G: Coroutine<R, Yield = Y> + Unpin, R, Y>(
     gen: &mut G,
-    inout: Vec<(R, GeneratorState<Y, G::Return>)>,
+    inout: Vec<(R, CoroutineState<Y, G::Return>)>,
 ) where
     Y: Debug + PartialEq,
     G::Return: Debug + PartialEq,

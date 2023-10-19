@@ -1085,16 +1085,16 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// # assert_eq!(42, block_on(async { 42 }));
 /// ```
 ///
-/// ### With `Generator`s
+/// ### With `Coroutine`s
 ///
 /// ```rust
 /// #![feature(generators, generator_trait)]
 /// use core::{
-///     ops::{Generator, GeneratorState},
+///     ops::{Coroutine, CoroutineState},
 ///     pin::pin,
 /// };
 ///
-/// fn generator_fn() -> impl Generator<Yield = usize, Return = ()> /* not Unpin */ {
+/// fn generator_fn() -> impl Coroutine<Yield = usize, Return = ()> /* not Unpin */ {
 ///  // Allow generator to be self-referential (not `Unpin`)
 ///  // vvvvvv        so that locals can cross yield points.
 ///     static || {
@@ -1109,16 +1109,16 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// fn main() {
 ///     let mut generator = pin!(generator_fn());
 ///     match generator.as_mut().resume(()) {
-///         GeneratorState::Yielded(0) => {},
+///         CoroutineState::Yielded(0) => {},
 ///         _ => unreachable!(),
 ///     }
 ///     match generator.as_mut().resume(()) {
-///         GeneratorState::Yielded(3) => {},
+///         CoroutineState::Yielded(3) => {},
 ///         _ => unreachable!(),
 ///     }
 ///     match generator.resume(()) {
-///         GeneratorState::Yielded(_) => unreachable!(),
-///         GeneratorState::Complete(()) => {},
+///         CoroutineState::Yielded(_) => unreachable!(),
+///         CoroutineState::Complete(()) => {},
 ///     }
 /// }
 /// ```

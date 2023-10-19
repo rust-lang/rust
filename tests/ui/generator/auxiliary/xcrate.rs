@@ -1,9 +1,9 @@
 #![feature(generators, generator_trait)]
 
 use std::marker::Unpin;
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-pub fn foo() -> impl Generator<(), Yield = (), Return = ()> {
+pub fn foo() -> impl Coroutine<(), Yield = (), Return = ()> {
     || {
         if false {
             yield;
@@ -11,7 +11,7 @@ pub fn foo() -> impl Generator<(), Yield = (), Return = ()> {
     }
 }
 
-pub fn bar<T: 'static>(t: T) -> Box<Generator<(), Yield = T, Return = ()> + Unpin> {
+pub fn bar<T: 'static>(t: T) -> Box<Coroutine<(), Yield = T, Return = ()> + Unpin> {
     Box::new(|| {
         yield t;
     })

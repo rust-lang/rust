@@ -131,7 +131,7 @@ fn mark_used_by_default_parameters<'tcx>(
     unused_parameters: &mut UnusedGenericParams,
 ) {
     match tcx.def_kind(def_id) {
-        DefKind::Closure | DefKind::Generator => {
+        DefKind::Closure | DefKind::Coroutine => {
             for param in &generics.params {
                 debug!(?param, "(closure/gen)");
                 unused_parameters.mark_used(param.index);
@@ -248,7 +248,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         if local == Local::from_usize(1) {
             let def_kind = self.tcx.def_kind(self.def_id);
-            if matches!(def_kind, DefKind::Closure | DefKind::Generator) {
+            if matches!(def_kind, DefKind::Closure | DefKind::Coroutine) {
                 // Skip visiting the closure/generator that is currently being processed. This only
                 // happens because the first argument to the closure is a reference to itself and
                 // that will call `visit_args`, resulting in each generic parameter captured being
@@ -319,7 +319,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
         }
 
         match *ty.kind() {
-            ty::Closure(def_id, args) | ty::Generator(def_id, args, ..) => {
+            ty::Closure(def_id, args) | ty::Coroutine(def_id, args, ..) => {
                 debug!(?def_id);
                 // Avoid cycle errors with generators.
                 if def_id == self.def_id {

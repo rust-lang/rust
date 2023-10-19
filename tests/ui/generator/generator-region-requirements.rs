@@ -1,5 +1,5 @@
 #![feature(generators, generator_trait)]
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn dangle(x: &mut i32) -> &'static mut i32 {
@@ -9,9 +9,9 @@ fn dangle(x: &mut i32) -> &'static mut i32 {
     };
     loop {
         match Pin::new(&mut g).resume(()) {
-            GeneratorState::Complete(c) => return c,
+            CoroutineState::Complete(c) => return c,
             //~^ ERROR lifetime may not live long enough
-            GeneratorState::Yielded(_) => (),
+            CoroutineState::Yielded(_) => (),
         }
     }
 }

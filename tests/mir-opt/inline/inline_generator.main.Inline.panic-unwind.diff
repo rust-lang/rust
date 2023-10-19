@@ -3,7 +3,7 @@
   
   fn main() -> () {
       let mut _0: ();
-      let _1: std::ops::GeneratorState<i32, bool>;
+      let _1: std::ops::CoroutineState<i32, bool>;
       let mut _2: std::pin::Pin<&mut {generator@$DIR/inline_generator.rs:17:5: 17:8}>;
       let mut _3: &mut {generator@$DIR/inline_generator.rs:17:5: 17:8};
       let mut _4: {generator@$DIR/inline_generator.rs:17:5: 17:8};
@@ -45,7 +45,7 @@
 -     bb2: {
 +         _2 = Pin::<&mut {generator@$DIR/inline_generator.rs:17:5: 17:8}> { pointer: move _3 };
           StorageDead(_3);
--         _1 = <{generator@$DIR/inline_generator.rs:17:5: 17:8} as Generator<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb5];
+-         _1 = <{generator@$DIR/inline_generator.rs:17:5: 17:8} as Coroutine<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb5];
 +         StorageLive(_5);
 +         _5 = const false;
 +         StorageLive(_6);
@@ -100,7 +100,7 @@
 +     }
 + 
 +     bb8: {
-+         _1 = GeneratorState::<i32, bool>::Yielded(move _8);
++         _1 = CoroutineState::<i32, bool>::Yielded(move _8);
 +         discriminant((*_6)) = 3;
 +         goto -> bb1;
 +     }
@@ -112,7 +112,7 @@
 +     bb10: {
 +         StorageLive(_8);
 +         StorageDead(_8);
-+         _1 = GeneratorState::<i32, bool>::Complete(_5);
++         _1 = CoroutineState::<i32, bool>::Complete(_5);
 +         discriminant((*_6)) = 1;
 +         goto -> bb1;
 +     }

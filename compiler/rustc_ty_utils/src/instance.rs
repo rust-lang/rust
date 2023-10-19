@@ -38,7 +38,7 @@ fn resolve_instance<'tcx>(
                 debug!(" => nontrivial drop glue");
                 match *ty.kind() {
                     ty::Closure(..)
-                    | ty::Generator(..)
+                    | ty::Coroutine(..)
                     | ty::Tuple(..)
                     | ty::Adt(..)
                     | ty::Dynamic(..)
@@ -212,8 +212,8 @@ fn resolve_associated_item<'tcx>(
                     let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
                     match self_ty.kind() {
                         _ if is_copy => (),
-                        ty::Generator(..)
-                        | ty::GeneratorWitness(..)
+                        ty::Coroutine(..)
+                        | ty::CoroutineWitness(..)
                         | ty::Closure(..)
                         | ty::Tuple(..) => {}
                         _ => return Ok(None),
@@ -246,7 +246,7 @@ fn resolve_associated_item<'tcx>(
                     })
                 }
             } else if Some(trait_ref.def_id) == lang_items.future_trait() {
-                let ty::Generator(generator_def_id, args, _) = *rcvr_args.type_at(0).kind() else {
+                let ty::Coroutine(generator_def_id, args, _) = *rcvr_args.type_at(0).kind() else {
                     bug!()
                 };
                 if Some(trait_item_id) == tcx.lang_items().future_poll_fn() {
@@ -259,11 +259,11 @@ fn resolve_associated_item<'tcx>(
                     Some(Instance::new(trait_item_id, rcvr_args))
                 }
             } else if Some(trait_ref.def_id) == lang_items.gen_trait() {
-                let ty::Generator(generator_def_id, args, _) = *rcvr_args.type_at(0).kind() else {
+                let ty::Coroutine(generator_def_id, args, _) = *rcvr_args.type_at(0).kind() else {
                     bug!()
                 };
                 if cfg!(debug_assertions) && tcx.item_name(trait_item_id) != sym::resume {
-                    // For compiler developers who'd like to add new items to `Generator`,
+                    // For compiler developers who'd like to add new items to `Coroutine`,
                     // you either need to generate a shim body, or perhaps return
                     // `InstanceDef::Item` pointing to a trait default method body if
                     // it is given a default implementation by the trait.

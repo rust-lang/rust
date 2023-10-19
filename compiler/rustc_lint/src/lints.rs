@@ -1702,7 +1702,7 @@ pub struct UnusedClosure<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_generator)]
 #[note]
-pub struct UnusedGenerator<'a> {
+pub struct UnusedCoroutine<'a> {
     pub count: usize,
     pub pre: &'a str,
     pub post: &'a str,

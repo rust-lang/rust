@@ -548,7 +548,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// those are not yet phased out). The parent of the closure's
     /// `DefId` will also be the context where it appears.
     pub fn is_closure(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Generator)
+        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Coroutine)
     }
 
     /// Returns `true` if `def_id` refers to a definition that does not have its own
@@ -556,7 +556,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
         matches!(
             self.def_kind(def_id),
-            DefKind::Closure | DefKind::Generator | DefKind::InlineConst
+            DefKind::Closure | DefKind::Coroutine | DefKind::InlineConst
         )
     }
 
@@ -746,9 +746,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind_descr(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
-            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
-                rustc_hir::GeneratorKind::Async(..) => "async closure",
-                rustc_hir::GeneratorKind::Gen => "generator",
+            DefKind::Coroutine => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::CoroutineKind::Async(..) => "async closure",
+                rustc_hir::CoroutineKind::Gen => "generator",
             },
             _ => def_kind.descr(def_id),
         }
@@ -763,9 +763,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind_descr_article(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
-            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
-                rustc_hir::GeneratorKind::Async(..) => "an",
-                rustc_hir::GeneratorKind::Gen => "a",
+            DefKind::Coroutine => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::CoroutineKind::Async(..) => "an",
+                rustc_hir::CoroutineKind::Gen => "a",
             },
             _ => def_kind.article(),
         }
@@ -888,7 +888,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
             t
         };
         if self.expand_generators {
-            if let ty::GeneratorWitness(def_id, args) = *t.kind() {
+            if let ty::CoroutineWitness(def_id, args) = *t.kind() {
                 t = self.expand_generator(def_id, args).unwrap_or(t);
             }
         }
@@ -1024,8 +1024,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::Dynamic(..)
             | ty::Foreign(_)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
@@ -1063,8 +1063,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::Dynamic(..)
             | ty::Foreign(_)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
@@ -1182,7 +1182,7 @@ impl<'tcx> Ty<'tcx> {
             // Conservatively return `false` for all others...
 
             // Anonymous function types
-            ty::FnDef(..) | ty::Closure(..) | ty::Dynamic(..) | ty::Generator(..) => false,
+            ty::FnDef(..) | ty::Closure(..) | ty::Dynamic(..) | ty::Coroutine(..) => false,
 
             // Generic or inferred types
             //
@@ -1192,7 +1192,7 @@ impl<'tcx> Ty<'tcx> {
                 false
             }
 
-            ty::Foreign(_) | ty::GeneratorWitness(..) | ty::Error(_) => false,
+            ty::Foreign(_) | ty::CoroutineWitness(..) | ty::Error(_) => false,
         }
     }
 
@@ -1287,7 +1287,7 @@ pub fn needs_drop_components<'tcx>(
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Char
-        | ty::GeneratorWitness(..)
+        | ty::CoroutineWitness(..)
         | ty::RawPtr(_)
         | ty::Ref(..)
         | ty::Str => Ok(SmallVec::new()),
@@ -1327,7 +1327,7 @@ pub fn needs_drop_components<'tcx>(
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Closure(..)
-        | ty::Generator(..) => Ok(smallvec![ty]),
+        | ty::Coroutine(..) => Ok(smallvec![ty]),
     }
 }
 
@@ -1358,7 +1358,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 
         // Not trivial because they have components, and instead of looking inside,
         // we'll just perform trait selection.
-        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) | ty::Adt(..) => false,
+        ty::Closure(..) | ty::Coroutine(..) | ty::CoroutineWitness(..) | ty::Adt(..) => false,
 
         ty::Array(ty, _) | ty::Slice(ty) => is_trivially_const_drop(ty),
 

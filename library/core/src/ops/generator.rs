@@ -3,13 +3,13 @@ use crate::pin::Pin;
 
 /// The result of a generator resumption.
 ///
-/// This enum is returned from the `Generator::resume` method and indicates the
+/// This enum is returned from the `Coroutine::resume` method and indicates the
 /// possible return values of a generator. Currently this corresponds to either
 /// a suspension point (`Yielded`) or a termination point (`Complete`).
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[lang = "generator_state"]
 #[unstable(feature = "generator_trait", issue = "43122")]
-pub enum GeneratorState<Y, R> {
+pub enum CoroutineState<Y, R> {
     /// The generator suspended with a value.
     ///
     /// This state indicates that a generator has been suspended, and typically
@@ -28,7 +28,7 @@ pub enum GeneratorState<Y, R> {
 
 /// The trait implemented by builtin generator types.
 ///
-/// Generators, also commonly referred to as coroutines, are currently an
+/// Coroutines, also commonly referred to as coroutines, are currently an
 /// experimental language feature in Rust. Added in [RFC 2033] generators are
 /// currently intended to primarily provide a building block for async/await
 /// syntax but will likely extend to also providing an ergonomic definition for
@@ -41,7 +41,7 @@ pub enum GeneratorState<Y, R> {
 /// ```rust
 /// #![feature(generators, generator_trait)]
 ///
-/// use std::ops::{Generator, GeneratorState};
+/// use std::ops::{Coroutine, CoroutineState};
 /// use std::pin::Pin;
 ///
 /// fn main() {
@@ -51,11 +51,11 @@ pub enum GeneratorState<Y, R> {
 ///     };
 ///
 ///     match Pin::new(&mut generator).resume(()) {
-///         GeneratorState::Yielded(1) => {}
+///         CoroutineState::Yielded(1) => {}
 ///         _ => panic!("unexpected return from resume"),
 ///     }
 ///     match Pin::new(&mut generator).resume(()) {
-///         GeneratorState::Complete("foo") => {}
+///         CoroutineState::Complete("foo") => {}
 ///         _ => panic!("unexpected return from resume"),
 ///     }
 /// }
@@ -68,7 +68,7 @@ pub enum GeneratorState<Y, R> {
 #[lang = "generator"]
 #[unstable(feature = "generator_trait", issue = "43122")]
 #[fundamental]
-pub trait Generator<R = ()> {
+pub trait Coroutine<R = ()> {
     /// The type of value this generator yields.
     ///
     /// This associated type corresponds to the `yield` expression and the
@@ -95,10 +95,10 @@ pub trait Generator<R = ()> {
     ///
     /// # Return value
     ///
-    /// The `GeneratorState` enum returned from this function indicates what
+    /// The `CoroutineState` enum returned from this function indicates what
     /// state the generator is in upon returning. If the `Yielded` variant is
     /// returned then the generator has reached a suspension point and a value
-    /// has been yielded out. Generators in this state are available for
+    /// has been yielded out. Coroutines in this state are available for
     /// resumption at a later point.
     ///
     /// If `Complete` is returned then the generator has completely finished
@@ -110,26 +110,26 @@ pub trait Generator<R = ()> {
     /// This function may panic if it is called after the `Complete` variant has
     /// been returned previously. While generator literals in the language are
     /// guaranteed to panic on resuming after `Complete`, this is not guaranteed
-    /// for all implementations of the `Generator` trait.
-    fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return>;
+    /// for all implementations of the `Coroutine` trait.
+    fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return>;
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator<R>, R> Generator<R> for Pin<&mut G> {
+impl<G: ?Sized + Coroutine<R>, R> Coroutine<R> for Pin<&mut G> {
     type Yield = G::Yield;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+    fn resume(mut self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
         G::resume((*self).as_mut(), arg)
     }
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator<R> + Unpin, R> Generator<R> for &mut G {
+impl<G: ?Sized + Coroutine<R> + Unpin, R> Coroutine<R> for &mut G {
     type Yield = G::Yield;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+    fn resume(mut self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
         G::resume(Pin::new(&mut *self), arg)
     }
 }

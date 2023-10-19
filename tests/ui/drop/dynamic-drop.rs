@@ -9,7 +9,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::mem::ManuallyDrop;
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::panic;
 use std::pin::Pin;
 

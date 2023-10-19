@@ -1886,7 +1886,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
-                | GeneratorCandidate
+                | CoroutineCandidate
                 | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
@@ -1914,7 +1914,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(_)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
-                | GeneratorCandidate
+                | CoroutineCandidate
                 | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
@@ -1948,7 +1948,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
-                | GeneratorCandidate
+                | CoroutineCandidate
                 | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
@@ -1962,7 +1962,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
-                | GeneratorCandidate
+                | CoroutineCandidate
                 | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
@@ -2068,7 +2068,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (
                 ImplCandidate(_)
                 | ClosureCandidate { .. }
-                | GeneratorCandidate
+                | CoroutineCandidate
                 | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
@@ -2078,7 +2078,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitAliasCandidate,
                 ImplCandidate(_)
                 | ClosureCandidate { .. }
-                | GeneratorCandidate
+                | CoroutineCandidate
                 | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
@@ -2112,8 +2112,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2180,7 +2180,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Dynamic(..)
             | ty::Str
             | ty::Slice(..)
-            | ty::Generator(_, _, hir::Movability::Static)
+            | ty::Coroutine(_, _, hir::Movability::Static)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
 
@@ -2189,7 +2189,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(obligation.predicate.rebind(tys.iter().collect()))
             }
 
-            ty::Generator(_, args, hir::Movability::Movable) => {
+            ty::Coroutine(_, args, hir::Movability::Movable) => {
                 if self.tcx().features().generator_clone {
                     let resolved_upvars =
                         self.infcx.shallow_resolve(args.as_generator().tupled_upvars_ty());
@@ -2212,7 +2212,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            ty::GeneratorWitness(def_id, ref args) => {
+            ty::CoroutineWitness(def_id, ref args) => {
                 let hidden_types = bind_generator_hidden_types_above(
                     self.infcx,
                     def_id,
@@ -2311,13 +2311,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 t.rebind(vec![ty])
             }
 
-            ty::Generator(_, ref args, _) => {
+            ty::Coroutine(_, ref args, _) => {
                 let ty = self.infcx.shallow_resolve(args.as_generator().tupled_upvars_ty());
                 let witness = args.as_generator().witness();
                 t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
             }
 
-            ty::GeneratorWitness(def_id, ref args) => {
+            ty::CoroutineWitness(def_id, ref args) => {
                 bind_generator_hidden_types_above(self.infcx, def_id, args, t.bound_vars())
             }
 

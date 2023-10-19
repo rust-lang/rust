@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
-use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
+use rustc_hir::{AsyncCoroutineKind, CoroutineKind, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
@@ -398,7 +398,7 @@ fn push_debuginfo_type_name<'tcx>(
             // processing
             visited.remove(&t);
         }
-        ty::Closure(def_id, args) | ty::Generator(def_id, args, ..) => {
+        ty::Closure(def_id, args) | ty::Coroutine(def_id, args, ..) => {
             // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
@@ -426,7 +426,7 @@ fn push_debuginfo_type_name<'tcx>(
         | ty::Placeholder(..)
         | ty::Alias(..)
         | ty::Bound(..)
-        | ty::GeneratorWitness(..) => {
+        | ty::CoroutineWitness(..) => {
             bug!(
                 "debuginfo: Trying to create type name for \
                   unexpected type: {:?}",
@@ -558,12 +558,12 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
     push_unqualified_item_name(tcx, def_id, def_key.disambiguated_data, output);
 }
 
-fn generator_kind_label(generator_kind: Option<GeneratorKind>) -> &'static str {
+fn generator_kind_label(generator_kind: Option<CoroutineKind>) -> &'static str {
     match generator_kind {
-        Some(GeneratorKind::Async(AsyncGeneratorKind::Block)) => "async_block",
-        Some(GeneratorKind::Async(AsyncGeneratorKind::Closure)) => "async_closure",
-        Some(GeneratorKind::Async(AsyncGeneratorKind::Fn)) => "async_fn",
-        Some(GeneratorKind::Gen) => "generator",
+        Some(CoroutineKind::Async(AsyncCoroutineKind::Block)) => "async_block",
+        Some(CoroutineKind::Async(AsyncCoroutineKind::Closure)) => "async_closure",
+        Some(CoroutineKind::Async(AsyncCoroutineKind::Fn)) => "async_fn",
+        Some(CoroutineKind::Gen) => "generator",
         None => "closure",
     }
 }

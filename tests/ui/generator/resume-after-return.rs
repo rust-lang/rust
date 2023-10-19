@@ -4,7 +4,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{GeneratorState, Generator};
+use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;
 use std::panic;
 
@@ -17,7 +17,7 @@ fn main() {
     };
 
     match Pin::new(&mut foo).resume(()) {
-        GeneratorState::Complete(()) => {}
+        CoroutineState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 

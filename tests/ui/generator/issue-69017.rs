@@ -7,9 +7,9 @@
 #![feature(generator_trait)]
 #![feature(generators)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn gen() -> impl Generator<usize> {
+fn gen() -> impl Coroutine<usize> {
     |_: usize| {
         println!("-> {}", yield);
     }

@@ -1,7 +1,7 @@
 // MIR for `main::{closure#0}` 0 generator_drop
-/* generator_layout = GeneratorLayout {
+/* generator_layout = CoroutineLayout {
     field_tys: {
-        _0: GeneratorSavedTy {
+        _0: CoroutineSavedTy {
             ty: std::string::String,
             source_info: SourceInfo {
                 span: $DIR/generator_drop_cleanup.rs:12:13: 12:15 (#0),

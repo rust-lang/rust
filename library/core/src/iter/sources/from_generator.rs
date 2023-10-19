@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::ops::{Generator, GeneratorState};
+use crate::ops::{Coroutine, CoroutineState};
 use crate::pin::Pin;
 
 /// Creates a new iterator where each iteration calls the provided generator.
@@ -24,8 +24,8 @@ use crate::pin::Pin;
 /// ```
 #[inline]
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
-pub fn from_generator<G: Generator<Return = ()> + Unpin>(generator: G) -> FromGenerator<G> {
-    FromGenerator(generator)
+pub fn from_generator<G: Coroutine<Return = ()> + Unpin>(generator: G) -> FromCoroutine<G> {
+    FromCoroutine(generator)
 }
 
 /// An iterator over the values yielded by an underlying generator.
@@ -36,23 +36,23 @@ pub fn from_generator<G: Generator<Return = ()> + Unpin>(generator: G) -> FromGe
 /// [`iter::from_generator()`]: from_generator
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
 #[derive(Clone)]
-pub struct FromGenerator<G>(G);
+pub struct FromCoroutine<G>(G);
 
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
-impl<G: Generator<Return = ()> + Unpin> Iterator for FromGenerator<G> {
+impl<G: Coroutine<Return = ()> + Unpin> Iterator for FromCoroutine<G> {
     type Item = G::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {
         match Pin::new(&mut self.0).resume(()) {
-            GeneratorState::Yielded(n) => Some(n),
-            GeneratorState::Complete(()) => None,
+            CoroutineState::Yielded(n) => Some(n),
+            CoroutineState::Complete(()) => None,
         }
     }
 }
 
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
-impl<G> fmt::Debug for FromGenerator<G> {
+impl<G> fmt::Debug for FromCoroutine<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FromGenerator").finish()
+        f.debug_struct("FromCoroutine").finish()
     }
 }

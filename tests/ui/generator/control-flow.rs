@@ -6,16 +6,16 @@
 #![feature(generators, generator_trait)]
 
 use std::marker::Unpin;
-use std::ops::{GeneratorState, Generator};
+use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;
 
 fn finish<T>(mut amt: usize, mut t: T) -> T::Return
-    where T: Generator<(), Yield = ()> + Unpin,
+    where T: Coroutine<(), Yield = ()> + Unpin,
 {
     loop {
         match Pin::new(&mut t).resume(()) {
-            GeneratorState::Yielded(()) => amt = amt.checked_sub(1).unwrap(),
-            GeneratorState::Complete(ret) => {
+            CoroutineState::Yielded(()) => amt = amt.checked_sub(1).unwrap(),
+            CoroutineState::Complete(ret) => {
                 assert_eq!(amt, 0);
                 return ret
             }

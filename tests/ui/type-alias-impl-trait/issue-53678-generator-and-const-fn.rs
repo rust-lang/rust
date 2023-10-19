@@ -4,9 +4,9 @@
 // check-pass
 
 mod gen {
-    use std::ops::Generator;
+    use std::ops::Coroutine;
 
-    pub type GenOnce<Y, R> = impl Generator<Yield = Y, Return = R>;
+    pub type GenOnce<Y, R> = impl Coroutine<Yield = Y, Return = R>;
 
     pub const fn const_generator<Y, R>(yielding: Y, returning: R) -> GenOnce<Y, R> {
         move || {

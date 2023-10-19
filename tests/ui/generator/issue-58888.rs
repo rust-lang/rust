@@ -4,7 +4,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 struct Database;
 
@@ -13,7 +13,7 @@ impl Database {
         Some(()).into_iter()
     }
 
-    fn check_connection(&self) -> impl Generator<Yield = (), Return = ()> + '_ {
+    fn check_connection(&self) -> impl Coroutine<Yield = (), Return = ()> + '_ {
         move || {
             let iter = self.get_connection();
             for i in iter {

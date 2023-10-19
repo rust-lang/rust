@@ -1811,8 +1811,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::FnPtr(..)
                         | ty::Dynamic(..)
                         | ty::Closure(..)
-                        | ty::Generator(..)
-                        | ty::GeneratorWitness(..)
+                        | ty::Coroutine(..)
+                        | ty::CoroutineWitness(..)
                         | ty::Never
                         | ty::Tuple(..)
                         // Integers and floats always have `u8` as their discriminant.
@@ -1860,8 +1860,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::FnPtr(..)
                         | ty::Dynamic(..)
                         | ty::Closure(..)
-                        | ty::Generator(..)
-                        | ty::GeneratorWitness(..)
+                        | ty::Coroutine(..)
+                        | ty::CoroutineWitness(..)
                         | ty::Never
                         // Extern types have unit metadata, according to RFC 2850
                         | ty::Foreign(_)
@@ -2035,7 +2035,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Generator(_, args, _) =
+    let ty::Coroutine(_, args, _) =
         selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
     else {
         unreachable!()
@@ -2053,7 +2053,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
 
     let tcx = selcx.tcx();
 
-    let gen_def_id = tcx.require_lang_item(LangItem::Generator, None);
+    let gen_def_id = tcx.require_lang_item(LangItem::Coroutine, None);
 
     let predicate = super::util::generator_trait_ref_and_outputs(
         tcx,
@@ -2087,7 +2087,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Generator(_, args, _) =
+    let ty::Coroutine(_, args, _) =
         selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
     else {
         unreachable!()

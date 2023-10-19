@@ -463,11 +463,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | Rvalue::Len(_) => {}
 
             Rvalue::Aggregate(kind, ..) => {
-                if let AggregateKind::Generator(def_id, ..) = kind.as_ref()
-                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) =
+                if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
+                    && let Some(generator_kind @ hir::CoroutineKind::Async(..)) =
                         self.tcx.generator_kind(def_id)
                 {
-                    self.check_op(ops::Generator(generator_kind));
+                    self.check_op(ops::Coroutine(generator_kind));
                 }
             }
 
@@ -1042,8 +1042,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
 
-            TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
-                self.check_op(ops::Generator(hir::GeneratorKind::Gen))
+            TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => {
+                self.check_op(ops::Coroutine(hir::CoroutineKind::Gen))
             }
 
             TerminatorKind::UnwindTerminate(_) => {

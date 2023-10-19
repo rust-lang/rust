@@ -133,11 +133,11 @@ pub struct UnsafetyCheckResult {
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[debug_format = "_{}"]
-    pub struct GeneratorSavedLocal {}
+    pub struct CoroutineSavedLocal {}
 }
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
-pub struct GeneratorSavedTy<'tcx> {
+pub struct CoroutineSavedTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Source info corresponding to the local in the original MIR body.
     pub source_info: SourceInfo,
@@ -147,16 +147,16 @@ pub struct GeneratorSavedTy<'tcx> {
 
 /// The layout of generator state.
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
-pub struct GeneratorLayout<'tcx> {
+pub struct CoroutineLayout<'tcx> {
     /// The type of every local stored inside the generator.
-    pub field_tys: IndexVec<GeneratorSavedLocal, GeneratorSavedTy<'tcx>>,
+    pub field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>>,
 
     /// The name for debuginfo.
-    pub field_names: IndexVec<GeneratorSavedLocal, Option<Symbol>>,
+    pub field_names: IndexVec<CoroutineSavedLocal, Option<Symbol>>,
 
     /// Which of the above fields are in each variant. Note that one field may
     /// be stored in multiple variants.
-    pub variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, GeneratorSavedLocal>>,
+    pub variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>>,
 
     /// The source that led to each variant being created (usually, a yield or
     /// await).
@@ -167,10 +167,10 @@ pub struct GeneratorLayout<'tcx> {
     /// layout.
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
-    pub storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
+    pub storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
 }
 
-impl Debug for GeneratorLayout<'_> {
+impl Debug for CoroutineLayout<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         /// Prints an iterator of (key, value) tuples as a map.
         struct MapPrinter<'a, K, V>(Cell<Option<Box<dyn Iterator<Item = (K, V)> + 'a>>>);
@@ -194,7 +194,7 @@ impl Debug for GeneratorLayout<'_> {
         }
         impl Debug for GenVariantPrinter {
             fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let variant_name = ty::GeneratorArgs::variant_name(self.0);
+                let variant_name = ty::CoroutineArgs::variant_name(self.0);
                 if fmt.alternate() {
                     write!(fmt, "{:9}({:?})", variant_name, self.0)
                 } else {
@@ -211,7 +211,7 @@ impl Debug for GeneratorLayout<'_> {
             }
         }
 
-        fmt.debug_struct("GeneratorLayout")
+        fmt.debug_struct("CoroutineLayout")
             .field("field_tys", &MapPrinter::new(self.field_tys.iter_enumerated()))
             .field(
                 "variant_fields",

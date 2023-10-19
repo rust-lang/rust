@@ -28,8 +28,8 @@ pub enum SimplifiedType {
     MarkerTraitObject,
     Trait(DefId),
     Closure(DefId),
-    Generator(DefId),
-    GeneratorWitness(DefId),
+    Coroutine(DefId),
+    CoroutineWitness(DefId),
     Function(usize),
     Placeholder,
 }
@@ -128,8 +128,8 @@ pub fn simplify_type<'tcx>(
         },
         ty::Ref(_, _, mutbl) => Some(SimplifiedType::Ref(mutbl)),
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(SimplifiedType::Closure(def_id)),
-        ty::Generator(def_id, _, _) => Some(SimplifiedType::Generator(def_id)),
-        ty::GeneratorWitness(def_id, _) => Some(SimplifiedType::GeneratorWitness(def_id)),
+        ty::Coroutine(def_id, _, _) => Some(SimplifiedType::Coroutine(def_id)),
+        ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id)),
         ty::Never => Some(SimplifiedType::Never),
         ty::Tuple(tys) => Some(SimplifiedType::Tuple(tys.len())),
         ty::FnPtr(f) => Some(SimplifiedType::Function(f.skip_binder().inputs().len())),
@@ -164,8 +164,8 @@ impl SimplifiedType {
             | SimplifiedType::Foreign(d)
             | SimplifiedType::Trait(d)
             | SimplifiedType::Closure(d)
-            | SimplifiedType::Generator(d)
-            | SimplifiedType::GeneratorWitness(d) => Some(d),
+            | SimplifiedType::Coroutine(d)
+            | SimplifiedType::CoroutineWitness(d) => Some(d),
             _ => None,
         }
     }
@@ -234,8 +234,8 @@ impl DeepRejectCtxt {
             | ty::Foreign(..) => {}
             ty::FnDef(..)
             | ty::Closure(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Infer(_) => bug!("unexpected impl_ty: {impl_ty}"),
@@ -310,7 +310,7 @@ impl DeepRejectCtxt {
             },
 
             // Impls cannot contain these types as these cannot be named directly.
-            ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) => false,
+            ty::FnDef(..) | ty::Closure(..) | ty::Coroutine(..) => false,
 
             // Placeholder types don't unify with anything on their own
             ty::Placeholder(..) | ty::Bound(..) => false,
@@ -337,7 +337,7 @@ impl DeepRejectCtxt {
 
             ty::Error(_) => true,
 
-            ty::GeneratorWitness(..) => {
+            ty::CoroutineWitness(..) => {
                 bug!("unexpected obligation type: {:?}", obligation_ty)
             }
         }

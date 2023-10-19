@@ -6,8 +6,8 @@
 // revisions: stock specialized
 // [specialized]check-pass
 
-type OpaqueGenerator = impl Sized;
-fn defining_use() -> OpaqueGenerator {
+type OpaqueCoroutine = impl Sized;
+fn defining_use() -> OpaqueCoroutine {
     || {
         for i in 0..10 {
             yield i;
@@ -17,8 +17,8 @@ fn defining_use() -> OpaqueGenerator {
 
 struct Wrapper<T>(T);
 trait Trait {}
-impl Trait for Wrapper<OpaqueGenerator> {}
+impl Trait for Wrapper<OpaqueCoroutine> {}
 impl<T: Sync> Trait for Wrapper<T> {}
-//[stock]~^ ERROR conflicting implementations of trait `Trait` for type `Wrapper<OpaqueGenerator>`
+//[stock]~^ ERROR conflicting implementations of trait `Trait` for type `Wrapper<OpaqueCoroutine>`
 
 fn main() {}

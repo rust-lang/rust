@@ -864,7 +864,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 GenericArgKind::Type(ty) => {
                     if matches!(
                         ty.kind(),
-                        ty::Alias(ty::Opaque, ..) | ty::Closure(..) | ty::Generator(..)
+                        ty::Alias(ty::Opaque, ..) | ty::Closure(..) | ty::Coroutine(..)
                     ) {
                         // Opaque types can't be named by the user right now.
                         //

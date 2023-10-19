@@ -3,11 +3,11 @@
 #![feature(generators, generator_trait)]
 
 use std::{
-    ops::{Generator, GeneratorState},
+    ops::{Coroutine, CoroutineState},
     pin::Pin,
 };
 
-fn firstn() -> impl Generator<Yield = u64, Return = ()> {
+fn firstn() -> impl Coroutine<Yield = u64, Return = ()> {
     static move || {
         let mut num = 0;
         let num = &mut num;
@@ -27,7 +27,7 @@ fn main() {
     let mut generator_iterator = firstn();
     let mut pin = unsafe { Pin::new_unchecked(&mut generator_iterator) };
     let mut sum = 0;
-    while let GeneratorState::Yielded(x) = pin.as_mut().resume(()) {
+    while let CoroutineState::Yielded(x) = pin.as_mut().resume(()) {
         sum += x;
     }
     assert_eq!(sum, 3);

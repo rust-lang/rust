@@ -849,8 +849,8 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     generic_arg.stable(tables),
                 )
             }
-            mir::AggregateKind::Generator(def_id, generic_arg, movability) => {
-                stable_mir::mir::AggregateKind::Generator(
+            mir::AggregateKind::Coroutine(def_id, generic_arg, movability) => {
+                stable_mir::mir::AggregateKind::Coroutine(
                     tables.generator_def(*def_id),
                     generic_arg.stable(tables),
                     movability.stable(tables),
@@ -860,20 +860,20 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_hir::GeneratorKind {
-    type T = stable_mir::mir::GeneratorKind;
+impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
+    type T = stable_mir::mir::CoroutineKind;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
+        use rustc_hir::{AsyncCoroutineKind, CoroutineKind};
         match self {
-            GeneratorKind::Async(async_gen) => {
+            CoroutineKind::Async(async_gen) => {
                 let async_gen = match async_gen {
-                    AsyncGeneratorKind::Block => stable_mir::mir::AsyncGeneratorKind::Block,
-                    AsyncGeneratorKind::Closure => stable_mir::mir::AsyncGeneratorKind::Closure,
-                    AsyncGeneratorKind::Fn => stable_mir::mir::AsyncGeneratorKind::Fn,
+                    AsyncCoroutineKind::Block => stable_mir::mir::AsyncCoroutineKind::Block,
+                    AsyncCoroutineKind::Closure => stable_mir::mir::AsyncCoroutineKind::Closure,
+                    AsyncCoroutineKind::Fn => stable_mir::mir::AsyncCoroutineKind::Fn,
                 };
-                stable_mir::mir::GeneratorKind::Async(async_gen)
+                stable_mir::mir::CoroutineKind::Async(async_gen)
             }
-            GeneratorKind::Gen => stable_mir::mir::GeneratorKind::Gen,
+            CoroutineKind::Gen => stable_mir::mir::CoroutineKind::Gen,
         }
     }
 }
@@ -976,7 +976,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 unwind: unwind.stable(tables),
             },
             mir::TerminatorKind::Yield { .. }
-            | mir::TerminatorKind::GeneratorDrop
+            | mir::TerminatorKind::CoroutineDrop
             | mir::TerminatorKind::FalseEdge { .. }
             | mir::TerminatorKind::FalseUnwind { .. } => unreachable!(),
         }
@@ -1231,7 +1231,7 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
                 tables.closure_def(*def_id),
                 generic_args.stable(tables),
             )),
-            ty::Generator(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Generator(
+            ty::Coroutine(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Coroutine(
                 tables.generator_def(*def_id),
                 generic_args.stable(tables),
                 movability.stable(tables),
@@ -1247,7 +1247,7 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
             ty::Bound(debruijn_idx, bound_ty) => {
                 TyKind::Bound(debruijn_idx.as_usize(), bound_ty.stable(tables))
             }
-            ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) | ty::Error(_) => {
+            ty::Placeholder(..) | ty::CoroutineWitness(..) | ty::Infer(_) | ty::Error(_) => {
                 unreachable!();
             }
         }

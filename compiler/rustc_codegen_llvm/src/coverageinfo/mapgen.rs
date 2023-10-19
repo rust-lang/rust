@@ -313,7 +313,7 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
             // generic functions from consideration as well.
             if !matches!(
                 kind,
-                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator
+                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Coroutine
             ) {
                 return None;
             }

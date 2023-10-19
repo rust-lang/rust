@@ -866,7 +866,7 @@ where
             // This should only happen for the self argument on the resume function.
             // It effectively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
-            ty::Generator(_, args, _) => self.open_drop_for_tuple(&args.as_generator().upvar_tys()),
+            ty::Coroutine(_, args, _) => self.open_drop_for_tuple(&args.as_generator().upvar_tys()),
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
             ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),

@@ -3,7 +3,7 @@
 // compile-flags: -Zinline-mir-hint-threshold=1000
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 
 // EMIT_MIR inline_generator.main.Inline.diff
@@ -12,7 +12,7 @@ fn main() {
 }
 
 #[inline]
-pub fn g() -> impl Generator<bool> {
+pub fn g() -> impl Coroutine<bool> {
     #[inline]
     |a| { yield if a { 7 } else { 13 } }
 }

@@ -460,7 +460,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         }
         ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
         ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
-        ty::Generator(..) => enums::build_generator_di_node(cx, unique_type_id),
+        ty::Coroutine(..) => enums::build_generator_di_node(cx, unique_type_id),
         ty::Adt(def, ..) => match def.adt_kind() {
             AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id),
             AdtKind::Union => build_union_type_di_node(cx, unique_type_id),
@@ -1034,7 +1034,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_generator_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_generator_ty.kind() {
-        ty::Generator(def_id, args, _) => (def_id, args.as_generator().prefix_tys()),
+        ty::Coroutine(def_id, args, _) => (def_id, args.as_generator().prefix_tys()),
         ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         _ => {
             bug!(

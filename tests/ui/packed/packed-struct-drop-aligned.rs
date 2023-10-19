@@ -3,7 +3,7 @@
 #![feature(generator_trait)]
 use std::cell::Cell;
 use std::mem;
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 
 struct Aligned<'a> {

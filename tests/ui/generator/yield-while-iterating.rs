@@ -1,6 +1,6 @@
 #![feature(generators, generator_trait)]
 
-use std::ops::{GeneratorState, Generator};
+use std::ops::{CoroutineState, Coroutine};
 use std::cell::Cell;
 use std::pin::Pin;
 

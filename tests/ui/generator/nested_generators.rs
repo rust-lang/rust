@@ -2,7 +2,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
@@ -12,7 +12,7 @@ fn main() {
         };
 
         match Pin::new(&mut sub_generator).resume(()) {
-            GeneratorState::Yielded(x) => {
+            CoroutineState::Yielded(x) => {
                 yield x;
             }
             _ => panic!(),

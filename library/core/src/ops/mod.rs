@@ -199,7 +199,7 @@ pub use self::try_trait::Residual;
 pub(crate) use self::try_trait::{ChangeOutputType, NeverShortCircuit};
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-pub use self::generator::{Generator, GeneratorState};
+pub use self::generator::{Coroutine, CoroutineState};
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 pub use self::unsize::CoerceUnsized;

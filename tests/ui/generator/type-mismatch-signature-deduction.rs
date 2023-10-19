@@ -1,8 +1,8 @@
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-fn foo() -> impl Generator<Return = i32> {
+fn foo() -> impl Coroutine<Return = i32> {
     //~^ ERROR type mismatch
     || {
         if false {

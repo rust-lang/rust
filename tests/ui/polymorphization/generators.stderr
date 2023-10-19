@@ -10,7 +10,7 @@ LL | #![feature(generic_const_exprs, generators, generator_trait, rustc_attrs)]
 error: item has unused generic parameters
   --> $DIR/generators.rs:35:5
    |
-LL | pub fn unused_type<T>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
+LL | pub fn unused_type<T>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {
    |                    - generic parameter `T` is unused
 LL |     || {
    |     ^^
@@ -18,7 +18,7 @@ LL |     || {
 error: item has unused generic parameters
   --> $DIR/generators.rs:60:5
    |
-LL | pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
+LL | pub fn unused_const<const T: u32>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {
    |                     ------------ generic parameter `T` is unused
 LL |     || {
    |     ^^

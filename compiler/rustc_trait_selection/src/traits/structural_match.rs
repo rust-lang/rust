@@ -79,7 +79,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
             ty::Closure(..) => {
                 return ControlFlow::Break(ty);
             }
-            ty::Generator(..) | ty::GeneratorWitness(..) => {
+            ty::Coroutine(..) | ty::CoroutineWitness(..) => {
                 return ControlFlow::Break(ty);
             }
             ty::FnDef(..) => {

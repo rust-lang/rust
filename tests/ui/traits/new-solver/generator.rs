@@ -5,20 +5,20 @@
 
 #![feature(generator_trait, generators)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 struct A;
 struct B;
 struct C;
 
-fn needs_generator(_: impl Generator<A, Yield = B, Return = C>) {}
+fn needs_generator(_: impl Coroutine<A, Yield = B, Return = C>) {}
 
 #[cfg(fail)]
 fn main() {
     needs_generator(|| {
-        //[fail]~^ ERROR Generator<A>` is not satisfied
-        //[fail]~| ERROR as Generator<A>>::Yield == B`
-        //[fail]~| ERROR as Generator<A>>::Return == C`
+        //[fail]~^ ERROR Coroutine<A>` is not satisfied
+        //[fail]~| ERROR as Coroutine<A>>::Yield == B`
+        //[fail]~| ERROR as Coroutine<A>>::Return == C`
         yield ();
     });
 }

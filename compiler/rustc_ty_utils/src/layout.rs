@@ -2,7 +2,7 @@ use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
+use rustc_middle::mir::{CoroutineLayout, CoroutineSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
@@ -314,7 +314,7 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(unit)
         }
 
-        ty::Generator(def_id, args, _) => generator_layout(cx, ty, def_id, args)?,
+        ty::Coroutine(def_id, args, _) => generator_layout(cx, ty, def_id, args)?,
 
         ty::Closure(_, ref args) => {
             let tys = args.as_closure().upvar_tys();
@@ -575,7 +575,7 @@ fn layout_of_uncached<'tcx>(
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
 
-        ty::Bound(..) | ty::GeneratorWitness(..) | ty::Infer(_) | ty::Error(_) => {
+        ty::Bound(..) | ty::CoroutineWitness(..) | ty::Infer(_) | ty::Error(_) => {
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 
@@ -585,7 +585,7 @@ fn layout_of_uncached<'tcx>(
     })
 }
 
-/// Overlap eligibility and variant assignment for each GeneratorSavedLocal.
+/// Overlap eligibility and variant assignment for each CoroutineSavedLocal.
 #[derive(Clone, Debug, PartialEq)]
 enum SavedLocalEligibility {
     Unassigned,
@@ -614,11 +614,11 @@ enum SavedLocalEligibility {
 
 /// Compute the eligibility and assignment of each local.
 fn generator_saved_local_eligibility(
-    info: &GeneratorLayout<'_>,
-) -> (BitSet<GeneratorSavedLocal>, IndexVec<GeneratorSavedLocal, SavedLocalEligibility>) {
+    info: &CoroutineLayout<'_>,
+) -> (BitSet<CoroutineSavedLocal>, IndexVec<CoroutineSavedLocal, SavedLocalEligibility>) {
     use SavedLocalEligibility::*;
 
-    let mut assignments: IndexVec<GeneratorSavedLocal, SavedLocalEligibility> =
+    let mut assignments: IndexVec<CoroutineSavedLocal, SavedLocalEligibility> =
         IndexVec::from_elem(Unassigned, &info.field_tys);
 
     // The saved locals not eligible for overlap. These will get
@@ -766,7 +766,7 @@ fn generator_layout<'tcx>(
     // Split the prefix layout into the "outer" fields (upvars and
     // discriminant) and the "promoted" fields. Promoted fields will
     // get included in each variant that requested them in
-    // GeneratorLayout.
+    // CoroutineLayout.
     debug!("prefix = {:#?}", prefix);
     let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
         FieldsShape::Arbitrary { mut offsets, memory_index } => {
@@ -833,7 +833,7 @@ fn generator_layout<'tcx>(
             };
 
             // Now, stitch the promoted and variant-only fields back together in
-            // the order they are mentioned by our GeneratorLayout.
+            // the order they are mentioned by our CoroutineLayout.
             // Because we only use some subset (that can differ between variants)
             // of the promoted fields, we can't just pick those elements of the
             // `promoted_memory_index` (as we'd end up with gaps).
@@ -956,12 +956,12 @@ fn record_layout_for_printing_outlined<'tcx>(
             record(adt_kind.into(), adt_packed, opt_discr_size, variant_infos);
         }
 
-        ty::Generator(def_id, args, _) => {
+        ty::Coroutine(def_id, args, _) => {
             debug!("print-type-size t: `{:?}` record generator", layout.ty);
-            // Generators always have a begin/poisoned/end state with additional suspend points
+            // Coroutines always have a begin/poisoned/end state with additional suspend points
             let (variant_infos, opt_discr_size) =
                 variant_info_for_generator(cx, layout, def_id, args);
-            record(DataTypeKind::Generator, false, opt_discr_size, variant_infos);
+            record(DataTypeKind::Coroutine, false, opt_discr_size, variant_infos);
         }
 
         ty::Closure(..) => {
@@ -1095,7 +1095,7 @@ fn variant_info_for_generator<'tcx>(
                     // The struct is as large as the last field's end
                     variant_size = variant_size.max(offset + field_layout.size);
                     FieldInfo {
-                        kind: FieldKind::GeneratorLocal,
+                        kind: FieldKind::CoroutineLocal,
                         name: generator.field_names[*local].unwrap_or(Symbol::intern(&format!(
                             ".generator_field{}",
                             local.as_usize()
@@ -1136,7 +1136,7 @@ fn variant_info_for_generator<'tcx>(
             }
 
             VariantInfo {
-                name: Some(Symbol::intern(&ty::GeneratorArgs::variant_name(variant_idx))),
+                name: Some(Symbol::intern(&ty::CoroutineArgs::variant_name(variant_idx))),
                 kind: SizeKind::Exact,
                 size: variant_size.bytes(),
                 align: variant_layout.align.abi.bytes(),

@@ -1493,7 +1493,7 @@ pub struct BodyId {
 pub struct Body<'hir> {
     pub params: &'hir [Param<'hir>],
     pub value: &'hir Expr<'hir>,
-    pub generator_kind: Option<GeneratorKind>,
+    pub generator_kind: Option<CoroutineKind>,
 }
 
 impl<'hir> Body<'hir> {
@@ -1501,7 +1501,7 @@ impl<'hir> Body<'hir> {
         BodyId { hir_id: self.value.hir_id }
     }
 
-    pub fn generator_kind(&self) -> Option<GeneratorKind> {
+    pub fn generator_kind(&self) -> Option<CoroutineKind> {
         self.generator_kind
     }
 }
@@ -1509,28 +1509,28 @@ impl<'hir> Body<'hir> {
 /// The type of source expression that caused this generator to be created.
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
-pub enum GeneratorKind {
+pub enum CoroutineKind {
     /// An explicit `async` block or the body of an async function.
-    Async(AsyncGeneratorKind),
+    Async(AsyncCoroutineKind),
 
     /// A generator literal created via a `yield` inside a closure.
     Gen,
 }
 
-impl fmt::Display for GeneratorKind {
+impl fmt::Display for CoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GeneratorKind::Async(k) => fmt::Display::fmt(k, f),
-            GeneratorKind::Gen => f.write_str("generator"),
+            CoroutineKind::Async(k) => fmt::Display::fmt(k, f),
+            CoroutineKind::Gen => f.write_str("generator"),
         }
     }
 }
 
-impl GeneratorKind {
+impl CoroutineKind {
     pub fn descr(&self) -> &'static str {
         match self {
-            GeneratorKind::Async(ask) => ask.descr(),
-            GeneratorKind::Gen => "generator",
+            CoroutineKind::Async(ask) => ask.descr(),
+            CoroutineKind::Gen => "generator",
         }
     }
 }
@@ -1542,7 +1542,7 @@ impl GeneratorKind {
 /// type-checking (see #60424).
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
-pub enum AsyncGeneratorKind {
+pub enum AsyncCoroutineKind {
     /// An explicit `async` block written by the user.
     Block,
 
@@ -1553,22 +1553,22 @@ pub enum AsyncGeneratorKind {
     Fn,
 }
 
-impl fmt::Display for AsyncGeneratorKind {
+impl fmt::Display for AsyncCoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            AsyncGeneratorKind::Block => "async block",
-            AsyncGeneratorKind::Closure => "async closure body",
-            AsyncGeneratorKind::Fn => "async fn body",
+            AsyncCoroutineKind::Block => "async block",
+            AsyncCoroutineKind::Closure => "async closure body",
+            AsyncCoroutineKind::Fn => "async fn body",
         })
     }
 }
 
-impl AsyncGeneratorKind {
+impl AsyncCoroutineKind {
     pub fn descr(&self) -> &'static str {
         match self {
-            AsyncGeneratorKind::Block => "`async` block",
-            AsyncGeneratorKind::Closure => "`async` closure body",
-            AsyncGeneratorKind::Fn => "`async fn` body",
+            AsyncCoroutineKind::Block => "`async` block",
+            AsyncCoroutineKind::Closure => "`async` closure body",
+            AsyncCoroutineKind::Fn => "`async fn` body",
         }
     }
 }
@@ -2247,12 +2247,12 @@ impl fmt::Display for YieldSource {
     }
 }
 
-impl From<GeneratorKind> for YieldSource {
-    fn from(kind: GeneratorKind) -> Self {
+impl From<CoroutineKind> for YieldSource {
+    fn from(kind: CoroutineKind) -> Self {
         match kind {
             // Guess based on the kind of the current generator.
-            GeneratorKind::Gen => Self::Yield,
-            GeneratorKind::Async(_) => Self::Await { expr: None },
+            CoroutineKind::Gen => Self::Yield,
+            CoroutineKind::Async(_) => Self::Await { expr: None },
         }
     }
 }

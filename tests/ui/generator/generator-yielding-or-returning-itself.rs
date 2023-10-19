@@ -4,10 +4,10 @@
 // Test that we cannot create a generator that returns a value of its
 // own type.
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 pub fn want_cyclic_generator_return<T>(_: T)
-    where T: Generator<Yield = (), Return = T>
+    where T: Coroutine<Yield = (), Return = T>
 {
 }
 
@@ -20,7 +20,7 @@ fn supply_cyclic_generator_return() {
 }
 
 pub fn want_cyclic_generator_yield<T>(_: T)
-    where T: Generator<Yield = T, Return = ()>
+    where T: Coroutine<Yield = T, Return = ()>
 {
 }
 

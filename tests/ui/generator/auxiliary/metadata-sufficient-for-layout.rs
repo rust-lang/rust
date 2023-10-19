@@ -2,9 +2,9 @@
 #![feature(generators, generator_trait)]
 
 use std::marker::Unpin;
-use std::ops::Generator;
+use std::ops::Coroutine;
 
-pub fn g() -> impl Generator<(), Yield = (), Return = ()> {
+pub fn g() -> impl Coroutine<(), Yield = (), Return = ()> {
     || {
         yield;
     }

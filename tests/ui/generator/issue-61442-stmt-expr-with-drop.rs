@@ -6,7 +6,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 async fn drop_and_await() {
     async {};

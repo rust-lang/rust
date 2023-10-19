@@ -132,7 +132,7 @@ pub struct AwaitOnlyInAsyncFnAndBlocks {
 
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_generator_too_many_parameters, code = "E0628")]
-pub struct GeneratorTooManyParameters {
+pub struct CoroutineTooManyParameters {
     #[primary_span]
     pub fn_decl_span: Span,
 }
@@ -162,7 +162,7 @@ pub struct FunctionalRecordUpdateDestructuringAssignment {
 
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_async_generators_not_supported, code = "E0727")]
-pub struct AsyncGeneratorsNotSupported {
+pub struct AsyncCoroutinesNotSupported {
     #[primary_span]
     pub span: Span,
 }

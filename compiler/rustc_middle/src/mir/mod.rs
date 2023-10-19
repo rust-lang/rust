@@ -17,7 +17,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::{self, GeneratorKind, ImplicitSelfKind};
+use rustc_hir::{self, CoroutineKind, ImplicitSelfKind};
 use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -246,19 +246,19 @@ impl<'tcx> MirSource<'tcx> {
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
-pub struct GeneratorInfo<'tcx> {
+pub struct CoroutineInfo<'tcx> {
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
-    /// Generator drop glue.
+    /// Coroutine drop glue.
     pub generator_drop: Option<Body<'tcx>>,
 
     /// The layout of a generator. Produced by the state transformation.
-    pub generator_layout: Option<GeneratorLayout<'tcx>>,
+    pub generator_layout: Option<CoroutineLayout<'tcx>>,
 
     /// If this is a generator then record the type of source expression that caused this generator
     /// to be created.
-    pub generator_kind: GeneratorKind,
+    pub generator_kind: CoroutineKind,
 }
 
 /// The lowered representation of a single function.
@@ -284,7 +284,7 @@ pub struct Body<'tcx> {
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
 
-    pub generator: Option<Box<GeneratorInfo<'tcx>>>,
+    pub generator: Option<Box<CoroutineInfo<'tcx>>>,
 
     /// Declarations of locals.
     ///
@@ -365,7 +365,7 @@ impl<'tcx> Body<'tcx> {
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
-        generator_kind: Option<GeneratorKind>,
+        generator_kind: Option<CoroutineKind>,
         tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
@@ -383,7 +383,7 @@ impl<'tcx> Body<'tcx> {
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
             generator: generator_kind.map(|generator_kind| {
-                Box::new(GeneratorInfo {
+                Box::new(CoroutineInfo {
                     yield_ty: None,
                     generator_drop: None,
                     generator_layout: None,
@@ -552,7 +552,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
-    pub fn generator_layout(&self) -> Option<&GeneratorLayout<'tcx>> {
+    pub fn generator_layout(&self) -> Option<&CoroutineLayout<'tcx>> {
         self.generator.as_ref().and_then(|generator| generator.generator_layout.as_ref())
     }
 
@@ -562,7 +562,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
-    pub fn generator_kind(&self) -> Option<GeneratorKind> {
+    pub fn generator_kind(&self) -> Option<CoroutineKind> {
         self.generator.as_ref().map(|generator| generator.generator_kind)
     }
 
