@@ -312,7 +312,7 @@ struct GeneratorTypes<'tcx> {
     interior: Ty<'tcx>,
 
     /// Indicates if the generator is movable or static (immovable).
-    movability: hir::Movability,
+    movability: ty::Movability,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

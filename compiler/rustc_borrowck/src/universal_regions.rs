@@ -14,7 +14,6 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::BodyOwnerKind;
@@ -94,7 +93,7 @@ pub enum DefiningTy<'tcx> {
     /// The MIR is a generator. The signature is that generators take
     /// no parameters and return the result of
     /// `ClosureArgs::generator_return_ty`.
-    Generator(DefId, GenericArgsRef<'tcx>, hir::Movability),
+    Generator(DefId, GenericArgsRef<'tcx>, ty::Movability),
 
     /// The MIR is a fn item with the given `DefId` and args. The signature
     /// of the function can be bound then with the `fn_sig` query.

@@ -142,7 +142,10 @@ pub(super) fn check_fn<'a, 'tcx>(
             resume_ty,
             yield_ty,
             interior,
-            movability: can_be_generator.unwrap(),
+            movability: match can_be_generator.unwrap() {
+                hir::Movability::Static => ty::Movability::Static,
+                hir::Movability::Movable => ty::Movability::Movable,
+            },
         })
     } else {
         None

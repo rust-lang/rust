@@ -50,6 +50,15 @@ pub enum AliasKind {
     Weak,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum Movability {
+    /// May contain self-references, `!Unpin`.
+    Static,
+    /// Must not contain self-references, `Unpin`.
+    Movable,
+}
+
 /// Defines the kinds of types used by the type system.
 ///
 /// Types written by the user start out as `hir::TyKind` and get
@@ -141,7 +150,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// For more info about generator args, visit the documentation for
     /// `GeneratorArgs`.
-    Generator(I::DefId, I::GenericArgsRef, I::Movability),
+    Generator(I::DefId, I::GenericArgsRef, Movability),
 
     /// A type representing the types stored inside a generator.
     /// This should only appear as part of the `GeneratorArgs`.
@@ -574,7 +583,6 @@ where
     I::Region: Encodable<E>,
     I::TypeAndMut: Encodable<E>,
     I::Mutability: Encodable<E>,
-    I::Movability: Encodable<E>,
     I::PolyFnSig: Encodable<E>,
     I::ListBinderExistentialPredicate: Encodable<E>,
     I::BinderListTy: Encodable<E>,
@@ -689,7 +697,6 @@ where
     I::Region: Decodable<D>,
     I::TypeAndMut: Decodable<D>,
     I::Mutability: Decodable<D>,
-    I::Movability: Decodable<D>,
     I::PolyFnSig: Decodable<D>,
     I::ListBinderExistentialPredicate: Decodable<D>,
     I::BinderListTy: Decodable<D>,
@@ -755,7 +762,6 @@ where
     I::PolyFnSig: HashStable<CTX>,
     I::ListBinderExistentialPredicate: HashStable<CTX>,
     I::Region: HashStable<CTX>,
-    I::Movability: HashStable<CTX>,
     I::Mutability: HashStable<CTX>,
     I::BinderListTy: HashStable<CTX>,
     I::ListTy: HashStable<CTX>,

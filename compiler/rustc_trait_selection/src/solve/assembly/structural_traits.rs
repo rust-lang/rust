@@ -1,7 +1,7 @@
 //! Code which is used by built-in goals that match "structurally", such a auto
 //! traits, `Copy`/`Clone`.
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{def_id::DefId, Movability, Mutability};
+use rustc_hir::{def_id::DefId, Mutability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{
@@ -174,7 +174,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::Dynamic(..)
         | ty::Str
         | ty::Slice(_)
-        | ty::Generator(_, _, Movability::Static)
+        | ty::Generator(_, _, ty::Movability::Static)
         | ty::Foreign(..)
         | ty::Ref(_, _, Mutability::Mut)
         | ty::Adt(_, _)
@@ -191,7 +191,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Generator(_, args, Movability::Movable) => {
+        ty::Generator(_, args, ty::Movability::Movable) => {
             if ecx.tcx().features().generator_clone {
                 let generator = args.as_generator();
                 Ok(vec![generator.tupled_upvars_ty(), generator.witness()])

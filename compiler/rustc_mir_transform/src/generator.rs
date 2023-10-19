@@ -1394,7 +1394,7 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
 
     // Get the interior types and args which typeck computed
     let movable = match *gen_ty.kind() {
-        ty::Generator(_, _, movability) => movability == hir::Movability::Movable,
+        ty::Generator(_, _, movability) => movability == ty::Movability::Movable,
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected generator type {}", gen_ty),
     };
@@ -1430,7 +1430,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let (discr_ty, movable) = match *gen_ty.kind() {
             ty::Generator(_, args, movability) => {
                 let args = args.as_generator();
-                (args.discr_ty(tcx), movability == hir::Movability::Movable)
+                (args.discr_ty(tcx), movability == ty::Movability::Movable)
             }
             _ => {
                 tcx.sess.delay_span_bug(body.span, format!("unexpected generator type {gen_ty}"));

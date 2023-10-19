@@ -791,8 +791,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                 if should_print_movability {
                     match movability {
-                        hir::Movability::Movable => {}
-                        hir::Movability::Static => p!("static "),
+                        ty::Movability::Movable => {}
+                        ty::Movability::Static => p!("static "),
                     }
                 }
 

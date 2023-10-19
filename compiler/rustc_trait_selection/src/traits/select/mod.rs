@@ -2180,7 +2180,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Dynamic(..)
             | ty::Str
             | ty::Slice(..)
-            | ty::Generator(_, _, hir::Movability::Static)
+            | ty::Generator(_, _, ty::Movability::Static)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
 
@@ -2189,7 +2189,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(obligation.predicate.rebind(tys.iter().collect()))
             }
 
-            ty::Generator(_, args, hir::Movability::Movable) => {
+            ty::Generator(_, args, ty::Movability::Movable) => {
                 if self.tcx().features().generator_clone {
                     let resolved_upvars =
                         self.infcx.shallow_resolve(args.as_generator().tupled_upvars_ty());

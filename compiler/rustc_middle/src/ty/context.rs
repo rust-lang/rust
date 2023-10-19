@@ -91,7 +91,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Predicate = Predicate<'tcx>;
     type TypeAndMut = TypeAndMut<'tcx>;
     type Mutability = hir::Mutability;
-    type Movability = hir::Movability;
     type PolyFnSig = PolyFnSig<'tcx>;
     type ListBinderExistentialPredicate = &'tcx List<PolyExistentialPredicate<'tcx>>;
     type BinderListTy = Binder<'tcx, &'tcx List<Ty<'tcx>>>;

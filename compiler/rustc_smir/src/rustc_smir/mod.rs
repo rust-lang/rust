@@ -1175,13 +1175,13 @@ impl<'tcx> Stable<'tcx> for ty::FloatTy {
     }
 }
 
-impl<'tcx> Stable<'tcx> for hir::Movability {
+impl<'tcx> Stable<'tcx> for ty::Movability {
     type T = Movability;
 
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         match self {
-            hir::Movability::Static => Movability::Static,
-            hir::Movability::Movable => Movability::Movable,
+            ty::Movability::Static => Movability::Static,
+            ty::Movability::Movable => Movability::Movable,
         }
     }
 }

@@ -2169,7 +2169,7 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         generator_args: GenericArgsRef<'tcx>,
-        movability: hir::Movability,
+        movability: ty::Movability,
     ) -> Ty<'tcx> {
         debug_assert_eq!(
             generator_args.len(),

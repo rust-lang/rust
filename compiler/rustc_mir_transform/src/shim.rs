@@ -392,7 +392,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         _ if is_copy => builder.copy_shim(),
         ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
-        ty::Generator(gen_def_id, args, hir::Movability::Movable) => {
+        ty::Generator(gen_def_id, args, ty::Movability::Movable) => {
             builder.generator_shim(dest, src, *gen_def_id, args.as_generator())
         }
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),

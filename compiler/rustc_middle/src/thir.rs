@@ -167,7 +167,7 @@ pub struct ClosureExpr<'tcx> {
     pub closure_id: LocalDefId,
     pub args: UpvarArgs<'tcx>,
     pub upvars: Box<[ExprId]>,
-    pub movability: Option<hir::Movability>,
+    pub movability: Option<ty::Movability>,
     pub fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
 }
 
