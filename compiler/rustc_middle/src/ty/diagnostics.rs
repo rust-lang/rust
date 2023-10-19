@@ -17,7 +17,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{PredicateOrigin, WherePredicate};
 use rustc_span::{BytePos, Span};
-use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::TyKind::*;
 
 impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {

@@ -262,7 +262,7 @@ fn structurally_same_type_impl<'tcx>(
         true
     } else {
         // Do a full, depth-first comparison between the two.
-        use rustc_type_ir::sty::TyKind::*;
+        use rustc_type_ir::TyKind::*;
         let a_kind = a.kind();
         let b_kind = b.kind();
 
