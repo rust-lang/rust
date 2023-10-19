@@ -2293,11 +2293,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.constraint_sccs.as_ref()
     }
 
-    /// Returns whether the given SCC has any member constraints.
-    pub(crate) fn scc_has_member_constraints(&self, scc: ConstraintSccIndex) -> bool {
-        self.member_constraints.indices(scc).next().is_some()
-    }
-
     /// Returns whether the given SCC is live at all points: whether the representative is a
     /// placeholder or a free region.
     pub(crate) fn scc_is_live_at_all_points(&self, scc: ConstraintSccIndex) -> bool {
