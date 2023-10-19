@@ -226,10 +226,7 @@ impl<'mir, 'tcx> GlobalStateInner {
         // Add offset with the right kind of pointer-overflowing arithmetic.
         let dl = ecx.data_layout();
         let absolute_addr = dl.overflowing_offset(base_addr, offset.bytes()).0;
-        Ok(Pointer::new(
-            Provenance::Concrete { alloc_id, tag },
-            Size::from_bytes(absolute_addr),
-        ))
+        Ok(Pointer::new(Provenance::Concrete { alloc_id, tag }, Size::from_bytes(absolute_addr)))
     }
 
     /// When a pointer is used for a memory access, this computes where in which allocation the
