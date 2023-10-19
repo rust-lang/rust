@@ -8,8 +8,8 @@ extern crate rustc_lint;
 extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
+use clippy_config::msrvs::Msrv;
 use clippy_utils::extract_msrv_attr;
-use clippy_utils::msrvs::Msrv;
 use rustc_hir::Expr;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 

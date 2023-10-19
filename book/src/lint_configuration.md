@@ -26,7 +26,7 @@ arithmetic-side-effects-allowed = ["SomeType", "AnotherType"]
 A type, say `SomeType`, listed in this configuration has the same behavior of
 `["SomeType" , "*"], ["*", "SomeType"]` in `arithmetic_side_effects_allowed_binary`.
 
-**Default Value:** `{}` (`rustc_data_structures::fx::FxHashSet<String>`)
+**Default Value:** `{}` (`FxHashSet<String>`)
 
 ---
 **Affected lints:**
@@ -65,7 +65,7 @@ Suppress checking of the passed type names in unary operations like "negation" (
 arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
 ```
 
-**Default Value:** `{}` (`rustc_data_structures::fx::FxHashSet<String>`)
+**Default Value:** `{}` (`FxHashSet<String>`)
 
 ---
 **Affected lints:**
@@ -100,7 +100,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 ## `msrv`
 The minimum rust version that the project supports
 
-**Default Value:** `Msrv { stack: [] }` (`crate::Msrv`)
+**Default Value:** `Msrv { stack: [] }` (`Msrv`)
 
 ---
 **Affected lints:**
@@ -417,7 +417,7 @@ Whether to allow certain wildcard imports (prelude, super in tests).
 ## `disallowed-macros`
 The list of disallowed macros, written as fully qualified paths.
 
-**Default Value:** `[]` (`Vec<crate::utils::conf::DisallowedPath>`)
+**Default Value:** `[]` (`Vec<DisallowedPath>`)
 
 ---
 **Affected lints:**
@@ -427,7 +427,7 @@ The list of disallowed macros, written as fully qualified paths.
 ## `disallowed-methods`
 The list of disallowed methods, written as fully qualified paths.
 
-**Default Value:** `[]` (`Vec<crate::utils::conf::DisallowedPath>`)
+**Default Value:** `[]` (`Vec<DisallowedPath>`)
 
 ---
 **Affected lints:**
@@ -437,7 +437,7 @@ The list of disallowed methods, written as fully qualified paths.
 ## `disallowed-types`
 The list of disallowed types, written as fully qualified paths.
 
-**Default Value:** `[]` (`Vec<crate::utils::conf::DisallowedPath>`)
+**Default Value:** `[]` (`Vec<DisallowedPath>`)
 
 ---
 **Affected lints:**
@@ -468,7 +468,7 @@ Enables verbose mode. Triggers if there is more than one uppercase char next to 
 Whether the matches should be considered by the lint, and whether there should
 be filtering for common types.
 
-**Default Value:** `WellKnownTypes` (`crate::manual_let_else::MatchLintBehaviour`)
+**Default Value:** `WellKnownTypes` (`MatchLintBehaviour`)
 
 ---
 **Affected lints:**
@@ -492,7 +492,7 @@ A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If
 could be used with a full path two `MacroMatcher`s have to be added one with the full path
 `crate_name::macro_name` and one with just the macro name.
 
-**Default Value:** `[]` (`Vec<crate::nonstandard_macro_braces::MacroMatcher>`)
+**Default Value:** `[]` (`Vec<MacroMatcher>`)
 
 ---
 **Affected lints:**
@@ -502,7 +502,7 @@ could be used with a full path two `MacroMatcher`s have to be added one with the
 ## `enforced-import-renames`
 The list of imports to always rename, a fully qualified path followed by the rename.
 
-**Default Value:** `[]` (`Vec<crate::utils::conf::Rename>`)
+**Default Value:** `[]` (`Vec<Rename>`)
 
 ---
 **Affected lints:**
@@ -544,7 +544,7 @@ For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
 ## `await-holding-invalid-types`
 
 
-**Default Value:** `[]` (`Vec<crate::utils::conf::DisallowedPath>`)
+**Default Value:** `[]` (`Vec<DisallowedPath>`)
 
 ---
 **Affected lints:**
@@ -694,7 +694,7 @@ Allowed names below the minimum allowed characters. The value `".."` can be used
 the list to indicate, that the configured values should be appended to the default
 configuration of Clippy. By default, any configuration will replace the default value.
 
-**Default Value:** `{"j", "z", "i", "y", "n", "x", "w"}` (`rustc_data_structures::fx::FxHashSet<String>`)
+**Default Value:** `{"j", "z", "i", "y", "n", "x", "w"}` (`FxHashSet<String>`)
 
 ---
 **Affected lints:**
@@ -755,7 +755,7 @@ be linted.
 ## `absolute-paths-allowed-crates`
 Which crates to allow absolute paths from
 
-**Default Value:** `{}` (`rustc_data_structures::fx::FxHashSet<String>`)
+**Default Value:** `{}` (`FxHashSet<String>`)
 
 ---
 **Affected lints:**
@@ -765,7 +765,7 @@ Which crates to allow absolute paths from
 ## `allowed-dotfiles`
 Additional dotfiles (files or directories starting with a dot) to allow
 
-**Default Value:** `{}` (`rustc_data_structures::fx::FxHashSet<String>`)
+**Default Value:** `{}` (`FxHashSet<String>`)
 
 ---
 **Affected lints:**

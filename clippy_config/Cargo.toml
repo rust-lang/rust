@@ -1,15 +1,14 @@
 [package]
-name = "clippy_utils"
+name = "clippy_config"
 version = "0.1.75"
 edition = "2021"
-publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clippy_config = { path = "../clippy_config" }
-arrayvec = { version = "0.7", default-features = false }
-if_chain = "1.0"
-itertools = "0.10.1"
 rustc-semver = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.7.3"
 
 [features]
 deny-warnings = []

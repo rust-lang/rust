@@ -19,8 +19,8 @@ mod while_immutable_condition;
 mod while_let_loop;
 mod while_let_on_iterator;
 
+use clippy_config::msrvs::Msrv;
 use clippy_utils::higher;
-use clippy_utils::msrvs::Msrv;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};

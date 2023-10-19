@@ -1,7 +1,7 @@
-//! Read configurations files.
-
-#![allow(clippy::module_name_repetitions)]
-
+use crate::msrvs::Msrv;
+use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, Rename};
+use crate::ClippyConfiguration;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_session::Session;
 use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
 use serde::de::{Deserializer, IgnoredAny, IntoDeserializer, MapAccess, Visitor};
@@ -37,37 +37,6 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
 ];
 const DEFAULT_DISALLOWED_NAMES: &[&str] = &["foo", "baz", "quux"];
 const DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS: &[&str] = &["i", "j", "x", "y", "z", "w", "n"];
-
-/// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
-#[derive(Clone, Debug, Deserialize)]
-pub struct Rename {
-    pub path: String,
-    pub rename: String,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
-pub enum DisallowedPath {
-    Simple(String),
-    WithReason { path: String, reason: Option<String> },
-}
-
-impl DisallowedPath {
-    pub fn path(&self) -> &str {
-        let (Self::Simple(path) | Self::WithReason { path, .. }) = self;
-
-        path
-    }
-
-    pub fn reason(&self) -> Option<String> {
-        match self {
-            Self::WithReason {
-                reason: Some(reason), ..
-            } => Some(format!("{reason} (from clippy.toml)")),
-            _ => None,
-        }
-    }
-}
 
 /// Conf with parse errors
 #[derive(Default)]
@@ -124,6 +93,7 @@ macro_rules! define_Conf {
         }
 
         mod defaults {
+            use super::*;
             $(pub fn $name() -> $ty { $default })*
         }
 
@@ -190,31 +160,27 @@ macro_rules! define_Conf {
             }
         }
 
-        pub mod metadata {
-            use crate::utils::ClippyConfiguration;
+        macro_rules! wrap_option {
+            () => (None);
+            ($x:literal) => (Some($x));
+        }
 
-            macro_rules! wrap_option {
-                () => (None);
-                ($x:literal) => (Some($x));
-            }
+        pub fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
+            vec![
+                $(
+                    {
+                        let deprecation_reason = wrap_option!($($dep)?);
 
-            pub fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
-                vec![
-                    $(
-                        {
-                            let deprecation_reason = wrap_option!($($dep)?);
-
-                            ClippyConfiguration::new(
-                                stringify!($name),
-                                stringify!($ty),
-                                format!("{:?}", super::defaults::$name()),
-                                concat!($($doc, '\n',)*),
-                                deprecation_reason,
-                            )
-                        },
-                    )+
-                ]
-            }
+                        ClippyConfiguration::new(
+                            stringify!($name),
+                            stringify!($ty),
+                            format!("{:?}", defaults::$name()),
+                            concat!($($doc, '\n',)*),
+                            deprecation_reason,
+                        )
+                    },
+                )+
+            ]
         }
     };
 }
@@ -236,7 +202,7 @@ define_Conf! {
     ///
     /// A type, say `SomeType`, listed in this configuration has the same behavior of
     /// `["SomeType" , "*"], ["*", "SomeType"]` in `arithmetic_side_effects_allowed_binary`.
-    (arithmetic_side_effects_allowed: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
+    (arithmetic_side_effects_allowed: FxHashSet<String> = <_>::default()),
     /// Lint: ARITHMETIC_SIDE_EFFECTS.
     ///
     /// Suppress checking of the passed type pair names in binary operations like addition or
@@ -263,7 +229,7 @@ define_Conf! {
     /// ```toml
     /// arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
     /// ```
-    (arithmetic_side_effects_allowed_unary: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
+    (arithmetic_side_effects_allowed_unary: FxHashSet<String> = <_>::default()),
     /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX, UNNECESSARY_BOX_RETURNS, SINGLE_CALL_FN.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
@@ -271,7 +237,7 @@ define_Conf! {
     /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE.
     ///
     /// The minimum rust version that the project supports
-    (msrv: crate::Msrv = crate::Msrv::empty()),
+    (msrv: Msrv = Msrv::empty()),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
     /// Use the Disallowed Names lint instead
@@ -295,7 +261,7 @@ define_Conf! {
     /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
     /// `".."` can be used as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value.
-    (disallowed_names: Vec<String> = super::DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect()),
+    (disallowed_names: Vec<String> = DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect()),
     /// Lint: SEMICOLON_INSIDE_BLOCK.
     ///
     /// Whether to lint only if it's multiline.
@@ -313,7 +279,7 @@ define_Conf! {
     /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
     ///
     /// Default list:
-    (doc_valid_idents: Vec<String> = super::DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
+    (doc_valid_idents: Vec<String> = DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
     /// Lint: TOO_MANY_ARGUMENTS.
     ///
     /// The maximum number of argument a function or method can have
@@ -393,15 +359,15 @@ define_Conf! {
     /// Lint: DISALLOWED_MACROS.
     ///
     /// The list of disallowed macros, written as fully qualified paths.
-    (disallowed_macros: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
+    (disallowed_macros: Vec<DisallowedPath> = Vec::new()),
     /// Lint: DISALLOWED_METHODS.
     ///
     /// The list of disallowed methods, written as fully qualified paths.
-    (disallowed_methods: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
+    (disallowed_methods: Vec<DisallowedPath> = Vec::new()),
     /// Lint: DISALLOWED_TYPES.
     ///
     /// The list of disallowed types, written as fully qualified paths.
-    (disallowed_types: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
+    (disallowed_types: Vec<DisallowedPath> = Vec::new()),
     /// Lint: UNREADABLE_LITERAL.
     ///
     /// Should the fraction of a decimal be linted to include separators.
@@ -414,8 +380,7 @@ define_Conf! {
     ///
     /// Whether the matches should be considered by the lint, and whether there should
     /// be filtering for common types.
-    (matches_for_let_else: crate::manual_let_else::MatchLintBehaviour =
-        crate::manual_let_else::MatchLintBehaviour::WellKnownTypes),
+    (matches_for_let_else: MatchLintBehaviour = MatchLintBehaviour::WellKnownTypes),
     /// Lint: _CARGO_COMMON_METADATA.
     ///
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
@@ -427,11 +392,11 @@ define_Conf! {
     /// A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro
     /// could be used with a full path two `MacroMatcher`s have to be added one with the full path
     /// `crate_name::macro_name` and one with just the macro name.
-    (standard_macro_braces: Vec<crate::nonstandard_macro_braces::MacroMatcher> = Vec::new()),
+    (standard_macro_braces: Vec<MacroMatcher> = Vec::new()),
     /// Lint: MISSING_ENFORCED_IMPORT_RENAMES.
     ///
     /// The list of imports to always rename, a fully qualified path followed by the rename.
-    (enforced_import_renames: Vec<crate::utils::conf::Rename> = Vec::new()),
+    (enforced_import_renames: Vec<Rename> = Vec::new()),
     /// Lint: DISALLOWED_SCRIPT_IDENTS.
     ///
     /// The list of unicode scripts allowed to be used in the scope.
@@ -447,7 +412,7 @@ define_Conf! {
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
     /// Lint: AWAIT_HOLDING_INVALID_TYPE.
-    (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
+    (await_holding_invalid_types: Vec<DisallowedPath> = Vec::new()),
     /// Lint: LARGE_INCLUDE_FILE.
     ///
     /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
@@ -511,8 +476,8 @@ define_Conf! {
     /// Allowed names below the minimum allowed characters. The value `".."` can be used as part of
     /// the list to indicate, that the configured values should be appended to the default
     /// configuration of Clippy. By default, any configuration will replace the default value.
-    (allowed_idents_below_min_chars: rustc_data_structures::fx::FxHashSet<String> =
-        super::DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string).collect()),
+    (allowed_idents_below_min_chars: FxHashSet<String> =
+        DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string).collect()),
     /// Lint: MIN_IDENT_CHARS.
     ///
     /// Minimum chars an ident can have, anything below or equal to this will be linted.
@@ -537,13 +502,11 @@ define_Conf! {
     /// Lint: ABSOLUTE_PATHS.
     ///
     /// Which crates to allow absolute paths from
-    (absolute_paths_allowed_crates: rustc_data_structures::fx::FxHashSet<String> =
-        rustc_data_structures::fx::FxHashSet::default()),
+    (absolute_paths_allowed_crates: FxHashSet<String> = FxHashSet::default()),
     /// Lint: PATH_ENDS_WITH_EXT.
     ///
     /// Additional dotfiles (files or directories starting with a dot) to allow
-    (allowed_dotfiles: rustc_data_structures::fx::FxHashSet<String> =
-        rustc_data_structures::fx::FxHashSet::default()),
+    (allowed_dotfiles: FxHashSet<String> = FxHashSet::default()),
     /// Lint: EXPLICIT_ITER_LOOP
     ///
     /// Whether to recommend using implicit into iter for reborrowed values.

@@ -50,7 +50,6 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
-use clippy_utils::msrvs::Msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
 use rustc_session::Session;
@@ -358,9 +357,8 @@ mod zero_div_zero;
 mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-use crate::utils::conf::metadata::get_configuration_metadata;
-pub use crate::utils::conf::{lookup_conf_file, Conf};
 use crate::utils::FindAll;
+use clippy_config::{get_configuration_metadata, Conf};
 
 /// Register all pre expansion lints
 ///
