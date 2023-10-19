@@ -11,6 +11,7 @@ use std::path::Path;
 struct BuildArg {
     codegen_release_channel: bool,
     sysroot_release_channel: bool,
+    sysroot_panic_abort: bool,
     flags: Vec<String>,
     gcc_path: String,
 }
@@ -32,6 +33,9 @@ impl BuildArg {
                 "--no-default-features" => {
                     build_arg.flags.push("--no-default-features".to_string());
                 }
+                "--sysroot-panic-abort" => {
+                    build_arg.sysroot_panic_abort = true;
+                },
                 "--features" => {
                     if let Some(arg) = args.next() {
                         build_arg.flags.push("--features".to_string());
@@ -77,6 +81,7 @@ impl BuildArg {
 
     --release              : Build codegen in release mode
     --release-sysroot      : Build sysroot in release mode
+    --sysroot-panic-abort  : Build the sysroot without unwinding support.
     --no-default-features  : Add `--no-default-features` flag
     --features [arg]       : Add a new feature [arg]
     --target-triple [arg]  : Set the target triple to [arg]
@@ -88,7 +93,7 @@ impl BuildArg {
 
 fn build_sysroot(
     env: &mut HashMap<String, String>,
-    release_mode: bool,
+    args: &BuildArg,
     config: &ConfigInfo,
 ) -> Result<(), String> {
     std::env::set_current_dir("build_sysroot")
@@ -138,15 +143,18 @@ fn build_sysroot(
     let _ = fs::remove_dir_all("sysroot");
 
     // Builds libs
-    let channel = if release_mode {
-        let rustflags = env
-            .get("RUSTFLAGS")
-            .cloned()
-            .unwrap_or_default();
-        env.insert(
-            "RUSTFLAGS".to_string(),
-            format!("{} -Zmir-opt-level=3", rustflags),
-        );
+    let mut rustflags = env
+        .get("RUSTFLAGS")
+        .cloned()
+        .unwrap_or_default();
+    if args.sysroot_panic_abort {
+        rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
+    }
+    env.insert(
+        "RUSTFLAGS".to_string(),
+        format!("{} -Zmir-opt-level=3", rustflags),
+    );
+    let channel = if args.sysroot_release_channel {
         run_command_with_output_and_env(
             &[
                 &"cargo",
@@ -224,7 +232,7 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     println!("[BUILD] sysroot");
     build_sysroot(
         &mut env,
-        args.sysroot_release_channel,
+        args,
         &config,
     )?;
     Ok(())

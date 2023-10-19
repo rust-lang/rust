@@ -11,6 +11,9 @@ env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
   TEST_FLAGS: "-Cpanic=abort -Zpanic-abort-tests"
+  # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
+  # Not sure why it's not found otherwise.
+  GCC_EXEC_PREFIX: /usr/lib/gcc/
 
 jobs:
   build:
@@ -21,17 +24,15 @@ jobs:
       matrix:
         commands: [
           "--mini-tests",
-          # TODO(antoyo): re-enable those commands when the build with libgccjit 12 is fixed.
-          #"--std-tests",
+          "--std-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
-          #"--test-libcore",
-          #"--extended-rand-tests",
-          #"--extended-regex-example-tests",
-          #"--extended-regex-tests",
-          #"--test-successful-rustc --nb-parts 2 --current-part 0",
-          #"--test-successful-rustc --nb-parts 2 --current-part 1",
-          #"--test-failing-rustc",
+          "--test-libcore",
+          "--extended-rand-tests",
+          "--extended-regex-example-tests",
+          "--extended-regex-tests",
+          "--test-successful-rustc --nb-parts 2 --current-part 0",
+          "--test-successful-rustc --nb-parts 2 --current-part 1",
         ]
 
     steps:
@@ -85,18 +86,16 @@ jobs:
 
     - name: Build
       run: |
-        ./y.sh prepare --only-libcore
-        # TODO(antoyo): build the sysroot when the build with libgccjit 12 is fixed.
-        #./y.sh build --no-default-features
-        # TODO(antoyo): run the tests when we can build the sysroot with libgccjit 12.
-        #cargo test --no-default-features
+        ./y.sh prepare --only-libcore --libgccjit12-patches
+        ./y.sh build --no-default-features --sysroot-panic-abort
+        cargo test --no-default-features
         ./clean_all.sh
 
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./y.sh prepare
+        ./y.sh prepare --libgccjit12-patches
 
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
@@ -108,9 +107,9 @@ jobs:
     - name: Add more failing tests for GCC 12
       run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
 
+    - name: Add more failing tests because the sysroot is not compiled with LTO
+      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+
     - name: Run tests
       run: |
-        # TODO(antoyo): add --build-sysroot when the build with libgccjit 12 is fixed.
-        # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
-        # Not sure why it's not found otherwise.
-        GCC_EXEC_PREFIX=/usr/lib/gcc/ ./test.sh --release --clean ${{ matrix.commands }} --no-default-features
+        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features

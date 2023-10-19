@@ -19,8 +19,16 @@ jobs:
       fail-fast: false
       matrix:
         libgccjit_version:
-          - { gcc: "libgccjit.so", artifacts_branch: "master" }
-          - { gcc: "libgccjit_without_int128.so", artifacts_branch: "master-without-128bit-integers" }
+          - gcc: "libgccjit.so"
+            artifacts_branch: "master"
+          - gcc: "libgccjit_without_int128.so"
+            artifacts_branch: "master-without-128bit-integers"
+          - gcc: "libgccjit12.so"
+            artifacts_branch: "gcc12"
+            extra: "--no-default-features"
+            # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
+            # Not sure why it's not found otherwise.
+            env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests' GCC_EXEC_PREFIX=/usr/lib/gcc/"
 
     steps:
     - uses: actions/checkout@v3
@@ -28,7 +36,16 @@ jobs:
     - name: Install packages
       run: sudo apt-get install ninja-build ripgrep
 
+    - name: Install libgccjit12
+      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      run: sudo apt-get install libgccjit-12-dev
+
+    - name: Setup path to libgccjit
+      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
+
     - name: Download artifact
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       uses: dawidd6/action-download-artifact@v2
       with:
           workflow: main.yml
@@ -40,6 +57,7 @@ jobs:
           search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
 
     - name: Setup path to libgccjit
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
           sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
           echo /usr/lib/ > gcc_path
@@ -81,18 +99,18 @@ jobs:
         #path: rust
         #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
 
-    - name: Build
-      run: |
-        ./y.sh prepare --only-libcore
-        ./y.sh build
-        cargo test
-        ./clean_all.sh
-
-    - name: Prepare dependencies
+    - name: Git config
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./y.sh prepare
+
+    - name: Prepare dependencies
+      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      run: ./y.sh prepare --libgccjit12-patches
+
+    - name: Prepare dependencies
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
+      run: ./y.sh prepare
 
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
@@ -107,5 +125,5 @@ jobs:
     - name: Run tests
       id: tests
       run: |
-        ./test.sh --release --clean --build-sysroot --test-failing-rustc | tee output_log
-        rg "test result" output_log >> $GITHUB_STEP_SUMMARY
+        ${{ matrix.libgccjit_version.env_extra }} ./test.sh --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} | tee output_log
+        rg --text "test result" output_log >> $GITHUB_STEP_SUMMARY
