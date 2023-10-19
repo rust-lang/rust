@@ -2174,7 +2174,6 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_unwrap_or_clone)]
     /// # use std::{ptr, sync::Arc};
     /// let inner = String::from("test");
     /// let ptr = inner.as_ptr();
@@ -2195,7 +2194,7 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
     /// assert!(ptr::eq(ptr, inner.as_ptr()));
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unwrap_or_clone", issue = "93610")]
+    #[stable(feature = "arc_unwrap_or_clone", since = "CURRENT_RUSTC_VERSION")]
     pub fn unwrap_or_clone(this: Self) -> T {
         Arc::try_unwrap(this).unwrap_or_else(|arc| (*arc).clone())
     }
