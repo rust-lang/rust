@@ -2,7 +2,7 @@ error[E0053]: method `call` has an incompatible type for trait
   --> $DIR/issue-20225.rs:6:43
    |
 LL | impl<'a, T> Fn<(&'a T,)> for Foo {
-   |          - this type parameter
+   |          - found this type parameter
 LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
    |                                           ^^^^
    |                                           |
@@ -16,7 +16,7 @@ error[E0053]: method `call_mut` has an incompatible type for trait
   --> $DIR/issue-20225.rs:11:51
    |
 LL | impl<'a, T> FnMut<(&'a T,)> for Foo {
-   |          - this type parameter
+   |          - found this type parameter
 LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
    |                                                   ^^^^
    |                                                   |
@@ -30,7 +30,7 @@ error[E0053]: method `call_once` has an incompatible type for trait
   --> $DIR/issue-20225.rs:18:47
    |
 LL | impl<'a, T> FnOnce<(&'a T,)> for Foo {
-   |          - this type parameter
+   |          - found this type parameter
 ...
 LL |   extern "rust-call" fn call_once(self, (_,): (T,)) {}
    |                                               ^^^^

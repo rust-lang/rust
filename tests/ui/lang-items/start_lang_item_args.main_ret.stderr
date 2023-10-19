@@ -4,7 +4,7 @@ error[E0308]: lang item `start` function has wrong type
 LL | fn start<T>(_main: fn() -> u16, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
    |          -         ^^^^^^^^^^^ expected type parameter `T`, found `u16`
    |          |
-   |          this type parameter
+   |          expected this type parameter
    |
    = note: expected signature `fn(fn() -> T, _, _, _) -> _`
               found signature `fn(fn() -> u16, _, _, _) -> _`

@@ -7,7 +7,7 @@ LL | |         &mut Header,
 LL | |         &mut [EntryMetadata],
 LL | |         &mut [Entry<C::EncodedKey, C::EncodedValue>]
 LL | |     ) -> R,
-   | |__________- this type parameter
+   | |__________- expected this type parameter
 LL |   ) {
 LL |       let () = y;
    |           ^^   - this expression has type `impl FnOnce(&mut Header, &mut [EntryMetadata], &mut [Entry<C::EncodedKey, C::EncodedValue>]) -> R`

@@ -6,7 +6,7 @@ LL |     fn early<'late, T>(_: &'late ()) {}
    |                     |     |
    |                     |     expected type parameter `T`, found `()`
    |                     |     help: change the parameter type to match the trait: `&T`
-   |                     this type parameter
+   |                     expected this type parameter
    |
 note: type in trait
   --> $DIR/method-signature-matches.rs:52:28
