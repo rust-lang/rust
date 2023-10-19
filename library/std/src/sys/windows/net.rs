@@ -140,13 +140,15 @@ impl Socket {
         }
     }
 
+    pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
+        let (addr, len) = addr.into_inner();
+        let result = unsafe { c::connect(self.as_raw(), addr.as_ptr(), len) };
+        cvt(result).map(drop)
+    }
+
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
-        let result = {
-            let (addr, len) = addr.into_inner();
-            let result = unsafe { c::connect(self.as_raw(), addr.as_ptr(), len) };
-            cvt(result).map(drop)
-        };
+        let result = self.connect(addr);
         self.set_nonblocking(false)?;
 
         match result {
