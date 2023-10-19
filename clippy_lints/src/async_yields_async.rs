@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
         use AsyncCoroutineKind::{Block, Closure};
         // For functions, with explicitly defined types, don't warn.
         // XXXkhuey maybe we should?
-        if let Some(CoroutineKind::Async(Block | Closure)) = body.generator_kind {
+        if let Some(CoroutineKind::Async(Block | Closure)) = body.coroutine_kind {
             if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait() {
                 let body_id = BodyId {
                     hir_id: body.value.hir_id,

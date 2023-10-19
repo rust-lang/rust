@@ -437,7 +437,7 @@ fn lint_for_missing_headers(
                 let ret_ty = typeck.expr_ty(body.value);
                 if implements_trait(cx, ret_ty, future, &[]);
                 if let ty::Coroutine(_, subs, _) = ret_ty.kind();
-                if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym::Result);
+                if is_type_diagnostic_item(cx, subs.as_coroutine().return_ty(), sym::Result);
                 then {
                     span_lint(
                         cx,
